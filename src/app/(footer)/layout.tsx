@@ -1,4 +1,4 @@
-import NavbarNoSearch from "@/components/navbars/old-navbar-no-search";
+import Navbar from "@/components/navbars/navbar";
 import Footer from "@/components/footers/footer";
 
 export default function VirusesLayout({
@@ -8,7 +8,7 @@ export default function VirusesLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <NavbarNoSearch />
+      <Navbar />
       <main className="flex grow flex-col">{children}</main>
       <Footer />
     </div>

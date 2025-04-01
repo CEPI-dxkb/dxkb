@@ -3,21 +3,21 @@
 import React from "react";
 
 import Footer from "@/components/footers/footer";
-import News from "@/components/ui/news";
+import NewsCarousel from "@/components/ui/news-carousel";
 import QuickLinks from "@/components/ui/quick-links";
 import Hero from "@/components/ui/hero";
-import NavbarNoSearch from "@/components/navbars/navbar-no-search";
+import Navbar from "@/components/navbars/navbar";
 
 export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <NavbarNoSearch />
+      <Navbar />
 
       <main className="grow">
         <Hero />
         {/* <QuickLinks /> */}
-        <News />
+        <NewsCarousel />
       </main>
 
       <Footer />

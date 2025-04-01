@@ -38,7 +38,7 @@ function HoverDropdownMenu({
   );
 }
 
-const navbarNoSearch = () => {
+const oldNavbarNoSearch = () => {
   const router = useRouter();
 
   return (
@@ -115,4 +115,4 @@ const navbarNoSearch = () => {
   )
 };
 
-export default navbarNoSearch;
+export default oldNavbarNoSearch;

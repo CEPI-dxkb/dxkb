@@ -37,7 +37,7 @@ const newsItems = [
   },
 ];
 
-const News = () => {
+const OldNews = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 4;
   const totalPages = Math.ceil(newsItems.length / itemsPerPage);
@@ -101,4 +101,5 @@ const News = () => {
   )
 }
 
-export default News;
+export default OldNews;
+

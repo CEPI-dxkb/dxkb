@@ -128,3 +128,37 @@
     @apply bg-background text-foreground;
   }
 }
+
+.about-section {
+  @apply grid grid-cols-1 lg:grid-cols-2 mx-8 lg:mx-auto my-16 gap-8 lg:gap-16 items-center max-w-[1200px] w-[calc(100%-4rem)] lg:w-[90%];
+}
+
+.funding-content {
+  @apply mx-32 my-24 gap-16 flex flex-row items-center justify-center align-middle text-lg;
+}
+
+.news-link {
+  @apply text-blue-500 font-semibold;
+}
+
+.news-link:hover {
+  @apply text-blue-700 font-bold scale-110 underline decoration-blue-700 transition-all duration-300;
+}
+
+.sheet-content-section-mobile {
+  @apply flex flex-col gap-1;
+}
+
+.sheet-content-section-mobile h2 {
+  @apply text-lg font-bold text-dxkb-orange;
+}
+
+.sheet-content-section-mobile h3 {
+  @apply text-base font-normal py-1 px-2;
+}
+
+.sheet-content-section-mobile h3:hover {
+  @apply bg-dxkb-blue/20 rounded-md py-1 px-2 transition-all duration-200;
+}
+
+

@@ -1,4 +1,4 @@
-import NavbarNoSearch from "@/components/navbars/navbar-no-search";
+import NavbarNoSearch from "@/components/navbars/desktop-navbar";
 import Footer from "@/components/footers/footer";
 
 export default function VirusesLayout({

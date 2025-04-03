@@ -65,7 +65,7 @@ const ResourceCard = ({ title, subtitle, image, url }: ResourceCard) => (
         src={image}
         alt={title}
         fill
-        className="object-cover"
+        className="object-cover items-center justify-center"
       />
     </div>
     <div className="card-content">

@@ -41,7 +41,7 @@ const footerLinks: FooterSection[] = [
     links: [
       { name: "Documentation", url: "https://docs.dxkb.org" },
       { name: "Related Resources", url: "/related-resources" },
-      { name: "Tutorials", url: "/tutorials" },
+      { name: "Tutorials", url: "https://docs.dxkb.org/bv-brc/resources" },
     ],
   },
   {
@@ -58,7 +58,7 @@ const footerLinks: FooterSection[] = [
     titleUrl: "/help",
     links: [
       { name: "Contact Us", url: "/contact" },
-      { name: "Instructional Videos", url: "/instructional-videos" },
+      { name: "Instructional Videos", url: "https://docs.dxkb.org/bv-brc/resources" },
       { name: "Privacy Policy", url: "/privacy-policy" },
     ],
   },

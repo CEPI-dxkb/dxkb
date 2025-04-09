@@ -28,8 +28,8 @@
   - Always use double quotes for strings and import statements.
   
   UI and Styling
-  - Use Tailwind CSS, Shadcn UI, and Radix UI for components and styling.
-  - Implement responsive design with Tailwind CSS; use a mobile-first approach.
+  - Use Tailwind CSS (V4), Shadcn UI, and React-Icons for components and styling.
+  - Implement responsive design with Tailwind CSS (V4); use a mobile-first approach.
   
   Performance Optimization
   <!-- - Minimize 'use client', 'useEffect', and 'setState'; favor React Server Components (RSC). -->
@@ -44,6 +44,9 @@
     - Favor server components and Next.js SSR.
     - Use only for Web API access in small components.
     - Avoid for data fetching or state management.
+
+  Package Management
+  - Always use 'pnpm' for all packages.
   
   Follow Next.js docs for Data Fetching, Rendering, and Routing.
    

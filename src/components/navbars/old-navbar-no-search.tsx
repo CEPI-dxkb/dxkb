@@ -42,7 +42,7 @@ const oldNavbarNoSearch = () => {
   const router = useRouter();
 
   return (
-    <header className="bg-dxkb-blue text-white">
+    <header className="bg-primary-def text-white">
       <div className="w-full px-10 py-4 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <Link id="dxkb-logo" href="/">

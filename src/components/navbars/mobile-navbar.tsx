@@ -21,7 +21,7 @@ import Link from "next/link";
 
 const MobileNavbar = () => {
   return (
-    <header className="md:hidden flex px-4 py-4 bg-dxkb-blue text-white justify-between items-center">
+    <header className="md:hidden flex px-4 py-4 bg-primary-def text-white justify-between items-center">
       <div className="flex items-center gap-4">
         <Sheet>
           <SheetTrigger asChild className="group hover:bg-gray-300/50">
@@ -33,7 +33,7 @@ const MobileNavbar = () => {
             <SheetTitle className="sr-only">
               DXKB
             </SheetTitle>
-            <div id="sheet-logo" className="flex p-4 bg-dxkb-blue rounded-tr-lg w-full">
+            <div id="sheet-logo" className="flex p-4 bg-primary-def rounded-tr-lg w-full">
               <Image
                 src="/logos/dxkb-logo-white-cropped.svg"
                 alt="DXKB Logo"

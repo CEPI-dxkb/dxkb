@@ -86,7 +86,7 @@ const Team = () => {
             {teamMembers.map((member) => (
               <div
                 key={member.name.toLowerCase().replace(/\s+/g, '-')}
-                className="team-member rounded-lg bg-white p-2 shadow-sm transition-shadow duration-200 hover:shadow-md sm:p-4"
+                className="team-member rounded-lg bg-background-def p-2 shadow-sm transition-shadow duration-200 hover:shadow-md sm:p-4"
               >
                 <div className="relative aspect-square w-full overflow-hidden rounded-full">
                   <Image

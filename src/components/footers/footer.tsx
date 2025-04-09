@@ -66,7 +66,7 @@ const footerLinks: FooterSection[] = [
 
 const Footer = () => {
   return (
-    <footer className="bg-dxkb-blue rounded-t-xl py-8 text-white">
+    <footer className="bg-primary-def rounded-t-xl py-8 text-white">
       <div className="mx-auto w-full px-12">
         <div className="grid gap-8 md:grid-cols-[25%_75%]">
           <div id="website-info" className="order-2 flex flex-col md:order-1">
@@ -89,7 +89,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-dxkb-orange h-8 w-8"
+                className="hover:text-secondary-500 h-8 w-8"
                 asChild
               >
                 <Link href="https://twitter.com" target="_blank">
@@ -100,7 +100,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-dxkb-orange h-8 w-8"
+                className="hover:text-secondary-500 h-8 w-8"
                 asChild
               >
                 <Link href="https://facebook.com" target="_blank">
@@ -111,7 +111,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-dxkb-orange h-8 w-8"
+                className="hover:text-secondary-500 h-8 w-8"
                 asChild
               >
                 <Link href="https://instagram.com" target="_blank">
@@ -122,7 +122,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-dxkb-orange h-8 w-8"
+                className="hover:text-secondary-500 h-8 w-8"
                 asChild
               >
                 <Link href="https://github.com" target="_blank">
@@ -133,7 +133,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-dxkb-orange h-8 w-8"
+                className="hover:text-secondary-500 h-8 w-8"
                 asChild
               >
                 <Link href="https://youtube.com" target="_blank">
@@ -149,10 +149,10 @@ const Footer = () => {
           >
             {footerLinks.map((section) => (
               <div key={section.title}>
-                <h4 className="text-dxkb-orange mb-4 font-bold">
+                <h4 className="text-secondary-def mb-4 font-bold">
                   <Link
                     href={section.titleUrl}
-                    className="hover:underline"
+                    className="hover:underline hover:text-secondary-500"
                     {...(isExternalUrl(section.titleUrl) && {
                       target: "_blank",
                     })}

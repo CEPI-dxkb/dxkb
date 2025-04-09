@@ -75,7 +75,7 @@ const utilities: { title: string; href: string; description: string }[] = [
 
 const DesktopNavbar = () => {
   return (
-    <header className="hidden md:flex bg-dxkb-blue text-white justify-between items-center px-8 py-4">
+    <header className="hidden md:flex bg-primary-def text-white justify-between items-center px-8 py-4">
       <div className="flex items-center space-x-4">
         <Link id="dxkb-logo" href="/">
           <Image
@@ -88,16 +88,16 @@ const DesktopNavbar = () => {
           />
         </Link>
 
-        <NavigationMenu className="hidden md:flex bg-dxkb-blue w-full justify-between items-center font-bold">
+        <NavigationMenu className="hidden md:flex bg-primary-def w-full justify-between items-center font-bold">
           <NavigationMenuList>
             <NavigationMenuItem id="getting-started-nav">
-              <NavigationMenuTrigger className="bg-dxkb-blue">Getting started</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="bg-primary-def">Getting started</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
                       <a
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 p-6 no-underline outline-none focus:shadow-md bg-dxkb-blue hover:bg-dxkb-blue/80 transition-all duration-300"
+                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 p-6 no-underline outline-none focus:shadow-md bg-primary-def hover:bg-primary-def/80 transition-all duration-300"
                         href="/"
                       >
                         <Image src="/logos/dxkb-logo-white-cropped.svg" alt="DXKB Logo" width={100} height={40} />
@@ -126,7 +126,7 @@ const DesktopNavbar = () => {
             </NavigationMenuItem>
 
             <NavigationMenuItem id="organisms-nav">
-              <NavigationMenuTrigger className="bg-dxkb-blue">Organisms</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="bg-primary-def">Organisms</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                   {organisms.map((organism) => (
@@ -143,7 +143,7 @@ const DesktopNavbar = () => {
             </NavigationMenuItem>
 
             <NavigationMenuItem id="utilities-nav">
-              <NavigationMenuTrigger className="bg-dxkb-blue">Utilities</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="bg-primary-def">Utilities</NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid w-[400px] gap-3 p-2 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
                   {utilities.map((utility) => (

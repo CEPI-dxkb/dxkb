@@ -1,7 +1,7 @@
 import React from "react";
 import SearchBar from "@/components/search-bars/search-bar";
 
-const Hero = () => {
+const WelcomeHero = () => {
   return (
     <section className="text-center py-16">
       <h1 className="text-4xl font-bold mb-4">Welcome to the</h1>
@@ -11,4 +11,4 @@ const Hero = () => {
   )
 }
 
-export default Hero;
+export default WelcomeHero;

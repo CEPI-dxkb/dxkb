@@ -6,7 +6,7 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import { Views, ViewType } from "./views";
 import { Suspense } from "react";
 import { NavigationMenuSkeleton } from "@/components/skeletons/viruses/navigation-menu-skeleton";
-import { NavigationMenu } from "@/app/viruses/_components/navigation-menu";
+import { NavigationMenu } from "@/app/organisms/viruses/_components/navigation-menu";
 
 export default function VirusesPage() {
   const searchParams = useSearchParams();
@@ -49,7 +49,7 @@ export default function VirusesPage() {
         <ResizableHandle withHandle className="w-0 border-none" />
 
         <ResizablePanel defaultSize={12} maxSize={25}>
-          <div id="guide-section" className="h-full border border-gray-200 bg-dxkb-light-gray rounded-l-lg p-4">
+          <div id="guide-section" className="h-full border border-gray-200 bg-background-500 rounded-l-lg p-4">
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

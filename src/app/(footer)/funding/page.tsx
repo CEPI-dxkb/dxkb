@@ -12,7 +12,7 @@ const Funding = () => {
           className="flex flex-col gap-8 text-sm md:text-lg"
         >
           <Image
-            src="/cepi-logo.png"
+            src="/logos/cepi-logo.png"
             alt="CEPI Logo"
             width={200}
             height={100}

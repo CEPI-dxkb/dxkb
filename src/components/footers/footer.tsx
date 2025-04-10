@@ -32,7 +32,7 @@ const footerLinks: FooterSection[] = [
     links: [
       { name: "Funding", url: "/funding" },
       { name: "Our Team", url: "/team" },
-      { name: "Community News", url: "/news" },
+      { name: "Source Code", url: "https://github.com/CEPI-dxkb" },
     ],
   },
   {
@@ -48,9 +48,9 @@ const footerLinks: FooterSection[] = [
     title: "UPDATES",
     titleUrl: "/updates",
     links: [
-      { name: "Calendar", url: "/calendar" },
-      { name: "Publications", url: "/publications" },
       { name: "Citations", url: "/citations" },
+      { name: "Community News", url: "/news" },
+      { name: "Publications", url: "/publications" },
     ],
   },
   {
@@ -89,7 +89,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 h-8 w-8"
+                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
                 asChild
               >
                 <Link href="https://twitter.com" target="_blank">
@@ -100,7 +100,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 h-8 w-8"
+                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
                 asChild
               >
                 <Link href="https://facebook.com" target="_blank">
@@ -111,7 +111,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 h-8 w-8"
+                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
                 asChild
               >
                 <Link href="https://instagram.com" target="_blank">
@@ -122,7 +122,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 h-8 w-8"
+                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
                 asChild
               >
                 <Link href="https://github.com" target="_blank">
@@ -133,7 +133,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 h-8 w-8"
+                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
                 asChild
               >
                 <Link href="https://youtube.com" target="_blank">

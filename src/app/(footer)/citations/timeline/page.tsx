@@ -126,7 +126,7 @@ export default function CitationsTimelinePage() {
                 <div className="mt-6 space-y-6 pl-14">
                   {citationsByYear[year].map((citation) => (
                     <div key={citation.id} className="relative">
-                      <div className="absolute -left-9 mt-1 h-4 w-4 rounded-full border-2 border-primary bg-background"></div>
+                      <div className="absolute -left-9 mt-1 h-4 w-4 rounded-full border-2 border-primary-def bg-background"></div>
                       <Card>
                         <CardContent className="p-6">
                           <div className="citation-card">

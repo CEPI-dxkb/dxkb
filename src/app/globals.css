@@ -80,7 +80,7 @@
   --color-background-def: var(--color-background-200);
 
   /* Slightly different accent colors */
-  /* --color-accentt-50: oklch(98.23% 0.008 177.33);
+  --color-accentt-50: oklch(98.23% 0.008 177.33);
   --color-accentt-100: oklch(96.94% 0.013 179.47);
   --color-accentt-200: oklch(92.86% 0.033 174.95);
   --color-accentt-300: oklch(88.78% 0.053 173.6);
@@ -90,7 +90,7 @@
   --color-accentt-700: oklch(68.86% 0.118 168.09);
   --color-accentt-800: oklch(61.3% 0.105 168.05);
   --color-accentt-900: oklch(52.06% 0.087 168.58);
-  --color-accentt-950: oklch(45.19% 0.075 168.3); */
+  --color-accentt-950: oklch(45.19% 0.075 168.3);
 
 
   /* --color-background: var(--background); */

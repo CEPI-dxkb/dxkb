@@ -2,6 +2,13 @@ import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import ProteinIcon from '../../../public/icons/protein.svg';
+import EnzymeIcon from '../../../public/icons/enzyme.svg';
+import SequenceIcon from '../../../public/icons/sequence.svg';
+import GenomeIcon from '../../../public/icons/genome.svg';
+import PartialSeqIcon from '../../../public/icons/pipeline.svg';
+import { TbCube3dSphere } from "react-icons/tb";
+import Image from 'next/image';
 
 const QuickViralLinks = () => {
   return (
@@ -18,15 +25,24 @@ const QuickViralLinks = () => {
             <CardContent>
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
-                  <span>Complete Genomes</span>
+                  <div className="flex items-center gap-2">
+                    <Image src={GenomeIcon} alt="Genome" width={16} height={16} style={{ color: '#BBBBBB' }} />
+                    <span>Complete Genomes</span>
+                  </div>
                   <Badge className="bg-accent-def text-black">24,891</Badge>
                 </li>
                 <li className="flex justify-between">
-                  <span>Partial Sequences</span>
+                  <div className="flex items-center gap-2">
+                    <Image src={PartialSeqIcon} alt="Partial Sequence" width={16} height={16} />
+                    <span>Partial Sequences</span>
+                  </div>
                   <Badge className="bg-accent-def text-black">103,457</Badge>
                 </li>
                 <li className="flex justify-between">
-                  <span>Reference Sequences</span>
+                  <div className="flex items-center gap-2">
+                    <Image src={SequenceIcon} alt="Sequence" width={16} height={16} />
+                    <span>Reference Sequences</span>
+                  </div>
                   <Badge className="bg-accent-def text-black">1,204</Badge>
                 </li>
               </ul>
@@ -44,16 +60,25 @@ const QuickViralLinks = () => {
             <CardContent>
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
-                  <span>Structural Proteins</span>
+                  <div className="flex items-center gap-2">
+                    <Image src={ProteinIcon} alt="Protein" width={16} height={16} />
+                    <span>Structural Proteins</span>
+                  </div>
                   <Badge className="bg-accent-def">18,742</Badge>
                 </li>
                 <li className="flex justify-between">
-                  <span>Enzymes</span>
+                  <div className="flex items-center gap-2">
+                    <Image src={EnzymeIcon} alt="Enzyme" width={16} height={16} />
+                    <span>Enzymes</span>
+                  </div>
                   <Badge className="bg-accent-def">31,205</Badge>
                 </li>
                 <li className="flex justify-between">
-                  <span>3D Structures</span>
-                  <Badge className="bg-accent-def">5,891</Badge>
+                  <div className="flex items-center gap-2">
+                    <TbCube3dSphere className="justify-start" />
+                    <span>3D Structures</span>
+                  </div>
+                  <Badge className="bg-accent-def justify-end">5,891</Badge>
                 </li>
               </ul>
               <Button variant="outline" className="w-full mt-4">
@@ -80,6 +105,7 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    className="stroke-accent-600"
                   >
                     <path d="M2 12h20" />
                     <path d="M2 12v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-8" />
@@ -100,6 +126,7 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    className="stroke-accent-600"
                   >
                     <path d="M3 3v18h18" />
                     <path d="m19 9-5 5-4-4-3 3" />
@@ -117,6 +144,7 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    className="stroke-accent-600"
                   >
                     <circle cx="12" cy="12" r="10" />
                     <path d="m4.93 4.93 4.24 4.24" />

@@ -1,7 +1,7 @@
 "use client";
 import { ViewType } from "../views";
 import { LuList, LuLayoutGrid, LuChevronLeft, LuChevronRight } from "react-icons/lu";
-import { NavMenu } from "@/components/ui/nav-menu";
+import { VerticalMenu } from "@/components/ui/vertical-menu";
 
 interface NavigationMenuProps {
   activeView: ViewType;
@@ -108,7 +108,7 @@ export function NavigationMenu({
             </button>
           </div>
           <div className="px-4 pb-4">
-            <NavMenu
+            <VerticalMenu
               items={navItems.map(item => ({
                 ...item,
                 label: navCollapsed ? "" : item.label

@@ -1,13 +1,12 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import Image from "next/image"
-import { Button } from "@/components/buttons/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { RxAvatar } from "react-icons/rx"
-import { cn } from "@/lib/utils"
-
+import * as React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { Button } from "@/components/buttons/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RxAvatar } from "react-icons/rx";
+import { cn } from "@/lib/utils";
 
 import {
   NavigationMenu,
@@ -17,65 +16,165 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu"
+} from "@/components/ui/navigation-menu";
 
 const organisms: { title: string; href: string; description: string }[] = [
   {
     title: "Viruses",
     href: "/organisms/viruses",
-    description:
-      "Webpage for all viruses.",
+    description: "Webpage for all viruses.",
   },
   {
     title: "Bacteria",
     href: "/organisms/bacteria",
-    description:
-      "Webpage for all bacteria.",
+    description: "Webpage for all bacteria.",
   },
   {
     title: "Fungi",
     href: "/organisms/fungi",
-    description:
-      "Webpage for all fungi.",
+    description: "Webpage for all fungi.",
   },
   {
     title: "Browse All",
     href: "/organisms/all",
-    description:
-      "Webpage for all organisms.",
+    description: "Webpage for all organisms.",
   },
-]
+];
 
-const utilities: { title: string; href: string; description: string }[] = [
-  {
-    title: "BLAST Search",
-    href: "/utilities/blast",
-    description:
-      "Webpage for BLAST search.",
+const servicesNavigation = {
+  genomics: {
+    title: "Genomics",
+    items: [
+      {
+        title: "BLAST",
+        href: "/services/blast",
+      },
+      {
+        title: "Genome Alignment",
+        href: "/services/genome-alignment",
+      },
+      {
+        title: "Genome Assembly",
+        href: "/services/genome-assembly",
+      },
+      {
+        title: "Genome Annotation",
+        href: "/services/genome-annotation",
+      },
+      {
+        title: "Primer Design",
+        href: "/services/primer-design",
+      },
+      {
+        title: "Similar Genome Finder",
+        href: "/services/similar-genome-finder",
+      },
+      {
+        title: "Variation Analysis",
+        href: "/services/variation-analysis",
+      },
+    ],
   },
-  {
-    title: "Sequence Analysis",
-    href: "/utilities/sequence-analysis",
-    description:
-      "Webpage for sequence analysis.",
+  phylogenomics: {
+    title: "Phylogenomics",
+    items: [
+      {
+        title: "Viral Genome Tree",
+        href: "/services/viral-genome-tree",
+      },
+      {
+        title: "Gene/Protein Tree",
+        href: "/services/gene-protein-tree",
+      },
+    ],
   },
-  {
-    title: "Genome Assembly",
-    href: "/utilities/genome-assembly",
-    description:
-      "Webpage for genome assembly.",
+  proteinTools: {
+    title: "Protein Tools",
+    items: [
+      {
+        title: "MSA and SNP Analysis",
+        href: "/services/msa-snp-analysis",
+      },
+      {
+        title: "Meta-CATS",
+        href: "/services/meta-cats",
+      },
+      {
+        title: "Proteome Comparison",
+        href: "/services/proteome-comparison",
+      },
+    ],
   },
-  {
-    title: "All Utilities",
-    href: "/utilities/all",
-    description:
-      "Webpage for all utilities.",
+  metagenomics: {
+    title: "Metagenomics",
+    items: [
+      {
+        title: "Taxonomic Classification",
+        href: "/services/taxonomic-classification",
+      },
+      {
+        title: "Metagenomic Binning",
+        href: "/services/metagenomic-binning",
+      },
+      {
+        title: "Metagenomic Read Mapping",
+        href: "/services/metagenomic-read-mapping",
+      },
+    ],
   },
-]
+  utilities: {
+    title: "Utilities",
+    items: [
+      {
+        title: "Fastq Utilities",
+        href: "/services/fastq-utilities",
+      },
+    ],
+  },
+  viralTools: {
+    title: "Viral Tools",
+    items: [
+      {
+        title: "SARS-CoV-2 Genome Analysis",
+        href: "/services/sars-cov2-genome-analysis",
+      },
+      {
+        title: "SARS-CoV-2 Wastewater Analysis",
+        href: "/services/sars-cov2-wastewater-analysis",
+      },
+      {
+        title: "Influenza HA Subtype Conversion",
+        href: "/services/influenza-ha-subtype",
+      },
+      {
+        title: "Subspecies Classification",
+        href: "/services/subspecies-classification",
+      },
+      { title: "Viral Assembly", href: "/services/viral-assembly" },
+    ],
+  },
+  outbreakTracker: {
+    title: "BV-BRC Outbreak Tracker",
+    items: [
+      {
+        title: "Mpox 2024",
+        href: "/services/mpox-2024",
+      },
+      {
+        title: "Influenza H5N1 2024",
+        href: "/services/influenza-h5n1-2024",
+      },
+      {
+        title: "SARS-CoV-2",
+        href: "/services/sars-cov2",
+      },
+    ],
+  },
+} as const;
 
 const DesktopNavbar = () => {
   return (
-    <header className="hidden md:flex bg-primary-def text-white justify-between items-center px-8 py-4">
+    <header className="bg-primary-def hidden items-center justify-between px-8 py-4 text-white md:flex">
       <div className="flex items-center space-x-4">
         <Link id="dxkb-logo" href="/">
           <Image
@@ -88,20 +187,27 @@ const DesktopNavbar = () => {
           />
         </Link>
 
-        <NavigationMenu className="hidden md:flex bg-primary-def w-full justify-between items-center font-bold">
+        <NavigationMenu className="bg-primary-def hidden w-full items-center justify-between font-bold md:flex">
           <NavigationMenuList>
             <NavigationMenuItem id="getting-started-nav">
-              <NavigationMenuTrigger className="bg-primary-def">Getting started</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="bg-primary-def">
+                Getting started
+              </NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
                       <a
-                        className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 p-6 no-underline outline-none focus:shadow-md bg-primary-def hover:bg-primary-def/80 transition-all duration-300"
+                        className="from-muted/50 bg-primary-def hover:bg-primary-def/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
                         href="/"
                       >
-                        <Image src="/logos/dxkb-logo-white-cropped.svg" alt="DXKB Logo" width={100} height={40} />
-                        <div className="mb-2 mt-4 text-lg font-medium text-white">
+                        <Image
+                          src="/logos/dxkb-logo-white-cropped.svg"
+                          alt="DXKB Logo"
+                          width={100}
+                          height={40}
+                        />
+                        <div className="mt-4 mb-2 text-lg font-medium text-white">
                           shadcn/ui
                         </div>
                         <p className="text-sm leading-tight text-white">
@@ -126,9 +232,11 @@ const DesktopNavbar = () => {
             </NavigationMenuItem>
 
             <NavigationMenuItem id="organisms-nav">
-              <NavigationMenuTrigger className="bg-primary-def">Organisms</NavigationMenuTrigger>
+              <NavigationMenuTrigger className="bg-primary-def">
+                Organisms
+              </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+                <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                   {organisms.map((organism) => (
                     <ListItem
                       key={organism.title}
@@ -142,28 +250,75 @@ const DesktopNavbar = () => {
               </NavigationMenuContent>
             </NavigationMenuItem>
 
-            <NavigationMenuItem id="utilities-nav">
-              <NavigationMenuTrigger className="bg-primary-def">Utilities</NavigationMenuTrigger>
+            <NavigationMenuItem id="services-nav">
+              <NavigationMenuTrigger className="bg-primary-def">
+                Services
+              </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <ul className="grid w-[400px] gap-3 p-2 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
-                  {utilities.map((utility) => (
-                    <ListItem
-                      key={utility.title}
-                      title={utility.title}
-                      href={utility.href}
-                    >
-                      {utility.description}
-                    </ListItem>
-                  ))}
-                </ul>
+                <div className="grid w-[650px] grid-cols-2 gap-2 p-2">
+                  <div className="space-y-0">
+                    {/* Left Column */}
+                    {Object.entries(servicesNavigation)
+                      .slice(
+                        0,
+                        Math.ceil(Object.keys(servicesNavigation).length / 2),
+                      )
+                      .map(([key, section]) => (
+                        <div key={key}>
+                          <h4 className="bg-primary-def my-0.5 rounded-md p-2 text-sm font-bold text-white">
+                            {section.title}
+                          </h4>
+                          <div className="space-y-0">
+                            {section.items.map((item) => (
+                              <NavigationMenuLink
+                                key={item.href}
+                                href={item.href}
+                                className="hover:bg-secondary-100 my-0.5 block p-2 font-medium"
+                              >
+                                {item.title}
+                              </NavigationMenuLink>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                  <div className="space-y-0">
+                    {/* Right Column */}
+                    {Object.entries(servicesNavigation)
+                      .slice(
+                        Math.ceil(Object.keys(servicesNavigation).length / 2),
+                      )
+                      .map(([key, section]) => (
+                        <div key={key}>
+                          <h4 className="bg-primary-def my-0.5 rounded-md p-2 text-sm font-bold text-white">
+                            {section.title}
+                          </h4>
+                          <div className="space-y-0">
+                            {section.items.map((item) => (
+                              <NavigationMenuLink
+                                key={item.href}
+                                href={item.href}
+                                className="hover:bg-secondary-100 my-0.5 block p-2 font-medium"
+                              >
+                                {item.title}
+                              </NavigationMenuLink>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
-
           </NavigationMenuList>
         </NavigationMenu>
       </div>
 
-      <Button variant="ghost" size="icon" className="group transition-all duration-300 h-10 w-10">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="group h-10 w-10 transition-all duration-300"
+      >
         <span className="sr-only">User account</span>
         <Avatar className="h-10 w-10">
           <AvatarFallback>
@@ -172,8 +327,8 @@ const DesktopNavbar = () => {
         </Avatar>
       </Button>
     </header>
-  )
-}
+  );
+};
 
 const ListItem = React.forwardRef<
   React.ComponentRef<"a">,
@@ -185,20 +340,20 @@ const ListItem = React.forwardRef<
         <a
           ref={ref}
           className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className
+            "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground block space-y-1 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none",
+            className,
           )}
           {...props}
         >
-          <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+          <div className="text-sm leading-none font-medium">{title}</div>
+          <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
             {children}
           </p>
         </a>
       </NavigationMenuLink>
     </li>
-  )
-})
-ListItem.displayName = "ListItem"
+  );
+});
+ListItem.displayName = "ListItem";
 
 export default DesktopNavbar;

@@ -1,5 +1,3 @@
-"use client";
-
 import { Button } from "@/components/buttons/button";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +13,7 @@ interface NavMenuProps {
   isCollapsed: boolean;
 }
 
-export function NavMenu({ items, isCollapsed }: NavMenuProps) {
+export function VerticalMenu({ items, isCollapsed }: NavMenuProps) {
   return (
     <div className="space-y-1">
       {items.map((item, index) => (

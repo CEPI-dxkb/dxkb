@@ -7,27 +7,68 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function BrucellaGenomeViewer() {
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("genomes");
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  
+
   // Sample data - in production would come from API
   const genomeData = [
-    { id: 1, name: "Brucella ceti 05-684-1144-F2TM", strain: "05-684-1144-F2TM", genbank: "CA/NY0000000000", size: 3306660, cds: 3348, year: 2005, country: "France", host: "" },
-    { id: 2, name: "Brucella ceti 14-901", strain: "14-901", genbank: "CA/NZ0000000000", size: 3352819, cds: 3742, year: 2014, country: "Finland", host: "grey seal" },
-    { id: 3, name: "Brucella ceti 12-1944-6(9/186)", strain: "12-1944-6(9/186)", genbank: "CA/NY/0000000000", size: 3353515, cds: 3330, year: 2012, country: "United Kingdom", host: "" },
+    {
+      id: 1,
+      name: "Brucella ceti 05-684-1144-F2TM",
+      strain: "05-684-1144-F2TM",
+      genbank: "CA/NY0000000000",
+      size: 3306660,
+      cds: 3348,
+      year: 2005,
+      country: "France",
+      host: "",
+    },
+    {
+      id: 2,
+      name: "Brucella ceti 14-901",
+      strain: "14-901",
+      genbank: "CA/NZ0000000000",
+      size: 3352819,
+      cds: 3742,
+      year: 2014,
+      country: "Finland",
+      host: "grey seal",
+    },
+    {
+      id: 3,
+      name: "Brucella ceti 12-1944-6(9/186)",
+      strain: "12-1944-6(9/186)",
+      genbank: "CA/NY/0000000000",
+      size: 3353515,
+      cds: 3330,
+      year: 2012,
+      country: "United Kingdom",
+      host: "",
+    },
     // More data would be here
   ];
-  
+
   const toggleRowSelection = (id: number) => {
     if (selectedRows.includes(id)) {
-      setSelectedRows(selectedRows.filter(rowId => rowId !== id));
+      setSelectedRows(selectedRows.filter((rowId) => rowId !== id));
     } else {
       setSelectedRows([...selectedRows, id]);
     }
@@ -39,8 +80,8 @@ export default function BrucellaGenomeViewer() {
       <header className="border-b border-gray-200 bg-white">
         <div className="flex h-16 items-center justify-between px-4">
           <div className="flex items-center">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               className="mr-2 md:hidden"
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -48,48 +89,59 @@ export default function BrucellaGenomeViewer() {
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex items-center">
-              <div className="bg-green-600 text-white font-bold py-1 px-3 rounded mr-2">BRC</div>
-              <h1 className="text-xl font-semibold text-gray-900">Genome Browser</h1>
+              <div className="mr-2 rounded bg-green-600 px-3 py-1 font-bold text-white">
+                BRC
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900">
+                Genome Browser
+              </h1>
             </div>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+              <Search className="absolute top-2.5 left-2 h-4 w-4 text-gray-500" />
               <Input
                 placeholder="Search all genomes..."
-                className="pl-8 pr-4"
+                className="pr-4 pl-8"
               />
             </div>
-            <Button variant="outline" size="sm">Help</Button>
-            <Button variant="outline" size="sm">About</Button>
+            <Button variant="outline" size="sm">
+              Help
+            </Button>
+            <Button variant="outline" size="sm">
+              About
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar for Taxonomy Browser */}
-        <div className={`border-r border-gray-200 bg-gray-50 ${sidebarOpen ? 'block' : 'hidden'} md:block`} style={{ width: "280px" }}>
-          <div className="p-4 border-b border-gray-200">
+        <div
+          className={`border-r border-gray-200 bg-gray-50 ${sidebarOpen ? "block" : "hidden"} md:block`}
+          style={{ width: "280px" }}
+        >
+          <div className="border-b border-gray-200 p-4">
             <h2 className="text-lg font-medium">Taxonomy Browser</h2>
           </div>
           <div className="p-2">
             <ul className="space-y-1">
-              <li className="px-2 py-1 hover:bg-gray-100 rounded-md cursor-pointer text-blue-600">
+              <li className="cursor-pointer rounded-md px-2 py-1 text-blue-600 hover:bg-gray-100">
                 Bacteria
               </li>
-              <li className="px-2 py-1 hover:bg-gray-100 rounded-md cursor-pointer pl-4 text-blue-600">
+              <li className="cursor-pointer rounded-md px-2 py-1 pl-4 text-blue-600 hover:bg-gray-100">
                 › Pseudomonadota
               </li>
-              <li className="px-2 py-1 hover:bg-gray-100 rounded-md cursor-pointer pl-6 text-blue-600">
+              <li className="cursor-pointer rounded-md px-2 py-1 pl-6 text-blue-600 hover:bg-gray-100">
                 › Alphaproteobacteria
               </li>
-              <li className="px-2 py-1 hover:bg-gray-100 rounded-md cursor-pointer pl-8 text-blue-600">
+              <li className="cursor-pointer rounded-md px-2 py-1 pl-8 text-blue-600 hover:bg-gray-100">
                 › Hyphomicrobiales
               </li>
-              <li className="px-2 py-1 hover:bg-gray-100 rounded-md cursor-pointer pl-10 text-blue-600">
+              <li className="cursor-pointer rounded-md px-2 py-1 pl-10 text-blue-600 hover:bg-gray-100">
                 › Brucellaceae
               </li>
-              <li className="px-2 py-1 bg-blue-100 rounded-md cursor-pointer pl-12 text-blue-600 font-medium">
+              <li className="cursor-pointer rounded-md bg-blue-100 px-2 py-1 pl-12 font-medium text-blue-600">
                 › Brucella (1791 Genomes)
               </li>
             </ul>
@@ -97,10 +149,10 @@ export default function BrucellaGenomeViewer() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
           {/* Tabs Navigation */}
-          <Tabs 
-            defaultValue="genomes" 
+          <Tabs
+            defaultValue="genomes"
             className="w-full"
             value={activeTab}
             onValueChange={setActiveTab}
@@ -110,7 +162,12 @@ export default function BrucellaGenomeViewer() {
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="phylogeny">Phylogeny</TabsTrigger>
                 <TabsTrigger value="taxonomy">Taxonomy</TabsTrigger>
-                <TabsTrigger value="genomes" className="bg-white border-b-2 border-blue-600">Genomes</TabsTrigger>
+                <TabsTrigger
+                  value="genomes"
+                  className="border-b-2 border-blue-600 bg-white"
+                >
+                  Genomes
+                </TabsTrigger>
                 <TabsTrigger value="amr">AMR Phenotypes</TabsTrigger>
                 <TabsTrigger value="sequences">Sequences</TabsTrigger>
                 <TabsTrigger value="features">Features</TabsTrigger>
@@ -125,14 +182,18 @@ export default function BrucellaGenomeViewer() {
                 <TabsTrigger value="interactions">Interactions</TabsTrigger>
               </TabsList>
             </div>
-            
+
             {/* Genomes Tab Content */}
             <TabsContent value="genomes" className="flex-1 overflow-hidden">
-              <div className="p-4 border-b border-gray-200 bg-white">
+              <div className="border-b border-gray-200 bg-white p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-sm">1791 Genomes</Badge>
-                    <Badge variant="secondary" className="text-sm">Page 1 of 90</Badge>
+                    <Badge variant="outline" className="text-sm">
+                      1791 Genomes
+                    </Badge>
+                    <Badge variant="secondary" className="text-sm">
+                      Page 1 of 90
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" className="gap-1">
@@ -152,11 +213,19 @@ export default function BrucellaGenomeViewer() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem>
-                          <Checkbox id="strain" className="mr-2" defaultChecked />
+                          <Checkbox
+                            id="strain"
+                            className="mr-2"
+                            defaultChecked
+                          />
                           <label htmlFor="strain">Strain</label>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
-                          <Checkbox id="genbank" className="mr-2" defaultChecked />
+                          <Checkbox
+                            id="genbank"
+                            className="mr-2"
+                            defaultChecked
+                          />
                           <label htmlFor="genbank">GenBank Accessions</label>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
@@ -172,7 +241,11 @@ export default function BrucellaGenomeViewer() {
                           <label htmlFor="year">Collection Year</label>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
-                          <Checkbox id="country" className="mr-2" defaultChecked />
+                          <Checkbox
+                            id="country"
+                            className="mr-2"
+                            defaultChecked
+                          />
                           <label htmlFor="country">Isolation Country</label>
                         </DropdownMenuItem>
                         <DropdownMenuItem>
@@ -184,77 +257,79 @@ export default function BrucellaGenomeViewer() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex-1 overflow-auto">
                 {/* Custom Table Implementation */}
                 <div className="min-w-full divide-y divide-gray-200">
                   {/* Table Header */}
                   <div className="sticky top-0 bg-white">
                     <div className="flex border-b border-gray-200">
-                      <div className="w-10 py-3 px-4 text-left">
+                      <div className="w-10 px-4 py-3 text-left">
                         <Checkbox />
                       </div>
-                      <div className="w-1/4 py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/4 px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Genome Name
                       </div>
-                      <div className="w-1/6 py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/6 px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Strain
                       </div>
-                      <div className="w-1/6 py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/6 px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         GenBank Accessions
                       </div>
-                      <div className="w-1/12 py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/12 px-4 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Size
                       </div>
-                      <div className="w-1/12 py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/12 px-4 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
                         CDS
                       </div>
-                      <div className="w-1/12 py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/12 px-4 py-3 text-right text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Collection Year
                       </div>
-                      <div className="w-1/8 py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/8 px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Isolation Country
                       </div>
-                      <div className="w-1/8 py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="w-1/8 px-4 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase">
                         Host Common Name
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Table Body */}
-                  <div className="bg-white divide-y divide-gray-200">
+                  <div className="divide-y divide-gray-200 bg-white">
                     {genomeData.map((genome) => (
                       <div key={genome.id} className="flex hover:bg-gray-50">
-                        <div className="w-10 py-4 px-4 whitespace-nowrap">
-                          <Checkbox 
+                        <div className="w-10 px-4 py-4 whitespace-nowrap">
+                          <Checkbox
                             checked={selectedRows.includes(genome.id)}
-                            onCheckedChange={() => toggleRowSelection(genome.id)}
+                            onCheckedChange={() =>
+                              toggleRowSelection(genome.id)
+                            }
                           />
                         </div>
-                        <div className="w-1/4 py-4 px-4 whitespace-nowrap">
-                          <div className="font-medium text-blue-600 cursor-pointer hover:underline">
+                        <div className="w-1/4 px-4 py-4 whitespace-nowrap">
+                          <div className="cursor-pointer font-medium text-blue-600 hover:underline">
                             {genome.name}
                           </div>
                         </div>
-                        <div className="w-1/6 py-4 px-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="w-1/6 px-4 py-4 text-sm whitespace-nowrap text-gray-900">
                           {genome.strain}
                         </div>
-                        <div className="w-1/6 py-4 px-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="w-1/6 px-4 py-4 text-sm whitespace-nowrap text-gray-900">
                           {genome.genbank}
                         </div>
-                        <div className="w-1/12 py-4 px-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        <div className="w-1/12 px-4 py-4 text-right text-sm whitespace-nowrap text-gray-900">
                           {genome.size.toLocaleString()}
                         </div>
-                        <div className="w-1/12 py-4 px-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        <div className="w-1/12 px-4 py-4 text-right text-sm whitespace-nowrap text-gray-900">
                           {genome.cds}
                         </div>
-                        <div className="w-1/12 py-4 px-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                        <div className="w-1/12 px-4 py-4 text-right text-sm whitespace-nowrap text-gray-900">
                           {genome.year}
                         </div>
-                        <div className="w-1/8 py-4 px-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="w-1/8 px-4 py-4 text-sm whitespace-nowrap text-gray-900">
                           {genome.country}
                         </div>
-                        <div className="w-1/8 py-4 px-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="w-1/8 px-4 py-4 text-sm whitespace-nowrap text-gray-900">
                           {genome.host}
                         </div>
                       </div>
@@ -262,29 +337,45 @@ export default function BrucellaGenomeViewer() {
                   </div>
                 </div>
               </div>
-              
-              <div className="border-t border-gray-200 p-4 bg-white">
+
+              <div className="border-t border-gray-200 bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-500">Showing 1-20 of 1791 results</div>
+                  <div className="text-sm text-gray-500">
+                    Showing 1-20 of 1791 results
+                  </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled>Previous</Button>
-                    <Button variant="outline" size="sm" className="px-3">1</Button>
-                    <Button variant="outline" size="sm" className="px-3">2</Button>
-                    <Button variant="outline" size="sm" className="px-3">3</Button>
+                    <Button variant="outline" size="sm" disabled>
+                      Previous
+                    </Button>
+                    <Button variant="outline" size="sm" className="px-3">
+                      1
+                    </Button>
+                    <Button variant="outline" size="sm" className="px-3">
+                      2
+                    </Button>
+                    <Button variant="outline" size="sm" className="px-3">
+                      3
+                    </Button>
                     <span>...</span>
-                    <Button variant="outline" size="sm" className="px-3">90</Button>
-                    <Button variant="outline" size="sm">Next</Button>
+                    <Button variant="outline" size="sm" className="px-3">
+                      90
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      Next
+                    </Button>
                   </div>
                 </div>
               </div>
             </TabsContent>
-            
+
             {/* Other tab contents would go here */}
             <TabsContent value="overview">
               <Card className="m-4">
                 <CardHeader>
                   <CardTitle>Brucella Overview</CardTitle>
-                  <CardDescription>Summary information about the Brucella genus</CardDescription>
+                  <CardDescription>
+                    Summary information about the Brucella genus
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p>Overview content would appear here</p>
@@ -293,23 +384,26 @@ export default function BrucellaGenomeViewer() {
             </TabsContent>
           </Tabs>
         </div>
-        
+
         {/* Side panel for filters - hidden by default */}
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="outline" className="fixed bottom-4 right-4 rounded-full h-12 w-12 shadow-lg md:hidden">
+            <Button
+              variant="outline"
+              className="fixed right-4 bottom-4 h-12 w-12 rounded-full shadow-lg md:hidden"
+            >
               <Filter className="h-5 w-5" />
             </Button>
           </SheetTrigger>
           <SheetContent side="right">
-            <div className="h-full flex flex-col">
-              <div className="py-4 border-b">
+            <div className="flex h-full flex-col">
+              <div className="border-b py-4">
                 <h3 className="text-lg font-medium">Filter Options</h3>
               </div>
               <ScrollArea className="flex-1">
-                <div className="py-4 space-y-4">
+                <div className="space-y-4 py-4">
                   <div>
-                    <h4 className="font-medium mb-2">Collection Year</h4>
+                    <h4 className="mb-2 font-medium">Collection Year</h4>
                     <div className="space-y-2">
                       <div className="flex items-center">
                         <Checkbox id="y2017" className="mr-2" />
@@ -329,9 +423,9 @@ export default function BrucellaGenomeViewer() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h4 className="font-medium mb-2">Isolation Country</h4>
+                    <h4 className="mb-2 font-medium">Isolation Country</h4>
                     <div className="space-y-2">
                       <div className="flex items-center">
                         <Checkbox id="cTunisia" className="mr-2" />
@@ -347,9 +441,9 @@ export default function BrucellaGenomeViewer() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div>
-                    <h4 className="font-medium mb-2">Host</h4>
+                    <h4 className="mb-2 font-medium">Host</h4>
                     <div className="space-y-2">
                       <div className="flex items-center">
                         <Checkbox id="hHuman" className="mr-2" />
@@ -367,7 +461,7 @@ export default function BrucellaGenomeViewer() {
                   </div>
                 </div>
               </ScrollArea>
-              <div className="border-t py-4 flex justify-end gap-2">
+              <div className="flex justify-end gap-2 border-t py-4">
                 <Button variant="outline">Reset</Button>
                 <Button>Apply Filters</Button>
               </div>

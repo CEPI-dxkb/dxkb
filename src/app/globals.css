@@ -335,3 +335,19 @@
 .card-description {
   @apply text-muted-foreground mt-2 line-clamp-2 text-sm;
 }
+
+.mobile-nav-section-header {
+  @apply text-sm font-semibold text-secondary-700 uppercase tracking-wider mb-2;
+}
+
+.mobile-nav-divider-title {
+  @apply text-[13px] font-medium bg-primary-def text-white px-2 py-1 rounded mb-1;
+}
+
+.mobile-nav-link {
+  @apply text-sm text-textcolor-800/90 rounded-md block py-1.5 px-2 font-medium;
+}
+
+.mobile-nav-link:hover {
+  @apply bg-secondary-100;
+}

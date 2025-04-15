@@ -22,7 +22,7 @@ export default function VirusesPage() {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
 
     params.set("view", newView);
-    router.push(`/viruses?${params.toString()}`);
+    router.push(`${window.location.pathname}?${params.toString()}`);
   };
 
   const ViewComponent = Views[activeView];

@@ -1,9 +1,13 @@
-import { Button } from "@/components/buttons/button"
+import { Button } from "@/components/buttons/button";
 import { LuMenu } from "react-icons/lu";
 import Image from "next/image";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { RxAvatar } from "react-icons/rx"
-import { gettingStartedItems, organismItems, serviceItems } from "./navbar-links";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RxAvatar } from "react-icons/rx";
+import {
+  gettingStartedItems,
+  organismItems,
+  serviceItems,
+} from "./navbar-links";
 import {
   Sheet,
   SheetClose,
@@ -13,21 +17,25 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"
+} from "@/components/ui/sheet";
 import Link from "next/link";
 
 const MobileNavbar = () => {
   return (
-    <header className="md:hidden flex px-4 py-4 bg-primary-def text-white justify-between items-center">
+    <header className="bg-primary-def flex items-center justify-between px-4 py-4 text-white md:hidden">
       <div className="flex items-center gap-4">
         <Sheet>
           <SheetTrigger asChild className="group hover:bg-gray-300/50">
             <Button variant="ghost">
-              <LuMenu className="text-gray-300 scale-125 group-hover:text-white group-hover:scale-150 transition-all duration-300" />
+              <LuMenu className="scale-125 text-gray-300 transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[85vw] max-w-md overflow-y-auto p-0">
-            <div id="sheet-logo" className="flex p-4 bg-primary-def w-full">
+          <SheetContent
+            side="left"
+            className="w-[85vw] max-w-md overflow-y-auto p-0"
+          >
+            <SheetTitle className="sr-only">Mobile Navigation Menu</SheetTitle>
+            <div id="sheet-logo" className="bg-primary-def flex w-full p-4">
               <Image
                 src="/logos/dxkb-logo-white-cropped.svg"
                 alt="DXKB Logo"
@@ -44,7 +52,11 @@ const MobileNavbar = () => {
                 <h2 className="mobile-nav-section-header">Getting Started</h2>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                   {gettingStartedItems.map((item) => (
-                    <Link href={item.href} className="mobile-nav-link">
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="mobile-nav-link"
+                    >
                       {item.title}
                     </Link>
                   ))}
@@ -56,7 +68,11 @@ const MobileNavbar = () => {
                 <h2 className="mobile-nav-section-header">Organisms</h2>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                   {organismItems.map((item) => (
-                    <Link href={item.href} className="mobile-nav-link">
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="mobile-nav-link"
+                    >
                       {item.title}
                     </Link>
                   ))}
@@ -72,7 +88,7 @@ const MobileNavbar = () => {
                       <h3 className="mobile-nav-divider-title">
                         {section.title}
                       </h3>
-                      <div className="grid grid-cols-2 ">
+                      <div className="grid grid-cols-2">
                         {section.items.map((item) => (
                           <Link
                             key={item.href}
@@ -104,7 +120,11 @@ const MobileNavbar = () => {
       </div>
 
       <div className="flex">
-        <Button variant="ghost" size="icon" className="group transition-all duration-300 h-10 w-10">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="group h-10 w-10 transition-all duration-300"
+        >
           <span className="sr-only">User account</span>
           <Avatar className="h-10 w-10">
             <AvatarFallback>
@@ -114,7 +134,7 @@ const MobileNavbar = () => {
         </Button>
       </div>
     </header>
-  )
-}
+  );
+};
 
 export default MobileNavbar;

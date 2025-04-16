@@ -1,70 +1,17 @@
-import React, { useState, FormEvent } from "react";
+"use client";
+
+import React from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { LuSearch } from "react-icons/lu";
-import { useRouter } from "next/navigation";
-
-interface Comment {
-  id: number;
-  postId: number;
-  name: string;
-  email: string;
-  body: string;
-}
+import { SearchBar } from "./search-bar";
 
 interface WelcomeSearchProps {
-  setSearchResults?: (results: Comment[]) => void;
+  setSearchResults?: (results: any) => void;
 }
 
 const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
-  const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-
-  const handleSearch = async (e?: FormEvent) => {
-    if (e) e.preventDefault();
-
-    if (!inputValue.trim()) return;
-
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(
-        `https://jsonplaceholder.typicode.com/comments`,
-      );
-      const data: Comment[] = await response.json();
-      const results = data.filter(
-        (comment) =>
-          comment.name.toLowerCase().includes(inputValue.toLowerCase()) ||
-          comment.body.toLowerCase().includes(inputValue.toLowerCase()) ||
-          comment.email.toLowerCase().includes(inputValue.toLowerCase()),
-      );
-
-      if (setSearchResults) {
-        setSearchResults(results);
-      }
-
-      // Store results in sessionStorage for the results page
-      sessionStorage.setItem("searchResults", JSON.stringify(results));
-      sessionStorage.setItem("searchQuery", inputValue);
-
-      // Navigate to results page
-      router.push(`/search?q=${encodeURIComponent(inputValue)}`);
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
   return (
     <section className="flex-grow">
       {/* Hero Section with Search */}
@@ -89,34 +36,14 @@ const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
                 </TabsList>
 
                 <TabsContent value="basic">
-                  <form
-                    onSubmit={handleSearch}
-                    className="flex gap-2"
-                    id="basic-search-bar"
-                  >
-                    <div className="relative flex-grow">
-                      <Input
-                        type="text"
-                        placeholder="Search by virus name, protein, gene, or taxonomy..."
-                        className="py-6 pl-10"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                      />
-                      <LuSearch
-                        className="absolute top-1/2 left-3 -translate-y-1/2 transform text-gray-400"
-                        size={18}
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="bg-secondary-def hover:bg-secondary-def py-6"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? "Searching..." : "Search"}
-                    </Button>
-                  </form>
+                  <SearchBar
+                    size="lg"
+                    onSubmit={(query) => {
+                      if (setSearchResults) {
+                        setSearchResults(query);
+                      }
+                    }}
+                  />
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <span className="mr-2 text-sm text-gray-500">

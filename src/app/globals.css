@@ -351,3 +351,11 @@
 .mobile-nav-link:hover {
   @apply bg-secondary-100;
 }
+
+.search-results-card-title {
+  @apply font-semibold text-secondary-def hover:underline hover:cursor-pointer;
+}
+
+.search-results-header {
+  @apply font-medium text-textcolor-500 hover:underline hover:cursor-pointer;
+}

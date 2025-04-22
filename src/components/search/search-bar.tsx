@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LuSearch } from "react-icons/lu";
 import { useRouter } from "next/navigation";
-import { searchToQuery } from "@/app/search/search-to-query";
 
 interface SearchBarProps {
   initialValue?: string;
@@ -13,46 +12,7 @@ interface SearchBarProps {
   placeholder?: string;
   size?: "default" | "lg";
   showIcon?: boolean;
-  onSubmit?: (query: string) => void;
 }
-
-const bvbrcAPI = "https://p3.theseed.org/services/data_api/";
-
-const searchTypes = [
-  "taxonomy",
-  "genome",
-  "strain",
-  "genome_feature",
-  "sp_gene",
-  "protein_feature",
-  "epitope",
-  "protein_structure",
-  "pathway",
-  "subsystem",
-  "surveillance",
-  "serology",
-  "experiment",
-  "antibiotics",
-  "genome_sequence",
-];
-
-export const labelsByType: { [key: string]: string } = {
-  taxonomy: "Taxa",
-  genome: "Genomes",
-  strain: "Strains",
-  genome_feature: "Features",
-  sp_gene: "Specialty Genes",
-  protein_feature: "Domains and Motifs",
-  epitope: "Epitopes",
-  protein_structure: "Protein Structures",
-  pathway: "Pathways",
-  subsystem: "Subsystems",
-  surveillance: "Surveillance",
-  serology: "Serology",
-  experiment: "Experiments",
-  antibiotics: "Antibiotics",
-  genome_sequence: "Genomic Sequences",
-};
 
 export function SearchBar({
   initialValue = "",
@@ -60,115 +20,14 @@ export function SearchBar({
   placeholder = "Search by virus name, protein, gene, or taxonomy...",
   size = "default",
   showIcon = true,
-  onSubmit,
 }: SearchBarProps) {
   const [inputValue, setInputValue] = useState(initialValue);
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const processQuery = (query: string) => {
-    // replace some special characters
-    let processedQuery = query.replace(/'/g, "").replace(/:/g, " ");
-
-    // replace special words/characters
-    processedQuery = processedQuery
-      .replace(/\(\+\)/g, " ")
-      .replace(/\(-\)/g, " ")
-      .replace(/,|\+|-|=|<|>|\\|\//g, " ");
-
-    // Handle quoted phrases
-    if (
-      processedQuery.charAt(0) == '"' &&
-      processedQuery.match(/\(|\)|\[|\]|\{|\}/)
-    ) {
-      processedQuery = processedQuery.replace(/"/g, "");
-    }
-
-    // Handle special IDs
-    if (
-      processedQuery.charAt(0) != '"' ||
-      processedQuery.match(/\(|\)|\[|\]|\{|\}/)
-    ) {
-      const keywords = processedQuery.split(/\s|\(|\)|\[|\]|\{|\}/);
-
-      for (let i = 0; i < keywords.length; i++) {
-        if (
-          keywords[i].charAt(0) != '"' &&
-          keywords[i].charAt(keywords[i].length - 1) != '"'
-        ) {
-          if (
-            keywords[i].match(/^fig\|[0-9]+/) != null ||
-            keywords[i].match(/[0-9]+\.[0-9]+/) != null ||
-            keywords[i].match(/[0-9]+$/) != null
-          ) {
-            keywords[i] = '"' + keywords[i] + '"';
-          }
-        }
-      }
-      processedQuery = keywords.join(" ");
-    }
-
-    return searchToQuery(processedQuery);
-  };
-
-  const handleSearch = async (e?: FormEvent) => {
+  const handleSearch = (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!inputValue.trim()) return;
-
-    setIsLoading(true);
-
-    try {
-      const searchPayload: Record<string, any> = {};
-      const query = processQuery(inputValue);
-
-      searchTypes.forEach((searchType) => {
-        let tq = query;
-        switch (searchType) {
-          case "genome_feature":
-            tq += "&ne(annotation,brc1)&ne(feature_type,source)";
-            break;
-          case "taxonomy":
-            tq += "&gt(genomes,1)";
-            break;
-        }
-
-        searchPayload[searchType] = {
-          dataType: searchType,
-          accept: "application/solr+json",
-          query:
-            searchType === "genome_feature"
-              ? tq + "&limit(3)&sort(+annotation,-score)"
-              : tq + "&limit(3)&sort(-score)",
-        };
-      });
-
-      console.log(searchPayload);
-
-      const response = await fetch(bvbrcAPI + "query/", {
-        method: "POST",
-        headers: {
-          accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(searchPayload),
-      });
-
-      const data = await response.json();
-
-      if (onSubmit) {
-        onSubmit(inputValue);
-      }
-
-      console.log(data);
-
-      sessionStorage.setItem("searchResults", JSON.stringify(data));
-      sessionStorage.setItem("searchQuery", inputValue);
-      router.push(`/search?q=${encodeURIComponent(inputValue)}`);
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    router.push(`/search?q=${encodeURIComponent(inputValue)}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -201,9 +60,8 @@ export function SearchBar({
         className={`bg-secondary-def hover:bg-secondary-def ${
           size === "lg" ? "py-6" : ""
         }`}
-        disabled={isLoading}
       >
-        {isLoading ? "Searching..." : "Search"}
+        Search
       </Button>
     </form>
   );

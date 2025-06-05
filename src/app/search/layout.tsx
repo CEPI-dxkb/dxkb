@@ -9,7 +9,7 @@ export default function VirusesLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="flex grow flex-col">{children}</main>
+      <main className="flex grow flex-col h-full">{children}</main>
       <Footer />
     </div>
   );

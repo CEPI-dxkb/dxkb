@@ -61,7 +61,7 @@ export default function GlobalSearch () {
 
          switch(searchtype) {
             case 'everything':
-               router.push('/search?q=' + q );
+               router.push('/search?q=' + query );
                break;
              case 'genome_feature':
                router.push('/FeatureList?q=' + q + '#view_tab=features&defaultSort=-score' );
@@ -76,7 +76,7 @@ export default function GlobalSearch () {
                router.push('/StrainList?q=' + q );
                break;
              case 'genome':
-               router.push('/GenomeList?q=' + q + '#view_tab=genomes&defaultSort=-score' );
+               router.push('/search/GenomeList?q=' + q + '#view_tab=genomes&defaultSort=-score' );
                break;
              case 'protein_feature':
                router.push('/ProteinFeaturesList?q=' + q );

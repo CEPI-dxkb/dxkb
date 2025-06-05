@@ -1,93 +1,152 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import GridLayout from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import '../../styles/gridContainer.css';
 
 type WidgetData = {
-    id: string;
-    name: string;
-    w?: number;
-    h?: number;
-    columns?: Record<string, string>; // e.g. { genome_name: "Genome", strain: "Strain" }
-    data?: Array<Record<string, any>>; // e.g. [{ genome_name: "E. coli", strain: "K12" }]
-    content?: React.ReactNode;
-  };
+  id: string;
+  name: string;
+  w?: number;
+  h?: number;
+  columns?: Record<string, string>; // e.g. { genome_name: "Genome", strain: "Strain" }
+  data?: { fullData: { [key: string]: any }[] }[]; // e.g. [{ genome_name: "E. coli", strain: "K12" }]
+  content?: React.ReactNode;
+};
 
-  type GridContainerProps = {
-    cols?: number;
-    rowHeight?: number;
-    width?: number;
-    widgets: WidgetData[];
-  };
+type GridContainerProps = {
+  cols?: number;
+  rowHeight?: number;
+  width?: number;
+  widgets: WidgetData[];
+};
 
-const GridContainer: React.FC<GridContainerProps> = ({
-  cols = 12,
-  rowHeight = 90,
-  width = 1200,
-  widgets, }) => {
-  const defaultLayout = widgets.map((widget, index) => ({
+type SortState = {
+  field: string;
+  direction: "asc" | "desc";
+};
+
+export default function GridContainer({ widgets }: GridContainerProps) {
+  const [dimensions, setDimensions] = useState({ width: 1200, height: 800 });
+  const [sortStates, setSortStates] = useState<{ [id: string]: SortState }>({});
+  
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
+
+  const rowHeight = 50;
+  const totalRows = Math.floor(dimensions.height / rowHeight);
+  const totalWidgets = widgets.length;
+
+  // Divide height evenly among widgets
+  const widgetHeight = Math.floor(totalRows / (totalWidgets || 1));
+
+  const layout = widgets.map((widget, index) => ({
     i: widget.id,
-    x: (index * 2) % cols,
-    y: Infinity,
-    w: widget.w || 2,
-    h: widget.h || 2,
+    x: 0,
+    y: index * widgetHeight,
+    w: 12,
+    h: widgetHeight,
   }));
 
-  const [layout, setLayout] = useState(defaultLayout);
-
-  const handleLayoutChange = (newLayout) => {
-    setLayout(newLayout);
+  const handleHeaderClick = (widgetId: string, field: string) => {
+    setSortStates((prev) => {
+      const current = prev[widgetId];
+      const direction =
+        current?.field === field && current.direction === "asc" ? "desc" : "asc";
+      return {
+        ...prev,
+        [widgetId]: { field, direction },
+      };
+    });
   };
 
-  console.log(widgets);
+  const getSortedData = (widget: Widget): { [key: string]: any }[] => {
+    const rawData = widget.data?.[0]?.fullData || [];
 
+    const sortState = sortStates[widget.id];
+    if (!sortState) return rawData;
+
+    const sorted = [...rawData].sort((a, b) => {
+      const valA = a[sortState.field];
+      const valB = b[sortState.field];
+      if (valA === valB) return 0;
+      if (valA === undefined) return 1;
+      if (valB === undefined) return -1;
+      return sortState.direction === "asc"
+        ? valA > valB ? 1 : -1
+        : valA < valB ? 1 : -1;
+    });
+    console.log('cols', widget.columns);
+    console.log('sortState:', sortState);
+    console.log('data:', sorted);
+
+    return sorted;
+  };
+  
   return (
-    <div className="h-screen w-screen mx-auto overflow-auto outline">
+    <div className="h-screen w-90vw overflow-hidden pt-0">
       <GridLayout
         className="layout"
         layout={layout}
-        cols={cols}
-        rowHeight={50}
-        width={window.innerWidth * 0.8}
-        onLayoutChange={handleLayoutChange}
-        draggableHandle=".widget-header"
+        cols={12}
+        rowHeight={rowHeight}
+        width={dimensions.width}
+        style={{ height: "100%" }}
+        isDraggable={false}
+        isResizable={false}
       >
-        {widgets.map((widget) => (
-          <div key={widget.id} className="widget">
-            <div className="widget-header">{widget.name}</div>
-            <div className="widget-body">
-              {widget.columns && widget.data ? (
-              
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                    {Object.entries(widget.columns).map(([field, label], idx) => (
-                        <th key={idx}>{label}</th>
+        {widgets.map((widget) => {
+          const sortedData = getSortedData(widget);
+          const sortState = sortStates[widget.id];
+          return (
+          <div key={widget.id} className="bg-white px-4 pb-4 pt-0 overflow-auto">
+            <table className="min-w-full text-sm outline">
+              <thead className="sticky top-0 bg-gray-100 text-left z-10 pt-0">
+              <tr>
+                {Object.entries(widget.columns).map(([field, label]) => (
+                  <th
+                    key={field}
+                    className="px-2 py-1 border border-gray-300 cursor-pointer select-none pt-0"
+                    onClick={() => handleHeaderClick(widget.id, field)}
+                  >
+                    {label}
+                    {sortState?.field === field && (
+                      <span className="ml-1">
+                        {sortState.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </th>
+                ))}
+              </tr>
+              </thead>
+              <tbody>
+              {sortedData.map((row, rowIndex) => (
+                    <tr key={rowIndex}>
+                      {Object.keys(widget.columns).map((colKey, cellIdx) => (
+                        <td key={cellIdx} className="px-2 py-1 border border-gray-300">
+                          {row[colKey]}
+                        </td>
                       ))}
                     </tr>
-                  </thead>
-                  <tbody>
-                    {Array.isArray(widget.data?.[0]?.fullData) && widget.data[0].fullData.map((row, rowIndex) => (
-                      <tr key={rowIndex}>
-                        {Object.keys(widget.columns ?? {}).map((field, cellIdx) => (
-                          <td key={cellIdx}>{row[field]}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                widget.content || <p>No content</p>
-              )}
-            </div>
+                  ))}
+              </tbody>
+            </table>
           </div>
-        ))}
+        );
+        })}
       </GridLayout>
     </div>
   );
-};
+}
 
-export default GridContainer;

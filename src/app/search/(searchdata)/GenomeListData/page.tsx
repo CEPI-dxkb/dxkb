@@ -1,3 +1,10 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from "next/navigation";
+import { DataTable } from '@/components/containers/DataTable';
+import { SortingState } from '@tanstack/react-table';
+import { genomeFields } from '@/constants/datafields/genomes';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function Genomes() {
@@ -98,14 +105,11 @@ export default function Genomes() {
     if (loading) return <div>Loading...</div>;
     if (error) return <div>Error: {error}. <br/>Sent: {JSON.stringify(q)}</div>;
 
-    return(
-      <Tabs defaultValue="account" className="w-[400px]">
-        <TabsList>
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="password">Password</TabsTrigger>
-        </TabsList>
-        <TabsContent value="account">Make changes to your account here.</TabsContent>
-        <TabsContent value="password">Change your password here.</TabsContent>
-      </Tabs>
+    return  ( 
+        <DataTable
+          id={widget.id}
+          data={fullData ?? []}
+          columns={widget.columns}
+        />
     );
 }; 

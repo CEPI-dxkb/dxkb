@@ -35,4 +35,4 @@ export function CustomNavMenu({ items, isCollapsed }: CustomNavMenuProps) {
       </NavigationMenuList>
     </NavigationMenu>
   );
-} 
+}

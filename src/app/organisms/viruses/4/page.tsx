@@ -102,7 +102,7 @@ export default function TaxonomyView() {
   ];
 
   return (
-    <div className="bg-background-50 text-foreground min-h-screen">
+    <div className="bg-background-def text-foreground min-h-screen">
       <header className="border-b bg-white p-4">
         <div className="flex items-center gap-2">
           <PiVirus className="text-primary-600 h-8 w-8" />

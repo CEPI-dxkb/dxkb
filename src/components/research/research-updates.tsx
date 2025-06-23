@@ -31,11 +31,11 @@ const ResearchUpdates = () => {
               <CardDescription>Published April 2, 2023</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Comprehensive genomic and proteomic analysis of the latest SARS-CoV-2 variant, including mutation
                 profiles and potential impact on transmissibility.
               </p>
-              <Button variant="link" className="px-0">
+              <Button variant="link" className="link">
                 Read Full Analysis →
               </Button>
             </CardContent>
@@ -67,11 +67,11 @@ const ResearchUpdates = () => {
               <CardDescription>Updated March 15, 2023</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Our database has been expanded with over 5,000 new viral protein entries, including structural data
                 and functional annotations from recent research.
               </p>
-              <Button variant="link" className="px-0">
+              <Button variant="link" className="link">
                 View Updates →
               </Button>
             </CardContent>
@@ -101,11 +101,11 @@ const ResearchUpdates = () => {
               <CardDescription>Released April 5, 2023</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Introducing our new computational tool for predicting viral epitopes with enhanced accuracy,
                 supporting vaccine design and immunological research.
               </p>
-              <Button variant="link" className="px-0">
+              <Button variant="link" className="link">
                 Try the Tool →
               </Button>
             </CardContent>

@@ -22,12 +22,12 @@ import Link from "next/link";
 
 const MobileNavbar = () => {
   return (
-    <header className="bg-primary-def flex items-center justify-between px-4 py-4 text-white md:hidden">
+    <header className="bg-primary flex items-center justify-between px-4 py-4 text-foreground md:hidden">
       <div className="flex items-center gap-4">
         <Sheet>
           <SheetTrigger asChild className="group hover:bg-gray-300/50">
             <Button variant="ghost">
-              <LuMenu className="scale-125 text-gray-300 transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
+              <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
             </Button>
           </SheetTrigger>
           <SheetContent

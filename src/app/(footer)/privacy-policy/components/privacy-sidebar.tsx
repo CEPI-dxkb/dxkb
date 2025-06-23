@@ -28,7 +28,7 @@ const PrivacySidebar = () => {
             <a
               key={section.id}
               href={`#${section.title.toLowerCase().replace(/\s+/g, '-')}`}
-              className="block px-3 py-2 text-sm rounded-md hover:bg-background-def"
+              className="block px-3 py-2 text-sm rounded-md hover:bg-background"
             >
               {section.title}
             </a>
@@ -36,12 +36,12 @@ const PrivacySidebar = () => {
         </nav>
       </div>
 
-      <div className="p-4 bg-secondary-50 rounded-lg">
+      <div className="p-4 bg-secondary rounded-lg">
         <h3 className="font-medium text-sm mb-2">Need Help?</h3>
         <p className="text-sm text-gray-600 mb-4">
           If you have questions about our privacy practices, please contact our Data Protection Officer.
         </p>
-        <Button size="sm" variant="outline" className="w-full bg-secondary hover:bg-secondary-700 text-white hover:text-white">
+        <Button size="sm" variant="outline" className="w-full bg-secondary hover:bg-secondary text-white hover:text-white">
           Contact Us
         </Button>
       </div>

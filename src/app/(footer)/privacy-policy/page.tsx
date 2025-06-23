@@ -1,7 +1,5 @@
 import React from 'react'
 import FooterHeader from '@/components/headers/footer-header'
-import Link from 'next/link'
-import { LuChevronRight } from 'react-icons/lu'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ArrowUp } from 'lucide-react'
@@ -22,8 +20,8 @@ const PrivacyPolicy = () => {
           {/* Main Content */}
           <main className="flex-grow max-w-3xl">
             <section id="introduction" className="mb-10">
-              <div className="bg-secondary-100 border-l-4 border-secondary-500 p-4 mb-6">
-                <p className="text-secondary-700">
+              <div className="bg-secondary/20 border-l-4 border-secondary p-4 mb-6">
+                <p className="text-secondary">
                   This Privacy Policy was last updated on <strong>April 8, 2023</strong>. Please read it carefully as it
                   affects your rights and how your data is handled.
                 </p>
@@ -38,10 +36,10 @@ const PrivacyPolicy = () => {
             </section>
 
             {privacyPolicySections.map((section) => (
-              <section id={section.title.toLowerCase().replace(/\s+/g, '-')}>
+              <section id={section.title.toLowerCase().replace(/\s+/g, '-')} key={section.id}>
                 <div className="flex items-center mb-4">
-                  <div className="w-8 h-8 rounded-full bg-secondary-100 flex items-center justify-center mr-3">
-                    <span className="text-secondary-600 font-bold">{section.id}</span>
+                  <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center mr-3" key={section.id}>
+                    <span className="text-secondary font-bold">{section.id}</span>
                   </div>
                   <h2 className="text-xl font-bold">{section.title}</h2>
                 </div>
@@ -57,7 +55,7 @@ const PrivacyPolicy = () => {
                 <ArrowUp className="h-4 w-4 mr-2" />
                 Back to Top
               </Button>
-              <div className="text-sm text-gray-500">© 2023 VirusDB. All rights reserved.</div>
+              <div className="text-sm text-foreground">© 2023 VirusDB. All rights reserved.</div>
             </div>
           </main>
         </div>

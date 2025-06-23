@@ -50,7 +50,7 @@ export function SearchBar({
         />
         {showIcon && (
           <LuSearch
-            className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary-500"
+            className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary"
             size={18}
           />
         )}

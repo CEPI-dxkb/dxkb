@@ -28,8 +28,8 @@ import { handleFormSubmit } from "@/lib/service-utils";
 export default function SubspeciesClassification() {
   // States for the form
   const [querySequence, setQuerySequence] = useState("");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [querySource, setQuerySource] = useState("enter-sequence");
   const [species, setSpecies] = useState(
     subspeciesClassificationSpeciesList[0].id,
@@ -52,8 +52,8 @@ export default function SubspeciesClassification() {
           within a reference tree. The service uses the pplacer tool with a
           reference tree and reference alignment and includes the query sequence
           as input. Interpretation of the pplacer result is handled by
-          Cladinator. Link to <a href="#" className="text-primary-600 hover:underline">pplacer</a>{" "}
-          and <a href="#" className="text-primary-600 hover:underline">Cladinator</a>'
+          Cladinator. Link to <a href="#" className="text-primary hover:underline">pplacer</a>{" "}
+          and <a href="#" className="text-primary hover:underline">Cladinator</a>'
         infoPopupTitle={subspeciesClassificationInfo.title}
         infoPopupDescription={subspeciesClassificationInfo.description}
         quickReferenceGuide="#"

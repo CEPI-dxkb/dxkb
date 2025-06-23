@@ -10,7 +10,7 @@ const HelpTopics = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
               <CardHeader className="pb-4">
-                <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mb-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -21,7 +21,7 @@ const HelpTopics = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-secondary-600"
+                    className="text-secondary"
                   >
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                     <polyline points="3.29 7 12 12 20.71 7" />
@@ -54,7 +54,7 @@ const HelpTopics = () => {
 
             <Card>
               <CardHeader className="pb-4">
-                <div className="w-12 h-12 rounded-full bg-accent-100 flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -65,7 +65,7 @@ const HelpTopics = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-accent-600"
+                    className="text-accent"
                   >
                     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                   </svg>
@@ -96,7 +96,7 @@ const HelpTopics = () => {
 
             <Card>
               <CardHeader className="pb-4">
-                <div className="w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center mb-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="24"
@@ -107,7 +107,7 @@ const HelpTopics = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="text-secondary-600"
+                    className="text-secondary"
                   >
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
                     <path d="M8 11h8" />

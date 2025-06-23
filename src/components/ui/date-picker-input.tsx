@@ -143,7 +143,7 @@ export function DatePickerInput({
               ref={popoverRef}
               variant="ghost"
               size="icon"
-              className="hover:bg-secondary-50 absolute left-0.5 h-[90%] border border-white hover:border-gray-400 focus-visible:border focus-visible:border-gray-400"
+              className="hover:bg-secondary/10 absolute left-0.5 h-[90%] border border-white hover:border-gray-400 focus-visible:border focus-visible:border-gray-400"
               tabIndex={-1}
               aria-label="Open calendar"
             >

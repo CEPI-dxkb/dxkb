@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -47,8 +46,8 @@ import {
 
 const VariationAnalysisInterface = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  const [outputFolder, setOutputFolder] = useState<string>("");
-  const [outputName, setOutputName] = useState<string>("");
+  const [_outputFolder, setOutputFolder] = useState<string>("");
+  const [_outputName, setOutputName] = useState<string>("");
 
   return (
     <section>

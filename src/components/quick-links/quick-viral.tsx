@@ -8,7 +8,6 @@ import SequenceIcon from '../../../public/icons/sequence.svg';
 import GenomeIcon from '../../../public/icons/genome.svg';
 import PartialSeqIcon from '../../../public/icons/pipeline.svg';
 import { TbCube3dSphere } from "react-icons/tb";
-import Image from 'next/image';
 
 const QuickViralLinks = () => {
   return (
@@ -26,7 +25,7 @@ const QuickViralLinks = () => {
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    {/* <Image src={GenomeIcon} alt="Genome" width={16} height={16} className="fill-accent-700"/> */}
+                    {/* <Image src={GenomeIcon} alt="Genome" width={16} height={16} className="fill-accent"/> */}
                     <GenomeIcon className="w-4 h-4" />
                     <span>Complete Genomes</span>
                   </div>
@@ -35,7 +34,7 @@ const QuickViralLinks = () => {
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
                     {/* <Image src={PartialSeqIcon} alt="Partial Sequence" width={16} height={16} /> */}
-                    <PartialSeqIcon className="w-4 h-4 fill-accent-500 stroke-accent-500" />
+                    <PartialSeqIcon className="w-4 h-4" />
                     <span>Partial Sequences</span>
                   </div>
                   <Badge className="bg-accent text-foreground">103,457</Badge>
@@ -110,7 +109,6 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="stroke-accent-600"
                   >
                     <path d="M2 12h20" />
                     <path d="M2 12v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-8" />
@@ -131,7 +129,6 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="stroke-accent-600"
                   >
                     <path d="M3 3v18h18" />
                     <path d="m19 9-5 5-4-4-3 3" />
@@ -149,7 +146,6 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="stroke-accent-600"
                   >
                     <circle cx="12" cy="12" r="10" />
                     <path d="m4.93 4.93 4.24 4.24" />

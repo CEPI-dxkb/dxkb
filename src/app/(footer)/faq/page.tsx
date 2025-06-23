@@ -1,6 +1,5 @@
 import FooterHeader from '@/components/headers/footer-header'
 import React from 'react'
-import { ChevronDown } from 'lucide-react'
 import {
   Accordion,
   AccordionContent,

@@ -7,10 +7,8 @@ import {
   PiDna,
   PiPuzzlePiece,
   PiCube,
-  PiTestTube,
   PiArrowSquareOut,
   PiDatabaseBold,
-  PiChartPie,
   PiBook,
   PiNewspaper,
   PiCaretDown,
@@ -53,10 +51,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import {
   Tooltip as UITooltip,
@@ -65,15 +61,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Chart color palette
-const COLORS = [
-  "#6366f1",
-  "#10b981",
-  "#f59e0b",
-  "#ef4444",
-  "#8b5cf6",
-  "#ec4899",
-];
 
 export default function TaxonomyView() {
   const [searchQuery, setSearchQuery] = useState("");

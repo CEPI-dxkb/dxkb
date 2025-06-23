@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 
 import Footer from "@/components/footers/footer";
 import NewsCarousel from "@/components/ui/news-carousel";
@@ -12,7 +12,7 @@ import DBStatistics from "@/components/statistics/db-statistics";
 import { ThemeSwitcher } from "@/components/ui/theme-switcher-floating";
 
 export default function Home() {
-  const [searchResults, setSearchResults] = useState([]);
+  // const [_searchResults, setSearchResults] = useState([]);
 
   return (
       <div className="bg-background min-h-screen flex flex-col">

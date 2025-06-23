@@ -19,7 +19,6 @@ export function ThemeSwitcher() {
   const [currentBase, currentMode] = currentTheme.split("-");
 
   const themeBases = ["zinc", "orange", "violet", "dxkb"];
-  const modes = ["light", "dark"];
 
   const handleThemeChange = (base: string) => {
     const newTheme = `${base}-${currentMode}`;

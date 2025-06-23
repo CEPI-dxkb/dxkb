@@ -23,8 +23,8 @@ export function VerticalMenu({ items, isCollapsed }: NavMenuProps) {
           variant="ghost"
           className={cn(
             "min-w-[2.5rem] justify-start h-10 p-2 transition-[width] duration-300 ease-in-out",
-            item.isActive && "bg-gray-300 hover:bg-gray-300 text-secondary-500 hover:text-secondary-500",
-            !item.isActive && "text-gray-700 hover:text-primary-700 hover:bg-gray-200",
+            item.isActive && "bg-gray-300 hover:bg-gray-300 text-secondary hover:text-secondary/50",
+            !item.isActive && "text-gray-700 hover:text-primary hover:bg-gray-200",
             isCollapsed && "w-10",
             !isCollapsed && "w-full"
 

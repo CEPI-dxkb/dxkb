@@ -296,14 +296,6 @@ function getFormattedContent(doc: any, dataType: string) {
   }
 }
 
-// Add this helper function after the interfaces and before the component
-function splitIntoColumns(types: readonly string[], numColumns: number) {
-  const itemsPerColumn = Math.ceil(types.length / numColumns);
-  return Array.from({ length: numColumns }, (_, i) =>
-    types.slice(i * itemsPerColumn, (i + 1) * itemsPerColumn)
-  );
-}
-
 export default function SearchResultsPage() {
   const searchParams = useSearchParams();
   const [searchResults, setSearchResults] = useState<SearchResults>({});
@@ -455,7 +447,7 @@ export default function SearchResultsPage() {
                         {labelsByType[dataType]}
                       </CardTitle>
                     </div>
-                    <Badge className="bg-secondary-def h-8 max-w-fit min-w-8 font-semibold text-white">
+                    <Badge className="bg-secondary h-8 max-w-fit min-w-8 font-semibold text-white">
                       {numFound}
                     </Badge>
                   </CardHeader>

@@ -61,7 +61,7 @@ export function CitationFilters({
           </SelectContent>
         </Select>
 
-        <Select value={String(uniqueYears[0])} onValueChange={(value) => {}}>
+        <Select value={String(uniqueYears[0])} onValueChange={() => {}}>
           <SelectTrigger>
             <SelectValue placeholder="Year Range" />
           </SelectTrigger>

@@ -4,8 +4,6 @@ import { useState } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -36,8 +34,8 @@ import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 const PrimerDesignInterface = () => {
   const [sequenceInputMethod, setSequenceInputMethod] = useState("paste-sequence");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
 
   return (
     <section>
@@ -324,7 +322,7 @@ const PrimerDesignInterface = () => {
                             <TooltipContent>
                               <div className="max-w-[300px] space-y-2">
                                 <p>
-                                The maximum number of primer pairs to return. Primer pairs returned are sorted by their 'quality', in
+                                The maximum number of primer pairs to return. Primer pairs returned are sorted by their &apos;quality&apos;, in
                                 other words by the value of the objective function (where a lower number indicates a better primer
                                 pair). Caution: setting this parameter to a large value will increase running time.
                                 </p>

@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -56,8 +55,8 @@ import { Library } from "@/types/services";
 
 export default function GenomeAssemblyPage() {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [assemblyStrategy, setAssemblyStrategy] = useState("auto");
   const [genomeSizeUnit, setGenomeSizeUnit] = useState("M");
   const [showAdvanced, setShowAdvanced] = useState(false);

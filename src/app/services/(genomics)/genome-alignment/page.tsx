@@ -5,7 +5,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -40,8 +39,8 @@ const GenomeAlignmentInterface = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [genomeInput, setGenomeInput] = useState("");
   const [genomeGroupInput, setGenomeGroupInput] = useState("");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
 
   return (
     <section>

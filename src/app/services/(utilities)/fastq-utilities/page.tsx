@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,8 +55,8 @@ const FastqUtilitiesService = () => {
   const [selectedAction, setSelectedAction] = useState<string>("");
   const [lastColorIndex, setLastColorIndex] = useState(0);
   const [lastShapeIndex, setLastShapeIndex] = useState(0);
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [selectedPipelineActions, setSelectedPipelineActions] = useState<
     PipelineAction[]
   >([]);

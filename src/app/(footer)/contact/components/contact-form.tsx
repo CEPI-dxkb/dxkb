@@ -21,8 +21,8 @@ const ContactForm = () => {
 
                   <div className="space-y-6">
                     <div className="flex items-start">
-                      <div className="bg-secondary-100 p-3 rounded-full mr-4">
-                        <LuMail className="h-5 w-5 text-secondary-600" />
+                      <div className="bg-secondary/20 p-3 rounded-full mr-4">
+                        <LuMail className="h-5 w-5 text-secondary" />
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">Email</h3>
@@ -33,8 +33,8 @@ const ContactForm = () => {
                     </div>
 
                     <div className="flex items-start">
-                      <div className="bg-secondary-100 p-3 rounded-full mr-4">
-                        <LuPhone className="h-5 w-5 text-secondary-600" />
+                      <div className="bg-secondary/20 p-3 rounded-full mr-4">
+                        <LuPhone className="h-5 w-5 text-secondary" />
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">Phone</h3>
@@ -46,8 +46,8 @@ const ContactForm = () => {
                     </div>
 
                     <div className="flex items-start">
-                      <div className="bg-secondary-100 p-3 rounded-full mr-4">
-                        <LuMapPin className="h-5 w-5 text-secondary-600" />
+                      <div className="bg-secondary/20 p-3 rounded-full mr-4">
+                        <LuMapPin className="h-5 w-5 text-secondary" />
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">Main Office</h3>
@@ -62,39 +62,39 @@ const ContactForm = () => {
                   <div className="flex space-x-4">
                     <a
                       href="#"
-                      className="bg-accent-100 p-3 rounded-full hover:bg-accent-200 transition-colors duration-200"
+                      className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <LuTwitter className="h-5 w-5 text-accent-600" />
+                      <LuTwitter className="h-5 w-5 text-accent" />
                     </a>
                     <a
                       href="#"
-                      className="bg-accent-100 p-3 rounded-full hover:bg-accent-200 transition-colors duration-200"
+                      className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <LuLinkedin className="h-5 w-5 text-accent-600" />
+                      <LuLinkedin className="h-5 w-5 text-accent" />
                     </a>
                     <a
                       href="#"
-                      className="bg-accent-100 p-3 rounded-full hover:bg-accent-200 transition-colors duration-200"
+                      className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <LuGithub className="h-5 w-5 text-accent-600" />
+                      <LuGithub className="h-5 w-5 text-accent" />
                     </a>
                   </div>
 
                   <Separator className="my-8" />
 
-                  <div className="bg-secondary-100 rounded-lg p-6">
+                  <div className="bg-secondary/20 rounded-lg p-6">
                     <h3 className="font-medium mb-2">Support Hours</h3>
                     <div className="space-y-2">
                       <div className="flex items-center">
-                        <LuClock className="h-4 w-4 text-secondary-600 mr-2" />
+                        <LuClock className="h-4 w-4 text-secondary mr-2" />
                         <span className="text-sm">Monday - Friday: 9:00 AM - 5:00 PM (EST)</span>
                       </div>
                       <div className="flex items-center">
-                        <LuClock className="h-4 w-4 text-secondary-600 mr-2" />
+                        <LuClock className="h-4 w-4 text-secondary mr-2" />
                         <span className="text-sm">Saturday: 10:00 AM - 2:00 PM (EST)</span>
                       </div>
                       <div className="flex items-center">
-                        <LuClock className="h-4 w-4 text-secondary-600 mr-2" />
+                        <LuClock className="h-4 w-4 text-secondary mr-2" />
                         <span className="text-sm">Sunday: Closed</span>
                       </div>
                     </div>
@@ -202,7 +202,7 @@ const ContactForm = () => {
                       </div>
 
                       <div className="pt-2">
-                        <Button className="w-full bg-secondary hover:bg-secondary-700 py-6">Submit Message</Button>
+                        <Button className="w-full bg-secondary hover:bg-secondary py-6">Submit Message</Button>
                       </div>
                     </form>
                   </CardContent>

@@ -49,8 +49,8 @@ export default function ProteomeComparisonPage() {
   const [proteinFastaInput, setProteinFastaInput] = useState("");
   const [featureGroupInput, setFeatureGroupInput] = useState("");
   const [genomeGroupInput, setGenomeGroupInput] = useState("");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
 
   const MAX_GENOMES = 9;
 

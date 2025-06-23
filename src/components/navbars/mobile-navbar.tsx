@@ -10,11 +10,7 @@ import {
 } from "./navbar-links";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
@@ -35,7 +31,7 @@ const MobileNavbar = () => {
             className="w-[85vw] max-w-md overflow-y-auto p-0"
           >
             <SheetTitle className="sr-only">Mobile Navigation Menu</SheetTitle>
-            <div id="sheet-logo" className="bg-primary-def flex w-full p-4">
+            <div id="sheet-logo" className="bg-primary flex w-full p-4">
               <Image
                 src="/logos/dxkb-logo-white-cropped.svg"
                 alt="DXKB Logo"

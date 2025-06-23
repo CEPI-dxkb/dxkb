@@ -44,7 +44,7 @@ const QuickLinks = () => {
               <li key={link}>
                 <Link
                   href={link === "All Viruses" ? "/viruses" : "#"}
-                  className="text-primary-700 hover:underline"
+                  className="text-primary hover:underline"
                 >
                   {link}
                 </Link>
@@ -57,7 +57,7 @@ const QuickLinks = () => {
           <ul className="space-y-2">
             {links.analyze.map((link) => (
               <li key={link}>
-                <Link href="#" className="text-primary-700 hover:underline">
+                <Link href="#" className="text-primary hover:underline">
                   {link}
                 </Link>
               </li>
@@ -69,7 +69,7 @@ const QuickLinks = () => {
           <ul className="space-y-2">
             {links.resources.map((link) => (
               <li key={link}>
-                <Link href="#" className="text-primary-700 hover:underline">
+                <Link href="#" className="text-primary hover:underline">
                   {link}
                 </Link>
               </li>

@@ -7,7 +7,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -44,10 +43,10 @@ export default function BlastServicePage() {
   const [queryType, setQueryType] = useState("enterSequence");
   const [sequenceInput, setSequenceInput] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [maxHits, setMaxHits] = useState("10");
-  const [eValueThreshold, setEValueThreshold] = useState("0.0001");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_maxHits, setMaxHits] = useState("10");
+  const [_eValueThreshold, setEValueThreshold] = useState("0.0001");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
 
   const handleReset = () => {
     setSearchProgram("");

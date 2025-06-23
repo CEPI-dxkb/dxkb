@@ -46,7 +46,7 @@ import { handleFormSubmit } from "@/lib/service-utils";
 
 const SimilarGenomeFinderInterface = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [scope, setScope] = useState("reference");
+  const [_scope, setScope] = useState("reference");
 
   return (
     <section>

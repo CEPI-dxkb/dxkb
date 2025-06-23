@@ -39,7 +39,7 @@ export function ServiceHeader({
           />
         )}
         {version && (
-          <Badge variant="outline" className="bg-primary-50 text-primary-700">
+          <Badge variant="outline" className="bg-primary text-foreground">
             {version}
           </Badge>
         )}

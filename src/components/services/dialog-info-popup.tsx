@@ -3,10 +3,8 @@ import { Info } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -30,7 +28,7 @@ export function DialogInfoPopup({
           size="icon"
           className={cn(
             isHeader
-              ? "h-8 w-8 rounded-full p-2 text-primary-600 font-bold"
+              ? "h-8 w-8 rounded-full p-2 text-primary font-bold"
               : "h-5 w-5 rounded-full p-0.5",
             "hover:bg-accent hover:text-accent-foreground hover:cursor-pointer",
             className,
@@ -43,7 +41,7 @@ export function DialogInfoPopup({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader className="w-full">
           <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
-          <DialogDescription className="text-textcolor-800/70 overflow-x-auto break-all">{description}</DialogDescription>
+          <DialogDescription className="text-foreground/70 overflow-x-auto break-all">{description}</DialogDescription>
         </DialogHeader>
         {sections.length > 0 && (
           <div className="max-h-128 space-y-4 overflow-y-auto rounded-md border bg-white p-4 py-4">

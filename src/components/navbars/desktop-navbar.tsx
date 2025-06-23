@@ -43,7 +43,7 @@ const DesktopNavbar = () => {
                 <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
-                      <a
+                      <Link
                         className="from-muted/50 bg-primary hover:bg-primary/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
                         href="/"
                       >
@@ -61,7 +61,7 @@ const DesktopNavbar = () => {
                           paste into your apps. Accessible. Customizable. Open
                           Source.
                         </p>
-                      </a>
+                      </Link>
                     </NavigationMenuLink>
                   </li>
                   {gettingStartedItems.map((item) => (

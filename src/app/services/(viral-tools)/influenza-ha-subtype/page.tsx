@@ -26,8 +26,8 @@ export default function HASubtypeNumbering() {
   // States for the form
   const [inputSequence, setInputSequence] = useState("sequence");
   const [inputSequenceValue, setInputSequenceValue] = useState("");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [selectedSchemes, setSelectedSchemes] = useState(["H1PDM34"]);
 
   const handleReset = () => {
@@ -131,7 +131,7 @@ export default function HASubtypeNumbering() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <div className="bg-background-100 grid grid-cols-2 gap-2 rounded-md border p-4 md:grid-cols-4">
+                <div className="bg-background/20 grid grid-cols-2 gap-2 rounded-md border p-4 md:grid-cols-4">
                   {HaReferenceTypes.map((scheme) => (
                     <div className="flex items-center gap-2" key={scheme.id}>
                       <Checkbox

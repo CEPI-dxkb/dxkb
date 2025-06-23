@@ -59,8 +59,8 @@ export default function GeneProteinTreePage() {
   const [featureGroup, setFeatureGroup] = useState<string>("");
   const [alignedFasta, setAlignedFasta] = useState<string>("");
   const [unalignedFasta, setUnalignedFasta] = useState<string>("");
-  const [outputFolder, setOutputFolder] = useState<string>("");
-  const [outputName, setOutputName] = useState<string>("");
+  const [_outputFolder, setOutputFolder] = useState<string>("");
+  const [_outputName, setOutputName] = useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [metadataFields, setMetadataFields] = useState([
     { id: "genomeId", name: "Genome ID", selected: true },

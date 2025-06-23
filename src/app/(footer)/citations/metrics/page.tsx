@@ -11,7 +11,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CitationNav } from "../components/citation-nav"
 import { citations as citationsData } from "../data/citations"
-import "@/styles/citations.css"
 
 interface Citation {
   id: string;
@@ -39,12 +38,6 @@ interface Author {
 
 export default function CitationsMetricsPage() {
   const [yearRange, setYearRange] = useState<string>("all")
-
-  // Calculate metrics
-  const totalCitations = citationsData.reduce((sum, citation) => sum + citation.citationCount, 0)
-  const averageImpactFactor = (
-    citationsData.reduce((sum, citation) => sum + citation.impactFactor, 0) / citationsData.length
-  ).toFixed(2)
 
   // Get unique years and sort them
   const uniqueYears = [...new Set(citationsData.map((citation) => citation.year))].sort((a, b) => a - b)
@@ -227,7 +220,7 @@ export default function CitationsMetricsPage() {
                     {uniqueYears.map((year) => (
                       <div key={year} className="relative flex flex-1 flex-col items-center">
                         <div
-                          className="w-full bg-primary-def rounded-t"
+                          className="w-full bg-primary rounded-t"
                           style={{
                             height: `${(metricsByYear[year].count / Math.max(...Object.values(metricsByYear).map((m) => m.count))) * 100}%`,
                             minHeight: "20px",
@@ -235,7 +228,7 @@ export default function CitationsMetricsPage() {
                         />
                         <div className="absolute bottom-0 w-full">
                           <div
-                            className="w-full bg-primary-def/30 rounded-t"
+                            className="w-full bg-primary/30 rounded-t"
                             style={{
                               height: `${(metricsByYear[year].totalCitations / Math.max(...Object.values(metricsByYear).map((m) => m.totalCitations || 1))) * 80}%`,
                               minHeight: "5px",
@@ -252,11 +245,11 @@ export default function CitationsMetricsPage() {
                 </div>
                 <div className="flex justify-center mt-4 items-center text-sm text-muted-foreground">
                   <div className="flex items-center mr-4">
-                    <div className="w-3 h-3 bg-primary-def rounded mr-1"></div>
+                    <div className="w-3 h-3 bg-primary rounded mr-1"></div>
                     <span>Citing Papers</span>
                   </div>
                   <div className="flex items-center">
-                    <div className="w-3 h-3 bg-primary-def/30 rounded mr-1"></div>
+                    <div className="w-3 h-3 bg-primary/30 rounded mr-1"></div>
                     <span>Total Citations Received</span>
                   </div>
                 </div>
@@ -285,7 +278,7 @@ export default function CitationsMetricsPage() {
                             </span>
                           </div>
                           <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                            <div className="h-full bg-primary-def rounded-full" style={{ width: `${percentage}%` }} />
+                            <div className="h-full bg-primary rounded-full" style={{ width: `${percentage}%` }} />
                           </div>
                         </div>
                       )
@@ -311,7 +304,7 @@ export default function CitationsMetricsPage() {
                         return (
                           <div key={year} className="relative flex flex-1 flex-col items-center">
                             <div
-                              className="w-full bg-primary-def/70 rounded-t"
+                              className="w-full bg-primary/70 rounded-t"
                               style={{
                                 height: `${(avgImpact / (maxImpact || 1)) * 100}%`,
                                 minHeight: "20px",
@@ -344,7 +337,7 @@ export default function CitationsMetricsPage() {
                     {impactFactorRanges.map((item) => (
                       <div key={item.range} className="relative flex flex-1 flex-col items-center">
                         <div
-                          className="w-full bg-primary-def rounded-t"
+                          className="w-full bg-primary rounded-t"
                           style={{
                             height: `${(item.count / Math.max(...impactFactorRanges.map((r) => r.count || 1))) * 100}%`,
                             minHeight: "20px",
@@ -447,7 +440,7 @@ export default function CitationsMetricsPage() {
                     {topAuthors.map((author) => (
                       <div key={author.name} className="relative flex flex-1 flex-col items-center">
                         <div
-                          className="w-full bg-primary-def rounded-t"
+                          className="w-full bg-primary rounded-t"
                           style={{
                             height: `${(author.count / Math.max(...topAuthors.map((a) => a.count))) * 100}%`,
                             minHeight: "20px",
@@ -473,7 +466,7 @@ export default function CitationsMetricsPage() {
                 <div className="h-[300px] w-full flex items-center justify-center relative bg-muted/20 rounded-lg">
                   {/* Center node representing your knowledge base */}
                   <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-                    <div className="h-16 w-16 rounded-full bg-primary-def flex items-center justify-center text-primary-foreground shadow-lg">
+                    <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
                       <BookOpen className="h-8 w-8" />
                     </div>
                     <div className="text-center mt-2 font-medium text-sm">Knowledge Base</div>

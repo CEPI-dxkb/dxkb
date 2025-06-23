@@ -49,7 +49,7 @@ export default function VirusesPage() {
         <ResizableHandle withHandle className="w-0 border-none" />
 
         <ResizablePanel defaultSize={12} maxSize={25}>
-          <div id="guide-section" className="h-full border border-gray-200 bg-background-500 rounded-l-lg p-4">
+          <div id="guide-section" className="h-full border border-gray-200 bg-background rounded-l-lg p-4">
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>

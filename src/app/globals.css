@@ -42,7 +42,11 @@
 }
 
 
-
+/*
+  TODO: Add more color shades for each theme
+  ex. --background-light, --background-lighter, --background-dark, --background-darker,
+  --foreground-light, --foreground-lighter, --foreground-dark, --foreground-darker, etc.
+*/
 [data-theme='zinc-light'] {
   --radius: 0.1rem;
   --background: oklch(1 0 0);

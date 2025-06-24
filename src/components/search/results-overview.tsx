@@ -25,8 +25,8 @@ const ResultsOverview = ({ isLoading, searchResults, labelsByType }: ResultsOver
             <div className="space-y-2 sm:border-r border-border sm:pr-8">
               {searchTypes.slice(0, 5).map((type) => (
                 <div key={type} className="flex items-center justify-between">
-                  <span className="text-textcolor-700">{labelsByType[type]}:</span>
-                  <span className="text-secondary-def">
+                  <span className="text-foreground">{labelsByType[type]}:</span>
+                  <span className="text-secondary">
                     {searchResults[type]?.result?.response?.numFound || 0}
                   </span>
                 </div>
@@ -35,8 +35,8 @@ const ResultsOverview = ({ isLoading, searchResults, labelsByType }: ResultsOver
             <div className="space-y-2 sm:px-8">
               {searchTypes.slice(5, 10).map((type) => (
                 <div key={type} className="flex items-center justify-between">
-                  <span className="text-textcolor-700">{labelsByType[type]}:</span>
-                  <span className="text-secondary-def">
+                  <span className="text-foreground">{labelsByType[type]}:</span>
+                  <span className="text-secondary">
                     {searchResults[type]?.result?.response?.numFound || 0}
                   </span>
                 </div>
@@ -45,8 +45,8 @@ const ResultsOverview = ({ isLoading, searchResults, labelsByType }: ResultsOver
             <div className="space-y-2 sm:border-l border-border sm:pl-8">
               {searchTypes.slice(10, 15).map((type) => (
                 <div key={type} className="flex items-center justify-between">
-                  <span className="text-textcolor-700">{labelsByType[type]}:</span>
-                  <span className="text-secondary-def">
+                  <span className="text-foreground">{labelsByType[type]}:</span>
+                  <span className="text-secondary">
                     {searchResults[type]?.result?.response?.numFound || 0}
                   </span>
                 </div>

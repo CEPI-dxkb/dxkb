@@ -44,7 +44,7 @@ function SelectTrigger({
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className="size-4 opacity-50" />
+        <ChevronDownIcon className="size-4 text-input" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -143,7 +143,7 @@ function SelectScrollUpButton({
     <SelectPrimitive.ScrollUpButton
       data-slot="select-scroll-up-button"
       className={cn(
-        "flex cursor-default items-center justify-center py-1 bg-background-100",
+        "flex cursor-default items-center justify-center py-1 bg-background/20",
         className
       )}
       {...props}
@@ -161,7 +161,7 @@ function SelectScrollDownButton({
     <SelectPrimitive.ScrollDownButton
       data-slot="select-scroll-down-button"
       className={cn(
-        "flex cursor-default items-center justify-center py-1 bg-background-100",
+        "flex cursor-default items-center justify-center py-1 bg-background/20",
         className
       )}
       {...props}

@@ -1,6 +1,4 @@
-import { Input } from "@/components/ui/input";
 import { ServiceInfoPopup } from "@/types/services";
-import { Database, Folder } from "lucide-react";
 
 // ------------------------------------------------ //
 // ------------- Generic Service Info ------------- //

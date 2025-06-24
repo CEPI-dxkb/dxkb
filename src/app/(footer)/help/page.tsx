@@ -6,7 +6,7 @@ import HelpFAQs from './components/help-faqs'
 import FooterHeader from '@/components/headers/footer-header'
 const Help = () => {
   return (
-    <div className="min-h-screen bg-background-def">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <FooterHeader title="How can we help you?" />
 

@@ -11,7 +11,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
   PiVirus,
@@ -102,14 +101,14 @@ export default function TaxonomyView() {
   ];
 
   return (
-    <div className="bg-background-50 text-foreground min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       <header className="border-b bg-white p-4">
         <div className="flex items-center gap-2">
-          <PiVirus className="text-primary-600 h-8 w-8" />
+          <PiVirus className="text-primary h-8 w-8" />
           <div>
             <h1 className="text-xl font-semibold">Taxon View</h1>
             <p className="text-muted-foreground text-sm">
-              <span className="text-primary-600">Viruses</span> |{" "}
+              <span className="text-primary">Viruses</span> |{" "}
               <span className="text-muted-foreground">(12408052 Genomes)</span>
             </p>
           </div>
@@ -122,7 +121,7 @@ export default function TaxonomyView() {
         onValueChange={setSelectedTab}
         className="w-full"
       >
-        <TabsList className="bg-background-200 grid w-full grid-cols-8 rounded-none border-b">
+        <TabsList className="bg-background grid w-full grid-cols-8 rounded-none border-b">
           <TabsTrigger
             value="overview"
             className="data-[state=active]:bg-white"
@@ -179,7 +178,7 @@ export default function TaxonomyView() {
           <TabsContent value="overview" className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="col-span-2">
-                <CardHeader className="bg-primary-600 py-2">
+                <CardHeader className="bg-primary py-2">
                   <CardTitle className="text-sm font-medium text-white">
                     Taxonomy Summary
                   </CardTitle>
@@ -192,7 +191,7 @@ export default function TaxonomyView() {
                           <TableRow
                             key={index}
                             className={
-                              index % 2 === 0 ? "bg-background-100" : ""
+                              index % 2 === 0 ? "bg-background/20" : ""
                             }
                           >
                             <TableCell className="w-1/3 font-medium">
@@ -211,7 +210,7 @@ export default function TaxonomyView() {
 
               <div className="space-y-4">
                 <Card>
-                  <CardHeader className="bg-primary-600 py-2">
+                  <CardHeader className="bg-primary py-2">
                     <CardTitle className="text-sm font-medium text-white">
                       External Tools
                     </CardTitle>
@@ -229,7 +228,7 @@ export default function TaxonomyView() {
                 </Card>
 
                 <Card>
-                  <CardHeader className="bg-primary-600 py-2">
+                  <CardHeader className="bg-primary py-2">
                     <CardTitle className="text-sm font-medium text-white">
                       Recent PubMed Articles
                     </CardTitle>
@@ -239,12 +238,12 @@ export default function TaxonomyView() {
                       {recentArticles.map((article, index) => (
                         <div
                           key={index}
-                          className="hover:bg-background-100 mb-3 rounded p-2"
+                          className="hover:bg-background/20 mb-3 rounded p-2"
                         >
                           <div className="text-muted-foreground text-xs">
                             {article.date}
                           </div>
-                          <div className="text-primary-600 text-sm font-medium">
+                          <div className="text-primary text-sm font-medium">
                             {article.title}
                           </div>
                           <div className="text-xs">{article.authors}</div>
@@ -263,7 +262,7 @@ export default function TaxonomyView() {
             </div>
 
             <Card>
-              <CardHeader className="bg-primary-600 py-2">
+              <CardHeader className="bg-primary py-2">
                 <CardTitle className="text-sm font-medium text-white">
                   Genomes By Metadata
                 </CardTitle>
@@ -365,21 +364,21 @@ export default function TaxonomyView() {
             </Card>
 
             <Card>
-              <CardHeader className="bg-primary-600 py-2">
+              <CardHeader className="bg-primary py-2">
                 <CardTitle className="flex justify-between text-sm font-medium text-white">
                   <span>Reference/Representative Genomes</span>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="text-primary-600 h-6 bg-white px-2 text-xs hover:bg-gray-100"
+                      className="text-primary h-6 bg-white px-2 text-xs hover:bg-gray-100"
                     >
                       Full
                     </Button>
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="text-primary-600 h-6 bg-white px-2 text-xs hover:bg-gray-100"
+                      className="text-primary h-6 bg-white px-2 text-xs hover:bg-gray-100"
                     >
                       List
                     </Button>
@@ -389,7 +388,7 @@ export default function TaxonomyView() {
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-background-100">
+                    <TableRow className="bg-background/20">
                       <TableHead className="w-1/6">Type</TableHead>
                       <TableHead>Genome Name</TableHead>
                     </TableRow>
@@ -399,7 +398,7 @@ export default function TaxonomyView() {
                       <TableRow key={index}>
                         <TableCell>{genome.type}</TableCell>
                         <TableCell>
-                          <span className="text-primary-600 cursor-pointer hover:underline">
+                          <span className="text-primary cursor-pointer hover:underline">
                             {genome.name}
                           </span>
                         </TableCell>

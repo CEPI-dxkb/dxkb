@@ -8,7 +8,6 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { HelpCircle } from "lucide-react";
-import { toast } from "sonner";
 
 interface SelectedItem {
   id: string;
@@ -71,16 +70,6 @@ const SelectedItemsTable = ({
     return <div className={`h-2.5 w-2.5 ${color} ${getShapeClass(shape)}`} />;
   };
 
-  const handleAddItem = (newItem: SelectedItem) => {
-    if (!allowDuplicates && items.some((item) => item.id === newItem.id)) {
-      toast.error("Duplicate item detected", {
-        description: "This item has already been added to the table.",
-      });
-      return false;
-    }
-    return true;
-  };
-
   return (
     <>
       {(title || description || tooltipContent) && (
@@ -104,7 +93,7 @@ const SelectedItemsTable = ({
         </div>
       )}
       <div
-        className={`bg-background-100 overflow-auto rounded-md border p-4 ${className}`}
+        className={`bg-background/20 overflow-auto rounded-md border p-4 ${className}`}
       >
         <div className="h-full overflow-y-auto rounded-md border">
           {items.length === 0 ? (

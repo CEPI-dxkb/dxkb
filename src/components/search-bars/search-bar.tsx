@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/buttons/button'
 import { Search } from 'lucide-react'
 
-const searchBar = () => {
+const SearchBar = () => {
   return (
     <div className="max-w-2xl mx-auto px-4 relative">
         <Input
@@ -22,4 +22,4 @@ const searchBar = () => {
   )
 }
 
-export default searchBar;
+export default SearchBar;

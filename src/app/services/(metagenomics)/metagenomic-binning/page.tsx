@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -52,8 +51,8 @@ const MetagenomicBinningService = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [showAdvanced, setAdvanced] = useState(false);
   const [startingDataType, setStartingDataType] = useState("read-file");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [assemblyStrategy, setAssemblyStrategy] = useState("auto");
   const [organismsOfInterest, setOrganismsOfInterest] = useState("both");
 

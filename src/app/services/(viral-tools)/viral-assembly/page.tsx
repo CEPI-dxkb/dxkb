@@ -35,10 +35,10 @@ export default function ViralAssembly() {
   const [inputType, setInputType] = useState("paired");
   const [assemblyStrategy, setAssemblyStrategy] = useState("irma");
   const [virusGenome, setVirusGenome] = useState("flu");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  const [readFiles, setReadFiles] = useState([
+  const [_readFiles, setReadFiles] = useState([
     { id: 1, name: "READ FILE 1" },
     { id: 2, name: "READ FILE 2" },
   ]);

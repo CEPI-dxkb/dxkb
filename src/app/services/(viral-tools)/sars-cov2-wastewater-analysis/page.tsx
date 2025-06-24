@@ -47,8 +47,8 @@ import {
 export default function WastewaterAnalysis() {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [primer, setPrimer] = useState<string>("artic");
-  const [outputFolder, setOutputFolder] = useState<string>("");
-  const [outputName, setOutputName] = useState<string>("");
+  const [_outputFolder, setOutputFolder] = useState<string>("");
+  const [_outputName, setOutputName] = useState<string>("");
   const [version, setVersion] = useState<string>(
     primerOptions.find((option) => option.id === primer)?.versions[0] ?? "",
   );

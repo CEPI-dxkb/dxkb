@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image";
@@ -82,8 +82,8 @@ const NewsCarousel = () => {
                       <a href={item.link} className="news-link">
                         <h4 className="font-bold">{item.title}</h4>
                       </a>
-                      <p className="text-sm text-gray-600 mb-2">{item.section}</p>
-                      <p className="text-sm text-gray-700 line-clamp-3">
+                      <p className="text-sm text-foreground mb-2">{item.section}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-3">
                         {item.description}
                       </p>
                     </div>

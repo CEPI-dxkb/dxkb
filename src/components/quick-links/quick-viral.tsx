@@ -8,11 +8,10 @@ import SequenceIcon from '../../../public/icons/sequence.svg';
 import GenomeIcon from '../../../public/icons/genome.svg';
 import PartialSeqIcon from '../../../public/icons/pipeline.svg';
 import { TbCube3dSphere } from "react-icons/tb";
-import Image from 'next/image';
 
 const QuickViralLinks = () => {
   return (
-    <section className="py-12 bg-background-50">
+    <section className="py-12 bg-background">
       <div className="container mx-auto px-4">
         <h2 className="text-2xl font-bold mb-8 text-center">Quick Access to Viral Data</h2>
 
@@ -26,24 +25,27 @@ const QuickViralLinks = () => {
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    <Image src={GenomeIcon} alt="Genome" width={16} height={16} style={{ color: '#BBBBBB' }} />
+                    {/* <Image src={GenomeIcon} alt="Genome" width={16} height={16} className="fill-accent"/> */}
+                    <GenomeIcon className="w-4 h-4" />
                     <span>Complete Genomes</span>
                   </div>
-                  <Badge className="bg-accent-def text-black">24,891</Badge>
+                  <Badge className="bg-accent text-foreground">24,891</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    <Image src={PartialSeqIcon} alt="Partial Sequence" width={16} height={16} />
+                    {/* <Image src={PartialSeqIcon} alt="Partial Sequence" width={16} height={16} /> */}
+                    <PartialSeqIcon className="w-4 h-4" />
                     <span>Partial Sequences</span>
                   </div>
-                  <Badge className="bg-accent-def text-black">103,457</Badge>
+                  <Badge className="bg-accent text-foreground">103,457</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    <Image src={SequenceIcon} alt="Sequence" width={16} height={16} />
+                    {/* <Image src={SequenceIcon} alt="Sequence" width={16} height={16} /> */}
+                    <SequenceIcon className="w-4 h-4" />
                     <span>Reference Sequences</span>
                   </div>
-                  <Badge className="bg-accent-def text-black">1,204</Badge>
+                  <Badge className="bg-accent text-foreground">1,204</Badge>
                 </li>
               </ul>
               <Button variant="outline" className="w-full mt-4">
@@ -61,24 +63,26 @@ const QuickViralLinks = () => {
               <ul className="space-y-2 text-sm">
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    <Image src={ProteinIcon} alt="Protein" width={16} height={16} />
+                    {/* <Image src={ProteinIcon} alt="Protein" width={16} height={16} /> */}
+                    <ProteinIcon className="w-4 h-4" />
                     <span>Structural Proteins</span>
                   </div>
-                  <Badge className="bg-accent-def">18,742</Badge>
+                  <Badge className="bg-accent text-foreground">18,742</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    <Image src={EnzymeIcon} alt="Enzyme" width={16} height={16} />
+                    {/* <Image src={EnzymeIcon} alt="Enzyme" width={16} height={16} /> */}
+                    <EnzymeIcon className="w-4 h-4" />
                     <span>Enzymes</span>
                   </div>
-                  <Badge className="bg-accent-def">31,205</Badge>
+                  <Badge className="bg-accent text-foreground">31,205</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
                     <TbCube3dSphere className="justify-start" />
                     <span>3D Structures</span>
                   </div>
-                  <Badge className="bg-accent-def justify-end">5,891</Badge>
+                  <Badge className="bg-accent text-foreground [data-theme='dxkb-dark']:text-black">5,891</Badge>
                 </li>
               </ul>
               <Button variant="outline" className="w-full mt-4">
@@ -105,7 +109,6 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="stroke-accent-600"
                   >
                     <path d="M2 12h20" />
                     <path d="M2 12v8a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1v-8" />
@@ -126,7 +129,6 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="stroke-accent-600"
                   >
                     <path d="M3 3v18h18" />
                     <path d="m19 9-5 5-4-4-3 3" />
@@ -144,7 +146,6 @@ const QuickViralLinks = () => {
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="stroke-accent-600"
                   >
                     <circle cx="12" cy="12" r="10" />
                     <path d="m4.93 4.93 4.24 4.24" />

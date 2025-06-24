@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { CitationNav } from "../components/citation-nav"
 import { citations as citationsData } from "../data/citations"
-import "@/styles/citations.css"
 
 export default function CitationsTimelinePage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -114,7 +113,7 @@ export default function CitationsTimelinePage() {
               <div key={year} className="relative">
                 <div className="sticky top-0 z-10 bg-background py-3">
                   <div className="flex items-center">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-def text-primary-foreground">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Calendar className="h-5 w-5" />
                     </div>
                     <h2 className="ml-4 text-xl font-semibold">{year}</h2>
@@ -126,7 +125,7 @@ export default function CitationsTimelinePage() {
                 <div className="mt-6 space-y-6 pl-14">
                   {citationsByYear[year].map((citation) => (
                     <div key={citation.id} className="relative">
-                      <div className="absolute -left-9 mt-1 h-4 w-4 rounded-full border-2 border-primary-def bg-background"></div>
+                      <div className="absolute -left-9 mt-1 h-4 w-4 rounded-full border-2 border-primary bg-background"></div>
                       <Card>
                         <CardContent className="p-6">
                           <div className="citation-card">

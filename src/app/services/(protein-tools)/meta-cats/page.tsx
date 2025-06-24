@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -62,16 +61,16 @@ export default function MetaCATSPage() {
       genomeId: string;
     }>
   >([]);
-  const [selectedRows, setSelectedRows] = useState<string[]>([]);
+  // const [_selectedRows, setSelectedRows] = useState<string[]>([]);
   const [selectedFeatureGroups, setSelectedFeatureGroups] = useState<
     Array<{
       id: string;
       name: string;
     }>
   >([]);
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
-  const [selectedAutoGroupingFiles, setSelectedAutoGroupingFiles] = useState<
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
+  const [_selectedAutoGroupingFiles, setSelectedAutoGroupingFiles] = useState<
     string[]
   >([]);
   const [autoGroupingFeatureGroup, setAutoGroupingFeatureGroup] = useState("");

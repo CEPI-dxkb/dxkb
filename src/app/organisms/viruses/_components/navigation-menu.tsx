@@ -85,7 +85,7 @@ export function NavigationMenu({
       className={`
         overflow-hidden
         transition-[width] duration-300 ease-in-out
-        border border-gray-200 bg-background-500 rounded-r-lg
+        border border-gray-200 bg-background rounded-r-lg
         ${navCollapsed ? "w-[4.5rem]" : "w-64"}
       `}
     >

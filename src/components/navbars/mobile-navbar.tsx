@@ -1,6 +1,5 @@
 import { Button } from "@/components/buttons/button";
 import { LuMenu } from "react-icons/lu";
-import Image from "next/image";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RxAvatar } from "react-icons/rx";
 import {
@@ -10,24 +9,21 @@ import {
 } from "./navbar-links";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import Link from "next/link";
+import Logo from "@/components/ui/logo";
 
 const MobileNavbar = () => {
   return (
-    <header className="bg-primary-def flex items-center justify-between px-4 py-4 text-white md:hidden">
+    <header className="bg-primary flex items-center justify-between px-4 py-4 text-foreground md:hidden">
       <div className="flex items-center gap-4">
         <Sheet>
           <SheetTrigger asChild className="group hover:bg-gray-300/50">
             <Button variant="ghost">
-              <LuMenu className="scale-125 text-gray-300 transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
+              <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
             </Button>
           </SheetTrigger>
           <SheetContent
@@ -35,10 +31,9 @@ const MobileNavbar = () => {
             className="w-[85vw] max-w-md overflow-y-auto p-0"
           >
             <SheetTitle className="sr-only">Mobile Navigation Menu</SheetTitle>
-            <div id="sheet-logo" className="bg-primary-def flex w-full p-4">
-              <Image
-                src="/logos/dxkb-logo-white-cropped.svg"
-                alt="DXKB Logo"
+            <div id="sheet-logo" className="bg-primary flex w-full p-4">
+              <Logo
+                variant="logo-white"
                 width={100}
                 height={40}
                 className="h-8 w-auto"
@@ -46,7 +41,7 @@ const MobileNavbar = () => {
               />
             </div>
 
-            <div className="flex flex-col divide-y divide-gray-100">
+            <div className="flex flex-col divide-y divide-muted-foreground">
               {/* Getting Started Section */}
               <div className="p-3">
                 <h2 className="mobile-nav-section-header">Getting Started</h2>
@@ -108,9 +103,8 @@ const MobileNavbar = () => {
         </Sheet>
 
         <Link id="dxkb-logo" href="/">
-          <Image
-            src="/logos/dxkb-logo-orange.svg"
-            alt="DXKB Logo"
+          <Logo
+            variant="logo-icon"
             width={100}
             height={40}
             className="h-10 w-auto"

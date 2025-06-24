@@ -48,14 +48,14 @@ import {
 } from "@/lib/service-info";
 
 export default function GenomeAnalysis() {
-  const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [outputFolder, setOutputFolder] = useState<string>("");
-  const [outputName, setOutputName] = useState<string>("");
+  const [_selectedFiles, setSelectedFiles] = useState<string[]>([]);
+  const [_outputFolder, setOutputFolder] = useState<string>("");
+  const [_outputName, setOutputName] = useState<string>("");
   const [analysisInput, setAnalysisInput] = useState<string>("read-file");
-  const [strategy, setStrategy] = useState<string>("one-codex");
+  const [_strategy, setStrategy] = useState<string>("one-codex");
   const [primer, setPrimer] = useState<string>("artic");
-  const [taxonomyName, setTaxonomyName] = useState<string>("sars");
-  const [contigsFolder, setContigsFolder] = useState<string>("");
+  const [_taxonomyName, setTaxonomyName] = useState<string>("sars");
+  const [_contigsFolder, setContigsFolder] = useState<string>("");
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [prlPlatform, setPrlPlatform] = useState<string>("");
   const [srlPlatform, setSrlPlatform] = useState<string>("");

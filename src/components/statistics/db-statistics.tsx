@@ -2,7 +2,7 @@ import React from 'react'
 
 const DBStatistics = () => {
   return (
-    <section className="py-12 bg-secondary-def text-white">
+    <section className="py-12 bg-secondary text-white">
       <div className="container mx-auto px-4">
         <h2 className="text-2xl font-bold mb-8 text-center">Database Statistics</h2>
 

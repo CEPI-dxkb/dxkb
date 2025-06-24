@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const HelpFAQs = () => {
   return (
-    <section className="py-12 bg-background-500">
+    <section className="py-12 bg-background">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
 
@@ -32,7 +32,7 @@ const HelpFAQs = () => {
                   <AccordionContent>
                     The VirusDB database is updated on a weekly basis with new viral sequences, protein structures, and
                     research findings. Major updates, including new features and tools, are typically released
-                    quarterly. All updates are documented in our "Database Updates" section, accessible from the
+                    quarterly. All updates are documented in our &quot;Database Updates&quot; section, accessible from the
                     homepage.
                   </AccordionContent>
                 </AccordionItem>
@@ -49,9 +49,9 @@ const HelpFAQs = () => {
                 <AccordionItem value="item-4">
                   <AccordionTrigger>How do I cite VirusDB in my research?</AccordionTrigger>
                   <AccordionContent>
-                    To cite VirusDB in your research, please use the following format: "Smith J, et al. (2023) VirusDB:
+                    To cite VirusDB in your research, please use the following format: &quot;Smith J, et al. (2023) VirusDB:
                     A comprehensive database for viral genomic and proteomic research. Journal of Molecular Biology,
-                    45(2), 112-118." Alternatively, you can use the "Cite" button available on each data page to
+                    45(2), 112-118.&quot; Alternatively, you can use the &quot;Cite&quot; button available on each data page to
                     generate a citation in your preferred format.
                   </AccordionContent>
                 </AccordionItem>
@@ -94,9 +94,9 @@ const HelpFAQs = () => {
                 <AccordionItem value="item-4">
                   <AccordionTrigger>How do I report technical issues or bugs?</AccordionTrigger>
                   <AccordionContent>
-                    Technical issues or bugs can be reported through our issue tracker accessible from the "Support"
+                    Technical issues or bugs can be reported through our issue tracker accessible from the &quot;Support&quot;
                     section. Please provide detailed information about the problem, including steps to reproduce it, the
-                    browser and operating system you're using, and any error messages displayed. Screenshots or screen
+                    browser and operating system you&apos;re using, and any error messages displayed. Screenshots or screen
                     recordings are also helpful for our technical team to diagnose and resolve the issue efficiently.
                   </AccordionContent>
                 </AccordionItem>
@@ -108,10 +108,10 @@ const HelpFAQs = () => {
                 <AccordionItem value="item-1">
                   <AccordionTrigger>How do I create a VirusDB account?</AccordionTrigger>
                   <AccordionContent>
-                    To create a VirusDB account, click on the "Register" button in the top-right corner of the homepage.
+                    To create a VirusDB account, click on the &quot;Register&quot; button in the top-right corner of the homepage.
                     Fill out the registration form with your professional email address (academic or institutional
                     emails are preferred), create a secure password, and provide your name and affiliation. After
-                    submitting the form, you'll receive a verification email to activate your account.
+                    submitting the form, you&apos;ll receive a verification email to activate your account.
                   </AccordionContent>
                 </AccordionItem>
 
@@ -128,9 +128,9 @@ const HelpFAQs = () => {
                 <AccordionItem value="item-3">
                   <AccordionTrigger>How do I reset my password?</AccordionTrigger>
                   <AccordionContent>
-                    To reset your password, click on the "Sign In" button, then select "Forgot Password" below the login
-                    form. Enter the email address associated with your account, and you'll receive a password reset
-                    link. This link is valid for 24 hours. If you don't receive the email, check your spam folder or
+                    To reset your password, click on the &quot;Sign In&quot; button, then select &quot;Forgot Password&quot; below the login
+                    form. Enter the email address associated with your account, and you&apos;ll receive a password reset
+                    link. This link is valid for 24 hours. If you don&apos;t receive the email, check your spam folder or
                     contact support for assistance.
                   </AccordionContent>
                 </AccordionItem>
@@ -138,10 +138,10 @@ const HelpFAQs = () => {
                 <AccordionItem value="item-4">
                   <AccordionTrigger>How can I update my profile information?</AccordionTrigger>
                   <AccordionContent>
-                    To update your profile information, sign in to your account and navigate to "Account Settings" from
+                    To update your profile information, sign in to your account and navigate to &quot;Account Settings&quot; from
                     the dropdown menu in the top-right corner. From there, you can edit your personal information,
                     change your password, update your institutional affiliation, and manage your notification
-                    preferences. Remember to click "Save Changes" after making any updates to your profile.
+                    preferences. Remember to click &quot;Save Changes&quot; after making any updates to your profile.
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>

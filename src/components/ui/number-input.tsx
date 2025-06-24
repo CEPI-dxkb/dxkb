@@ -221,3 +221,5 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     );
   },
 );
+
+NumberInput.displayName = "NumberInput";

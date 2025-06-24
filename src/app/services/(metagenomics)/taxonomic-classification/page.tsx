@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -53,8 +52,8 @@ import {
 const TaxonomicClassificationService = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [sequencingType, setSequencingType] = useState("wgs");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   const [selectedDatabase, setSelectedDatabase] = useState(
     sequencingType === "wgs" ? "bvbrc" : "silva",
   );

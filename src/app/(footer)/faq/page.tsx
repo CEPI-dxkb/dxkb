@@ -1,6 +1,5 @@
 import FooterHeader from '@/components/headers/footer-header'
 import React from 'react'
-import { ChevronDown } from 'lucide-react'
 import {
   Accordion,
   AccordionContent,
@@ -62,17 +61,19 @@ const FAQ = () => {
           <div key={section} className="section-content">
             <h2 className="section-content-header">{section}</h2>
             <div className="section-content-body">
-              <Accordion type="single" collapsible className="space-y-4">
+              <Accordion
+                type="single"
+                collapsible
+                className="space-y-4"
+              >
                 {questions.map((faq, index) => (
                   <AccordionItem
                     key={index}
                     value={`${section}-${index}`}
                     className="faq-item"
                   >
-                    <AccordionTrigger className="faq-item-header">
-                      <h3 className="faq-item-title">{faq.question}</h3>
-                    </AccordionTrigger>
-                    <AccordionContent className="faq-item-content">
+                    <AccordionTrigger className="faq-item-header">{faq.question}</AccordionTrigger>
+                    <AccordionContent className="AccordionContent faq-item-content">
                       {faq.answer}
                     </AccordionContent>
                   </AccordionItem>

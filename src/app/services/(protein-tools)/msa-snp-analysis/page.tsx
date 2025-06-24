@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -40,11 +39,11 @@ import {
 export default function MSAandSNPAnalysisPage() {
   const [alignmentType, setAlignmentType] = useState("unaligned");
   const [sequenceType, setSequenceType] = useState("feature-group");
-  const [featureGroupType, setFeatureGroupType] = useState("protein");
+  const [_featureGroupType, setFeatureGroupType] = useState("protein");
   const [refSeqType, setRefSeqType] = useState("none");
   const [showStrategy, setShowStrategy] = useState(false);
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
   // TODO: There is probably a better way to do all this conditional rendering.
   return (
     <section>

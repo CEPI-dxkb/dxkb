@@ -1,5 +1,4 @@
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   FaGithub,
@@ -9,6 +8,8 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import { Button } from "@/components/buttons/button";
+import Logo from "@/components/ui/logo";
+import ThemeContent from "@/components/ui/theme-content";
 
 interface FooterLink {
   name: string;
@@ -66,12 +67,12 @@ const footerLinks: FooterSection[] = [
 
 const Footer = () => {
   return (
-    <footer className="bg-primary-def rounded-t-xl py-8 text-white">
+    <footer className="bg-primary rounded-t-xl py-8 text-white">
       <div className="mx-auto w-full px-12">
-        <div className="grid gap-8 md:grid-cols-[25%_75%]">
+        <div className="grid gap-8 md:grid-cols-[40%_60%]">
           <div id="website-info" className="order-2 flex flex-col md:order-1">
-            <Image
-              src="/logos/dxkb-text-white.svg"
+            <Logo
+              variant="logo-text-white"
               alt="DXKB Logo"
               width={100}
               height={32}
@@ -79,17 +80,16 @@ const Footer = () => {
               priority
             />
             <span className="mt-5 text-xl font-semibold">
-              A CEPI Initiative.
+              <ThemeContent type="funding-title" as="span" />
             </span>
             <span className="mt-1 text-sm text-white/80">
-              This project is funded in whole or in parts with Federal funds
-              using grants awarded to the University of Chicago.
+              <ThemeContent type="funding-statement" as="span" />
             </span>
             <div className="gap-auto mt-4 flex lg:gap-4">
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
+                className="icon-link"
                 asChild
               >
                 <Link href="https://twitter.com" target="_blank">
@@ -100,7 +100,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
+                className="icon-link"
                 asChild
               >
                 <Link href="https://facebook.com" target="_blank">
@@ -111,7 +111,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
+                className="icon-link"
                 asChild
               >
                 <Link href="https://instagram.com" target="_blank">
@@ -122,7 +122,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
+                className="icon-link"
                 asChild
               >
                 <Link href="https://github.com" target="_blank">
@@ -133,7 +133,7 @@ const Footer = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:text-secondary-500 hover:bg-secondary-100 h-8 w-8"
+                className="icon-link"
                 asChild
               >
                 <Link href="https://youtube.com" target="_blank">
@@ -149,10 +149,9 @@ const Footer = () => {
           >
             {footerLinks.map((section) => (
               <div key={section.title}>
-                <h4 className="text-secondary-def mb-4 font-bold">
+                <h4 className="footer-header">
                   <Link
                     href={section.titleUrl}
-                    className="hover:underline hover:text-secondary-500"
                     {...(isExternalUrl(section.titleUrl) && {
                       target: "_blank",
                     })}
@@ -160,12 +159,12 @@ const Footer = () => {
                     {section.title}
                   </Link>
                 </h4>
-                <ul className="space-y-2">
+                <ul className="space-y-4 md:space-y-6 mb-2">
                   {section.links.map((link) => (
                     <li key={link.name}>
                       <Link
                         href={link.url}
-                        className="hover:underline"
+                        className="footer-link"
                         {...(isExternalUrl(link.url) && { target: "_blank" })}
                       >
                         {link.name}

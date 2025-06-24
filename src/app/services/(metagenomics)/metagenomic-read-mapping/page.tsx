@@ -7,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,9 +48,9 @@ import OutputFolder from "@/components/services/output-folder";
 const MetagenomicReadMappingService = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [geneSetType, setGeneSetType] = useState("predefined-list");
-  const [geneSetName, setGeneSetName] = useState("card");
-  const [outputFolder, setOutputFolder] = useState("");
-  const [outputName, setOutputName] = useState("");
+  // const [_geneSetName, setGeneSetName] = useState("card");
+  const [_outputFolder, setOutputFolder] = useState("");
+  const [_outputName, setOutputName] = useState("");
 
   return (
     <section>

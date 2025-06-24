@@ -195,27 +195,6 @@ const Updates = () => {
                   className="w-full"
                   modifiers={modifiers}
                   modifiersStyles={modifiersStyles}
-                  // defaultMonth={new Date(2025, 3)}
-                  classNames={{
-                    // day_selected: "!rounded-md !bg-accent !text-black",
-                    // day_today: "bg-secondary-100 text-secondary-foreground",
-                    // months: "space-y-4",
-                    // month: "space-y-4",
-                    // caption: "flex justify-center pt-1 relative items-center",
-                    // caption_label: "text-sm font-medium",
-                    // nav: "space-x-1 flex items-center",
-                    // nav_button: cn(
-                    //   "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute",
-                    // ),
-                    // nav_button_previous: "left-1",
-                    // nav_button_next: "right-1",
-                    // table: "w-full border-collapse space-y-1",
-                    // head_row: "flex w-full justify-between",
-                    // head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] text-center",
-                    // row: "flex w-full justify-between mt-2",
-                    // day_selected: "[&:has(>.hasEvent)]:bg-red-100",
-                    // day: "h-9 w-9 p-0 font-normal text-center",
-                  }}
                 />
               </div>
             </Card>
@@ -231,12 +210,12 @@ const Updates = () => {
                     onClick={() => setDate(getEventDate(event.date))}
                     className={cn(
                       "flex items-start gap-4 border-t px-4 py-3 transition-colors cursor-pointer",
-                      isSelectedDateEvent(event.date) ? "bg-secondary-200" : "hover:bg-secondary-100"
+                      isSelectedDateEvent(event.date) ? "bg-secondary/40" : "hover:bg-secondary/20"
                     )}
                   >
                     <div className={cn(
                       "flex flex-col items-center rounded-lg px-2 py-1",
-                      isSelectedDateEvent(event.date) ? "bg-secondary" : "bg-secondary-200"
+                      isSelectedDateEvent(event.date) ? "bg-secondary" : "bg-secondary/40"
                     )}>
                       <span className="text-xs font-medium">{event.date.month}</span>
                       <span className="text-lg font-bold leading-none">
@@ -245,7 +224,7 @@ const Updates = () => {
                     </div>
                     <div>
                       <h3 className="font-medium leading-none">{event.title}</h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-foreground">
                         {event.description}
                       </p>
                     </div>
@@ -261,7 +240,7 @@ const Updates = () => {
               {timelineData.map((item) => (
                 <TimelineItem key={item.id}>
                   <TimelineHeader>
-                    <TimelineTime className="bg-primary-def">{item.time}</TimelineTime>
+                    <TimelineTime className="bg-primary">{item.time}</TimelineTime>
                     <TimelineTitle>{item.title}</TimelineTitle>
                   </TimelineHeader>
                   {item.description && (

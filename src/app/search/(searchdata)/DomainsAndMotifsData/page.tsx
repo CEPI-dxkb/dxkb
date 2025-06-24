@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { useSearchParams } from "next/navigation";
 import { DataTable } from '@/components/containers/DataTable';
 import { SortingState } from '@tanstack/react-table';
-import { genomeFields } from '@/constants/datafields/genomes';
+import { domainsandmotifsFields } from '@/constants/datafields/domainsandmotifs';
 import { useQuery } from '@tanstack/react-query';
 
-export function GenomeData() {
-  const genomeColumns = Object.values(genomeFields).map(obj => ({
+export function DomainsAndMotifData() {
+  const domainsandmotifsColumns = Object.values(domainsandmotifsFields).map(obj => ({
     id: obj.field,
     label: obj.label,
     visible: !obj.hidden,
@@ -16,14 +16,14 @@ export function GenomeData() {
 
   const widget = {
     id: 'widget-1',
-    columns: genomeColumns,
+    columns: domainsandmotifsColumns,
   };
 
   const searchParams = useSearchParams();
   const q = searchParams.get('q');
   const cleanQ = q?.split('#')[0] ?? '';
   const DataAPI = process.env.NEXT_PUBLIC_DATA_API!;
-  const baseURL = `${DataAPI}/genome/?${cleanQ}`;
+  const baseURL = `${DataAPI}/protein_feature/?${cleanQ}`;
   const pageSize = 200;
 
   const [sorting, setSorting] = useState<SortingState>([]);

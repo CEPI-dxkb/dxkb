@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TailwindIndicator } from "@/components/ui/tailwind-indicator";
 import { Toaster } from "sonner";
+import { Providers } from './providers' // adjust the path as needed
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,9 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body>
+        <Providers>
         {children}
         <Toaster richColors position="top-right" />
         <TailwindIndicator />
+        </Providers>
       </body>
     </html>
   );

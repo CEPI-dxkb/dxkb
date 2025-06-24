@@ -64,40 +64,40 @@ export default function GlobalSearch () {
                router.push('/search?q=' + query );
                break;
              case 'genome_feature':
-               router.push('/FeatureList?q=' + q + '#view_tab=features&defaultSort=-score' );
+               router.push('/search/FeatureList?q=' + q + '#view_tab=features&defaultSort=-score' );
                break;
              case 'protein':
-               router.push('/ProteinList?q=' + q + '#view_tab=proteins&defaultSort=-score' );
+               router.push('/search/ProteinList?q=' + q + '#view_tab=proteins&defaultSort=-score' );
                break;
              case 'genome_sequence':
-               router.push('/SequenceList?q=' + q );
+               router.push('/search/SequenceList?q=' + q );
                break;
              case 'strain':
-               router.push('/StrainList?q=' + q );
+               router.push('/search/StrainList?q=' + q );
                break;
              case 'genome':
-               router.push('/search/GenomeList?q=' + q + '#view_tab=genomes&defaultSort=-score' );
+               router.push('/search/search/GenomeList?q=' + q + '#view_tab=genomes&defaultSort=-score' );
                break;
              case 'protein_feature':
-               router.push('/ProteinFeaturesList?q=' + q );
+               router.push('/search/ProteinFeaturesList?q=' + q );
                break;
              case 'protein_structure':
-               router.push('/ProteinStructureList?q=' + q );
+               router.push('/search/ProteinStructureList?q=' + q );
                break;
              case 'surveillance':
-               router.push('/SurveillanceList?q=' + q );
+               router.push('/search/SurveillanceList?q=' + q );
                break;
              case 'serology':
-               router.push('/SerologyList?q=' + q );
+               router.push('/search/SerologyList?q=' + q );
                break;
              case 'experiment':
-               router.push('/ExperimentList?q=' + q );
+               router.push('/search/ExperimentList?q=' + q );
                break;
              case 'taxonomy':
-               router.push('/TaxonList?q=' + q );
+               router.push('/search/TaxonList?q=' + q );
                break;
              case 'epitope':
-               router.push('/EpitopeList?q=' + q );
+               router.push('/search/EpitopeList?q=' + q );
                break;
              default:
                console.log('Do Search: ', searchtype, query);

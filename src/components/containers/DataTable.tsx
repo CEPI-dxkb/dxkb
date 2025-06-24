@@ -58,36 +58,6 @@ export function DataTable({ id, data, columns }: DataTableProps) {
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  const [availableHeight, setAvailableHeight] = useState<number | null>(null);
-
-  useLayoutEffect(() => {
-    const measure = () => {
-      const controlsHeight = controlsRef.current?.offsetHeight || 0;
-      const footerHeight = footerRef.current?.offsetHeight || 0;
-      const viewportHeight = window.innerHeight;
-      const padding = 32;
-      setAvailableHeight(viewportHeight - controlsHeight - footerHeight - padding);
-    };
-  
-    measure();
-  
-    const roControls = new ResizeObserver(measure);
-    const roFooter = new ResizeObserver(measure);
-    if (controlsRef.current) roControls.observe(controlsRef.current);
-    if (footerRef.current) roFooter.observe(footerRef.current);
-    window.addEventListener('resize', measure);
-  
-    return () => {
-      roControls.disconnect();
-      roFooter.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [
-    data.length,                        // when rows load
-    pagination.pageIndex,              // when page changes
-    pagination.pageSize,               // when page size changes
-    columnVisibility,                  // when columns show/hide
-  ]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -113,7 +83,6 @@ export function DataTable({ id, data, columns }: DataTableProps) {
       const controlsHeight = controlsRef.current?.offsetHeight || 0;
       const footerHeight = footerRef.current?.offsetHeight || 0;
       const viewportHeight = window.innerHeight;
-      setAvailableHeight(viewportHeight - controlsHeight - footerHeight - 32); // add some extra padding
     };
   
     // Delay measurement slightly to allow layout to settle
@@ -172,7 +141,22 @@ export function DataTable({ id, data, columns }: DataTableProps) {
         size: 200,
         enableResizing: true,
         enableSorting: true,
-      })),
+        sortingFn: (rowA, rowB, columnId) => {
+          const a = rowA.getValue(columnId);
+          const b = rowB.getValue(columnId);
+      
+          // Treat empty/undefined/null as "last"
+          const aIsEmpty = a === undefined || a === null || a === '';
+          const bIsEmpty = b === undefined || b === null || b === '';
+      
+          if (aIsEmpty && bIsEmpty) return 0;
+          if (aIsEmpty) return 1;
+          if (bIsEmpty) return -1;
+      
+          // Normal string/number compare
+          return a > b ? 1 : a < b ? -1 : 0;
+        },
+      }))
     ];
   }, [columns]);
 
@@ -217,6 +201,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
     getPaginationRowModel: getPaginationRowModel(),
     onRowSelectionChange: setRowSelection,
     enableRowSelection: true,
+    enableSortingRemoval: false,
   });
 
   const columnSizeVars = useMemo(() => {
@@ -308,7 +293,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
   };
       
   return (
-    <div className="flex flex-col px-0 pt-4 text-xs relative items-center">
+    <div className="flex flex-col h-full w-full text-xs relative items-center">
       <div className="w-[100%] flex justify-end mb-2 z-50" ref={controlsRef}>
           <div className="relative inline-block text-left" ref={columnMenuRef}>
             <button
@@ -371,19 +356,17 @@ export function DataTable({ id, data, columns }: DataTableProps) {
             </>
           )}
       </div>
-      <div className="w-[100%] flex flex-col border border-gray-500 rounded relative"
-            style={{ height: availableHeight ? `${availableHeight}px` : 'auto' }}
-            >
-        <div
-          className="flex-1 overflow-auto relative"
-          ref={tableContainerRef}
-          style={{
-            height: '100%',
-            paddingBottom: '52px', // Push scrollbar above footer
-          }}
-        >
-          <div className="min-w-max relative" style={columnSizeVars}>
-            <Table className="w-full table-auto text-xs border-collapse" style={{ borderSpacing: 0 }}>
+      <div className="w-full flex flex-col border border-gray-500 rounded relative h-full overflow-hidden">
+      <div
+        className="flex-1 overflow-auto relative"
+        ref={tableContainerRef}
+        style={{
+          maxHeight: '100%',
+          paddingBottom: '52px', // leave room for footer
+        }}
+      >
+        <div className="min-w-max relative" style={columnSizeVars}>
+          <Table className="w-full table-auto text-xs border-collapse" style={{ borderSpacing: 0 }}>
             <TableHeader
               ref={headerRef}
               className="sticky top-0 z-30 bg-gray-500 text-gray-800 uppercase border-black"
@@ -397,7 +380,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                           key={header.id}
                           colSpan={header.colSpan}
                           className={clsx(
-                            'border-r border-l border-black bg-gray-300',
+                            'border-r border-l border-black bg-gray-300 relative',
                             column.id === '__select__'
                               ? 'p-0 flex justify-center items-center' // ✅ center checkbox
                               : 'px-2 py-0 text-sm font-bold leading-none align-middle'
@@ -421,7 +404,13 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                             const draggedColumnId = e.dataTransfer.getData('text/plain');
                             const targetColumnId = column.id;
 
-                            if (draggedColumnId && draggedColumnId !== targetColumnId) {
+                            if (
+                              draggedColumnId &&
+                              draggedColumnId !== targetColumnId &&
+                              draggedColumnId !== '__select__' &&
+                              targetColumnId !== '__select__'
+                            ) {
+                            
                               const newOrder = [...table.getState().columnOrder];
                               const fromIndex = newOrder.indexOf(draggedColumnId);
                               const toIndex = newOrder.indexOf(targetColumnId);
@@ -442,13 +431,13 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                               asc: ' ↑',
                               desc: ' ↓',
                             }[column.getIsSorted() as string] ?? ''}
-                            {column.getCanResize() && (
-                              <div
-                                onMouseDown={(e) => handleResizeStart(e, header)}
-                                className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-30 hover:bg-blue-300"
-                                style={{ transform: 'translateX(50%)' }}
-                              />
-                            )}
+                              {column.getCanResize() && (
+                                <div
+                                  onMouseDown={(e) => handleResizeStart(e, header)}
+                                  className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-30 hover:bg-blue-300"
+                                  style={{ transform: 'translateX(50%)' }}
+                                />
+                              )}
                           </div>
                         </TableHead>
                       );

@@ -137,7 +137,14 @@ export function DataTable({ id, data, columns }: DataTableProps) {
       ...columns.map((col) => ({
         accessorKey: col.id,
         header: col.label,
-        cell: (info) => info.getValue(),
+        cell: (info) => {
+          const value = info.getValue();
+          if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+            const date = new Date(value);
+            return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+          }
+          return value;
+        },
         size: 200,
         enableResizing: true,
         enableSorting: true,
@@ -311,7 +318,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                     .map((column) => (
                       <label
                         key={column.id}
-                        className="flex items-center space-x-2 px-2 py-1 hover:bg-gray-100 cursor-pointer"
+                        className="flex items-center space-x-2 px-2 py-1 hover:bg-muted-foreground cursor-pointer text-black"
                       >
                         <input
                           type="checkbox"
@@ -369,7 +376,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
           <Table className="w-full table-auto text-xs border-collapse" style={{ borderSpacing: 0 }}>
             <TableHeader
               ref={headerRef}
-              className="sticky top-0 z-30 bg-gray-500 text-gray-800 uppercase border-black"
+              className="sticky top-0 z-30 bg-primary text-secondary uppercase border-black"
             >
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="flex border-t border-b border-black">
@@ -380,7 +387,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                           key={header.id}
                           colSpan={header.colSpan}
                           className={clsx(
-                            'border-r border-l border-black bg-gray-300 relative',
+                            'border-r border-l border-black bg-primary text-secondary relative',
                             column.id === '__select__'
                               ? 'p-0 flex justify-center items-center' // ✅ center checkbox
                               : 'px-2 py-0 text-sm font-bold leading-none align-middle'
@@ -453,7 +460,18 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                 }}
                 className="relative z-10 border-collapse gap-0"
               >
-                {virtualRows.map((virtualRow) => {
+                {rows.length === 0 ? (
+                <TableRow className="flex w-full h-24 items-center justify-center">
+                  <TableCell
+                    colSpan={table.getVisibleLeafColumns().length}
+                    className="text-center w-full border-t border-black py-8 text-xl font-semibold text-foreground"
+                    style={{ justifyContent: 'center' }}
+                  >
+                    No results
+                  </TableCell>
+                </TableRow>
+              ) : (
+                virtualRows.map((virtualRow) => {
                   const row = rows[virtualRow.index];
                   return (
                     <TableRow
@@ -468,15 +486,15 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                       }}
                       className={clsx(
                         row.getIsSelected()
-                          ? 'bg-yellow-100 hover:bg-yellow-100' // lock in yellow background
-                          : 'hover:bg-yellow-100' // only apply white hover if not selected
+                          ? 'bg-muted-foreground hover:bg-muted-foreground' // lock in yellow background
+                          : 'hover:bg-muted-foreground' // only apply white hover if not selected
                       )}
                       
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell
                           key={cell.id}
-                          className='py-1'
+                          className='py-1 border border-primary'
                           style={{
                             width: `var(--col-${cell.column.id}-size)`,
                             minWidth: `var(--col-${cell.column.id}-size)`,
@@ -485,7 +503,6 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: 'flex',
-                            border: '1px solid #000000',
                             height: '24px',
                             alignItems: 'center',
                             justifyContent: cell.column.id === '__select__' ? 'center' : 'flex-start',                          
@@ -496,7 +513,8 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                       ))}
                     </TableRow>
                   );
-                })}
+                })
+              )}
               </TableBody>
             </Table>
 
@@ -509,7 +527,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
         </div>
 
         {/* Pagination Footer */}
-        <div className="bg-white py-3 border-t z-10 shadow-sm border-black w-full"ref={footerRef}>
+        <div className="bg-secondary py-3 border-t z-10 shadow-sm border-black w-full"ref={footerRef}>
           <div className="flex flex-col md:flex-row justify-between items-center px-4 space-y-2 md:space-y-0">
             <div>
               {(() => {
@@ -525,7 +543,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
               <button
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
-                className="px-2 py-1 border rounded disabled:opacity-50"
+                className="px-2 py-1 border border-primary disabled:opacity-50"
               >
                 {'<'}
               </button>
@@ -550,8 +568,8 @@ export function DataTable({ id, data, columns }: DataTableProps) {
                       <button
                         onClick={() => table.setPageIndex(page)}
                         className={clsx(
-                          'px-3 py-1 rounded border mx-1',
-                          currentPage === page ? 'bg-gray-300 font-bold' : 'bg-white'
+                          'px-3 py-1 border mx-1 bg-background text-foreground',
+                          currentPage === page ? 'bg-muted-foreground font-bold' : 'bg-background'
                         )}
                       >
                         {page + 1}
@@ -563,7 +581,7 @@ export function DataTable({ id, data, columns }: DataTableProps) {
               <button
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
-                className="px-2 py-1 border rounded disabled:opacity-50"
+                className="px-2 py-1 border border-primary disabled:opacity-50"
               >
                 {'>'}
               </button>

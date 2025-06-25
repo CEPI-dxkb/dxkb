@@ -64,13 +64,13 @@ export default function GlobalSearch () {
               router.push('/search?q=' + query );
               break;
             case 'genome':
-              router.push('/search/search/GenomeList?q=' + q + '#view_tab=genomes&defaultSort=-score' );
+              router.push('/search/GenomeList?q=' + q  );
               break;
             case 'strain':
               router.push('/search/StrainList?q=' + q );
               break;
             case 'genome_feature':
-              router.push('/search/FeatureList?q=' + q + '#view_tab=features&defaultSort=-score' );
+              router.push('/search/FeatureList?q=' + q );
               break;
             case 'protein_feature':
               router.push('/search/DomainsAndMotifsList?q=' + q );

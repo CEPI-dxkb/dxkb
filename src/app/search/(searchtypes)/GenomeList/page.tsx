@@ -14,29 +14,29 @@ export default function Genomes() {
     const q = searchParams.get('q');
 
     return(
-        <Tabs defaultValue="genomes" className="w-[95%] ml-[10px] h-[85vh]">
-          <TabsList className="pb-0 mb-0">
+        <Tabs defaultValue="genomes" className="h-[85vh]">
+          <TabsList className="pb-0 mb-0 bg-background">
           <TabsTrigger 
               value="genomes" 
-              className="bg-primary text-white data-[state=active]:bg-secondary data-[state=active]:text-white mx-[2px]"
+              className="border-primary bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary hover:bg-secondary hover:text-primary mx-[2px]"
             >
               Genomes
             </TabsTrigger>
             <TabsTrigger 
               value="sequences" 
-              className="bg-primary text-white data-[state=active]:bg-secondary data-[state=active]:text-white mx-[2px]"
+              className="border-primary bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary hover:bg-secondary hover:text-primary mx-[2px]"
             >
               Sequences
             </TabsTrigger>
             <TabsTrigger 
               value="amrphenotypes" 
-              className="bg-primary text-white data-[state=active]:bg-secondary data-[state=active]:text-white mx-[2px]"
+              className="border-primary bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary hover:bg-secondary hover:text-primary mx-[2px]"
             >
               AMR Phenotypes
             </TabsTrigger>
             <TabsTrigger 
               value="features" 
-              className="mb-0 bg-primary text-white data-[state=active]:bg-secondary data-[state=active]:text-white mx-[2px]"
+              className="border-primary bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary hover:bg-secondary hover:text-primary mx-[2px]"
             >
               Features
             </TabsTrigger>

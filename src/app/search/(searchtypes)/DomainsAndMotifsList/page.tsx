@@ -11,11 +11,11 @@ export default function DomainsAndMotifs() {
     const q = searchParams.get('q');
 
     return(
-        <Tabs defaultValue="domainsandmotifs" className="w-[95%] ml-[10px] h-[85vh]">
+        <Tabs defaultValue="domainsandmotifs" className="h-[85vh]">
           <TabsList className="pb-0 mb-0">
             <TabsTrigger 
                 value="domainsandmotifs" 
-                className="bg-primary-800 text-white data-[state=active]:bg-secondary-800 data-[state=active]:text-white mx-[2px]"
+                className="border-primary bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary hover:bg-secondary hover:text-primary mx-[2px]"
                 >
                 Domains and Motifs
             </TabsTrigger>

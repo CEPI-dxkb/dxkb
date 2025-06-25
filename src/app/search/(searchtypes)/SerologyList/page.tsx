@@ -11,11 +11,11 @@ export default function Serology() {
     const q = searchParams.get('q');
 
     return(
-        <Tabs defaultValue="serology" className="w-[95%] ml-[10px] h-[85vh]">
+        <Tabs defaultValue="serology" className="h-[85vh]">
           <TabsList className="pb-0 mb-0">
             <TabsTrigger 
                 value="serology" 
-                className="bg-primary-800 text-white data-[state=active]:bg-secondary-800 data-[state=active]:text-white mx-[2px]"
+                className="bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary mx-[2px]"
                 >
                 Serology
             </TabsTrigger>

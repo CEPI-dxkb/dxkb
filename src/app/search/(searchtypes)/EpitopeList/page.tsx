@@ -11,11 +11,11 @@ export default function Epitopes() {
     const q = searchParams.get('q');
 
     return(
-        <Tabs defaultValue="epitopes" className="w-[95%] ml-[10px] h-[85vh]">
+        <Tabs defaultValue="epitopes" className="h-[85vh]">
           <TabsList className="pb-0 mb-0">
             <TabsTrigger 
                 value="epitopes" 
-                className="bg-primary-800 text-white data-[state=active]:bg-secondary-800 data-[state=active]:text-white mx-[2px]"
+                className="border-primary bg-primary text-secondary data-[state=active]:bg-secondary data-[state=active]:text-primary hover:bg-secondary hover:text-primary mx-[2px]"
                 >
                 Epitopes
             </TabsTrigger>

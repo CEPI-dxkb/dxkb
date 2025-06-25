@@ -24,8 +24,8 @@ const DesktopNavbar = () => {
   const { theme } = useTheme();
 
   return (
-    <header className="bg-primary hidden items-center justify-between px-8 py-4 text-white md:flex">
-      <div className="flex items-center space-x-4">
+    <header className="bg-primary hidden items-center justify-between px-6 py-4 text-white md:flex">
+      <div className="flex items-center space-x-2">
         <Link id="dxkb-logooooo" href="/">
           <Logo
             variant="logo-white"
@@ -39,7 +39,7 @@ const DesktopNavbar = () => {
         <NavigationMenu className="bg-primary hidden w-full items-center justify-between font-bold md:flex">
           <NavigationMenuList>
             <NavigationMenuItem id="getting-started-nav">
-              <NavigationMenuTrigger className="bg-primary !hover:text-red-500">
+              <NavigationMenuTrigger className="bg-primary">
                 Getting started
               </NavigationMenuTrigger>
               <NavigationMenuContent>
@@ -52,8 +52,6 @@ const DesktopNavbar = () => {
                       >
                         <Logo
                           variant="logo-white"
-                          width={100}
-                          height={40}
                         />
                         <div className="mt-4 mb-2 text-lg font-medium text-white">
                           shadcn/ui

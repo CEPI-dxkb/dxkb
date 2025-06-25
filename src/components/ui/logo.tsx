@@ -50,7 +50,10 @@ export function Logo({
       alt={alt}
       width={width}
       height={height}
-      className={cn("h-auto", className)}
+      className={cn(
+        "flex-shrink-0 flex-grow-0 object-contain min-h-8 max-h-8",
+        className
+      )}
       priority={priority}
     />
   );

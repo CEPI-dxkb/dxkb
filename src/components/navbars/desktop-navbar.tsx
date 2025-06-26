@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/buttons/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RxAvatar } from "react-icons/rx";
@@ -10,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { gettingStartedItems, organismItems, serviceItems } from "./navbar-links";
 import ThemeSwitch from "@/styles/ThemeSwitch";
 import Logo from "@/components/ui/logo";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -19,9 +19,11 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { useTheme } from "next-themes";
+import { LogoutButton } from "../auth/LogoutButton";
 
 const DesktopNavbar = () => {
   const { theme } = useTheme();
+  const { isAuthenticated, user, logout } = useAuth();
 
   return (
     <header className="bg-primary hidden items-center justify-between px-6 py-4 text-white md:flex">
@@ -165,22 +167,42 @@ const DesktopNavbar = () => {
       <div className='space-x-2 flex items-center'>
         <ThemeSwitch />
         <div className="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/10"
-            asChild
-          >
-            <Link href="/auth/login">Login</Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-white text-white hover:bg-white hover:text-primary"
-            asChild
-          >
-            <Link href="/auth/register">Register</Link>
-          </Button>
+          {/* Show login/register when NOT authenticated */}
+          {!isAuthenticated && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/10"
+                asChild
+              >
+                <Link href="/auth/login">Login</Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-foreground hover:bg-white hover:text-secondary"
+                asChild
+              >
+                <Link href="/auth/register">Register</Link>
+              </Button>
+            </>
+          )}
+
+          {/* Show user info and logout when authenticated */}
+          {isAuthenticated && (
+            <>
+              <div className="flex items-center space-x-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-white/10 text-white">
+                    {user?.username?.charAt(0).toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm font-medium">{user?.username}</span>
+              </div>
+              <LogoutButton />
+            </>
+          )}
         </div>
       </div>
     </header>

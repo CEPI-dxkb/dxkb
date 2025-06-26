@@ -5,6 +5,7 @@ import { TailwindIndicator } from "@/components/ui/tailwind-indicator";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,9 @@ export default function RootLayout({
       <head />
       <body>
         <ThemeProvider defaultTheme="dxkb-light">
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
           <ThemeSwitcher />
         </ThemeProvider>
         <Toaster richColors position="top-right" />

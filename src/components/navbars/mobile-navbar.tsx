@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/buttons/button";
 import { LuMenu } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -15,8 +17,12 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import Logo from "@/components/ui/logo";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogoutButton } from "../auth/LogoutButton";
 
 const MobileNavbar = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+
   return (
     <header className="bg-primary flex items-center justify-between px-4 py-4 text-foreground md:hidden">
       <div className="flex items-center gap-4">
@@ -114,22 +120,42 @@ const MobileNavbar = () => {
       </div>
 
       <div className="flex items-center space-x-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-foreground hover:bg-gray-300/50"
-          asChild
-        >
-          <Link href="/auth/login">Login</Link>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-foreground text-foreground hover:bg-foreground hover:text-background"
-          asChild
-        >
-          <Link href="/auth/register">Register</Link>
-        </Button>
+        {/* Show login/register when NOT authenticated */}
+        {!isAuthenticated && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-foreground hover:bg-gray-300/50"
+              asChild
+            >
+              <Link href="/auth/login">Login</Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-foreground text-foreground hover:bg-foreground hover:text-background"
+              asChild
+            >
+              <Link href="/auth/register">Register</Link>
+            </Button>
+          </>
+        )}
+
+        {/* Show user info and logout when authenticated */}
+        {isAuthenticated && (
+          <>
+            <div className="flex items-center space-x-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-white/10 text-white">
+                  {user?.username?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-white">{user?.username}</span>
+            </div>
+            <LogoutButton />
+          </>
+        )}
       </div>
     </header>
   );

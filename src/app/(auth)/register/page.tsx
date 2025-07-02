@@ -35,8 +35,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { AlertCircle } from 'lucide-react';
-
+import { AlertCircle } from "lucide-react";
 
 const formSchema = z
   .object({
@@ -88,13 +87,15 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     console.log(data);
-        try {
+    try {
       await register(data);
       toast.success("Account created successfully. Welcome to DXKB!");
     } catch (err) {
       console.log("Registration error:", err);
       setError(
-        err instanceof Error ? err.message : "Registration failed. Please try again."
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again.",
       );
     }
   };

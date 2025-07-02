@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ? { ...savedUser, ...userInfo }
               : savedUser;
             setUser(updatedUser);
+            setIsVerified(userInfo?.email_verified ?? false);
             if (userInfo) {
               AuthStorage.save(updatedUser);
             }

@@ -1,11 +1,13 @@
 "use client";
 
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -13,15 +15,34 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { LuEye, LuEyeOff, LuLock, LuUser } from "react-icons/lu";
+
+const formSchema = z.object({
+  username: z.string().min(1, { message: "Username is required" }),
+  password: z.string().min(8, { message: "Password is required" }),
+});
 
 export default function LoginPage() {
-  const [credentials, setCredentials] = useState({
-    username: "",
-    password: "",
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
   });
+
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading, isAuthenticated } = useAuth();
@@ -38,19 +59,20 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, router, redirectTo]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    // Basic validation
-    if (!credentials.username.trim() || !credentials.password) {
-      setError("Please enter both username and password");
-      return;
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    console.log(data);
+    try {
+      await login(data);
+      toast.success("Logged in successfully. Welcome to DXKB!", {closeButton: true});
+    } catch (err) {
+      console.log("Login error:", err);
+      setError(
+        err instanceof Error ? err.message : "Invalid username or password",
+      );
     }
-
     try {
       console.log("LOGIN");
-      await login(credentials);
+      await login(form.getValues());
       // Navigation will happen automatically via useEffect
     } catch (err) {
       setError(
@@ -59,18 +81,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleInputChange =
-    (field: "username" | "password") =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setCredentials((prev) => ({ ...prev, [field]: e.target.value }));
-      // Clear error when user starts typing
-      if (error) setError("");
-    };
-
   return (
     <div className="bg-background flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 mb-2">
+        <CardHeader className="mb-2 space-y-1">
           <CardTitle className="text-center text-2xl font-bold">
             Sign in to DXKB
           </CardTitle>
@@ -79,106 +93,173 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                value={credentials.username}
-                onChange={handleInputChange("username")}
-                placeholder="Enter your username"
-                required
-                disabled={isLoading}
-                autoComplete="username"
-                className="transition-all duration-200"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-
-                <p className="text-primary text-xs">
-                  <Link
-                    href="/forgot-password"
-                    className="hover:text-secondary hover:font-medium transition-all duration-300"
-                  >
-                    Forgot your password?
-                  </Link>
-                </p>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={credentials.password}
-                  onChange={handleInputChange("password")}
-                  placeholder="Enter your password"
-                  required
-                  disabled={isLoading}
-                  autoComplete="current-password"
-                  className="pr-10 transition-all duration-200"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute top-1/2 right-3 -translate-y-1/2 transform text-gray-500 transition-colors hover:text-gray-700"
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {error && (
-              <Alert
-                variant="destructive"
-                className="animate-in slide-in-from-top-1"
-              >
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full transition-all duration-200 text-muted-foreground hover:text-foreground"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </Button>
-          </form>
 
-          <div className="mt-6 space-y-2 text-center">
-            <p className="text-muted-foreground text-sm">
-              Don't have an account?{" "}
-              <Link
-                href="/register"
-                className="font-medium text-primary hover:text-secondary hover:font-medium transition-all duration-300"
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                        <Input
+                          placeholder="Enter your username"
+                          {...field}
+                          className="pl-10"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Password</FormLabel>
+                      <p className="text-primary text-xs">
+                        <Link
+                          href="/forgot-password"
+                          className="hover:text-secondary transition-all duration-300 hover:font-medium"
+                        >
+                          Forgot your password?
+                        </Link>
+                      </p>
+                    </div>
+                    <FormControl>
+                      <div className="relative">
+                        <LuLock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                        <Input
+                          id="password"
+                          name="password"
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Enter your password"
+                          value={field.value}
+                          onChange={field.onChange}
+                          className="pr-10 pl-10"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? (
+                            <LuEyeOff className="h-4 w-4" />
+                          ) : (
+                            <LuEye className="h-4 w-4" />
+                          )}
+                          <span className="sr-only">
+                            {showPassword ? "Hide password" : "Show password"}
+                          </span>
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+
+                  <p className="text-primary text-xs">
+                    <Link
+                      href="/forgot-password"
+                      className="hover:text-secondary transition-all duration-300 hover:font-medium"
+                    >
+                      Forgot your password?
+                    </Link>
+                  </p>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={credentials.password}
+                    onChange={handleInputChange("password")}
+                    placeholder="Enter your password"
+                    required
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                    className="pr-10 transition-all duration-200"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 transform text-gray-500 transition-colors hover:text-gray-700"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div> */}
+
+              {error && (
+                <Alert
+                  variant="destructive"
+                  className="animate-in slide-in-from-top-1"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                type="submit"
+                className="text-muted-foreground hover:text-foreground w-full transition-all duration-200"
+                disabled={isLoading}
               >
-                Register on DXKB
-              </Link>
-            </p>
-            <p className="mt-6 text-muted-foreground text-xs">
-              <span className="font-bold">Note: </span>
-              You may use your DXKB or BV-BRC username or email to login to this
-              resource if you already had an account on one of those resources.
-              While we are merging these resources together, you may login at
-              those sites directly as well.
-            </p>
-          </div>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
+              </Button>
+            </form>
+
+            <div className="mt-6 space-y-2 text-center">
+              <p className="text-muted-foreground text-sm">
+                Don't have an account?{" "}
+                <Link
+                  href="/register"
+                  className="text-primary hover:text-secondary font-medium transition-all duration-300 hover:font-medium"
+                >
+                  Register on DXKB
+                </Link>
+              </p>
+              <p className="text-muted-foreground mt-6 text-xs">
+                <span className="font-bold">Note: </span>
+                You may use your DXKB or BV-BRC username or email to login to
+                this resource if you already had an account on one of those
+                resources. While we are merging these resources together, you
+                may login at those sites directly as well.
+              </p>
+            </div>
+          </Form>
         </CardContent>
       </Card>
     </div>

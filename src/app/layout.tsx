@@ -39,7 +39,7 @@ export default function RootLayout({
           </AuthProvider>
           <ThemeSwitcher />
         </ThemeProvider>
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-right" offset={{top: "4rem"}} duration={3000}/>
         <TailwindIndicator />
       </body>
     </html>

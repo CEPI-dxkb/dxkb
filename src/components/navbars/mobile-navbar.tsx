@@ -3,7 +3,7 @@
 import { Button } from "@/components/buttons/button";
 import { LuMenu } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { RxAvatar } from "react-icons/rx";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   gettingStartedItems,
   organismItems,
@@ -17,11 +17,11 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import Logo from "@/components/ui/logo";
-import { useAuth } from "@/contexts/AuthContext";
-import { LogoutButton } from "../auth/LogoutButton";
+import { useAuth } from "@/contexts/auth-context";
+import { LogoutButton } from "../auth/logout-button";
 
 const MobileNavbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
 
   return (
     <header className="bg-primary flex items-center justify-between px-4 py-4 text-foreground md:hidden">
@@ -120,8 +120,16 @@ const MobileNavbar = () => {
       </div>
 
       <div className="flex items-center space-x-2">
-        {/* Show login/register when NOT authenticated */}
-        {!isAuthenticated && (
+        {/* Show skeleton while loading */}
+        {isLoading && (
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-8 w-16 bg-white/20" />
+            <Skeleton className="h-8 w-20 bg-white/20" />
+          </div>
+        )}
+
+        {/* Show login/register when NOT authenticated and not loading */}
+        {!isLoading && !isAuthenticated && (
           <>
             <Button
               variant="ghost"
@@ -129,7 +137,7 @@ const MobileNavbar = () => {
               className="text-foreground hover:bg-gray-300/50"
               asChild
             >
-              <Link href="/auth/login">Login</Link>
+              <Link href="/login">Login</Link>
             </Button>
             <Button
               variant="outline"
@@ -137,13 +145,13 @@ const MobileNavbar = () => {
               className="border-foreground text-foreground hover:bg-foreground hover:text-background"
               asChild
             >
-              <Link href="/auth/register">Register</Link>
+              <Link href="/register">Register</Link>
             </Button>
           </>
         )}
 
-        {/* Show user info and logout when authenticated */}
-        {isAuthenticated && (
+        {/* Show user info and logout when authenticated and not loading */}
+        {!isLoading && isAuthenticated && (
           <>
             <div className="flex items-center space-x-2">
               <Avatar className="h-8 w-8">

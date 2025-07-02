@@ -2,14 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Button } from "@/components/buttons/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { RxAvatar } from "react-icons/rx";
-import { cn } from "@/lib/utils";
-import { gettingStartedItems, organismItems, serviceItems } from "./navbar-links";
-import ThemeSwitch from "@/styles/ThemeSwitch";
-import Logo from "@/components/ui/logo";
-import { useAuth } from "@/contexts/AuthContext";
+import {
+  gettingStartedItems,
+  organismItems,
+  serviceItems,
+} from "./navbar-links";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -18,15 +15,32 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/buttons/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import ThemeSwitch from "@/styles/ThemeSwitch";
+import Logo from "@/components/ui/logo";
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "next-themes";
-import { LogoutButton } from "../auth/LogoutButton";
+import { LogoutButton } from "../auth/logout-button";
+import { UserRound, Settings, NotebookPen, BriefcaseBusiness } from 'lucide-react';
 
 const DesktopNavbar = () => {
   const { theme } = useTheme();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
 
   return (
-    <header className="bg-primary hidden items-center justify-between px-6 py-4 text-white md:flex">
+    <header className="bg-primary hidden items-center justify-between px-4 py-4 text-white md:flex">
       <div className="flex items-center space-x-2">
         <Link id="dxkb-logooooo" href="/">
           <Logo
@@ -52,9 +66,7 @@ const DesktopNavbar = () => {
                         className="from-muted/50 bg-primary hover:bg-primary/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
                         href="/"
                       >
-                        <Logo
-                          variant="logo-white"
-                        />
+                        <Logo variant="logo-white" />
                         <div className="mt-4 mb-2 text-lg font-medium text-white">
                           shadcn/ui
                         </div>
@@ -103,14 +115,11 @@ const DesktopNavbar = () => {
                 Services
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="grid md:w-[550px] lg:w-[650px] grid-cols-2 gap-2 p-2">
+                <div className="grid grid-cols-2 gap-2 p-2 md:w-[550px] lg:w-[650px]">
                   <div className="space-y-0">
                     {/* Left Column */}
                     {Object.entries(serviceItems)
-                      .slice(
-                        0,
-                        Math.ceil(Object.keys(serviceItems).length / 2),
-                      )
+                      .slice(0, Math.ceil(Object.keys(serviceItems).length / 2))
                       .map(([key, section]) => (
                         <div key={key}>
                           <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
@@ -134,9 +143,7 @@ const DesktopNavbar = () => {
                   <div className="space-y-0">
                     {/* Right Column */}
                     {Object.entries(serviceItems)
-                      .slice(
-                        Math.ceil(Object.keys(serviceItems).length / 2),
-                      )
+                      .slice(Math.ceil(Object.keys(serviceItems).length / 2))
                       .map(([key, section]) => (
                         <div key={key}>
                           <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
@@ -164,11 +171,19 @@ const DesktopNavbar = () => {
         </NavigationMenu>
       </div>
 
-      <div className='space-x-2 flex items-center'>
+      <div className="flex items-center space-x-2">
         <ThemeSwitch />
         <div className="flex items-center space-x-2">
-          {/* Show login/register when NOT authenticated */}
-          {!isAuthenticated && (
+          {/* Show skeleton while loading */}
+          {isLoading && (
+            <div className="flex items-center space-x-2">
+              <Skeleton className="h-8 w-16 bg-white/20" />
+              <Skeleton className="h-8 w-20 bg-white/20" />
+            </div>
+          )}
+
+          {/* Show login/register when NOT authenticated and not loading */}
+          {!isLoading && !isAuthenticated && (
             <>
               <Button
                 variant="ghost"
@@ -176,31 +191,69 @@ const DesktopNavbar = () => {
                 className="text-white hover:bg-white/10"
                 asChild
               >
-                <Link href="/auth/login">Login</Link>
+                <Link href="/login">Login</Link>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                className="text-foreground hover:bg-white hover:text-secondary"
+                className="text-foreground hover:text-secondary hover:bg-white"
                 asChild
               >
-                <Link href="/auth/register">Register</Link>
+                <Link href="/register">Register</Link>
               </Button>
             </>
           )}
 
-          {/* Show user info and logout when authenticated */}
-          {isAuthenticated && (
+          {/* Show user info and logout when authenticated and not loading */}
+          {!isLoading && isAuthenticated && (
             <>
-              <div className="flex items-center space-x-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-white/10 text-white">
-                    {user?.username?.charAt(0).toUpperCase() || "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{user?.username}</span>
+              <div className="flex items-center space-x-2 hover:bg-foreground/10 rounded-md pl-1 pr-2 py-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-white/10 text-white">
+                          {user?.username?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">{user?.username}</span>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>User Actions</DropdownMenuLabel>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <UserRound className="h-2 w-2 text-foreground" />
+                          <Link href="/">Profile</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <NotebookPen className="h-4 w-4 text-foreground" />
+                          <Link href="/">My Workspace</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <BriefcaseBusiness className="h-4 w-4 text-foreground" />
+                          <Link href="/">My Jobs</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <Settings className="h-4 w-4 text-foreground" />
+                          <Link href="/">Settings</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <LogoutButton className="bg-popover group-hover:bg-accent border-none shadow-none p-0 m-0 w-full justify-start" />
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-              <LogoutButton />
             </>
           )}
         </div>

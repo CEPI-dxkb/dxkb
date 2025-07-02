@@ -1,6 +1,5 @@
 import Navbar from "@/components/navbars/navbar";
 import Footer from "@/components/footers/footer";
-import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function AuthLayout({
   children,

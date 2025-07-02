@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
               </AlertDescription>
             </Alert>
             <Button variant="outline" className="w-full" asChild>
-              <Link href="/auth/login">
+              <Link href="/login">
                 <LuArrowLeft className="mr-2 h-4 w-4" />
                 Back to login
               </Link>
@@ -94,7 +94,7 @@ export default function ForgotPasswordPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <LuMail className="text-muted-foreground absolute top-3 left-3 h-4 w-4" />
+                <LuMail className="text-foreground absolute top-3 left-3 h-4 w-4" />
                 <Input
                   id="email"
                   type="email"
@@ -107,14 +107,14 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full text-muted-foreground hover:text-foreground" disabled={isLoading}>
               {isLoading ? "Sending..." : "Send reset link"}
             </Button>
 
             <div className="text-center text-sm">
               <Link
-                href="/auth/login"
-                className="text-primary font-medium hover:underline"
+                href="/login"
+                className=" group text-primary font-medium hover:underline hover:text-secondary"
               >
                 <LuArrowLeft className="mr-1 inline h-3 w-3" />
                 Back to login

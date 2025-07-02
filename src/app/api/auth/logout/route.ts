@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { useCallback } from 'react';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { useAuth } from '../../../../contexts/auth-context';
 
 export async function POST(request: NextRequest) {
   // BV-BRC doesn't seem to have a logout endpoint

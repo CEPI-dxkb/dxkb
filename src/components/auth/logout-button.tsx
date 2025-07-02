@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -38,7 +38,7 @@ export function LogoutButton({
   showIcon = true,
   confirmDialog = true,
   className = "",
-  redirectTo = "/auth/login",
+  redirectTo = "/",
 }: LogoutButtonProps) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { logout } = useAuth();
@@ -48,6 +48,8 @@ export function LogoutButton({
     setIsLoggingOut(true);
     try {
       await logout();
+      // Without the timeout, the body will not have 'pointer-events: none' applied to the redirect
+      setTimeout(() => (document.body.style.pointerEvents = ""), 0)
       router.push(redirectTo);
     } catch (error) {
       console.error("Logout error:", error);
@@ -71,7 +73,7 @@ export function LogoutButton({
         showIcon && <LogOut className="h-4 w-4" />
       )}
       {size !== "icon" && (
-        <span className={showIcon ? "ml-2" : ""}>
+        <span>
           {isLoggingOut ? "Signing out..." : "Sign Out"}
         </span>
       )}

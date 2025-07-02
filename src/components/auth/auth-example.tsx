@@ -1,15 +1,30 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { useAuthStyles } from "@/hooks/useAuthStyles";
+import { useAuth } from "@/contexts/auth-context";
+import { useAuthStyles } from "@/hooks/use-auth-styles";
 import { AuthGuard, AuthenticatedOnly, UnauthenticatedOnly } from "@/components/auth/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export function AuthExample() {
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
   const { authClass, authClasses, whenAuthenticated, whenUnauthenticated } = useAuthStyles();
+
+  // Show skeleton while loading
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6">
+        <h2 className="text-2xl font-bold">Authentication Examples</h2>
+        <div className="space-y-4">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -137,5 +152,6 @@ export function AuthExample() {
         </CardContent>
       </Card>
     </div>
+    
   );
 } 

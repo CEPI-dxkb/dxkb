@@ -842,7 +842,7 @@
 }
 
 .auth-container {
-  @apply max-w-6xl mx-auto px-4 py-8;
+  @apply max-w-2xl mx-auto px-4 py-8 w-full;
 }
 
 /* Citation Styles */

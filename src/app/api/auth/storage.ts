@@ -31,7 +31,7 @@ export class AuthStorage {
   // Check authentication status via API
   static async load(): Promise<AuthUser | null> {
     try {
-      const response = await fetch("/api/auth/verify", {
+      const response = await fetch("/api/auth/verify-tokens", {
         method: "GET",
         credentials: "include", // Include cookies
       });

@@ -31,10 +31,16 @@ import { cn } from "@/lib/utils";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { LogoutButton } from "../auth/logout-button";
-import { UserRound, Settings, NotebookPen, BriefcaseBusiness } from 'lucide-react';
+import {
+  UserRound,
+  Settings,
+  NotebookPen,
+  BriefcaseBusiness,
+  Mail,
+} from "lucide-react";
 
 const DesktopNavbar = () => {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
 
   return (
     <header className="bg-primary hidden h-18 items-center justify-between px-4 py-4 text-white md:flex">
@@ -184,7 +190,7 @@ const DesktopNavbar = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:text-white hover:bg-white/10"
+                className="text-white hover:bg-white/10 hover:text-white"
                 asChild
               >
                 <Link href="/login">Login</Link>
@@ -203,7 +209,7 @@ const DesktopNavbar = () => {
           {/* Show user info and logout when authenticated and not loading */}
           {!isLoading && isAuthenticated && (
             <>
-              <div className="flex items-center space-x-2 hover:bg-foreground/10 rounded-md px-1 py-1">
+              <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <div className="flex items-center space-x-2">
@@ -221,30 +227,43 @@ const DesktopNavbar = () => {
                     <DropdownMenuGroup>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
-                          <UserRound className="h-2 w-2 text-foreground" />
+                          <UserRound className="text-foreground h-2 w-2" />
                           <Link href="/">Profile</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
-                          <NotebookPen className="h-4 w-4 text-foreground" />
+                          <NotebookPen className="text-foreground h-4 w-4" />
                           <Link href="/">My Workspace</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
-                          <BriefcaseBusiness className="h-4 w-4 text-foreground" />
+                          <BriefcaseBusiness className="text-foreground h-4 w-4" />
                           <Link href="/">My Jobs</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
-                          <Settings className="h-4 w-4 text-foreground" />
+                          <Settings className="text-foreground h-4 w-4" />
                           <Link href="/">Settings</Link>
                         </span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <Mail className="text-foreground h-4 w-4" />
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => sendVerificationEmail()}
+                            className="text-foreground p-0 font-inherit cursor-pointer h-5"
+                          >
+                            Resend Verification Email
+                          </Button>
+                        </span>
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <LogoutButton className="bg-popover group-hover:bg-accent border-none shadow-none p-0 m-0 w-full justify-start" />
+                      <LogoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>

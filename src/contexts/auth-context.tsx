@@ -23,6 +23,7 @@ interface AuthContextType {
   refreshAuth: () => Promise<void>;
   validateUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
   isVerified: boolean;
@@ -174,7 +175,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.ok) {
         console.warn("Password reset request failed:", response.status);
       }
-
     } catch (error) {
       console.error("Password reset error:", error);
     } finally {
@@ -217,6 +217,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
+  const sendVerificationEmail = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        credentials: "include", // Include cookies for authentication
+      });
+
+      if (response.ok) {
+        console.log("Verification email sent successfully");
+      } else {
+        console.error("Failed to send verification email:", response.status);
+      }
+    } catch (error) {
+      console.error("Failed to send verification email:", error);
+    }
+  }, []);
+
   const validateUser = useCallback(async () => {
     try {
       // Validate current authentication status
@@ -242,6 +259,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshAuth,
     validateUser,
     resetPassword,
+    sendVerificationEmail,
     isLoading,
     isAuthenticated: !!user,
     isVerified,

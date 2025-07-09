@@ -12,13 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import ThemeContent from "@/components/ui/theme-content";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useAuth } from "@/contexts/auth-context";
-import Link from "next/link";
 
-interface WelcomeSearchProps {
-  setSearchResults?: (results: any) => void;
-}
-
-const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
+const WelcomeSearch = () => {
   const { isAuthenticated, isVerified, sendVerificationEmail } = useAuth();
 
   return (
@@ -29,25 +24,19 @@ const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
           <div className="container mx-auto px-4">
             <Alert variant="destructive">
               <AlertTitle>Unverified Account Email</AlertTitle>
-              <AlertDescription className="inline-flex">
-                Please verify your email to continue using the platform. Click{" "}
-                <Link
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    sendVerificationEmail();
-                  }}
-                  className="hover:text-foreground text-inherit underline transition-colors duration-300"
-                  style={{
-                    font: "inherit",
-                    padding: 0,
-                    border: "none",
-                    background: "none",
-                  }}
-                >
-                  here
-                </Link>{" "}
-                to resend the verification email.
+              <AlertDescription className="text-destructive">
+                <span>
+                  Please verify your email to continue using the platform. Click{' '}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={e => { e.preventDefault(); sendVerificationEmail(); }}
+                    className="underline cursor-pointer hover:text-foreground focus:outline-none focus:underline text-inherit"
+                    style={{ font: "inherit" }}
+                  >
+                    here
+                  </span>{' '}to resend the verification email.
+                </span>
               </AlertDescription>
             </Alert>
           </div>

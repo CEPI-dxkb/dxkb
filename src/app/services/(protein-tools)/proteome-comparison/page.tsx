@@ -68,7 +68,9 @@ export default function ProteomeComparisonPage() {
       (item) => item.name === genomeName && item.type === "Genome",
     );
     if (isDuplicate) {
-      toast.error("Each item must be unique (name + type)");
+      toast.error("Each item must be unique (name + type)", {
+        closeButton: true,
+      });
       return;
     }
     if (selectedGenomes.length < MAX_GENOMES) {
@@ -85,7 +87,9 @@ export default function ProteomeComparisonPage() {
       (item) => item.name === proteinFastaInput && item.type === "Protein",
     );
     if (isDuplicate) {
-      toast.error("Each item must be unique (name + type)");
+      toast.error("Each item must be unique (name + type)", {
+        closeButton: true,
+      });
       return;
     }
     if (selectedGenomes.length < MAX_GENOMES) {
@@ -104,7 +108,9 @@ export default function ProteomeComparisonPage() {
         item.name === featureGroupInput && item.type === "Feature Group",
     );
     if (isDuplicate) {
-      toast.error("Each item must be unique (name + type)");
+      toast.error("Each item must be unique (name + type)", {
+        closeButton: true,
+      });
       return;
     }
     if (selectedGenomes.length < MAX_GENOMES) {
@@ -122,7 +128,9 @@ export default function ProteomeComparisonPage() {
       (item) => item.name === genomeGroupInput && item.type === "Genome Group",
     );
     if (isDuplicate) {
-      toast.error("Each item must be unique (name + type)");
+      toast.error("Each item must be unique (name + type)", {
+        closeButton: true,
+      });
       return;
     }
     if (selectedGenomes.length < MAX_GENOMES) {

@@ -87,11 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
-        credentials: "include", // Include cookies
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -99,29 +97,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.message || "Login failed");
       }
 
-      // Login sets cookies server-side, now fetch user data with verification status
+      // Login sets cookies server-side, now fetch user data
       const userData = await AuthStorage.load();
-      console.log("USER DATA", userData);
       if (userData) {
         setUser(userData);
         setIsVerified(userData.email_verified ?? false);
-
-        // Save user profile for UI preferences
-        if (userData.email_verified !== undefined) {
-          AuthStorage.saveUserProfile({
-            email_verified: userData.email_verified,
-            email: userData.email,
-            first_name: userData.first_name || "",
-            last_name: userData.last_name || "",
-            id: userData.id || "",
-            creation_date: "",
-            l_id: "",
-            last_login: "",
-            organisms: "",
-            reverification: false,
-            source: "",
-          });
-        }
       }
     } catch (error) {
       throw error;
@@ -135,11 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(credentials),
-        credentials: "include", // Include cookies
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -162,13 +140,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const resetPassword = useCallback(async (usernameOrEmail: string) => {
     setIsLoading(true);
-
     try {
       const response = await fetch("/api/auth/reset-password", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usernameOrEmail }),
       });
 
@@ -186,7 +161,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setIsVerified(false);
 
-    // Clear cookies via API endpoint
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
@@ -196,24 +170,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Logout API call failed:", error);
     }
 
-    // Clear any remaining auth state
     await AuthStorage.clear();
   }, []);
 
   const refreshAuth = useCallback(async () => {
     try {
-      // Refresh authentication by checking current status
       const userData = await AuthStorage.load();
       if (userData) {
         setUser(userData);
         setIsVerified(userData.email_verified ?? false);
       } else {
-        // If no valid session, logout
         await logout();
       }
     } catch (error) {
       console.error("Auth refresh failed:", error);
-      await logout(); // Force logout if refresh fails
+      await logout();
     }
   }, [logout]);
 
@@ -221,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
-        credentials: "include", // Include cookies for authentication
+        credentials: "include",
       });
 
       if (response.ok) {
@@ -236,13 +207,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const validateUser = useCallback(async () => {
     try {
-      // Validate current authentication status
       const userData = await AuthStorage.load();
       if (userData) {
         setUser(userData);
         setIsVerified(userData.email_verified ?? false);
       } else {
-        // No valid session, logout
         await logout();
       }
     } catch (error) {

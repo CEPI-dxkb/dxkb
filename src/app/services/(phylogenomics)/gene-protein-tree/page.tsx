@@ -83,6 +83,7 @@ export default function GeneProteinTreePage() {
       ) {
         toast.error("Duplicate file detected", {
           description: `This ${type.toLowerCase()} has already been added to the selection.`,
+          closeButton: true,
         });
         return;
       }

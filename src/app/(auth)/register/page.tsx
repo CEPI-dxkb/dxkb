@@ -90,7 +90,7 @@ function RegisterForm() {
     console.log(data);
     try {
       await register(data);
-      toast.success("Account created successfully. Welcome to DXKB!");
+      toast.success("Account created successfully. Welcome to DXKB!", {closeButton: true});
     } catch (err) {
       console.log("Registration error:", err);
       setError(

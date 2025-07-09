@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/buttons/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
+import { RequiredFormLabel } from "@/components/forms/required-form-label";
 
 const formSchema = z
   .object({
@@ -57,7 +58,7 @@ const formSchema = z
     message: "Passwords do not match",
   });
 
-export default function RegisterPage() {
+function RegisterForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -129,7 +130,7 @@ export default function RegisterPage() {
                 name="first_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>First name</FormLabel>
+                    <RequiredFormLabel>First name</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -172,7 +173,7 @@ export default function RegisterPage() {
                 name="last_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last name</FormLabel>
+                    <RequiredFormLabel>Last name</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -194,7 +195,7 @@ export default function RegisterPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <RequiredFormLabel>Username</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuMail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -215,7 +216,7 @@ export default function RegisterPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <RequiredFormLabel>Email</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuMail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -299,7 +300,7 @@ export default function RegisterPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <RequiredFormLabel>Password</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuLock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -341,7 +342,7 @@ export default function RegisterPage() {
                 name="password_repeat"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm password</FormLabel>
+                    <RequiredFormLabel>Confirm password</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuLock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -400,5 +401,31 @@ export default function RegisterPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-lg">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-center text-2xl font-bold">
+              Create an account
+            </CardTitle>
+            <CardDescription className="text-center">
+              Loading...
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <RegisterForm />
+    </Suspense>
   );
 }

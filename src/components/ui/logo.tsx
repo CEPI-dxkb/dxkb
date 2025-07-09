@@ -38,7 +38,6 @@ export function Logo({
   const logoPath = getLogoPath(currentTheme || "dxkb-light", variant);
 
   if (!mounted) {
-    console.log("Logo loading");
     return (
       <Skeleton className="h-10 w-36" aria-label="Logo loading" />
     );

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
@@ -25,16 +25,17 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { LuEye, LuEyeOff, LuLock, LuUser } from "react-icons/lu";
+import { RequiredFormLabel } from "@/components/forms/required-form-label";
 
 const formSchema = z.object({
   username: z.string().min(1, { message: "Username is required" }),
   password: z.string().min(8, { message: "Password is required" }),
 });
 
-export default function LoginPage() {
+function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -99,7 +100,7 @@ export default function LoginPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username or email</FormLabel>
+                    <RequiredFormLabel>Username or email</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
@@ -121,7 +122,7 @@ export default function LoginPage() {
                 render={({ field }) => (
                   <FormItem>
                     <div className="flex items-center justify-between">
-                      <FormLabel>Password</FormLabel>
+                      <RequiredFormLabel>Password</RequiredFormLabel>
                       <p className="text-primary text-xs">
                         <Link
                           href="/forgot-password"
@@ -185,7 +186,7 @@ export default function LoginPage() {
 
             <div className="mt-6 space-y-2 text-center">
               <p className="text-muted-foreground text-sm">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link
                   href="/register"
                   className="text-primary hover:text-secondary font-medium transition-all duration-300 hover:font-medium"
@@ -205,5 +206,31 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-background flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="mb-2 space-y-1">
+            <CardTitle className="text-center text-2xl font-bold">
+              Sign in to DXKB
+            </CardTitle>
+            <CardDescription className="text-center">
+              Loading...
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

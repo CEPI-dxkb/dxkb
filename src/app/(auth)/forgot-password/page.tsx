@@ -27,7 +27,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { LuMail, LuArrowLeft } from "react-icons/lu";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { RequiredFormLabel } from "@/components/forms/required-form-label";
 
 const formSchema = z.object({
   usernameOrEmail: z
@@ -77,14 +77,14 @@ export default function ForgotPasswordPage() {
               Check your email
             </CardTitle>
             <CardDescription className="text-center">
-              We've sent a password reset link to your email address if it
+              We&apos;ve sent a password reset link to your email address if it
               exists in our system.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Alert>
               <AlertDescription>
-                If you don't see the email, check your spam folder or try again.
+                If you don&apos;t see the email, check your spam folder or try again.
               </AlertDescription>
             </Alert>
             <Button variant="outline" className="w-full" asChild>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
             Forgot password?
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your username or email address and we'll send you a link to
+            Enter your username or email address and we&apos;ll send you a link to
             reset your password.
           </CardDescription>
         </CardHeader>
@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
                 name="usernameOrEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username or email</FormLabel>
+                    <RequiredFormLabel>Username or email</RequiredFormLabel>
                     <FormControl>
                       <div className="relative">
                         <LuMail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />

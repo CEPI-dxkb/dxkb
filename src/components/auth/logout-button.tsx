@@ -91,7 +91,7 @@ export function LogoutButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Sign out of BV-BRC?</AlertDialogTitle>
           <AlertDialogDescription>
-            You'll need to sign in again to access your workspace and private
+            You&apos;ll need to sign in again to access your workspace and private
             data.
           </AlertDialogDescription>
         </AlertDialogHeader>

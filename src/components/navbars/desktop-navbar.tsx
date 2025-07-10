@@ -171,7 +171,9 @@ const DesktopNavbar = () => {
         </div>
 
         {!isHome && (
-          <SearchBar />
+          <div className="flex flex-1 items-center px-2">
+            <SearchBar className="w-full" />
+          </div>
         )}
                       
       <div className='space-x-4 flex items-center'>

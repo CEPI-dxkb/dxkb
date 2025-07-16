@@ -1,11 +1,15 @@
-import { useCallback } from "react";
+"use client";
+
+import { useCallback, useMemo } from "react";
 import { useAuth } from "../contexts/auth-context";
-import { cookies } from "next/headers";
-import { safeDecodeURIComponent } from "../app/api/auth/utils";
 
 // Client-side authenticated fetch hook
 export function useAuthenticatedFetch() {
   const { user, refreshAuth } = useAuth();
+
+  // Memoize the dependencies to prevent unnecessary re-creations
+  const memoizedUser = useMemo(() => user, [user?.id, user?.email]); // Only depend on user identity, not the entire object
+  const memoizedRefreshAuth = useMemo(() => refreshAuth, []); // refreshAuth should be stable
 
   return useCallback(
     async (url: string, options: RequestInit = {}) => {
@@ -21,7 +25,7 @@ export function useAuthenticatedFetch() {
 
       // If token expired, try to refresh
       if (response.status === 401) {
-        await refreshAuth();
+        await memoizedRefreshAuth();
         // Retry the request after refresh
         const retryResponse = await fetch(url, {
           ...options,
@@ -36,33 +40,6 @@ export function useAuthenticatedFetch() {
 
       return response;
     },
-    [user, refreshAuth],
+    [memoizedUser, memoizedRefreshAuth],
   );
-}
-
-// Server-side authenticated fetch for API routes
-export async function serverAuthenticatedFetch(
-  url: string,
-  options: RequestInit = {},
-) {
-  const cookieStore = await cookies();
-  const rawToken = cookieStore.get("token")?.value;
-  const token = rawToken ? safeDecodeURIComponent(rawToken) : undefined;
-
-  if (!token) {
-    throw new Error("Not authenticated");
-  }
-
-  const headers = {
-    ...options.headers,
-    Authorization: token,
-    "Content-Type": "application/json",
-  };
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
-
-  return response;
 }

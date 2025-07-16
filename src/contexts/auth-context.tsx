@@ -7,6 +7,7 @@ import React, {
   useEffect,
   ReactNode,
   useCallback,
+  useMemo,
 } from "react";
 import {
   AuthUser,
@@ -220,7 +221,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [logout]);
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     login,
     logout,
@@ -232,7 +234,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     isAuthenticated: !!user,
     isVerified,
-  };
+  }), [
+    user,
+    login,
+    logout,
+    register,
+    refreshAuth,
+    validateUser,
+    resetPassword,
+    sendVerificationEmail,
+    isLoading,
+    isVerified,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

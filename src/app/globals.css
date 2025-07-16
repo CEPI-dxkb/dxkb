@@ -487,20 +487,16 @@
   @apply space-y-4;
 }
 
-.faq-item {
+.accordion-item {
   @apply w-full rounded-lg border-1;
 }
 
-.faq-item-header {
+.accordion-trigger {
   @apply hover:bg-background flex w-full cursor-pointer items-center justify-between p-4;
 }
 
-.faq-item-title {
-  @apply text-lg font-medium;
-}
-
-.faq-item-content {
-  @apply text-muted-foreground px-4 pb-4;
+.accordion-content {
+  @apply text-muted-foreground px-4 pb-4 pt-2;
 }
 
 /* Shared Card Grid Layout Styles */

@@ -104,6 +104,21 @@ const MobileNavbar = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Workspace Section - only show when authenticated */}
+              {isAuthenticated && (
+                <div className="p-3">
+                  <h2 className="mobile-nav-section-header">Workspace</h2>
+                  <div className="grid grid-cols-1 gap-y-1">
+                    <Link
+                      href="/workspace"
+                      className="mobile-nav-link"
+                    >
+                      My Jobs
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </SheetContent>
         </Sheet>

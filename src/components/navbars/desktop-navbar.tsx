@@ -170,6 +170,33 @@ const DesktopNavbar = () => {
                 </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
+
+            {/* Workspace - only show when authenticated */}
+            {isAuthenticated && (
+              <NavigationMenuItem id="workspace-nav">
+                <NavigationMenuTrigger className="bg-primary">
+                  Workspace
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                    <ListItem
+                      key="workspace-nav"
+                      title="My Workspace"
+                      href="/workspace"
+                    >
+                      View your workspace.
+                    </ListItem>
+                    <ListItem
+                      key="workspace-jobs-nav"
+                      title="Jobs"
+                      href="/workspace/jobs"
+                    >
+                      View all jobs in your workspace.
+                    </ListItem>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            )}
           </NavigationMenuList>
         </NavigationMenu>
       </div>
@@ -234,13 +261,13 @@ const DesktopNavbar = () => {
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <NotebookPen className="text-foreground h-4 w-4" />
-                          <Link href="/">My Workspace</Link>
+                          <Link href="/workspace">My Workspace</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <BriefcaseBusiness className="text-foreground h-4 w-4" />
-                          <Link href="/">My Jobs</Link>
+                          <Link href="/workspace/jobs">My Jobs</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
@@ -256,7 +283,7 @@ const DesktopNavbar = () => {
                             variant="link"
                             size="sm"
                             onClick={() => sendVerificationEmail()}
-                            className="text-foreground p-0 font-inherit cursor-pointer h-5"
+                            className="text-foreground font-inherit h-5 cursor-pointer p-0"
                           >
                             Resend Verification Email
                           </Button>

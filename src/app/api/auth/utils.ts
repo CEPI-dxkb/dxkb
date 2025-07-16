@@ -1,14 +1,8 @@
 import { cookies } from "next/headers";
+import { safeDecodeURIComponent } from "../../../lib/auth-utils";
 
-// Safe URL decoding utility
-export function safeDecodeURIComponent(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch (error) {
-    console.warn("Failed to decode cookie value:", error);
-    return value; // Return original value if decoding fails
-  }
-}
+// Re-export for backward compatibility
+export { safeDecodeURIComponent };
 
 // Helper function to fetch user profile metadata from BV-BRC
 export async function getProfileMetadata(

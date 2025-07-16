@@ -36,8 +36,9 @@ export function middleware(request: NextRequest) {
 
   // For protected pages, redirect to login if not authenticated
   if (
-    request.nextUrl.pathname.startsWith("/services/") &&
-    request.nextUrl.pathname !== "/services"
+    (request.nextUrl.pathname.startsWith("/services/") &&
+      request.nextUrl.pathname !== "/services") ||
+    request.nextUrl.pathname.startsWith("/workspace")
   ) {
     const authToken = request.cookies.get("token")?.value;
 
@@ -53,5 +54,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/protected/:path*", "/services/:path*"],
+  matcher: ["/api/protected/:path*", "/services/:path*", "/workspace/:path*"],
 };

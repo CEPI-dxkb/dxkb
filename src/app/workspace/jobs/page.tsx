@@ -41,7 +41,12 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const statusColors: Record<JobStatus, string> = {
   pending: "bg-yellow-500",
@@ -156,14 +161,17 @@ function JobsLoadingFallback() {
 
 // Main jobs content component
 function JobsContent() {
-  const { jobs, enumerateJobs, killJob, fetchJobOutput, loading, error } = useWorkspace();
+  const { jobs, enumerateJobs, killJob, fetchJobOutput, loading, error } =
+    useWorkspace();
   const isMountedRef = useRef(false);
 
-  const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
   const [appFilter, setAppFilter] = useState<string>("all");
-  const [jobOutputs, setJobOutputs] = useState<Record<string, { stdout?: string; stderr?: string }>>({});
+  const [jobOutputs, setJobOutputs] = useState<
+    Record<string, { stdout?: string; stderr?: string }>
+  >({});
 
   // Load jobs on mount only
   useEffect(() => {
@@ -224,19 +232,26 @@ function JobsContent() {
   };
 
   const handleExpandJob = async (jobId: string) => {
-    const newExpandedId = expandedJobId === jobId ? null : jobId;
-    setExpandedJobId(newExpandedId);
-    
-    if (newExpandedId && !jobOutputs[jobId]) {
+    const newExpandedJobIds = new Set(expandedJobIds);
+
+    if (newExpandedJobIds.has(jobId)) {
+      newExpandedJobIds.delete(jobId);
+    } else {
+      newExpandedJobIds.add(jobId);
+    }
+
+    setExpandedJobIds(newExpandedJobIds);
+
+    if (newExpandedJobIds.has(jobId) && !jobOutputs[jobId]) {
       try {
         const [stdout, stderr] = await Promise.all([
           fetchJobOutput({ job_id: jobId, output_type: "stdout" }),
           fetchJobOutput({ job_id: jobId, output_type: "stderr" }),
         ]);
-        
-        setJobOutputs(prev => ({
+
+        setJobOutputs((prev) => ({
           ...prev,
-          [jobId]: { stdout, stderr }
+          [jobId]: { stdout, stderr },
         }));
       } catch (error) {
         console.error("Failed to fetch job outputs:", error);
@@ -473,7 +488,7 @@ function JobsContent() {
                     size="sm"
                     onClick={() => handleExpandJob(job.id)}
                   >
-                    {expandedJobId === job.id ? (
+                    {expandedJobIds.has(job.id) ? (
                       <ChevronUp className="h-4 w-4" />
                     ) : (
                       <ChevronDown className="h-4 w-4" />
@@ -481,7 +496,7 @@ function JobsContent() {
                   </Button>
                 </div>
 
-                {expandedJobId === job.id && (
+                {expandedJobIds.has(job.id) && (
                   <div className="mt-4 space-y-3 border-t pt-4">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
@@ -500,8 +515,13 @@ function JobsContent() {
 
                     {/* Parameters */}
                     <Accordion type="single" collapsible>
-                      <AccordionItem value={`parameters-${job.id}`} className="accordion-item">
-                        <AccordionTrigger className="accordion-trigger">Job Parameters</AccordionTrigger>
+                      <AccordionItem
+                        value={`parameters-${job.id}`}
+                        className="accordion-item"
+                      >
+                        <AccordionTrigger className="accordion-trigger">
+                          Job Parameters
+                        </AccordionTrigger>
                         <AccordionContent className="accordion-content">
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
@@ -513,12 +533,20 @@ function JobsContent() {
                     </Accordion>
 
                     <Accordion type="single" collapsible>
-                      <AccordionItem value={`stdout-${job.id}`} className="accordion-item">
-                        <AccordionTrigger className="accordion-trigger">Standard Output</AccordionTrigger>
+                      <AccordionItem
+                        value={`stdout-${job.id}`}
+                        className="accordion-item"
+                      >
+                        <AccordionTrigger className="accordion-trigger">
+                          Standard Output
+                        </AccordionTrigger>
                         <AccordionContent className="accordion-content">
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
-                              {loading.output ? "Loading..." : jobOutputs[job.id]?.stdout || "No output available"}
+                              {loading.output
+                                ? "Loading..."
+                                : jobOutputs[job.id]?.stdout ||
+                                  "No output available"}
                             </pre>
                           </div>
                         </AccordionContent>
@@ -526,12 +554,20 @@ function JobsContent() {
                     </Accordion>
 
                     <Accordion type="single" collapsible>
-                      <AccordionItem value={`stderr-${job.id}`} className="accordion-item">
-                        <AccordionTrigger className="accordion-trigger">Standard Error</AccordionTrigger>
+                      <AccordionItem
+                        value={`stderr-${job.id}`}
+                        className="accordion-item"
+                      >
+                        <AccordionTrigger className="accordion-trigger">
+                          Standard Error
+                        </AccordionTrigger>
                         <AccordionContent className="accordion-content">
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
-                              {loading.output ? "Loading..." : jobOutputs[job.id]?.stderr || "No output available"}
+                              {loading.output
+                                ? "Loading..."
+                                : jobOutputs[job.id]?.stderr ||
+                                  "No output available"}
                             </pre>
                           </div>
                         </AccordionContent>

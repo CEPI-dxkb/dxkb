@@ -73,7 +73,7 @@ export async function setAuthCookies(
   userProfile?: any,
 ) {
   const cookieStore = await cookies();
-  const maxAge = 3600; // 1 hour
+  const maxAge = 3600 * 4; // 4 hours
 
   // Set token cookie
   cookieStore.set("token", token, {

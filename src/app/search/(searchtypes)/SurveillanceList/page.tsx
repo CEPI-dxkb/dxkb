@@ -20,7 +20,7 @@ export default function Surveillance() {
                 Surveillance
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="surveillance" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="surveillance" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <SurveillanceData q={{q}} />
           </TabsContent>
         </Tabs>

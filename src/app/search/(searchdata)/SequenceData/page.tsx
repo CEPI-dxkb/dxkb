@@ -7,7 +7,11 @@ import { SortingState } from '@tanstack/react-table';
 import { sequenceFields } from '@/constants/datafields/sequence';
 import { useQuery } from '@tanstack/react-query';
 
-export function SequenceData() {
+interface GenomeDataProps {
+  onSelectionChange?: (rows: any[]) => void;
+}
+
+export function SequenceData({ onSelectionChange }: GenomeDataProps) {
   const sequenceColumns = Object.values(sequenceFields).map(obj => ({
     id: obj.field,
     label: obj.label,
@@ -93,6 +97,7 @@ export function SequenceData() {
           id={widget.id}
           data={fullData ?? []}
           columns={widget.columns}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     </div>

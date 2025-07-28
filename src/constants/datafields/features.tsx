@@ -2,196 +2,234 @@ export const featureFields = {
     genome_id: { 
         label: 'Genome ID', 
         field: 'genome_id', 
-        hidden: false 
+        hidden: false,
+        group: 'Genome' 
     },
     genome_name: { 
         label: 'Genome Name', 
         field: 'genome_name', 
-        hidden: false 
+        hidden: false,
+        group: 'Genome' 
         },
     taxon_id: { 
         label: 'Taxon ID', 
         field: 'taxon_id', 
-        hidden: true 
+        hidden: true,
+        group: 'Genome' 
         },
         
     sequence_id: { 
         label: 'Sequence ID', 
         field: 'sequence_id', 
-        hidden: true 
+        hidden: true,
+        group: 'Sequences' 
         },
     accession: { 
         label: 'Accession', 
         field: 'accession', 
-        hidden: false 
+        hidden: false,
+        group: 'Sequences' 
         },
         
     annotation: { 
         label: 'Annotation', 
         field: 'annotation', 
-        hidden: true 
+        hidden: true,
+        group: 'Source' 
         },
     feature_type: { 
         label: 'Feature Type', 
         field: 'feature_type', 
-        hidden: false 
+        hidden: false,
+        group: 'Source' 
         },
         
     feature_id: { 
         label: 'Feature ID', 
         field: 'feature_id', 
-        hidden: true 
+        hidden: true,
+        group: 'Source' 
         },
     alt_locus_tag: { 
         label: 'Alt Locus Tag', 
         field: 'alt_locus_tag', 
-        hidden: true 
+        hidden: true,
+        group: 'DB Cross References' 
         },
     patric_id: { 
         label: 'BRC ID', 
         field: 'patric_id', 
-        hidden: false 
+        hidden: false,
+        group: 'Identifiers' 
         },        
     refseq_locus_tag: { 
         label: 'RefSeq Locus Tag', 
         field: 'refseq_locus_tag', 
-        hidden: false 
+        hidden: false,
+        group: 'DB Cross References' 
         },
         
     protein_id: { 
         label: 'Protein ID', 
         field: 'protein_id', 
-        hidden: true 
+        hidden: true,
+        group: 'DB Cross References' 
         },
     gene_id: { 
         label: 'Gene ID', 
         field: 'gene_id', 
-        hidden: true 
+        hidden: true,
+        group: 'DB Cross References' 
         },
     uniprotkb_accession: { 
         label: 'UniProtKB Accession', 
         field: 'uniprotkb_accession', 
-        hidden: true 
+        hidden: true,
+        group: 'Sequences' 
         },
     pdb_accession: { 
         label: 'PDB Accession', 
         field: 'pdb_accession', 
-        hidden: true 
+        hidden: true,
+        group: 'Sequences' 
         },
         
     start: { 
         label: 'Start', 
         field: 'start', 
-        hidden: false 
+        hidden: false,
+        group: 'Location' 
         },
     end: { 
         label: 'End', 
         field: 'end', 
-        hidden: false 
+        hidden: false,
+        group: 'Location' 
         },
     strand: { 
         label: 'Strand', 
         field: 'strand', 
-        hidden: false 
+        hidden: false,
+        group: 'Location' 
         },
     location: { 
         label: 'Location', 
         field: 'location', 
-        hidden: true 
+        hidden: true,
+        group: 'Location' 
         },
     segments: { 
         label: 'Segments', 
         field: 'segments', 
-        hidden: true 
+        hidden: true,
+        group: 'Location' 
         },
     codon_start: { 
         label: 'Codon Start', 
         field: 'Codon Start', 
-        hidden: true 
+        hidden: true,
+        group: 'Location' 
         },
         
     na_length: { 
         label: 'Length (NA)', 
         field: 'na_length', 
-        hidden: false 
+        hidden: false,
+        group: 'Sequences' 
         },
     aa_length: { 
         label: 'Length (AA)', 
         field: 'aa_length', 
-        hidden: true 
+        hidden: true,
+        group: 'Sequences' 
         },
     na_sequence_md5: { 
         label: 'NA Sequence MD5', 
         field: 'na_sequence_md5', 
-        hidden: true 
+        hidden: true,
+        group: 'Sequences' 
         },
     aa_sequence_md5: { 
         label: 'AA Sequence MD5', 
         field: 'aa_sequence_md5', 
-        hidden: true 
+        hidden: true,
+        group: 'Sequences' 
         },
         
     gene: { 
         label: 'Gene Symbol', 
         field: 'gene', 
-        hidden: false 
+        hidden: false,
+        group: 'Annotation' 
         },
     date_added: { 
         label: 'Date Added', 
         field: 'date_inserted', 
-        hidden: false, 
+        hidden: false,
+        group: 'Provenance' 
     },
     product: { 
         label: 'Product', 
         field: 'product', 
-        hidden: false 
+        hidden: false,
+        group: 'Annotation' 
         },
 
     plfam_id: {
         label: 'PATRIC Local Family',
         field: 'plfam_id',
-        hidden: true
+        hidden: true,
+        group: 'Families'
     },
     
     pgfam_id: { 
         label: 'PATRIC Global Family', 
         field: 'pgfam_id', 
-        hidden: true 
+        hidden: true,
+        group: 'Families' 
         },
     sog_id: { 
         label: 'SOG ID', 
         field: 'sog_id', 
-        hidden: true 
+        hidden: true,
+        group: 'Misc' 
         },
     og_id: { 
         label: 'OG ID', 
         field: 'og_id', 
-        hidden: true 
+        hidden: true,
+        group: 'Misc' 
         },
     go: { 
         label: 'GO Terms', 
         field: 'go', sortable: false, 
-        hidden: true              
+        hidden: true,
+        group: 'Misc'              
         },
         
     property: { 
         label: 'Property', 
         field: 'property', 
-        hidden: true 
+        hidden: true,
+        group: 'Misc' 
         },
     notes: { 
         label: 'Notes', 
         field: 'notes', 
-        hidden: true 
+        hidden: true,
+        group: 'Misc' 
         },
 
     classifier_score: { 
         label: 'Classifier Score', 
         field: 'classifier_score', 
-        hidden: true 
+        hidden: true,
+        group: 'Misc' 
         },
     classifier_round: { 
         label: 'Classifier Round', 
         field: 'classifier_round', 
-        hidden: true }        
+        hidden: true,
+        group: 'Misc'
+        }        
     };

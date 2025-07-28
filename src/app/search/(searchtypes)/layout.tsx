@@ -1,14 +1,11 @@
-import Navbar from "@/components/navbars/navbar";
-import Footer from "@/components/footers/footer";
+"use client";
 
-export default function SearchLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+import { SelectionProvider } from "./SelectionContext";
+
+export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="w-[95%] ml-[10px] mt-[10px]">
-        {children}
-    </div>
+    <SelectionProvider>
+      {children}
+    </SelectionProvider>
   );
 }

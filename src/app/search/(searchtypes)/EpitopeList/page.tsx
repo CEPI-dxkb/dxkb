@@ -20,7 +20,7 @@ export default function Epitopes() {
                 Epitopes
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="epitopes" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="epitopes" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <EpitopeData q={{q}} />
           </TabsContent>
         </Tabs>

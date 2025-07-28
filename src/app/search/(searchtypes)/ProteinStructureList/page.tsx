@@ -20,7 +20,7 @@ export default function ProteinStructures() {
                 Protein Structures
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="proteinstructures" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="proteinstructures" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <ProteinStructureData q={{q}} />
           </TabsContent>
         </Tabs>

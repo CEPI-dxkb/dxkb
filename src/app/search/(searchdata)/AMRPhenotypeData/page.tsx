@@ -7,7 +7,11 @@ import { SortingState } from '@tanstack/react-table';
 import { amrphenotypeFields } from '@/constants/datafields/amrphenotypes';
 import { useQuery } from '@tanstack/react-query';
 
-export function AMRPhenotypeData() {
+interface GenomeDataProps {
+  onSelectionChange?: (rows: any[]) => void;
+}
+
+export function AMRPhenotypeData({ onSelectionChange }: GenomeDataProps) {
   const amrphenotypeColumns = Object.values(amrphenotypeFields).map(obj => ({
     id: obj.field,
     label: obj.label,
@@ -93,6 +97,7 @@ export function AMRPhenotypeData() {
           id={widget.id}
           data={fullData ?? []}
           columns={widget.columns}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     </div>

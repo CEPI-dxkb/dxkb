@@ -20,7 +20,7 @@ export default function Taxa() {
                 Taxa
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="taxa" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="taxa" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <TaxaData q={{q}} />
           </TabsContent>
         </Tabs>

@@ -224,14 +224,6 @@ export const genomeFields = {
         group: 'Type Info'
       },
   
-      // Genome Quality
-      genome_quality: {
-        label: 'Genome Quality',
-        field: 'genome_quality',
-        hidden: true,
-        group: 'Genome Quality'
-      },
-  
       // Database Cross Reference
       completion_date: {
         label: 'Completion Date',
@@ -391,7 +383,13 @@ export const genomeFields = {
       },
   
       // Genome Quality
-      coarse_consistency: {
+      genome_quality: {
+        label: 'Genome Quality',
+        field: 'genome_quality',
+        hidden: true,
+        group: 'Genome Quality'
+      },
+       coarse_consistency: {
         label: 'Coarse Consistency',
         field: 'coarse_consistency',
         hidden: true,

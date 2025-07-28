@@ -43,10 +43,12 @@ interface DataTableProps {
   id: string; // This property ended up not really being used in the end, but I left it in since it seemed like it might be useful in the future and it didn't hurt to just leave it
   data: Record<string, any>[]; // The actual raw data as JSON
   columns: ColumnInfo[]; // The list of columns in the structure defined above
+  onSelectionChange?: (rows: any[]) => void;
+  onGenomeSelect?: (id: string | null) => void;
 }
 
 // This is the actual function...
-export function DataTable({ id, data, columns }: DataTableProps) {
+export function DataTable({ id, data, columns, onSelectionChange, onGenomeSelect, }: DataTableProps) {
 
   // These next consts are used and activated when something about the columm changes
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -71,6 +73,9 @@ export function DataTable({ id, data, columns }: DataTableProps) {
 
   // This allows us to select multiple rows at once...
   const lastSelectedIndexRef = useRef<number | null>(null);
+
+  // This allows the user to only include displayed columns in download
+  const [onlyVisibleColumns, setOnlyVisibleColumns] = useState(false);
 
   // These reference variables are used since React doesn't naturally have direct access to the DOM. As a result, we need to create hooks to use to be able to access and manipulate the DOM at various points in the code. These are the DOM elements that we'll need references for.
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -192,6 +197,14 @@ export function DataTable({ id, data, columns }: DataTableProps) {
 
                 // ✅ Set synchronously
                 lastSelectedIndexRef.current = currentIndex;
+
+                // After updating rowSelection...
+                if (row.getIsSelected()) {
+                  onGenomeSelect?.(null); // deselecting, so clear
+                } else {
+                  const genomeId = row.original?.genome_id; // or whatever the correct field is
+                  if (genomeId) onGenomeSelect?.(genomeId);
+                }
               }}
               className="cursor-pointer m-0 p-0"
             />
@@ -248,6 +261,19 @@ export function DataTable({ id, data, columns }: DataTableProps) {
       columnSizing,
       rowSelection,
     },
+    onRowSelectionChange: (updater) => {
+      const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+      setRowSelection(newSelection);
+
+      if (onSelectionChange) {
+        const selectedRows = Object.keys(newSelection)
+          .filter((key) => newSelection[key])
+          .map((key) => data[parseInt(key, 10)])
+          .filter(Boolean);
+        onSelectionChange(selectedRows);
+      }
+    },
+
     // These are the definitions of what happens when any of the above states change. Most of them are pretty self-explanatory
     onSortingChange: (updater) => {
       setSorting(updater);
@@ -277,7 +303,6 @@ export function DataTable({ id, data, columns }: DataTableProps) {
     getCoreRowModel: getCoreRowModel(), // This is what lets react build out the table from the raw data
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    onRowSelectionChange: setRowSelection,
     enableRowSelection: true,
     enableSortingRemoval: false,
     enableMultiRowSelection: true,
@@ -356,18 +381,18 @@ export function DataTable({ id, data, columns }: DataTableProps) {
   // This is the section that handles downloading the data. By default, it grabs all the data. However, there is an option to only download the selected rows
   const handleDownload = (format: 'csv' | 'txt', onlySelected = false) => {
     const allCols = table.getAllLeafColumns();
-    const visibleCols = allCols.filter(col => col.id !== '__select__');
-  
+    const visibleCols = onlyVisibleColumns
+      ? allCols.filter(col => col.getIsVisible() && col.id !== '__select__')
+      : allCols.filter(col => col.id !== '__select__');
+
     const headers = visibleCols.map(col => col.columnDef.header as string);
 
-    // Check to see if we're downloading everything or only selected rows
     const rowsToExport = onlySelected
       ? table.getSelectedRowModel().rows
       : table.getPrePaginationRowModel().rows;
 
-    // Go through and pack all the content into one large file...
     const content = [
-      headers.join(','), // header row
+      headers.join(','),
       ...rowsToExport.map(row =>
         visibleCols.map(col => {
           const val = row.getValue(col.id);
@@ -375,15 +400,14 @@ export function DataTable({ id, data, columns }: DataTableProps) {
         }).join(',')
       )
     ].join('\n');
-  
-    // ...and then download it.
+
     downloadFile(`table-export.${onlySelected ? 'selected-' : ''}${format}`, content);
   };
 
   // Now that all the setup is done, let's render the table!
   return (
-    <div className="flex flex-col h-full w-full text-xs relative items-center">{/* This is the main container. Full width and content centered. */}
-      <div className="w-[100%] flex justify-end mb-2 z-50" ref={controlsRef}> {/* This is the area above the table for the various buttons. */}
+    <div className="flex flex-col h-full w-full text-xs relative items-center border-0">{/* This is the main container. Full width and content centered. */}
+      <div className="w-[100%] flex justify-end mb-2 z-50 px-5" ref={controlsRef}> {/* This is the area above the table for the various buttons. */}
           <div className="relative inline-block text-left" ref={columnMenuRef}> {/* This is the button for changing the visibility of columns in the table */}
             <button
               className="flex justify-end w-full rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
@@ -446,6 +470,16 @@ export function DataTable({ id, data, columns }: DataTableProps) {
               </button>
             </>
           )}
+        
+        <label className="flex items-center text-xs text-foreground ml-4">
+          <input
+            type="checkbox"
+            checked={onlyVisibleColumns}
+            onChange={() => setOnlyVisibleColumns(prev => !prev)}
+            className="mr-1"
+          />
+          Download Displayed Columns Only
+        </label>
       </div>
       <div className="w-full flex flex-col border border-gray-500 rounded relative h-full overflow-hidden"> {/* This is the main container, which contains both the table and the pagination footer */}
 

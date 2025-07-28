@@ -20,7 +20,7 @@ export default function Features() {
                 Features
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="features" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="features" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <FeatureData q={{q}} />
           </TabsContent>
         </Tabs>

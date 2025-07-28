@@ -27,10 +27,10 @@ export default function Experiments() {
                 Biosets
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="experiments" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="experiments" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <ExperimentData q={{q}} />
           </TabsContent>
-          <TabsContent value="biosets" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+          <TabsContent value="biosets" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
             <BiosetData q={{q}} />
           </TabsContent>
         </Tabs>

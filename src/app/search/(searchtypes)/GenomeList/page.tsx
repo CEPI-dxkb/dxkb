@@ -7,14 +7,19 @@ import { GenomeData } from "@/app/search/(searchdata)/GenomeListData/page";
 import { FeatureData } from "@/app/search/(searchdata)/FeatureListData/page";
 import { SequenceData } from "../../(searchdata)/SequenceData/page";
 import { AMRPhenotypeData } from "../../(searchdata)/AMRPhenotypeData/page";
+import { useSelection } from "../SelectionContext";
+import { WithGenomePanel } from "@/components/layouts/WithGenomePanel";
 
 export default function Genomes() {
 
-    const searchParams = useSearchParams();
-    const q = searchParams.get('q');
+  const searchParams = useSearchParams();
+  const q = searchParams.get("q");
+  const { setSelectedRows } = useSelection();
 
     return(
-        <Tabs defaultValue="genomes" className="h-[85vh]">
+      <WithGenomePanel>
+        {({ activeTab, setActiveTab }) => (
+        <Tabs className="h-[85vh]" value={activeTab} onValueChange={setActiveTab} >
           <TabsList className="pb-0 mb-0 bg-background">
           <TabsTrigger 
               value="genomes" 
@@ -41,18 +46,24 @@ export default function Genomes() {
               Features
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="genomes" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <GenomeData q={{q}} />
+          <TabsContent value="genomes" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+            <GenomeData q={{q}}
+             onSelectionChange={setSelectedRows} />
           </TabsContent>
-          <TabsContent value="sequences" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <SequenceData q={{q}} />
+          <TabsContent value="sequences" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+            <SequenceData q={{q}}
+             onSelectionChange={setSelectedRows} />
           </TabsContent>
-          <TabsContent value="amrphenotypes" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <AMRPhenotypeData q={{q}} />
+          <TabsContent value="amrphenotypes" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+            <AMRPhenotypeData q={{q}}
+             onSelectionChange={setSelectedRows} />
           </TabsContent>
-          <TabsContent value="features" className="border border-black mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <FeatureData q={{q}} />
+          <TabsContent value="features" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
+            <FeatureData q={{q}}
+             onSelectionChange={setSelectedRows} />
           </TabsContent>
         </Tabs>
+        )}
+      </WithGenomePanel>
     );
 }; 

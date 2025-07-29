@@ -7,7 +7,11 @@ import { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { proteinstructureFields } from '@/constants/datafields/proteinstructures';
 
-export function ProteinStructureData() {
+interface GenomeDataProps {
+  onSelectionChange?: (rows: any[]) => void;
+}
+
+export function ProteinStructureData({ onSelectionChange }: GenomeDataProps) {
   const proteinstructureColumns = Object.values(proteinstructureFields).map(obj => ({
     id: obj.field,
     label: obj.label,
@@ -93,6 +97,7 @@ export function ProteinStructureData() {
           id={widget.id}
           data={fullData ?? []}
           columns={widget.columns}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     </div>

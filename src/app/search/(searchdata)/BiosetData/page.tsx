@@ -7,7 +7,11 @@ import { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { biosetFields } from '@/constants/datafields/biosets';
 
-export function BiosetData() {
+interface GenomeDataProps {
+  onSelectionChange?: (rows: any[]) => void;
+}
+
+export function BiosetData({ onSelectionChange }: GenomeDataProps) {
   const biosetColumns = Object.values(biosetFields).map(obj => ({
     id: obj.field,
     label: obj.label,
@@ -93,6 +97,7 @@ export function BiosetData() {
           id={widget.id}
           data={fullData ?? []}
           columns={widget.columns}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     </div>

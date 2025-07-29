@@ -7,7 +7,11 @@ import { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { taxaFields } from '@/constants/datafields/taxa';
 
-export function TaxaData() {
+interface GenomeDataProps {
+  onSelectionChange?: (rows: any[]) => void;
+}
+
+export function TaxaData({ onSelectionChange }: GenomeDataProps) {
   const taxaColumns = Object.values(taxaFields).map(obj => ({
     id: obj.field,
     label: obj.label,
@@ -93,6 +97,7 @@ export function TaxaData() {
           id={widget.id}
           data={fullData ?? []}
           columns={widget.columns}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     </div>

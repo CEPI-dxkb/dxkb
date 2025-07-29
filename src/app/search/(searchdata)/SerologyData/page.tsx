@@ -7,7 +7,11 @@ import { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { serologyFields } from '@/constants/datafields/serology';
 
-export function SerologyData() {
+interface GenomeDataProps {
+  onSelectionChange?: (rows: any[]) => void;
+}
+
+export function SerologyData({ onSelectionChange }: GenomeDataProps) {
   const serologyColumns = Object.values(serologyFields).map(obj => ({
     id: obj.field,
     label: obj.label,
@@ -93,6 +97,7 @@ export function SerologyData() {
           id={widget.id}
           data={fullData ?? []}
           columns={widget.columns}
+          onSelectionChange={onSelectionChange}
         />
       </div>
     </div>

@@ -60,13 +60,13 @@ export function InfoPanel({
       break;
     case 'epitopes':
       fieldFile = epitopeFields;
-      allowedFields = [];
-      order = [];
+      allowedFields = ['epitope_id', 'epitope_type', 'epitope_sequence', 'organism', 'taxon_id', 'protein_name', 'protein_id', 'protein_accession', 'start', 'end', 'host_name', 'total_assays', 'assay_results', 'bcell_assays', 'tcell_assays', 'mhc_assays', 'comments', 'date_inserted'];
+      order = ['Epitope Info','Additional Info'];
       break;
     case 'proteinstructures':
       fieldFile = proteinstructureFields;
-      allowedFields = [];
-      order = [];
+      allowedFields = ['pdb_id', 'title', 'organism_name', 'taxon_id', 'genome_id', 'patric_id', 'uniprotkb_accession', 'gene', 'product', 'method', 'resolution', 'pmid', 'institution', 'authors', 'release_date', 'file_path', 'date_inserted'];
+      order = ['General Info','Structure Info','Additional Info'];
       break;
     case 'surveillance':
       fieldFile = surveillanceFields;

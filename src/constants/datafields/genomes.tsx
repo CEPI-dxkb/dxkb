@@ -4,7 +4,8 @@ export const genomeFields = {
         label: 'Genome ID',
         field: 'genome_id',
         hidden: true,
-        group: 'General Info'
+        group: 'General Info',
+        link: '/view/Genome/{value}'
       },
       // General Info
       genome_name: {
@@ -25,7 +26,8 @@ export const genomeFields = {
         label: 'NCBI Taxon ID',
         field: 'taxon_id',
         hidden: true,
-        group: 'Taxonomy Info'
+        group: 'Taxonomy Info',
+        link: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={value}'
       },
       taxon_lineage_ids: {
         label: 'Taxon Lineage IDs',
@@ -271,7 +273,8 @@ export const genomeFields = {
         label: 'GenBank Accessions',
         field: 'genbank_accessions',
         hidden: false,
-        group: 'DB Cross Reference'
+        group: 'DB Cross Reference',
+        link: 'https://www.ncbi.nlm.nih.gov/nuccore/{value}'
       },
   
       // Sequence Info
@@ -329,7 +332,9 @@ export const genomeFields = {
         label: 'Contigs',
         field: 'contigs',
         hidden: true,
-        group: 'Genome Statistics'
+        group: 'Genome Statistics',
+        link: 'https://www.dxkb.org/view/Genome/{genome_id}?activeTab=sequences'
+
       },
       genome_length: {
         label: 'Size',

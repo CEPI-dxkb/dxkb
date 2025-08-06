@@ -3,19 +3,22 @@ export const featureFields = {
         label: 'Genome ID', 
         field: 'genome_id', 
         hidden: false,
-        group: 'Genome' 
+        group: 'Genome',
+        link: '/view/Genome/{value}' 
     },
     genome_name: { 
         label: 'Genome Name', 
         field: 'genome_name', 
         hidden: false,
-        group: 'Genome' 
+        group: 'Genome',
+        link: '/view/Genome/{genome_id}'  
         },
     taxon_id: { 
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: true,
-        group: 'Genome' 
+        group: 'Genome',
+        link: '/view/Taxonomy/{value}'  
         },
         
     sequence_id: { 
@@ -28,7 +31,8 @@ export const featureFields = {
         label: 'Accession', 
         field: 'accession', 
         hidden: false,
-        group: 'Sequences' 
+        group: 'Sequences',
+        link: 'https://www.ncbi.nlm.nih.gov/nuccore/{value}'  
         },
         
     annotation: { 
@@ -73,7 +77,8 @@ export const featureFields = {
         label: 'Protein ID', 
         field: 'protein_id', 
         hidden: true,
-        group: 'DB Cross References' 
+        group: 'DB Cross References',
+        link: 'https://www.ncbi.nlm.nih.gov/protein/{value}' 
         },
     gene_id: { 
         label: 'Gene ID', 
@@ -147,13 +152,17 @@ export const featureFields = {
         label: 'NA Sequence MD5', 
         field: 'na_sequence_md5', 
         hidden: true,
-        group: 'Sequences' 
+        group: 'Sequences',
+        link: '/view/FASTA/dna/?in(feature_id,({feature_id}))',
+        linkType: 'button' 
         },
     aa_sequence_md5: { 
         label: 'AA Sequence MD5', 
         field: 'aa_sequence_md5', 
         hidden: true,
-        group: 'Sequences' 
+        group: 'Sequences',
+        link: '/view/FASTA/protein/?in(feature_id,({feature_id}))',
+        linkType: 'button' 
         },
         
     gene: { 

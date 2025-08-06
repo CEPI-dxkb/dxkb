@@ -3,7 +3,8 @@ export const strainsFields = {
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: true,
-        group: 'Genome Info' 
+        group: 'Genome Info',
+        link: '/view/Taxonomy/{value}' 
         },
     taxon_lineage_ids: { 
         label: 'Taxon Lineage IDs', 
@@ -66,13 +67,15 @@ export const strainsFields = {
         label: 'Genome IDs', 
         field: 'genome_ids', 
         hidden: true,
-        group: 'Strain Info' 
+        group: 'Strain Info',
+        link: '/view/Genome/{value}' 
         },
     genbank_accessions: { 
         label: 'Genbank Accessions', 
         field: 'genbank_accessions', 
         hidden: true,
-        group: 'Strain Info' 
+        group: 'Strain Info',
+        link: 'https://www.ncbi.nlm.nih.gov/nuccore/{value}' 
         },
     segment_count: { 
         label: 'Segment Count', 

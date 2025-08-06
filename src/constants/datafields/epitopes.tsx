@@ -3,7 +3,8 @@ export const epitopeFields = {
         label: 'Epitope ID', 
         field: 'epitope_id', 
         hidden: false,
-        group: 'Epitope Info' 
+        group: 'Epitope Info',
+        link: 'https://www.iedb.org/epitope/{value}' 
         },
     epitope_type: { 
         label: 'Epitope Type', 
@@ -28,7 +29,8 @@ export const epitopeFields = {
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: true,
-        group: 'Epitope Info' 
+        group: 'Epitope Info',
+        link: '/view/Taxonomy/{value}' 
         },
         
     protein_name: { 

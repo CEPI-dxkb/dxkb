@@ -3,7 +3,8 @@ export const taxaFields = {
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: false,
-        group: 'Taxon Info' 
+        group: 'Taxon Info',
+        link: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={value}' 
         },
     taxon_name: { 
         label: 'Taxon Name', 

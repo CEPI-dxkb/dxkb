@@ -9,7 +9,8 @@ export const domainsandmotifsFields = {
         label: 'Genome ID', 
         field: 'genome_id', 
         hidden: true,
-        group: 'Genome Info' 
+        group: 'Genome Info',
+        link: '/view/Genome/{value}' 
         },
     genome_name: { 
         label: 'Genome Name', 
@@ -21,7 +22,8 @@ export const domainsandmotifsFields = {
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: true,
-        group: 'Genome Info' 
+        group: 'Genome Info',
+        link: '/view/Taxonomy/{value}' 
         },
     feature_id: { 
         label: 'Feature ID', 
@@ -33,13 +35,15 @@ export const domainsandmotifsFields = {
         label: 'BRC ID', 
         field: 'patric_id', 
         hidden: false,
-        group: 'Genome Info' 
+        group: 'Genome Info',
+        link: '/view/Feature/{value}' 
         },
     refseq_locus_tag: { 
         label: 'RefSeq Locus Tag', 
         field: 'refseq_locus_tag', 
         hidden: false,
-        group: 'Sequence Info' 
+        group: 'Sequence Info',
+        link: 'http://www.ncbi.nlm.nih.gov/protein/?term={value}' 
         },
     aa_sequence_md5: { 
         label: 'AA Sequence MD5', 
@@ -63,7 +67,8 @@ export const domainsandmotifsFields = {
         label: 'Interpro ID', 
         field: 'interpro_id', 
         hidden: true,
-        group: 'Feature Info' 
+        group: 'Feature Info',
+        link: 'https://www.ebi.ac.uk/interpro/entry/InterPro/{value}/' 
         },
     interpro_description: { 
         label: 'Interpro Description', 
@@ -87,7 +92,8 @@ export const domainsandmotifsFields = {
         label: 'Source ID', 
         field: 'source_id', 
         hidden: false,
-        group: 'Feature Info' 
+        group: 'Feature Info',
+        link: 'https://www.ncbi.nlm.nih.gov/Structure/cdd/cddsrv.cgi?uid={value}' 
         },
     description: { 
         label: 'Description', 

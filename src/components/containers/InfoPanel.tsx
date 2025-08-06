@@ -113,6 +113,9 @@ export function InfoPanel({
     label: obj.label,
     visible: !obj.hidden,
     group: obj.group,
+    link: obj.link,
+    linkType: obj.linkType,
+    linkText: obj.linkText
   }));
 
   const grouped = displayColumns.reduce(
@@ -147,6 +150,24 @@ export function InfoPanel({
       month: "short",
       day: "2-digit",
     });
+  }
+
+  function resolveLink(template: string, row: any, fallbackField: string) {
+    return template.replace(/{([^}]+)}/g, (_, key) => {
+      const value = row[key] ?? row[fallbackField] ?? '';
+      return encodeURIComponent(value);  // encode just the inserted value
+    });
+  }
+
+  function toAbsoluteUrl(url: string): string {
+    try {
+      // If the URL is already absolute, return it unchanged
+      new URL(url);
+      return url;
+    } catch {
+      // If not, make it absolute using dxkb.org. This is necessary since React kept trying to recode the URL and it was messing stuff up but it won't mess with an absolute URL
+      return new URL(url, 'https://www.dxkb.org').href;
+    }
   }
 
   return (
@@ -200,13 +221,41 @@ export function InfoPanel({
                             ? formatDate(rawValue)
                             : rawValue;
 
+                        if (item.link) {
+                          const resolved = resolveLink(item.link, rows[0], item.id);
+                          console.log(resolved);
+                        }
+
                         return (
                           <tr key={item.id}>
                             <td className="px-2 py-0.5 font-medium text-xs w-[40%] align-top">
                               {item.label}
                             </td>
                             <td className="px-2 py-0.5 text-xs break-all align-top">
-                              {value}
+                              {item.link ? (() => {
+                                  var resolved = resolveLink(item.link, rows[0], item.id);
+                                  console.log(resolved);
+                                  resolved = toAbsoluteUrl(resolved);
+                                  console.log(resolved);
+
+                                  return item.linkType === 'button' ? (
+                                    <button
+                                      onClick={() => window.open(resolved, '_blank')}
+                                      className="text-sm text-blue-600 border-black bg-primary text-secondary py-1 px-2 rounded"
+                                    >
+                                      {item.linkText ?? 'View'}
+                                    </button>
+                                  ) : (
+                                    <a
+                                      href={resolved}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-blue-600 underline hover:text-blue-800"
+                                    >
+                                      {value}
+                                    </a>
+                                  );
+                                })() : value}
                             </td>
                           </tr>
                         );

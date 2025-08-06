@@ -3,7 +3,8 @@ export const sequenceFields = {
         label: 'Genome ID', 
         field: 'genome_id', 
         hidden: false,
-        group: 'General Info' 
+        group: 'General Info',
+        link: '/view/Genome/{value}' 
         },
     genome_name: { 
         label: 'Genome Name', 
@@ -15,19 +16,22 @@ export const sequenceFields = {
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: true,
-        group: 'Taxonomy Info' 
+        group: 'Taxonomy Info',
+        link: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={value}' 
         },
     sequence_id: { 
         label: 'Sequence ID', 
         field: 'sequence_id', 
         hidden: true,
-        group: 'Sequence Info' 
+        group: 'Sequence Info',
+        link: '/view/FeatureList/?and(eq(annotation,PATRIC),eq(sequence_id,{value}),eq(feature_type,CDS))' 
         },
     accession: { 
         label: 'Accession', 
         field: 'accession', 
         hidden: false,
-        group: 'Sequence Info' 
+        group: 'Sequence Info',
+        link: 'https://www.ncbi.nlm.nih.gov/nuccore/{value}' 
         },
     gi: { 
         label: 'GI', 

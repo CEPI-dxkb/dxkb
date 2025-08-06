@@ -3,7 +3,8 @@ export const proteinstructureFields = {
         label: 'PDB ID', 
         field: 'pdb_id', 
         hidden: false,
-        group: 'General Info' 
+        group: 'General Info',
+        link: 'https://www.rcsb.org/structure/{value}' 
         },
     title: { 
         label: 'Title', 
@@ -22,7 +23,8 @@ export const proteinstructureFields = {
         label: 'Taxon ID', 
         field: 'taxon_id', 
         hidden: true,
-        group: 'General Info' 
+        group: 'General Info',
+        link: '/view/Taxonomy/{value}' 
         },
     taxon_lineage_ids: { 
         label: 'Taxon Lineage IDs', 

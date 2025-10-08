@@ -657,6 +657,9 @@
 .service-radio-group {
   @apply flex flex-col sm:flex-row gap-4;
 }
+.service-radio-group-grid {
+  @apply grid grid-cols-1 gap-4 md:grid-cols-2;
+}
 
 .service-radio-group-item {
   @apply flex items-center space-x-2 justify-start;

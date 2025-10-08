@@ -26,8 +26,6 @@ interface ServiceInfoSubsection {
   subdescription?: string;
 }
 
-
-
 export const primerOptions = [
   { id: "artic", label: "ARTIC", versions: ["v5.3.2", "v4.1", "v4", "v3", "v2", "v1"] },
   { id: "midnight", label: "Midnight", versions: ["v1"] },

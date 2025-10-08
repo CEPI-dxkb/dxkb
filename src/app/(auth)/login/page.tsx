@@ -28,7 +28,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { LuEye, LuEyeOff, LuLock, LuUser } from "react-icons/lu";
-import { RequiredFormLabel } from "@/components/forms/required-form-label";
+import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z.object({
   username: z.string().min(1, { message: "Username is required" }),

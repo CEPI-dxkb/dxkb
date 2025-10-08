@@ -75,14 +75,14 @@ export const blastServiceSearchProgram: ServiceInfoPopup = {
   ],
 };
 
-export const blastServiceQuerySource: ServiceInfoPopup = {
-  title: "Query Source",
+export const blastServiceInputSource: ServiceInfoPopup = {
+  title: "Input Source",
   description:
-    "There are three types of Query sources that are provided by BV-BRC:",
+    "There are three types of Input sources that are provided by BV-BRC:",
   sections: [
     {
       header: "Enter sequence",
-      description: "Paste the query sequence into the box.",
+      description: "Paste the input sequence into the box.",
     },
     {
       header: "Select FASTA file",

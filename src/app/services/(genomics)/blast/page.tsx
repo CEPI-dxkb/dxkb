@@ -1,5 +1,8 @@
 "use client";
 
+import { z } from "zod"
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { ServiceHeader } from "@/components/services/service-header";
 import {
@@ -29,7 +32,7 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import {
   blastServiceInfo,
   blastServiceSearchProgram,
-  blastServiceQuerySource,
+  blastServiceInputSource,
   blastServiceDatabaseSource,
   blastServiceDatabaseType,
 } from "@/lib/service-info";
@@ -38,7 +41,43 @@ import { Checkbox } from "@/components/ui/checkbox";
 import OutputFolder from "@/components/services/output-folder";
 import { handleFormSubmit } from "@/lib/service-utils";
 
+
+const formSchema = z.object({
+  input_type: z.enum(["aa", "dna"]),
+  input_source: z.enum(["fasta_data", "fasta_file", "feature_group"]),
+  db_type: z.enum(["fna", "ffn", "faa", "frn"]),
+  db_source: z.enum(["precomputed_database", "genome_list", "genome_group", "feature_group", "taxon_list", "fasta_file"]),
+  blast_program: z.enum(["blastn", "blastp", "blastx", "tblastn"]),
+  output_file: z.string(),
+  output_path: z.string(),
+  blast_max_hits: z.number().refine((val) => [1, 10, 20, 50, 100, 500, 5000].includes(val), {
+    message: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000"
+  }),
+  blast_evalue_cutoff: z.number().refine((val) => [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000].includes(val), {
+    message: "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000"
+  }),
+  input_fasta_file: z.string(),
+  db_precomputed_database: z.enum(["bacteria-archaea", "viral-reference", "selGenome", "selGroup", "selFeatureGroup", "selTaxon", "selFasta"]),
+});
+
 export default function BlastServicePage() {
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      input_type: "aa",
+      input_source: "fasta_data",
+      db_type: "fna",
+      db_source: "precomputed_database",
+      blast_program: "blastn",
+      output_file: "",
+      output_path: "",
+      blast_max_hits: 10,
+      blast_evalue_cutoff: 0.0001,
+      input_fasta_file: "",
+      db_precomputed_database: "bacteria-archaea",
+    },
+  });
+
   const [searchProgram, setSearchProgram] = useState("blastn");
   const [queryType, setQueryType] = useState("enterSequence");
   const [sequenceInput, setSequenceInput] = useState("");
@@ -90,7 +129,7 @@ export default function BlastServicePage() {
             <RadioGroup
               value={searchProgram}
               onValueChange={setSearchProgram}
-              className="service-radio-group"
+              className="service-radio-group-grid"
             >
               <div className="service-radio-group-item">
                 <RadioGroupItem value="blastn" id="blastn" />
@@ -126,9 +165,9 @@ export default function BlastServicePage() {
             <CardTitle className="service-card-title">
               Query Source
               <DialogInfoPopup
-                title={blastServiceQuerySource.title}
-                description={blastServiceQuerySource.description}
-                sections={blastServiceQuerySource.sections}
+                title={blastServiceInputSource.title}
+                description={blastServiceInputSource.description}
+                sections={blastServiceInputSource.sections}
               />
             </CardTitle>
           </CardHeader>
@@ -220,7 +259,7 @@ export default function BlastServicePage() {
                     description={blastServiceDatabaseSource.description}
                     sections={blastServiceDatabaseSource.sections}
                     className="mb-2"
-                    />
+                  />
                 </div>
 
                 <Select>
@@ -348,24 +387,24 @@ export default function BlastServicePage() {
             </Collapsible>
           </CardContent>
         </Card>
-      </form>
 
-      {/* Form Controls */}
-      <div className="service-form-controls">
-        <div className="flex items-center gap-2">
-          <Checkbox id="view-results" />
-          <Label htmlFor="view-results">View Results</Label>
+        {/* Form Controls */}
+        <div className="service-form-controls">
+          <div className="flex items-center gap-2">
+            <Checkbox id="view-results" />
+            <Label htmlFor="view-results">View Results</Label>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleReset}
+            className="service-form-controls-button"
+          >
+            Reset
+          </Button>
+          <Button type="submit">Submit</Button>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleReset}
-          className="service-form-controls-button"
-        >
-          Reset
-        </Button>
-        <Button type="submit">Submit</Button>
-      </div>
+      </form>
     </section>
   );
 }

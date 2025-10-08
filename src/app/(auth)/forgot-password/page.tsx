@@ -27,7 +27,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { LuMail, LuArrowLeft } from "react-icons/lu";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import { RequiredFormLabel } from "@/components/forms/required-form-label";
+import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z.object({
   usernameOrEmail: z

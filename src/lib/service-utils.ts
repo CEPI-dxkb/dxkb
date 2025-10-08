@@ -146,6 +146,7 @@ export function addGenome(genome: Genome, selectedGenomes: Genome[]) {
 }
 
 export function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
-  e.preventDefault();
   console.log("Form submitted");
+  console.log("Form data:", new FormData(e.currentTarget));
+  e.preventDefault();
 }

@@ -66,8 +66,7 @@ const OutputFolder = ({
             types={["folder"]}
             placeholder="Search for folders..."
             onObjectSelect={(object) => {
-              console.log("Selected folder:", object);
-              // TODO: Update form state
+              onChange?.(object.path || "");
             }}
 
           />

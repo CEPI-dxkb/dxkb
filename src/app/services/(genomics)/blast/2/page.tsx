@@ -52,8 +52,9 @@ import { blastPrecomputedDatabases } from "@/types/services";
 import {
   getAvailableBlastDatabaseTypes,
   getDefaultBlastDatabaseType,
-  handleFormSubmit,
 } from "@/lib/service-utils";
+import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { useServiceFormSubmission } from "@/hooks/use-service-form-submission";
 
 // Base schema with common fields (excluding discriminators)
 const baseFormSchema = z.object({
@@ -151,6 +152,40 @@ export default function BlastServicePage() {
   const [availableDatabaseTypes, setAvailableDatabaseTypes] = useState(
     getAvailableBlastDatabaseTypes("blastn", "bacteria_archaea"),
   );
+
+  // Setup service debugging and form submission
+  const { handleSubmit, showParamsDialog, setShowParamsDialog, currentParams, serviceName } = 
+    useServiceFormSubmission<z.infer<typeof completeFormSchema>>({
+      serviceName: "BLAST",
+      transformParams: (data) => {
+        // Transform form data to match API expected format
+        return {
+          input_type: data.input_type,
+          input_source: data.input_source,
+          ...(data.input_source === "fasta_data" && { input_fasta_data: data.input_fasta_data }),
+          ...(data.input_source === "fasta_file" && { input_fasta_file: data.input_fasta_file }),
+          ...(data.input_source === "feature_group" && { input_feature_group: data.input_feature_group }),
+          db_type: data.db_type,
+          db_source: data.db_source,
+          db_precomputed_database: data.db_precomputed_database,
+          ...(data.db_precomputed_database === "selGenome" && { db_genome_list: data.db_genome_list }),
+          ...(data.db_precomputed_database === "selGroup" && { db_genome_group: data.db_genome_group }),
+          ...(data.db_precomputed_database === "selFeatureGroup" && { db_feature_group: data.db_feature_group }),
+          ...(data.db_precomputed_database === "selTaxon" && { db_taxon_list: data.db_taxon_list }),
+          ...(data.db_precomputed_database === "selFasta" && { db_fasta_file: data.db_fasta_file }),
+          blast_program: data.blast_program,
+          output_file: data.output_file,
+          output_path: data.output_path,
+          blast_max_hits: data.blast_max_hits,
+          blast_evalue_cutoff: data.blast_evalue_cutoff,
+        };
+      },
+      onSubmit: async (data) => {
+        // This is where you would actually submit the job
+        console.log("Submitting BLAST job:", data);
+        // TODO: Call your API endpoint here
+      },
+    });
 
   // Log form value changes
   useEffect(() => {
@@ -268,10 +303,7 @@ export default function BlastServicePage() {
 
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit((data) => {
-            console.log("Form submitted:", data);
-            // handleFormSubmit();
-          })}
+          onSubmit={form.handleSubmit(handleSubmit)}
           className="service-form-section"
         >
           {/* Search Program Card */}
@@ -688,7 +720,7 @@ export default function BlastServicePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <OutputFolder required={true} onChange={field.onChange} />
+                          <OutputFolder required={true} value={field.value} onChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -803,18 +835,28 @@ export default function BlastServicePage() {
               <Checkbox id="view-results" />
               <Label htmlFor="view-results">View Results</Label>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              className="service-form-controls-button"
-            >
-              Reset
-            </Button>
-            <Button type="submit" onClick={() => handleFormSubmit(form.getValues() as any)}>Submit</Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                className="service-form-controls-button"
+              >
+                Reset
+              </Button>
+              <Button type="submit">Submit</Button>
+            </div>
           </div>
         </form>
       </Form>
+
+      {/* Job Params Dialog */}
+      <JobParamsDialog
+        open={showParamsDialog}
+        onOpenChange={setShowParamsDialog}
+        params={currentParams}
+        serviceName={serviceName}
+      />
     </section>
   );
 }

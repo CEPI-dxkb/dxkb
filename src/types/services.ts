@@ -92,3 +92,54 @@ export const subspeciesClassificationSpeciesList = [
   { id: "poxviridae_monkeypox", label: "Poxviridae - Monkeypox virus [complete genome, genomic DNA]" },
   { id: "reoviridae_rotavirus_a", label: "Reoviridae - Rotavirus A [complete genome, genomic RNA]" },
 ];
+
+export const blastDatabaseTypes = [
+  { value: 'fna', label: 'Genome sequences (NT)' },
+  { value: 'faa', label: 'Proteins (AA)' },
+  { value: 'ffn', label: 'Genes (NT)' },
+  { value: 'frn', label: 'RNAs (NT)' }
+];
+
+// BLAST Database Type Mapping based on search program and database source
+// Mapping: GSNT = fna (Genome sequences), GNT = ffn (Genes), RNT = frn (RNAs), AA = faa (Proteins)
+export const blastDatabaseTypeMap: Record<
+  string, // blast_program
+  Record<string, string[]> // db_source -> available db_types
+> = {
+  blastn: {
+    "bacteria-archaea": ["fna", "ffn"],
+    "viral-reference": ["fna", "ffn"],
+    "selGenome": ["fna", "ffn", "frn"],
+    "selGroup": ["fna", "ffn", "frn"],
+    "selFeatureGroup": ["fna", "ffn", "frn"],
+    "selTaxon": ["fna", "ffn", "frn"],
+    "selFasta": ["fna"],
+  },
+  blastp: {
+    "bacteria-archaea": ["faa"],
+    "viral-reference": ["faa"],
+    "selGenome": ["faa"],
+    "selGroup": ["faa"],
+    "selFeatureGroup": ["faa"],
+    "selTaxon": ["faa"],
+    "selFasta": ["faa"],
+  },
+  blastx: {
+    "bacteria-archaea": ["faa"],
+    "viral-reference": ["faa"],
+    "selGenome": ["faa"],
+    "selGroup": ["faa"],
+    "selFeatureGroup": ["faa"],
+    "selTaxon": ["faa"],
+    "selFasta": ["faa"],
+  },
+  tblastn: {
+    "bacteria-archaea": ["fna", "ffn"],
+    "viral-reference": ["fna", "ffn"],
+    "selGenome": ["fna", "ffn", "frn"],
+    "selGroup": ["fna", "ffn", "frn"],
+    "selFeatureGroup": ["fna", "ffn", "frn"],
+    "selTaxon": ["fna", "ffn", "frn"],
+    "selFasta": ["fna"],
+  },
+};

@@ -36,11 +36,49 @@ import {
   blastServiceDatabaseSource,
   blastServiceDatabaseType,
 } from "@/lib/service-info";
-import SearchWorkspaceInput from "@/components/services/search-workspace-input";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { Checkbox } from "@/components/ui/checkbox";
 import OutputFolder from "@/components/services/output-folder";
 import { handleFormSubmit } from "@/lib/service-utils";
 
+const decisionTree = {
+  "blast_program": {
+    "blastn": {
+      "valid_databases": {
+        "bacteria-archaea": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+        "viral-reference": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+        "selGenome": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+        "selGroup": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+        "selFeatureGroup": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+        "selTaxon": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+        "selFasta": {
+          "valid_db_types": ["fna", "ffn", "faa", "frn"],
+        },
+      },
+    },
+    "blastp": {
+      "valid_databases": ["bacteria-archaea", "viral-reference", "selGenome", "selGroup", "selFeatureGroup", "selTaxon", "selFasta"],
+    },
+    "blastx": {
+      "valid_databases": ["bacteria-archaea", "viral-reference", "selGenome", "selGroup", "selFeatureGroup", "selTaxon", "selFasta"],
+    },
+    "tblastn": {
+      "valid_databases": ["bacteria-archaea", "viral-reference", "selGenome", "selGroup", "selFeatureGroup", "selTaxon", "selFasta"],
+    },
+  },
+};
 
 const formSchema = z.object({
   input_type: z.enum(["aa", "dna"]),
@@ -173,7 +211,7 @@ export default function BlastServicePage() {
           </CardHeader>
 
           <CardContent className="service-card-content">
-            <div className="space-y-6">
+            <div className="space-y-4">
               <RadioGroup
                 value={queryType}
                 onValueChange={setQueryType}
@@ -200,41 +238,45 @@ export default function BlastServicePage() {
                 </div>
               </RadioGroup>
 
-              {queryType === "enterSequence" && (
-                <div className="service-card-content-grid-item">
-                  <Label
-                    htmlFor="sequence-input"
-                    className="service-card-label"
-                  >
-                    Enter a FASTA formatted sequence.
-                  </Label>
-                  <Textarea
-                    id="sequence-input"
-                    placeholder="Enter one or more query nucleotide or protein sequences to search. Requires FASTA format."
-                    value={sequenceInput}
-                    onChange={(e) => setSequenceInput(e.target.value)}
-                    className="service-card-textarea"
-                  />
-                </div>
-              )}
+              <div className={queryType === "enterSequence" ? "service-card-content-grid-item" : "hidden"}>
+                <Label
+                  htmlFor="sequence-input"
+                  className="service-card-label"
+                >
+                  Enter a FASTA formatted sequence.
+                </Label>
+                <Textarea
+                  id="sequence-input"
+                  placeholder="Enter one or more query nucleotide or protein sequences to search. Requires FASTA format."
+                  value={sequenceInput}
+                  onChange={(e) => setSequenceInput(e.target.value)}
+                  className="service-card-textarea"
+                />
+              </div>
 
-              {queryType === "selectFasta" && (
-                <div className="service-card-content-grid-item">
-                  <SearchWorkspaceInput
-                    title="Upload a FASTA file"
-                    placeholder="FASTA file..."
-                  />
-                </div>
-              )}
+              <div className={queryType === "selectFasta" ? "service-card-content-grid-item" : "hidden"}>
+                {/* <Label className="service-card-label">Select FASTA File</Label> */}
+                <WorkspaceObjectSelector
+                  types={["feature_protein_fasta", "feature_dna_fasta"]}
+                  placeholder="Search for FASTA files..."
+                  onObjectSelect={(object) => {
+                    console.log("Selected FASTA file:", object);
+                    // TODO: Update form state
+                  }}
+                />
+              </div>
 
-              {queryType === "selectFeature" && (
-                <div className="service-card-content-grid-item">
-                  <SearchWorkspaceInput
-                    title="Select a feature group"
-                    placeholder="Feature group..."
-                  />
-                </div>
-              )}
+              <div className={queryType === "selectFeature" ? "service-card-content-grid-item mb-4" : "hidden"}>
+                {/* <Label className="service-card-label">Select Feature Group</Label> */}
+                <WorkspaceObjectSelector
+                  types={["feature_group"]}
+                  placeholder="Search for feature groups..."
+                  onObjectSelect={(object) => {
+                    console.log("Selected feature group:", object);
+                    // TODO: Update form state
+                  }}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -320,9 +362,14 @@ export default function BlastServicePage() {
 
             </div>
 
-            <OutputFolder onChange={setOutputFolder} />
-
-            <OutputFolder variant="name" onChange={setOutputName} />
+            <div className="service-card-row">
+              <div className="service-card-row-item">
+                <OutputFolder onChange={setOutputFolder} />
+              </div>
+              <div className="service-card-row-item">
+                <OutputFolder variant="name" onChange={setOutputName} />
+              </div>
+            </div>
 
             <Collapsible
               open={showAdvanced}

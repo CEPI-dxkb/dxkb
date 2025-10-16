@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { Library, Genome } from "@/types/services";
+import { Library, Genome, blastDatabaseTypes, blastDatabaseTypeMap } from "@/types/services";
 import { toast } from "sonner";
 
 export interface FileInput {
@@ -149,4 +149,35 @@ export function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
   console.log("Form submitted");
   console.log("Form data:", new FormData(e.currentTarget));
   e.preventDefault();
+}
+
+/**
+ * Get available database types for BLAST based on the selected program and database source
+ * @param blastProgram - The BLAST program (blastn, blastp, blastx, tblastn)
+ * @param dbSource - The database source (bacteria-archaea, viral-reference, selGenome, etc.)
+ * @returns Array of available database type options
+ */
+export function getAvailableBlastDatabaseTypes(
+  blastProgram: string,
+  dbSource: string,
+) {
+  const availableTypes = blastDatabaseTypeMap[blastProgram]?.[dbSource] || [];
+  
+  return blastDatabaseTypes.filter((dbType) =>
+    availableTypes.includes(dbType.value),
+  );
+}
+
+/**
+ * Get the default database type for a given BLAST program and database source
+ * @param blastProgram - The BLAST program
+ * @param dbSource - The database source
+ * @returns The default database type value
+ */
+export function getDefaultBlastDatabaseType(
+  blastProgram: string,
+  dbSource: string,
+): string {
+  const availableTypes = blastDatabaseTypeMap[blastProgram]?.[dbSource];
+  return availableTypes?.[0] || "fna";
 }

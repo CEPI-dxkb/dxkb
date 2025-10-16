@@ -1,6 +1,6 @@
 "use client";
 
-import { z } from "zod"
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -13,12 +13,7 @@ import {
 } from "@/components/ui/form";
 import { useState, useEffect } from "react";
 import { ServiceHeader } from "@/components/services/service-header";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,27 +39,60 @@ import {
   blastServiceDatabaseSource,
   blastServiceDatabaseType,
 } from "@/lib/service-info";
-import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import OutputFolder from "@/components/services/output-folder";
-import { RequiredFormLabel, RequiredFormLabelInfo, RequiredFormCardTitle } from "@/components/forms/required-form-components";
-
+import {
+  RequiredFormLabel,
+  RequiredFormLabelInfo,
+  RequiredFormCardTitle,
+} from "@/components/forms/required-form-components";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { WorkspaceObject } from "@/lib/workspace-api";
+import { blastDatabaseTypes } from "@/types/services";
+import {
+  getAvailableBlastDatabaseTypes,
+  getDefaultBlastDatabaseType,
+} from "@/lib/service-utils";
 
 const baseFormSchema = z.object({
   input_type: z.enum(["aa", "dna"]),
   // input_source: z.enum(["fasta_data", "fasta_file", "feature_group"]),
   db_type: z.enum(["fna", "ffn", "faa", "frn"]),
-  db_source: z.enum(["precomputed_database", "genome_list", "genome_group", "feature_group", "taxon_list", "fasta_file"]),
+  db_source: z.enum([
+    "precomputed_database",
+    "genome_list",
+    "genome_group",
+    "feature_group",
+    "taxon_list",
+    "fasta_file",
+  ]),
   blast_program: z.enum(["blastn", "blastp", "blastx", "tblastn"]),
   output_file: z.string(),
   output_path: z.string(),
-  blast_max_hits: z.number().refine((val) => [1, 10, 20, 50, 100, 500, 5000].includes(val), {
-    message: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000"
-  }),
-  blast_evalue_cutoff: z.number().refine((val) => [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000].includes(val), {
-    message: "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000"
-  }),
-  db_precomputed_database: z.enum(["bacteria-archaea", "viral-reference", "selGenome", "selGroup", "selFeatureGroup", "selTaxon", "selFasta"]),
+  blast_max_hits: z
+    .number()
+    .refine((val) => [1, 10, 20, 50, 100, 500, 5000].includes(val), {
+      message: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000",
+    }),
+  blast_evalue_cutoff: z
+    .number()
+    .refine(
+      (val) =>
+        [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000].includes(val),
+      {
+        message:
+          "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000",
+      },
+    ),
+  db_precomputed_database: z.enum([
+    "bacteria-archaea",
+    "viral-reference",
+    "selGenome",
+    "selGroup",
+    "selFeatureGroup",
+    "selTaxon",
+    "selFasta",
+  ]),
 });
 
 const formSchema = z.discriminatedUnion("input_source", [
@@ -101,13 +129,15 @@ export default function BlastServicePage() {
   });
 
   const [searchProgram, setSearchProgram] = useState("blastn");
-  const [inputSourceType, setInputSourceType] = useState("enterSequence");
   const [sequenceInput, setSequenceInput] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [_maxHits, setMaxHits] = useState("10");
   const [_eValueThreshold, setEValueThreshold] = useState("0.0001");
   const [_outputFolder, setOutputFolder] = useState("");
   const [_outputName, setOutputName] = useState("");
+  const [availableDatabaseTypes, setAvailableDatabaseTypes] = useState(
+    getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea"),
+  );
 
   // Log form value changes
   useEffect(() => {
@@ -118,9 +148,6 @@ export default function BlastServicePage() {
   }, [form]);
 
   // Log local state changes
-  useEffect(() => {
-    console.log("inputSourceType changed:", inputSourceType);
-  }, [inputSourceType]);
   useEffect(() => {
     console.log("sequenceInput changed:", sequenceInput);
   }, [sequenceInput]);
@@ -143,15 +170,43 @@ export default function BlastServicePage() {
     console.log("outputName changed:", _outputName);
   }, [_outputName]);
 
+  // Update available database types when blast_program or db_precomputed_database changes
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      if (value.blast_program && value.db_precomputed_database) {
+        const newAvailableTypes = getAvailableBlastDatabaseTypes(
+          value.blast_program,
+          value.db_precomputed_database,
+        );
+        setAvailableDatabaseTypes(newAvailableTypes);
+
+        // If current db_type is not available, set to default
+        const isCurrentTypeAvailable = newAvailableTypes.some(
+          (type) => type.value === value.db_type,
+        );
+        if (!isCurrentTypeAvailable) {
+          const defaultType = getDefaultBlastDatabaseType(
+            value.blast_program,
+            value.db_precomputed_database,
+          );
+          form.setValue("db_type", defaultType as any);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
   const handleReset = () => {
     setSearchProgram("");
-    setInputSourceType("enterSequence");
     setSequenceInput("");
     setShowAdvanced(false);
     setMaxHits("10");
     setEValueThreshold("0.0001");
     setOutputFolder("");
     setOutputName("");
+    setAvailableDatabaseTypes(
+      getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea"),
+    );
   };
 
   const handleInputSourceChange = (newSource: string) => {
@@ -175,9 +230,9 @@ export default function BlastServicePage() {
     // Add the appropriate input field based on the new source
     const newValues = {
       ...baseValues,
-      ...(newSource === 'fasta_data' && { input_fasta_data: '' }),
-      ...(newSource === 'fasta_file' && { input_fasta_file: '' }),
-      ...(newSource === 'feature_group' && { input_feature_group: '' }),
+      ...(newSource === "fasta_data" && { input_fasta_data: "" }),
+      ...(newSource === "fasta_file" && { input_fasta_file: "" }),
+      ...(newSource === "feature_group" && { input_feature_group: "" }),
     };
 
     // Reset form with new values
@@ -232,25 +287,37 @@ export default function BlastServicePage() {
                       >
                         <div className="service-radio-group-item">
                           <RadioGroupItem value="blastn" id="blastn" />
-                          <FormLabel htmlFor="blastn" className="service-radio-group-label">
+                          <FormLabel
+                            htmlFor="blastn"
+                            className="service-radio-group-label"
+                          >
                             BLASTN (nucleotide → nucleotide database)
                           </FormLabel>
                         </div>
                         <div className="service-radio-group-item">
                           <RadioGroupItem value="blastp" id="blastp" />
-                          <FormLabel htmlFor="blastp" className="service-radio-group-label">
+                          <FormLabel
+                            htmlFor="blastp"
+                            className="service-radio-group-label"
+                          >
                             BLASTP (protein → protein database)
                           </FormLabel>
                         </div>
                         <div className="service-radio-group-item">
                           <RadioGroupItem value="blastx" id="blastx" />
-                          <FormLabel htmlFor="blastx" className="service-radio-group-label">
+                          <FormLabel
+                            htmlFor="blastx"
+                            className="service-radio-group-label"
+                          >
                             BLASTX (translated nucleotide → protein database)
                           </FormLabel>
                         </div>
                         <div className="service-radio-group-item">
                           <RadioGroupItem value="tblastn" id="tblastn" />
-                          <FormLabel htmlFor="tblastn" className="service-radio-group-label">
+                          <FormLabel
+                            htmlFor="tblastn"
+                            className="service-radio-group-label"
+                          >
                             tBLASTn (protein → translated nucleotide database)
                           </FormLabel>
                         </div>
@@ -293,7 +360,10 @@ export default function BlastServicePage() {
                           className="service-radio-group"
                         >
                           <div className="service-radio-group-item">
-                            <RadioGroupItem value="fasta_data" id="fastaSequence" />
+                            <RadioGroupItem
+                              value="fasta_data"
+                              id="fastaSequence"
+                            />
                             <FormLabel htmlFor="fastaSequence">
                               Enter sequence
                             </FormLabel>
@@ -305,7 +375,10 @@ export default function BlastServicePage() {
                             </FormLabel>
                           </div>
                           <div className="service-radio-group-item">
-                            <RadioGroupItem value="feature_group" id="featureGroup" />
+                            <RadioGroupItem
+                              value="feature_group"
+                              id="featureGroup"
+                            />
                             <FormLabel htmlFor="featureGroup">
                               Select feature group
                             </FormLabel>
@@ -315,8 +388,7 @@ export default function BlastServicePage() {
                       <FormMessage />
                     </FormItem>
 
-
-                    {field.value === "fasta_data" && (
+                    <div className={form.watch("input_source") === "fasta_data" ? "service-card-content-grid-item" : "hidden"}>
                       <FormField
                         control={form.control}
                         name="input_fasta_data"
@@ -324,9 +396,7 @@ export default function BlastServicePage() {
                           <FormItem>
                             <FormControl>
                               <div className="service-card-content-grid-item">
-                                <RequiredFormLabel
-                                  className="service-card-label"
-                                >
+                                <RequiredFormLabel className="service-card-label">
                                   Enter a FASTA formatted sequence.
                                 </RequiredFormLabel>
                                 <Textarea
@@ -342,51 +412,49 @@ export default function BlastServicePage() {
                           </FormItem>
                         )}
                       />
-                    )}
+                    </div>
 
-                    {field.value === "fasta_file" && (
+                    <div className={form.watch("input_source") === "fasta_file" ? "service-card-content-grid-item" : "hidden"}>
                       <FormField
                         control={form.control}
                         name="input_fasta_file"
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="service-card-content-grid-item">
-                                <SearchWorkspaceInput
-                                  title="Upload a FASTA file"
-                                  placeholder="FASTA file..."
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </div>
+                              <WorkspaceObjectSelector
+                                types={["feature_protein_fasta", "feature_dna_fasta"]}
+                                placeholder="Select a FASTA file to search..."
+                                onObjectSelect={(object: WorkspaceObject) => {
+                                  field.onChange(object.path);
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    )}
+                    </div>
 
-                    {field.value === "feature_group" && (
+                    <div className={form.watch("input_source") === "feature_group" ? "service-card-content-grid-item mb-4" : "hidden"}>
                       <FormField
                         control={form.control}
                         name="input_feature_group"
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="service-card-content-grid-item">
-                                <SearchWorkspaceInput
-                                  title="Select a feature group"
-                                  placeholder="Feature group..."
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                />
-                              </div>
+                            <WorkspaceObjectSelector
+                                types={["feature_group"]}
+                                placeholder="Select a feature group to search..."
+                                onObjectSelect={(object: WorkspaceObject) => {
+                                  field.onChange(object.path);
+                                }}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                    )}
+                    </div>
                   </div>
                 )}
               />
@@ -396,9 +464,7 @@ export default function BlastServicePage() {
           {/* Output Settings Card */}
           <Card>
             <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
-                Parameters
-              </CardTitle>
+              <CardTitle className="service-card-title">Parameters</CardTitle>
             </CardHeader>
 
             <CardContent className="service-card-content">
@@ -416,14 +482,21 @@ export default function BlastServicePage() {
                             label="Database Source"
                             infoPopup={blastServiceDatabaseSource}
                           />
-                          <Select value={field.value} onValueChange={field.onChange}>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select database source" />
                             </SelectTrigger>
                             {/* TODO: Conditionally render based on input source type */}
-                            <SelectContent className="service-card-select-content" onChange={field.onChange}>
+                            <SelectContent
+                              className="service-card-select-content"
+                              onChange={field.onChange}
+                            >
                               <SelectItem value="bacteria-archaea">
-                                Reference and representative genomes (bacteria, archaea)
+                                Reference and representative genomes (bacteria,
+                                archaea)
                               </SelectItem>
                               <SelectItem value="viral-reference">
                                 Reference and representative genomes (viruses)
@@ -456,24 +529,26 @@ export default function BlastServicePage() {
                   control={form.control}
                   name="db_type"
                   render={({ field }) => (
-                    <FormItem className="w-full"> 
+                    <FormItem className="w-full">
                       <FormControl>
                         <div className="service-card-row-item">
                           <RequiredFormLabelInfo
                             label="Database Type"
                             infoPopup={blastServiceDatabaseType}
                           />
-                          <Select value={field.value} onValueChange={field.onChange}>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select database type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="fna">
-                                Genome sequences (NT)
-                              </SelectItem>
-                              <SelectItem value="ffn">Genes (NT)</SelectItem>
-                              <SelectItem value="frn">RNAs (NT)</SelectItem>
-                              <SelectItem value="faa">Proteins (AA)</SelectItem>
+                              {availableDatabaseTypes.map((dbType) => (
+                                <SelectItem key={dbType.value} value={dbType.value}>
+                                  {dbType.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -482,13 +557,38 @@ export default function BlastServicePage() {
                     </FormItem>
                   )}
                 />
-
-
               </div>
 
-              <OutputFolder onChange={setOutputFolder} />
-
-              <OutputFolder variant="name" onChange={setOutputName} />
+              <div className="service-card-row">
+                <div className="service-card-row-item">
+                  <FormField
+                    control={form.control}
+                    name="output_path"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <OutputFolder onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="service-card-row-item">
+                  <FormField
+                    control={form.control}
+                    name="output_file"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <OutputFolder variant="name" onChange={field.onChange} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
               <Collapsible
                 open={showAdvanced}
@@ -572,7 +672,6 @@ export default function BlastServicePage() {
           </div>
         </form>
       </Form>
-    </section >
+    </section>
   );
 }
-

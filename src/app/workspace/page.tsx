@@ -1,8 +1,12 @@
 import React from 'react'
+import { WorkspaceObjectSelector } from '@/components/workspace/workspace-object-selector'
 
 const WorkspacePage = () => {
   return (
-    <div>WorkspacePage</div>
+    <div>
+      WorkspacePage
+      <WorkspaceObjectSelector />
+    </div>
   )
 }
 

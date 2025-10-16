@@ -162,7 +162,7 @@ export function getAvailableBlastDatabaseTypes(
   dbSource: string,
 ) {
   const availableTypes = blastDatabaseTypeMap[blastProgram]?.[dbSource] || [];
-  
+
   return blastDatabaseTypes.filter((dbType) =>
     availableTypes.includes(dbType.value),
   );

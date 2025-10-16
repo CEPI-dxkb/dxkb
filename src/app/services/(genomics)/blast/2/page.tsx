@@ -48,15 +48,16 @@ import {
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-api";
-import { blastDatabaseTypes } from "@/types/services";
+import { blastPrecomputedDatabases } from "@/types/services";
 import {
   getAvailableBlastDatabaseTypes,
   getDefaultBlastDatabaseType,
+  handleFormSubmit,
 } from "@/lib/service-utils";
 
+// Base schema with common fields (excluding discriminators)
 const baseFormSchema = z.object({
   input_type: z.enum(["aa", "dna"]),
-  // input_source: z.enum(["fasta_data", "fasta_file", "feature_group"]),
   db_type: z.enum(["fna", "ffn", "faa", "frn"]),
   db_source: z.enum([
     "precomputed_database",
@@ -65,6 +66,15 @@ const baseFormSchema = z.object({
     "feature_group",
     "taxon_list",
     "fasta_file",
+  ]),
+  db_precomputed_database: z.enum([
+    "bacteria_archaea",
+    "viral_reference",
+    "selGenome",
+    "selGroup",
+    "selFeatureGroup",
+    "selTaxon",
+    "selFasta",
   ]),
   blast_program: z.enum(["blastn", "blastp", "blastx", "tblastn"]),
   output_file: z.string(),
@@ -84,59 +94,62 @@ const baseFormSchema = z.object({
           "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000",
       },
     ),
-  db_precomputed_database: z.enum([
-    "bacteria-archaea",
-    "viral-reference",
-    "selGenome",
-    "selGroup",
-    "selFeatureGroup",
-    "selTaxon",
-    "selFasta",
-  ]),
 });
 
-const formSchema = z.discriminatedUnion("input_source", [
-  baseFormSchema.extend({
+// Input source discriminated union
+const inputSourceFormSchema = z.discriminatedUnion("input_source", [
+  z.object({
     input_source: z.literal("fasta_data"),
     input_fasta_data: z.string(),
   }),
-  baseFormSchema.extend({
+  z.object({
     input_source: z.literal("fasta_file"),
     input_fasta_file: z.string(),
   }),
-  baseFormSchema.extend({
+  z.object({
     input_source: z.literal("feature_group"),
     input_feature_group: z.string(),
   }),
 ]);
 
+// Database conditional fields - optional fields that may be present based on db_precomputed_database
+const databaseConditionalFieldsSchema = z.object({
+  db_genome_list: z.array(z.string()).optional(),
+  db_genome_group: z.string().optional(),
+  db_feature_group: z.string().optional(),
+  db_taxon_list: z.array(z.string()).optional(),
+  db_fasta_file: z.string().optional(),
+});
+
+// Combined schema using intersection
+const completeFormSchema = baseFormSchema
+  .and(inputSourceFormSchema)
+  .and(databaseConditionalFieldsSchema);
+
+// Default form values constant
+const DEFAULT_BLAST_FORM_VALUES = {
+  input_type: "aa" as const,
+  input_source: "fasta_data" as const,
+  input_fasta_data: "",
+  db_type: "fna" as const,
+  db_source: "precomputed_database" as const,
+  blast_program: "blastn" as const,
+  output_file: "",
+  output_path: "",
+  blast_max_hits: 10,
+  blast_evalue_cutoff: 0.0001,
+  db_precomputed_database: "bacteria_archaea" as const,
+};
+
 export default function BlastServicePage() {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      input_type: "aa",
-      input_source: "fasta_data",
-      input_fasta_data: "",
-      db_type: "fna",
-      db_source: "precomputed_database",
-      blast_program: "blastn",
-      output_file: "",
-      output_path: "",
-      blast_max_hits: 10,
-      blast_evalue_cutoff: 0.0001,
-      db_precomputed_database: "bacteria-archaea",
-    },
+  const form = useForm<z.infer<typeof completeFormSchema>>({
+    resolver: zodResolver(completeFormSchema),
+    defaultValues: DEFAULT_BLAST_FORM_VALUES,
   });
 
-  const [searchProgram, setSearchProgram] = useState("blastn");
-  const [sequenceInput, setSequenceInput] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [_maxHits, setMaxHits] = useState("10");
-  const [_eValueThreshold, setEValueThreshold] = useState("0.0001");
-  const [_outputFolder, setOutputFolder] = useState("");
-  const [_outputName, setOutputName] = useState("");
   const [availableDatabaseTypes, setAvailableDatabaseTypes] = useState(
-    getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea"),
+    getAvailableBlastDatabaseTypes("blastn", "bacteria_archaea"),
   );
 
   // Log form value changes
@@ -146,29 +159,6 @@ export default function BlastServicePage() {
     });
     return () => subscription.unsubscribe();
   }, [form]);
-
-  // Log local state changes
-  useEffect(() => {
-    console.log("sequenceInput changed:", sequenceInput);
-  }, [sequenceInput]);
-  useEffect(() => {
-    console.log("searchProgram changed:", searchProgram);
-  }, [searchProgram]);
-  useEffect(() => {
-    console.log("showAdvanced changed:", showAdvanced);
-  }, [showAdvanced]);
-  useEffect(() => {
-    console.log("maxHits changed:", _maxHits);
-  }, [_maxHits]);
-  useEffect(() => {
-    console.log("eValueThreshold changed:", _eValueThreshold);
-  }, [_eValueThreshold]);
-  useEffect(() => {
-    console.log("outputFolder changed:", _outputFolder);
-  }, [_outputFolder]);
-  useEffect(() => {
-    console.log("outputName changed:", _outputName);
-  }, [_outputName]);
 
   // Update available database types when blast_program or db_precomputed_database changes
   useEffect(() => {
@@ -196,44 +186,68 @@ export default function BlastServicePage() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Helper function to create base form values with overrides
+  const createFormValues = (currentValues: any, overrides: Record<string, any>) => ({
+    input_type: currentValues.input_type,
+    input_source: currentValues.input_source,
+    db_type: currentValues.db_type,
+    db_source: currentValues.db_source,
+    blast_program: currentValues.blast_program,
+    output_file: currentValues.output_file,
+    output_path: currentValues.output_path,
+    blast_max_hits: currentValues.blast_max_hits,
+    blast_evalue_cutoff: currentValues.blast_evalue_cutoff,
+    db_precomputed_database: currentValues.db_precomputed_database,
+    ...overrides,
+  });
+
   const handleReset = () => {
-    setSearchProgram("");
-    setSequenceInput("");
+    form.reset(DEFAULT_BLAST_FORM_VALUES);
     setShowAdvanced(false);
-    setMaxHits("10");
-    setEValueThreshold("0.0001");
-    setOutputFolder("");
-    setOutputName("");
     setAvailableDatabaseTypes(
-      getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea"),
+      getAvailableBlastDatabaseTypes("blastn", "bacteria_archaea"),
     );
   };
 
   const handleInputSourceChange = (newSource: string) => {
-    // Get current form values
     const currentValues = form.getValues();
 
-    // Create new values object without any input fields
-    const baseValues = {
-      input_type: currentValues.input_type,
+    // Create new values with updated input_source and appropriate input field
+    const inputFieldOverrides = {
       input_source: newSource,
-      db_type: currentValues.db_type,
-      db_source: currentValues.db_source,
-      blast_program: currentValues.blast_program,
-      output_file: currentValues.output_file,
-      output_path: currentValues.output_path,
-      blast_max_hits: currentValues.blast_max_hits,
-      blast_evalue_cutoff: currentValues.blast_evalue_cutoff,
-      db_precomputed_database: currentValues.db_precomputed_database,
-    };
-
-    // Add the appropriate input field based on the new source
-    const newValues = {
-      ...baseValues,
       ...(newSource === "fasta_data" && { input_fasta_data: "" }),
       ...(newSource === "fasta_file" && { input_fasta_file: "" }),
       ...(newSource === "feature_group" && { input_feature_group: "" }),
     };
+
+    const newValues = createFormValues(currentValues, inputFieldOverrides);
+
+    // Reset form with new values
+    form.reset(newValues as any);
+  };
+
+  const handleDatabaseSourceChange = (newDBPrecomputedDatabase: string) => {
+    const currentValues = form.getValues();
+
+    // Find the selected database option to get its db_source
+    const selectedDb = blastPrecomputedDatabases.find(
+      (db) => db.value === newDBPrecomputedDatabase
+    );
+
+    if (!selectedDb) return;
+
+    // Create new values with updated db_source, db_precomputed_database, and appropriate database field
+    const databaseFieldOverrides = {
+      db_source: selectedDb.db_source,
+      db_precomputed_database: newDBPrecomputedDatabase,
+      ...(newDBPrecomputedDatabase === "selGenome" && { db_genome_list: [] }),
+      ...(newDBPrecomputedDatabase === "selGroup" && { db_genome_group: "" }),
+      ...(newDBPrecomputedDatabase === "selFeatureGroup" && { db_feature_group: "" }),
+      ...(newDBPrecomputedDatabase === "selTaxon" && { db_taxon_list: [] }),
+      ...(newDBPrecomputedDatabase === "selFasta" && { db_fasta_file: "" }),
+    };
+
+    const newValues = createFormValues(currentValues, databaseFieldOverrides);
 
     // Reset form with new values
     form.reset(newValues as any);
@@ -468,8 +482,6 @@ export default function BlastServicePage() {
             </CardHeader>
 
             <CardContent className="service-card-content">
-              {/* TODO: Add the workspace folder selector here */}
-
               <div className="service-card-row">
                 <FormField
                   control={form.control}
@@ -484,38 +496,20 @@ export default function BlastServicePage() {
                           />
                           <Select
                             value={field.value}
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              handleDatabaseSourceChange(value);
+                            }}
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select database source" />
                             </SelectTrigger>
-                            {/* TODO: Conditionally render based on input source type */}
-                            <SelectContent
-                              className="service-card-select-content"
-                              onChange={field.onChange}
-                            >
-                              <SelectItem value="bacteria-archaea">
-                                Reference and representative genomes (bacteria,
-                                archaea)
-                              </SelectItem>
-                              <SelectItem value="viral-reference">
-                                Reference and representative genomes (viruses)
-                              </SelectItem>
-                              <SelectItem value="selGenome">
-                                Search within selected genome list
-                              </SelectItem>
-                              <SelectItem value="selGroup">
-                                Search within selected genome group
-                              </SelectItem>
-                              <SelectItem value="selFeatureGroup">
-                                Search within selected feature group
-                              </SelectItem>
-                              <SelectItem value="selTaxon">
-                                Search within a taxon
-                              </SelectItem>
-                              <SelectItem value="selFasta">
-                                Search within selected FASTA file
-                              </SelectItem>
+                            <SelectContent className="service-card-select-content">
+                              {blastPrecomputedDatabases.map((dbSource) => (
+                                <SelectItem key={dbSource.value} value={dbSource.value}>
+                                  {dbSource.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -559,6 +553,133 @@ export default function BlastServicePage() {
                 />
               </div>
 
+              {/* Database Source Card */}
+              {/* OPTIMIZE: Can be optimized by conditionally rendering the divs based on the db_precomputed_database value
+              instead of loading all the divs and hiding them based on the value */}
+              <div className="service-card-row">
+                <div className="service-card-row-item">
+                  <div className={form.watch("db_precomputed_database") === "selGenome" ? "service-card-content-grid-item" : "hidden"}>
+                    <RequiredFormLabel className="service-card-label">
+                      Select a genome
+                    </RequiredFormLabel>
+                    <FormField
+                      control={form.control}
+                      name="db_genome_list"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <WorkspaceObjectSelector
+                              types={["unspecified"]}
+                              placeholder="Genome..."
+                              onObjectSelect={(object: WorkspaceObject) => {
+                                field.onChange(object.path);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className={form.watch("db_precomputed_database") === "selGroup" ? "service-card-content-grid-item" : "hidden"}>
+                    <RequiredFormLabel className="service-card-label">
+                      Select a genome group
+                    </RequiredFormLabel>
+                    <FormField
+                      control={form.control}
+                      name="db_genome_group"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <WorkspaceObjectSelector
+                              types={["genome_group"]}
+                              placeholder="Genome group..."
+                              onObjectSelect={(object: WorkspaceObject) => {
+                                field.onChange(object.path);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className={form.watch("db_precomputed_database") === "selFeatureGroup" ? "service-card-content-grid-item" : "hidden"}>
+                    <RequiredFormLabel className="service-card-label">
+                      Select a feature group
+                    </RequiredFormLabel>
+                    <FormField
+                      control={form.control}
+                      name="db_feature_group"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <WorkspaceObjectSelector
+                              types={["feature_group"]}
+                              placeholder="Feature group..."
+                              onObjectSelect={(object: WorkspaceObject) => {
+                                field.onChange(object.path);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className={form.watch("db_precomputed_database") === "selTaxon" ? "service-card-content-grid-item" : "hidden"}>
+                    <RequiredFormLabel className="service-card-label">
+                      Select a taxon
+                    </RequiredFormLabel>
+                    <FormField
+                      control={form.control}
+                      name="db_taxon_list"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <WorkspaceObjectSelector
+                              types={["unspecified"]}
+                              placeholder="Taxon..."
+                              onObjectSelect={(object: WorkspaceObject) => {
+                                field.onChange(object.path);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className={form.watch("db_precomputed_database") === "selFasta" ? "service-card-content-grid-item" : "hidden"}>
+                    <RequiredFormLabel className="service-card-label">
+                      Select a FASTA file
+                    </RequiredFormLabel>
+                    <FormField
+                      control={form.control}
+                      name="db_fasta_file"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <WorkspaceObjectSelector
+                              types={["feature_protein_fasta", "feature_dna_fasta"]}
+                              placeholder="FASTA file..."
+                              onObjectSelect={(object: WorkspaceObject) => {
+                                field.onChange(object.path);
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="service-card-row">
                 <div className="service-card-row-item">
                   <FormField
@@ -567,13 +688,14 @@ export default function BlastServicePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <OutputFolder onChange={field.onChange} />
+                          <OutputFolder required={true} onChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
                 <div className="service-card-row-item">
                   <FormField
                     control={form.control}
@@ -581,7 +703,7 @@ export default function BlastServicePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <OutputFolder variant="name" onChange={field.onChange} />
+                          <OutputFolder variant="name" required={true} value={field.value} onChange={field.onChange} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -604,50 +726,71 @@ export default function BlastServicePage() {
 
                 <CollapsibleContent className="service-collapsible-content">
                   <div className="service-card-content-grid">
-                    <div className="service-card-content-grid-item">
-                      <Label htmlFor="max-hits" className="service-card-label">
-                        Max Hits
-                      </Label>
+                    <FormField
+                      control={form.control}
+                      name="blast_max_hits"
+                      render={({ field }) => (
+                        <FormItem className="service-card-content-grid-item">
+                          <FormLabel htmlFor="blast_max_hits" className="service-card-label">
+                            Max Hits
+                          </FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value.toString()}
+                              onValueChange={(value) => field.onChange(parseInt(value, 10))}
+                            >
+                              <SelectTrigger className="service-card-select-trigger">
+                                <SelectValue placeholder="Select max hits" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1</SelectItem>
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="20">20</SelectItem>
+                                <SelectItem value="50">50</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                                <SelectItem value="500">500</SelectItem>
+                                <SelectItem value="5000">5000</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      <Select>
-                        <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select max hits" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1</SelectItem>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="20">20</SelectItem>
-                          <SelectItem value="50">50</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                          <SelectItem value="500">500</SelectItem>
-                          <SelectItem value="1000">1000</SelectItem>
-                          <SelectItem value="5000">5000</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="service-card-content-grid-item">
-                      <Label htmlFor="e-value" className="service-card-label">
-                        E-Value Threshold
-                      </Label>
-
-                      <Select defaultValue="10">
-                        <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select E-Value Threshold" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0.0001">0.0001</SelectItem>
-                          <SelectItem value="0.001">0.001</SelectItem>
-                          <SelectItem value="0.01">0.01</SelectItem>
-                          <SelectItem value="0.1">0.1</SelectItem>
-                          <SelectItem value="1">1</SelectItem>
-                          <SelectItem value="10">10</SelectItem>
-                          <SelectItem value="100">100</SelectItem>
-                          <SelectItem value="1000">1000</SelectItem>
-                          <SelectItem value="10000">10000</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="blast_evalue_cutoff"
+                      render={({ field }) => (
+                        <FormItem className="service-card-content-grid-item">
+                          <FormLabel htmlFor="blast_evalue_cutoff" className="service-card-label">
+                            E-Value Threshold
+                          </FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value.toString()}
+                              onValueChange={(value) => field.onChange(parseFloat(value))}
+                            >
+                              <SelectTrigger className="service-card-select-trigger">
+                                <SelectValue placeholder="Select E-Value Threshold" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0.0001">0.0001</SelectItem>
+                                <SelectItem value="0.001">0.001</SelectItem>
+                                <SelectItem value="0.01">0.01</SelectItem>
+                                <SelectItem value="0.1">0.1</SelectItem>
+                                <SelectItem value="1">1</SelectItem>
+                                <SelectItem value="10">10</SelectItem>
+                                <SelectItem value="100">100</SelectItem>
+                                <SelectItem value="1000">1000</SelectItem>
+                                <SelectItem value="10000">10000</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -668,7 +811,7 @@ export default function BlastServicePage() {
             >
               Reset
             </Button>
-            <Button type="submit">Submit</Button>
+            <Button type="submit" onClick={() => handleFormSubmit(form.getValues() as any)}>Submit</Button>
           </div>
         </form>
       </Form>

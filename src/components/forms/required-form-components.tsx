@@ -18,7 +18,6 @@ export function RequiredFormCardTitle({
 import { FormLabel } from "@/components/ui/form";
 import { DialogInfoPopup } from "../services/dialog-info-popup";
 import { ServiceInfoPopup } from "@/types/services";
-import { Spade } from "lucide-react";
 
 interface RequiredFormLabelInfoProps {
   className?: string;

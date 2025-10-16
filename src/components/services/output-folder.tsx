@@ -1,6 +1,5 @@
 import React from "react";
-import { Button } from "../ui/button";
-import { FolderSearch, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
@@ -8,6 +7,7 @@ import { WorkspaceObjectSelector } from "../workspace/workspace-object-selector"
 
 interface OutputFolderProps {
   title?: boolean;
+  required?: boolean;
   tooltipContent?: boolean;
   placeholder?: string;
   buttonIcon?: React.ReactNode;
@@ -19,6 +19,7 @@ interface OutputFolderProps {
 
 const OutputFolder = ({
   title = true,
+  required = false,
   tooltipContent = true,
   placeholder,
   value = "",
@@ -56,6 +57,7 @@ const OutputFolder = ({
               </TooltipContent>
             </Tooltip>
           )}
+          {required && <span className="text-red-500">*</span>}
         </div>
       )}
       <div className="flex gap-2">

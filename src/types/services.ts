@@ -93,6 +93,16 @@ export const subspeciesClassificationSpeciesList = [
   { id: "reoviridae_rotavirus_a", label: "Reoviridae - Rotavirus A [complete genome, genomic RNA]" },
 ];
 
+export const blastPrecomputedDatabases = [
+  { value: 'bacteria_archaea', label: 'Reference and representative genomes (bacteria, archaea)', db_source: 'precomputed_database'},
+  { value: 'viral_reference', label: 'Reference and representative genomes (viruses)', db_source: 'precomputed_database' },
+  { value: 'selGenome', label: 'Search within selected genome list', db_source: 'selGenome' },
+  { value: 'selGroup', label: 'Search within selected genome group', db_source: 'selGroup' },
+  { value: 'selFeatureGroup', label: 'Search within selected feature group', db_source: 'selFeatureGroup' },
+  { value: 'selTaxon', label: 'Search within a taxon', db_source: 'selTaxon' },
+  { value: 'selFasta', label: 'Search within selected FASTA file', db_source: 'selFasta' },
+];
+
 export const blastDatabaseTypes = [
   { value: 'fna', label: 'Genome sequences (NT)' },
   { value: 'faa', label: 'Proteins (AA)' },
@@ -107,8 +117,8 @@ export const blastDatabaseTypeMap: Record<
   Record<string, string[]> // db_source -> available db_types
 > = {
   blastn: {
-    "bacteria-archaea": ["fna", "ffn"],
-    "viral-reference": ["fna", "ffn"],
+    "bacteria_archaea": ["fna", "ffn"],
+    "viral_reference": ["fna", "ffn"],
     "selGenome": ["fna", "ffn", "frn"],
     "selGroup": ["fna", "ffn", "frn"],
     "selFeatureGroup": ["fna", "ffn", "frn"],
@@ -116,8 +126,8 @@ export const blastDatabaseTypeMap: Record<
     "selFasta": ["fna"],
   },
   blastp: {
-    "bacteria-archaea": ["faa"],
-    "viral-reference": ["faa"],
+    "bacteria_archaea": ["faa"],
+    "viral_reference": ["faa"],
     "selGenome": ["faa"],
     "selGroup": ["faa"],
     "selFeatureGroup": ["faa"],
@@ -125,8 +135,8 @@ export const blastDatabaseTypeMap: Record<
     "selFasta": ["faa"],
   },
   blastx: {
-    "bacteria-archaea": ["faa"],
-    "viral-reference": ["faa"],
+    "bacteria_archaea": ["faa"],
+    "viral_reference": ["faa"],
     "selGenome": ["faa"],
     "selGroup": ["faa"],
     "selFeatureGroup": ["faa"],
@@ -134,8 +144,8 @@ export const blastDatabaseTypeMap: Record<
     "selFasta": ["faa"],
   },
   tblastn: {
-    "bacteria-archaea": ["fna", "ffn"],
-    "viral-reference": ["fna", "ffn"],
+    "bacteria_archaea": ["fna", "ffn"],
+    "viral_reference": ["fna", "ffn"],
     "selGenome": ["fna", "ffn", "frn"],
     "selGroup": ["fna", "ffn", "frn"],
     "selFeatureGroup": ["fna", "ffn", "frn"],

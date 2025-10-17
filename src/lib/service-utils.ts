@@ -1,5 +1,10 @@
 import type { FormEvent } from "react";
-import { Library, Genome, blastDatabaseTypes, blastDatabaseTypeMap } from "@/types/services";
+import {
+  Library,
+  Genome,
+  blastDatabaseTypes,
+  blastDatabaseTypeMap,
+} from "@/types/services";
 import { toast } from "sonner";
 
 export interface FileInput {
@@ -136,7 +141,7 @@ export function removeFromSelectedGenomes(
 
 export function removeFromSelectedPipelineActions(
   id: string,
-  selectedPipelineActions: PipelineAction[]
+  selectedPipelineActions: PipelineAction[],
 ): PipelineAction[] {
   return selectedPipelineActions.filter((action) => action.id !== id);
 }
@@ -153,15 +158,15 @@ export function handleFormSubmit(e: FormEvent<HTMLFormElement>) {
 
 /**
  * Get available database types for BLAST based on the selected program and database source
- * @param blastProgram - The BLAST program (blastn, blastp, blastx, tblastn)
+ * @param inputType - The BLAST program (blastn, blastp, blastx, tblastn)
  * @param dbSource - The database source (bacteria-archaea, viral-reference, selGenome, etc.)
  * @returns Array of available database type options
  */
 export function getAvailableBlastDatabaseTypes(
-  blastProgram: string,
+  inputType: string,
   dbSource: string,
 ) {
-  const availableTypes = blastDatabaseTypeMap[blastProgram]?.[dbSource] || [];
+  const availableTypes = blastDatabaseTypeMap[inputType]?.[dbSource] || [];
 
   return blastDatabaseTypes.filter((dbType) =>
     availableTypes.includes(dbType.value),
@@ -170,14 +175,39 @@ export function getAvailableBlastDatabaseTypes(
 
 /**
  * Get the default database type for a given BLAST program and database source
- * @param blastProgram - The BLAST program
+ * @param inputType - The BLAST program
  * @param dbSource - The database source
  * @returns The default database type value
  */
 export function getDefaultBlastDatabaseType(
-  blastProgram: string,
+  inputType: string,
   dbSource: string,
 ): string {
-  const availableTypes = blastDatabaseTypeMap[blastProgram]?.[dbSource];
+  const availableTypes = blastDatabaseTypeMap[inputType]?.[dbSource];
   return availableTypes?.[0] || "fna";
+}
+
+/**
+ * Validates FASTA input for BLAST services
+ */
+export function validateBlastFastaInput(
+  fastaText: string,
+  inputType: "blastn" | "blastp" | "blastx" | "tblastn",
+): { isValid: boolean; message: string } {
+  const {
+    validateFastaForBlast,
+    getBlastFastaErrorMessage,
+  } = require("./fasta-validation");
+
+  if (!fastaText.trim()) {
+    return { isValid: false, message: "FASTA input is required" };
+  }
+
+  const result = validateFastaForBlast(fastaText, inputType);
+  const message = getBlastFastaErrorMessage(result, inputType);
+
+  return {
+    isValid: result.valid,
+    message: result.valid ? "" : message,
+  };
 }

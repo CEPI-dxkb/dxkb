@@ -11,7 +11,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,8 @@ import {
 } from "@/lib/service-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/use-service-form-submission";
+import { FastaTextarea } from "@/components/services/fasta-textarea";
+import { FastaValidationResult } from "@/lib/fasta-validation";
 
 // Base schema with common fields (excluding discriminators)
 const baseFormSchema = z.object({
@@ -148,6 +150,17 @@ export default function BlastServicePage() {
     defaultValues: DEFAULT_BLAST_FORM_VALUES,
   });
 
+  // State for FASTA validation
+  const [fastaValidationResult, setFastaValidationResult] = useState<FastaValidationResult | null>(null);
+  const [isFastaValid, setIsFastaValid] = useState(false);
+  const [currentBlastProgram, setCurrentBlastProgram] = useState<'blastn' | 'blastp' | 'blastx' | 'tblastn'>('blastn');
+
+  // Memoize the validation change callback to prevent unnecessary re-renders
+  const handleFastaValidationChange = useCallback((isValid: boolean, result: FastaValidationResult | null) => {
+    setIsFastaValid(isValid);
+    setFastaValidationResult(result);
+  }, []);
+
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [availableDatabaseTypes, setAvailableDatabaseTypes] = useState(
     getAvailableBlastDatabaseTypes("blastn", "bacteria_archaea"),
@@ -181,6 +194,15 @@ export default function BlastServicePage() {
         };
       },
       onSubmit: async (data) => {
+        // Validate FASTA data if using fasta_data input source
+        if (data.input_source === "fasta_data" && data.input_fasta_data) {
+          if (!isFastaValid) {
+            console.error("Invalid FASTA data:", fastaValidationResult?.message);
+            // You could show an error message to the user here
+            return;
+          }
+        }
+
         // This is where you would actually submit the job
         console.log("Submitting BLAST job:", data);
         // TODO: Call your API endpoint here
@@ -221,6 +243,27 @@ export default function BlastServicePage() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Track blast program changes
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "blast_program" && value.blast_program) {
+        setCurrentBlastProgram(value.blast_program);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Re-validate FASTA when blast program changes
+  useEffect(() => {
+    const currentFastaData = form.getValues("input_fasta_data");
+    if (currentFastaData && form.getValues("input_source") === "fasta_data") {
+      const { validateFastaForBlast } = require("@/lib/fasta-validation");
+      const result = validateFastaForBlast(currentFastaData, currentBlastProgram);
+      setFastaValidationResult(result);
+      setIsFastaValid(result.valid);
+    }
+  }, [currentBlastProgram, form]);
+
   // Helper function to create base form values with overrides
   const createFormValues = (currentValues: any, overrides: Record<string, any>) => ({
     input_type: currentValues.input_type,
@@ -247,10 +290,13 @@ export default function BlastServicePage() {
   const handleInputSourceChange = (newSource: string) => {
     const currentValues = form.getValues();
 
+    // Preserve existing FASTA data when switching to fasta_data
+    const preservedFastaData = (currentValues as any).input_fasta_data || "";
+
     // Create new values with updated input_source and appropriate input field
     const inputFieldOverrides = {
       input_source: newSource,
-      ...(newSource === "fasta_data" && { input_fasta_data: "" }),
+      ...(newSource === "fasta_data" && { input_fasta_data: preservedFastaData }),
       ...(newSource === "fasta_file" && { input_fasta_file: "" }),
       ...(newSource === "feature_group" && { input_feature_group: "" }),
     };
@@ -271,8 +317,17 @@ export default function BlastServicePage() {
 
     if (!selectedDb) return;
 
+    // Preserve all input-related fields (FASTA data, input source, etc.)
+    const preservedInputFields = {
+      input_source: currentValues.input_source,
+      input_fasta_data: (currentValues as any).input_fasta_data || "",
+      input_fasta_file: (currentValues as any).input_fasta_file || "",
+      input_feature_group: (currentValues as any).input_feature_group || "",
+    };
+
     // Create new values with updated db_source, db_precomputed_database, and appropriate database field
     const databaseFieldOverrides = {
+      ...preservedInputFields, // Preserve input fields
       db_source: selectedDb.db_source,
       db_precomputed_database: newDBPrecomputedDatabase,
       ...(newDBPrecomputedDatabase === "selGenome" && { db_genome_list: [] }),
@@ -441,18 +496,14 @@ export default function BlastServicePage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
-                              <div className="service-card-content-grid-item">
-                                <RequiredFormLabel className="service-card-label">
-                                  Enter a FASTA formatted sequence.
-                                </RequiredFormLabel>
-                                <Textarea
-                                  id="sequence-input"
-                                  placeholder="Enter one or more source nucleotide or protein sequences to search. Requires FASTA format."
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  className="service-card-textarea"
-                                />
-                              </div>
+                              <FastaTextarea
+                                value={field.value}
+                                onChange={field.onChange}
+                                inputType={currentBlastProgram}
+                                onValidationChange={handleFastaValidationChange}
+                                required={true}
+                                showValidationStatus={true}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

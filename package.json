@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack -p 3019",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "scan": "next dev --turbopack -p 3019 & npx react-scan@latest localhost:3019"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -50,6 +51,7 @@
     "react-icons": "^5.5.0",
     "react-number-format": "^5.4.4",
     "react-resizable-panels": "^2.1.7",
+    "react-scan": "^0.4.3",
     "recharts": "^2.15.2",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.3.1",
@@ -61,6 +63,7 @@
     "@eslint/eslintrc": "^3",
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

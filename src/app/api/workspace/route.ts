@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         "Authorization": authToken
       },
       body: JSON.stringify({
-        id: 5,
+        id: 1,
         method,
         params,
         jsonrpc: "2.0",
@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    console.log("DATA", data);
     return NextResponse.json(data);
   } catch (error) {
     console.error("Workspace API error:", error);

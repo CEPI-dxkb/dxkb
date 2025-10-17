@@ -55,7 +55,13 @@ export function WorkspaceObjectSelector({
   }>({ openUpward: false, maxHeight: 640 });
   const inputRef = React.useRef<HTMLDivElement>(null);
 
-  // Normalize and validate types prop
+  // Ref to store last validated types to prevent unnecessary re-validation
+  const lastValidatedTypesRef = React.useRef<{
+    types: string;
+    result: ValidWorkspaceObjectTypes[] | undefined;
+  } | null>(null);
+
+  // Normalize and validate types prop with caching
   const validatedTypes = React.useMemo(() => {
     if (!types) {
       setValidationError(null);
@@ -65,20 +71,36 @@ export function WorkspaceObjectSelector({
 
     // Convert single type to array
     const typesArray = Array.isArray(types) ? types : [types];
+    const typesString = typesArray.join(',');
+
+    // Check if we've already validated this exact types array
+    if (lastValidatedTypesRef.current?.types === typesString) {
+      return lastValidatedTypesRef.current.result;
+    }
 
     // Validate all types
     const { valid, invalid } = validateWorkspaceObjectTypes(typesArray);
+
+    let result: ValidWorkspaceObjectTypes[] | undefined;
 
     if (invalid.length > 0) {
       const errorMsg = `Invalid upload type(s): ${invalid.join(", ")}. Valid types include: unspecified, aligned_dna_fasta, reads, contigs, etc.`;
       setValidationError(errorMsg);
       console.error(errorMsg);
       // Return only valid types if any exist, otherwise undefined
-      return valid.length > 0 ? valid : undefined;
+      result = valid.length > 0 ? valid : undefined;
+    } else {
+      setValidationError(null);
+      result = valid;
     }
 
-    setValidationError(null);
-    return valid;
+    // Cache the result
+    lastValidatedTypesRef.current = {
+      types: typesString,
+      result
+    };
+
+    return result;
   }, [types]);
 
   // Use the workspace objects hook
@@ -154,20 +176,13 @@ export function WorkspaceObjectSelector({
 
   // Use filtered objects from hook, with manual trigger override
   const displayObjects = React.useMemo(() => {
-    console.log("Display objects:", {
-      filteredObjects,
-      isManualTrigger,
-      showDropdown,
-    });
     if (!filteredObjects || !Array.isArray(filteredObjects)) {
-      console.log("No filtered objects or not an array:", filteredObjects);
       return []; // Return empty array if filteredObjects is undefined or not an array
     }
     if (isManualTrigger) {
       console.log("Manual trigger - returning all objects:", objects);
       return objects; // Show all objects when manually triggered
     }
-    console.log("Using filtered objects:", filteredObjects);
     return filteredObjects;
   }, [filteredObjects, objects, isManualTrigger, showDropdown]);
 

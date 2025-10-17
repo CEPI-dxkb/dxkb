@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
 import { AuthProvider } from "@/contexts/auth-context";
+import { ReactScan } from "@/components/react-scan";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
-      <head />
+      <head>
+        {/* <script src="https://unpkg.com/react-scan/dist/auto.global.js" /> */}
+      </head>
+
+      {/* <ReactScan /> */}
+
       <body>
         <ThemeProvider defaultTheme="dxkb-light">
           <AuthProvider>

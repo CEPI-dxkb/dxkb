@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useWorkspace } from "../../../../hooks/use-workspace";
+import { useWorkspace } from "../../../../hooks/services/workspace/use-workspace";
 import { Button } from "../../../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../../components/ui/card";
 import { Badge } from "../../../../components/ui/badge";

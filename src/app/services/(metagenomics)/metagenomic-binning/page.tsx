@@ -39,13 +39,13 @@ import {
   metagenomicBinningInputFile,
   metagenomicBinningParameters,
   metagenomicBinningStartWith,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import {
   handlePairedLibraryAdd,
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/utils/services/service-utils";
 
 const MetagenomicBinningService = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);

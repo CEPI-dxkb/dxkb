@@ -36,13 +36,13 @@ import {
   readInputFileInfo,
   variationAnalysisInfo,
   variationAnalysisParameters,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import {
   handlePairedLibraryAdd,
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/utils/services/service-utils";
 
 const VariationAnalysisInterface = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);

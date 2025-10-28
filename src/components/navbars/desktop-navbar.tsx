@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/buttons/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { LogoutButton } from "../auth/logout-button";

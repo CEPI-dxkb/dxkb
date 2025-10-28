@@ -24,11 +24,11 @@ import {
   genomeAlignmentAdvancedParamaterOptions,
   genomeAlignmentMauveInfo,
   genomeAlignmentSelectGenomes,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 import SelectedItemsTable from "@/components/services/selected-items-table";
-import { addGenome, handleFormSubmit, removeFromSelectedGenomes } from "@/lib/service-utils";
+import { addGenome, handleFormSubmit, removeFromSelectedGenomes } from "@/utils/services/service-utils";
 import { Genome } from "@/types/services";
 import OutputFolder from "@/components/services/output-folder";
 

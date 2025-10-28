@@ -38,11 +38,11 @@ import {
   similarGenomeFinderAdvancedParameters,
   similarGenomeFinderInfo,
   similarGenomeFinderSelectGenome,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { handleFormSubmit } from "@/utils/services/service-utils";
 
 const SimilarGenomeFinderInterface = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);

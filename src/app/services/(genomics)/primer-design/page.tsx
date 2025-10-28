@@ -25,8 +25,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ServiceHeader } from "@/components/services/service-header";
-import { primerDesignInfo, primerDesignInputSequence } from "@/lib/service-info";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { primerDesignInfo, primerDesignInputSequence } from "@/lib/services/service-info";
+import { handleFormSubmit } from "@/utils/services/service-utils";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";

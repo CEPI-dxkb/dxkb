@@ -17,10 +17,10 @@ import { ServiceHeader } from "@/components/services/service-header";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 import { HaReferenceTypes } from "@/types/services";
-import { haSubtypeNumberingInput } from "@/lib/service-info";
+import { haSubtypeNumberingInput } from "@/lib/services/service-info";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { handleFormSubmit } from "@/utils/services/service-utils";
 
 export default function HASubtypeNumbering() {
   // States for the form

@@ -36,12 +36,12 @@ import {
 } from "@/components/ui/tooltip";
 import { ServiceHeader } from "@/components/services/service-header";
 import OutputFolder from "@/components/services/output-folder";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { handleFormSubmit } from "@/utils/services/service-utils";
 import {
   metaCATSInfo,
   metaCATSParameters,
   metaCATSInput,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 import SelectedItemsTable from "@/components/services/selected-items-table";

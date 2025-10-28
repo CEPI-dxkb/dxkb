@@ -32,7 +32,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { ServiceHeader } from "@/components/services/service-header";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { handleFormSubmit } from "@/utils/services/service-utils";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 import SelectedItemsTable from "@/components/services/selected-items-table";
@@ -43,7 +43,7 @@ import {
   phylogeneticTreeInput,
   phylogeneticTreeAlignmentParameters,
   phylogeneticTreeTreeParameters,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import { toast } from "sonner";
 
 interface SelectedFile {

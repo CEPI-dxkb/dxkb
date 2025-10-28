@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { ChevronRight } from "lucide-react";
 import { Label } from "../ui/label";
-import { handleSraAdd } from "@/lib/service-utils";
+import { handleSraAdd } from "@/utils/services/service-utils";
 import { Library } from "@/types/services";
 
 interface SraRunAccessionProps {

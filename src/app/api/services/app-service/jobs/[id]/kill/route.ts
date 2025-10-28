@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createAppService } from "@/lib/app-service";
+import { cookies } from "next/headers";
+import { safeDecodeURIComponent } from "@/utils/auth";
+
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+/**
+ * Kill a job
+ * POST /api/services/app-service/jobs/[id]/kill
+ */
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  try {
+    // Get authentication token from cookies
+    const cookieStore = await cookies();
+    const rawToken = cookieStore.get("token")?.value;
+    const token = rawToken ? safeDecodeURIComponent(rawToken) : undefined;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      );
+    }
+
+    const { id: jobId } = await params;
+
+    if (!jobId) {
+      return NextResponse.json(
+        { error: "Job ID is required" },
+        { status: 400 },
+      );
+    }
+
+    // Create app service
+    const appService = createAppService(token);
+
+    // Kill the job
+    const result = await appService.killJob({ job_id: jobId });
+
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("Error killing job:", error);
+
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+

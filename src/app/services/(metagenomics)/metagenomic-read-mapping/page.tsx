@@ -29,7 +29,7 @@ import {
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/utils/services/service-utils";
 import { ServiceHeader } from "@/components/services/service-header";
 import SearchReadLibrary from "@/components/services/search-read-library";
 import SelectedItemsTable from "@/components/services/selected-items-table";
@@ -39,7 +39,7 @@ import {
   metagenomicReadMappingInfo,
   metagenomicReadMappingParameters,
   readInputFileInfo,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import SraRunAccession from "@/components/services/sra-run-accession";
 import { HelpCircle } from "lucide-react";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";

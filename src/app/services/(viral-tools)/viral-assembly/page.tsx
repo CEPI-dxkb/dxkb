@@ -28,7 +28,7 @@ import {
   handlePairedLibraryAdd,
   handleSingleLibraryAdd,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/utils/services/service-utils";
 
 export default function ViralAssembly() {
   // States for the form

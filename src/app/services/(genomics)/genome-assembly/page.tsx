@@ -39,13 +39,13 @@ import {
   genomeAssemblyInfo,
   genomeAssemblyParameters,
   readInputFileInfo,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import {
   handleFormSubmit,
   handlePairedLibraryAdd,
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
-} from "@/lib/service-utils";
+} from "@/utils/services/service-utils";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SearchReadLibrary from "@/components/services/search-read-library";
 import SraRunAccession from "@/components/services/sra-run-accession";

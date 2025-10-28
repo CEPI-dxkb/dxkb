@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
-import { useWorkspace } from "../../../../hooks/use-workspace";
+import { useWorkspace } from "../../../../hooks/services/workspace/use-workspace";
 import { JobStatus, JobListItem } from "../../../../types/workspace";
 import { Button } from "../../../../components/ui/button";
 import {

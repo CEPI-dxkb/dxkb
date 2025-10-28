@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ServiceInfoPopup } from "@/types/services";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 
 export function DialogInfoPopup({
   title,

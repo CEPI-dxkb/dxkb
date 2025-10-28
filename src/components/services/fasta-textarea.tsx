@@ -5,12 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/utils";
 import {
   validateFastaForBlast,
   getBlastFastaErrorMessage,
   FastaValidationResult,
-} from "@/lib/fasta-validation";
+} from "@/utils/fasta-validation";
 
 export interface FastaTextareaProps {
   id?: string;

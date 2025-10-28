@@ -19,10 +19,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useWorkspaceObjects } from "@/hooks/use-workspace-objects";
-import { WorkspaceObject } from "@/lib/workspace-api";
-import { validateWorkspaceObjectTypes } from "@/lib/workspace/helpers";
-import { ValidWorkspaceObjectTypes } from "@/lib/workspace/types";
+import { useWorkspaceObjects } from "@/hooks/services/workspace/use-workspace-objects";
+import { WorkspaceObject } from "@/lib/workspace-client";
+import { validateWorkspaceObjectTypes } from "@/lib/services/workspace/helpers";
+import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { useAuth } from "@/contexts/auth-context";
 
 interface WorkspaceObjectSelectorProps {

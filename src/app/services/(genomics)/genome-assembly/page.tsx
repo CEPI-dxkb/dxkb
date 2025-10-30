@@ -66,6 +66,7 @@ import {
 import { submitServiceJob } from "@/utils/services/service-utils";
 import {
   RequiredFormCardTitle,
+  RequiredFormLabel,
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
@@ -282,10 +283,10 @@ export default function GenomeAssemblyPage() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleSubmit)}
-          className="grid grid-cols-1 gap-6 lg:grid-cols-12"
+          className="grid grid-cols-1 gap-6 md:grid-cols-12"
         >
           {/* Left Column */}
-          <div className="space-y-6 lg:col-span-7">
+          <div className="space-y-6 md:col-span-7">
             {/* Input Files Card */}
             <Card>
               <CardHeader className="service-card-header">
@@ -376,6 +377,44 @@ export default function GenomeAssemblyPage() {
                 />
               </CardContent>
             </Card>
+            {/* Selected Libraries (mobile) */}
+            <div className="md:hidden">
+              <Card className="h-full">
+                <CardHeader className="service-card-header">
+                  <CardTitle className="service-card-title">
+                    Selected Libraries
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <HelpCircle className="service-card-tooltip-icon" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            Read files placed here will contribute to a single
+                            analysis.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </CardTitle>
+                  <CardDescription>
+                    Place read files here using the arrow buttons.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="service-card-content">
+                  <SelectedItemsTable
+                    items={selectedLibraries.map((library) => ({
+                      id: library.id,
+                      name: library.name,
+                      type: library.type,
+                    }))}
+                    onRemove={handleRemoveLibrary}
+                    className="max-h-84 overflow-y-auto"
+                  />
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Parameters Card */}
             <Card>
@@ -398,9 +437,9 @@ export default function GenomeAssemblyPage() {
                     name="recipe"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="service-card-label">
+                        <RequiredFormLabel>
                           Assembly Strategy
-                        </FormLabel>
+                        </RequiredFormLabel>
                         <FormControl>
                           <Select
                             value={field.value}
@@ -541,7 +580,7 @@ export default function GenomeAssemblyPage() {
                             control={form.control}
                             name="normalize"
                             render={({ field }) => (
-                              <FormItem className="flex flex-row items-center justify-between">
+                              <FormItem className="flex flex-col items-start justify-between">
                                 <FormLabel className="service-card-sublabel">
                                   Normalize Illumina Reads
                                 </FormLabel>
@@ -559,7 +598,7 @@ export default function GenomeAssemblyPage() {
                             control={form.control}
                             name="trim"
                             render={({ field }) => (
-                              <FormItem className="flex flex-row items-center justify-between">
+                              <FormItem className="flex flex-col items-start justify-between">
                                 <FormLabel className="service-card-sublabel">
                                   Trim Short Reads
                                 </FormLabel>
@@ -577,7 +616,7 @@ export default function GenomeAssemblyPage() {
                             control={form.control}
                             name="filtlong"
                             render={({ field }) => (
-                              <FormItem className="flex flex-row items-center justify-between">
+                              <FormItem className="flex flex-col items-start justify-between">
                                 <FormLabel className="service-card-sublabel">
                                   Filter Long Reads
                                 </FormLabel>
@@ -726,7 +765,7 @@ export default function GenomeAssemblyPage() {
           </div>
 
           {/* Right Column - Selected Libraries */}
-          <div className="lg:col-span-5">
+          <div className="hidden md:block md:col-span-5">
             <Card className="h-full">
               <CardHeader className="service-card-header">
                 <CardTitle className="service-card-title">
@@ -765,7 +804,7 @@ export default function GenomeAssemblyPage() {
           </div>
 
           {/* Form Controls */}
-          <div className="service-form-controls lg:col-span-12">
+          <div className="service-form-controls md:col-span-12">
             <div className="flex items-center gap-2">
               <Button
                 type="button"

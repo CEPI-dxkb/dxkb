@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -25,7 +24,6 @@ export interface FastaTextareaProps {
   className?: string;
   disabled?: boolean;
   required?: boolean;
-  label?: string;
   showValidationStatus?: boolean;
   debounceMs?: number;
 }
@@ -40,8 +38,7 @@ export const FastaTextarea = React.memo(function FastaTextarea({
   className,
   disabled = false,
   required = false,
-  label = "Enter a FASTA formatted sequence.",
-  showValidationStatus = true,
+  // showValidationStatus = true,
   debounceMs = 500,
 }: FastaTextareaProps) {
   const [validationResult, setValidationResult] =
@@ -132,20 +129,6 @@ export const FastaTextarea = React.memo(function FastaTextarea({
 
   return (
     <div className="space-y-2">
-      {label && (
-        <div className="flex items-center gap-2">
-          <Label
-            className={cn(
-              "service-card-label",
-              required && "after:ml-1 after:text-red-500 after:content-['*']",
-            )}
-          >
-            {label}
-          </Label>
-          {showValidationStatus && getValidationIcon()}
-        </div>
-      )}
-
       <Textarea
         id={id}
         value={value}

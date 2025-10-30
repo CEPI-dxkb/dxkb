@@ -386,7 +386,7 @@ const GenomeAnnotationContent = () => {
                       <FormControl>
                         <OutputFolder
                           variant="name"
-                          required={true}
+                          required={false}
                           value={field.value}
                           onChange={field.onChange}
                           disabled={true}

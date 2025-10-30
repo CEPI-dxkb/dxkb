@@ -22,6 +22,7 @@ const statusColors: Record<JobStatus, string> = {
   failed: "bg-red-500",
   cancelled: "bg-gray-500",
   error: "bg-red-600",
+  "in-progress": "bg-yellow-500",
 };
 
 const statusLabels: Record<JobStatus, string> = {
@@ -32,6 +33,7 @@ const statusLabels: Record<JobStatus, string> = {
   failed: "Failed",
   cancelled: "Cancelled",
   error: "Error",
+  "in-progress": "In Progress",
 };
 
 // Skeleton components for job detail page
@@ -115,7 +117,7 @@ function JobDetailContent() {
   const params = useParams();
   const router = useRouter();
   const jobId = params.id as string;
-  
+
   const {
     jobDetails,
     jobSummary,
@@ -162,18 +164,22 @@ function JobDetailContent() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    }).format(new Date(dateString));
   };
 
   const formatDuration = (start: string, end?: string) => {
     const startTime = new Date(start).getTime();
     const endTime = end ? new Date(end).getTime() : Date.now();
     const duration = endTime - startTime;
-    
+
     const hours = Math.floor(duration / (1000 * 60 * 60));
     const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((duration % (1000 * 60)) / 1000);
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m ${seconds}s`;
     } else if (minutes > 0) {
@@ -233,8 +239,8 @@ function JobDetailContent() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge 
-            variant="secondary" 
+          <Badge
+            variant="secondary"
             className={`${statusColors[jobDetails.status]} text-white`}
           >
             {statusLabels[jobDetails.status]}
@@ -285,7 +291,7 @@ function JobDetailContent() {
               </div>
             )}
           </div>
-          
+
           {jobDetails.start_time && (
             <div className="mt-4">
               <p className="font-medium">Duration</p>
@@ -294,7 +300,7 @@ function JobDetailContent() {
               </p>
             </div>
           )}
-          
+
           {jobDetails.output_path && (
             <div className="mt-4">
               <p className="font-medium">Output Path</p>
@@ -312,7 +318,7 @@ function JobDetailContent() {
           <TabsTrigger value="logs">Logs</TabsTrigger>
           <TabsTrigger value="app">Application</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="parameters" className="space-y-4">
           <Card>
             <CardHeader>
@@ -332,7 +338,7 @@ function JobDetailContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="system" className="space-y-4">
           <Card>
             <CardHeader>
@@ -380,7 +386,7 @@ function JobDetailContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="logs" className="space-y-4">
           <Card>
             <CardHeader>
@@ -424,7 +430,7 @@ function JobDetailContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="app" className="space-y-4">
           <Card>
             <CardHeader>
@@ -490,4 +496,4 @@ export default function JobDetailPage() {
       <JobDetailContent />
     </Suspense>
   );
-} 
+}

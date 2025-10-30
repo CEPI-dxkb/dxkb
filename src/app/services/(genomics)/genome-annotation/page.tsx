@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -56,6 +56,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
+import { Spinner } from "@/components/ui/spinner";
 
 const GenomeAnnotationContent = () => {
   const form = useForm<GenomeAnnotationFormData>({
@@ -63,6 +64,8 @@ const GenomeAnnotationContent = () => {
     defaultValues: DEFAULT_GENOME_ANNOTATION_FORM_VALUES,
     mode: "onChange",
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Setup service debugging and form submission
   const {
@@ -84,6 +87,7 @@ const GenomeAnnotationContent = () => {
       }
 
       try {
+        setIsSubmitting(true);
         // Submit the Genome Annotation job using the utility function
         const result = await submitServiceJob(
           "GenomeAnnotation",
@@ -110,6 +114,8 @@ const GenomeAnnotationContent = () => {
         toast.error("Submission failed", {
           description: errorMessage,
         });
+      } finally {
+        setIsSubmitting(false);
       }
     },
   });
@@ -405,7 +411,10 @@ const GenomeAnnotationContent = () => {
               >
                 Reset
               </Button>
-              <Button type="submit">Annotate</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Spinner /> : null}
+                Annotate
+              </Button>
             </div>
           </div>
         </form>

@@ -3,7 +3,7 @@
 import { Download, Filter, Search, SortDesc } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { cn } from "@/utils/utils"
+import { cn } from "@/lib/utils"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

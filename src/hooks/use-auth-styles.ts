@@ -1,5 +1,5 @@
 import { useAuth } from "@/contexts/auth-context";
-import { cn } from "@/utils/utils";
+import { cn } from "@/lib/utils";
 
 export function useAuthStyles() {
   const { isAuthenticated, isLoading } = useAuth();

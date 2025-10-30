@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TimelineItemType } from "@/types";
-import { cn } from "@/utils/utils";
+import { cn } from "@/lib/utils";
 
 const timelineData: TimelineItemType[] = [
   {

@@ -1,5 +1,5 @@
 import { Button } from "@/components/buttons/button";
-import { cn } from "@/utils/utils";
+import { cn } from "@/lib/utils";
 
 interface NavMenuItem {
   icon: React.ReactNode;

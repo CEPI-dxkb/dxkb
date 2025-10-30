@@ -56,6 +56,7 @@ const statusColors: Record<JobStatus, string> = {
   failed: "bg-red-500",
   cancelled: "bg-gray-500",
   error: "bg-red-600",
+  "in-progress": "bg-yellow-500",
 };
 
 const statusLabels: Record<JobStatus, string> = {
@@ -66,6 +67,7 @@ const statusLabels: Record<JobStatus, string> = {
   failed: "Failed",
   cancelled: "Cancelled",
   error: "Error",
+  "in-progress": "In Progress",
 };
 
 // Enhanced skeleton components
@@ -332,7 +334,11 @@ function JobsV2Content() {
 
   // Utility functions
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    }).format(new Date(dateString));
   };
 
   const formatDuration = (start: string, end?: string) => {

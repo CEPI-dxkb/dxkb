@@ -2,6 +2,10 @@ export interface Library {
   id: string;
   name: string;
   type: "paired" | "single" | "sra";
+  files?: string[];
+  platform?: string;
+  interleaved?: boolean;
+  read_orientation_outward?: boolean;
 }
 
 export interface Genome {

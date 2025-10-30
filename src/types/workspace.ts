@@ -21,6 +21,7 @@ export interface JsonRpcResponse<T = any> {
 export type JobStatus =
   | "pending"
   | "queued"
+  | "running"
   | "in-progress"
   | "completed"
   | "failed"

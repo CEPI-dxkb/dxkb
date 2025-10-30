@@ -52,6 +52,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/spinner";
 import {
   completeFormSchema,
   DEFAULT_BLAST_FORM_VALUES,
@@ -78,6 +79,7 @@ export default function BlastServicePage() {
     useFastaValidation(form, currentBlastProgram);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Setup service debugging and form submission
   const {
@@ -102,6 +104,7 @@ export default function BlastServicePage() {
       }
 
       try {
+        setIsSubmitting(true);
         // Submit the BLAST job using the utility function
         const result = await submitServiceJob(
           "Homology",
@@ -128,6 +131,8 @@ export default function BlastServicePage() {
         toast.error("Submission failed", {
           description: errorMessage,
         });
+      } finally {
+        setIsSubmitting(false);
       }
     },
   });
@@ -807,7 +812,10 @@ export default function BlastServicePage() {
               >
                 Reset
               </Button>
-              <Button type="submit">Submit</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Spinner /> : null}
+                Submit
+              </Button>
             </div>
           </div>
         </form>

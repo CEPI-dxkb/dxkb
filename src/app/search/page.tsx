@@ -131,7 +131,12 @@ function getFormattedContent(doc: any, dataType: string) {
               Genome ID: {doc.genome_id} | {doc.contigs} Contigs
             </p>
             <p>
-              SEQUENCED: {new Date(doc.completion_date).toLocaleDateString()}{" "}
+              SEQUENCED: {
+                new Intl.DateTimeFormat("en-US", {
+                  dateStyle: "medium",
+                  timeZone: "UTC",
+                }).format(new Date(doc.completion_date))
+              }{" "}
               {doc.sequencing_centers ? `by ${doc.sequencing_centers}` : ""}
             </p>
             {doc.collection_date && <p>COLLECTED: {doc.collection_date}</p>}
@@ -264,8 +269,7 @@ function getFormattedContent(doc: any, dataType: string) {
           </h3>
           <div className="search-result-metadata">
             <p>
-              ENV | {doc.collection_country} |{" "}
-              {new Date(doc.collection_date).getFullYear()}
+              ENV | {doc.collection_country} | {new Date(doc.collection_date).getUTCFullYear()}
             </p>
           </div>
         </>

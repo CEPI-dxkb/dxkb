@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { getLogoPath, type LogoVariant } from "@/styles/logo-utils";
-import { cn } from "@/utils/utils";
+import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 

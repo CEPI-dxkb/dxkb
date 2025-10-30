@@ -27,7 +27,7 @@ import {
 import { Button } from "@/components/buttons/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/utils/utils";
+import { cn } from "@/lib/utils";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { LogoutButton } from "../auth/logout-button";
@@ -65,20 +65,22 @@ const DesktopNavbar = () => {
                 <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
                     <NavigationMenuLink asChild>
-                      <Link
-                        className="from-muted/50 bg-primary hover:bg-primary/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
-                        href="/"
-                      >
-                        <Logo variant="logo-white" />
-                        <div className="mt-4 mb-2 text-lg font-medium text-white">
-                          shadcn/ui
-                        </div>
-                        <p className="text-sm leading-tight text-white">
-                          Beautifully designed components that you can copy and
-                          paste into your apps. Accessible. Customizable. Open
-                          Source.
-                        </p>
-                      </Link>
+                      <div>
+                        <Link
+                          className="from-muted/50 bg-primary hover:bg-primary/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
+                          href="/"
+                          >
+                          <Logo variant="logo-white" />
+                          <div className="mt-4 mb-2 text-lg font-medium text-white">
+                            shadcn/ui
+                          </div>
+                          <p className="text-sm leading-tight text-white">
+                            Beautifully designed components that you can copy and
+                            paste into your apps. Accessible. Customizable. Open
+                            Source.
+                          </p>
+                        </Link>
+                      </div>
                     </NavigationMenuLink>
                   </li>
                   {gettingStartedItems.map((item) => (
@@ -310,19 +312,21 @@ const ListItem = React.forwardRef<
   return (
     <li>
       <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={cn(
-            "hover:bg-accent/50 hover:text-accent-foreground focus:bg-accent/50 focus:text-accent-foreground block space-y-1 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none",
-            className,
-          )}
-          {...props}
-        >
-          <div className="text-sm leading-none font-medium">{title}</div>
-          <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
-            {children}
-          </p>
-        </a>
+        <div>
+          <a
+            ref={ref}
+            className={cn(
+              "hover:bg-accent/50 hover:text-accent-foreground focus:bg-accent/50 focus:text-accent-foreground block space-y-1 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none",
+              className,
+            )}
+            {...props}
+            >
+            <div className="text-sm leading-none font-medium">{title}</div>
+            <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
+              {children}
+            </p>
+          </a>
+        </div>
       </NavigationMenuLink>
     </li>
   );

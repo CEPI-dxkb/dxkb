@@ -65,10 +65,10 @@ const OutputFolder = ({
           <WorkspaceObjectSelector
             types={["folder"]}
             placeholder="Search for folders..."
+            value={value}
             onObjectSelect={(object) => {
               onChange?.(object.path || "");
             }}
-
           />
         )}
         {variant === "name" && (

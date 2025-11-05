@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
+import { Plus } from "lucide-react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -55,6 +56,7 @@ import {
   fetchGenomeGroupMembers,
   type GenomeSummary,
 } from "@/lib/services/genome";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 
 const MAX_GENOMES = 20;
 
@@ -70,6 +72,7 @@ export default function GenomeAlignmentServicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFetchingGroup, setIsFetchingGroup] = useState(false);
   const [lastSelectedGroup, setLastSelectedGroup] = useState<string | null>(null);
+  const [selectedGenomeGroup, setSelectedGenomeGroup] = useState<WorkspaceObject | null>(null);
 
   const manualSeedWeight = form.watch("manual_seed_weight");
   const seedWeightValue = form.watch("seed_weight") ?? 15;
@@ -242,14 +245,14 @@ export default function GenomeAlignmentServicePage() {
         >
           <Card>
             <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
+              <RequiredFormCardTitle className="service-card-title">
                 Select Genomes
                 <DialogInfoPopup
                   title={genomeAlignmentSelectGenomes.title}
                   description={genomeAlignmentSelectGenomes.description}
                   sections={genomeAlignmentSelectGenomes.sections}
                 />
-              </CardTitle>
+              </RequiredFormCardTitle>
               <CardDescription>
                 Add at least 2 and up to 20 genomes. The first genome selected
                 becomes the reference (anchor) genome in the alignment.
@@ -268,11 +271,30 @@ export default function GenomeAlignmentServicePage() {
                 <Label className="service-card-label">
                   And/Or Select Genome Group
                 </Label>
-                <WorkspaceObjectSelector
-                  types={["genome_group"]}
-                  placeholder="Select a genome group from your workspace"
-                  onObjectSelect={handleGenomeGroupSelect}
-                />
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <WorkspaceObjectSelector
+                      types={["genome_group"]}
+                      placeholder="Select a genome group from your workspace"
+                      onObjectSelect={handleGenomeGroupSelect}
+                      onSelectedObjectChange={setSelectedGenomeGroup}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    disabled={!selectedGenomeGroup}
+                    onClick={() => {
+                      if (selectedGenomeGroup) {
+                        handleGenomeGroupSelect(selectedGenomeGroup);
+                        setSelectedGenomeGroup(null);
+                      }
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
                 {isFetchingGroup && (
                   <div className="text-muted-foreground flex items-center gap-2 text-xs">
                     <Spinner className="h-3 w-3" />

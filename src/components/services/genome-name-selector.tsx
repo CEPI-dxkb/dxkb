@@ -63,12 +63,20 @@ export function GenomeNameSelector({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedGenome, setSelectedGenome] = useState<GenomeSummary | null>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const latestAbortController = useRef<AbortController | null>(null);
   const selectionDisabled = disabled || selectedGenomeIds.length >= maxSelections;
 
   useEffect(() => {
+    // Skip search if query matches selected genome (from dropdown click)
+    if (selectedGenome && query.trim() === selectedGenome.genome_name) {
+      return;
+    }
+
     if (!shouldSearch(query, minQueryLength) || selectionDisabled) {
       setSuggestions([]);
       setError(null);
@@ -113,7 +121,7 @@ export function GenomeNameSelector({
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [query, minQueryLength, selectionDisabled]);
+  }, [query, minQueryLength, selectionDisabled, selectedGenome]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -124,6 +132,7 @@ export function GenomeNameSelector({
         !inputRef.current.contains(event.target as Node)
       ) {
         setShowDropdown(false);
+        setHighlightedIndex(-1);
       }
     };
 
@@ -133,6 +142,22 @@ export function GenomeNameSelector({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Reset highlighted index when suggestions change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+    itemRefs.current = [];
+  }, [suggestions]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
+      itemRefs.current[highlightedIndex]?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [highlightedIndex]);
 
   const existingGenomeIds = useMemo(
     () => new Set(selectedGenomeIds.map((id) => id.trim())),
@@ -149,11 +174,25 @@ export function GenomeNameSelector({
 
     onSelect(genome);
     setQuery("");
+    setSelectedGenome(null);
     setSuggestions([]);
     setShowDropdown(false);
   };
 
+  const handleDropdownClick = (genome: GenomeSummary) => {
+    // Just populate the input field, don't add yet
+    setQuery(genome.genome_name);
+    setSelectedGenome(genome);
+    setShowDropdown(false);
+  };
+
   const handleManualAdd = async () => {
+    // If we have a selected genome from dropdown, use it directly
+    if (selectedGenome) {
+      handleSelect(selectedGenome);
+      return;
+    }
+
     const trimmed = query.trim();
 
     if (!trimmed) {
@@ -193,14 +232,43 @@ export function GenomeNameSelector({
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-
-      if (suggestions.length > 0) {
-        handleSelect(suggestions[0]);
-      } else {
+    if (!showDropdown || suggestions.length === 0) {
+      if (event.key === "Enter") {
+        event.preventDefault();
         handleManualAdd();
       }
+      return;
+    }
+
+    switch (event.key) {
+      case "ArrowDown":
+        event.preventDefault();
+        setHighlightedIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        setShowDropdown(true);
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        setShowDropdown(true);
+        break;
+      case "Enter":
+        event.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+          const genome = suggestions[highlightedIndex];
+          if (!existingGenomeIds.has(genome.genome_id)) {
+            handleDropdownClick(genome);
+          }
+        } else {
+          handleManualAdd();
+        }
+        break;
+      case "Escape":
+        event.preventDefault();
+        setShowDropdown(false);
+        setHighlightedIndex(-1);
+        break;
     }
   };
 
@@ -214,7 +282,7 @@ export function GenomeNameSelector({
     <div className={cn("space-y-2", className)}>
       {title && <Label className="service-card-label">{title}</Label>}
       <div className="flex items-start gap-2">
-        <div className="relative flex-1" ref={dropdownRef}>
+        <div className="relative flex-1">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             ref={inputRef}
@@ -223,6 +291,8 @@ export function GenomeNameSelector({
             placeholder={selectionDisabled ? "Genome selection limit reached" : placeholder}
             onChange={(event) => {
               setQuery(event.target.value);
+              setSelectedGenome(null); // Clear selected genome when user types manually
+              setHighlightedIndex(-1); // Reset highlight when typing
               setShowDropdown(true);
             }}
             onFocus={() => setShowDropdown(true)}
@@ -230,7 +300,7 @@ export function GenomeNameSelector({
             className="w-full pr-10 pl-10"
           />
           {showDropdown && (suggestions.length > 0 || isLoading || error || showEmptyState) && (
-            <div className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border shadow-md">
+            <div ref={dropdownRef} className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border shadow-md">
               {isLoading ? (
                 <div className="flex items-center justify-center p-4">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -239,21 +309,27 @@ export function GenomeNameSelector({
               ) : error ? (
                 <div className="text-destructive p-4 text-sm">{error}</div>
               ) : suggestions.length > 0 ? (
-                suggestions.map((genome) => {
+                suggestions.map((genome, index) => {
                   const isDuplicate = existingGenomeIds.has(genome.genome_id);
+                  const isHighlighted = highlightedIndex === index;
                   return (
                     <button
                       key={genome.genome_id}
+                      ref={(el) => {
+                        itemRefs.current[index] = el;
+                      }}
                       type="button"
                       className={cn(
                         "flex w-full flex-col items-start gap-1 px-4 py-2 text-left hover:bg-accent",
                         isDuplicate && "cursor-not-allowed opacity-60",
+                        isHighlighted && "bg-accent",
                       )}
                       onClick={() => {
                         if (!isDuplicate) {
-                          handleSelect(genome);
+                          handleDropdownClick(genome);
                         }
                       }}
+                      onMouseEnter={() => setHighlightedIndex(index)}
                     >
                       <span className="truncate text-sm font-medium">
                         {genome.genome_name}

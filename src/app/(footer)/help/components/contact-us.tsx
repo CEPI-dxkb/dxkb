@@ -40,7 +40,7 @@ const ContactUs = () => {
                 <p className="mb-4 text-sm">
                   Our technical support team is available Monday through Friday, 9 AM to 5 PM EST.
                 </p>
-                <Button className="bg-secondary hover:bg-secondary/50">Submit a Ticket</Button>
+                <Button className="bg-secondary hover:bg-secondary/20">Submit a Ticket</Button>
               </CardContent>
             </Card>
 
@@ -73,7 +73,7 @@ const ContactUs = () => {
                 <p className="mb-4 text-sm">
                   Our scientific team can help with database content and research methodology questions.
                 </p>
-                <Button className="bg-secondary hover:bg-secondary/50">Contact Research Team</Button>
+                <Button className="bg-secondary hover:bg-secondary/20">Contact Research Team</Button>
               </CardContent>
             </Card>
           </div>

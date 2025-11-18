@@ -487,20 +487,16 @@
   @apply space-y-4;
 }
 
-.faq-item {
+.accordion-item {
   @apply w-full rounded-lg border-1;
 }
 
-.faq-item-header {
+.accordion-trigger {
   @apply hover:bg-background flex w-full cursor-pointer items-center justify-between p-4;
 }
 
-.faq-item-title {
-  @apply text-lg font-medium;
-}
-
-.faq-item-content {
-  @apply text-muted-foreground px-4 pb-4;
+.accordion-content {
+  @apply text-muted-foreground px-4 pb-4 pt-2;
 }
 
 /* Shared Card Grid Layout Styles */
@@ -591,7 +587,7 @@
 }
 
 .mobile-nav-link:hover {
-  @apply bg-secondary/50;
+  @apply bg-secondary/20;
 }
 
 .search-results-card-title {
@@ -679,7 +675,7 @@
 }
 
 .service-collapsible-container {
-  @apply w-full rounded-md border p-2 bg-background;
+  @apply w-full rounded-md border p-2 bg-card;
 }
 
 .service-collapsible-header {
@@ -723,15 +719,15 @@
 }
 
 .service-card-input {
-  @apply w-full flex-1 bg-white text-sm transition-all duration-300;
+  @apply w-full flex-1 bg-muted text-sm transition-all duration-300;
 }
 
 .service-card-input:hover {
-  @apply bg-secondary/50;
+  @apply bg-secondary/20;
 }
 
 .service-card-input:focus {
-  @apply bg-white;
+  @apply bg-muted;
 }
 
 .service-card-num-input {
@@ -739,7 +735,7 @@
 }
 
 .service-card-num-input:hover {
-  @apply bg-secondary/50;
+  @apply bg-secondary/20;
 }
 
 .service-card-num-input:focus {
@@ -779,31 +775,35 @@
 }
 
 .service-card-textarea {
-  @apply min-h-48 max-h-96 text-sm font-mono transition-all duration-300;
+  @apply bg-muted min-h-48 max-h-96 text-sm font-mono transition-all duration-300;
 }
 
 .service-card-textarea:hover {
-  @apply bg-secondary/50;
+  @apply bg-secondary/20;
 }
 
 .service-card-textarea:focus {
-  @apply bg-white;
+  @apply bg-background;
 }
 
 .service-card-select-trigger {
-  @apply w-full bg-white transition-all duration-300;
+  @apply w-full bg-muted transition-all duration-300;
 }
 
 .service-card-select-trigger:hover {
-  @apply bg-secondary/50;
+  @apply bg-secondary/20;
 }
 
 .service-card-select-trigger:focus {
-  @apply bg-white;
+  @apply bg-background;
+}
+
+.service-card-select-content {
+  @apply bg-muted;
 }
 
 .service-table {
-  @apply overflow-hidden rounded-md border;
+  @apply overflow-hidden rounded-md border bg-muted;
 }
 .service-table-none {
   @apply rounded-md border bg-gray-50 p-4 text-center text-gray-500 italic;
@@ -839,6 +839,10 @@
 
 .footer-link:hover {
   @apply text-accent underline font-semibold;
+}
+
+.auth-container {
+  @apply max-w-2xl mx-auto px-4 py-8 w-full;
 }
 
 /* Citation Styles */

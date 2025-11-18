@@ -10,19 +10,39 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import ThemeContent from "@/components/ui/theme-content";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { useAuth } from "@/contexts/auth-context";
 
-interface WelcomeSearchProps {
-  setSearchResults?: (results: any) => void;
-}
-
-const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
+const WelcomeSearch = () => {
+  const { isAuthenticated, isVerified, sendVerificationEmail } = useAuth();
 
   return (
     <section className="flex-grow">
       {/* Hero Section with Search */}
-      <div className="from-primary to-background bg-gradient-to-b py-16 md:py-24">
+      <div className="from-primary to-background bg-gradient-to-b py-16 md:py-8">
+        {isAuthenticated && !isVerified && (
+          <div className="container mx-auto px-4">
+            <Alert variant="destructive">
+              <AlertTitle>Unverified Account Email</AlertTitle>
+              <AlertDescription className="text-destructive">
+                <span>
+                  Please verify your email to continue using the platform. Click{' '}
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={e => { e.preventDefault(); sendVerificationEmail(); }}
+                    className="underline cursor-pointer hover:text-foreground focus:outline-none focus:underline text-inherit"
+                    style={{ font: "inherit" }}
+                  >
+                    here
+                  </span>{' '}to resend the verification email.
+                </span>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
         <div className="container mx-auto px-4 text-center">
-          <h1 className="mb-4 text-3xl font-bold text-white md:text-4xl lg:text-5xl">
+          <h1 className="mb-4 text-3xl font-bold text-white md:mt-16 md:text-4xl lg:text-5xl">
             <ThemeContent type="welcome-title" as="span" />
           </h1>
           <h3 className="mx-auto mb-8 max-w-3xl text-lg font-normal text-white/80">
@@ -40,41 +60,39 @@ const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
                 </TabsList>
 
                 <TabsContent value="basic">
-                  <SearchBar
-                    size="lg"
-                  />
+                  <SearchBar size="lg" />
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="mr-2 text-sm text-muted-foreground">
+                    <span className="text-muted-foreground mr-2 text-sm">
                       Popular searches:
                     </span>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="text-foreground cursor-pointer"
                     >
                       SARS-CoV-2
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="text-foreground cursor-pointer"
                     >
                       Influenza A
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="text-foreground cursor-pointer"
                     >
                       HIV-1
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="text-foreground cursor-pointer"
                     >
                       Ebola virus
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="text-foreground cursor-pointer"
                     >
                       Zika virus
                     </Badge>
@@ -84,28 +102,36 @@ const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
                 <TabsContent value="advanced">
                   <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <Label className="card-sublabel">
-                        Taxonomy
-                      </Label>
-                      <Input type="text" placeholder="e.g., Coronaviridae" className="card-input" />
+                      <Label className="card-sublabel">Taxonomy</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g., Coronaviridae"
+                        className="card-input"
+                      />
                     </div>
                     <div>
-                      <Label className="card-sublabel">
-                        Host
-                      </Label>
-                      <Input type="text" placeholder="e.g., Homo sapiens" className="card-input" />
+                      <Label className="card-sublabel">Host</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g., Homo sapiens"
+                        className="card-input"
+                      />
                     </div>
                     <div>
-                      <Label className="card-sublabel">
-                        Genome Type
-                      </Label>
-                      <Input type="text" placeholder="e.g., ssRNA(+)" className="card-input" />
+                      <Label className="card-sublabel">Genome Type</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g., ssRNA(+)"
+                        className="card-input"
+                      />
                     </div>
                     <div>
-                      <Label className="card-sublabel">
-                        Protein Function
-                      </Label>
-                      <Input type="text" placeholder="e.g., Polymerase" className="card-input" />
+                      <Label className="card-sublabel">Protein Function</Label>
+                      <Input
+                        type="text"
+                        placeholder="e.g., Polymerase"
+                        className="card-input"
+                      />
                     </div>
                   </div>
                   <Button className="bg-secondary hover:bg-secondary-foreground w-full">
@@ -115,34 +141,27 @@ const WelcomeSearch = ({ setSearchResults }: WelcomeSearchProps) => {
 
                 <TabsContent value="sequence">
                   <div className="mb-4">
-                    <RadioGroup defaultValue="nucleotide" className="radio-group">
-                      <Label className="card-sublabel">
-                        Sequence Type
-                      </Label>
+                    <RadioGroup
+                      defaultValue="nucleotide"
+                      className="radio-group"
+                    >
+                      <Label className="card-sublabel">Sequence Type</Label>
                       <div className="radio-group-item-container">
                         <div>
-                          <RadioGroupItem
-                            id="nucleotide"
-                            value="nucleotide"
-                          />
+                          <RadioGroupItem id="nucleotide" value="nucleotide" />
                           <Label htmlFor="nucleotide">Nucleotide</Label>
                         </div>
                         <div>
-                          <RadioGroupItem
-                            id="protein"
-                            value="protein"
-                          />
+                          <RadioGroupItem id="protein" value="protein" />
                           <Label htmlFor="protein">Protein</Label>
                         </div>
                       </div>
                     </RadioGroup>
 
-                    <div className="gap-4 text-foreground">
-                      <Label className="card-sublabel">
-                        Enter Sequence
-                      </Label>
+                    <div className="text-foreground gap-4">
+                      <Label className="card-sublabel">Enter Sequence</Label>
                       <Textarea
-                        className="h-24 w-full rounded-md border m-2 font-mono text-sm text-foreground"
+                        className="text-foreground m-2 h-24 w-full rounded-md border font-mono text-sm"
                         placeholder="Paste your sequence here (FASTA format supported)"
                       ></Textarea>
                     </div>

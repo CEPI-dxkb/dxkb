@@ -174,7 +174,7 @@ export default function WastewaterAnalysis() {
             {/* TODO: Change to date picker with text input */}
             <div className="space-y-3">
               <Label className="service-card-label">Sample Date</Label>
-              <DatePickerInput className="w-full bg-white" />
+              <DatePickerInput className="w-full" />
             </div>
           </CardContent>
         </Card>

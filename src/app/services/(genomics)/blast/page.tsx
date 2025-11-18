@@ -224,11 +224,11 @@ export default function BlastServicePage() {
                 </div>
 
                 <Select>
-                  <SelectTrigger className="service-card-select-trigger ">
+                  <SelectTrigger className="service-card-select-trigger">
                     <SelectValue placeholder="Select database source" />
                   </SelectTrigger>
                   {/* TODO: Conditionally render based on query type */}
-                  <SelectContent>
+                  <SelectContent className="service-card-select-content">
                     <SelectItem value="reference">
                       Reference and representative genomes (bacteria, archaea)
                     </SelectItem>

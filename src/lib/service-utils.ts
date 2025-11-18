@@ -47,6 +47,7 @@ export function handlePairedLibraryAdd(
   if (isDuplicate && !allowDuplicates) {
     toast.error("Duplicate library detected", {
       description: "This paired library has already been added.",
+      closeButton: true,
     });
     return currentLibraries;
   }
@@ -74,6 +75,7 @@ export function handleSingleLibraryAdd(
   if (isDuplicate && !allowDuplicates) {
     toast.error("Duplicate library detected", {
       description: "This single library has already been added.",
+      closeButton: true,
     });
     return currentLibraries;
   }
@@ -103,6 +105,7 @@ export function handleSraAdd(
   if (isDuplicate && !allowDuplicates) {
     toast.error("Duplicate SRA accession detected", {
       description: "This SRA accession has already been added.",
+      closeButton: true,
     });
     return null;
   }

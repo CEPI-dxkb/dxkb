@@ -143,7 +143,7 @@ export function DatePickerInput({
               ref={popoverRef}
               variant="ghost"
               size="icon"
-              className="hover:bg-secondary/10 absolute left-0.5 h-[90%] border border-white hover:border-gray-400 focus-visible:border focus-visible:border-gray-400"
+              className="hover:bg-secondary/10 absolute left-0.5 h-[90%] border border-border hover:border-muted-foreground focus-visible:border focus-visible:border-muted-foreground"
               tabIndex={-1}
               aria-label="Open calendar"
             >
@@ -155,7 +155,6 @@ export function DatePickerInput({
               mode="single"
               selected={date}
               onSelect={handleDateSelect}
-              initialFocus
               month={calendarMonth}
               onMonthChange={setCalendarMonth}
             />
@@ -168,7 +167,7 @@ export function DatePickerInput({
           placeholder={fmt.placeholder}
           maxLength={fmt.mask.reduce((a, b) => a + b) + (fmt.mask.length - 1)}
           className={cn(
-            "w-full pl-10",
+            "w-full pl-10 bg-muted",
             !date && "text-muted-foreground",
             error && "border-red-500 focus-visible:ring-red-500",
             className,

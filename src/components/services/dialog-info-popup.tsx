@@ -44,17 +44,12 @@ export function DialogInfoPopup({
           <DialogDescription className="text-foreground/70 overflow-x-auto break-all">{description}</DialogDescription>
         </DialogHeader>
         {sections.length > 0 && (
-          <div className="max-h-128 space-y-4 overflow-y-auto rounded-md border bg-white p-4 py-4">
+          <div className="max-h-128 space-y-4 overflow-y-auto rounded-md border bg-card p-4 py-4">
           {sections.map((section, index) => (
             <div key={index} className="space-y-3">
               {section.header && (
-                <h3 className="text-base font-semibold">{section.header}</h3>
+                <h3 className="text-base font-semibold text-foreground">{section.header}</h3>
               )}
-              {/* {section.subheader && (
-                <h4 className="text-muted-foreground text-sm font-medium">
-                  {section.subheader}
-                </h4>
-              )} */}
               {section.description && (
                 <p className="text-muted-foreground text-sm">
                   {section.description}
@@ -67,7 +62,7 @@ export function DialogInfoPopup({
                       <h5 className="text-sm font-medium">
                         {subsection.subheader}
                       </h5>
-                      <p className="text-muted-foreground text-sm mb-2">
+                      <p className="text-foreground text-sm mb-2">
                         {subsection.subdescription}
                       </p>
                     </div>
@@ -79,13 +74,6 @@ export function DialogInfoPopup({
             ))}
           </div>
         )}
-        {/* <DialogFooter className="sm:justify-end">
-          <DialogClose asChild>
-            <Button type="button" variant="secondary" className="text-white">
-              Close
-            </Button>
-          </DialogClose>
-        </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );

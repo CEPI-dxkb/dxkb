@@ -70,10 +70,10 @@ const FAQ = () => {
                   <AccordionItem
                     key={index}
                     value={`${section}-${index}`}
-                    className="faq-item"
+                    className="accordion-item"
                   >
-                    <AccordionTrigger className="faq-item-header">{faq.question}</AccordionTrigger>
-                    <AccordionContent className="AccordionContent faq-item-content">
+                    <AccordionTrigger className="accordion-trigger">{faq.question}</AccordionTrigger>
+                    <AccordionContent className="accordion-content">
                       {faq.answer}
                     </AccordionContent>
                   </AccordionItem>

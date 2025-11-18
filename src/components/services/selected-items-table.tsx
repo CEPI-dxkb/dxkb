@@ -97,7 +97,7 @@ const SelectedItemsTable = ({
       >
         <div className="h-full overflow-y-auto rounded-md border">
           {items.length === 0 ? (
-            <div className="text-muted-foreground h-full bg-white p-4.5 text-center text-sm">
+            <div className="text-muted-foreground h-full bg-muted p-4.5 text-center text-sm">
               {emptyMessage}
             </div>
           ) : (
@@ -105,7 +105,7 @@ const SelectedItemsTable = ({
               {items.map((item) => (
                 <div
                   key={item.id + item.type}
-                  className="flex items-center justify-between bg-white px-4 py-2 hover:bg-gray-50"
+                  className="flex items-center justify-between bg-muted px-4 py-2 hover:bg-secondary/20"
                 >
                   <div className="flex items-center gap-2">
                     <div>

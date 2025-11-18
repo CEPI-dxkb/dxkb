@@ -52,7 +52,7 @@ const OutputFolder = ({
               </TooltipTrigger>
               {/* TODO: Fix the width of the tooltip conente container */}
               {/* It will go off the screen depending on the inner content size and screen size */}
-              <TooltipContent className="max-w-sm">
+              <TooltipContent className="max-w-sm text-white font-normal">
                 {resolvedTooltipText}
               </TooltipContent>
             </Tooltip>

@@ -1,7 +1,9 @@
+"use client";
+
 import { Button } from "@/components/buttons/button";
 import { LuMenu } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { RxAvatar } from "react-icons/rx";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   gettingStartedItems,
   organismItems,
@@ -15,8 +17,12 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import Logo from "@/components/ui/logo";
+import { useAuth } from "@/contexts/auth-context";
+import { LogoutButton } from "../auth/logout-button";
 
 const MobileNavbar = () => {
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
+
   return (
     <header className="bg-primary flex items-center justify-between px-4 py-4 text-foreground md:hidden">
       <div className="flex items-center gap-4">
@@ -98,6 +104,21 @@ const MobileNavbar = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Workspace Section - only show when authenticated */}
+              {isAuthenticated && (
+                <div className="p-3">
+                  <h2 className="mobile-nav-section-header">Workspace</h2>
+                  <div className="grid grid-cols-1 gap-y-1">
+                    <Link
+                      href="/workspace"
+                      className="mobile-nav-link"
+                    >
+                      My Jobs
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </SheetContent>
         </Sheet>
@@ -113,19 +134,51 @@ const MobileNavbar = () => {
         </Link>
       </div>
 
-      <div className="flex">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="group h-10 w-10 transition-all duration-300"
-        >
-          <span className="sr-only">User account</span>
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>
-              <RxAvatar className="h-6 w-6 text-gray-400 group-hover:text-black" />
-            </AvatarFallback>
-          </Avatar>
-        </Button>
+      <div className="flex items-center space-x-2">
+        {/* Show skeleton while loading */}
+        {isLoading && (
+          <div className="flex items-center space-x-2">
+            <Skeleton className="h-8 w-16 bg-white/20" />
+            <Skeleton className="h-8 w-20 bg-white/20" />
+          </div>
+        )}
+
+        {/* Show login/register when NOT authenticated and not loading */}
+        {!isLoading && !isAuthenticated && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-foreground hover:bg-gray-300/50"
+              asChild
+            >
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-foreground text-foreground hover:bg-foreground hover:text-background"
+              asChild
+            >
+              <Link href="/register">Register</Link>
+            </Button>
+          </>
+        )}
+
+        {/* Show user info and logout when authenticated and not loading */}
+        {!isLoading && isAuthenticated && (
+          <>
+            <div className="flex items-center space-x-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-white/10 text-white">
+                  {user?.username?.charAt(0).toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium text-white">{user?.username}</span>
+            </div>
+            <LogoutButton />
+          </>
+        )}
       </div>
     </header>
   );

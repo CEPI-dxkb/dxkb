@@ -38,7 +38,6 @@ export function Logo({
   const logoPath = getLogoPath(currentTheme || "dxkb-light", variant);
 
   if (!mounted) {
-    console.log("Logo loading");
     return (
       <Skeleton className="h-10 w-36" aria-label="Logo loading" />
     );
@@ -50,7 +49,10 @@ export function Logo({
       alt={alt}
       width={width}
       height={height}
-      className={cn("h-auto", className)}
+      className={cn(
+        "flex-shrink-0 flex-grow-0 object-contain min-h-8 max-h-8",
+        className
+      )}
       priority={priority}
     />
   );

@@ -2,14 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/buttons/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { RxAvatar } from "react-icons/rx";
-import { cn } from "@/lib/utils";
-import { gettingStartedItems, organismItems, serviceItems } from "./navbar-links";
-import ThemeSwitch from "@/styles/ThemeSwitch";
-import Logo from "@/components/ui/logo";
+import {
+  gettingStartedItems,
+  organismItems,
+  serviceItems,
+} from "./navbar-links";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -22,21 +19,44 @@ import { useTheme } from "next-themes";
 import { SearchBar } from "../search/search-bar";
 import { usePathname } from "next/navigation";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/buttons/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import Logo from "@/components/ui/logo";
+import { useAuth } from "@/contexts/auth-context";
+import { LogoutButton } from "../auth/logout-button";
+import {
+  UserRound,
+  Settings,
+  NotebookPen,
+  BriefcaseBusiness,
+  Mail,
+} from "lucide-react";
 
 const DesktopNavbar = () => {
-  const { theme } = useTheme();
+  const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
 
   const pathname = usePathname();
   const isHome = pathname === '/';
 
   return (
-    <header className="bg-primary hidden items-center justify-between px-8 py-4 text-white md:flex">
-      <div className="flex items-center space-x-4">
+    <header className="bg-primary hidden h-18 items-center justify-between px-4 py-4 text-white md:flex">
+      <div className="flex items-center space-x-2">
         <Link id="dxkb-logooooo" href="/">
           <Logo
             variant="logo-white"
             width={100}
-            height={40}
+            height={44}
             className="h-10 w-auto"
             priority
           />
@@ -45,7 +65,7 @@ const DesktopNavbar = () => {
         <NavigationMenu className="bg-primary hidden w-full items-center justify-between font-bold md:flex">
           <NavigationMenuList>
             <NavigationMenuItem id="getting-started-nav">
-              <NavigationMenuTrigger className="bg-primary !hover:text-red-500">
+              <NavigationMenuTrigger className="bg-primary">
                 Getting started
               </NavigationMenuTrigger>
               <NavigationMenuContent>
@@ -56,11 +76,7 @@ const DesktopNavbar = () => {
                         className="from-muted/50 bg-primary hover:bg-primary/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
                         href="/"
                       >
-                        <Logo
-                          variant="logo-white"
-                          width={100}
-                          height={40}
-                        />
+                        <Logo variant="logo-white" />
                         <div className="mt-4 mb-2 text-lg font-medium text-white">
                           shadcn/ui
                         </div>
@@ -109,14 +125,11 @@ const DesktopNavbar = () => {
                 Services
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="grid md:w-[550px] lg:w-[650px] grid-cols-2 gap-2 p-2">
+                <div className="grid grid-cols-2 gap-2 p-2 md:w-[550px] lg:w-[650px]">
                   <div className="space-y-0">
                     {/* Left Column */}
                     {Object.entries(serviceItems)
-                      .slice(
-                        0,
-                        Math.ceil(Object.keys(serviceItems).length / 2),
-                      )
+                      .slice(0, Math.ceil(Object.keys(serviceItems).length / 2))
                       .map(([key, section]) => (
                         <div key={key}>
                           <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
@@ -140,9 +153,7 @@ const DesktopNavbar = () => {
                   <div className="space-y-0">
                     {/* Right Column */}
                     {Object.entries(serviceItems)
-                      .slice(
-                        Math.ceil(Object.keys(serviceItems).length / 2),
-                      )
+                      .slice(Math.ceil(Object.keys(serviceItems).length / 2))
                       .map(([key, section]) => (
                         <div key={key}>
                           <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
@@ -166,6 +177,33 @@ const DesktopNavbar = () => {
                 </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
+
+            {/* Workspace - only show when authenticated */}
+            {isAuthenticated && (
+              <NavigationMenuItem id="workspace-nav">
+                <NavigationMenuTrigger className="bg-primary">
+                  Workspace
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                    <ListItem
+                      key="workspace-nav"
+                      title="My Workspace"
+                      href="/workspace"
+                    >
+                      View your workspace.
+                    </ListItem>
+                    <ListItem
+                      key="workspace-jobs-nav"
+                      title="Jobs"
+                      href="/workspace/jobs"
+                    >
+                      View all jobs in your workspace.
+                    </ListItem>
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            )}
           </NavigationMenuList>
         </NavigationMenu>
         </div>
@@ -176,20 +214,103 @@ const DesktopNavbar = () => {
           </div>
         )}
                       
-      <div className='space-x-4 flex items-center'>
-        <ThemeSwitch />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="group h-10 w-10 transition-all duration-300"
-          >
-          <span className="sr-only">User account</span>
-          <Avatar className="h-10 w-10">
-            <AvatarFallback>
-              <RxAvatar className="h-6 w-6 text-muted-foreground group-hover:text-black" />
-            </AvatarFallback>
-          </Avatar>
-        </Button>
+      <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2">
+          {/* Show skeleton while loading */}
+          {isLoading && (
+            <div className="flex items-center space-x-2">
+              <Skeleton className="h-8 w-16 bg-white/20" />
+              <Skeleton className="h-8 w-20 bg-white/20" />
+            </div>
+          )}
+
+          {/* Show login/register when NOT authenticated and not loading */}
+          {!isLoading && !isAuthenticated && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/10 hover:text-white"
+                asChild
+              >
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-foreground hover:text-secondary hover:bg-white"
+                asChild
+              >
+                <Link href="/register">Register</Link>
+              </Button>
+            </>
+          )}
+
+          {/* Show user info and logout when authenticated and not loading */}
+          {!isLoading && isAuthenticated && (
+            <>
+              <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-white/10 text-white">
+                          {user?.username?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" sideOffset={8} align="end">
+                    <DropdownMenuLabel>User Actions</DropdownMenuLabel>
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuGroup>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <UserRound className="text-foreground h-2 w-2" />
+                          <Link href="/">Profile</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <NotebookPen className="text-foreground h-4 w-4" />
+                          <Link href="/workspace">My Workspace</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <BriefcaseBusiness className="text-foreground h-4 w-4" />
+                          <Link href="/workspace/jobs">My Jobs</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <Settings className="text-foreground h-4 w-4" />
+                          <Link href="/">Settings</Link>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <span className="flex items-center gap-2">
+                          <Mail className="text-foreground h-4 w-4" />
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => sendVerificationEmail()}
+                            className="text-foreground font-inherit h-5 cursor-pointer p-0"
+                          >
+                            Resend Verification Email
+                          </Button>
+                        </span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <LogoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

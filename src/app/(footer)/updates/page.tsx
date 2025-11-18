@@ -176,7 +176,7 @@ const Updates = () => {
   };
 
   // Debug log to check dates
-  console.log("Event dates:", Array.from(eventDates));
+  // console.log("Event dates:", Array.from(eventDates));
 
   return (
     <div className="flex w-full flex-col">

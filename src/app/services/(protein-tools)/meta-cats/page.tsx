@@ -179,6 +179,7 @@ export default function MetaCATSPage() {
                   step="0.01"
                   min="0"
                   max="1"
+                  className="service-card-input"
                 />
               </div>
 
@@ -237,7 +238,7 @@ export default function MetaCATSPage() {
                     <SelectTrigger className="service-card-select-trigger !w-fit">
                       <SelectValue placeholder="Select metadata" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="service-card-select-content">
                       <SelectItem value="accession">Accession</SelectItem>
                       <SelectItem value="collection-date">
                         Collection Date
@@ -311,10 +312,10 @@ export default function MetaCATSPage() {
                   <Label className="service-card-label">Group Names</Label>
                   <div className="flex gap-2">
                     <Select defaultValue="default">
-                      <SelectTrigger className="flex-1">
+                      <SelectTrigger className="flex-1 service-card-select-trigger">
                         <SelectValue placeholder="Select group" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="service-card-select-content">
                         <SelectItem value="default">Default Group</SelectItem>
                         <SelectItem value="group1">Group 1</SelectItem>
                         <SelectItem value="group2">Group 2</SelectItem>
@@ -327,7 +328,7 @@ export default function MetaCATSPage() {
                 <div>
                   <Label className="service-card-label">Groups Grid</Label>
                   <div className="overflow-hidden rounded-md border">
-                    <Table>
+                    <Table className="service-table">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-12">

@@ -15,7 +15,8 @@ export const librarySchema = z.object({
 export type LibraryItem = z.infer<typeof librarySchema>;
 
 // Main form schema
-export const genomeAssemblyFormSchema = z.object({
+export const genomeAssemblyFormSchema = z
+  .object({
     // Libraries (required at least one)
     paired_end_libs: z.array(librarySchema).optional(),
     single_end_libs: z.array(librarySchema).optional(),

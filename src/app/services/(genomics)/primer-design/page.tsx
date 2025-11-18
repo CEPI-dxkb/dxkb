@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,30 +24,247 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  HelpCircle,
-  ChevronDown,
-} from "lucide-react";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { ChevronDown, HelpCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import { ServiceHeader } from "@/components/services/service-header";
-import { primerDesignInfo, primerDesignInputSequence } from "@/lib/services/service-info";
-import { handleFormSubmit } from "@/utils/services/service-utils";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
-import SearchWorkspaceInput from "@/components/services/search-workspace-input";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  primerDesignInfo,
+  primerDesignInputSequence,
+} from "@/lib/services/service-info";
+import {
+  DEFAULT_PRIMER_DESIGN_FORM_VALUES,
+  primerDesignFormSchema,
+  type PrimerDesignFormData,
+  stripPrimerMarkers,
+  transformPrimerDesignParams,
+  validatePrimerDesignSequence,
+  type PrimerSequenceValidationResult,
+} from "@/lib/schemas";
+import { submitServiceJob } from "@/utils/services/service-utils";
+import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { WorkspaceObject } from "@/lib/workspace-client";
 
-const PrimerDesignInterface = () => {
-  const [sequenceInputMethod, setSequenceInputMethod] = useState("paste-sequence");
+const MARKER_LABELS = {
+  exclude: "< >",
+  target: "[ ]",
+  include: "{ }",
+} as const;
+
+type MarkerType = keyof typeof MARKER_LABELS | "clear";
+
+export default function PrimerDesignServicePage() {
+  const form = useForm<PrimerDesignFormData>({
+    resolver: zodResolver(primerDesignFormSchema) as any,
+    defaultValues: DEFAULT_PRIMER_DESIGN_FORM_VALUES as PrimerDesignFormData,
+    mode: "onChange",
+  });
+
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [_outputFolder, setOutputFolder] = useState("");
-  const [_outputName, setOutputName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sequenceValidation, setSequenceValidation] =
+    useState<PrimerSequenceValidationResult | null>(null);
+
+  const selectionRangeRef = useRef<{ start: number; end: number }>({
+    start: 0,
+    end: 0,
+  });
+
+  const inputType = form.watch("input_type");
+
+  useEffect(() => {
+    if (inputType === "workplace_fasta") {
+      setSequenceValidation(null);
+      form.clearErrors("sequence_input");
+      return;
+    }
+
+    const currentValue = form.getValues("sequence_input");
+    if (!currentValue) {
+      return;
+    }
+
+    const validation = validatePrimerDesignSequence(currentValue);
+    setSequenceValidation(validation);
+
+    if (validation.isValid) {
+      form.clearErrors("sequence_input");
+    } else {
+      form.setError("sequence_input", {
+        type: "manual",
+        message: validation.message,
+      });
+    }
+  }, [inputType, form]);
+
+  const handleSequenceValueChange = useCallback(
+    (value: string) => {
+      const validation = validatePrimerDesignSequence(value);
+      setSequenceValidation(validation);
+
+      if (validation.isValid) {
+        form.clearErrors("sequence_input");
+      } else {
+        form.setError("sequence_input", {
+          type: "manual",
+          message: validation.message,
+        });
+      }
+
+      form.setValue("sequence_input", validation.sanitizedSequence, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+
+      if (validation.isValid && validation.header) {
+        const currentIdentifier = form.getValues("SEQUENCE_ID")?.trim() || "";
+        if (!currentIdentifier) {
+          form.setValue("SEQUENCE_ID", validation.header, {
+            shouldDirty: true,
+          });
+        }
+      }
+    },
+    [form],
+  );
+
+  const handleSequenceSelect = useCallback(
+    (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
+      const target = event.currentTarget;
+      selectionRangeRef.current = {
+        start: target.selectionStart ?? 0,
+        end: target.selectionEnd ?? 0,
+      };
+    },
+    [],
+  );
+
+  const updateSequenceWithMarkers = useCallback(
+    (marker: MarkerType) => {
+      const currentSequence = form.getValues("sequence_input") ?? "";
+      if (!currentSequence) {
+        return;
+      }
+
+      if (marker === "clear") {
+        const cleared = stripPrimerMarkers(currentSequence);
+        handleSequenceValueChange(cleared);
+        return;
+      }
+
+      const { start, end } = selectionRangeRef.current;
+      if (start === end) {
+        toast.error("Select a region in the sequence before applying markers.");
+        return;
+      }
+
+      if (currentSequence.startsWith(">")) {
+        const headerEndIndex = currentSequence.indexOf("\n");
+        if (headerEndIndex >= 0 && start <= headerEndIndex) {
+          toast.error("Markers cannot be added to the FASTA header.");
+          return;
+        }
+      }
+
+      const markers = {
+        exclude: ["<", ">"],
+        target: ["[", "]"],
+        include: ["{", "}"],
+      } as const;
+
+      const [openMarker, closeMarker] = markers[marker as keyof typeof markers];
+      const markedSequence =
+        currentSequence.slice(0, start) +
+        openMarker +
+        currentSequence.slice(start, end) +
+        closeMarker +
+        currentSequence.slice(end);
+
+      handleSequenceValueChange(markedSequence);
+    },
+    [form, handleSequenceValueChange],
+  );
+
+  const handleWorkspaceSelection = useCallback(
+    (object: WorkspaceObject) => {
+      form.setValue("sequence_input", object.path || "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+    [form],
+  );
+
+  const handleReset = () => {
+    form.reset(DEFAULT_PRIMER_DESIGN_FORM_VALUES);
+    setSequenceValidation(null);
+    setShowAdvanced(false);
+  };
+
+  const {
+    handleSubmit: handleFormSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+  } = useServiceFormSubmission<PrimerDesignFormData>({
+    serviceName: "Primer Design",
+    transformParams: transformPrimerDesignParams,
+    onSubmit: async (data) => {
+      if (data.input_type === "sequence_text") {
+        const validation = validatePrimerDesignSequence(data.sequence_input);
+        setSequenceValidation(validation);
+
+        if (!validation.isValid) {
+          toast.error(validation.message);
+          form.setError("sequence_input", {
+            type: "manual",
+            message: validation.message,
+          });
+          return;
+        }
+      }
+
+      try {
+        setIsSubmitting(true);
+        const result = await submitServiceJob(
+          "PrimerDesign",
+          transformPrimerDesignParams(data),
+        );
+
+        if (result.success) {
+          const jobId = result.job?.[0]?.id;
+          toast.success("Primer Design job submitted", {
+            description: jobId ? `Job ID: ${jobId}` : undefined,
+          });
+        } else {
+          throw new Error(result.error || "Failed to submit Primer Design job");
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to submit Primer Design job";
+        toast.error("Submission failed", { description: message });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+  });
 
   return (
     <section>
       <ServiceHeader
         title="Primer Design"
-        description="The Primer Design Service utilizes Primer3 to design primers from a given \
-          input sequence under a variety of temperature, size, and concentration constraints."
+        description="The Primer Design Service utilizes Primer3 to design primers from a given input sequence under a variety of temperature, size, and concentration constraints."
         infoPopupTitle={primerDesignInfo.title}
         infoPopupDescription={primerDesignInfo.description}
         quickReferenceGuide="#"
@@ -50,436 +272,685 @@ const PrimerDesignInterface = () => {
         instructionalVideo="#"
       />
 
-      <form
-        onSubmit={handleFormSubmit}
-        className="service-form-section"
-      >
-        {/* Input Sequence Section */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Input Sequence
-              <DialogInfoPopup
-                title={primerDesignInputSequence.title}
-                description={primerDesignInputSequence.description}
-                sections={primerDesignInputSequence.sections}
-              />
-            </CardTitle>
-          </CardHeader>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleFormSubmit)}
+          className="service-form-section"
+        >
+          <Card>
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">
+                Input Sequence
+                <DialogInfoPopup
+                  title={primerDesignInputSequence.title}
+                  description={primerDesignInputSequence.description}
+                  sections={primerDesignInputSequence.sections}
+                />
+              </CardTitle>
+            </CardHeader>
 
-          <CardContent className="service-card-content">
-            {/* Input Method Tabs */}
-            <Tabs
-              defaultValue="paste"
-              value={sequenceInputMethod}
-              onValueChange={setSequenceInputMethod}
-              className="w-full"
-            >
-              <TabsList className="mb-4 grid w-full grid-cols-2">
-                <TabsTrigger value="paste-sequence">Paste Sequence</TabsTrigger>
-                <TabsTrigger value="workspace-fasta">Workspace FASTA</TabsTrigger>
-              </TabsList>
+            <CardContent className="service-card-content space-y-6">
+              <Tabs
+                value={inputType}
+                onValueChange={(value) =>
+                  form.setValue(
+                    "input_type",
+                    value as PrimerDesignFormData["input_type"],
+                    { shouldDirty: true, shouldValidate: true },
+                  )
+                }
+                className="w-full"
+              >
+                <TabsList className="mb-4 grid w-full grid-cols-2">
+                  <TabsTrigger value="sequence_text">
+                    Paste Sequence
+                  </TabsTrigger>
+                  <TabsTrigger value="workplace_fasta">
+                    Workspace FASTA
+                  </TabsTrigger>
+                </TabsList>
 
-              {/* Paste Sequence Content */}
-              <TabsContent value="paste-sequence" className="mt-0">
-                {/* Sequence Identifier */}
-                <div className="mb-4 space-y-2">
-                  <Label className="service-card-label">Sequence Identifier</Label>
-                  <Input placeholder="Identifier for input sequence" className="service-card-input" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="service-card-label">Paste Sequence</Label>
-                  <Textarea
-                    placeholder="Enter nucleotide sequence"
-                    className="service-card-textarea"
+                <TabsContent value="sequence_text" className="mt-0 space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="SEQUENCE_ID"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="service-card-label">
+                          Sequence Identifier
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ""}
+                            placeholder="Identifier for input sequence"
+                            className="service-card-input"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                </div>
 
-                <div className="flex items-center align-middle space-x-2 pt-2">
-                  <Label className="service-card-sublabel !mb-0">
-                    Mark Selected Region
-                  </Label>
-                  <div className="flex space-x-1">
-                    <Button variant="outline" size="sm" className="h-8 px-2">
-                      <span>{"< >"}</span>
-                    </Button>
-                    <div className="flex space-x-1">
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                        <span>[ ]</span>
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                        <span>{"{ }"} </span>
+                  <FormField
+                    control={form.control}
+                    name="sequence_input"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="service-card-label">
+                          Paste Sequence
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            ref={field.ref}
+                            value={field.value}
+                            onChange={(event) =>
+                              handleSequenceValueChange(event.target.value)
+                            }
+                            onSelect={handleSequenceSelect}
+                            onKeyUp={handleSequenceSelect}
+                            onMouseUp={handleSequenceSelect}
+                            placeholder="Enter nucleotide sequence"
+                            className="service-card-textarea"
+                          />
+                        </FormControl>
+                        {sequenceValidation && !sequenceValidation.isValid && (
+                          <p className="text-destructive text-sm">
+                            {sequenceValidation.message}
+                          </p>
+                        )}
+                        {sequenceValidation && sequenceValidation.isValid && (
+                          <p className="text-sm text-green-600">
+                            Sequence looks valid.
+                          </p>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="space-y-2">
+                    <Label className="service-card-sublabel !mb-0">
+                      Mark Selected Region
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        Object.keys(MARKER_LABELS) as Array<
+                          keyof typeof MARKER_LABELS
+                        >
+                      ).map((markerKey) => (
+                        <Button
+                          key={markerKey}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateSequenceWithMarkers(markerKey)}
+                        >
+                          {MARKER_LABELS[markerKey]}
+                        </Button>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateSequenceWithMarkers("clear")}
+                      >
+                        Clear markers
                       </Button>
                     </div>
-                    <Button variant="outline" size="sm" className="h-8">
-                      clear
-                    </Button>
                   </div>
-                </div>
-              </TabsContent>
+                </TabsContent>
 
-              {/* Workspace FASTA Content */}
-              <TabsContent value="workspace-fasta" className="mt-0">
-                <SearchWorkspaceInput
-                  title="FASTA File"
-                  placeholder="Select FASTA File..."
-                />
-              </TabsContent>
-            </Tabs>
-
-            {/* Mark Selected Region */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center space-x-2">
-                <Switch id="pick-internal-oligo" defaultChecked={true} />
-                <Label htmlFor="pick-internal-oligo" className="text-sm">
-                  Pick Internal Oligo
-                </Label>
-              </div>
-            </div>
-
-            {/* Product Size Range */}
-            <div className="space-y-2 pt-2">
-              <div className="flex items-center">
-                <Label className="service-card-label">Product Size Range (BP)</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="ml-2">
-                      <HelpCircle className="service-card-tooltip-icon mb-2" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="max-w-[300px] space-y-2">
-                        <p>
-                          Minimum, Optimum, and Maximum lengths (in bases) of the PCR product.
-                          Primer3 will not generate primers with products shorter than Min or
-                          longer than Max, and with default arguments Primer3 will attempt
-                          to pick primers producing products close to the Optimum length.
+                <TabsContent value="workplace_fasta" className="mt-0">
+                  <FormField
+                    control={form.control}
+                    name="sequence_input"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="service-card-label">
+                          FASTA File
+                        </FormLabel>
+                        <FormControl>
+                          <WorkspaceObjectSelector
+                            types={["feature_dna_fasta"]}
+                            placeholder="Select FASTA file from workspace"
+                            value={field.value}
+                            onObjectSelect={handleWorkspaceSelection}
+                            onSelectedObjectChange={(object) => {
+                              if (!object) {
+                                form.setValue("sequence_input", "", {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                });
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-muted-foreground text-xs">
+                          Note: only the first FASTA record will be used.
                         </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <Input defaultValue="50-200" className="service-card-input" />
-            </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+              </Tabs>
 
-            {/* Primer Size */}
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Label className="service-card-label">Primer Size (BP)</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="ml-2">
-                      <HelpCircle className="service-card-tooltip-icon mb-2" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="max-w-[300px] space-y-2">
-                        <p>
-                          Minimum, Optimum, and Maximum lengths (in bases) of a primer oligo.
-                          Primer3 will not pick primers shorter than Min or longer than Max, and with default arguments will attempt to pick primers close with size close to Opt.
-                          Min cannot be smaller than 1. Max cannot be larger than 36. (This limit is governed by maximum oligo size for which melting-temperature calculations are valid.)
-                          Min cannot be greater than Max.
-                        </p>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-1">
-                  <Label className="service-card-sublabel">Min</Label>
-                  <Input defaultValue="18" className="service-card-input" />
+              <FormField
+                control={form.control}
+                name="PRIMER_PICK_INTERNAL_OLIGO"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-3">
+                    <FormControl>
+                      <Switch
+                        checked={field.value ? true : false}
+                        onCheckedChange={(checked) =>
+                          field.onChange(checked ? 1 : 0)
+                        }
+                      />
+                    </FormControl>
+                    <FormLabel className="service-card-sublabel !mb-0">
+                      Pick Internal Oligo
+                    </FormLabel>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="PRIMER_PRODUCT_SIZE_RANGE"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="flex items-center gap-2">
+                      <FormLabel className="service-card-label">
+                        Product Size Range (bp)
+                      </FormLabel>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="service-card-tooltip-icon" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-sm">
+                            Minimum, optimum, and maximum lengths (in bases) of
+                            the PCR product. Primer3 attempts to pick primers
+                            close to the optimum length.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                    <FormControl>
+                      <Input
+                        value={
+                          Array.isArray(field.value)
+                            ? field.value.join(" ")
+                            : field.value || ""
+                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(
+                            value.trim() ? value.trim().split(/\s+/) : [],
+                          );
+                        }}
+                        placeholder="50-500"
+                        className="service-card-input"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Label className="service-card-label">Primer Size (bp)</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="service-card-tooltip-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Specify minimum, optimum, and maximum primer lengths.
+                        Primer3 will not pick primers shorter than the minimum
+                        or longer than the maximum.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
-                <div className="space-y-1">
-                  <Label className="service-card-sublabel">Opt</Label>
-                  <Input defaultValue="20" className="service-card-input" />
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {(
+                    [
+                      { label: "Min", name: "PRIMER_MIN_SIZE" },
+                      { label: "Opt", name: "PRIMER_OPT_SIZE" },
+                      { label: "Max", name: "PRIMER_MAX_SIZE" },
+                    ] as const
+                  ).map(({ label, name }) => (
+                    <FormField
+                      key={name}
+                      control={form.control}
+                      name={name}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="service-card-sublabel">
+                            {label}
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              value={
+                                typeof field.value === "number"
+                                  ? field.value.toString()
+                                  : field.value || ""
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                if (name === "PRIMER_OPT_SIZE") {
+                                  field.onChange(value);
+                                } else {
+                                  const numValue = value
+                                    ? parseFloat(value)
+                                    : undefined;
+                                  field.onChange(numValue);
+                                }
+                              }}
+                              className="service-card-input"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
                 </div>
-                <div className="space-y-1">
-                  <Label className="service-card-sublabel">Max</Label>
-                  <Input defaultValue="27" className="service-card-input" />
-                </div>
-              </div>
-            </div>
-
-            {/* Excluded Regions */}
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Label className="service-card-label">Excluded Regions</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="ml-2">
-                      <HelpCircle className="service-card-tooltip-icon mb-2" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Regions to avoid when designing primers</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
               </div>
 
-              <div className="flex flex-row items-center">
-                {"<"}
-                <Input
-                  placeholder="401,7 68,3 forbids primers in the 7 bases starting at 401 and the 3 bases at 68."
-                  className="service-card-input mx-2"
-                />
-                {">"}
+              <div className="space-y-4">
+                {(
+                  [
+                    {
+                      label: "Excluded Regions",
+                      name: "SEQUENCE_EXCLUDED_REGION",
+                      prefix: "<",
+                      suffix: ">",
+                      tooltip:
+                        "Space-separated start,length pairs that primers must avoid (e.g. 401,7 68,3).",
+                    },
+                    {
+                      label: "Target Region",
+                      name: "SEQUENCE_TARGET",
+                      prefix: "[",
+                      suffix: "]",
+                      tooltip:
+                        "Space-separated start,length pairs that primers must flank (e.g. 50,2).",
+                    },
+                    {
+                      label: "Included Regions",
+                      name: "SEQUENCE_INCLUDED_REGION",
+                      prefix: "{",
+                      suffix: "}",
+                      tooltip:
+                        "Single start,length pair defining the region where primers are allowed (e.g. 20,400).",
+                    },
+                    {
+                      label: "Primer Overlap Positions",
+                      name: "SEQUENCE_OVERLAP_JUNCTION_LIST",
+                      prefix: "-",
+                      suffix: "-",
+                      tooltip:
+                        "Space-separated positions that at least one primer must overlap.",
+                    },
+                  ] as const
+                ).map(({ label, name, prefix, suffix, tooltip }) => (
+                  <FormField
+                    key={name}
+                    control={form.control}
+                    name={name}
+                    render={({ field }) => (
+                      <FormItem>
+                        <div className="flex items-center gap-2">
+                          <FormLabel className="service-card-label">
+                            {label}
+                          </FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="service-card-tooltip-icon" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                {tooltip}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>{prefix}</span>
+                          <FormControl>
+                            <Input
+                              value={
+                                Array.isArray(field.value)
+                                  ? field.value.join(" ")
+                                  : field.value || ""
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(
+                                  value.trim() ? value.trim().split(/\s+/) : [],
+                                );
+                              }}
+                              className="service-card-input"
+                            />
+                          </FormControl>
+                          <span>{suffix}</span>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
               </div>
-            </div>
 
-            {/* Target Region */}
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Label className="service-card-label">
-                  Target Region
-                </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="ml-2">
-                      <HelpCircle className="service-card-tooltip-icon mb-2" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Regions that must be included in the PCR product</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+              <Collapsible
+                open={showAdvanced}
+                onOpenChange={setShowAdvanced}
+                className="service-collapsible-container"
+              >
+                <CollapsibleTrigger className="service-collapsible-trigger">
+                  Advanced Options
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
+                  />
+                </CollapsibleTrigger>
 
-              <div className="flex flex-row items-center">
-                {"["}
-                <Input
-                  placeholder="50,2 requires primers to surround the 2 bases at positions 50 and 51."
-                  className="service-card-input mx-2"
-                />
-                {"]"}
-              </div>
-            </div>
+                <CollapsibleContent className="service-collapsible-content">
+                  <div className="space-y-6 px-2 py-4">
+                    <FormField
+                      control={form.control}
+                      name="PRIMER_NUM_RETURN"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-center gap-2">
+                            <FormLabel className="service-card-label">
+                              Number to Return
+                            </FormLabel>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="service-card-tooltip-icon" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-sm">
+                                  Maximum number of primer pairs to return.
+                                  Larger values may increase runtime.
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                          <FormControl>
+                            <Input
+                              value={
+                                typeof field.value === "number"
+                                  ? field.value.toString()
+                                  : field.value || ""
+                              }
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                const numValue = value
+                                  ? parseFloat(value)
+                                  : undefined;
+                                field.onChange(numValue);
+                              }}
+                              placeholder="5"
+                              className="service-card-input"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-            {/* Included Regions */}
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Label className="service-card-label">Included Regions</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger className="ml-2">
-                      <HelpCircle className="service-card-tooltip-icon mb-2" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Regions where primers must be selected</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              <div className="flex flex-row items-center">
-                {"{"}
-                <Input
-                  placeholder="20,400: only pick primers in the 400 base region starting at position 20."
-                  className="service-card-input mx-2"
-                />
-                {"}"}
-              </div>
-            </div>
-
-            {/* Primer Overlap Positions */}
-            <div className="space-y-2">
-              <Label className="service-card-label">Primer Overlap Positions</Label>
-              <div className="flex flex-row items-center">
-                {"-"}
-                <Input
-                  placeholder="Space-separated list of positions. The forward OR reverse primer will overlap one."
-                  className="service-card-input m-2"
-                />
-                {"-"}
-              </div>
-            </div>
-
-            <Collapsible
-              open={showAdvanced}
-              onOpenChange={setShowAdvanced}
-              className="service-collapsible-container"
-            >
-              <CollapsibleTrigger className="service-collapsible-trigger">
-                Advanced Options
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
-                />
-              </CollapsibleTrigger>
-
-              <CollapsibleContent className="service-collapsible-content">
-                <div className="space-y-6 px-2 py-4">
-                  <div className="flex flex-row items-center">
-                    <div className="space-y-2 w-full">
-                      <div className="flex flex-row items-center">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
                         <Label className="service-card-label">
-                          Number to Return
+                          Primer Tm (°C)
                         </Label>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger className="ml-2">
-                              <HelpCircle className="service-card-tooltip-icon mb-2" />
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="service-card-tooltip-icon" />
                             </TooltipTrigger>
-                            <TooltipContent>
-                              <div className="max-w-[300px] space-y-2">
-                                <p>
-                                The maximum number of primer pairs to return. Primer pairs returned are sorted by their &apos;quality&apos;, in
-                                other words by the value of the objective function (where a lower number indicates a better primer
-                                pair). Caution: setting this parameter to a large value will increase running time.
-                                </p>
-                              </div>
+                            <TooltipContent className="max-w-sm">
+                              Define minimum, optimum, and maximum melting
+                              temperatures as well as the maximum pairwise
+                              difference.
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
-                      <Input placeholder="Max number of primers to return (5)" className="service-card-input" />
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                        {(
+                          [
+                            { label: "Min", name: "PRIMER_MIN_TM" },
+                            { label: "Opt", name: "PRIMER_OPT_TM" },
+                            { label: "Max", name: "PRIMER_MAX_TM" },
+                            {
+                              label: "Max ΔTm",
+                              name: "PRIMER_PAIR_MAX_DIFF_TM",
+                            },
+                          ] as const
+                        ).map(({ label, name }) => (
+                          <FormField
+                            key={name}
+                            control={form.control}
+                            name={name}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="service-card-sublabel">
+                                  {label}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    value={
+                                      typeof field.value === "number"
+                                        ? field.value.toString()
+                                        : field.value || ""
+                                    }
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const numValue = value
+                                        ? parseFloat(value)
+                                        : undefined;
+                                      field.onChange(numValue);
+                                    }}
+                                    className="service-card-input"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Label className="service-card-label">Primer GC%</Label>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="service-card-tooltip-icon" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-sm">
+                              Specify acceptable GC content range for designed
+                              primers.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        {(
+                          [
+                            { label: "Min", name: "PRIMER_MIN_GC" },
+                            { label: "Opt", name: "PRIMER_OPT_GC" },
+                            { label: "Max", name: "PRIMER_MAX_GC" },
+                          ] as const
+                        ).map(({ label, name }) => (
+                          <FormField
+                            key={name}
+                            control={form.control}
+                            name={name}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="service-card-sublabel">
+                                  {label}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    value={
+                                      typeof field.value === "number"
+                                        ? field.value.toString()
+                                        : field.value || ""
+                                    }
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      const numValue = value
+                                        ? parseFloat(value)
+                                        : undefined;
+                                      field.onChange(numValue);
+                                    }}
+                                    className="service-card-input"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      {(
+                        [
+                          {
+                            label: "Concentration of Monovalent Cations (mM)",
+                            name: "PRIMER_SALT_MONOVALENT",
+                          },
+                          {
+                            label: "Annealing Oligo Concentration (nM)",
+                            name: "PRIMER_DNA_CONC",
+                          },
+                          {
+                            label: "Concentration of Divalent Cations (mM)",
+                            name: "PRIMER_SALT_DIVALENT",
+                          },
+                          {
+                            label: "Concentration of dNTPs (mM)",
+                            name: "PRIMER_DNTP_CONC",
+                          },
+                        ] as const
+                      ).map(({ label, name }) => (
+                        <FormField
+                          key={name}
+                          control={form.control}
+                          name={name}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="service-card-label">
+                                {label}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  value={
+                                    typeof field.value === "number"
+                                      ? field.value.toString()
+                                      : field.value || ""
+                                  }
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    const numValue = value
+                                      ? parseFloat(value)
+                                      : undefined;
+                                    field.onChange(numValue);
+                                  }}
+                                  className="service-card-input"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      ))}
                     </div>
                   </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardContent>
+          </Card>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <Label className="service-card-label">
-                        Primer Tm (°C)
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="ml-2">
-                            <HelpCircle className="service-card-tooltip-icon mb-2" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <div className="max-w-[300px] space-y-2">
-                              <p>
-                                Minimum, Optimum, and Maximum melting temperatures (Celsius) for a primer oligo. Primer3 will not
-                                pick oligos with temperatures smaller than Min or larger than Max, and with default conditions will try
-                                to pick primers with melting temperatures close to Opt.
-                              </p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+          <Card>
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">Output</CardTitle>
+            </CardHeader>
+            <CardContent className="service-card-content space-y-6">
+              <FormField
+                control={form.control}
+                name="output_path"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <OutputFolder
+                        required
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Min</Label>
-                        <Input defaultValue="57.0" className="service-card-input" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Opt</Label>
-                        <Input defaultValue="60.0" className="service-card-input" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Max</Label>
-                        <Input defaultValue="63.0" className="service-card-input" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Max TM Difference</Label>
-                        <Input defaultValue="100.0" className="service-card-input" />
-                      </div>
-                    </div>
-                  </div>
+              <FormField
+                control={form.control}
+                name="output_file"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <OutputFolder
+                        variant="name"
+                        required
+                        value={field.value}
+                        onChange={(value) => field.onChange(value)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <Label className="service-card-label">
-                        Primer GC%
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="ml-2">
-                            <HelpCircle className="service-card-tooltip-icon mb-2" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <div className="max-w-[300px] space-y-2">
-                              <p>
-                                Minimum, Optimum, and Maximum percentage of Gs and Cs in any primer or oligo.
-                              </p>
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+          <div className="service-form-controls">
+            <Button type="button" variant="outline" onClick={handleReset}>
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              className="bg-indigo-600 text-white hover:bg-indigo-700"
+              disabled={isSubmitting || !form.formState.isValid}
+            >
+              {isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
+              Submit
+            </Button>
+          </div>
+        </form>
+      </Form>
 
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Min</Label>
-                        <Input defaultValue="20.0" className="service-card-input" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Opt</Label>
-                        <Input defaultValue="50.0" className="service-card-input" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="service-card-sublabel">Max</Label>
-                        <Input defaultValue="80.0" className="service-card-input" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label className="service-card-label">
-                        Concentration of Monovalent Cations (MM)
-                      </Label>
-                      <Input defaultValue="50.0" className="service-card-input" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="service-card-label">
-                        Concentration of Divalent Cations (MM)
-                      </Label>
-                      <Input defaultValue="1.5" className="service-card-input" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="service-card-label">
-                        Annealing Oligo Concentration (MM)
-                      </Label>
-                      <Input defaultValue="50.0" className="service-card-input" />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="service-card-label">
-                        Concentration of DNTPS (MM)
-                      </Label>
-                      <Input defaultValue="0.6" className="service-card-input" />
-                    </div>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
-
-        {/* Output Section */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Output
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
-            <OutputFolder onChange={setOutputFolder} />
-
-            <OutputFolder variant="name" onChange={setOutputName} />
-          </CardContent>
-        </Card>
-
-        {/* Submit Buttons */}
-        <div className="service-form-controls">
-          <Button variant="outline" type="reset">
-            Reset
-          </Button>
-          <Button
-            type="submit"
-            className="bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            Submit
-          </Button>
-        </div>
-      </form>
+      <JobParamsDialog
+        open={showParamsDialog}
+        onOpenChange={setShowParamsDialog}
+        params={currentParams}
+        serviceName="Primer Design"
+      />
     </section>
   );
-};
-
-export default PrimerDesignInterface;
+}

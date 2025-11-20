@@ -5,6 +5,7 @@ import { TailwindIndicator } from "@/components/ui/tailwind-indicator";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
+import { Providers } from './providers' // adjust the path as needed
 import { AuthProvider } from "@/contexts/auth-context";
 
 const geistSans = Geist({
@@ -33,6 +34,7 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head />
       <body>
+      <Providers>
         <ThemeProvider defaultTheme="dxkb-light">
           <AuthProvider>
             {children}
@@ -41,6 +43,7 @@ export default function RootLayout({
         </ThemeProvider>
         <Toaster richColors position="top-right" offset={{top: "4rem"}} duration={3000}/>
         <TailwindIndicator />
+      </Providers>
       </body>
     </html>
   );

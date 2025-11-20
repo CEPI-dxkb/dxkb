@@ -4,20 +4,16 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+// ui/table.tsx
+function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
-    <div
-      data-slot="table-container"
-      className="relative w-full overflow-x-auto"
-    >
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
-    </div>
-  )
+    <table
+      className={cn('w-full caption-bottom text-sm border-collapse', className)}
+      {...props}
+    />
+  );
 }
+
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (

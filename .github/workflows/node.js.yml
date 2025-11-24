@@ -4,7 +4,9 @@
 name: pnpm Build Verification
 
 on:
-  push:
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:

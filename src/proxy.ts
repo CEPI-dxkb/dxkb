@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { safeDecodeURIComponent } from "./app/api/auth/utils";
+import { safeDecodeURIComponent } from "./utils/auth";
 
 export function proxy(request: NextRequest) {
   // For API routes that need auth, check for auth cookies

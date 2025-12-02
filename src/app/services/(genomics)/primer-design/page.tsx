@@ -73,13 +73,22 @@ export default function PrimerDesignServicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sequenceValidation, setSequenceValidation] =
     useState<PrimerSequenceValidationResult | null>(null);
-
+  
+  // Store values for each input type separately
+  const [sequenceTextValue, setSequenceTextValue] = useState("");
+  const [sequenceTextId, setSequenceTextId] = useState("");
+  const [workspaceFastaValue, setWorkspaceFastaValue] = useState("");
+  
+  // Track when we're restoring a value to prevent onSelectedObjectChange from clearing it
+  const isRestoringValueRef = useRef(false);
+  
   const selectionRangeRef = useRef<{ start: number; end: number }>({
     start: 0,
     end: 0,
   });
 
   const inputType = form.watch("input_type");
+  const sequenceInput = form.watch("sequence_input");
 
   useEffect(() => {
     if (inputType === "workplace_fasta") {
@@ -88,12 +97,13 @@ export default function PrimerDesignServicePage() {
       return;
     }
 
-    const currentValue = form.getValues("sequence_input");
-    if (!currentValue) {
+    if (!sequenceInput) {
+      setSequenceValidation(null);
+      form.clearErrors("sequence_input");
       return;
     }
 
-    const validation = validatePrimerDesignSequence(currentValue);
+    const validation = validatePrimerDesignSequence(sequenceInput);
     setSequenceValidation(validation);
 
     if (validation.isValid) {
@@ -104,37 +114,58 @@ export default function PrimerDesignServicePage() {
         message: validation.message,
       });
     }
-  }, [inputType, form]);
+  }, [inputType, sequenceInput, form]);
 
   const handleSequenceValueChange = useCallback(
     (value: string) => {
+      // Always update the form value with what the user typed (allow typing)
+      form.setValue("sequence_input", value, {
+        shouldDirty: true,
+        shouldValidate: false, // Don't trigger validation again, we'll do it manually
+      });
+      
+      // Save to state for sequence_text input type
+      if (inputType === "sequence_text") {
+        setSequenceTextValue(value);
+      }
+
       const validation = validatePrimerDesignSequence(value);
       setSequenceValidation(validation);
 
       if (validation.isValid) {
         form.clearErrors("sequence_input");
+        
+        // When valid, update with sanitized version (matching legacy behavior)
+        const sanitized = validation.sanitizedSequence;
+        if (sanitized !== value) {
+          form.setValue("sequence_input", sanitized, {
+            shouldDirty: true,
+            shouldValidate: false,
+          });
+          // Update state with sanitized value
+          if (inputType === "sequence_text") {
+            setSequenceTextValue(sanitized);
+          }
+        }
+
+        // Set sequence identifier from header if present
+        if (validation.header) {
+          const currentIdentifier = form.getValues("SEQUENCE_ID")?.trim() || "";
+          if (!currentIdentifier) {
+            form.setValue("SEQUENCE_ID", validation.header, {
+              shouldDirty: true,
+            });
+            setSequenceTextId(validation.header);
+          }
+        }
       } else {
         form.setError("sequence_input", {
           type: "manual",
           message: validation.message,
         });
       }
-
-      form.setValue("sequence_input", validation.sanitizedSequence, {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
-
-      if (validation.isValid && validation.header) {
-        const currentIdentifier = form.getValues("SEQUENCE_ID")?.trim() || "";
-        if (!currentIdentifier) {
-          form.setValue("SEQUENCE_ID", validation.header, {
-            shouldDirty: true,
-          });
-        }
-      }
     },
-    [form],
+    [form, inputType],
   );
 
   const handleSequenceSelect = useCallback(
@@ -196,13 +227,48 @@ export default function PrimerDesignServicePage() {
 
   const handleWorkspaceSelection = useCallback(
     (object: WorkspaceObject) => {
-      form.setValue("sequence_input", object.path || "", {
+      const path = object.path || "";
+      form.setValue("sequence_input", path, {
         shouldDirty: true,
         shouldValidate: true,
       });
+      // Save to state for workplace_fasta input type
+      if (inputType === "workplace_fasta") {
+        setWorkspaceFastaValue(path);
+      }
     },
-    [form],
+    [form, inputType],
   );
+
+  // Helper to restore workspace FASTA value
+  const restoreWorkspaceFasta = useCallback(() => {
+    if (workspaceFastaValue) {
+      isRestoringValueRef.current = true;
+      form.setValue("sequence_input", workspaceFastaValue, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setTimeout(() => {
+        isRestoringValueRef.current = false;
+      }, 200);
+    } else {
+      form.setValue("sequence_input", "", {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [workspaceFastaValue, form]);
+
+  // Helper to restore sequence text values
+  const restoreSequenceText = useCallback(() => {
+    form.setValue("sequence_input", sequenceTextValue, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue("SEQUENCE_ID", sequenceTextId, {
+      shouldDirty: true,
+    });
+  }, [sequenceTextValue, sequenceTextId, form]);
 
   const handleReset = () => {
     form.reset(DEFAULT_PRIMER_DESIGN_FORM_VALUES);
@@ -292,13 +358,35 @@ export default function PrimerDesignServicePage() {
             <CardContent className="service-card-content space-y-6">
               <Tabs
                 value={inputType}
-                onValueChange={(value) =>
-                  form.setValue(
-                    "input_type",
-                    value as PrimerDesignFormData["input_type"],
-                    { shouldDirty: true, shouldValidate: true },
-                  )
-                }
+                onValueChange={(value) => {
+                  const newInputType = value as PrimerDesignFormData["input_type"];
+                  const previousInputType = form.getValues("input_type");
+                  
+                  // Save current values before switching
+                  const currentSequenceInput = form.getValues("sequence_input") || "";
+                  if (previousInputType === "sequence_text") {
+                    setSequenceTextValue(currentSequenceInput);
+                    setSequenceTextId(form.getValues("SEQUENCE_ID") || "");
+                  } else if (previousInputType === "workplace_fasta") {
+                    setWorkspaceFastaValue(currentSequenceInput);
+                  }
+                  
+                  // Update input type
+                  form.setValue("input_type", newInputType, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  
+                  // Restore values for the new input type
+                  if (newInputType === "sequence_text") {
+                    restoreSequenceText();
+                  } else if (newInputType === "workplace_fasta") {
+                    restoreWorkspaceFasta();
+                  }
+                  
+                  // Clear validation state when switching
+                  setSequenceValidation(null);
+                }}
                 className="w-full"
               >
                 <TabsList className="mb-4 grid w-full grid-cols-2">
@@ -323,6 +411,10 @@ export default function PrimerDesignServicePage() {
                           <Input
                             {...field}
                             value={field.value || ""}
+                            onChange={(e) => {
+                              field.onChange(e);
+                              setSequenceTextId(e.target.value);
+                            }}
                             placeholder="Identifier for input sequence"
                             className="service-card-input"
                           />
@@ -364,13 +456,12 @@ export default function PrimerDesignServicePage() {
                             Sequence looks valid.
                           </p>
                         )}
-                        <FormMessage />
                       </FormItem>
                     )}
                   />
 
                   <div className="space-y-2">
-                    <Label className="service-card-sublabel !mb-0">
+                    <Label className="service-card-sublabel mb-0!">
                       Mark Selected Region
                     </Label>
                     <div className="flex flex-wrap gap-2">
@@ -417,11 +508,28 @@ export default function PrimerDesignServicePage() {
                             value={field.value}
                             onObjectSelect={handleWorkspaceSelection}
                             onSelectedObjectChange={(object) => {
-                              if (!object) {
-                                form.setValue("sequence_input", "", {
+                              // Don't clear if we're currently restoring a value
+                              if (isRestoringValueRef.current) {
+                                return;
+                              }
+                              // When user selects an object, update the form and stored value
+                              if (object && inputType === "workplace_fasta") {
+                                const path = object.path || "";
+                                form.setValue("sequence_input", path, {
                                   shouldDirty: true,
                                   shouldValidate: true,
                                 });
+                                setWorkspaceFastaValue(path);
+                              } else if (!object && inputType === "workplace_fasta") {
+                                // Only clear if user explicitly deselects and we have a value
+                                const currentValue = form.getValues("sequence_input");
+                                if (currentValue) {
+                                  form.setValue("sequence_input", "", {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                  });
+                                  setWorkspaceFastaValue("");
+                                }
                               }
                             }}
                           />
@@ -445,11 +553,11 @@ export default function PrimerDesignServicePage() {
                       <Switch
                         checked={field.value ? true : false}
                         onCheckedChange={(checked) =>
-                          field.onChange(checked ? 1 : 0)
+                          field.onChange(checked)
                         }
                       />
                     </FormControl>
-                    <FormLabel className="service-card-sublabel !mb-0">
+                    <FormLabel className="service-card-sublabel mb-0!">
                       Pick Internal Oligo
                     </FormLabel>
                     <FormMessage />
@@ -537,21 +645,10 @@ export default function PrimerDesignServicePage() {
                           <FormControl>
                             <Input
                               {...field}
-                              value={
-                                typeof field.value === "number"
-                                  ? field.value.toString()
-                                  : field.value || ""
-                              }
+                              value={field.value || ""}
                               onChange={(e) => {
                                 const value = e.target.value;
-                                if (name === "PRIMER_OPT_SIZE") {
-                                  field.onChange(value);
-                                } else {
-                                  const numValue = value
-                                    ? parseFloat(value)
-                                    : undefined;
-                                  field.onChange(numValue);
-                                }
+                                field.onChange(value || undefined);
                               }}
                               className="service-card-input"
                             />
@@ -686,17 +783,10 @@ export default function PrimerDesignServicePage() {
                           </div>
                           <FormControl>
                             <Input
-                              value={
-                                typeof field.value === "number"
-                                  ? field.value.toString()
-                                  : field.value || ""
-                              }
+                              value={field.value || ""}
                               onChange={(e) => {
                                 const value = e.target.value;
-                                const numValue = value
-                                  ? parseFloat(value)
-                                  : undefined;
-                                field.onChange(numValue);
+                                field.onChange(value || undefined);
                               }}
                               placeholder="5"
                               className="service-card-input"
@@ -748,17 +838,10 @@ export default function PrimerDesignServicePage() {
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    value={
-                                      typeof field.value === "number"
-                                        ? field.value.toString()
-                                        : field.value || ""
-                                    }
+                                    value={field.value || ""}
                                     onChange={(e) => {
                                       const value = e.target.value;
-                                      const numValue = value
-                                        ? parseFloat(value)
-                                        : undefined;
-                                      field.onChange(numValue);
+                                      field.onChange(value || undefined);
                                     }}
                                     className="service-card-input"
                                   />
@@ -805,17 +888,10 @@ export default function PrimerDesignServicePage() {
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    value={
-                                      typeof field.value === "number"
-                                        ? field.value.toString()
-                                        : field.value || ""
-                                    }
+                                    value={field.value || ""}
                                     onChange={(e) => {
                                       const value = e.target.value;
-                                      const numValue = value
-                                        ? parseFloat(value)
-                                        : undefined;
-                                      field.onChange(numValue);
+                                      field.onChange(value || undefined);
                                     }}
                                     className="service-card-input"
                                   />
@@ -860,17 +936,10 @@ export default function PrimerDesignServicePage() {
                               </FormLabel>
                               <FormControl>
                                 <Input
-                                  value={
-                                    typeof field.value === "number"
-                                      ? field.value.toString()
-                                      : field.value || ""
-                                  }
+                                  value={field.value || ""}
                                   onChange={(e) => {
                                     const value = e.target.value;
-                                    const numValue = value
-                                      ? parseFloat(value)
-                                      : undefined;
-                                    field.onChange(numValue);
+                                    field.onChange(value || undefined);
                                   }}
                                   className="service-card-input"
                                 />

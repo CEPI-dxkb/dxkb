@@ -56,6 +56,7 @@ const statusColors: Record<JobStatus, string> = {
   failed: "bg-red-500",
   cancelled: "bg-orange-500",
   error: "bg-red-600",
+  running: "bg-yellow-500",
 };
 
 const statusLabels: Record<JobStatus, string> = {
@@ -66,6 +67,7 @@ const statusLabels: Record<JobStatus, string> = {
   failed: "Failed",
   cancelled: "Cancelled",
   error: "Error",
+  running: "Running",
 };
 
 // Skeleton components for different sections

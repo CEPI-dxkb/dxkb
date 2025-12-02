@@ -250,21 +250,46 @@ export function WorkspaceObjectSelector({
     return filteredObjects;
   }, [filteredObjects, objects, isManualTrigger, showDropdown]);
 
-  // Find object by path when value is provided to display its name
+  // Track previous value to avoid unnecessary updates
+  const previousValueRef = React.useRef<string | undefined>(value);
+
+  // Find object by path when value is provided to display its name and set selected object
   React.useEffect(() => {
+    const valueChanged = previousValueRef.current !== value;
+    
+    // Update the ref if value changed
+    if (valueChanged) {
+      previousValueRef.current = value;
+    }
+
+    // If we have a value and objects are loaded, try to find and display the object
     if (value && objects && objects.length > 0) {
       const foundObject = objects.find((obj) => obj.path === value);
       if (foundObject) {
-        setDisplayName(foundObject.name || "");
+        // Update display name and selected object if:
+        // 1. Value changed, OR
+        // 2. We don't have a display name yet, OR
+        // 3. The selected object doesn't match the found object
+        if (valueChanged || !displayName || selectedObject?.path !== foundObject.path) {
+          setDisplayName(foundObject.name || "");
+          setSelectedObject(foundObject);
+        }
       } else {
-        // If value doesn't match any object, clear display name
-        setDisplayName("");
+        // If value doesn't match any object, clear display name and selected object
+        // Only clear if value changed to avoid clearing when objects are still loading
+        if (valueChanged) {
+          setDisplayName("");
+          setSelectedObject(null);
+        }
       }
     } else if (!value) {
-      // Clear display name when value is cleared
-      setDisplayName("");
+      // Clear display name and selected object when value is cleared
+      if (valueChanged) {
+        setDisplayName("");
+        setSelectedObject(null);
+      }
     }
-  }, [value, objects]);
+  }, [value, objects, displayName, selectedObject]);
 
   return (
     <div className={className ? `relative ${className}` : "relative w-full"}>

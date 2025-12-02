@@ -17,40 +17,36 @@ export interface PrimerSequenceValidationResult {
   errorCode?: PrimerSequenceValidationError;
 }
 
-const MARKER_REGEX = /[<>\[\]\{\}]/g;
-const ALLOWED_BASES_REGEX = /^[ACGTRYSWKMBDHVN.-]*$/i;
+const MARKER_REGEX = /[<>\[\]\{\}']+/g;
+// Legacy validation only allows a, g, c, t, n (not extended IUPAC codes)
+const NUCLEOTIDE_REGEX = /[agctn]/gi;
 
 function normalizeNewlines(sequence: string) {
   return sequence.replace(/\r\n?/g, "\n");
 }
 
+/**
+ * Sanitizes FASTA sequence - matches legacy sanitizeFastaSequence behavior
+ * Removes spaces from sequence lines, preserves headers
+ */
 export function sanitizePrimerDesignSequence(sequence: string): string {
   if (!sequence) {
     return "";
   }
 
-  const normalized = normalizeNewlines(sequence).trim();
-  if (!normalized) {
-    return "";
-  }
-
+  const normalized = normalizeNewlines(sequence);
   const lines = normalized.split("\n");
-  const sanitizedLines: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    if (trimmed.startsWith(">")) {
-      sanitizedLines.push(trimmed);
-    } else {
-      sanitizedLines.push(trimmed.replace(/\s+/g, ""));
-    }
-  }
-
-  return sanitizedLines.join("\n");
+  
+  // Filter header lines (starting with '>')
+  const headers = lines.filter((line) => /^>.*/.test(line));
+  
+  // Filter non-header lines and remove spaces
+  const sanitized = lines
+    .filter((line) => !/^>.*/.test(line))
+    .map((line) => line.replace(/ /g, ""));
+  
+  // Concatenate headers and sanitized sequence lines
+  return headers.concat(sanitized).join("\n");
 }
 
 export function extractFastaHeader(sequence: string): string | null {
@@ -109,12 +105,78 @@ export function getSequenceForSubmission(sequence: string): string {
   return lines.join("");
 }
 
+/**
+ * Removes nucleotide characters (a, g, c, t, n) from a string
+ * Used to test whether a line with '>' is a header or a sequence
+ */
+function removeNucleotides(val: string): string {
+  const nucleotideList = ["a", "c", "t", "g", "n"];
+  let result = val.toLowerCase();
+  for (const nuc of nucleotideList) {
+    result = result.replace(new RegExp(nuc, "gi"), "");
+  }
+  return result;
+}
+
+/**
+ * Checks if sequence contains invalid characters
+ * Matches legacy isInvalidSequence behavior:
+ * - Only allows a, g, c, t, n (not extended IUPAC codes)
+ * - Removes markers before checking
+ * - Skips header lines (starting with '>')
+ */
+function isInvalidSequence(val: string): boolean {
+  const splitSeq = val.toLowerCase().split("\n");
+  for (const line of splitSeq) {
+    const trimmed = line.trim();
+    if (trimmed.charAt(0) === ">") {
+      continue; // Skip header lines
+    }
+    // Remove valid nucleotides (a, g, c, t, n)
+    let cleaned = trimmed.replace(NUCLEOTIDE_REGEX, "");
+    // Remove markers
+    cleaned = cleaned.replace(MARKER_REGEX, "");
+    // If anything remains, it's invalid
+    if (cleaned.length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Checks if sequence has only one FASTA record
+ * Matches legacy hasSingleFastaSequence behavior:
+ * - Only counts headers that have non-nucleotide content (real headers)
+ */
+function hasSingleFastaSequence(sequence: string): boolean {
+  let headerCount = 0;
+  const splitSeq = sequence.toLowerCase().split("\n");
+  for (const line of splitSeq) {
+    if (line.charAt(0) === ">") {
+      const tmpLine = removeNucleotides(line.toLowerCase());
+      // Only count if it has non-nucleotide content (length > 1, since '>' is 1 char)
+      if (tmpLine.length > 1) {
+        headerCount += 1;
+      }
+      if (headerCount > 1) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function validatePrimerDesignSequence(
   sequence: string,
 ): PrimerSequenceValidationResult {
-  const normalized = normalizeNewlines(sequence).trim();
+  // Match legacy onChangeSequence validation order:
+  // 1. Check if empty
+  // 2. Check if invalid sequence
+  // 3. Check if multiple FASTA sequences
+  // 4. Otherwise valid
 
-  if (!normalized) {
+  if (!sequence || !sequence.trim()) {
     return {
       isValid: false,
       message: "Please provide a nucleotide sequence.",
@@ -124,64 +186,30 @@ export function validatePrimerDesignSequence(
     };
   }
 
-  const sanitized = sanitizePrimerDesignSequence(sequence);
-  const lines = sanitized.split("\n");
+  if (isInvalidSequence(sequence)) {
+    return {
+      isValid: false,
+      message:
+        "This looks like an invalid sequence. Please provide a valid nucleotide sequence.",
+      sanitizedSequence: sanitizePrimerDesignSequence(sequence),
+      header: extractFastaHeader(sequence),
+      errorCode: "invalid_characters",
+    };
+  }
 
-  const headerCount = lines.filter((line) => line.startsWith(">"))
-    .length;
-  if (headerCount > 1) {
+  if (!hasSingleFastaSequence(sequence)) {
     return {
       isValid: false,
       message:
         "Primer Design accepts only one sequence at a time. Please provide only one sequence.",
-      sanitizedSequence: sanitized,
-      header: extractFastaHeader(sanitized),
+      sanitizedSequence: sanitizePrimerDesignSequence(sequence),
+      header: extractFastaHeader(sequence),
       errorCode: "multiple_records",
     };
   }
 
-  const bodyLines = lines.filter((line) => !line.startsWith(">"));
-  if (!bodyLines.length) {
-    return {
-      isValid: false,
-      message: "Please provide a nucleotide sequence.",
-      sanitizedSequence: sanitized,
-      header: extractFastaHeader(sanitized),
-      errorCode: "missing_sequence",
-    };
-  }
-
-  let hasValidCharacters = false;
-
-  for (const line of bodyLines) {
-    const cleaned = line.replace(MARKER_REGEX, "");
-    if (!cleaned) {
-      continue;
-    }
-    hasValidCharacters = true;
-
-    if (!ALLOWED_BASES_REGEX.test(cleaned)) {
-      return {
-        isValid: false,
-        message:
-          "This looks like an invalid sequence. Please provide a valid nucleotide sequence.",
-        sanitizedSequence: sanitized,
-        header: extractFastaHeader(sanitized),
-        errorCode: "invalid_characters",
-      };
-    }
-  }
-
-  if (!hasValidCharacters) {
-    return {
-      isValid: false,
-      message: "Please provide a nucleotide sequence.",
-      sanitizedSequence: sanitized,
-      header: extractFastaHeader(sanitized),
-      errorCode: "missing_sequence",
-    };
-  }
-
+  // All checks passed - sequence is valid
+  const sanitized = sanitizePrimerDesignSequence(sequence);
   return {
     isValid: true,
     message: "",

@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { WorkspaceObject, WorkspaceApi } from "@/lib/workspace-client";
 
+// Module-level cache to persist across component unmounts
+const workspaceCache = new Map<string, { objects: WorkspaceObject[]; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 interface UseWorkspaceObjectsOptions {
   user: string;
   path?: string;
@@ -50,6 +54,7 @@ export function useWorkspaceObjects({
   const refresh = useCallback(async () => {
     if (!user || !apiClientRef.current) return;
 
+    const cacheKey = `${user}:${path}:${typesString}`;
     console.log("🔄 REFRESH API CALL: Refreshing objects for user:", user, "path:", path, "types:", stableTypes);
     setLoading(true);
     setError(null);
@@ -76,6 +81,8 @@ export function useWorkspaceObjects({
 
       console.log("Loaded objects result:", result);
       setAllObjects(result);
+      // Update cache on manual refresh
+      workspaceCache.set(cacheKey, { objects: result, timestamp: Date.now() });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to load workspace objects";
       setError(errorMessage);
@@ -83,7 +90,7 @@ export function useWorkspaceObjects({
     } finally {
       setLoading(false);
     }
-  }, [user, path, stableTypes]);
+  }, [user, path, stableTypes, typesString]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
@@ -103,6 +110,19 @@ export function useWorkspaceObjects({
   // Auto-load on mount and when dependencies change
   useEffect(() => {
     if (autoLoad && user && apiClientRef.current) {
+      // Create a cache key based on user, path, and types
+      const cacheKey = `${user}:${path}:${typesString}`;
+      
+      // Check module-level cache first
+      const cached = workspaceCache.get(cacheKey);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        console.log("📦 CACHE HIT: Using cached objects for:", cacheKey);
+        setAllObjects(cached.objects);
+        return;
+      }
+
       console.log("🔄 API CALL: Loading objects for user:", user, "path:", path, "types:", stableTypes);
       const loadObjects = async () => {
         setLoading(true);
@@ -130,6 +150,8 @@ export function useWorkspaceObjects({
 
           console.log("✅ API CALL COMPLETE: Loaded objects result:", result);
           setAllObjects(result);
+          // Store in module-level cache
+          workspaceCache.set(cacheKey, { objects: result, timestamp: now });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : "Failed to load workspace objects";
           setError(errorMessage);
@@ -141,7 +163,7 @@ export function useWorkspaceObjects({
 
       loadObjects();
     }
-  }, [autoLoad, user, path, stableTypes]);
+  }, [autoLoad, user, path, stableTypes, typesString]);
 
   return {
     objects: allObjects,

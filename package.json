@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "scan": "next dev --turbopack -p 3019 & npx react-scan@latest localhost:3019"
+    "scan": "next dev --turbopack -p 3019 & pnpm exec wait-on http://localhost:3019 && npx react-scan@latest localhost:3019"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -69,11 +69,12 @@
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.9.0",
     "eslint": "^9",
-    "eslint-config-next": "^15.4.1",
+    "eslint-config-next": "^16",
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^4.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9"
   },
   "prettier": {
     "plugins": [

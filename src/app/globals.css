@@ -1035,3 +1035,10 @@
     height: 0;
   }
 }
+
+.table th[data-pinned='left'],
+.table td[data-pinned='left'] {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}

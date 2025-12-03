@@ -1,0 +1,35 @@
+.widget {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .widget-header {
+    background: #0070f3;
+    color: white;
+    padding: 8px;
+    font-weight: bold;
+    cursor: move;
+  }
+  
+  .widget-body {
+    padding: 16px;
+    flex-grow: 1;
+    overflow: auto;
+  }
+  
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  
+  .data-table th,
+  .data-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+  }
+  

@@ -15,6 +15,10 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
+import { useTheme } from "next-themes";
+import { SearchBar } from "../search/search-bar";
+import { usePathname } from "next/navigation";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +45,9 @@ import {
 
 const DesktopNavbar = () => {
   const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
+
+  const pathname = usePathname();
+  const isHome = pathname === '/';
 
   return (
     <header className="bg-primary hidden h-18 items-center justify-between px-4 py-4 text-white md:flex">
@@ -201,8 +208,14 @@ const DesktopNavbar = () => {
             )}
           </NavigationMenuList>
         </NavigationMenu>
-      </div>
+        </div>
 
+        {!isHome && (
+          <div className="flex flex-1 items-center px-2">
+            <SearchBar className="w-full" />
+          </div>
+        )}
+                      
       <div className="flex items-center space-x-2">
         <div className="flex items-center space-x-2">
           {/* Show skeleton while loading */}

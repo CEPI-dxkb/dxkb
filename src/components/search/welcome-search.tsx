@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState} from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

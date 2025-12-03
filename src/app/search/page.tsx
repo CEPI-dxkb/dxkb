@@ -307,10 +307,12 @@ function SearchResultsContent() {
 
   useEffect(() => {
     const query = searchParams.get("q");
+    const searchType = searchParams.get("searchtype");
     if (query) {
       fetchSearchResults(query);
     }
   }, [searchParams]);
+
 
   const fetchSearchResults = async (query: string) => {
     setIsLoading(true);
@@ -339,6 +341,8 @@ function SearchResultsContent() {
         };
       });
 
+      console.log("query is:", searchPayload);
+
       const response = await fetch(bvbrcAPI + "query/", {
         method: "POST",
         headers: {
@@ -355,6 +359,8 @@ function SearchResultsContent() {
     } finally {
       setIsLoading(false);
     }
+
+    console.log("results", searchResults);
   };
 
   const processQuery = (query: string) => {

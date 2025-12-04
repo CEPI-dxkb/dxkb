@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useSelection } from "@/app/search/SelectionContext";
 import { InfoPanel } from "../containers/InfoPanel";
 
 type WithGenomePanelProps = {

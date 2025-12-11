@@ -1,16 +1,16 @@
-function addQuotes(str) {
+function addQuotes(str: string): string {
   return str.startsWith('"') && str.endsWith('"') ? str : `"${str}"`;
 }
 
-export function searchToQueryWithQuoteOr(expression, field) {
-  const exprs = [];
+export function searchToQueryWithQuoteOr(expression: string, field?: string): string {
+  const exprs: string[] = [];
   let exp = '';
   let expField = '';
   let openParans = 0;
   let subExp = '';
-  let preOp = false;
-  let prev = false;
-  let ors = false;
+  let preOp: false | "not" = false;
+  let prev: string | false = false;
+  let ors: false | string[] = false;
   let quoted = false;
 
   for (let i = 0; i < expression.length; i++) {
@@ -60,7 +60,8 @@ export function searchToQueryWithQuoteOr(expression, field) {
           if (lower === 'or') {
             if (!ors) {
               const pe = exprs.pop();
-              ors = [field ? prev : pe];
+              const value = field ? (prev || '') : (pe || '');
+              ors = [value];
             }
             exp = '';
             break;

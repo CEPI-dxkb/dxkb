@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
-import { useWorkspace } from "../../../hooks/use-workspace";
+import { useWorkspace } from "../../../hooks/services/workspace/use-workspace";
 import { JobStatus, JobListItem } from "../../../types/workspace";
 import { Button } from "../../../components/ui/button";
 import {
@@ -49,23 +49,25 @@ import {
 } from "@/components/ui/accordion";
 
 const statusColors: Record<JobStatus, string> = {
-  pending: "bg-yellow-500",
+  pending: "bg-gray-500",
   queued: "bg-blue-500",
-  running: "bg-green-500",
+  "in-progress": "bg-yellow-500",
   completed: "bg-emerald-500",
   failed: "bg-red-500",
-  cancelled: "bg-gray-500",
+  cancelled: "bg-orange-500",
   error: "bg-red-600",
+  running: "bg-yellow-500",
 };
 
 const statusLabels: Record<JobStatus, string> = {
   pending: "Pending",
   queued: "Queued",
-  running: "Running",
+  "in-progress": "Running",
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
   error: "Error",
+  running: "Running",
 };
 
 // Skeleton components for different sections
@@ -306,7 +308,7 @@ function JobsContent() {
             </div>
             <div>
               <p className="text-2xl font-bold text-blue-600">
-                {jobs.filter((t) => t.status === "running").length}
+                {jobs.filter((t) => t.status === "in-progress").length}
               </p>
               <p className="text-sm text-gray-500">Running</p>
             </div>
@@ -408,7 +410,7 @@ function JobsContent() {
                           <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
-                      {(job.status === "running" ||
+                      {(job.status === "in-progress" ||
                         job.status === "queued") && (
                         <Button
                           variant="outline"
@@ -474,7 +476,7 @@ function JobsContent() {
                         Download Results
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      {job.status === "running" && (
+                      {job.status === "in-progress" && (
                         <DropdownMenuItem>
                           <Pause className="mr-2 h-4 w-4" />
                           Pause Job

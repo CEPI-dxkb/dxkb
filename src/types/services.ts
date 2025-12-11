@@ -2,6 +2,10 @@ export interface Library {
   id: string;
   name: string;
   type: "paired" | "single" | "sra";
+  files?: string[];
+  platform?: string;
+  interleaved?: boolean;
+  read_orientation_outward?: boolean;
 }
 
 export interface Genome {
@@ -25,8 +29,6 @@ interface ServiceInfoSubsection {
   subheader: string;
   subdescription?: string;
 }
-
-
 
 export const primerOptions = [
   { id: "artic", label: "ARTIC", versions: ["v5.3.2", "v4.1", "v4", "v3", "v2", "v1"] },
@@ -94,3 +96,64 @@ export const subspeciesClassificationSpeciesList = [
   { id: "poxviridae_monkeypox", label: "Poxviridae - Monkeypox virus [complete genome, genomic DNA]" },
   { id: "reoviridae_rotavirus_a", label: "Reoviridae - Rotavirus A [complete genome, genomic RNA]" },
 ];
+
+export const blastPrecomputedDatabases = [
+  { value: 'bacteria-archaea', label: 'Reference and representative genomes (bacteria, archaea)', db_source: 'precomputed_database'},
+  { value: 'viral-reference', label: 'Reference and representative genomes (viruses)', db_source: 'precomputed_database' },
+  { value: 'selGenome', label: 'Search within selected genome list', db_source: 'selGenome' },
+  { value: 'selGroup', label: 'Search within selected genome group', db_source: 'selGroup' },
+  { value: 'selFeatureGroup', label: 'Search within selected feature group', db_source: 'selFeatureGroup' },
+  { value: 'selTaxon', label: 'Search within a taxon', db_source: 'selTaxon' },
+  { value: 'selFasta', label: 'Search within selected FASTA file', db_source: 'selFasta' },
+];
+
+export const blastDatabaseTypes = [
+  { value: 'fna', label: 'Genome sequences (NT)' },
+  { value: 'faa', label: 'Proteins (AA)' },
+  { value: 'ffn', label: 'Genes (NT)' },
+  { value: 'frn', label: 'RNAs (NT)' }
+];
+
+// BLAST Database Type Mapping based on search program and database source
+// Mapping: GSNT = fna (Genome sequences), GNT = ffn (Genes), RNT = frn (RNAs), AA = faa (Proteins)
+export const blastDatabaseTypeMap: Record<
+  string, // blast_program
+  Record<string, string[]> // db_source -> available db_types
+> = {
+  blastn: {
+    "bacteria-archaea": ["fna", "ffn"],
+    "viral-reference": ["fna", "ffn"],
+    "selGenome": ["fna", "ffn", "frn"],
+    "selGroup": ["fna", "ffn", "frn"],
+    "selFeatureGroup": ["fna", "ffn", "frn"],
+    "selTaxon": ["fna", "ffn", "frn"],
+    "selFasta": ["fna"],
+  },
+  blastp: {
+    "bacteria-archaea": ["faa"],
+    "viral-reference": ["faa"],
+    "selGenome": ["faa"],
+    "selGroup": ["faa"],
+    "selFeatureGroup": ["faa"],
+    "selTaxon": ["faa"],
+    "selFasta": ["faa"],
+  },
+  blastx: {
+    "bacteria-archaea": ["faa"],
+    "viral-reference": ["faa"],
+    "selGenome": ["faa"],
+    "selGroup": ["faa"],
+    "selFeatureGroup": ["faa"],
+    "selTaxon": ["faa"],
+    "selFasta": ["faa"],
+  },
+  tblastn: {
+    "bacteria-archaea": ["fna", "ffn"],
+    "viral-reference": ["fna", "ffn"],
+    "selGenome": ["fna", "ffn", "frn"],
+    "selGroup": ["fna", "ffn", "frn"],
+    "selFeatureGroup": ["fna", "ffn", "frn"],
+    "selTaxon": ["fna", "ffn", "frn"],
+    "selFasta": ["fna"],
+  },
+};

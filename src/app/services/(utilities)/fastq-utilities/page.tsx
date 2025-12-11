@@ -37,14 +37,14 @@ import {
   actionShapes,
   removeFromSelectedPipelineActions,
   handleFormSubmit
-} from "@/lib/service-utils";
+} from "@/lib/services/service-utils";
 import { Library } from "@/types/services";
 import {
   fastqUtilitiesInfo,
   fastqUtilitiesParameters,
   fastqUtilitiesPipeline,
   readInputFileInfo,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import SraRunAccession from "@/components/services/sra-run-accession";

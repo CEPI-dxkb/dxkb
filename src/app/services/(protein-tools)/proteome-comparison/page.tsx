@@ -32,10 +32,10 @@ import {
   proteomeComparisonParameters,
   proteomeComparisonComparisonGenomes,
   proteomeComparisonReferenceGenome,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { handleFormSubmit } from "@/lib/services/service-utils";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import { toast } from "sonner";
 

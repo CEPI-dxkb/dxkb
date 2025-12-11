@@ -13,7 +13,6 @@ import { WithGenomePanel } from "@/components/layouts/WithGenomePanel";
 export default function Genomes() {
 
   const searchParams = useSearchParams();
-  const q = searchParams.get("q");
   const { setSelectedRows } = useSelection();
   const activeTabParam = searchParams.get('activeTab');
 
@@ -49,20 +48,16 @@ export default function Genomes() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="genomes" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <GenomeData q={{q}}
-             onSelectionChange={setSelectedRows} />
+            <GenomeData onSelectionChange={setSelectedRows} />
           </TabsContent>
           <TabsContent value="sequences" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <SequenceData q={{q}}
-             onSelectionChange={setSelectedRows} />
+            <SequenceData onSelectionChange={setSelectedRows} />
           </TabsContent>
           <TabsContent value="amrphenotypes" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <AMRPhenotypeData q={{q}}
-             onSelectionChange={setSelectedRows} />
+            <AMRPhenotypeData onSelectionChange={setSelectedRows} />
           </TabsContent>
           <TabsContent value="features" className="border-0 mt-0 px-0 pt-[5px] flex-1 flex flex-col overflow-hidden">
-            <FeatureData q={{q}}
-             onSelectionChange={setSelectedRows} />
+            <FeatureData onSelectionChange={setSelectedRows} />
           </TabsContent>
         </Tabs>
         )}

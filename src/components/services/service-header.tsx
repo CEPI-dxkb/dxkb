@@ -1,10 +1,11 @@
+import { type ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { DialogInfoPopup } from "./dialog-info-popup";
 
 interface ServiceHeaderProps {
   title: string;
-  description: string;
+  description: ReactNode;
   infoPopupTitle?: string;
   infoPopupDescription?: string;
   infoPopupSections?: any[];

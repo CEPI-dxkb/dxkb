@@ -5,15 +5,15 @@ import Image from "next/image";
 const institutions = [
   {
     name: "University of Chicago",
-    image: "/logos/uc_logo.png",
+    image: "/logos/institutions/uc_logo.png",
   },
   {
     name: "University of Texas at Austin",
-    image: "/logos/ut-austin.png",
+    image: "/logos/institutions/ut-austin.png",
   },
   {
     name: "University of Texas Medical Branch",
-    image: "/logos/utmb-logo.png",
+    image: "/logos/institutions/utmb-logo.png",
   },
 ];
 

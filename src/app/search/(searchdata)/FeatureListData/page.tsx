@@ -22,7 +22,7 @@ function downloadFile(filename: string, content: string) {
 
 export function FeatureData({ onSelectionChange }: GenomeDataProps) {
   const genomeColumns = Object.values(featureFields)
-    .filter(obj => obj.show_in_table !== false)
+    .filter((obj: any) => obj.show_in_table !== false)
     .map(obj => ({
       id: obj.field,
       label: obj.label,
@@ -70,7 +70,7 @@ export function FeatureData({ onSelectionChange }: GenomeDataProps) {
     data: pageData,
     isLoading: dataLoading,
     error: dataError,
-  } = useQuery({
+  } = useQuery<Record<string, any>[]>({
     queryKey: ['genome-full', baseURL, totalItems, sorting, pageIndex],
     queryFn: async () => {
       if (!totalItems) return [];
@@ -96,10 +96,10 @@ export function FeatureData({ onSelectionChange }: GenomeDataProps) {
       });
 
       if (!res.ok) throw new Error('Failed to fetch genome data');
-      return res.json();
+      const jsonData = await res.json();
+      return Array.isArray(jsonData) ? jsonData : (jsonData.items ?? jsonData.response ?? jsonData.rows ?? []);
     },
     enabled: !!totalItems,
-    keepPreviousData: true, // smooth page transitions
     staleTime: 1000 * 60 * 10,
   });
 
@@ -202,7 +202,7 @@ async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[]
       <div className="flex-1 overflow-hidden">
         <DataTable
           id={widget.id}
-          data={pageData ?? []}
+          data={(pageData as Record<string, any>[]) ?? []}
           columns={widget.columns}
           onSelectionChange={onSelectionChange}
           pageIndex={pageIndex}
@@ -222,5 +222,6 @@ async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[]
 
       </div>
     </div>
-  );  
+  );
 }
+export default FeatureData;

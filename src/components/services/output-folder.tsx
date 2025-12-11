@@ -1,12 +1,13 @@
 import React from "react";
-import { Button } from "../ui/button";
-import { FolderSearch, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import { WorkspaceObjectSelector } from "../workspace/workspace-object-selector";
 
 interface OutputFolderProps {
   title?: boolean;
+  required?: boolean;
   tooltipContent?: boolean;
   placeholder?: string;
   buttonIcon?: React.ReactNode;
@@ -18,16 +19,15 @@ interface OutputFolderProps {
 
 const OutputFolder = ({
   title = true,
+  required = false,
   tooltipContent = true,
   placeholder,
-  buttonIcon = <FolderSearch size={16} />,
   value = "",
   onChange,
   disabled = false,
   variant = "default",
 }: OutputFolderProps) => {
-  const resolvedTitle =
-    variant === "default" ? "Output Folder" : "Output Name";
+  const resolvedTitle = variant === "default" ? "Output Folder" : "Output Name";
 
   const resolvedPlaceholder =
     placeholder ??
@@ -52,25 +52,35 @@ const OutputFolder = ({
               </TooltipTrigger>
               {/* TODO: Fix the width of the tooltip conente container */}
               {/* It will go off the screen depending on the inner content size and screen size */}
-              <TooltipContent className="max-w-sm text-white font-normal">
+              <TooltipContent className="max-w-sm font-normal text-white">
                 {resolvedTooltipText}
               </TooltipContent>
             </Tooltip>
           )}
+          {required && <span className="text-red-500">*</span>}
         </div>
       )}
       <div className="flex gap-2">
-        <Input
-          className="service-card-input"
-          placeholder={resolvedPlaceholder}
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-          disabled={disabled}
-        />
         {variant === "default" && (
-          <Button size="icon" variant="outline">
-            {buttonIcon}
-          </Button>
+          <WorkspaceObjectSelector
+            types={["folder"]}
+            placeholder="Search for folders..."
+            value={value}
+            onObjectSelect={(object) => {
+              onChange?.(object.path || "");
+            }}
+          />
+        )}
+        {variant === "name" && (
+          <>
+            <Input
+              className="service-card-input"
+              placeholder={resolvedPlaceholder}
+              value={value}
+              onChange={(e) => onChange?.(e.target.value)}
+              disabled={disabled}
+            />
+          </>
         )}
       </div>
     </div>

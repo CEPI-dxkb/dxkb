@@ -22,7 +22,7 @@ function downloadFile(filename: string, content: string) {
 
 export function EpitopeData({ onSelectionChange }: GenomeDataProps) {
   const genomeColumns = Object.values(epitopeFields)
-    .filter(obj => obj.show_in_table !== false)
+    .filter((obj: any) => obj.show_in_table !== false)
     .map(obj => ({
       id: obj.field,
       label: obj.label,
@@ -99,7 +99,6 @@ export function EpitopeData({ onSelectionChange }: GenomeDataProps) {
       return res.json();
     },
     enabled: !!totalItems,
-    keepPreviousData: true, // smooth page transitions
     staleTime: 1000 * 60 * 10,
   });
 
@@ -202,7 +201,7 @@ async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[]
       <div className="flex-1 overflow-hidden">
         <DataTable
           id={widget.id}
-          data={pageData ?? []}
+          data={pageData as Record<string, any>[]}
           columns={widget.columns}
           onSelectionChange={onSelectionChange}
           pageIndex={pageIndex}
@@ -224,3 +223,4 @@ async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[]
     </div>
   );  
 }
+export default EpitopeData; 

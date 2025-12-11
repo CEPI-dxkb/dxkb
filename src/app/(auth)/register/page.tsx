@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AlertCircle, Loader2 } from "lucide-react";
-import { RequiredFormLabel } from "@/components/forms/required-form-label";
+import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z
   .object({

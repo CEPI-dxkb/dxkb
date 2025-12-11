@@ -34,7 +34,7 @@ export function DialogInfoPopup({
             className,
           )}
         >
-          <Info className={cn({ "!h-6 !w-6 !font-bold": isHeader, "!h-4 !w-4": !isHeader })} strokeWidth={isHeader ? 3 : 2} />
+          <Info className={cn({ "h-6! w-6! font-bold!": isHeader, "h-4! w-4!": !isHeader })} strokeWidth={isHeader ? 3 : 2} />
         </Button>
       </DialogTrigger>
 
@@ -56,13 +56,13 @@ export function DialogInfoPopup({
                 </p>
               )}
               {section.subsections && section.subsections.length > 0 && (
-                <div className="ml-4 space-y-4">
+                <div className="space-y-4">
                   {section.subsections.map((subsection, subIndex) => (
                     <div key={subIndex} className="space-y-1">
                       <h5 className="text-sm font-medium">
                         {subsection.subheader}
                       </h5>
-                      <p className="text-foreground text-sm mb-2">
+                      <p className="text-muted-foreground text-sm mb-2 ml-4">
                         {subsection.subdescription}
                       </p>
                     </div>

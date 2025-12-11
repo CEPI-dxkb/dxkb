@@ -38,11 +38,11 @@ import {
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/lib/services/service-utils";
 import {
   sarsCov2WastewaterAnalysisInfo,
   sarsCov2WastewaterAnalysisInputLib,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 
 export default function WastewaterAnalysis() {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);

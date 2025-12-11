@@ -49,7 +49,7 @@ export default function RootLayout({
         <Providers>
           <ThemeProvider defaultTheme="dxkb-light">
             <AuthProvider>
-              <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
+              {children}
             </AuthProvider>
             <ThemeSwitcher />
           </ThemeProvider>

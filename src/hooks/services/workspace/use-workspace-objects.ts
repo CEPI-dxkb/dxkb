@@ -63,12 +63,20 @@ export function useWorkspaceObjects({
       let result: WorkspaceObject[];
 
       if (stableTypes && stableTypes.length > 0) {
-        // Load specific types
-        const promises = stableTypes.map(type => 
-          apiClientRef.current!.ls.getObjectsByType(user, type, path)
-        );
-        const results = await Promise.all(promises);
-        result = results.flat();
+        // Load specific types - use single API call with all types
+        const allResults = await apiClientRef.current!.ls.listObjects({
+          paths: [`/${user}@bvbrc${path}`],
+          excludeDirectories: false,
+          excludeObjects: false,
+          query: {
+            type: stableTypes,
+          },
+          recursive: true
+        });
+        // Apply client-side filtering to ensure only matching types are returned
+        result = allResults.filter((obj: any) => {
+          return stableTypes.indexOf(obj.type) >= 0;
+        });
       } else {
         // Load all objects
         result = await apiClientRef.current!.ls.listObjects({
@@ -131,14 +139,22 @@ export function useWorkspaceObjects({
         try {
           let result: WorkspaceObject[];
 
-          if (stableTypes && stableTypes.length > 0) {
-            // Load specific types
-            const promises = stableTypes.map(type => 
-              apiClientRef.current!.ls.getObjectsByType(user, type, path)
-            );
-            const results = await Promise.all(promises);
-            result = results.flat();
-          } else {
+      if (stableTypes && stableTypes.length > 0) {
+        // Load specific types - use single API call with all types
+        const allResults = await apiClientRef.current!.ls.listObjects({
+          paths: [`/${user}@bvbrc${path}`],
+          excludeDirectories: false,
+          excludeObjects: false,
+          query: {
+            type: stableTypes,
+          },
+          recursive: true
+        });
+        // Apply client-side filtering to ensure only matching types are returned
+        result = allResults.filter((obj: any) => {
+          return stableTypes.indexOf(obj.type) >= 0;
+        });
+      } else {
             // Load all objects
             result = await apiClientRef.current!.ls.listObjects({
               paths: [`/${user}@bvbrc${path}`],

@@ -9,34 +9,48 @@ import type { FastaValidationResult } from "@/lib/fasta-validation";
  * Custom hook to manage BLAST database type availability
  */
 export function useBlastDatabaseTypes(form: UseFormReturn<BlastFormData>) {
+  const blastProgram = form.watch("blast_program");
+  const dbPrecomputedDatabase = form.watch("db_precomputed_database");
+  const dbType = form.watch("db_type");
+
   const [availableDatabaseTypes, setAvailableDatabaseTypes] = useState(
-    getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea")
+    getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea"),
   );
 
   useEffect(() => {
-    const subscription = form.watch((value) => {
-      if (value.blast_program && value.db_precomputed_database) {
-        const newAvailableTypes = getAvailableBlastDatabaseTypes(
-          value.blast_program,
-          value.db_precomputed_database
-        );
-        setAvailableDatabaseTypes(newAvailableTypes);
+    if (blastProgram && dbPrecomputedDatabase) {
+      const computedTypes = getAvailableBlastDatabaseTypes(
+        blastProgram,
+        dbPrecomputedDatabase,
+      );
+      setAvailableDatabaseTypes(computedTypes);
 
-        // If current db_type is not available, set to default
-        const isCurrentTypeAvailable = newAvailableTypes.some(
-          (type) => type.value === value.db_type
+      // If current db_type is not available, set to default
+      const isCurrentTypeAvailable = computedTypes.some(
+        (type) => type.value === dbType,
+      );
+      
+      if (!isCurrentTypeAvailable && computedTypes.length > 0) {
+        const defaultType = getDefaultBlastDatabaseType(
+          blastProgram,
+          dbPrecomputedDatabase,
         );
-        if (!isCurrentTypeAvailable) {
-          const defaultType = getDefaultBlastDatabaseType(
-            value.blast_program,
-            value.db_precomputed_database
-          );
-          form.setValue("db_type", defaultType as BlastFormData["db_type"]);
+        
+        if (defaultType) {
+          form.setValue("db_type", defaultType as BlastFormData["db_type"], {
+            shouldValidate: true,
+            shouldDirty: false,
+          });
         }
+      } else if (computedTypes.length > 0 && !dbType) {
+        const firstType = computedTypes[0].value;
+        form.setValue("db_type", firstType as BlastFormData["db_type"], {
+          shouldValidate: true,
+          shouldDirty: false,
+        });
       }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
+    }
+  }, [blastProgram, dbPrecomputedDatabase, dbType, form]);
 
   return availableDatabaseTypes;
 }
@@ -45,18 +59,8 @@ export function useBlastDatabaseTypes(form: UseFormReturn<BlastFormData>) {
  * Custom hook to track BLAST program changes
  */
 export function useBlastProgramTracking(form: UseFormReturn<BlastFormData>) {
-  const [currentBlastProgram, setCurrentBlastProgram] = useState<BlastFormData["blast_program"]>("blastn");
-
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === "blast_program" && value.blast_program) {
-        setCurrentBlastProgram(value.blast_program);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form]);
-
-  return currentBlastProgram;
+  const currentBlastProgram = form.watch("blast_program");
+  return currentBlastProgram || "blastn";
 }
 
 /**

@@ -1,5 +1,33 @@
 import type { BlastFormData } from "./blast-form-schema";
 import { blastPrecomputedDatabases } from "@/types/services";
+import { getDefaultBlastDatabaseType } from "@/lib/services/service-utils";
+
+const DB_SOURCE_MAP: Record<
+  BlastFormData["db_precomputed_database"],
+  BlastFormData["db_source"]
+> = {
+  "bacteria-archaea": "precomputed_database",
+  "viral-reference": "precomputed_database",
+  selGenome: "genome_list",
+  selGroup: "genome_group",
+  selFeatureGroup: "feature_group",
+  selTaxon: "taxon_list",
+  selFasta: "fasta_file",
+};
+
+function resolveInputType(
+  program: BlastFormData["blast_program"] | undefined,
+  fallback: BlastFormData["input_type"] | undefined,
+): BlastFormData["input_type"] {
+  if (!program) return fallback || "dna";
+  return program === "blastp" || program === "tblastn" ? "aa" : "dna";
+}
+
+function resolveDbSource(
+  database: BlastFormData["db_precomputed_database"] | undefined,
+): BlastFormData["db_source"] {
+  return DB_SOURCE_MAP[database || "bacteria-archaea"] || "precomputed_database";
+}
 
 /**
  * Creates a new form values object by merging current values with overrides
@@ -9,19 +37,37 @@ export function createBlastFormValues(
   currentValues: Partial<BlastFormData>,
   overrides: Partial<BlastFormData>,
 ): BlastFormData {
+  const blastProgram =
+    overrides.blast_program || currentValues.blast_program || "blastn";
+  const dbPrecomputedDatabase =
+    overrides.db_precomputed_database ||
+    currentValues.db_precomputed_database ||
+    "bacteria-archaea";
+  const derivedDbSource =
+    overrides.db_source ||
+    resolveDbSource(
+      overrides.db_precomputed_database || currentValues.db_precomputed_database,
+    );
+  const derivedDbType =
+    overrides.db_type ||
+    currentValues.db_type ||
+    (getDefaultBlastDatabaseType(blastProgram, dbPrecomputedDatabase) as BlastFormData["db_type"]);
+
   return {
     // Base fields
-    input_type: currentValues.input_type || "aa",
+    input_type: resolveInputType(
+      overrides.blast_program || currentValues.blast_program,
+      currentValues.input_type,
+    ),
     input_source: currentValues.input_source || "fasta_data",
-    db_type: currentValues.db_type || "fna",
-    db_source: currentValues.db_source || "precomputed_database",
-    blast_program: currentValues.blast_program || "blastn",
+    db_type: derivedDbType,
+    db_source: derivedDbSource,
+    blast_program: blastProgram,
     output_file: currentValues.output_file || "",
     output_path: currentValues.output_path || "",
     blast_max_hits: currentValues.blast_max_hits || 10,
     blast_evalue_cutoff: currentValues.blast_evalue_cutoff || 0.0001,
-    db_precomputed_database:
-      currentValues.db_precomputed_database || "bacteria-archaea",
+    db_precomputed_database: dbPrecomputedDatabase,
 
     // Input source fields - handle discriminated union properly
     input_fasta_data: (currentValues as any).input_fasta_data || "",
@@ -80,8 +126,13 @@ export function createDatabaseSourceOverrides(
 
   const baseOverrides: Partial<BlastFormData> = {
     ...preservedInputFields,
-    db_source: selectedDb.db_source as BlastFormData["db_source"],
+    db_source: resolveDbSource(newDBPrecomputedDatabase),
     db_precomputed_database: newDBPrecomputedDatabase,
+    db_genome_list: [],
+    db_genome_group: "",
+    db_feature_group: "",
+    db_taxon_list: [],
+    db_fasta_file: "",
   };
 
   // Add database-specific field overrides

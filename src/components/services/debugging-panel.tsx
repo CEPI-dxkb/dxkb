@@ -23,6 +23,14 @@ export function DebuggingPanel() {
   const [localDebugMode, setLocalDebugMode] = useState(isDebugMode);
   const [localContainerId, setLocalContainerId] = useState(containerBuildId);
 
+  // Sync local state with context when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalDebugMode(isDebugMode);
+      setLocalContainerId(containerBuildId);
+    }
+  }, [isOpen, isDebugMode, containerBuildId]);
+
   // Add keyboard shortcut listener
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -40,13 +48,22 @@ export function DebuggingPanel() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [isDebugMode, containerBuildId]);
 
   const handleOpenDialog = () => {
     // Sync with current values when opening
     setLocalDebugMode(isDebugMode);
     setLocalContainerId(containerBuildId);
     setIsOpen(true);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      // Sync with current values when opening
+      setLocalDebugMode(isDebugMode);
+      setLocalContainerId(containerBuildId);
+    }
+    setIsOpen(open);
   };
 
   const handleSave = () => {
@@ -63,7 +80,7 @@ export function DebuggingPanel() {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">

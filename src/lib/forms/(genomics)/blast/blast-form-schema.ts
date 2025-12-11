@@ -117,7 +117,7 @@ export const completeFormSchema = baseFormSchema
 
 // Default form values constant
 export const DEFAULT_BLAST_FORM_VALUES = {
-  input_type: "aa" as const,
+  input_type: "dna" as const,
   input_source: "fasta_data" as const,
   input_fasta_data: "",
   db_type: "fna" as const,

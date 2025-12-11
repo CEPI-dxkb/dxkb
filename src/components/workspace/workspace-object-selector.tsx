@@ -280,13 +280,15 @@ export function WorkspaceObjectSelector({
         if (valueChanged) {
           setDisplayName("");
           setSelectedObject(null);
+          setSearchQuery("");
         }
       }
-    } else if (!value) {
+    } else if (!value || value === "") {
       // Clear display name and selected object when value is cleared
       if (valueChanged) {
         setDisplayName("");
         setSelectedObject(null);
+        setSearchQuery("");
       }
     }
   }, [value, objects, displayName, selectedObject]);

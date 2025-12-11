@@ -230,7 +230,20 @@ export default function GenomeAlignmentServicePage() {
     <section>
       <ServiceHeader
         title="Genome Alignment (Mauve)"
-        description="The Genome Alignment service aligns genomes using <a href='https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0011147'>progressiveMauve</a>."
+        description={
+          <>
+            The Genome Alignment service aligns genomes using{" "}
+            <a
+              href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0011147"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80"
+            >
+              progressiveMauve
+            </a>
+            .
+          </>
+        }
         infoPopupTitle={genomeAlignmentMauveInfo.title}
         infoPopupDescription={genomeAlignmentMauveInfo.description}
         quickReferenceGuide="#"

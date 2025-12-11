@@ -167,10 +167,11 @@ export function getAvailableBlastDatabaseTypes(
   dbSource: string,
 ) {
   const availableTypes = blastDatabaseTypeMap[inputType]?.[dbSource] || [];
-
-  return blastDatabaseTypes.filter((dbType) =>
+  const filtered = blastDatabaseTypes.filter((dbType) =>
     availableTypes.includes(dbType.value),
   );
+
+  return filtered.length > 0 ? filtered : blastDatabaseTypes;
 }
 
 /**
@@ -183,8 +184,9 @@ export function getDefaultBlastDatabaseType(
   inputType: string,
   dbSource: string,
 ): string {
-  const availableTypes = blastDatabaseTypeMap[inputType]?.[dbSource];
-  return availableTypes?.[0] || "fna";
+  const availableTypes =
+    blastDatabaseTypeMap[inputType]?.[dbSource] || blastDatabaseTypes.map((t) => t.value);
+  return availableTypes[0] || "fna";
 }
 
 /**

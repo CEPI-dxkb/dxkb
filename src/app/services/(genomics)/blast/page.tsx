@@ -10,7 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useState } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,7 @@ import {
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
+import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { blastPrecomputedDatabases } from "@/types/services";
 import { transformBlastParams, submitServiceJob } from "@/lib/services/service-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
@@ -76,8 +77,63 @@ export default function BlastServicePage() {
   // Use custom hooks for simplified state management
   const availableDatabaseTypes = useBlastDatabaseTypes(form);
   const currentBlastProgram = useBlastProgramTracking(form);
+  const dbPrecomputedDatabase = form.watch("db_precomputed_database");
+  const dbType = form.watch("db_type");
   const { fastaValidationResult, isFastaValid, handleFastaValidationChange } =
     useFastaValidation(form, currentBlastProgram);
+  const dbFastaTypes = useMemo(
+    (): ValidWorkspaceObjectTypes[] => {
+      if (dbPrecomputedDatabase !== "selFasta") {
+        return ["feature_protein_fasta", "feature_dna_fasta"];
+      }
+      return dbType === "faa"
+        ? ["feature_protein_fasta"]
+        : ["feature_dna_fasta", "contigs"];
+    },
+    [dbPrecomputedDatabase, dbType],
+  );
+
+  // Determine workspace object types based on BLAST program (matching legacy behavior)
+  const inputFastaTypes = useMemo((): ValidWorkspaceObjectTypes[] => {
+    switch (currentBlastProgram) {
+      case "blastp":
+        return ["feature_protein_fasta"];
+      case "blastn":
+        return ["feature_dna_fasta", "contigs"];
+      case "blastx":
+        return ["feature_dna_fasta", "contigs"];
+      case "tblastn":
+        return ["feature_protein_fasta"];
+      default:
+        return ["feature_protein_fasta", "feature_dna_fasta"];
+    }
+  }, [currentBlastProgram]);
+
+  // Track previous program to detect changes
+  const previousProgramRef = useRef<BlastFormData["blast_program"]>(currentBlastProgram);
+
+  // Keep input_type aligned with the current program (legacy behavior)
+  useEffect(() => {
+    const derivedInputType =
+      currentBlastProgram === "blastp" || currentBlastProgram === "tblastn"
+        ? "aa"
+        : "dna";
+    form.setValue("input_type", derivedInputType);
+  }, [currentBlastProgram, form]);
+
+  // Clear input fields when BLAST program changes to prevent stale/incorrect files
+  useEffect(() => {
+    const previousProgram = previousProgramRef.current;
+    
+    // Only clear if program actually changed (not on initial mount)
+    if (previousProgram !== currentBlastProgram && previousProgram !== undefined) {
+      // Clear file-based input fields
+      form.setValue("input_fasta_file", "");
+    }
+    
+    // Update ref for next comparison
+    previousProgramRef.current = currentBlastProgram;
+  }, [currentBlastProgram, form]);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -365,11 +421,9 @@ export default function BlastServicePage() {
                           <FormItem>
                             <FormControl>
                               <WorkspaceObjectSelector
-                                types={[
-                                  "feature_protein_fasta",
-                                  "feature_dna_fasta",
-                                ]}
+                                types={inputFastaTypes}
                                 placeholder="Select a FASTA file to search..."
+                                value={field.value}
                                 onObjectSelect={(object: WorkspaceObject) => {
                                   field.onChange(object.path);
                                 }}
@@ -397,6 +451,7 @@ export default function BlastServicePage() {
                               <WorkspaceObjectSelector
                                 types={["feature_group"]}
                                 placeholder="Select a feature group to search..."
+                                value={field.value}
                                 onObjectSelect={(object: WorkspaceObject) => {
                                   field.onChange(object.path);
                                 }}
@@ -476,21 +531,28 @@ export default function BlastServicePage() {
                             infoPopup={blastServiceDatabaseType}
                           />
                           <Select
-                            value={field.value}
+                            key={`${currentBlastProgram}-${dbPrecomputedDatabase}-${availableDatabaseTypes.length}`}
+                            value={field.value || ""}
                             onValueChange={field.onChange}
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select database type" />
                             </SelectTrigger>
                             <SelectContent>
-                              {availableDatabaseTypes.map((dbType) => (
-                                <SelectItem
-                                  key={dbType.value}
-                                  value={dbType.value}
-                                >
-                                  {dbType.label}
+                              {availableDatabaseTypes.length === 0 ? (
+                                <SelectItem value="" disabled>
+                                  No options available
                                 </SelectItem>
-                              ))}
+                              ) : (
+                                availableDatabaseTypes.map((dbType) => (
+                                  <SelectItem
+                                    key={dbType.value}
+                                    value={dbType.value}
+                                  >
+                                    {dbType.label}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                         </div>
@@ -644,10 +706,7 @@ export default function BlastServicePage() {
                         <FormItem>
                           <FormControl>
                             <WorkspaceObjectSelector
-                              types={[
-                                "feature_protein_fasta",
-                                "feature_dna_fasta",
-                              ]}
+                              types={dbFastaTypes}
                               placeholder="FASTA file..."
                               onObjectSelect={(object: WorkspaceObject) => {
                                 field.onChange(object.path);

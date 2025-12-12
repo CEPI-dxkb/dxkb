@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, FormEvent, useEffect } from "react";
+import React, { useState, FormEvent, useEffect, Suspense } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LuSearch } from "react-icons/lu";
@@ -15,8 +15,8 @@ interface SearchBarProps {
   showIcon?: boolean;
 }
 
-export function SearchBar({
-  initialValue,
+function SearchBarContent({
+  initialValue = "",
   className = "",
   placeholder = "Search by virus name, protein, gene, or taxonomy...",
   size = "default",
@@ -42,8 +42,6 @@ export function SearchBar({
     }
   }, [urlQ]);
 
-  const [selected, setSelected] = useState("everything");
-
   const handleSearch = (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!inputValue.trim()) return;
@@ -57,9 +55,28 @@ export function SearchBar({
     if (e.key === "Enter") handleSearch();
   };
 
+  const [selected, setSelected] = useState("everything");
+  const [selectedTitle, setSelectedTitle] = useState("All Data Types");
+
+  const handleSelect = (val: string, title: string) => {
+    setSelected(val);
+    setSelectedTitle(title);
+  };
+
+  useEffect(() => {
+    const raw = searchParams.get('q') || ''
+
+    // Match all keyword(...) values, even if nested
+    const matches = [...raw.matchAll(/keyword\(([^)]+)\)/g)]
+    const keywords = matches.map(match => match[1])
+
+    // Join with space (or comma if preferred)
+    setInputValue(keywords.join(' '))
+  }, [searchParams])
+
   return (
     <form onSubmit={handleSearch} className={`flex gap-4 ${className}`}>
-      <div className="relative flex-grow">
+      <div className="relative grow">
         <Input
           type="text"
           placeholder={placeholder}
@@ -103,5 +120,51 @@ export function SearchBar({
         Search
       </Button>
     </form>
+  );
+}
+
+export function SearchBar(props: SearchBarProps) {
+  return (
+    <Suspense fallback={
+      <form className={`flex gap-4 ${props.className || ""}`}>
+        <div className="relative grow">
+          <Input
+            type="text"
+            placeholder={props.placeholder || "Search by virus name, protein, gene, or taxonomy..."}
+            className={`${props.size === "lg" ? "py-6" : ""} ${props.showIcon !== false ? "pl-10" : ""} bg-background text-foreground`}
+            disabled
+          />
+          {props.showIcon !== false && (
+            <LuSearch
+              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary"
+              size={18}
+            />
+          )}
+        </div>
+        <select
+          id="searchtype"
+          className={`${props.size === "lg" ? "py-2" : ""} ${props.showIcon !== false ? "pl-4" : ""} bg-background rounded-md text-foreground`}
+          disabled
+        >
+          {searchTypes.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.typeTitle}
+            </option>
+          ))}
+        </select>
+        <Button
+          type="submit"
+          size={props.size}
+          className={`bg-secondary hover:bg-secondary-foreground text-foreground ${
+            props.size === "lg" ? "py-6" : ""
+          }`}
+          disabled
+        >
+          Search
+        </Button>
+      </form>
+    }>
+      <SearchBarContent {...props} />
+    </Suspense>
   );
 }

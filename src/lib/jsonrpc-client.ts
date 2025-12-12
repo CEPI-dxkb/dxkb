@@ -9,7 +9,10 @@ export class JsonRpcClient {
     this.baseUrl = baseUrl;
     this.headers = {
       "Content-Type": "application/json",
-      ...(authToken && { Authorization: authToken }),
+      ...(authToken && {
+        // Authorization: authToken.startsWith("Bearer ") ? authToken : `Bearer ${authToken}`
+        Authorization: authToken,
+      }),
     };
   }
 
@@ -30,6 +33,13 @@ export class JsonRpcClient {
     const request = this.createRequest(method, params);
 
     try {
+      console.log("Making JSON-RPC call:", {
+        url: this.baseUrl,
+        method,
+        headers: this.headers,
+        body: request,
+      });
+
       const response = await fetch(this.baseUrl, {
         method: "POST",
         headers: this.headers,
@@ -115,7 +125,7 @@ export class JsonRpcClient {
   updateAuthToken(token: string): void {
     this.headers = {
       ...this.headers,
-      Authorization: token,
+      Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}`,
     };
   }
 

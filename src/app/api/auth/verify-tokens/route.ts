@@ -19,7 +19,13 @@ export async function GET() {
     }
 
     // Check if we have user profile in cookie first
-    let userInfo = null;
+    let userInfo: {
+      first_name?: string;
+      last_name?: string;
+      email?: string;
+      email_verified?: boolean;
+      id?: string;
+    } | null = null;
     let isValid = false;
 
     if (userProfileCookie) {
@@ -47,24 +53,26 @@ export async function GET() {
         isValid = true;
 
         // Update user_profile cookie with fresh data from BV-BRC
-        const profileData = {
-          first_name: userInfo.first_name,
-          last_name: userInfo.last_name,
-          email: userInfo.email,
-          email_verified: userInfo.email_verified,
-          id: userInfo.id,
-          username: username,
-          realm: realm,
-        };
+        if (userInfo) {
+          const profileData = {
+            first_name: userInfo.first_name,
+            last_name: userInfo.last_name,
+            email: userInfo.email,
+            email_verified: userInfo.email_verified,
+            id: userInfo.id,
+            username: username,
+            realm: realm,
+          };
 
-        const responseCookies = await cookies();
-        responseCookies.set("user_profile", JSON.stringify(profileData), {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "strict",
-          maxAge: 3600, // 1 hour
-          path: "/",
-        });
+          const responseCookies = await cookies();
+          responseCookies.set("user_profile", JSON.stringify(profileData), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 3600, // 1 hour
+            path: "/",
+          });
+        }
       }
     } catch (error) {
       console.error("User validation failed:", error);

@@ -423,7 +423,7 @@
 }
 
 .funding-section {
-  @apply bg-card mx-32 my-24 flex flex-row items-center justify-center gap-16 rounded-xl p-8 align-middle text-lg border shadow-lg;
+  @apply bg-card mx-auto my-24 flex flex-row items-center justify-center gap-16 rounded-xl p-8 align-middle text-lg border shadow-lg max-w-7xl;
 }
 
 .team-section {
@@ -657,6 +657,9 @@
 .service-radio-group {
   @apply flex flex-col sm:flex-row gap-4;
 }
+.service-radio-group-grid {
+  @apply grid grid-cols-1 gap-4 md:grid-cols-2;
+}
 
 .service-radio-group-item {
   @apply flex items-center space-x-2 justify-start;
@@ -775,7 +778,12 @@
 }
 
 .service-card-textarea {
-  @apply bg-muted min-h-48 max-h-96 text-sm font-mono transition-all duration-300;
+  @apply bg-muted min-h-48 max-h-96 text-sm font-mono overflow-y-auto transition-all duration-300;
+  overflow-x: auto;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .service-card-textarea:hover {

@@ -1,6 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { ServiceHeader } from "@/components/services/service-header";
 import {
   Card,
@@ -17,23 +27,129 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Search, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import {
   genomeAnnotationInfo,
   genomeAnnotationParameters,
-} from "@/lib/service-info";
-import { handleFormSubmit } from "@/lib/service-utils";
+} from "@/lib/services/service-info";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
-import SearchWorkspaceInput from "@/components/services/search-workspace-input";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { WorkspaceObject } from "@/lib/workspace-client";
+import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { toast } from "sonner";
+import {
+  completeGenomeAnnotationSchema,
+  DEFAULT_GENOME_ANNOTATION_FORM_VALUES,
+  type GenomeAnnotationFormData,
+  transformGenomeAnnotationParams,
+  generateOutputFileName,
+  validateMyLabel,
+} from "@/lib/forms/(genomics)";
+import { submitServiceJob } from "@/lib/services/service-utils";
+import {
+  RequiredFormLabel,
+} from "@/components/forms/required-form-components";
 import { TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
+import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
+import { Spinner } from "@/components/ui/spinner";
 
 const GenomeAnnotationContent = () => {
-  const [_outputFolder, setOutputFolder] = useState("");
-  const [_outputName, setOutputName] = useState("");
+  const form = useForm<GenomeAnnotationFormData>({
+    resolver: zodResolver(completeGenomeAnnotationSchema),
+    defaultValues: DEFAULT_GENOME_ANNOTATION_FORM_VALUES,
+    mode: "onChange",
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Setup service debugging and form submission
+  const {
+    handleSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+    serviceName,
+  } = useServiceFormSubmission<GenomeAnnotationFormData>({
+    serviceName: "Genome Annotation",
+    transformParams: transformGenomeAnnotationParams,
+    onSubmit: async (data) => {
+      // Validate my label for slashes
+      console.log("Submitting Genome Annotation job with data:", data);
+      const labelValidation = validateMyLabel(data.my_label);
+      if (!labelValidation.isValid) {
+        toast.error(labelValidation.message);
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        // Submit the Genome Annotation job using the utility function
+        const result = await submitServiceJob(
+          "GenomeAnnotation",
+          transformGenomeAnnotationParams(data),
+        );
+
+        if (result.success) {
+          console.log("Genome Annotation job submitted successfully:", result.job[0]);
+
+          // Show success message
+          toast.success("Genome Annotation job submitted successfully!", {
+            description: `Job ID: ${result.job[0].id}`,
+          });
+
+          // Optionally redirect to jobs page
+          // router.push(`/workspace/jobs/${result.job.id}`);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        console.error("Failed to submit Genome Annotation job:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to submit Genome Annotation job";
+        toast.error("Submission failed", {
+          description: errorMessage,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+  });
+
+  // Watch all form values for changes
+  const watchedValues = form.watch();
+  const previousValuesRef = useRef<GenomeAnnotationFormData>(watchedValues);
+
+  // Log form changes to console
+  useEffect(() => {
+    const previousValues = previousValuesRef.current;
+    const currentValues = watchedValues;
+
+    // Compare each field and log changes
+    Object.keys(currentValues).forEach((key) => {
+      const fieldKey = key as keyof GenomeAnnotationFormData;
+      const prevValue = previousValues[fieldKey];
+      const currValue = currentValues[fieldKey];
+
+      if (JSON.stringify(prevValue) !== JSON.stringify(currValue)) {
+        console.log(`Form field changed: ${fieldKey}`, {
+          previous: prevValue,
+          current: currValue,
+        });
+      }
+    });
+
+    // Update ref with current values
+    previousValuesRef.current = currentValues;
+  }, [watchedValues]);
+
+  const handleReset = () => {
+    form.reset(DEFAULT_GENOME_ANNOTATION_FORM_VALUES);
+  };
 
   return (
     <section>
@@ -48,117 +164,272 @@ const GenomeAnnotationContent = () => {
         instructionalVideo="#"
       />
 
-      <form onSubmit={handleFormSubmit} className="service-form-section">
-        {/* Contigs Upload */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Parameters
-              <DialogInfoPopup
-                title={genomeAnnotationParameters.title}
-                description={genomeAnnotationParameters.description}
-                sections={genomeAnnotationParameters.sections}
-              />
-            </CardTitle>
-          </CardHeader>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="service-form-section"
+        >
+          {/* Parameters Card */}
+          <Card>
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">
+                Parameters
+                <DialogInfoPopup
+                  title={genomeAnnotationParameters.title}
+                  description={genomeAnnotationParameters.description}
+                  sections={genomeAnnotationParameters.sections}
+                />
+              </CardTitle>
+            </CardHeader>
 
-          <CardContent className="service-card-content">
-            <div id="parameters-content" className="space-y-6">
-              <SearchWorkspaceInput
-                title="Contigs"
-                placeholder="Select Contigs..."
-              />
+            <CardContent className="service-card-content">
+              <div className="space-y-6">
+                {/* Contigs Selection */}
+                <FormField
+                  control={form.control}
+                  name="contigs"
+                  render={({ field }) => (
+                    <FormItem>
+                      <RequiredFormLabel>Contigs</RequiredFormLabel>
+                      <FormControl>
+                        <WorkspaceObjectSelector
+                          types={["contigs"]}
+                          placeholder="Select or Upload Contigs to your workspace for Annotation"
+                          onObjectSelect={(object: WorkspaceObject) => {
+                            field.onChange(object.path);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div>
-                <Label className="service-card-label">Annotation Recipe</Label>
+                {/* Annotation Recipe */}
+                <FormField
+                  control={form.control}
+                  name="recipe"
+                  render={({ field }) => (
+                    <FormItem>
+                      <RequiredFormLabel>Annotation Recipe</RequiredFormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="service-card-select-trigger">
+                            <SelectValue placeholder="--- Select Recipe ---" />
+                          </SelectTrigger>
+                          <SelectContent className="service-card-select-content">
+                            <SelectItem value="default">Bacteria / Archaea</SelectItem>
+                            <SelectItem value="viral">Viruses - VIGOR4 annotation</SelectItem>
+                            <SelectItem value="viral-lowvan">Viruses - Lowvan annotation</SelectItem>
+                            <SelectItem value="phage">Bacteriophages</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                <Select>
-                  <SelectTrigger className="service-card-select-trigger">
-                    <SelectValue placeholder="--- Select Recipe ---" />
-                  </SelectTrigger>
-                  <SelectContent className="service-card-select-content">
-                    <SelectItem value="bacteria-archaea">
-                      Bacteria / Archaea
-                    </SelectItem>
-                    <SelectItem value="viruses">Viruses</SelectItem>
-                    <SelectItem value="bacteriophage">Bacteriophage</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                {/* Taxonomy Name and ID */}
+                <div className="flex flex-col gap-4 sm:flex-row ">
+                  <FormField
+                    control={form.control}
+                    name="scientific_name"
+                    render={({ field }) => (
+                      <FormItem className="sm:w-[75%]">
+                        <RequiredFormLabel>
+                          Taxonomy Name
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <HelpCircle className="service-card-tooltip-icon ml-1" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm">
+                                <p>
+                                  Taxon must be specified at the genus level or below
+                                  to get the latest protein family predictions.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </RequiredFormLabel>
 
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="flex w-full flex-col">
-                  <div className="flex flex-row items-center gap-2">
-                    <Label className="service-card-label">Taxonomy Name</Label>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="service-card-tooltip-icon mb-2" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-sm">
-                          <p>
-                            Taxon must be specified at the genus level or below
-                            to get the latest protein family predictions.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  <div className="flex flex-row">
-                    <Input
-                      placeholder="e.g. Bacillus cereus..."
-                      className="service-card-input"
-                    />
-                    <Button variant="outline" className="ml-2" size="icon">
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
+                        <FormControl>
+                          <TaxonNameSelector
+                            value={field.value ? {
+                              taxon_id: parseInt(field.value) || 0,
+                              taxon_name: field.value,
+                            } : null}
+                            onChange={(taxonomyItem) => {
+                              // Extract the taxon_name string from the TaxonomyItem object
+                              const taxonName = taxonomyItem?.taxon_name || null;
+                              field.onChange(taxonName);
+                              field.onBlur(); // Mark field as touched/validated
+                              // Automatically set taxonomy ID when taxonomy name is selected
+                              if (taxonomyItem) {
+                                const taxonId = String(taxonomyItem.taxon_id);
+                                form.setValue("taxonomy_id", taxonId, { shouldValidate: true, shouldTouch: true });
+                              } else {
+                                // Clear taxonomy ID when name is cleared
+                                form.setValue("taxonomy_id", null as any, { shouldValidate: true, shouldTouch: true });
+                              }
+                              // Auto-generate output file name
+                              const myLabel = form.getValues("my_label");
+                              if (taxonName && myLabel) {
+                                const outputFileName = generateOutputFileName(taxonName, myLabel);
+                                form.setValue("output_file", outputFileName, { shouldValidate: true });
+                              }
+                              // Trigger validation after a short delay to ensure all fields are updated
+                              setTimeout(() => {
+                                form.trigger(["scientific_name", "taxonomy_id"]);
+                              }, 0);
+                            }}
+                            placeholder="e.g. Bacillus cereus..."
+                            required={true}
+                            includeEukaryotes={false}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="taxonomy_id"
+                    render={({ field }) => {
+                      // Get scientific_name to populate taxon_name in the selector
+                      const scientificName = form.getValues("scientific_name");
+                      return (
+                        <FormItem className="sm:w-[25%]">
+                          <FormLabel>Taxonomy ID</FormLabel>
+                          <FormControl>
+                            <TaxIDSelector
+                              value={field.value ? {
+                                taxon_id: parseInt(field.value) || 0,
+                                taxon_name: scientificName || "",
+                              } : null}
+                              onChange={(taxonomyItem) => {
+                                // Extract the taxon_id string from the TaxonomyItem object
+                                const taxonId = taxonomyItem ? String(taxonomyItem.taxon_id) : null;
+                                field.onChange(taxonId);
+                                field.onBlur(); // Mark field as touched/validated
+                              }}
+                              placeholder="NCBI Taxonomy ID"
+                              required={true}
+                              disabled={true}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
+                  />
                 </div>
 
-                <div className="flex w-full flex-col sm:w-[50%]">
-                  <Label className="service-card-label">Taxonomy ID</Label>
-                  <div className="flex flex-row">
-                    <Input
-                      placeholder="ID Number..."
-                      className="service-card-input"
-                    />
-                    <Button variant="outline" className="ml-2" size="icon">
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+                {/* My Label */}
+                <FormField
+                  control={form.control}
+                  name="my_label"
+                  render={({ field }) => (
+                    <FormItem>
+                      <RequiredFormLabel>My Label</RequiredFormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="My identifier123"
+                          className="service-card-input"
+                          value={field.value}
+                          onChange={(e) => {
+                            // Use field.onChange to properly register with react-hook-form
+                            field.onChange(e.target.value);
+                            // Auto-generate output file name
+                            const scientificName = form.getValues("scientific_name");
+                            if (e.target.value && scientificName) {
+                              const outputFileName = generateOutputFileName(scientificName, e.target.value);
+                              form.setValue("output_file", outputFileName, { shouldValidate: true });
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div>
-                <Label className="service-card-label">My Label</Label>
-                <Input
-                  placeholder="My identifier123"
-                  className="service-card-input"
+                {/* Output Folder */}
+                <FormField
+                  control={form.control}
+                  name="output_path"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <OutputFolder
+                          required={true}
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Output File Name */}
+                <FormField
+                  control={form.control}
+                  name="output_file"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <OutputFolder
+                          variant="name"
+                          required={false}
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={true}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </div>
+            </CardContent>
+          </Card>
 
-              <div>
-                <OutputFolder onChange={setOutputFolder} />
-              </div>
-
-              <div>
-                <OutputFolder
-                  variant="name"
-                  onChange={setOutputName}
-                  disabled
-                />
-              </div>
+          {/* Form Controls */}
+          <div className="service-form-controls">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                className="service-form-controls-button"
+              >
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !form.formState.isValid}
+              >
+                {isSubmitting ? <Spinner /> : null}
+                Annotate
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-      </form>
+          </div>
+        </form>
+      </Form>
 
-      <div className="service-form-controls">
-        <Button variant="outline" type="reset">
-          Reset
-        </Button>
-        <Button type="submit">Annotate</Button>
-      </div>
+      {/* Job Params Dialog */}
+      <JobParamsDialog
+        open={showParamsDialog}
+        onOpenChange={setShowParamsDialog}
+        params={currentParams}
+        serviceName={serviceName}
+      />
     </section>
   );
 };

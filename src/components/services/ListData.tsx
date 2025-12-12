@@ -106,7 +106,6 @@ useEffect(() => {
       return res.json();
     },
     enabled: !!totalItems,
-    keepPreviousData: true, // smooth page transitions
     staleTime: 1000 * 60 * 10,
   });
 
@@ -233,5 +232,6 @@ if (fields.length === 0) {
           />
         </div>
     </div>
-  );  
+  );
 }
+

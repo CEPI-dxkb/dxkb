@@ -38,7 +38,7 @@ import {
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/lib/services/service-utils";
 import {
   taxonomyClassificationAnalysisType,
   taxonomyClassificationDatabase,
@@ -47,7 +47,7 @@ import {
   taxonomyClassificationInfo,
   taxonomyClassificationInput,
   taxonomyClassificationParameters,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 
 const TaxonomicClassificationService = () => {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);

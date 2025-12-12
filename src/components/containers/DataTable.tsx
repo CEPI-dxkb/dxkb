@@ -45,7 +45,7 @@ interface DataTableProps {
   onPageChange: (page: number) => void; // callback when page changes
   sorting?: SortingState; // controlled sorting (optional)
   onSortingChange?: (s: SortingState) => void; // optional sorting callback
-  onDownloadAll?: (format: 'csv' | 'txt', visibleColumns: string[]) => void;
+  onDownloadAll?: (format: 'csv' | 'txt', visibleColumns: string[] | null) => void;
   onColumnVisibilityChange?: (visibility: Record<string, boolean>) => void;
 }
 
@@ -316,8 +316,9 @@ export function DataTable({
     },
     onPaginationChange: (updater) => {
       if (onPageChange) {
-        const newPageIndex = typeof updater === 'function' ? updater(currentPageIndex) : (updater as any).pageIndex;
-        onPageChange(newPageIndex);
+        const currentPagination = { pageIndex: currentPageIndex, pageSize: currentPageSize };
+        const newPagination = typeof updater === 'function' ? updater(currentPagination) : updater;
+        onPageChange(newPagination.pageIndex);
       } else {
         const newPagination = typeof updater === 'function' ? updater(internalPagination) : updater;
         setInternalPagination(newPagination);

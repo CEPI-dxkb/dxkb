@@ -39,13 +39,13 @@ import {
   handleSingleLibraryAdd,
   removeFromSelectedLibraries,
   handleFormSubmit,
-} from "@/lib/service-utils";
+} from "@/lib/services/service-utils";
 import {
   readInputFileInfo,
   sarsCov2GenomeAnalysisInfo,
   sarsCov2GenomeAnalysisParameters,
   sarsCov2GenomeAnalysisStartWith,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 
 export default function GenomeAnalysis() {
   const [_selectedFiles, setSelectedFiles] = useState<string[]>([]);

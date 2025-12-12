@@ -245,7 +245,7 @@ export function InfoPanel({
                                   return item.linkType === 'button' ? (
                                     <button
                                       onClick={() => window.open(resolved, '_blank')}
-                                      className="text-sm text-blue-600 border-black bg-primary text-secondary py-1 px-2 rounded"
+                                      className="text-sm border-black bg-primary text-secondary py-1 px-2 rounded"
                                     >
                                       {item.linkText ?? 'View'}
                                     </button>

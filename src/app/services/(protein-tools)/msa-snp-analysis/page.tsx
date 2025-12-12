@@ -27,14 +27,14 @@ import {
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SearchWorkspaceInput from "@/components/services/search-workspace-input";
 import OutputFolder from "@/components/services/output-folder";
-import { handleFormSubmit } from "@/lib/service-utils";
+import { handleFormSubmit } from "@/lib/services/service-utils";
 import { ChevronDown } from "lucide-react";
 import {
   msaSNPAnalysisInfo,
   msaSNPAnalysisParameters,
   msaSNPAnalysisSelectSequences,
   msaSNPAnalysisStartWith,
-} from "@/lib/service-info";
+} from "@/lib/services/service-info";
 
 export default function MSAandSNPAnalysisPage() {
   const [alignmentType, setAlignmentType] = useState("unaligned");

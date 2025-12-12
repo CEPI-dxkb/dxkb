@@ -1,6 +1,14 @@
 name: pnpm Build Verification
 
 on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+    branches:
+      - main
   pull_request:
 
 jobs:

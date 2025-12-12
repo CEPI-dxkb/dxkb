@@ -388,6 +388,7 @@ function SearchResultsContent({ query }: { query: string }) {
         },
         body: JSON.stringify(searchPayload),
       });
+      
 
       const data = await response.json();
       setSearchResults(data);

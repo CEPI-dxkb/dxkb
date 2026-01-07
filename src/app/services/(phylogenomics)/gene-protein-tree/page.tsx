@@ -185,11 +185,8 @@ export default function GeneProteinTreePage() {
     const inputValue = selectedObject.path;
 
     const currentSequences = form.getValues("sequences");
-    const duplicate = currentSequences.some(
-      (seq) => seq.filename === inputValue && seq.type === type,
-    );
-
-    if (duplicate) {
+    
+    if (GeneProteinTree.checkDuplicateSequence(currentSequences, inputValue, type)) {
       toast.error("Duplicate selection detected", {
         description: `${GeneProteinTree.getSequenceTypeLabel(type, alphabet as GeneProteinTree.Alphabet)} is already selected.`,
         closeButton: true,
@@ -197,7 +194,7 @@ export default function GeneProteinTreePage() {
       return;
     }
 
-    if (currentSequences.length >= 5000) {
+    if (GeneProteinTree.checkSequenceLimit(currentSequences)) {
       toast.error("Selection limit reached", {
         description: "A maximum of 5000 sequences can be added.",
         closeButton: true,
@@ -205,14 +202,7 @@ export default function GeneProteinTreePage() {
       return;
     }
 
-    const displayName = GeneProteinTree.getDisplayName(
-      selectedObject.name || inputValue.split("/").pop() || inputValue,
-    );
-
-    const newSequence: GeneProteinTree.SequenceItem = {
-      filename: inputValue,
-      type,
-    };
+    const newSequence = GeneProteinTree.createSequenceItem(inputValue, type);
 
     form.setValue("sequences", [...currentSequences, newSequence]);
 
@@ -225,7 +215,7 @@ export default function GeneProteinTreePage() {
     const currentSequences = form.getValues("sequences");
     form.setValue(
       "sequences",
-      currentSequences.filter((_, i) => i !== index),
+      GeneProteinTree.removeSequenceAtIndex(currentSequences, index),
     );
   }
 
@@ -244,16 +234,9 @@ export default function GeneProteinTreePage() {
       setSelectedMetadataField("");
       return;
     }
-    const allMetadataOptions = GeneProteinTree.getMetadataSelectOptions(
-      GeneProteinTree.formatMetadataLabel,
-    );
-    const option = allMetadataOptions.find((opt) => opt.value === selectedMetadataField);
-    const name = option ? option.label : GeneProteinTree.formatMetadataLabel(selectedMetadataField);
 
-    setMetadataFields((prev) => [
-      { id: selectedMetadataField, name, selected: true },
-      ...prev,
-    ]);
+    const newField = GeneProteinTree.createMetadataField(selectedMetadataField);
+    setMetadataFields((prev) => [newField, ...prev]);
     setSelectedMetadataField("");
   }
 
@@ -390,9 +373,9 @@ export default function GeneProteinTreePage() {
                 />
 
                 <div className="space-y-2">
-                  <RequiredFormLabel className="service-card-label">
+                  <FormLabel className="service-card-label">
                     Feature Group
-                  </RequiredFormLabel>
+                  </FormLabel>
                   <div className="flex gap-2">
                     <WorkspaceObjectSelector
                       types={["feature_group"]}
@@ -416,9 +399,9 @@ export default function GeneProteinTreePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <RequiredFormLabel className="service-card-label">
+                  <FormLabel className="service-card-label">
                     DNA/Protein Aligned FASTA
-                  </RequiredFormLabel>
+                  </FormLabel>
                   <div className="flex gap-2">
                     <WorkspaceObjectSelector
                       types={inputFastaTypes.filter((t) =>
@@ -444,9 +427,9 @@ export default function GeneProteinTreePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <RequiredFormLabel className="service-card-label">
+                  <FormLabel className="service-card-label">
                     DNA/Protein Unaligned FASTA
-                  </RequiredFormLabel>
+                  </FormLabel>
                   <div className="flex gap-2">
                     <WorkspaceObjectSelector
                       types={inputFastaTypes.filter((t) =>

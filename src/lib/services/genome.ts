@@ -164,6 +164,101 @@ function extractWorkspaceGetEntry(responseData: any): any | null {
   return null;
 }
 
+export interface ViralGenomeValidationResult {
+  genome_id: string;
+  superkingdom?: string;
+  genome_length?: number;
+  contigs?: number;
+}
+
+export interface ViralGenomeValidationErrors {
+  duplicate_error?: string;
+  kingdom_error?: string;
+  contigs_error?: string;
+  genomelength_error?: string;
+  missing_superkingdom?: string;
+}
+
+export async function validateViralGenomes(
+  genomeIds: string[],
+  options: { signal?: AbortSignal; maxGenomeLength?: number } = {},
+): Promise<{
+  allValid: boolean;
+  errors: ViralGenomeValidationErrors;
+  results: ViralGenomeValidationResult[];
+}> {
+  const { signal, maxGenomeLength = 250000 } = options;
+
+  if (genomeIds.length === 0) {
+    return { allValid: true, errors: {}, results: [] };
+  }
+
+  const uniqueIds = Array.from(new Set(genomeIds));
+
+  try {
+    const response = await fetch("/api/services/genome/validate-viral", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ genome_ids: uniqueIds }),
+      signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({}));
+      const message = errorBody?.error || "Failed to validate genomes";
+      throw new Error(message);
+    }
+
+    const data = await response.json();
+    const results: ViralGenomeValidationResult[] = Array.isArray(data?.results) ? data.results : [];
+
+    const errors: ViralGenomeValidationErrors = {};
+    let allValid = true;
+
+    results.forEach((genome) => {
+      if (!genome.superkingdom) {
+        allValid = false;
+        if (!errors.missing_superkingdom) {
+          errors.missing_superkingdom = `Missing superkingdom field for genome_id: ${genome.genome_id}`;
+        }
+        return;
+      }
+
+      if (genome.superkingdom !== "Viruses") {
+        allValid = false;
+        if (!errors.kingdom_error) {
+          errors.kingdom_error = `Invalid Superkingdom: only virus genomes are permitted. First occurrence for genome_id: ${genome.genome_id}`;
+        }
+      }
+
+      if (genome.contigs !== undefined && genome.contigs > 1) {
+        allValid = false;
+        if (!errors.contigs_error) {
+          errors.contigs_error = `Error: only 1 contig is permitted. First occurrence for genome_id: ${genome.genome_id}`;
+        }
+      }
+
+      if (genome.genome_length !== undefined && genome.genome_length > maxGenomeLength) {
+        allValid = false;
+        if (!errors.genomelength_error) {
+          errors.genomelength_error = `Error: genome exceeds maximum length ${maxGenomeLength}. First occurrence for genome_id: ${genome.genome_id}`;
+        }
+      }
+    });
+
+    return { allValid, errors, results };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return { allValid: false, errors: {}, results: [] };
+    }
+
+    throw error;
+  }
+}
+
 export async function fetchGenomeGroupMembers(path: string): Promise<GenomeSummary[]> {
   if (!path) {
     return [];

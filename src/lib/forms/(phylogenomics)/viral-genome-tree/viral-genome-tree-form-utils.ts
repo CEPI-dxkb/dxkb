@@ -1,8 +1,5 @@
-import type { GeneProteinTreeFormData, SequenceItem } from "./gene-protein-tree-form-schema";
-import * as GeneProteinTreeSchema from "./gene-protein-tree-form-schema";
-
-// Types
-export type Alphabet = "DNA" | "Protein";
+import type { ViralGenomeTreeFormData, ViralGenomeSequenceItem } from "./viral-genome-tree-form-schema";
+import * as ViralGenomeTreeSchema from "./viral-genome-tree-form-schema";
 
 // Utility functions
 export function formatMetadataLabel(field: string): string {
@@ -22,23 +19,22 @@ export function getDisplayName(name: string): string {
 }
 
 export function getSequenceTypeLabel(
-  type: SequenceItem["type"],
-  alphabet: Alphabet,
+  type: ViralGenomeSequenceItem["type"],
 ): string {
-  if (type === "feature_group") return "Feature Group";
-  if (type === "aligned_dna_fasta" || type === "aligned_protein_fasta") {
-    return `${alphabet} Aligned FASTA`;
+  if (type === "genome_group") return "Genome Group";
+  if (type === "aligned_dna_fasta") {
+    return "Aligned DNA FASTA";
   }
-  return `${alphabet} Unaligned FASTA`;
+  return "Unaligned DNA FASTA";
 }
 
 /**
  * Check if a sequence with the given filename and type already exists
  */
 export function checkDuplicateSequence(
-  sequences: SequenceItem[],
+  sequences: ViralGenomeSequenceItem[],
   filename: string,
-  type: SequenceItem["type"],
+  type: ViralGenomeSequenceItem["type"],
 ): boolean {
   return sequences.some((seq) => seq.filename === filename && seq.type === type);
 }
@@ -46,17 +42,17 @@ export function checkDuplicateSequence(
 /**
  * Check if the sequence limit has been reached
  */
-export function checkSequenceLimit(sequences: SequenceItem[]): boolean {
-  return sequences.length >= GeneProteinTreeSchema.MAX_SEQUENCES;
+export function checkSequenceLimit(sequences: ViralGenomeSequenceItem[]): boolean {
+  return sequences.length >= ViralGenomeTreeSchema.MAX_SEQUENCES;
 }
 
 /**
  * Remove a sequence at the given index
  */
 export function removeSequenceAtIndex(
-  sequences: SequenceItem[],
+  sequences: ViralGenomeSequenceItem[],
   index: number,
-): SequenceItem[] {
+): ViralGenomeSequenceItem[] {
   return sequences.filter((_, i) => i !== index);
 }
 
@@ -65,8 +61,8 @@ export function removeSequenceAtIndex(
  */
 export function createSequenceItem(
   filename: string,
-  type: SequenceItem["type"],
-): SequenceItem {
+  type: ViralGenomeSequenceItem["type"],
+): ViralGenomeSequenceItem {
   return { filename, type };
 }
 
@@ -74,7 +70,7 @@ export function createSequenceItem(
  * Create a metadata field object from a field ID
  */
 export function createMetadataField(fieldId: string): { id: string; name: string; selected: boolean } {
-  const allMetadataOptions = GeneProteinTreeSchema.getMetadataSelectOptions(formatMetadataLabel);
+  const allMetadataOptions = ViralGenomeTreeSchema.getMetadataSelectOptions(formatMetadataLabel);
   const option = allMetadataOptions.find((opt) => opt.value === fieldId);
   const name = option ? option.label : formatMetadataLabel(fieldId);
 
@@ -96,49 +92,17 @@ export function isMetadataFieldSelected(
 }
 
 /**
- * Transform gene/protein tree form data to API parameters
+ * Transform viral genome tree form data to API parameters
  */
-export function transformGeneProteinTreeParams(
-  data: GeneProteinTreeFormData,
+export function transformViralGenomeTreeParams(
+  data: ViralGenomeTreeFormData,
 ): Record<string, any> {
-  // Split metadata fields into feature and genome fields
-  // For now, all current metadata fields appear to be genome-related
-  // Feature metadata fields would be things like gene_id, gene_name, etc.
+  // All metadata fields for viral genome tree are genome-related
   const metadataFields = data.metadata_fields || [];
-  const featureMetadataFields: string[] = [];
-  const genomeMetadataFields: string[] = [];
-  
-  // Common genome metadata fields
-  const genomeFields = [
-    "genome_id",
-    "genome_name",
-    "genome_length",
-    "species",
-    "strain",
-    "accession",
-    "subtype",
-    "lineage",
-    "host_group",
-    "host_common_name",
-    "collection_date",
-    "collection_year",
-    "geographic_group",
-    "isolation_country",
-    "geographic_location",
-  ];
-  
-  metadataFields.forEach((field) => {
-    if (genomeFields.includes(field)) {
-      genomeMetadataFields.push(field);
-    } else {
-      // Assume other fields are feature-related
-      featureMetadataFields.push(field);
-    }
-  });
   
   return {
-    alphabet: data.alphabet, // API expects "DNA" or "Protein" (uppercase)
-    tree_type: "gene",
+    alphabet: "DNA",
+    tree_type: "viral_genome",
     recipe: data.recipe,
     substitution_model: data.substitution_model,
     trim_threshold: parseFloat(data.trim_threshold) || 0,
@@ -147,11 +111,8 @@ export function transformGeneProteinTreeParams(
       filename: seq.filename,
       type: seq.type,
     })),
-    ...(featureMetadataFields.length > 0 && {
-      feature_metadata_fields: featureMetadataFields,
-    }),
-    ...(genomeMetadataFields.length > 0 && {
-      genome_metadata_fields: genomeMetadataFields,
+    ...(metadataFields.length > 0 && {
+      genome_metadata_fields: metadataFields,
     }),
     output_path: data.output_path,
     output_file: data.output_file.trim(),

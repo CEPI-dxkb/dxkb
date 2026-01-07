@@ -17,14 +17,15 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -51,7 +52,6 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { submitServiceJob } from "@/lib/services/service-utils";
-import { transformGeneProteinTreeParams } from "@/lib/forms/(phylogenomics)";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { toast } from "sonner";
@@ -65,22 +65,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  geneProteinTreeFormSchema,
-  DEFAULT_GENE_PROTEIN_TREE_FORM_VALUES,
-  type GeneProteinTreeFormData,
-  type SequenceItem,
-  DNA_MODELS,
-  PROTEIN_MODELS,
-  THRESHOLD_OPTIONS,
-  DEFAULT_METADATA_FIELDS,
-  BASE_METADATA_OPTIONS,
-  GENOME_ADVANCED_FIELDS,
-  formatMetadataLabel,
-  getDisplayName,
-  getSequenceTypeLabel,
-  type Alphabet,
-} from "@/lib/forms/(phylogenomics)";
+import * as GeneProteinTree from "@/lib/forms/(phylogenomics)";
 
 interface MetadataField {
   id: string;
@@ -88,15 +73,11 @@ interface MetadataField {
   selected: boolean;
 }
 
-interface MetadataOption {
-  value: string;
-  label: string;
-}
 
 export default function GeneProteinTreePage() {
-  const form = useForm<GeneProteinTreeFormData>({
-    resolver: zodResolver(geneProteinTreeFormSchema),
-    defaultValues: DEFAULT_GENE_PROTEIN_TREE_FORM_VALUES,
+  const form = useForm<GeneProteinTree.GeneProteinTreeFormData>({
+    resolver: zodResolver(GeneProteinTree.geneProteinTreeFormSchema),
+    defaultValues: GeneProteinTree.DEFAULT_GENE_PROTEIN_TREE_FORM_VALUES,
     mode: "onChange",
   });
 
@@ -107,10 +88,7 @@ export default function GeneProteinTreePage() {
   const [selectedUnalignedFastaObject, setSelectedUnalignedFastaObject] =
     useState<WorkspaceObject | null>(null);
   const [metadataFields, setMetadataFields] =
-    useState<MetadataField[]>(DEFAULT_METADATA_FIELDS);
-  const [metadataSelectOptions, setMetadataSelectOptions] = useState<
-    MetadataOption[]
-  >(BASE_METADATA_OPTIONS);
+    useState<MetadataField[]>(GeneProteinTree.DEFAULT_METADATA_FIELDS);
   const [selectedMetadataField, setSelectedMetadataField] =
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -121,13 +99,13 @@ export default function GeneProteinTreePage() {
   const substitutionModel = form.watch("substitution_model");
 
   const substitutionModelOptions = useMemo(
-    () => (alphabet === "DNA" ? DNA_MODELS : PROTEIN_MODELS),
+    () => (alphabet === "DNA" ? GeneProteinTree.DNA_MODELS : GeneProteinTree.PROTEIN_MODELS),
     [alphabet],
   );
 
   // Reset model when alphabet changes
   useEffect(() => {
-    const resetModel = alphabet === "DNA" ? DNA_MODELS[0].value : PROTEIN_MODELS[0].value;
+    const resetModel = alphabet === "DNA" ? GeneProteinTree.DNA_MODELS[0].value : GeneProteinTree.PROTEIN_MODELS[0].value;
     form.setValue("substitution_model", resetModel);
     
     // Clear sequences that don't match the new alphabet
@@ -162,16 +140,17 @@ export default function GeneProteinTreePage() {
     [metadataFields],
   );
 
-  const availableMetadataOptions = useMemo(
-    () =>
-      metadataSelectOptions.filter(
-        (option) =>
-          option.value === "more_options" ||
-          option.value === "less_options" ||
-          !selectedMetadataIds.has(option.value),
-      ),
-    [metadataSelectOptions, selectedMetadataIds],
-  );
+  // Always show all metadata fields with labels, excluding already selected ones
+  const availableMetadataOptions = useMemo(() => {
+    const allOptions = GeneProteinTree.getMetadataSelectOptions(
+      GeneProteinTree.formatMetadataLabel,
+    );
+    return allOptions.filter(
+      (option) =>
+        option.isLabel || // Always show section labels
+        !selectedMetadataIds.has(option.value), // Hide already selected fields
+    );
+  }, [selectedMetadataIds]);
 
   const inputFastaTypes = useMemo((): ValidWorkspaceObjectTypes[] => {
     if (alphabet === "DNA") {
@@ -182,7 +161,7 @@ export default function GeneProteinTreePage() {
 
   function handleAddSequence(source: "feature" | "aligned" | "unaligned") {
     let selectedObject: WorkspaceObject | null = null;
-    let type: SequenceItem["type"];
+    let type: GeneProteinTree.SequenceItem["type"];
 
     if (source === "feature") {
       selectedObject = selectedFeatureGroupObject;
@@ -212,7 +191,7 @@ export default function GeneProteinTreePage() {
 
     if (duplicate) {
       toast.error("Duplicate selection detected", {
-        description: `${getSequenceTypeLabel(type, alphabet)} is already selected.`,
+        description: `${GeneProteinTree.getSequenceTypeLabel(type, alphabet as GeneProteinTree.Alphabet)} is already selected.`,
         closeButton: true,
       });
       return;
@@ -226,11 +205,11 @@ export default function GeneProteinTreePage() {
       return;
     }
 
-    const displayName = getDisplayName(
+    const displayName = GeneProteinTree.getDisplayName(
       selectedObject.name || inputValue.split("/").pop() || inputValue,
     );
 
-    const newSequence: SequenceItem = {
+    const newSequence: GeneProteinTree.SequenceItem = {
       filename: inputValue,
       type,
     };
@@ -251,23 +230,9 @@ export default function GeneProteinTreePage() {
   }
 
   function handleMetadataSelection(value: string) {
-    if (value === "more_options") {
-      const advancedOptions: MetadataOption[] = GENOME_ADVANCED_FIELDS.map(
-        (field) => ({
-          value: field,
-          label: formatMetadataLabel(field),
-        }),
-      );
-      advancedOptions.push({ value: "less_options", label: "... Fewer Options ..." });
-      setMetadataSelectOptions(advancedOptions);
+    // Don't allow selection of label items
+    if (GeneProteinTree.isMetadataLabel(value)) {
       setSelectedMetadataField("");
-      toast.info("Showing advanced metadata fields. Select a field to add.");
-      return;
-    }
-    if (value === "less_options") {
-      setMetadataSelectOptions(BASE_METADATA_OPTIONS);
-      setSelectedMetadataField("");
-      toast.info("Showing common metadata fields.");
       return;
     }
     setSelectedMetadataField(value);
@@ -279,13 +244,11 @@ export default function GeneProteinTreePage() {
       setSelectedMetadataField("");
       return;
     }
-    const option =
-      metadataSelectOptions.find((opt) => opt.value === selectedMetadataField) ??
-      GENOME_ADVANCED_FIELDS.map((field) => ({
-        value: field,
-        label: formatMetadataLabel(field),
-      })).find((opt) => opt.value === selectedMetadataField);
-    const name = option ? option.label : formatMetadataLabel(selectedMetadataField);
+    const allMetadataOptions = GeneProteinTree.getMetadataSelectOptions(
+      GeneProteinTree.formatMetadataLabel,
+    );
+    const option = allMetadataOptions.find((opt) => opt.value === selectedMetadataField);
+    const name = option ? option.label : GeneProteinTree.formatMetadataLabel(selectedMetadataField);
 
     setMetadataFields((prev) => [
       { id: selectedMetadataField, name, selected: true },
@@ -303,12 +266,11 @@ export default function GeneProteinTreePage() {
   }
 
   function handleReset() {
-    form.reset(DEFAULT_GENE_PROTEIN_TREE_FORM_VALUES);
+    form.reset(GeneProteinTree.DEFAULT_GENE_PROTEIN_TREE_FORM_VALUES);
     setSelectedFeatureGroupObject(null);
     setSelectedAlignedFastaObject(null);
     setSelectedUnalignedFastaObject(null);
-    setMetadataFields(DEFAULT_METADATA_FIELDS);
-    setMetadataSelectOptions(BASE_METADATA_OPTIONS);
+    setMetadataFields(GeneProteinTree.DEFAULT_METADATA_FIELDS);
     setSelectedMetadataField("");
     setShowAdvanced(false);
   }
@@ -320,13 +282,13 @@ export default function GeneProteinTreePage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
-  } = useServiceFormSubmission<GeneProteinTreeFormData>({
+  } = useServiceFormSubmission<GeneProteinTree.GeneProteinTreeFormData>({
     serviceName: "Gene/Protein Tree",
-    transformParams: transformGeneProteinTreeParams,
+    transformParams: GeneProteinTree.transformGeneProteinTreeParams,
     onSubmit: async (data) => {
       try {
         setIsSubmitting(true);
-        const result = await submitServiceJob("GeneTree", transformGeneProteinTreeParams(data));
+        const result = await submitServiceJob("GeneTree", GeneProteinTree.transformGeneProteinTreeParams(data));
 
         if (result.success) {
           console.log("Gene/Protein Tree job submitted successfully:", result.job?.[0]);
@@ -360,8 +322,8 @@ export default function GeneProteinTreePage() {
     () =>
       sequences.map((seq, index) => ({
         id: `${index}`,
-        name: getDisplayName(seq.filename.split("/").pop() || seq.filename),
-        type: getSequenceTypeLabel(seq.type, alphabet),
+        name: GeneProteinTree.getDisplayName(seq.filename.split("/").pop() || seq.filename),
+        type: GeneProteinTree.getSequenceTypeLabel(seq.type, alphabet as GeneProteinTree.Alphabet),
         description: seq.filename,
       })),
     [alphabet, sequences],
@@ -564,7 +526,7 @@ export default function GeneProteinTreePage() {
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {THRESHOLD_OPTIONS.map((value) => (
+                              {GeneProteinTree.THRESHOLD_OPTIONS.map((value) => (
                                 <SelectItem key={value} value={value}>
                                   {value}
                                 </SelectItem>
@@ -594,7 +556,7 @@ export default function GeneProteinTreePage() {
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {THRESHOLD_OPTIONS.map((value) => (
+                              {GeneProteinTree.THRESHOLD_OPTIONS.map((value) => (
                                 <SelectItem key={value} value={value}>
                                   {value}
                                 </SelectItem>
@@ -743,7 +705,7 @@ export default function GeneProteinTreePage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-4">
                   <div>
-                    <Label>Metadata Fields</Label>
+                    <Label>Metadata Table Fields</Label>
                     <p className="text-muted-foreground pt-2 pb-4 text-sm">
                       These fields will appear as options in the phyloxml visualization
                     </p>
@@ -756,12 +718,27 @@ export default function GeneProteinTreePage() {
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select field" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {availableMetadataOptions.map((field) => (
-                            <SelectItem key={field.value} value={field.value}>
-                              {field.label}
-                            </SelectItem>
-                          ))}
+                        <SelectContent className="max-h-[600px]">
+                          <SelectGroup>
+                            {availableMetadataOptions.map((field) => {
+                              // Check if this is a label (section header)
+                              if (field.isLabel) {
+                                return (
+                                  <SelectLabel
+                                    key={field.value}
+                                    className="border-b border-border pb-1.5 mb-1 font-medium"
+                                  >
+                                    {field.label}
+                                  </SelectLabel>
+                                );
+                              }
+                              return (
+                                <SelectItem key={field.value} value={field.value}>
+                                  {field.label}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                       <Button
@@ -777,28 +754,27 @@ export default function GeneProteinTreePage() {
                 </div>
 
                 <div>
-                  <Label>Metadata Table</Label>
                   <Table className="mt-2">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Field</TableHead>
-                        <TableHead className="w-24 text-center">Remove</TableHead>
+                        <TableHead className="h-8 py-1">Field</TableHead>
+                        <TableHead className="w-24 h-8 py-1 text-center">Remove</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {metadataFields
                         .filter((field) => field.selected)
                         .map((field) => (
-                          <TableRow key={field.id}>
-                            <TableCell>{field.name}</TableCell>
-                            <TableCell className="text-center">
+                          <TableRow key={field.id} className="h-8">
+                            <TableCell className="py-1">{field.name}</TableCell>
+                            <TableCell className="py-1 text-center">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => removeMetadataField(field.id)}
-                                className="text-destructive hover:text-destructive/90"
+                                className="h-6 w-6 text-destructive hover:text-destructive/90"
                               >
-                                <X size={16} />
+                                <X size={14} />
                               </Button>
                             </TableCell>
                           </TableRow>

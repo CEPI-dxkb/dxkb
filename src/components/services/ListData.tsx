@@ -58,7 +58,16 @@ export function ListData({q, resource, onSelectionChange }: ListDataProps) {
   const listKey = `${resource}-${cleanQ}-${searchtype}`;
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+  const [columnOrder, setColumnOrder] = useState<string[]>([]);
+
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    const vis: Record<string, boolean> = {};
+    fields.forEach(f => {
+      vis[f.id] = f.visible !== false;
+    });
+    vis['__select__'] = true; // always show checkbox column
+    return vis;
+  });
   const [pageIndex, setPageIndex] = useState(0);
 
   const setSortingAndResetPage = (newSorting: SortingState) => {
@@ -68,8 +77,24 @@ export function ListData({q, resource, onSelectionChange }: ListDataProps) {
 
 
   useEffect(() => {
-  console.log('pageIndex updated to:', pageIndex);
-}, [pageIndex]);
+    if (fields.length) {
+      setColumnOrder(['__select__', ...fields.map(f => f.id)]);
+    }
+  }, [fields]);
+
+  useEffect(() => {
+    if (!fields.length) return;
+
+    setColumnVisibility((prev) => {
+      const updated = { ...prev };
+      fields.forEach(f => {
+        if (!(f.id in updated)) {
+          updated[f.id] = f.visible !== false;
+        }
+      });
+      return updated;
+    });
+  }, [fields]);
 
   // Fetch metadata (numFound)
   const { data: metaData, isLoading: metaLoading, error: metaError, refetch: metaRefetch  } = useQuery({
@@ -271,6 +296,10 @@ console.log('current pageIndex:', pageIndex);
             onPageChange={handlePageChange}
             sorting={sorting}
             onSortingChange={setSortingAndResetPage}
+            columnOrder={columnOrder}
+            onColumnOrderChange={setColumnOrder}
+            columnVisibility={columnVisibility}
+            onColumnVisibilityChange={setColumnVisibility}
             onDownloadAll={handleDownloadAll}
           />
         </div>

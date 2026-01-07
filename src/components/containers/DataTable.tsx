@@ -55,21 +55,25 @@ interface DataTableProps {
   sorting?: SortingState;
   onSortingChange?: (newSorting: SortingState) => void;
 
+  // column ordering
+  columnOrder?: string[];
+  onColumnOrderChange?: (order: string[]) => void;
+
+  // column visibility
+  columnVisibility?: Record<string, boolean>;
+  onColumnVisibilityChange?: (newVis: Record<string, boolean>) => void;
+
   // Optional download handler
   onDownloadAll?: (format: 'csv' | 'txt') => void;
 }
 
 // This is the actual function...
-export function DataTable({ id, data, columns, totalItems, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, onDownloadAll }: DataTableProps) {
+export function DataTable({ id, data, columns, totalItems, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, onDownloadAll }: DataTableProps) {
 
   // These next consts are used and activated when something about the columm changes
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
-  const [columnOrder, setColumnOrder] = useState(() => [
-    '__select__',
-    ...columns.map((col) => col.id),
-  ]);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(columns.map((col) => [col.id, col.visible !== false]))
+    controlledVisibility || {}
   );
   const [showColumnMenu, setShowColumnMenu] = useState(false);
 
@@ -305,12 +309,18 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
       // Notify parent
       onSortingChange?.(newSorting);
     },
+
     onColumnVisibilityChange: (updater) => {
-      setColumnVisibility((prev) => {
-        const newVisibility = typeof updater === 'function' ? updater(prev) : updater;
-        return { ...newVisibility };
-      });
-    
+      const newVis =
+        typeof updater === 'function' ? updater(columnVisibility) : updater;
+
+      setColumnVisibility(newVis);
+
+      // call parent callback
+      if (onColumnVisibilityChangeProp) {
+        onColumnVisibilityChangeProp(newVis);
+      }
+
       // Trigger a recalculation of column sizing on visibility toggle
       setColumnSizing((prev) => {
         const updated = { ...prev };
@@ -326,7 +336,7 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     manualPagination: true,
     manualSorting: true,
     pageCount: Math.ceil(totalItems/pagination.pageSize),
-    onColumnOrderChange: setColumnOrder,
+    onColumnOrderChange,
     columnResizeMode: 'onEnd', // This waits to implement the new column size until the mouse is released. This makes the transition smoother as it doesn't have to keep rerendering the column/table in realtime as the user moves the mouse.
     enableColumnResizing: true,
     getCoreRowModel: getCoreRowModel(), // This is what lets react build out the table from the raw data

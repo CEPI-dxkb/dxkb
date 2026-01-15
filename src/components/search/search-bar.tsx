@@ -2,7 +2,13 @@
 
 import React, { useState, FormEvent, useEffect, Suspense } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LuSearch } from "react-icons/lu";
 import { useRouter } from "next/navigation";
 import { searchTypes } from '../../constants/searchInfo';
@@ -40,12 +46,6 @@ function SearchBarContent({
   };
 
   const [selected, setSelected] = useState("everything");
-  const [selectedTitle, setSelectedTitle] = useState("All Data Types");
-
-  const handleSelect = (val: string, title: string) => {
-    setSelected(val);
-    setSelectedTitle(title);
-  };
 
   const searchParams = useSearchParams();
 
@@ -61,46 +61,41 @@ function SearchBarContent({
   }, [searchParams])
 
   return (
-    <form onSubmit={handleSearch} className={`flex gap-4 ${className}`}>
-      <div className="relative grow">
-        <Input
-          type="text"
-          placeholder={placeholder}
-          className={`${size === "lg" ? "py-6" : ""} ${showIcon ? "pl-10" : ""} bg-background text-foreground`}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        {showIcon && (
-          <LuSearch
-            className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary"
-            size={18}
-          />
-        )}
-      </div>
+    <form onSubmit={handleSearch} className={`flex w-full max-w-[880px] ${className}`}>
+      <div className="relative flex w-full h-full items-stretch rounded-md border border-input bg-background overflow-hidden">
+        <Select value={selected} onValueChange={setSelected}>
+          <SelectTrigger
+            id="searchtype"
+            className={`${size === "lg" ? "h-auto py-6" : ""} text-sm min-w-[120px] rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-foreground shadow-none focus:ring-0`}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {searchTypes.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.typeTitle}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      <select
-        id="searchtype"
-        value={selected}
-        onChange={(e) => setSelected(e.target.value)}
-        className={`${size === "lg" ? "py-2" : ""} ${showIcon ? "pl-4" : ""} bg-background rounded-md text-foreground`}
-        >
-        {searchTypes.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.typeTitle}
-          </option>
-        ))}
-      </select>
-      
-      <Button
-        type="submit"
-        size={size}
-        className={`bg-secondary hover:bg-secondary-foreground text-foreground ${
-          size === "lg" ? "py-6" : ""
-        }`}
-      >
-        Search
-      </Button>
+        <div className="relative flex-1 min-w-0">
+          <Input
+            type="text"
+            placeholder={placeholder}
+            className={`${size === "lg" ? "py-6" : ""} ${showIcon ? "pl-10" : ""} rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0 w-full`}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          {showIcon && (
+            <LuSearch
+              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary pointer-events-none"
+              size={18}
+            />
+          )}
+        </div>
+      </div>
     </form>
   );
 }
@@ -108,42 +103,38 @@ function SearchBarContent({
 export function SearchBar(props: SearchBarProps) {
   return (
     <Suspense fallback={
-      <form className={`flex gap-4 ${props.className || ""}`}>
-        <div className="relative grow">
-          <Input
-            type="text"
-            placeholder={props.placeholder || "Search by virus name, protein, gene, or taxonomy..."}
-            className={`${props.size === "lg" ? "py-6" : ""} ${props.showIcon !== false ? "pl-10" : ""} bg-background text-foreground`}
-            disabled
-          />
-          {props.showIcon !== false && (
-            <LuSearch
-              className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary"
-              size={18}
+      <form className={`flex w-full ${props.className || ""}`}>
+        <div className="relative flex w-full grow items-stretch rounded-md border border-input bg-background overflow-hidden">
+          <Select disabled defaultValue="everything">
+            <SelectTrigger
+              id="searchtype"
+              className={`${props.size === "lg" ? "h-auto py-6" : ""} text-sm min-w-[140px] rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-foreground shadow-none focus:ring-0`}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {searchTypes.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.typeTitle}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="relative flex-1 min-w-0">
+            <Input
+              type="text"
+              placeholder={props.placeholder || "Search by virus name, protein, gene, or taxonomy..."}
+              className={`${props.size === "lg" ? "h-auto py-6" : ""} ${props.showIcon !== false ? "pl-10" : ""} rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0 w-full`}
+              disabled
             />
-          )}
+            {props.showIcon !== false && (
+              <LuSearch
+                className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary pointer-events-none"
+                size={18}
+              />
+            )}
+          </div>
         </div>
-        <select
-          id="searchtype"
-          className={`${props.size === "lg" ? "py-2" : ""} ${props.showIcon !== false ? "pl-4" : ""} bg-background rounded-md text-foreground`}
-          disabled
-        >
-          {searchTypes.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.typeTitle}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="submit"
-          size={props.size}
-          className={`bg-secondary hover:bg-secondary-foreground text-foreground ${
-            props.size === "lg" ? "py-6" : ""
-          }`}
-          disabled
-        >
-          Search
-        </Button>
       </form>
     }>
       <SearchBarContent {...props} />

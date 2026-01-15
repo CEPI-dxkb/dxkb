@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/buttons/button";
-import { LuMenu } from "react-icons/lu";
+import { LuMenu, LuSearch, LuChevronUp } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,12 +20,18 @@ import Link from "next/link";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
 import { LogoutButton } from "../auth/logout-button";
+import { MobileSearchBar } from "../search/mobile-search-bar";
+import { usePathname } from "next/navigation";
 
 const MobileNavbar = () => {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   return (
-    <header className="bg-primary flex items-center justify-between px-4 py-4 text-foreground md:hidden">
+    <header className="bg-primary flex flex-col lg:hidden">
+      <div className="flex items-center justify-between px-4 py-4 text-foreground">
       <div className="flex items-center gap-4">
         <Sheet>
           <SheetTrigger asChild className="group hover:bg-gray-300/50">
@@ -135,6 +142,29 @@ const MobileNavbar = () => {
       </div>
 
       <div className="flex items-center space-x-2">
+        {/* Search/Chevron Icon Button - only show when not on home */}
+        {!isHome && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-foreground hover:bg-gray-300/50"
+            onClick={() => {
+              if (isSearchOpen) {
+                setIsSearchOpen(false);
+              } else {
+                setIsSearchOpen(true);
+              }
+            }}
+            aria-label={isSearchOpen ? "Close search" : "Open search"}
+          >
+            {isSearchOpen ? (
+              <LuChevronUp size={18} />
+            ) : (
+              <LuSearch size={18} />
+            )}
+          </Button>
+        )}
+
         {/* Show skeleton while loading */}
         {isLoading && (
           <div className="flex items-center space-x-2">
@@ -180,6 +210,16 @@ const MobileNavbar = () => {
           </>
         )}
       </div>
+    </div>
+
+      {!isHome && isSearchOpen && (
+        <div className="px-4 pb-4">
+          <MobileSearchBar
+            isOpen={isSearchOpen}
+            onClose={() => setIsSearchOpen(false)}
+          />
+        </div>
+      )}
     </header>
   );
 };

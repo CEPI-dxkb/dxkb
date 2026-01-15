@@ -15,7 +15,6 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
-import { useTheme } from "next-themes";
 import { SearchBar } from "../search/search-bar";
 import { usePathname } from "next/navigation";
 
@@ -50,19 +49,19 @@ const DesktopNavbar = () => {
   const isHome = pathname === '/';
 
   return (
-    <header className="bg-primary hidden h-18 items-center justify-between px-4 py-4 text-white md:flex">
-      <div className="flex items-center space-x-2">
-        <Link id="dxkb-logooooo" href="/">
+    <header className="bg-primary hidden h-18 items-center justify-between px-4 py-4 text-white lg:flex">
+      <div className="flex items-center space-x-2 shrink-0">
+        <Link id="dxkb-logo" href="/" className="shrink-0">
           <Logo
             variant="logo-white"
             width={100}
             height={44}
-            className="h-10 w-auto"
+            className="h-8 w-auto shrink-0"
             priority
           />
         </Link>
 
-        <NavigationMenu className="bg-primary hidden w-full items-center justify-between font-bold md:flex">
+        <NavigationMenu className="bg-primary hidden w-full items-center justify-between font-bold lg:flex">
           <NavigationMenuList>
             <NavigationMenuItem id="getting-started-nav">
               <NavigationMenuTrigger className="bg-primary">
@@ -211,7 +210,7 @@ const DesktopNavbar = () => {
         </div>
 
         {!isHome && (
-          <div className="flex flex-1 items-center px-2">
+          <div className="hidden lg:flex flex-1 items-center justify-end px-2">
             <SearchBar className="w-full" />
           </div>
         )}

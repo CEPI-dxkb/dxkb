@@ -14,11 +14,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Parse optional limit from request body (default: 10000, max: 10000)
+    const body = await request.json().catch(() => ({}));
+    const requestedLimit = Number.parseInt(
+      body?.limit?.toString() || "10000",
+      10,
+    );
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 10000)
+      : 10000;
+
     const queryParts = [
       `or(eq(genome_name,**),eq(genome_id,**))`,
       `or(eq(public,true),eq(public,false))`,
       `in(superkingdom,(Eukaryota,Bacteria,Viruses))`,
       `select(genome_id,genome_name,strain,public,owner,reference_genome,taxon_id)`,
+      `limit(${limit})`,
     ];
     const queryString = `?${queryParts.join("&")}`;
     const url = `${GENOME_API_BASE}${queryString}`;

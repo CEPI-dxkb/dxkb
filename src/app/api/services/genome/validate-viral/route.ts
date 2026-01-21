@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAuthToken } from "@/lib/auth";
+import type { ViralGenomeValidationResult } from "@/lib/services/genome";
 
 const DATA_API_BASE = "https://p3.theseed.org/services/data_api/genome/";
 
@@ -9,13 +10,6 @@ function buildInClause(ids: string[]): string {
     .filter((id) => /^[0-9.]+$/.test(id));
 
   return sanitizedIds.join(",");
-}
-
-export interface ViralGenomeValidationResult {
-  genome_id: string;
-  superkingdom?: string;
-  genome_length?: number;
-  contigs?: number;
 }
 
 export async function POST(request: NextRequest) {

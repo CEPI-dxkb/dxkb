@@ -195,6 +195,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
 
         <div className="flex flex-col">
           <Button
+            type="button"
             aria-label="Increase value"
             className="border-input h-4 rounded-l-none rounded-br-none border-b-[0.5px] border-l-0 px-2 focus-visible:relative"
             variant="outline"
@@ -206,6 +207,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
             <ChevronUp size={15} />
           </Button>
           <Button
+            type="button"
             aria-label="Decrease value"
             className="border-input h-4 rounded-l-none rounded-tr-none border-t-[0.5px] border-l-0 px-2 focus-visible:relative"
             variant="outline"

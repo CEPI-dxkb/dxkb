@@ -2,6 +2,10 @@
 export * from "./msa-snp-analysis/msa-snp-analysis-form-schema";
 export * from "./msa-snp-analysis/msa-snp-analysis-form-utils";
 
-// Future schemas can be added here:
-// export * from "./other-protein-tool-form-schema";
-// etc.
+// MetaCATS form exports
+export * from "./meta-cats/meta-cats-form-schema";
+export * from "./meta-cats/meta-cats-form-utils";
+
+// Proteome Comparison form exports
+export * from "./proteome-comparison/proteome-comparison-form-schema";
+export * from "./proteome-comparison/proteome-comparison-form-utils";

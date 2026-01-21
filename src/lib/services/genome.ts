@@ -20,17 +20,21 @@ export async function fetchGenomeSuggestions(
 ): Promise<GenomeSummary[]> {
   const trimmed = query.trim();
 
-  if (!trimmed) {
-    return [];
-  }
+  // if (!trimmed) {
+  //   console.log("no query, returning empty array");
+  //   return [];
+  // }
 
   const { limit = 25, signal } = options;
   const params = new URLSearchParams({
-    q: trimmed,
+    q: trimmed || "",
     limit: `${limit}`,
   });
 
+  console.log("params are:", params.toString());
+
   try {
+    console.log("fetching suggestions for query:", query);
     const response = await fetch(`/api/services/genome/search?${params.toString()}`, {
       method: "GET",
       credentials: "include",

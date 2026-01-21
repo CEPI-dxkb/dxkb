@@ -9,7 +9,6 @@ function sanitizeQuery(input: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("request is:", request);
     const { searchParams } = new URL(request.url);
     const rawQuery = searchParams.get("q") || "";
     const limitParam = Number.parseInt(searchParams.get("limit") || "25", 10);
@@ -44,7 +43,6 @@ export async function GET(request: NextRequest) {
       queryString = `?or(eq(genome_name,${wildcard}),eq(genome_id,${wildcard}))&or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${limit})`;
     }
 
-    console.log("queryString is:", queryString);
     const url = `${DATA_API_BASE}${queryString}`;
 
     const response = await fetch(url, {

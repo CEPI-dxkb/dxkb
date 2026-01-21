@@ -3,14 +3,6 @@ import { getServerAuthToken } from "@/lib/auth";
 
 const GENOME_API_BASE = "https://www.bv-brc.org/api-for-website/genome/";
 
-function buildInClause(ids: string[]): string {
-  const sanitizedIds = ids
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
-
-  return sanitizedIds.join(",");
-}
-
 export async function POST(request: NextRequest) {
   try {
     const token = await getServerAuthToken();
@@ -30,8 +22,6 @@ export async function POST(request: NextRequest) {
     ];
     const queryString = `?${queryParts.join("&")}`;
     const url = `${GENOME_API_BASE}${queryString}`;
-    
-    console.log("Genome API URL:", url); // Debug log to verify the URL
 
     const response = await fetch(url, {
       method: "GET",

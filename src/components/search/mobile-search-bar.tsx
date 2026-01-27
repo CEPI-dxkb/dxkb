@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, FormEvent, useEffect, useRef, Suspense } from "react";
+import React, {
+  useState,
+  FormEvent,
+  useEffect,
+  useRef,
+  useCallback,
+  Suspense,
+} from "react";
 import { Input } from "@/components/ui/input";
 import { LuSearch, LuX } from "react-icons/lu";
 import { useRouter } from "next/navigation";
@@ -20,6 +27,27 @@ interface MobileSearchBarProps {
   placeholder?: string;
   isOpen?: boolean;
   onClose?: () => void;
+}
+
+function extractKeywordQuery(raw: string): string {
+  const matches = [...raw.matchAll(/keyword\(([^)]+)\)/g)];
+  const keywords = matches.map((match) => match[1]);
+  return keywords.join(" ");
+}
+
+function SearchParamsSync({
+  onQueryChange,
+}: {
+  onQueryChange: (value: string) => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const raw = searchParams.get("q") || "";
+    onQueryChange(extractKeywordQuery(raw));
+  }, [searchParams, onQueryChange]);
+
+  return null;
 }
 
 function MobileSearchBarContent({
@@ -77,24 +105,18 @@ function MobileSearchBarContent({
     }
   }, [isOpen]);
 
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const raw = searchParams.get("q") || "";
-
-    // Match all keyword(...) values, even if nested
-    const matches = [...raw.matchAll(/keyword\(([^)]+)\)/g)];
-    const keywords = matches.map((match) => match[1]);
-
-    // Join with space (or comma if preferred)
-    setInputValue(keywords.join(" "));
-  }, [searchParams]);
+  const handleQueryChange = useCallback((value: string) => {
+    setInputValue(value);
+  }, []);
 
   const selectedType =
     searchTypes.find((type) => type.id === selected) || searchTypes[0];
 
   return (
     <form onSubmit={handleSearch} className={cn("flex w-full", className)}>
+      <Suspense fallback={null}>
+        <SearchParamsSync onQueryChange={handleQueryChange} />
+      </Suspense>
       <div className="bg-muted/80 dark:bg-muted/60 border-muted-foreground/30 relative flex w-full items-center overflow-hidden rounded-full border">
         {/* Data Types Selector - Left Side */}
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -189,28 +211,6 @@ export function MobileSearchBar(props: MobileSearchBarProps) {
   }
 
   return (
-    <Suspense
-      fallback={
-        <div className="flex w-full">
-          <div className="relative flex w-full items-center">
-            <LuSearch
-              className="text-muted-foreground pointer-events-none absolute left-3 z-10"
-              size={18}
-            />
-            <Input
-              type="text"
-              placeholder={
-                props.placeholder ||
-                "Search by virus name, protein, gene, or taxonomy..."
-              }
-              className="bg-muted/80 dark:bg-muted/60 border-muted-foreground/30 text-foreground placeholder:text-muted-foreground h-10 rounded-full pr-24 pl-10"
-              disabled
-            />
-          </div>
-        </div>
-      }
-    >
-      <MobileSearchBarContent {...props} />
-    </Suspense>
+    <MobileSearchBarContent {...props} />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, FormEvent, useEffect, Suspense } from "react";
+import React, { useState, FormEvent, useEffect, useCallback, Suspense } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -20,6 +20,27 @@ interface SearchBarProps {
   placeholder?: string;
   size?: "default" | "lg";
   showIcon?: boolean;
+}
+
+function extractKeywordQuery(raw: string): string {
+  const matches = [...raw.matchAll(/keyword\(([^)]+)\)/g)];
+  const keywords = matches.map((match) => match[1]);
+  return keywords.join(" ");
+}
+
+function SearchParamsSync({
+  onQueryChange,
+}: {
+  onQueryChange: (value: string) => void;
+}) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const raw = searchParams.get("q") || "";
+    onQueryChange(extractKeywordQuery(raw));
+  }, [searchParams, onQueryChange]);
+
+  return null;
 }
 
 function SearchBarContent({
@@ -47,21 +68,15 @@ function SearchBarContent({
 
   const [selected, setSelected] = useState("everything");
 
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const raw = searchParams.get('q') || ''
-
-    // Match all keyword(...) values, even if nested
-    const matches = [...raw.matchAll(/keyword\(([^)]+)\)/g)]
-    const keywords = matches.map(match => match[1])
-
-    // Join with space (or comma if preferred)
-    setInputValue(keywords.join(' '))
-  }, [searchParams])
+  const handleQueryChange = useCallback((value: string) => {
+    setInputValue(value);
+  }, []);
 
   return (
     <form onSubmit={handleSearch} className={`flex w-full max-w-[880px] ${className}`}>
+      <Suspense fallback={null}>
+        <SearchParamsSync onQueryChange={handleQueryChange} />
+      </Suspense>
       <div className="relative flex w-full h-full items-stretch rounded-md border border-input bg-background overflow-hidden">
         <Select value={selected} onValueChange={setSelected}>
           <SelectTrigger
@@ -102,42 +117,6 @@ function SearchBarContent({
 
 export function SearchBar(props: SearchBarProps) {
   return (
-    <Suspense fallback={
-      <form className={`flex w-full ${props.className || ""}`}>
-        <div className="relative flex w-full grow items-stretch rounded-md border border-input bg-background overflow-hidden">
-          <Select disabled defaultValue="everything">
-            <SelectTrigger
-              id="searchtype"
-              className={`${props.size === "lg" ? "h-auto py-6" : ""} text-sm min-w-[140px] rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-foreground shadow-none focus:ring-0`}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {searchTypes.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.typeTitle}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="relative flex-1 min-w-0">
-            <Input
-              type="text"
-              placeholder={props.placeholder || "Search by virus name, protein, gene, or taxonomy..."}
-              className={`${props.size === "lg" ? "h-auto py-6" : ""} ${props.showIcon !== false ? "pl-10" : ""} rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0 w-full`}
-              disabled
-            />
-            {props.showIcon !== false && (
-              <LuSearch
-                className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary pointer-events-none"
-                size={18}
-              />
-            )}
-          </div>
-        </div>
-      </form>
-    }>
-      <SearchBarContent {...props} />
-    </Suspense>
+    <SearchBarContent {...props} />
   );
 }

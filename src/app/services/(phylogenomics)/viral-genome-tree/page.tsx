@@ -378,9 +378,9 @@ export default function ViralGenomeTreePage() {
         description="The Viral Genome Tree Service enables construction of whole genome alignment based phylogenetic trees for user-selected viral genomes."
         infoPopupTitle={phylogeneticTreeInfo.title}
         infoPopupDescription={phylogeneticTreeInfo.description}
-        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/bacterial_genome_tree.html"
-        tutorial="https://www.bv-brc.org/docs/tutorials/bacterial_genome_tree/bacterial_genome_tree.html"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/genetree.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/genetree/genetree.html"
+        instructionalVideo="https://www.youtube.com/watch?v=VtXWBRSdXRo"
       />
 
       <Form {...form}>

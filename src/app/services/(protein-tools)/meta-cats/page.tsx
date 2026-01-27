@@ -381,9 +381,8 @@ export default function MetaCATSPage() {
           or others may affect the robustness of the underlying statistical assumptions."
         infoPopupTitle={metaCATSInfo.title}
         infoPopupDescription={metaCATSInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/metacats.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/metacats/metacats.html"
       />
 
       <Form {...form}>

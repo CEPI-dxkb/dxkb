@@ -375,9 +375,9 @@ export default function ProteomeComparisonPage() {
           select genomes and compare them to a reference genome."
         infoPopupTitle={proteomeComparisonInfo.title}
         infoPopupDescription={proteomeComparisonInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/proteome_comparison_service.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/proteome_comparison/proteome_comparison.html"
+        instructionalVideo="https://www.youtube.com/watch?v=UJak-ifQ9FE"
       />
 
       <Form {...form}>

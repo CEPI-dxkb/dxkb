@@ -320,7 +320,7 @@ export default function GeneProteinTreePage() {
         infoPopupTitle={phylogeneticTreeInfo.title}
         infoPopupDescription={phylogeneticTreeInfo.description}
         quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/genetree.html"
-        tutorial="https://www.bv-brc.org/docs/tutorials/genetree/genetree.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/genetree/genetree.html"
         instructionalVideo="https://youtu.be/VtXWBRSdXRo"
       />
 

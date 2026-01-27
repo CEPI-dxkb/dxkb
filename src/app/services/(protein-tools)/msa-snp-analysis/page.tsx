@@ -476,9 +476,9 @@ export default function MSAandSNPAnalysisPage() {
           The service can also be used for variation and SNP analysis with feature groups, FASTA files, aligned FASTA files, and user input FASTA records."
         infoPopupTitle={msaSNPAnalysisInfo.title}
         infoPopupDescription={msaSNPAnalysisInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/msa_snp_variation_service.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/msa_snp_variation/msa_snp_variation.html"
+        instructionalVideo="https://www.youtube.com/watch?v=ea6GboAZPQs"
       />
 
       <Form {...form}>

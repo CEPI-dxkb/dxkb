@@ -9,7 +9,9 @@ import { useQuery } from '@tanstack/react-query';
 interface ListDataProps { 
   q: string; 
   resource: string; // 'genome', 'gene', etc.
-  onSelectionChange?: (rows: any[]) => void; 
+  onSelectionChange?: (rows: any[]) => void;
+  rowSelection?: Record<string, boolean>;
+  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
 }
 
 function downloadFile(filename: string, content: string) {
@@ -21,10 +23,14 @@ function downloadFile(filename: string, content: string) {
   URL.revokeObjectURL(link.href);
 }
 
-export function ListData({ q, resource, onSelectionChange }: ListDataProps) {
+export function ListData({ q, resource, onSelectionChange, rowSelection: controlledRowSelection, onRowSelectionChange }: ListDataProps) {
   const [fields, setFields] = useState<any[]>([]);
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  
+  // Use controlled rowSelection if provided, otherwise use internal state
+  const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
+  const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
+  const setRowSelection = onRowSelectionChange || setInternalRowSelection;
 
   useEffect(() => {
     (async () => {
@@ -160,16 +166,23 @@ export function ListData({ q, resource, onSelectionChange }: ListDataProps) {
     );
   }
 
-  const handleSelectionChange = (newSelection: Record<string, boolean>) => {
-    setRowSelection(newSelection);           // update local state
-    onSelectionChange?.(Object.keys(newSelection).filter(k => newSelection[k]));
+  const handleRowSelectionChange = (newSelection: Record<string, boolean>) => {
+    setRowSelection(newSelection);
+    
+    // Convert to selected rows array and notify parent
+    const selectedRowsData = Object.keys(newSelection)
+      .filter(k => newSelection[k])
+      .map((key) => (pageData ?? [])[parseInt(key, 10)])
+      .filter(Boolean);
+    
+    onSelectionChange?.(selectedRowsData);
   };
 
   const handlePageChange = (newPage: number) => {
     console.log('handlePageChange called, newPage:', newPage);
     setPageIndex(newPage);
     setRowSelection({});
-    // setSelectedRows([]);
+    onSelectionChange?.([]); // Clear selection in parent too
   };
 
   async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[] | null) {
@@ -257,15 +270,15 @@ export function ListData({ q, resource, onSelectionChange }: ListDataProps) {
             data={pageData ?? []}
             columns={widget.columns}
             rowSelection={rowSelection}
+            onRowSelectionChange={handleRowSelectionChange}
             onSelectionChange={(selectedRows) => {
-              // This is your callback — cascades up without changing table state
-              onSelectionChange?.(selectedRows);
+              // Backwards compatibility callback - logs for debugging
               console.log('Selected rows:', selectedRows.length);
             }}
             pageIndex={pageIndex}
             pageSize={pageSize}
             totalItems={totalItems}
-            onPageChange={handlePageChange}
+            onPageChange={setPageIndex}
             sorting={sorting}
             onSortingChange={setSortingAndResetPage}
             columnOrder={columnOrder}

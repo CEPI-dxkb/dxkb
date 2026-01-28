@@ -63,12 +63,16 @@ interface DataTableProps {
   columnVisibility?: Record<string, boolean>;
   onColumnVisibilityChange?: (newVis: Record<string, boolean>) => void;
 
+  // row selection (controlled)
+  rowSelection?: Record<string, boolean>;
+  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
+
   // Optional download handler
   onDownloadAll?: (format: 'csv' | 'txt') => void;
 }
 
 // This is the actual function...
-export function DataTable({ id, data, columns, totalItems, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, onDownloadAll }: DataTableProps) {
+export function DataTable({ id, data, columns, totalItems, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, rowSelection: controlledRowSelection, onRowSelectionChange, onDownloadAll }: DataTableProps) {
 
   // These next consts are used and activated when something about the columm changes
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
@@ -77,21 +81,22 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
   );
   const [showColumnMenu, setShowColumnMenu] = useState(false);
 
-  // This handles the event of someone selecting a row
-  const [rowSelection, setRowSelection] = useState({});
+  // This handles the event of someone selecting a row - use controlled if provided
+  const [internalRowSelection, setInternalRowSelection] = useState({});
+  const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
 
   // This helps set up the pagination
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: pageIndex ?? 0,  // default 0 if parent doesn’t provide
-    pageSize: pageSize ?? 200,
-  });
+//  const [pagination, setPagination] = useState<PaginationState>({
+//    pageIndex: pageIndex ?? 0,  // default 0 if parent doesn’t provide
+//    pageSize: pageSize ?? 200,
+//  });
 
   // sync whenever parent changes pageIndex
-  useEffect(() => {
-    if (pageIndex !== undefined && pageIndex !== pagination.pageIndex) {
-      setPagination((prev) => ({ ...prev, pageIndex }));
-    }
-  }, [pageIndex]);
+//  useEffect(() => {
+//    if (pageIndex !== undefined && pageIndex !== pagination.pageIndex) {
+//      setPagination((prev) => ({ ...prev, pageIndex }));
+//    }
+//  }, [pageIndex]);
 
   // This allows us to select multiple rows at once...
   const lastSelectedIndexRef = useRef<number | null>(null);
@@ -277,7 +282,10 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     columns: columnDefs,
     state: { // These are the various states that are relevant in the table. These were defined up above.
       sorting: controlledSorting ?? [],
-      pagination,
+      pagination: {
+        pageIndex: pageIndex ?? 0,
+        pageSize: pageSize ?? 200,
+      },
       columnOrder,
       columnVisibility,
       columnSizing,
@@ -285,8 +293,16 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     },
     onRowSelectionChange: (updater) => {
       const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
-      setRowSelection(newSelection);
+      
+      // If controlled, call the parent handler
+      if (onRowSelectionChange) {
+        onRowSelectionChange(newSelection);
+      } else {
+        // Otherwise update internal state
+        setInternalRowSelection(newSelection);
+      }
 
+      // Always call onSelectionChange for backwards compatibility
       if (onSelectionChange) {
         const selectedRows = Object.keys(newSelection)
           .filter((key) => newSelection[key])
@@ -304,11 +320,11 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
           : updater;
 
       // Reset to first page
-      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+      table.setPageIndex(0);
 
       // Notify parent
       onSortingChange?.(newSorting);
-    },
+      },
 
     onColumnVisibilityChange: (updater) => {
       const newVis =
@@ -332,10 +348,17 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
         return updated;
       });
     },
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const next =
+        typeof updater === 'function'
+          ? updater({ pageIndex: pageIndex ?? 0, pageSize: pageSize ?? 200 })
+          : updater;
+
+      onPageChange?.(next.pageIndex);
+    },
     manualPagination: true,
     manualSorting: true,
-    pageCount: Math.ceil(totalItems/pagination.pageSize),
+    pageCount: Math.ceil(totalItems / (pageSize ?? 200)),
     onColumnOrderChange,
     columnResizeMode: 'onEnd', // This waits to implement the new column size until the mouse is released. This makes the transition smoother as it doesn't have to keep rerendering the column/table in realtime as the user moves the mouse.
     enableColumnResizing: true,

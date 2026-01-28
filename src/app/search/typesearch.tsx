@@ -1,7 +1,7 @@
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { ListData } from "@/components/services/ListData";
 import { WithGenomePanel } from "@/components/layouts/WithGenomePanel";
@@ -75,6 +75,25 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
   const tablist = Object.keys(tabsForType);
 
   const [selectedRows, setSelectedRows] = useState<any[]>([]);
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({});
+  
+  // Track previous values to detect actual changes
+  const prevUrlTypeRef = useRef<string>(urlType);
+  const prevUrlQRef = useRef<string>(urlQ);
+
+  // Clear selection only when searchtype or query actually changes
+  useEffect(() => {
+    const urlTypeChanged = prevUrlTypeRef.current !== urlType;
+    const urlQChanged = prevUrlQRef.current !== urlQ;
+    
+    if (urlTypeChanged || urlQChanged) {
+      console.log('Clearing selection due to URL change');
+      setRowSelection({});
+      setSelectedRows([]);
+      prevUrlTypeRef.current = urlType;
+      prevUrlQRef.current = urlQ;
+    }
+  }, [urlType, urlQ]);
 
   // render prop from WithGenomePanel gives us activeTab + setActiveTab.
   // We'll use an inner component so we can use useEffect to call setActiveTab
@@ -122,6 +141,8 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
               resource={term}
               q={fullQ}
               onSelectionChange={setSelectedRows}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
             />
           </TabsContent>
         ))}

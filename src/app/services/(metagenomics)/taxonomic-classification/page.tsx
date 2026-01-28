@@ -196,9 +196,9 @@ export default function TaxonomicClassificationPage() {
       return;
     }
 
-    // Library-level sample_id ALWAYS uses default from filename (normalized)
+    // Library-level sample_id is captured at add-time from the textbox (fallback to default)
     const defaultSampleId = pairedRead1.split("/").pop()?.split(".")[0] || "sample";
-    const librarySampleId = defaultSampleId.replace(/[-:@"';\[\]{}|`]/g, "_");
+    const librarySampleId = pairedSampleId.trim() || defaultSampleId;
     const newLibrary: Library = {
       id: `${pairedRead1}${pairedRead2}`,
       name: `P(${pairedRead1.split("/").pop()}, ${pairedRead2.split("/").pop()})`,
@@ -222,9 +222,9 @@ export default function TaxonomicClassificationPage() {
       return;
     }
 
-    // Library-level sample_id ALWAYS uses default from filename (normalized)
+    // Library-level sample_id is captured at add-time from the textbox (fallback to default)
     const defaultSampleId = singleRead.split("/").pop()?.split(".")[0] || "sample";
-    const librarySampleId = defaultSampleId.replace(/[-:@"';\[\]{}|`]/g, "_");
+    const librarySampleId = singleSampleId.trim() || defaultSampleId;
     const newLibrary: Library = {
       id: singleRead,
       name: `S(${singleRead.split("/").pop()})`,
@@ -286,8 +286,8 @@ export default function TaxonomicClassificationPage() {
     const newSraLibs = libs.filter((l) => l.type === "sra" && !prevSraIds.has(l.id));
     const libsWithSampleId = libs.map((lib) => {
       if (lib.type === "sra" && !prevSraIds.has(lib.id)) {
-        // Library-level sample_id ALWAYS uses default (SRR accession ID)
-        return { ...lib, sampleId: lib.id };
+        // Library-level sample_id is captured at add-time from the textbox (fallback to SRR accession)
+        return { ...lib, sampleId: srrSampleId.trim() || lib.id };
       }
       return lib;
     });

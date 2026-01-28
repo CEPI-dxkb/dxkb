@@ -10,13 +10,17 @@ export function transformTaxonomicClassificationParams(
     output_path: data.output_path,
     output_file: data.output_file.trim(),
     sequence_type: data.sequence_type === "16s" ? "sixteenS" : data.sequence_type,
-    analysis_type: data.analysis_type,
     database: data.database,
-    host_genome: data.host_genome,
     confidence_interval: data.confidence_interval,
     save_classified_sequences: data.save_classified_sequences ? "true" : "false",
     save_unclassified_sequences: data.save_unclassified_sequences ? "true" : "false",
   };
+
+  // analysis_type and host_genome are only valid for WGS; omit for sixteenS
+  if (data.sequence_type === "wgs") {
+    params.analysis_type = data.analysis_type;
+    params.host_genome = data.host_genome;
+  }
 
   // Add read libraries with sample_id (library-level sample_id is set at add-time and stays unchanged)
   if (data.paired_end_libs && data.paired_end_libs.length > 0) {

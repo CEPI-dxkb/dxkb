@@ -1,6 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Card,
   CardContent,
@@ -8,8 +18,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
@@ -17,543 +29,877 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ChevronRight, HelpCircle } from "lucide-react";
+import { toast } from "sonner";
+
 import { ServiceHeader } from "@/components/services/service-header";
-import SearchReadLibrary from "@/components/services/search-read-library";
-import SelectedItemsTable from "@/components/services/selected-items-table";
-import SraRunAccession from "@/components/services/sra-run-accession";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
+import SelectedItemsTable from "@/components/services/selected-items-table";
 import OutputFolder from "@/components/services/output-folder";
-import { HelpCircle } from "lucide-react";
-import { Library } from "@/types/services";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { Spinner } from "@/components/ui/spinner";
+
+import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { submitServiceJob } from "@/lib/services/service-utils";
 import {
-  handlePairedLibraryAdd,
-  handleSingleLibraryAdd,
-  removeFromSelectedLibraries,
-  handleFormSubmit,
-} from "@/lib/services/service-utils";
-import {
+  taxonomyClassificationInfo,
+  taxonomyClassificationInput,
+  taxonomyClassificationParameters,
   taxonomyClassificationAnalysisType,
   taxonomyClassificationDatabase,
   taxonomyClassificationFilterHostReads,
   taxonomyClassificatioConfidenceInterval,
-  taxonomyClassificationInfo,
-  taxonomyClassificationInput,
-  taxonomyClassificationParameters,
 } from "@/lib/services/service-info";
 
-const TaxonomicClassificationService = () => {
-  const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  const [sequencingType, setSequencingType] = useState("wgs");
-  const [_outputFolder, setOutputFolder] = useState("");
-  const [_outputName, setOutputName] = useState("");
-  const [selectedDatabase, setSelectedDatabase] = useState(
-    sequencingType === "wgs" ? "bvbrc" : "silva",
-  );
-  const [selectedAnalysisType, setSelectedAnalysisType] = useState(
-    sequencingType === "wgs" ? "microbiome" : "default",
-  );
-  const [saveClassifiedSequences, setSaveClassifiedSequences] = useState("no");
-  const [saveUnclassifiedSequences, setSaveUnclassifiedSequences] =
-    useState("no");
+import {
+  taxonomicClassificationFormSchema,
+  DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES,
+  WGS_ANALYSIS_TYPE_OPTIONS,
+  SIXTEENS_ANALYSIS_TYPE_OPTIONS,
+  WGS_DATABASE_OPTIONS,
+  SIXTEENS_DATABASE_OPTIONS,
+  HOST_GENOME_OPTIONS,
+  CONFIDENCE_INTERVAL_OPTIONS,
+  type TaxonomicClassificationFormData,
+  type LibraryItem,
+} from "@/lib/forms/(metagenomics)/taxonomic-classification/taxonomic-classification-form-schema";
+import {
+  transformTaxonomicClassificationParams,
+  getDefaultAnalysisType,
+  getDefaultDatabase,
+  isHostFilteringAvailable,
+  isAnalysisTypeSelectable,
+} from "@/lib/forms/(metagenomics)/taxonomic-classification/taxonomic-classification-form-utils";
 
-  useEffect(() => {
-    setSelectedDatabase(sequencingType === "wgs" ? "bvbrc" : "silva");
-  }, [sequencingType]);
+import type { WorkspaceObject } from "@/lib/workspace-client";
+import { Library } from "@/types/services";
 
-  useEffect(() => {
-    setSelectedAnalysisType(
-      sequencingType === "wgs" ? "microbiome" : "default",
-    );
-  }, [sequencingType]);
-
-  const [sampleIdentifiers, setSampleIdentifiers] = useState({
-    paired: "Sample ID",
-    single: "Sample ID",
-    sra: "Sample ID",
+export default function TaxonomicClassificationPage() {
+  const form = useForm<TaxonomicClassificationFormData>({
+    resolver: zodResolver(taxonomicClassificationFormSchema),
+    defaultValues: DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES,
+    mode: "onChange",
   });
+
+  // UI state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Read input state
+  const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
+  const [pairedRead1, setPairedRead1] = useState<string | null>(null);
+  const [pairedRead2, setPairedRead2] = useState<string | null>(null);
+  const [singleRead, setSingleRead] = useState<string | null>(null);
+  const [sraResetKey, setSraResetKey] = useState(0);
+
+  // Sample identifiers (default from selection, editable)
+  const [pairedSampleId, setPairedSampleId] = useState("");
+  const [singleSampleId, setSingleSampleId] = useState("");
+  const [srrSampleId, setSrrSampleId] = useState("");
+
+  // Watch form values
+  const sequenceType = form.watch("sequence_type");
+
+  // Update analysis type and database when sequence type changes
+  useEffect(() => {
+    const newAnalysisType = getDefaultAnalysisType(sequenceType);
+    const newDatabase = getDefaultDatabase(sequenceType);
+
+    form.setValue("analysis_type", newAnalysisType as "microbiome" | "pathogen" | "default");
+    form.setValue("database", newDatabase as "bvbrc" | "standard" | "SILVA" | "Greengenes");
+
+    // Reset host genome when switching to 16S
+    if (sequenceType === "16s") {
+      form.setValue("host_genome", "no_host");
+    }
+  }, [sequenceType, form]);
+
+  // Derive sample ID from library name or files
+  const deriveSampleId = (library: Library): string => {
+    if (library.files && library.files.length > 0) {
+      // Extract filename without extension from first file
+      const filename = library.files[0].split("/").pop() || "";
+      return filename.split(".")[0] || library.id;
+    }
+    return library.id;
+  };
+
+  // Convert Library to LibraryItem for form submission
+  const convertLibraryToLibraryItem = (library: Library): LibraryItem => {
+    const baseLib: LibraryItem = {
+      _id: library.id,
+      _type:
+        library.type === "paired"
+          ? "paired"
+          : library.type === "single"
+            ? "single"
+            : "srr_accession",
+      sample_id: library.sampleId?.trim() || deriveSampleId(library),
+    };
+
+    if (library.type === "paired" && library.files) {
+      baseLib.read1 = library.files[0];
+      baseLib.read2 = library.files[1];
+    } else if (library.type === "single" && library.files) {
+      baseLib.read = library.files[0];
+    }
+
+    return baseLib;
+  };
+
+  // Sync selectedLibraries with form data
+  const syncLibrariesToForm = (libraries: Library[]) => {
+    const pairedLibs: LibraryItem[] = [];
+    const singleLibs: LibraryItem[] = [];
+    const srrLibs: { srr_accession: string; sample_id: string; title?: string }[] = [];
+
+    libraries.forEach((lib) => {
+      if (lib.type === "paired") {
+        pairedLibs.push(convertLibraryToLibraryItem(lib));
+      } else if (lib.type === "single") {
+        singleLibs.push(convertLibraryToLibraryItem(lib));
+      } else if (lib.type === "sra") {
+        srrLibs.push({
+          srr_accession: lib.id,
+          sample_id: lib.sampleId?.trim() || lib.id,
+          ...(lib.title && { title: lib.title }),
+        });
+      }
+    });
+
+    // Update all library fields without individual validation
+    form.setValue("paired_end_libs", pairedLibs, { shouldValidate: false });
+    form.setValue("single_end_libs", singleLibs, { shouldValidate: false });
+    form.setValue("srr_libs", srrLibs, { shouldValidate: false });
+
+    // Trigger validation on all library fields together
+    form.trigger(["paired_end_libs", "single_end_libs", "srr_libs"]);
+  };
+
+  // Handle adding paired library
+  const handlePairedLibraryAdd = () => {
+    if (!pairedRead1 || !pairedRead2) {
+      toast.error("Both read files must be selected for paired library");
+      return;
+    }
+
+    if (pairedRead1 === pairedRead2) {
+      toast.error("READ FILE 1 and READ FILE 2 cannot be the same");
+      return;
+    }
+
+    // Library-level sample_id ALWAYS uses default from filename (normalized)
+    const defaultSampleId = pairedRead1.split("/").pop()?.split(".")[0] || "sample";
+    const librarySampleId = defaultSampleId.replace(/[-:@"';\[\]{}|`]/g, "_");
+    const newLibrary: Library = {
+      id: `${pairedRead1}${pairedRead2}`,
+      name: `P(${pairedRead1.split("/").pop()}, ${pairedRead2.split("/").pop()})`,
+      type: "paired",
+      files: [pairedRead1, pairedRead2],
+      sampleId: librarySampleId,
+    };
+
+    const newLibraries = [...selectedLibraries, newLibrary];
+    setSelectedLibraries(newLibraries);
+    syncLibrariesToForm(newLibraries);
+
+    // Set top-level sample ID form field (preserves user input including hyphens)
+    form.setValue("paired_sample_id", pairedSampleId.trim() || defaultSampleId);
+  };
+
+  // Handle adding single library
+  const handleSingleLibraryAdd = () => {
+    if (!singleRead) {
+      toast.error("Read file must be selected");
+      return;
+    }
+
+    // Library-level sample_id ALWAYS uses default from filename (normalized)
+    const defaultSampleId = singleRead.split("/").pop()?.split(".")[0] || "sample";
+    const librarySampleId = defaultSampleId.replace(/[-:@"';\[\]{}|`]/g, "_");
+    const newLibrary: Library = {
+      id: singleRead,
+      name: `S(${singleRead.split("/").pop()})`,
+      type: "single",
+      files: [singleRead],
+      sampleId: librarySampleId,
+    };
+
+    const newLibraries = [...selectedLibraries, newLibrary];
+    setSelectedLibraries(newLibraries);
+    syncLibrariesToForm(newLibraries);
+
+    // Set top-level sample ID form field (preserves user input including hyphens)
+    form.setValue("single_sample_id", singleSampleId.trim() || defaultSampleId);
+  };
+
+  // Handle removing a library
+  const handleRemoveLibrary = (id: string) => {
+    const newLibraries = selectedLibraries.filter((lib) => lib.id !== id);
+    setSelectedLibraries(newLibraries);
+    syncLibrariesToForm(newLibraries);
+  };
+
+  // Update both local state (for adding new libs) and form field (for submission top-level param)
+  const handlePairedSampleIdChange = (value: string) => {
+    setPairedSampleId(value);
+    form.setValue("paired_sample_id", value);
+  };
+
+  const handleSingleSampleIdChange = (value: string) => {
+    setSingleSampleId(value);
+    form.setValue("single_sample_id", value);
+  };
+
+  const handleSrrSampleIdChange = (value: string) => {
+    setSrrSampleId(value);
+    form.setValue("srr_sample_id", value);
+  };
+
+  // Handle form reset
+  const handleReset = () => {
+    form.reset(
+      { ...DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES },
+      { keepDefaultValues: false }
+    );
+    setSelectedLibraries([]);
+    setPairedRead1(null);
+    setPairedRead2(null);
+    setSingleRead(null);
+    setPairedSampleId("");
+    setSingleSampleId("");
+    setSrrSampleId("");
+    setSraResetKey((k) => k + 1);
+  };
+
+  // When SRA/libs are updated, assign sample_id to newly added SRA entries
+  const handleSetSelectedLibraries = (libs: Library[]) => {
+    const prevSraIds = new Set(selectedLibraries.filter((l) => l.type === "sra").map((l) => l.id));
+    const newSraLibs = libs.filter((l) => l.type === "sra" && !prevSraIds.has(l.id));
+    const libsWithSampleId = libs.map((lib) => {
+      if (lib.type === "sra" && !prevSraIds.has(lib.id)) {
+        // Library-level sample_id ALWAYS uses default (SRR accession ID)
+        return { ...lib, sampleId: lib.id };
+      }
+      return lib;
+    });
+    setSelectedLibraries(libsWithSampleId);
+    syncLibrariesToForm(libsWithSampleId);
+
+    // Set top-level sample ID form field AND populate the textbox for newly added SRA libs
+    if (newSraLibs.length > 0) {
+      const lastNewSra = newSraLibs[newSraLibs.length - 1];
+      const defaultSampleId = lastNewSra.id;
+      // Update both state (for textbox display) and form field (for submission)
+      setSrrSampleId(defaultSampleId);
+      form.setValue("srr_sample_id", defaultSampleId);
+    }
+  };
+
+  // Setup service form submission
+  const {
+    handleSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+    serviceName,
+  } = useServiceFormSubmission<TaxonomicClassificationFormData>({
+    serviceName: "TaxonomicClassification",
+    transformParams: transformTaxonomicClassificationParams,
+    onSubmit: async (data) => {
+      try {
+        setIsSubmitting(true);
+        const params = transformTaxonomicClassificationParams(data);
+        const result = await submitServiceJob("TaxonomicClassification", params);
+
+        if (result.success) {
+          toast.success("Taxonomic Classification job submitted successfully!", {
+            description: result.job?.[0]?.id
+              ? `Job ID: ${result.job[0].id}`
+              : "Job submitted successfully",
+            closeButton: true,
+          });
+        } else {
+          throw new Error(result.error || "Failed to submit job");
+        }
+      } catch (error) {
+        console.error("Failed to submit Taxonomic Classification job:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to submit job";
+        toast.error("Submission failed", {
+          description: errorMessage,
+          closeButton: true,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+  });
+
+  // Get current options based on sequence type
+  const analysisTypeOptions = sequenceType === "wgs"
+    ? WGS_ANALYSIS_TYPE_OPTIONS
+    : SIXTEENS_ANALYSIS_TYPE_OPTIONS;
+
+  const databaseOptions = sequenceType === "wgs"
+    ? WGS_DATABASE_OPTIONS
+    : SIXTEENS_DATABASE_OPTIONS;
 
   return (
     <section>
       <ServiceHeader
         title="Taxonomic Classification"
-        description="The Taxonomic Classification Service computes taxonomic classification
-          for read data."
+        description="The Taxonomic Classification Service computes taxonomic classification for read data."
         infoPopupTitle={taxonomyClassificationInfo.title}
         infoPopupDescription={taxonomyClassificationInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/taxonomic_classification_service.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/taxonomic_classification/taxonomic_classification.html"
+        instructionalVideo="https://youtu.be/PsqHeZ8pvt4"
       />
 
-      <form
-        onSubmit={handleFormSubmit}
-        className="grid grid-cols-1 gap-6 md:grid-cols-12"
-      >
-        <div className="md:col-span-7">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="grid grid-cols-1 gap-6 md:grid-cols-12"
+        >
           {/* Input File Section */}
-          <Card>
-            <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
-                Input File
-                <DialogInfoPopup
-                  title={taxonomyClassificationInput.title}
-                  description={taxonomyClassificationInput.description}
-                />
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="service-card-content !space-y-8">
-              <div id="paired-read-library" className="space-y-4">
-                <SearchReadLibrary
-                  title="Paired Read Library"
-                  firstPlaceholder="Select File 1..."
-                  secondPlaceholder="Select File 2..."
-                  variant="pair"
-                  onAdd={(files) => {
-                    const newLibraries = handlePairedLibraryAdd(
-                      files,
-                      selectedLibraries,
-                    );
-                    setSelectedLibraries(newLibraries);
-                  }}
-                  // canAdd={Boolean(sampleIdentifiers)}
-                />
-
-                <div>
-                  <Label className="service-card-sublabel">
-                    Paired Sample Identifier
-                  </Label>
-                  <Input
-                    onChange={(e) =>
-                      setSampleIdentifiers({
-                        ...sampleIdentifiers,
-                        paired: e.target.value,
-                      })
-                    }
-                    className="service-card-input"
-                    placeholder="Sample ID"
+          <div className="md:col-span-7">
+            <Card className="h-full">
+              <CardHeader className="service-card-header">
+                <RequiredFormCardTitle className="service-card-title">
+                  Input File
+                  <DialogInfoPopup
+                    title={taxonomyClassificationInput.title}
+                    description={taxonomyClassificationInput.description}
                   />
-                </div>
-              </div>
+                </RequiredFormCardTitle>
+              </CardHeader>
 
-              <div id="single-read-library" className="space-y-4">
-                <SearchReadLibrary
-                  title="Single Read Library"
-                  firstPlaceholder="Select File 1..."
-                  variant="single"
-                  onAdd={(files) => {
-                    const newLibraries = handleSingleLibraryAdd(
-                      files,
-                      selectedLibraries,
-                    );
-                    setSelectedLibraries(newLibraries);
-                  }}
-                  // canAdd={Boolean(sampleIdentifiers)}
-                />
-
-                <div className="mt-2">
-                  <Label className="service-card-sublabel">
-                    Single Sample Identifier
-                  </Label>
-                  <Input
-                    onChange={(e) =>
-                      setSampleIdentifiers({
-                        ...sampleIdentifiers,
-                        single: e.target.value,
-                      })
-                    }
-                    className="service-card-input"
-                    placeholder="Sample ID"
-                  />
-                </div>
-              </div>
-
-              <div id="sra-run-accession" className="space-y-4">
-                <SraRunAccession
-                  selectedLibraries={selectedLibraries}
-                  setSelectedLibraries={setSelectedLibraries}
-                />
-
-                <div className="mt-2">
-                  <Label className="service-card-sublabel">
-                    SRA Sample Identifier
-                  </Label>
-                  <Input
-                    onChange={(e) =>
-                      setSampleIdentifiers({
-                        ...sampleIdentifiers,
-                        sra: e.target.value,
-                      })
-                    }
-                    className="service-card-input"
-                    placeholder="Sample ID"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="md:col-span-5">
-          {/* Selected Libraries Section */}
-          <Card className="h-full">
-            <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
-                Selected Libraries
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <HelpCircle className="service-card-tooltip-icon" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Place read files here using the arrow buttons</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-              <CardDescription>
-                Place read files here using the arrow buttons.
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="service-card-content">
-              <SelectedItemsTable
-                items={selectedLibraries.map((lib) => ({
-                  id: lib.id,
-                  name: lib.name,
-                  type:
-                    lib.type === "paired"
-                      ? "Paired Read"
-                      : lib.type === "single"
-                        ? "Single Read"
-                        : "SRA Accession",
-                }))}
-                onRemove={(id) => {
-                  const newLibraries = removeFromSelectedLibraries(
-                    id,
-                    selectedLibraries,
-                  );
-                  setSelectedLibraries(newLibraries);
-                }}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="md:col-span-12">
-          {/* Parameters Section */}
-          <Card>
-            <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
-                Parameters
-                <DialogInfoPopup
-                  title={taxonomyClassificationParameters.title}
-                  description={taxonomyClassificationParameters.description}
-                />
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="service-card-content">
-              <div className="space-y-6">
-                <div className="space-y-6">
-                  <div id="sequencing-type-container">
-                    <div className="flex items-center gap-2">
-                      <Label className="service-card-label">
-                        Sequencing Type
-                      </Label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <HelpCircle className="service-card-tooltip-icon mb-2" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              Please select the sequencing type according to
-                              your input reads or SRA run accession.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-
-                    <RadioGroup
-                      defaultValue="wgs"
-                      className="service-radio-group"
-                      onValueChange={setSequencingType}
+              <CardContent className="service-card-content space-y-6">
+                {/* Paired Read Library */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="service-card-label">
+                      Paired Read Library
+                    </Label>
+                    <div className="bg-border mx-4 h-px flex-1" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePairedLibraryAdd}
+                      disabled={!pairedRead1 || !pairedRead2}
                     >
-                      <div className="service-radio-group-item">
-                        <RadioGroupItem value="wgs" id="wgs" />
-                        <Label htmlFor="wgs" className="text-sm">
-                          Whole Genome Sequencing (WGS)
-                        </Label>
-                      </div>
-                      <div className="service-radio-group-item">
-                        <RadioGroupItem value="16s" id="16s" />
-                        <Label htmlFor="16s" className="text-sm">
-                          16S Ribosomal RNA
-                        </Label>
-                      </div>
-                    </RadioGroup>
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    <WorkspaceObjectSelector
+                      types={["reads"]}
+                      placeholder="Select READ FILE 1..."
+                      value={pairedRead1 ?? ""}
+                      onObjectSelect={(object: WorkspaceObject) => {
+                        setPairedRead1(object.path);
+                        setPairedSampleId(object.path.split("/").pop()?.split(".")[0] ?? "");
+                      }}
+                    />
+                    <WorkspaceObjectSelector
+                      types={["reads"]}
+                      placeholder="Select READ FILE 2..."
+                      value={pairedRead2 ?? ""}
+                      onObjectSelect={(object: WorkspaceObject) => {
+                        setPairedRead2(object.path);
+                        if (!pairedRead1) {
+                          setPairedSampleId(object.path.split("/").pop()?.split(".")[0] ?? "");
+                        }
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label className="service-card-sublabel">Sample Identifier</Label>
+                    <Input
+                      value={pairedSampleId}
+                      onChange={(e) => handlePairedSampleIdChange(e.target.value)}
+                      placeholder="Sample ID"
+                      className="service-card-input mt-1.5 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Single Read Library */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="service-card-label">
+                      Single Read Library
+                    </Label>
+                    <div className="bg-border mx-4 h-px flex-1" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleSingleLibraryAdd}
+                      disabled={!singleRead}
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                  <WorkspaceObjectSelector
+                    types={["reads"]}
+                    placeholder="Select READ FILE..."
+                    value={singleRead ?? ""}
+                    onObjectSelect={(object: WorkspaceObject) => {
+                      setSingleRead(object.path);
+                      setSingleSampleId(object.path.split("/").pop()?.split(".")[0] ?? "");
+                    }}
+                  />
+                  <div>
+                    <Label className="service-card-sublabel">Sample Identifier</Label>
+                    <Input
+                      value={singleSampleId}
+                      onChange={(e) => handleSingleSampleIdChange(e.target.value)}
+                      placeholder="Sample ID"
+                      className="service-card-input mt-1.5 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* SRA Run Accession */}
+                <SraRunAccessionWithValidation
+                  key={sraResetKey}
+                  title="SRA Run Accession"
+                  placeholder="SRR..."
+                  selectedLibraries={selectedLibraries}
+                  setSelectedLibraries={handleSetSelectedLibraries}
+                  onAdd={() => {
+                    // Libraries are already added and synced via setSelectedLibraries prop
+                  }}
+                  allowDuplicates={false}
+                />
+                <div>
+                  <Label className="service-card-sublabel">Sample Identifier</Label>
+                  <Input
+                    value={srrSampleId}
+                    onChange={(e) => handleSrrSampleIdChange(e.target.value)}
+                    placeholder="e.g. SRR accession or custom ID"
+                    className="service-card-input mt-1.5 font-mono text-sm"
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="paired_end_libs"
+                  render={() => (
+                    <FormItem>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Selected Libraries Section */}
+          <div className="md:col-span-5">
+            <Card className="h-full">
+              <CardHeader className="service-card-header">
+                <CardTitle className="service-card-title">
+                  Selected Libraries
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <HelpCircle className="service-card-tooltip-icon" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Place read files here using the arrow buttons</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Place read files here using the arrow buttons.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="service-card-content">
+                <SelectedItemsTable
+                  items={selectedLibraries.map((library) => ({
+                    id: library.id,
+                    name: library.name,
+                    type: library.type,
+                  }))}
+                  onRemove={handleRemoveLibrary}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Parameters Section */}
+          <div className="md:col-span-12">
+            <Card>
+              <CardHeader className="service-card-header">
+                <RequiredFormCardTitle className="service-card-title">
+                  Parameters
+                  <DialogInfoPopup
+                    title={taxonomyClassificationParameters.title}
+                    description={taxonomyClassificationParameters.description}
+                    sections={taxonomyClassificationParameters.sections}
+                  />
+                </RequiredFormCardTitle>
+              </CardHeader>
+
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Sequencing Type */}
+                  <div className="w-full">
+                    <FormField
+                      control={form.control}
+                      name="sequence_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="service-card-label">
+                            Sequencing Type
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <HelpCircle className="service-card-tooltip-icon ml-2" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Select the sequencing type according to your input reads</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </FormLabel>
+
+                          <FormControl>
+                            <RadioGroup
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              className="service-radio-group"
+                            >
+                              <div className="service-radio-group-item">
+                                <RadioGroupItem value="wgs" id="wgs" />
+                                <Label htmlFor="wgs" className="text-sm">
+                                  Whole Genome Sequencing (WGS)
+                                </Label>
+                              </div>
+                              <div className="service-radio-group-item">
+                                <RadioGroupItem value="16s" id="16s" />
+                                <Label htmlFor="16s" className="text-sm">
+                                  16S Ribosomal RNA
+                                </Label>
+                              </div>
+                            </RadioGroup>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div
-                      id="analysis-type"
-                      className="service-card-content-grid-item"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Label className="service-card-label">
-                          Analysis Type
-                        </Label>
-                        <DialogInfoPopup
-                          title={taxonomyClassificationAnalysisType.title}
-                          description={
-                            taxonomyClassificationAnalysisType.description
-                          }
-                          sections={taxonomyClassificationAnalysisType.sections}
-                          className="mb-2"
-                        />
-                      </div>
-
-                      <Select
-                        value={selectedAnalysisType}
-                        onValueChange={setSelectedAnalysisType}
-                        disabled={sequencingType === "16s"}
-                      >
-                        <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select analysis type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sequencingType === "wgs" && (
-                            <>
-                              <SelectItem value="microbiome">
-                                Microbiome Analysis
-                              </SelectItem>
-                              <SelectItem value="species">
-                                Species Identification
-                              </SelectItem>
-                            </>
-                          )}
-                          {sequencingType === "16s" && (
-                            <SelectItem value="default">Default</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                    {/* Analysis Type */}
+                    <div className="service-card-content-grid-item">
+                      <FormField
+                        control={form.control}
+                        name="analysis_type"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="service-card-label">
+                              Analysis Type
+                              <DialogInfoPopup
+                                title={taxonomyClassificationAnalysisType.title}
+                                description={taxonomyClassificationAnalysisType.description}
+                                sections={taxonomyClassificationAnalysisType.sections}
+                                className="ml-2"
+                              />
+                            </FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                disabled={!isAnalysisTypeSelectable(sequenceType)}
+                              >
+                                <SelectTrigger className="service-card-select-trigger">
+                                  <SelectValue placeholder="Select analysis type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {analysisTypeOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
-                    <div
-                      id="database"
-                      className="service-card-content-grid-item"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Label className="service-card-label">Database</Label>
-                        <DialogInfoPopup
-                          title={taxonomyClassificationDatabase.title}
-                          description={
-                            taxonomyClassificationDatabase.description
-                          }
-                          sections={taxonomyClassificationDatabase.sections}
-                          className="mb-2"
-                        />
-                      </div>
-
-                      <Select
-                        value={selectedDatabase}
-                        onValueChange={setSelectedDatabase}
-                      >
-                        <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select database" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sequencingType === "wgs" && (
-                            <>
-                              <SelectItem value="bvbrc">
-                                BV-BRC Database
-                              </SelectItem>
-                              <SelectItem value="kraken2">
-                                Kraken2 Standard Database
-                              </SelectItem>
-                            </>
-                          )}
-                          {sequencingType === "16s" && (
-                            <>
-                              <SelectItem value="silva">SILVA</SelectItem>
-                              <SelectItem value="greengenes">
-                                Greengenes
-                              </SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
+                    {/* Database */}
+                    <div className="service-card-content-grid-item">
+                      <FormField
+                        control={form.control}
+                        name="database"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="service-card-label">
+                              Database
+                              <DialogInfoPopup
+                                title={taxonomyClassificationDatabase.title}
+                                description={taxonomyClassificationDatabase.description}
+                                sections={taxonomyClassificationDatabase.sections}
+                                className="ml-2"
+                              />
+                            </FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger className="service-card-select-trigger">
+                                  <SelectValue placeholder="Select database" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {databaseOptions.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
-                    <div
-                      id="filter-host-reads"
-                      className="service-card-content-grid-item"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Label className="service-card-label">
-                          Filter Host Reads
-                        </Label>
-                        <DialogInfoPopup
-                          title={taxonomyClassificationFilterHostReads.title}
-                          description={
-                            taxonomyClassificationFilterHostReads.description
-                          }
-                          className="mb-2"
-                        />
-                      </div>
-
-                      <Select
-                        defaultValue="none"
-                        disabled={sequencingType === "16s"}
-                      >
-                        <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select filter option" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          <SelectItem value="human">Homo sapiens</SelectItem>
-                          <SelectItem value="mouse">Mus musculus</SelectItem>
-                          <SelectItem value="rat">Rattus norvegicus</SelectItem>
-                          <SelectItem value="celegans">
-                            Caenorhabditis elegans
-                          </SelectItem>
-                          <SelectItem value="drosophila">
-                            Drosophila melanogaster strain y
-                          </SelectItem>
-                          <SelectItem value="danio">
-                            Danio rerio strain tuebingen
-                          </SelectItem>
-                          <SelectItem value="gallus">Gallus gallus</SelectItem>
-                          <SelectItem value="macaca">Macaca mulatta</SelectItem>
-                          <SelectItem value="mustela">
-                            Mustela putorius furo
-                          </SelectItem>
-                          <SelectItem value="sus">Sus scrofa</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {/* Filter Host Reads */}
+                    <div className="service-card-content-grid-item">
+                      <FormField
+                        control={form.control}
+                        name="host_genome"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="service-card-label">
+                              Filter Host Reads
+                              <DialogInfoPopup
+                                title={taxonomyClassificationFilterHostReads.title}
+                                description={taxonomyClassificationFilterHostReads.description}
+                                className="ml-2"
+                              />
+                            </FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                disabled={!isHostFilteringAvailable(sequenceType)}
+                              >
+                                <SelectTrigger className="service-card-select-trigger">
+                                  <SelectValue placeholder="Select filter option" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {HOST_GENOME_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
-                    <div
-                      id="confidence-interval"
-                      className="service-card-content-grid-item"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Label className="service-card-label">
-                          Confidence Interval
-                        </Label>
-                        <DialogInfoPopup
-                          title={taxonomyClassificatioConfidenceInterval.title}
-                          description={
-                            taxonomyClassificatioConfidenceInterval.description
-                          }
-                          className="mb-2"
-                        />
-                      </div>
-
-                      <Select defaultValue="0.1">
-                        <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select confidence interval" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0.1">0.1</SelectItem>
-                          <SelectItem value="0.2">0.2</SelectItem>
-                          <SelectItem value="0.3">0.3</SelectItem>
-                          <SelectItem value="0.4">0.4</SelectItem>
-                          <SelectItem value="0.5">0.5</SelectItem>
-                          <SelectItem value="0.6">0.6</SelectItem>
-                          <SelectItem value="0.7">0.7</SelectItem>
-                          <SelectItem value="0.8">0.8</SelectItem>
-                          <SelectItem value="0.9">0.9</SelectItem>
-                          <SelectItem value="1.0">1.0</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    {/* Confidence Interval */}
+                    <div className="service-card-content-grid-item">
+                      <FormField
+                        control={form.control}
+                        name="confidence_interval"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="service-card-label">
+                              Confidence Interval
+                              <DialogInfoPopup
+                                title={taxonomyClassificatioConfidenceInterval.title}
+                                description={taxonomyClassificatioConfidenceInterval.description}
+                                className="ml-2"
+                              />
+                            </FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                              >
+                                <SelectTrigger className="service-card-select-trigger">
+                                  <SelectValue placeholder="Select confidence interval" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CONFIDENCE_INTERVAL_OPTIONS.map((value) => (
+                                    <SelectItem key={value} value={value}>
+                                      {value}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
-                    <div
-                      id="save-classified-sequences"
-                      className="service-card-content-grid-item"
-                    >
-                      <Label className="service-card-label">
-                        Save Classified Sequences
-                      </Label>
-
-                      <RadioGroup
-                        defaultValue={saveClassifiedSequences}
-                        className="service-radio-group"
-                        onValueChange={setSaveClassifiedSequences}
-                      >
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="no" id="classified-no" />
-                          <Label htmlFor="classified-no" className="text-sm">
-                            No
-                          </Label>
-                        </div>
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="yes" id="classified-yes" />
-                          <Label htmlFor="classified-yes" className="text-sm">
-                            Yes
-                          </Label>
-                        </div>
-                      </RadioGroup>
+                    {/* Save Classified Sequences */}
+                    <div className="service-card-content-grid-item">
+                      <FormField
+                        control={form.control}
+                        name="save_classified_sequences"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="service-card-label">
+                              Save Classified Sequences
+                            </FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                value={field.value ? "yes" : "no"}
+                                onValueChange={(value) => field.onChange(value === "yes")}
+                                className="service-radio-group"
+                              >
+                                <div className="service-radio-group-item">
+                                  <RadioGroupItem value="no" id="classified-no" />
+                                  <Label htmlFor="classified-no" className="text-sm">
+                                    No
+                                  </Label>
+                                </div>
+                                <div className="service-radio-group-item">
+                                  <RadioGroupItem value="yes" id="classified-yes" />
+                                  <Label htmlFor="classified-yes" className="text-sm">
+                                    Yes
+                                  </Label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
-                    <div id="save-unclassified-sequences">
-                      <Label className="service-card-label">
-                        Save Unclassified Sequences
-                      </Label>
-
-                      <RadioGroup
-                        defaultValue={saveUnclassifiedSequences}
-                        className="service-radio-group"
-                        onValueChange={setSaveUnclassifiedSequences}
-                      >
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="no" id="unclassified-no" />
-                          <Label htmlFor="unclassified-no" className="text-sm">
-                            No
-                          </Label>
-                        </div>
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="yes" id="unclassified-yes" />
-                          <Label htmlFor="unclassified-yes" className="text-sm">
-                            Yes
-                          </Label>
-                        </div>
-                      </RadioGroup>
+                    {/* Save Unclassified Sequences */}
+                    <div className="service-card-content-grid-item">
+                      <FormField
+                        control={form.control}
+                        name="save_unclassified_sequences"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="service-card-label">
+                              Save Unclassified Sequences
+                            </FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                value={field.value ? "yes" : "no"}
+                                onValueChange={(value) => field.onChange(value === "yes")}
+                                className="service-radio-group"
+                              >
+                                <div className="service-radio-group-item">
+                                  <RadioGroupItem value="no" id="unclassified-no" />
+                                  <Label htmlFor="unclassified-no" className="text-sm">
+                                    No
+                                  </Label>
+                                </div>
+                                <div className="service-radio-group-item">
+                                  <RadioGroupItem value="yes" id="unclassified-yes" />
+                                  <Label htmlFor="unclassified-yes" className="text-sm">
+                                    Yes
+                                  </Label>
+                                </div>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
+                  </div>
+
+                  {/* Output Configuration */}
+                  <div className="flex flex-col space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="output_path"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormControl>
+                            <OutputFolder
+                              required={true}
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="output_file"
+                      render={({ field }) => (
+                        <FormItem className="w-full">
+                          <FormControl>
+                            <OutputFolder
+                              variant="name"
+                              required={true}
+                              value={field.value}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
 
-                <div className="flex flex-col space-y-4">
-                  <div className="w-full">
-                    <OutputFolder onChange={setOutputFolder} />
-                  </div>
-                  <div className="w-full">
-                    <OutputFolder variant="name" onChange={setOutputName} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </form>
+          {/* Form Controls */}
+          <div className="md:col-span-12">
+            <div className="service-form-controls">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !form.formState.isValid}
+              >
+                {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                Submit
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Form>
 
-      <div className="service-form-controls">
-        <Button variant="outline">Reset</Button>
-        <Button>Submit</Button>
-      </div>
+      {/* Job Params Dialog */}
+      <JobParamsDialog
+        open={showParamsDialog}
+        onOpenChange={setShowParamsDialog}
+        params={currentParams}
+        serviceName={serviceName}
+      />
     </section>
   );
-};
-
-export default TaxonomicClassificationService;
+}

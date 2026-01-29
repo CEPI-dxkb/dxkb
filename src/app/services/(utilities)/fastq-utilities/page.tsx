@@ -155,6 +155,10 @@ export default function FastqUtilitiesPage() {
         },
       }),
       onError: handleLibraryError,
+      onAfterAdd: () => {
+        setPairedRead1(null);
+        setPairedRead2(null);
+      },
     });
   };
 
@@ -178,6 +182,9 @@ export default function FastqUtilitiesPage() {
       },
       duplicateMatcher: (library, read) => library.id === read && library.type === "single",
       onError: handleLibraryError,
+      onAfterAdd: () => {
+        setSingleRead(null);
+      },
     });
   };
 

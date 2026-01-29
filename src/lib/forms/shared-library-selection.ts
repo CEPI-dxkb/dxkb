@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
 import type { Library } from "@/types/services";
 
@@ -92,6 +92,57 @@ export function useLibrarySelection<
   SrrItem = string
 >(config: UseLibrarySelectionConfig<TFormValues, LibraryItem, SrrItem>) {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
+  // Track if we need to sync to form (skip initial mount)
+  const shouldSyncRef = useRef(false);
+  // Store config in ref to avoid effect dependency issues
+  const configRef = useRef(config);
+  configRef.current = config;
+
+  // Sync libraries to form in an effect to avoid setState during render
+  useEffect(() => {
+    // Skip initial mount - only sync after state updates
+    if (!shouldSyncRef.current) {
+      shouldSyncRef.current = true;
+      return;
+    }
+
+    const currentConfig = configRef.current;
+    const pairedLibs: LibraryItem[] = [];
+    const singleLibs: LibraryItem[] = [];
+    const srrItems: SrrItem[] = [];
+
+    selectedLibraries.forEach((lib) => {
+      if (lib.type === "paired") {
+        pairedLibs.push(currentConfig.mapLibraryToItem(lib));
+      } else if (lib.type === "single") {
+        singleLibs.push(currentConfig.mapLibraryToItem(lib));
+      } else if (lib.type === "sra") {
+        if (currentConfig.mapSraLibraryToItem) {
+          srrItems.push(currentConfig.mapSraLibraryToItem(lib));
+        } else {
+          srrItems.push(lib.id as SrrItem);
+        }
+      }
+    });
+
+    currentConfig.form.setValue(currentConfig.fields.paired as never, pairedLibs as never, {
+      shouldValidate: false,
+    });
+    currentConfig.form.setValue(currentConfig.fields.single as never, singleLibs as never, {
+      shouldValidate: false,
+    });
+    currentConfig.form.setValue(currentConfig.fields.srr as never, srrItems as never, {
+      shouldValidate: false,
+    });
+
+    currentConfig.form.trigger(
+      (currentConfig.triggerFields ?? [
+        currentConfig.fields.paired,
+        currentConfig.fields.single,
+        currentConfig.fields.srr,
+      ]) as never
+    );
+  }, [selectedLibraries]);
 
   const syncLibrariesToForm = useCallback(
     (libraries: Library[]) => {
@@ -137,15 +188,12 @@ export function useLibrarySelection<
   const updateLibraries = useCallback(
     (nextLibraries: Library[]) => {
       setSelectedLibraries((previousLibraries) => {
-        const normalizedLibraries = config.normalizeLibraries
+        return config.normalizeLibraries
           ? config.normalizeLibraries(nextLibraries, previousLibraries)
           : nextLibraries;
-
-        syncLibrariesToForm(normalizedLibraries);
-        return normalizedLibraries;
       });
     },
-    [config, syncLibrariesToForm]
+    [config]
   );
 
   const addPairedLibrary = useCallback(

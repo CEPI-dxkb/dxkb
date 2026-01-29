@@ -89,7 +89,7 @@ export function createPipelineActionItem(
 /**
  * Reassign colors based on current array position to keep sequence compact
  */
-export function renormalizePipelineActions(
+function renormalizePipelineActions(
   items: PipelineActionItem[]
 ): PipelineActionItem[] {
   return items.map((item, index) => ({

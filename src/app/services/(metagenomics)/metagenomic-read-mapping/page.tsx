@@ -229,6 +229,7 @@ export default function MetagenomicReadMappingPage() {
               : "Job submitted successfully",
             closeButton: true,
           });
+          handleReset();
         } else {
           throw new Error(result.error || "Failed to submit job");
         }

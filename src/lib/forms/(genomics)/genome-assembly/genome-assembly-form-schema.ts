@@ -1,13 +1,9 @@
 import { z } from "zod";
+import { baseLibrarySchema } from "../../shared-schemas";
 
-// Library types for genome assembly
-export const librarySchema = z.object({
-  _id: z.string(),
-  _type: z.enum(["paired", "single", "srr_accession"]),
+// Library schema - extends shared base with genome assembly specific fields
+export const librarySchema = baseLibrarySchema.extend({
   platform: z.string().optional(),
-  read: z.string().optional(), // for single
-  read1: z.string().optional(), // for paired
-  read2: z.string().optional(), // for paired
   interleaved: z.boolean().optional(),
   read_orientation_outward: z.boolean().optional(),
 });

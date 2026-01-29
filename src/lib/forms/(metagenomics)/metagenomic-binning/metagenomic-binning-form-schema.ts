@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { baseLibrarySchema } from "../../shared-schemas";
 
 // Start with options
 export const startWithSchema = z.enum(["reads", "contigs"]);
@@ -12,14 +13,8 @@ export type AssemblyStrategy = z.infer<typeof assemblyStrategySchema>;
 export const organismSchema = z.enum(["bacteria", "viral", "both"]);
 export type Organism = z.infer<typeof organismSchema>;
 
-// Library types for input
-export const librarySchema = z.object({
-  _id: z.string(),
-  _type: z.enum(["paired", "single", "srr_accession"]),
-  read: z.string().optional(), // for single
-  read1: z.string().optional(), // for paired
-  read2: z.string().optional(), // for paired
-});
+// Library schema - uses shared base
+export const librarySchema = baseLibrarySchema;
 
 export type LibraryItem = z.infer<typeof librarySchema>;
 

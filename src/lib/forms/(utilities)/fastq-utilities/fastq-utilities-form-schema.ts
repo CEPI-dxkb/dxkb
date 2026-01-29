@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  baseLibrarySchema,
+  platformSchema,
+  type Platform,
+  PLATFORM_OPTIONS,
+} from "../../shared-schemas";
 
 // Pipeline action options
 export const pipelineActionSchema = z.enum([
@@ -10,17 +16,11 @@ export const pipelineActionSchema = z.enum([
 ]);
 export type PipelineAction = z.infer<typeof pipelineActionSchema>;
 
-// Platform options for single read libraries
-export const platformSchema = z.enum(["illumina", "pacbio", "nanopore"]);
-export type Platform = z.infer<typeof platformSchema>;
+// Re-export platform types from shared schemas
+export { platformSchema, type Platform, PLATFORM_OPTIONS };
 
-// Library types for input
-export const librarySchema = z.object({
-  _id: z.string(),
-  _type: z.enum(["paired", "single", "srr_accession"]),
-  read: z.string().optional(), // for single
-  read1: z.string().optional(), // for paired
-  read2: z.string().optional(), // for paired
+// Library schema - extends shared base with platform
+export const librarySchema = baseLibrarySchema.extend({
   platform: platformSchema.optional(), // for single
 });
 
@@ -90,24 +90,6 @@ export const PIPELINE_ACTION_OPTIONS = [
   { value: "align", label: "Align" },
   { value: "scrub_human", label: "Scrub Human" },
 ] as const;
-
-// Platform options for UI
-export const PLATFORM_OPTIONS = [
-  { value: "illumina", label: "Illumina" },
-  { value: "pacbio", label: "PacBio" },
-  { value: "nanopore", label: "Nanopore" },
-] as const;
-
-// Visual styling for pipeline actions
-export const ACTION_COLORS = [
-  "bg-purple-500",
-  "bg-red-500",
-  "bg-blue-500",
-  "bg-green-500",
-  "bg-yellow-500",
-] as const;
-
-export const ACTION_SHAPES = ["circle", "square", "diamond"] as const;
 
 // Maximum number of pipeline actions allowed
 export const MAX_PIPELINE_ACTIONS = 5;

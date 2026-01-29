@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { baseLibrarySchema } from "../../shared-schemas";
 
 // Sequencing type options
 export const sequencingTypeSchema = z.enum(["wgs", "16s"]);
@@ -28,13 +29,8 @@ export const hostGenomeSchema = z.enum([
 ]);
 export type HostGenome = z.infer<typeof hostGenomeSchema>;
 
-// Library types for input
-export const librarySchema = z.object({
-  _id: z.string(),
-  _type: z.enum(["paired", "single", "srr_accession"]),
-  read: z.string().optional(), // for single
-  read1: z.string().optional(), // for paired
-  read2: z.string().optional(), // for paired
+// Library schema - extends shared base with sample_id
+export const librarySchema = baseLibrarySchema.extend({
   sample_id: z.string().optional(), // sample identifier
 });
 

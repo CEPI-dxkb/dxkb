@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { baseLibrarySchema } from "../../shared-schemas";
 
 // Gene set type options
 export const geneSetTypeSchema = z.enum(["predefined_list", "fasta_file", "feature_group"]);
@@ -8,14 +9,8 @@ export type GeneSetType = z.infer<typeof geneSetTypeSchema>;
 export const predefinedGeneSetNameSchema = z.enum(["CARD", "VFDB"]);
 export type PredefinedGeneSetName = z.infer<typeof predefinedGeneSetNameSchema>;
 
-// Library types for input
-export const librarySchema = z.object({
-  _id: z.string(),
-  _type: z.enum(["paired", "single", "srr_accession"]),
-  read: z.string().optional(), // for single
-  read1: z.string().optional(), // for paired
-  read2: z.string().optional(), // for paired
-});
+// Library schema - uses shared base
+export const librarySchema = baseLibrarySchema;
 
 export type LibraryItem = z.infer<typeof librarySchema>;
 

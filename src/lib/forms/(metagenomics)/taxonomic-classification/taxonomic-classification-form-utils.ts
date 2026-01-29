@@ -65,20 +65,6 @@ export function transformTaxonomicClassificationParams(
 }
 
 /**
- * Get valid analysis types based on sequencing type
- */
-export function getValidAnalysisTypes(sequenceType: "wgs" | "16s"): string[] {
-  return sequenceType === "wgs" ? ["microbiome", "pathogen"] : ["default"];
-}
-
-/**
- * Get valid databases based on sequencing type
- */
-export function getValidDatabases(sequenceType: "wgs" | "16s"): string[] {
-  return sequenceType === "wgs" ? ["bvbrc", "standard"] : ["SILVA", "Greengenes"];
-}
-
-/**
  * Get default analysis type for a given sequence type
  */
 export function getDefaultAnalysisType(sequenceType: "wgs" | "16s"): string {

@@ -3,12 +3,8 @@ import type {
   PipelineActionItem,
   PipelineAction,
 } from "./fastq-utilities-form-schema";
-import {
-  ACTION_COLORS,
-  ACTION_SHAPES,
-  PIPELINE_ACTION_OPTIONS,
-  MAX_PIPELINE_ACTIONS,
-} from "./fastq-utilities-form-schema";
+import { PIPELINE_ACTION_OPTIONS } from "./fastq-utilities-form-schema";
+import { actionColors, actionShapes } from "@/lib/services/service-utils";
 
 /**
  * Transform FASTQ utilities form data to API parameters
@@ -61,16 +57,9 @@ export function isAlignSelected(recipe: PipelineAction[]): boolean {
 }
 
 /**
- * Check if more pipeline actions can be added
+ * Get the label for a pipeline action (internal helper)
  */
-export function canAddMoreActions(actionCount: number): boolean {
-  return actionCount < MAX_PIPELINE_ACTIONS;
-}
-
-/**
- * Get the label for a pipeline action
- */
-export function getActionLabel(action: PipelineAction): string {
+function getActionLabel(action: PipelineAction): string {
   const option = PIPELINE_ACTION_OPTIONS.find((opt) => opt.value === action);
   return option?.label || action;
 }
@@ -93,7 +82,7 @@ export function resetVisualIndexes(): void {
  * Get the next color for a pipeline action
  */
 export function getNextColor(): string {
-  const color = ACTION_COLORS[colorIndex % ACTION_COLORS.length];
+  const color = actionColors[colorIndex % actionColors.length];
   colorIndex += 1;
   return color;
 }
@@ -102,7 +91,7 @@ export function getNextColor(): string {
  * Get the next shape for a pipeline action
  */
 export function getNextShape(): string {
-  const shape = ACTION_SHAPES[shapeIndex % ACTION_SHAPES.length];
+  const shape = actionShapes[shapeIndex % actionShapes.length];
   shapeIndex += 1;
   return shape;
 }

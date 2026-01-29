@@ -16,6 +16,8 @@ interface SraRunAccessionWithValidationProps {
   disabled?: boolean;
   allowDuplicates?: boolean;
   onAdd?: (srrIds: string[], title?: string) => void;
+  /** Called when the accession input value changes */
+  onChange?: (value: string) => void;
 }
 
 // Validation is now done via API proxy to avoid CORS issues
@@ -104,6 +106,7 @@ const SraRunAccessionWithValidation = ({
   disabled = false,
   allowDuplicates = false,
   onAdd,
+  onChange,
 }: SraRunAccessionWithValidationProps) => {
   const [sraAccession, setSraAccession] = useState("");
   const [isValidating, setIsValidating] = useState(false);
@@ -166,6 +169,11 @@ const SraRunAccessionWithValidation = ({
             onAdd([accession]);
           }
 
+          // Clear input and validation message after successful add
+          setSraAccession("");
+          if (onChange) {
+            onChange("");
+          }
           setValidationMessage("");
         } else {
           toast.error("Duplicate SRA accession detected", {
@@ -218,7 +226,11 @@ const SraRunAccessionWithValidation = ({
             onAdd(runs, studyTitle);
           }
 
-          // Clear validation message only; keep accession in textbox
+          // Clear input and validation message after successful add
+          setSraAccession("");
+          if (onChange) {
+            onChange("");
+          }
           setValidationMessage("");
         }
       } catch (parseError) {
@@ -243,6 +255,10 @@ const SraRunAccessionWithValidation = ({
     // Clear validation message when user starts typing
     if (validationMessage) {
       setValidationMessage("");
+    }
+    // Notify parent of value change
+    if (onChange) {
+      onChange(value);
     }
   };
 

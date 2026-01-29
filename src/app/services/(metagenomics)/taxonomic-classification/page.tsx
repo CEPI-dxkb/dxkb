@@ -196,11 +196,19 @@ export default function TaxonomicClassificationPage() {
       return;
     }
 
+    // Check for duplicate library
+    const libraryId = `${pairedRead1}${pairedRead2}`;
+    const isDuplicate = selectedLibraries.some((lib) => lib.id === libraryId);
+    if (isDuplicate) {
+      toast.error("This paired library has already been added");
+      return;
+    }
+
     // Library-level sample_id is captured at add-time from the textbox (fallback to default)
     const defaultSampleId = pairedRead1.split("/").pop()?.split(".")[0] || "sample";
     const librarySampleId = pairedSampleId.trim() || defaultSampleId;
     const newLibrary: Library = {
-      id: `${pairedRead1}${pairedRead2}`,
+      id: libraryId,
       name: `P(${pairedRead1.split("/").pop()}, ${pairedRead2.split("/").pop()})`,
       type: "paired",
       files: [pairedRead1, pairedRead2],
@@ -213,12 +221,24 @@ export default function TaxonomicClassificationPage() {
 
     // Set top-level sample ID form field (preserves user input including hyphens)
     form.setValue("paired_sample_id", pairedSampleId.trim() || defaultSampleId);
+
+    // Clear the inputs and sample identifier
+    setPairedRead1(null);
+    setPairedRead2(null);
+    setPairedSampleId("");
   };
 
   // Handle adding single library
   const handleSingleLibraryAdd = () => {
     if (!singleRead) {
       toast.error("Read file must be selected");
+      return;
+    }
+
+    // Check for duplicate library
+    const isDuplicate = selectedLibraries.some((lib) => lib.id === singleRead);
+    if (isDuplicate) {
+      toast.error("This single library has already been added");
       return;
     }
 
@@ -239,6 +259,10 @@ export default function TaxonomicClassificationPage() {
 
     // Set top-level sample ID form field (preserves user input including hyphens)
     form.setValue("single_sample_id", singleSampleId.trim() || defaultSampleId);
+
+    // Clear the input and sample identifier
+    setSingleRead(null);
+    setSingleSampleId("");
   };
 
   // Handle removing a library
@@ -294,13 +318,14 @@ export default function TaxonomicClassificationPage() {
     setSelectedLibraries(libsWithSampleId);
     syncLibrariesToForm(libsWithSampleId);
 
-    // Set top-level sample ID form field AND populate the textbox for newly added SRA libs
+    // Set top-level sample ID form field and clear the textbox after adding SRA libs
     if (newSraLibs.length > 0) {
       const lastNewSra = newSraLibs[newSraLibs.length - 1];
-      const defaultSampleId = lastNewSra.id;
-      // Update both state (for textbox display) and form field (for submission)
-      setSrrSampleId(defaultSampleId);
+      const defaultSampleId = srrSampleId.trim() || lastNewSra.id;
+      // Update form field for submission
       form.setValue("srr_sample_id", defaultSampleId);
+      // Clear the sample ID textbox after adding
+      setSrrSampleId("");
     }
   };
 
@@ -481,6 +506,10 @@ export default function TaxonomicClassificationPage() {
                   onAdd={() => {
                     // Libraries are already added and synced via setSelectedLibraries prop
                   }}
+                  onChange={(value) => {
+                    // Auto-populate sample identifier as user types SRA accession
+                    setSrrSampleId(value);
+                  }}
                   allowDuplicates={false}
                 />
                 <div>
@@ -488,7 +517,7 @@ export default function TaxonomicClassificationPage() {
                   <Input
                     value={srrSampleId}
                     onChange={(e) => handleSrrSampleIdChange(e.target.value)}
-                    placeholder="e.g. SRR accession or custom ID"
+                    placeholder="Sample ID"
                     className="service-card-input mt-1.5 font-mono text-sm"
                   />
                 </div>

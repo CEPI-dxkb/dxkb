@@ -48,7 +48,6 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import {
   metagenomicReadMappingInfo,
   metagenomicReadMappingParameters,
@@ -71,6 +70,7 @@ import {
   getSingleLibraryName,
   useLibrarySelection,
 } from "@/lib/forms/shared-library-selection";
+import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
 
@@ -80,9 +80,6 @@ export default function MetagenomicReadMappingPage() {
     defaultValues: DEFAULT_METAGENOMIC_READ_MAPPING_FORM_VALUES,
     mode: "onChange",
   });
-
-  // UI state
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Read input state
   const [pairedRead1, setPairedRead1] = useState<string | null>(null);
@@ -169,38 +166,12 @@ export default function MetagenomicReadMappingPage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<MetagenomicReadMappingFormData>({
     serviceName: "MetagenomicReadMapping",
+    displayName: "Metagenomic Read Mapping",
     transformParams: transformMetagenomicReadMappingParams,
-    onSubmit: async (data) => {
-      try {
-        setIsSubmitting(true);
-        const params = transformMetagenomicReadMappingParams(data);
-        const result = await submitServiceJob("MetagenomicReadMapping", params);
-
-        if (result.success) {
-          toast.success("Metagenomic Read Mapping job submitted successfully!", {
-            description: result.job?.[0]?.id
-              ? `Job ID: ${result.job[0].id}`
-              : "Job submitted successfully",
-            closeButton: true,
-          });
-          handleReset();
-        } else {
-          throw new Error(result.error || "Failed to submit job");
-        }
-      } catch (error) {
-        console.error("Failed to submit Metagenomic Read Mapping job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-          closeButton: true,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSuccess: handleReset,
   });
 
   return (
@@ -353,9 +324,9 @@ export default function MetagenomicReadMappingPage() {
                   items={selectedLibraries.map((library) => ({
                     id: library.id,
                     name: library.name,
-                    type: library.type,
+                    type: getLibraryTypeLabel(library.type),
                   }))}
-                      onRemove={removeLibrary}
+                  onRemove={removeLibrary}
                 />
               </CardContent>
             </Card>

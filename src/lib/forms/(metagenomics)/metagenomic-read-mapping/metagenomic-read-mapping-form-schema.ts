@@ -47,6 +47,16 @@ export const metagenomicReadMappingFormSchema = z
     }
 
     // Validate gene set based on type selection
+    if (data.gene_set_type === "predefined_list") {
+      if (!data.gene_set_name) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Gene Set Name is required",
+          path: ["gene_set_name"],
+        });
+      }
+    }
+
     if (data.gene_set_type === "fasta_file") {
       if (!data.gene_set_fasta || data.gene_set_fasta.trim() === "") {
         ctx.addIssue({

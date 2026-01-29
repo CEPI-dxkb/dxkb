@@ -76,6 +76,7 @@ import {
   getSingleLibraryName,
   useLibrarySelection,
 } from "@/lib/forms/shared-library-selection";
+import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
 
@@ -388,7 +389,7 @@ export default function MetagenomicBinningPage() {
                       items={selectedLibraries.map((library) => ({
                         id: library.id,
                         name: library.name,
-                        type: library.type,
+                        type: getLibraryTypeLabel(library.type),
                       }))}
                       onRemove={removeLibrary}
                     />

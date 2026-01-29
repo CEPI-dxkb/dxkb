@@ -80,6 +80,7 @@ import {
   getSingleLibraryName,
   useLibrarySelection,
 } from "@/lib/forms/shared-library-selection";
+import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
 import type { Library } from "@/types/services";
@@ -614,14 +615,9 @@ export default function FastqUtilitiesPage() {
                   items={selectedLibraries.map((library) => ({
                     id: library.id,
                     name: library.name,
-                    type:
-                      library.type === "paired"
-                        ? "Paired Read"
-                        : library.type === "single"
-                          ? "Single Read"
-                          : "SRA Accession",
+                    type: getLibraryTypeLabel(library.type),
                   }))}
-                    onRemove={removeLibrary}
+                  onRemove={removeLibrary}
                   className="max-h-80 overflow-y-auto"
                 />
               </CardContent>

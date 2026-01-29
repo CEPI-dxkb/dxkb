@@ -45,3 +45,19 @@ export const PLATFORM_OPTIONS = [
   { value: "pacbio", label: "PacBio" },
   { value: "nanopore", label: "Nanopore" },
 ] as const;
+
+/**
+ * Library type labels for display in UI components like SelectedItemsTable
+ */
+export const LIBRARY_TYPE_LABELS: Record<string, string> = {
+  paired: "Paired Read",
+  single: "Single Read",
+  sra: "SRA Accession",
+} as const;
+
+/**
+ * Get human-readable label for a library type
+ */
+export function getLibraryTypeLabel(type: string): string {
+  return LIBRARY_TYPE_LABELS[type] ?? type;
+}

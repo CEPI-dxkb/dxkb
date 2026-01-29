@@ -79,15 +79,23 @@ export function getDefaultDatabase(sequenceType: "wgs" | "16s"): string {
 }
 
 /**
+ * Check if the sequence type is WGS (whole genome sequencing).
+ * WGS enables additional options like host filtering and analysis type selection.
+ */
+export function isWgsSequenceType(sequenceType: "wgs" | "16s"): boolean {
+  return sequenceType === "wgs";
+}
+
+/**
  * Check if host filtering is available for the current sequence type
  */
 export function isHostFilteringAvailable(sequenceType: "wgs" | "16s"): boolean {
-  return sequenceType === "wgs";
+  return isWgsSequenceType(sequenceType);
 }
 
 /**
  * Check if analysis type selection is available for the current sequence type
  */
 export function isAnalysisTypeSelectable(sequenceType: "wgs" | "16s"): boolean {
-  return sequenceType === "wgs";
+  return isWgsSequenceType(sequenceType);
 }

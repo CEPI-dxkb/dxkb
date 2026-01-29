@@ -89,6 +89,17 @@ import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 import type { WorkspaceObject } from "@/lib/workspace-client";
 import type { Library } from "@/types/services";
 
+/**
+ * Find newly added SRA libraries by comparing next state against previous state.
+ * Used to identify which SRA entries need sample ID assignment and trigger side effects.
+ */
+function findNewSraLibraries(nextLibs: Library[], prevLibs: Library[]): Library[] {
+  const prevSraIds = new Set(
+    prevLibs.filter((lib) => lib.type === "sra").map((lib) => lib.id)
+  );
+  return nextLibs.filter((lib) => lib.type === "sra" && !prevSraIds.has(lib.id));
+}
+
 export default function TaxonomicClassificationPage() {
   const form = useForm<TaxonomicClassificationFormData>({
     resolver: zodResolver(taxonomicClassificationFormSchema),
@@ -172,11 +183,11 @@ export default function TaxonomicClassificationPage() {
       srr: "srr_libs",
     },
     normalizeLibraries: (nextLibraries, previousLibraries) => {
-      const prevSraIds = new Set(
-        previousLibraries.filter((lib) => lib.type === "sra").map((lib) => lib.id)
+      const newSraIds = new Set(
+        findNewSraLibraries(nextLibraries, previousLibraries).map((lib) => lib.id)
       );
       return nextLibraries.map((lib) => {
-        if (lib.type === "sra" && !prevSraIds.has(lib.id)) {
+        if (lib.type === "sra" && newSraIds.has(lib.id)) {
           return { ...lib, sampleId: srrSampleId.trim() || lib.id };
         }
         return lib;
@@ -278,8 +289,7 @@ export default function TaxonomicClassificationPage() {
 
   // When SRA/libs are updated, assign sample_id to newly added SRA entries
   const handleSetSelectedLibraries = (libs: Library[]) => {
-    const prevSraIds = new Set(selectedLibraries.filter((l) => l.type === "sra").map((l) => l.id));
-    const newSraLibs = libs.filter((l) => l.type === "sra" && !prevSraIds.has(l.id));
+    const newSraLibs = findNewSraLibraries(libs, selectedLibraries);
     setLibrariesAndSync(libs);
 
     // Set top-level sample ID form field and clear the textbox after adding SRA libs

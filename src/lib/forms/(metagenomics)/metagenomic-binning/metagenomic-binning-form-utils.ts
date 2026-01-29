@@ -67,19 +67,3 @@ export function transformMetagenomicBinningParams(
 
   return params;
 }
-
-/**
- * Check if the assembly strategy (MetaSPAdes) should be disabled
- * MetaSPAdes only supports a single paired-end library
- */
-export function shouldDisableMetaspades(
-  data: MetagenomicBinningFormData
-): boolean {
-  const pairedCount = data.paired_end_libs?.length || 0;
-  const singleCount = data.single_end_libs?.length || 0;
-  const sraCount = data.srr_ids?.length || 0;
-  const totalLibraries = pairedCount + singleCount + sraCount;
-
-  // MetaSPAdes only works with exactly one paired-end library
-  return !(totalLibraries === 1 && pairedCount === 1);
-}

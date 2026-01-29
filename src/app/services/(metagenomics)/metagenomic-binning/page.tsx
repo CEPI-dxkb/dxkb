@@ -66,10 +66,7 @@ import {
   type MetagenomicBinningFormData,
   type LibraryItem,
 } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-schema";
-import {
-  transformMetagenomicBinningParams,
-  shouldDisableMetaspades,
-} from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-utils";
+import { transformMetagenomicBinningParams } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-utils";
 import {
   buildBaseLibraryItem,
   getPairedLibraryName,
@@ -100,16 +97,6 @@ export default function MetagenomicBinningPage() {
   const startWith = form.watch("start_with");
   const assembler = form.watch("assembler");
 
-  // Determine if MetaSPAdes should be disabled
-  const metaspadesDisabled = shouldDisableMetaspades(form.getValues());
-
-  // Reset assembler to auto if metaspades becomes disabled while selected
-  useEffect(() => {
-    if (metaspadesDisabled && assembler === "metaspades") {
-      form.setValue("assembler", "auto");
-    }
-  }, [metaspadesDisabled, assembler, form]);
-
   const {
     selectedLibraries,
     addPairedLibrary,
@@ -125,6 +112,18 @@ export default function MetagenomicBinningPage() {
       srr: "srr_ids",
     },
   });
+
+  // Determine if MetaSPAdes should be disabled based on selectedLibraries (source of truth)
+  // MetaSPAdes only supports a single paired-end library
+  const pairedCount = selectedLibraries.filter((lib) => lib.type === "paired").length;
+  const metaspadesDisabled = !(selectedLibraries.length === 1 && pairedCount === 1);
+
+  // Reset assembler to auto if metaspades becomes disabled while selected
+  useEffect(() => {
+    if (metaspadesDisabled && assembler === "metaspades") {
+      form.setValue("assembler", "auto");
+    }
+  }, [metaspadesDisabled, assembler, form]);
 
   // Handle adding paired library
   const handlePairedLibraryAdd = () => {

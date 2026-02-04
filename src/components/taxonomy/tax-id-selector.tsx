@@ -6,11 +6,15 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
+import { getRequiredEnv } from "@/lib/env";
 
 interface TaxIDSelectorProps extends TaxonomySelectorProps {
   apiServiceUrl?: string;
   queryFilter?: string;
 }
+
+const defaultTaxonomyApiUrl = () =>
+  `${getRequiredEnv("BVBRC_WEBSITE_API_URL")}/taxonomy`;
 
 export function TaxIDSelector({
   value,
@@ -19,9 +23,10 @@ export function TaxIDSelector({
   required = false,
   disabled = false,
   className,
-  apiServiceUrl = `${process.env.BVBRC_WEBSITE_API_URL}/taxonomy`,
+  apiServiceUrl,
   queryFilter,
 }: TaxIDSelectorProps) {
+  const resolvedApiServiceUrl = apiServiceUrl ?? defaultTaxonomyApiUrl();
   const [showDropdown, setShowDropdown] = useState(false);
   // Initialize searchQuery from value prop to ensure SSR/client hydration match
   const [searchQuery, setSearchQuery] = useState(
@@ -57,7 +62,7 @@ export function TaxIDSelector({
           params.append("fq", queryFilter);
         }
 
-        const response = await fetch(`${apiServiceUrl}?${params.toString()}`, {
+        const response = await fetch(`${resolvedApiServiceUrl}?${params.toString()}`, {
           headers: {
             Accept: "application/json",
           },
@@ -83,7 +88,7 @@ export function TaxIDSelector({
         setLoading(false);
       }
     },
-    [apiServiceUrl, queryFilter],
+    [resolvedApiServiceUrl, queryFilter],
   );
 
   // Sync searchQuery with value prop when value is set externally

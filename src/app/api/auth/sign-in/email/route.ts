@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { setBvbrcAuthCookies, getProfileMetadata, extractRealmFromToken } from "../../utils";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * Sign in with email/username and password (better-auth style endpoint)
@@ -18,7 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate against BV-BRC
-    const response = await fetch(`${process.env.USER_AUTH_URL}`, {
+    const authUrl = getRequiredEnv("USER_AUTH_URL");
+    const response = await fetch(authUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

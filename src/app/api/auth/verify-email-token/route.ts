@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * Verify email via URL link (better-auth style endpoint)
@@ -22,16 +23,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const verifyUrl = process.env.USER_VERIFICATION_URL;
-    if (!verifyUrl) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Email verification service is not configured",
-        },
-        { status: 503 },
-      );
-    }
+    const verifyUrl = getRequiredEnv("USER_VERIFICATION_URL");
 
     const timeoutMs = 15_000;
     const controller = new AbortController();

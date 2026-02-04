@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 import type { ViralGenomeValidationResult } from "@/lib/services/genome";
 
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Query with fields needed for viral genome validation
     const queryString = `?in(genome_id,(${inClause}))&select(genome_id,superkingdom,genome_length,contigs)&limit(${Math.min(genomeIds.length, 5000)})`;
-    const url = `${process.env.NEXT_PUBLIC_DATA_API}/genome/${queryString}`;
+    const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

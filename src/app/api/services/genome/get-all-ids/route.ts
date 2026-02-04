@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 
 export async function POST(request: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       `limit(${limit})`,
     ];
     const queryString = `?${queryParts.join("&")}`;
-    const url = `${process.env.BVBRC_WEBSITE_API_URL}/genome/${queryString}`;
+    const url = `${getRequiredEnv("BVBRC_WEBSITE_API_URL")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

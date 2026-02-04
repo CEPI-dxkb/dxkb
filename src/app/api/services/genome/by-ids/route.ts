@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 
 function buildInClause(ids: string[]): string {
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const queryString = `?in(genome_id,(${inClause}))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${Math.min(genomeIds.length, 100)})`;
-    const url = `${process.env.NEXT_PUBLIC_DATA_API}/genome/${queryString}`;
+    const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

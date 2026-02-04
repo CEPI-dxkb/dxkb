@@ -6,6 +6,7 @@ import { DataTable } from '@/components/containers/DataTable';
 import { SortingState } from '@tanstack/react-table';
 import { taxaFields } from '@/constants/datafields/taxa';
 import { useQuery } from '@tanstack/react-query';
+import { getRequiredEnv } from "@/lib/env";
 
 interface GenomeDataProps {
   onSelectionChange?: (rows: any[]) => void;
@@ -37,7 +38,7 @@ export function TaxaData({ onSelectionChange }: GenomeDataProps) {
   const searchParams = useSearchParams();
   const q = searchParams.get('q');
   const cleanQ = q?.split('#')[0] ?? '';
-  const DataAPI = process.env.NEXT_PUBLIC_DATA_API!;
+  const DataAPI = getRequiredEnv("NEXT_PUBLIC_DATA_API");
   const baseURL = `${DataAPI}/taxonomy/?${cleanQ}`;
   const pageSize = 200;
 

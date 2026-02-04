@@ -14,8 +14,9 @@ import {
 import { SearchBar } from "@/components/search/search-bar";
 import { searchToQuery } from "@/app/search/search-to-query";
 import ResultsOverview from "@/components/search/results-overview";
+import { getRequiredEnv } from "@/lib/env";
 
-const bvbrcAPI = `${process.env.NEXT_PUBLIC_DATA_API}/`;
+const bvbrcAPI = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/`;
 
 const searchTypes = [
   "taxonomy",

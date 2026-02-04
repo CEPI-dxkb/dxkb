@@ -1,4 +1,5 @@
 import { JsonRpcRequest, JsonRpcResponse } from "../types/workspace";
+import { getRequiredEnv } from "./env";
 
 export class JsonRpcClient {
   private static requestId = 1;
@@ -156,7 +157,7 @@ export class JsonRpcError extends Error {
 // Factory function for creating BV-BRC API client
 export function createBvBrcClient(authToken?: string): JsonRpcClient {
   return new JsonRpcClient(
-    `${process.env.APP_SERVICE_URL}`,
+    getRequiredEnv("APP_SERVICE_URL"),
     authToken,
   );
 }

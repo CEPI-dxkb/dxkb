@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Constants
+export const MAX_COMPARISON_GENOMES = 9;
+export const MIN_COMPARISON_GENOMES = 1;
+export const PROTEOME_COMPARISON_STARTING_ROWS = 9;
+
 // Reference source types
 export const REFERENCE_SOURCE_TYPES = ["genome", "fasta", "feature_group"] as const;
 export type ReferenceSourceType = (typeof REFERENCE_SOURCE_TYPES)[number];
@@ -106,11 +111,6 @@ export const proteomeComparisonFormSchema = z
   });
 
 export type ProteomeComparisonFormData = z.infer<typeof proteomeComparisonFormSchema>;
-
-// Constants
-export const MAX_COMPARISON_GENOMES = 9;
-export const MIN_COMPARISON_GENOMES = 1;
-export const PROTEOME_COMPARISON_STARTING_ROWS = 9;
 
 // Default form values
 export const DEFAULT_PROTEOME_COMPARISON_FORM_VALUES: ProteomeComparisonFormData = {

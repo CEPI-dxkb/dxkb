@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * Workspace API proxy route
- * Forwards JSON-RPC requests to ${process.env.WORKSPACE_API_URL}
+ * Forwards JSON-RPC requests to WORKSPACE_API_URL
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Make the request to BV-BRC Workspace API
-    const response = await fetch(`${process.env.WORKSPACE_API_URL}`, {
+    const response = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
       method: "POST",
       headers: {
         "Content-Type": "application/jsonrpc+json",

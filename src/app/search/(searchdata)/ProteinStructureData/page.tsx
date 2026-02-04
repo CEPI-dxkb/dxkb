@@ -6,6 +6,7 @@ import { DataTable } from '@/components/containers/DataTable';
 import { SortingState } from '@tanstack/react-table';
 import { proteinstructureFields } from '@/constants/datafields/proteinstructures';
 import { useQuery } from '@tanstack/react-query';
+import { getRequiredEnv } from "@/lib/env";
 
 interface GenomeDataProps {
   onSelectionChange?: (rows: any[]) => void;
@@ -37,7 +38,7 @@ export function ProteinStructureData({ onSelectionChange }: GenomeDataProps) {
   const searchParams = useSearchParams();
   const q = searchParams.get('q');
   const cleanQ = q?.split('#')[0] ?? '';
-  const DataAPI = process.env.NEXT_PUBLIC_DATA_API!;
+  const DataAPI = getRequiredEnv("NEXT_PUBLIC_DATA_API");
   const baseURL = `${DataAPI}/protein_structure/?${cleanQ}`;
   const pageSize = 200;
 

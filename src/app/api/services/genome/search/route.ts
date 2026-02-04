@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 
 function sanitizeQuery(input: string): string {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       queryString = `?or(eq(genome_name,${wildcard}),eq(genome_id,${wildcard}))&or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${limit})`;
     }
 
-    const url = `${process.env.NEXT_PUBLIC_DATA_API}/genome/${queryString}`;
+    const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

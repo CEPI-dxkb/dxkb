@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { safeDecodeURIComponent } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 // Cookie configuration for BV-BRC authentication
 const COOKIE_OPTIONS = {
@@ -18,7 +19,7 @@ export async function getProfileMetadata(
 ): Promise<any | null> {
   try {
     const userResponse = await fetch(
-      `${process.env.USER_URL}/${username}`,
+      `${getRequiredEnv("USER_URL")}/${username}`,
       {
         headers: {
           Authorization: token,
@@ -48,7 +49,7 @@ export async function getUserEmailByUsername(
 ): Promise<string | null> {
   try {
     const userResponse = await fetch(
-      `${process.env.USER_URL}/${username}`,
+      `${getRequiredEnv("USER_URL")}/${username}`,
       {
         headers: {
           Accept: "application/json",

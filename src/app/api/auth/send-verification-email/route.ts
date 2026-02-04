@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBvbrcAuthData } from "../utils";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * Send verification email (better-auth style endpoint)
@@ -20,7 +21,7 @@ export async function POST() {
     }
 
     // Call BV-BRC email verification endpoint
-    const response = await fetch(`${process.env.USER_VERIFICATION_URL}`, {
+    const response = await fetch(getRequiredEnv("USER_VERIFICATION_URL"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

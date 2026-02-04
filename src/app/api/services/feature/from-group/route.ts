@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Build the query: ?in(feature_id,FeatureGroup(ENCODED_PATH))&limit(1000,0)
     // Select fields that are useful for display: feature_id, patric_id, annotation
     const queryString = `?in(feature_id,FeatureGroup(${encodedPath}))&limit(1000,0)`;
-    const url = `${process.env.BVBRC_WEBSITE_API_URL}/genome_feature/${queryString}`;
+    const url = `${getRequiredEnv("BVBRC_WEBSITE_API_URL")}/genome_feature/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBvbrcAuthData, setBvbrcAuthCookies, clearBvbrcAuthCookies } from "../utils";
+import { getRequiredEnv } from "@/lib/env";
 
 /** BV-BRC user shape from profile cookie or /user API */
 interface SessionUserInfo {
@@ -31,7 +32,7 @@ export async function GET() {
 
     try {
       const response = await fetch(
-        `${process.env.USER_URL}/${userId}`,
+        `${getRequiredEnv("USER_URL")}/${userId}`,
         {
           headers: {
             Authorization: token,
@@ -59,8 +60,6 @@ export async function GET() {
     }
 
     if (!isValid) {
-      await clearBvbrcAuthCookies();
-
       return NextResponse.json({
         user: null,
         session: null,

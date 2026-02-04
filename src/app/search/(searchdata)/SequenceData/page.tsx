@@ -6,6 +6,7 @@ import { DataTable } from '@/components/containers/DataTable';
 import { SortingState } from '@tanstack/react-table';
 import { sequenceFields } from '@/constants/datafields/sequence';
 import { useQuery } from '@tanstack/react-query';
+import { getRequiredEnv } from "@/lib/env";
 
 interface GenomeDataProps {
   onSelectionChange?: (rows: any[]) => void;
@@ -37,7 +38,7 @@ export function SequenceData({ onSelectionChange }: GenomeDataProps) {
   const searchParams = useSearchParams();
   const q = searchParams.get('q');
   const cleanQ = q?.split('#')[0] ?? '';
-  const DataAPI = process.env.NEXT_PUBLIC_DATA_API!;
+  const DataAPI = getRequiredEnv("NEXT_PUBLIC_DATA_API");
   const baseURL = `${DataAPI}/genome_sequence/?${cleanQ}`;
   const pageSize = 200;
 

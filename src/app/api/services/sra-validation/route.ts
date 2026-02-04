@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * SRA Validation API proxy route
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Make request to NCBI eutils API with timeout
-    const url = `${process.env.SRA_VALIDATION_URL}?retmax=10&db=sra&id=${accession}`;
+    const url = `${getRequiredEnv("SRA_VALIDATION_URL")}?retmax=10&db=sra&id=${accession}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 

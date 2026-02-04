@@ -27,7 +27,7 @@ export const baseFormSchema = z.object({
   blast_max_hits: z
     .number()
     .refine((val) => [1, 10, 20, 50, 100, 500, 5000].includes(val), {
-      message: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000",
+        error: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000"
     }),
   blast_evalue_cutoff: z
     .number()
@@ -35,9 +35,8 @@ export const baseFormSchema = z.object({
       (val) =>
         [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000].includes(val),
       {
-        message:
-          "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000",
-      },
+          error: "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000"
+    },
     ),
 });
 

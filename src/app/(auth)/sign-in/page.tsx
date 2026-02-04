@@ -31,8 +31,12 @@ import { LuEye, LuEyeOff, LuLock, LuUser } from "react-icons/lu";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z.object({
-  username: z.string().min(1, { message: "Username is required" }),
-  password: z.string().min(8, { message: "Password is required" }),
+  username: z.string().min(1, {
+      error: "Username is required"
+}),
+  password: z.string().min(8, {
+      error: "Password is required"
+}),
 });
 
 function SigninForm() {

@@ -32,7 +32,9 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 const formSchema = z.object({
   usernameOrEmail: z
     .string()
-    .min(1, { message: "Username or email is required" }),
+    .min(1, {
+        error: "Username or email is required"
+    }),
 });
 
 export default function ForgotPasswordPage() {

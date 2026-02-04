@@ -34,8 +34,8 @@ export const variationAnalysisFormSchema = z
       .string()
       .min(1, "Output name is required")
       .refine((value) => !OUTPUT_NAME_INVALID_CHARS.test(value), {
-        message: "Output name cannot contain slashes",
-      }),
+          error: "Output name cannot contain slashes"
+    }),
   })
   .refine(
     (data) => {
@@ -46,8 +46,8 @@ export const variationAnalysisFormSchema = z
       return hasPaired || hasSingle || hasSrr;
     },
     {
-      message: "At least one library (paired, single, or SRA) must be provided",
       path: ["paired_end_libs"],
+        error: "At least one library (paired, single, or SRA) must be provided"
     },
   );
 

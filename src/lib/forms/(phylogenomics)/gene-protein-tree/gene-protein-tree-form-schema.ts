@@ -33,7 +33,7 @@ export const geneProteinTreeFormSchema = z
           return !isNaN(num) && num >= 0 && num <= 1;
         },
         {
-          message: "Trim threshold must be a number between 0 and 1",
+            error: "Trim threshold must be a number between 0 and 1"
         },
       ),
     gap_threshold: z
@@ -44,7 +44,7 @@ export const geneProteinTreeFormSchema = z
           return !isNaN(num) && num >= 0 && num <= 1;
         },
         {
-          message: "Gap threshold must be a number between 0 and 1",
+            error: "Gap threshold must be a number between 0 and 1"
         },
       ),
     sequences: z

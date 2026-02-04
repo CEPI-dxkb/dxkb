@@ -40,23 +40,35 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z
   .object({
-    first_name: z.string().min(2, { message: "First name is required" }),
+    first_name: z.string().min(2, {
+        error: "First name is required"
+    }),
     middle_name: z.string(),
-    last_name: z.string().min(2, { message: "Last name is required" }),
-    username: z.string().min(1, { message: "Username is required" }),
-    email: z.string().email({ message: "Invalid email address" }),
+    last_name: z.string().min(2, {
+        error: "Last name is required"
+    }),
+    username: z.string().min(1, {
+        error: "Username is required"
+    }),
+    email: z.email({
+            error: "Invalid email address"
+        }),
     affiliation: z.string(),
     organisms: z.string(),
     interests: z.string(),
     password: z
       .string()
-      .min(8, { message: "Password must be at least 8 characters long" }),
-    password_repeat: z.string().min(8, { message: "Passwords do not match" }),
+      .min(8, {
+          error: "Password must be at least 8 characters long"
+    }),
+    password_repeat: z.string().min(8, {
+        error: "Passwords do not match"
+    }),
   })
   .refine((data) => data.password === data.password_repeat, {
     path: ["password_repeat"],
-    message: "Passwords do not match",
-  });
+      error: "Passwords do not match"
+});
 
 function SignupForm() {
   const form = useForm<z.infer<typeof formSchema>>({

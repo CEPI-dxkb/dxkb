@@ -32,14 +32,23 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
+      const isAuthFailure = response.status === 401 || response.status === 403;
       return NextResponse.json(
-        { message: "Invalid credentials" },
-        { status: 401 },
+        { message: isAuthFailure ? "Invalid credentials" : "Authentication service unavailable" } ,
+        { status: isAuthFailure ? 401 : 503 },
       );
     }
 
     const data = await response.text();
-    const token = response.headers.get("Authorization") || data;
+    const rawToken = response.headers.get("Authorization") ?? data ?? "";
+    const token = rawToken.trim();
+    if (!token) {
+      return NextResponse.json(
+        { message: "Authentication service unavailable" },
+        { status: 503 },
+      );
+    }
+
     const expiresAt = new Date(Date.now() + 3600 * 4 * 1000); // 4 hours from now
     const realm = extractRealmFromToken(token);
 

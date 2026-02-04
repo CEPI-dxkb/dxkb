@@ -20,6 +20,7 @@ export async function GET() {
     const { token, userId, realm } = await getBvbrcAuthData();
 
     if (!token || !userId) {
+      await clearBvbrcAuthCookies();
       return NextResponse.json({
         user: null,
         session: null,

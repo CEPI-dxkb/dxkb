@@ -64,6 +64,13 @@ export async function POST(request: NextRequest) {
 
     const data = await response.text();
     const token = response.headers.get("Authorization") || data;
+    if (!token) {
+      return NextResponse.json(
+        { message: "Registration failed: missing auth token" },
+        { status: 502 },
+      );
+    }
+
     const expiresAt = new Date(Date.now() + 3600 * 4 * 1000); // 4 hours from now
     const realm = extractRealmFromToken(token);
 

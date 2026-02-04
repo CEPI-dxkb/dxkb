@@ -82,7 +82,7 @@ export const proteomeComparisonFormSchema = z
     if (data.comparison_items.length < 1) {
       err.issues.push({
         code: "custom",
-        message: "At least 1 comparison genome must be added",
+        message: `At least ${MIN_COMPARISON_GENOMES} comparison genome must be added`,
         path: ["comparison_items"],
         input: data,
       });

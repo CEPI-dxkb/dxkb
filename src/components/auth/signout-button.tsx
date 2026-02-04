@@ -48,14 +48,14 @@ export function SignoutButton({
     setIsSigningOut(true);
     try {
       await signOut();
-      // Without the timeout, the body will not have 'pointer-events: none' applied to the redirect
-      setTimeout(() => (document.body.style.pointerEvents = ""), 0)
       router.push(redirectTo);
     } catch (error) {
       console.error("Signout error:", error);
       // Even if signout fails, redirect to signin
       router.push(redirectTo);
     } finally {
+      // Ensure any temporary pointer-events lock is cleared even on errors.
+      setTimeout(() => (document.body.style.pointerEvents = ""), 0);
       setIsSigningOut(false);
     }
   };

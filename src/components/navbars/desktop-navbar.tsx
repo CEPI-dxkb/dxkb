@@ -27,13 +27,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/buttons/button";
+import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
-import { LogoutButton } from "../auth/logout-button";
+import { SignoutButton } from "../auth/signout-button";
 import {
   UserRound,
   Settings,
@@ -225,7 +225,7 @@ const DesktopNavbar = () => {
             </div>
           )}
 
-          {/* Show login/register when NOT authenticated and not loading */}
+          {/* Show sign in/sign up when NOT authenticated and not loading */}
           {!isLoading && !isAuthenticated && (
             <>
               <Button
@@ -234,7 +234,7 @@ const DesktopNavbar = () => {
                 className="text-white hover:bg-white/10 hover:text-white"
                 asChild
               >
-                <Link href="/login">Login</Link>
+                <Link href="/sign-in">Sign in</Link>
               </Button>
               <Button
                 variant="outline"
@@ -242,12 +242,12 @@ const DesktopNavbar = () => {
                 className="text-foreground hover:text-secondary hover:bg-white"
                 asChild
               >
-                <Link href="/register">Register</Link>
+                <Link href="/sign-up">Sign up</Link>
               </Button>
             </>
           )}
 
-          {/* Show user info and logout when authenticated and not loading */}
+          {/* Show user info and signout when authenticated and not loading */}
           {!isLoading && isAuthenticated && (
             <>
               <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
@@ -304,7 +304,7 @@ const DesktopNavbar = () => {
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <LogoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
+                      <SignoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>

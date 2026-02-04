@@ -128,7 +128,7 @@ const HelpFAQs = () => {
                 <AccordionItem value="item-3">
                   <AccordionTrigger>How do I reset my password?</AccordionTrigger>
                   <AccordionContent>
-                    To reset your password, click on the &quot;Sign In&quot; button, then select &quot;Forgot Password&quot; below the login
+                    To reset your password, click on the &quot;Sign In&quot; button, then select &quot;Forgot Password&quot; below the sign in
                     form. Enter the email address associated with your account, and you&apos;ll receive a password reset
                     link. This link is valid for 24 hours. If you don&apos;t receive the email, check your spam folder or
                     contact support for assistance.

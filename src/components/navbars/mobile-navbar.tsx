@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/buttons/button";
+import { Button } from "@/components/ui/button";
 import { LuMenu, LuSearch, LuChevronUp } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,12 +19,12 @@ import {
 import Link from "next/link";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
-import { LogoutButton } from "../auth/logout-button";
+import { SignoutButton } from "../auth/signout-button";
 import { MobileSearchBar } from "../search/mobile-search-bar";
 import { usePathname } from "next/navigation";
 
 const MobileNavbar = () => {
-  const { isAuthenticated, user, logout, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const pathname = usePathname();
   const isHome = pathname === "/";
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -173,7 +173,7 @@ const MobileNavbar = () => {
           </div>
         )}
 
-        {/* Show login/register when NOT authenticated and not loading */}
+        {/* Show sign in/sign up when NOT authenticated and not loading */}
         {!isLoading && !isAuthenticated && (
           <>
             <Button
@@ -182,7 +182,7 @@ const MobileNavbar = () => {
               className="text-foreground hover:bg-gray-300/50"
               asChild
             >
-              <Link href="/login">Login</Link>
+              <Link href="/sign-in">Sign in</Link>
             </Button>
             <Button
               variant="outline"
@@ -190,12 +190,12 @@ const MobileNavbar = () => {
               className="border-foreground text-foreground hover:bg-foreground hover:text-background"
               asChild
             >
-              <Link href="/register">Register</Link>
+              <Link href="/sign-up">Sign up</Link>
             </Button>
           </>
         )}
 
-        {/* Show user info and logout when authenticated and not loading */}
+        {/* Show user info and signout when authenticated and not loading */}
         {!isLoading && isAuthenticated && (
           <>
             <div className="flex items-center space-x-2">
@@ -206,7 +206,7 @@ const MobileNavbar = () => {
               </Avatar>
               <span className="text-sm font-medium text-white">{user?.username}</span>
             </div>
-            <LogoutButton />
+            <SignoutButton />
           </>
         )}
       </div>

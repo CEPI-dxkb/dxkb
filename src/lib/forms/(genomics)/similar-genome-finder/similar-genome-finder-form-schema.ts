@@ -57,7 +57,6 @@ export const similarGenomeFinderFormSchema = z
         code: "custom",
         message: "Please provide either a genome ID/name or a FASTA file",
         path: ["selectedGenomeId"],
-        input: data,
       });
     }
 
@@ -67,7 +66,6 @@ export const similarGenomeFinderFormSchema = z
         code: "custom",
         message: "Please select at least one organism type",
         path: ["include_bacterial"],
-        input: data,
       });
     }
   });

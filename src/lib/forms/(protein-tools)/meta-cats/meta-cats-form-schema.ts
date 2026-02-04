@@ -82,7 +82,6 @@ export const metaCatsFormSchema = z
         code: "custom",
         message: "P-value must be between 0 and 1",
         path: ["p_value"],
-        input: data,
       });
     }
 
@@ -93,7 +92,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: "At least one feature group must be added",
           path: ["auto_groups"],
-          input: data,
         });
         return;
       }
@@ -105,7 +103,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: `At least ${MIN_GROUPS} different groups are required`,
           path: ["auto_groups"],
-          input: data,
         });
       }
       if (uniqueGroups.size > MAX_GROUPS) {
@@ -113,7 +110,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: `Maximum ${MAX_GROUPS} groups are allowed`,
           path: ["auto_groups"],
-          input: data,
         });
       }
     }
@@ -125,7 +121,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: "At least one feature group must be selected",
           path: ["groups"],
-          input: data,
         });
         return;
       }
@@ -135,7 +130,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: `At least ${MIN_GROUPS} feature groups are required`,
           path: ["groups"],
-          input: data,
         });
       }
       if (data.groups.length > MAX_GROUPS) {
@@ -143,7 +137,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: `Maximum ${MAX_GROUPS} feature groups are allowed`,
           path: ["groups"],
-          input: data,
         });
       }
     }
@@ -155,7 +148,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: "Alignment file is required",
           path: ["alignment_file"],
-          input: data,
         });
       }
       if (!data.group_file || data.group_file.trim() === "") {
@@ -163,7 +155,6 @@ export const metaCatsFormSchema = z
           code: "custom",
           message: "Group file is required",
           path: ["group_file"],
-          input: data,
         });
       }
     }

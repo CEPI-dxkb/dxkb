@@ -41,34 +41,30 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 const formSchema = z
   .object({
     first_name: z.string().min(2, {
-        error: "First name is required"
+      error: "First name is required",
     }),
     middle_name: z.string(),
     last_name: z.string().min(2, {
-        error: "Last name is required"
+      error: "Last name is required",
     }),
     username: z.string().min(1, {
-        error: "Username is required"
+      error: "Username is required",
     }),
     email: z.email({
-            error: "Invalid email address"
-        }),
+      error: "Invalid email address",
+    }),
     affiliation: z.string(),
     organisms: z.string(),
     interests: z.string(),
-    password: z
-      .string()
-      .min(8, {
-          error: "Password must be at least 8 characters long"
+    password: z.string().min(8, {
+      error: "Password must be at least 8 characters long",
     }),
-    password_repeat: z.string().min(8, {
-        error: "Passwords do not match"
-    }),
+    password_repeat: z.string().min(8),
   })
   .refine((data) => data.password === data.password_repeat, {
     path: ["password_repeat"],
-      error: "Passwords do not match"
-});
+    error: "Passwords do not match",
+  });
 
 function SignupForm() {
   const form = useForm<z.infer<typeof formSchema>>({
@@ -103,7 +99,9 @@ function SignupForm() {
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     try {
       await signUp(data);
-      toast.success("Account created successfully. Welcome to DXKB!", {closeButton: true});
+      toast.success("Account created successfully. Welcome to DXKB!", {
+        closeButton: true,
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -414,25 +412,27 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div className="bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-center text-2xl font-bold">
-              Create an account
-            </CardTitle>
-            <CardDescription className="text-center">
-              Loading...
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-center text-2xl font-bold">
+                Create an account
+              </CardTitle>
+              <CardDescription className="text-center">
+                Loading...
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
       <SignupForm />
     </Suspense>
   );

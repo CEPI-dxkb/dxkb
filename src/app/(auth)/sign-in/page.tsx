@@ -32,10 +32,10 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z.object({
   username: z.string().min(1, {
-      error: "Username is required"
+    error: "Username is required"
 }),
   password: z.string().min(8, {
-      error: "Password is required"
+    error: "Password of at least 8 characters is required"
 }),
 });
 

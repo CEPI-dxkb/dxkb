@@ -83,7 +83,6 @@ export const msaSnpAnalysisFormSchema = z
           code: "custom",
           message: "Input type is required for unaligned sequences",
           path: ["input_type"],
-          input: data,
         });
         return;
       }
@@ -95,7 +94,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Feature group is required",
             path: ["feature_groups"],
-            input: data,
           });
         }
         if (!data.alphabet) {
@@ -103,7 +101,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Alphabet (DNA or Protein) is required for feature groups",
             path: ["alphabet"],
-            input: data,
           });
         }
       } else if (data.input_type === "input_genome_group") {
@@ -112,7 +109,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Genome group is required",
             path: ["select_genomegroup"],
-            input: data,
           });
         }
       } else if (data.input_type === "input_fasta") {
@@ -121,7 +117,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "FASTA file is required",
             path: ["fasta_files"],
-            input: data,
           });
         }
       } else if (data.input_type === "input_sequence") {
@@ -130,7 +125,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "FASTA sequence input is required",
             path: ["fasta_keyboard_input"],
-            input: data,
           });
         }
       }
@@ -142,7 +136,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Feature ID reference is only available for feature groups or genome groups",
             path: ["ref_type"],
-            input: data,
           });
         }
         if (!data.ref_string || data.ref_string.trim() === "") {
@@ -150,7 +143,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Feature ID is required",
             path: ["ref_string"],
-            input: data,
           });
         }
       } else if (data.ref_type === "genome_id") {
@@ -159,7 +151,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Genome ID reference is only available for genome groups",
             path: ["ref_type"],
-            input: data,
           });
         }
         if (!data.ref_string || data.ref_string.trim() === "") {
@@ -167,7 +158,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Genome ID is required",
             path: ["ref_string"],
-            input: data,
           });
         }
       } else if (data.ref_type === "first") {
@@ -176,7 +166,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "First sequence reference is only available for FASTA files or input sequences",
             path: ["ref_type"],
-            input: data,
           });
         }
       } else if (data.ref_type === "string") {
@@ -185,7 +174,6 @@ export const msaSnpAnalysisFormSchema = z
             code: "custom",
             message: "Reference sequence is required",
             path: ["ref_string"],
-            input: data,
           });
         }
       }
@@ -196,7 +184,6 @@ export const msaSnpAnalysisFormSchema = z
           code: "custom",
           message: "Aligned FASTA file is required",
           path: ["fasta_files"],
-          input: data,
         });
       }
 
@@ -206,7 +193,6 @@ export const msaSnpAnalysisFormSchema = z
           code: "custom",
           message: "For aligned sequences, only 'None' or 'First sequence' reference types are allowed",
           path: ["ref_type"],
-          input: data,
         });
       }
     }
@@ -217,7 +203,6 @@ export const msaSnpAnalysisFormSchema = z
         code: "custom",
         message: "Strategy is only available for Mafft aligner",
         path: ["strategy"],
-        input: data,
       });
     }
   });

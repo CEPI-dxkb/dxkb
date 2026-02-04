@@ -43,7 +43,6 @@ export const primerDesignFormSchema = z
           code: "custom",
           message: "Sequence input is required when pasting a sequence",
           path: ["sequence_input"],
-          input: data,
         });
       }
     }
@@ -54,7 +53,6 @@ export const primerDesignFormSchema = z
           code: "custom",
           message: "Select a FASTA file from the workspace",
           path: ["sequence_input"],
-          input: data,
         });
       }
     }
@@ -64,7 +62,6 @@ export const primerDesignFormSchema = z
         code: "custom",
         message: "Output folder is required",
         path: ["output_path"],
-        input: data,
       });
     }
   });

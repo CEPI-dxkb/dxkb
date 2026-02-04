@@ -77,7 +77,6 @@ export const completeFormSchema = baseFormSchema
           code: "custom",
           message: "At least one genome must be selected",
           path: ["db_genome_list"],
-          input: data,
         });
       }
     } else if (data.db_precomputed_database === "selGroup") {
@@ -86,7 +85,6 @@ export const completeFormSchema = baseFormSchema
           code: "custom",
           message: "Genome group is required",
           path: ["db_genome_group"],
-          input: data,
         });
       }
     } else if (data.db_precomputed_database === "selFeatureGroup") {
@@ -95,7 +93,6 @@ export const completeFormSchema = baseFormSchema
           code: "custom",
           message: "Feature group is required",
           path: ["db_feature_group"],
-          input: data,
         });
       }
     } else if (data.db_precomputed_database === "selTaxon") {
@@ -104,7 +101,6 @@ export const completeFormSchema = baseFormSchema
           code: "custom",
           message: "At least one taxon must be selected",
           path: ["db_taxon_list"],
-          input: data,
         });
       }
     } else if (data.db_precomputed_database === "selFasta") {
@@ -113,7 +109,6 @@ export const completeFormSchema = baseFormSchema
           code: "custom",
           message: "FASTA file is required",
           path: ["db_fasta_file"],
-          input: data,
         });
       }
     }

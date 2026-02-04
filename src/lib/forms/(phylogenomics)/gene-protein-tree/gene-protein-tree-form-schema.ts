@@ -68,7 +68,6 @@ export const geneProteinTreeFormSchema = z
           code: "custom",
           message: `Sequence type ${seq.type} does not match selected alphabet ${data.alphabet}`,
           path: ["sequences", index, "type"],
-          input: data,
         });
       }
     });
@@ -91,7 +90,6 @@ export const geneProteinTreeFormSchema = z
         code: "custom",
         message: `Substitution model ${data.substitution_model} is not valid for ${data.alphabet} sequences`,
         path: ["substitution_model"],
-        input: data,
       });
     }
   });

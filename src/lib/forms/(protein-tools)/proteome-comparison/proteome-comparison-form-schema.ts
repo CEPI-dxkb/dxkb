@@ -55,7 +55,6 @@ export const proteomeComparisonFormSchema = z
           code: "custom",
           message: "Please select a reference genome",
           path: ["ref_genome_id"],
-          input: data,
         });
       }
     } else if (data.ref_source_type === "fasta") {
@@ -64,7 +63,6 @@ export const proteomeComparisonFormSchema = z
           code: "custom",
           message: "Please select a protein FASTA file",
           path: ["ref_fasta_file"],
-          input: data,
         });
       }
     } else if (data.ref_source_type === "feature_group") {
@@ -73,7 +71,6 @@ export const proteomeComparisonFormSchema = z
           code: "custom",
           message: "Please select a feature group",
           path: ["ref_feature_group"],
-          input: data,
         });
       }
     }
@@ -84,7 +81,6 @@ export const proteomeComparisonFormSchema = z
         code: "custom",
         message: `At least ${MIN_COMPARISON_GENOMES} comparison genome must be added`,
         path: ["comparison_items"],
-        input: data,
       });
     }
 
@@ -94,7 +90,6 @@ export const proteomeComparisonFormSchema = z
         code: "custom",
         message: `Maximum ${MAX_COMPARISON_GENOMES} comparison genomes allowed`,
         path: ["comparison_items"],
-        input: data,
       });
     }
 
@@ -105,7 +100,6 @@ export const proteomeComparisonFormSchema = z
         code: "custom",
         message: "Invalid E-value format (e.g., 1e-5, 0.001)",
         path: ["max_e_val"],
-        input: data,
       });
     }
   });

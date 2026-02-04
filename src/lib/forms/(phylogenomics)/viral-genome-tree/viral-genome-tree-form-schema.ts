@@ -59,7 +59,6 @@ export const viralGenomeTreeFormSchema = z
         code: "custom",
         message: `Substitution model ${data.substitution_model} is not valid for genome sequences`,
         path: ["substitution_model"],
-        input: data,
       });
     }
   });

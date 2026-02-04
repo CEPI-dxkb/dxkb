@@ -67,7 +67,7 @@ export async function GET() {
       });
     }
 
-    // Return better-auth style response
+    // Return better-auth style response (same shape as sign-in)
     return NextResponse.json({
       user: {
         id: userInfo?.id || userId,
@@ -77,9 +77,9 @@ export async function GET() {
         last_name: userInfo?.last_name || "",
         email_verified: userInfo?.email_verified || false,
         realm,
-        token: "", // Token is in HTTP-only cookie, not exposed to client
       },
       session: {
+        token: "", // Token is in HTTP-only cookie
         expiresAt: new Date(Date.now() + 3600 * 4 * 1000).toISOString(),
       },
     });

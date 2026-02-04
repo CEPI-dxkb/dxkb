@@ -32,7 +32,6 @@ export const genomeAlignmentFormSchema = z
         code: "custom",
         message: "Duplicate genomes are not allowed",
         path: ["genome_ids"],
-        input: data,
       });
     }
 
@@ -41,7 +40,6 @@ export const genomeAlignmentFormSchema = z
         code: "custom",
         message: "Seed weight is required when manual mode is enabled",
         path: ["seed_weight"],
-        input: data,
       });
     }
   });

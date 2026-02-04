@@ -9,6 +9,7 @@ import {
   flexRender,
   SortingState,
   PaginationState,
+  Header,
 } from '@tanstack/react-table';
 
 // The following imports are usual hooks used in React to do things on events. The only non-standard one is useMemo, which isused to cache data and checks on rerenders to see if the data has changed. This is relevant to when the columns are resized.
@@ -80,6 +81,9 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     controlledVisibility || {}
   );
   const [showColumnMenu, setShowColumnMenu] = useState(false);
+  
+  // Drag and drop state for column reordering
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
 
   // This handles the event of someone selecting a row - use controlled if provided
   const [internalRowSelection, setInternalRowSelection] = useState({});
@@ -448,6 +452,53 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     window.addEventListener('mouseup', onMouseUp);
   };
 
+  // Handle column drag start
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    setDraggedColumn(columnId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle column drag over
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  // Handle column drop
+  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault();
+    
+    if (!draggedColumn || draggedColumn === targetColumnId) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    const allColumns = table.getAllLeafColumns();
+    const columnIds = allColumns.map(col => col.id);
+    
+    const draggedIndex = columnIds.indexOf(draggedColumn);
+    const targetIndex = columnIds.indexOf(targetColumnId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    // Create new column order
+    const newOrder = [...columnIds];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, removed);
+    
+    // Update column order
+    onColumnOrderChange?.(newOrder);
+    setDraggedColumn(null);
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
   // This is the section that handles downloading the data. By default, it grabs all the data. However, there is an option to only download the selected rows
   const handleDownload = (format: 'csv' | 'txt', onlySelected = false) => {
     const allCols = table.getAllLeafColumns();
@@ -605,8 +656,20 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
                               {flexRender(header.column.columnDef.header, header.getContext())}
                             </div>
                           ) : (
-                            // Regular column - sortable
-                            <div className="flex items-center justify-between w-full h-full py-0 relative">
+                            // Regular column - sortable and draggable
+                            <div 
+                              className="flex items-center justify-between w-full h-full py-0 relative"
+                              draggable={true}
+                              onDragStart={(e) => handleDragStart(e, column.id)}
+                              onDragOver={handleDragOver}
+                              onDrop={(e) => handleDrop(e, column.id)}
+                              onDragEnd={handleDragEnd}
+                              style={{
+                                cursor: 'move',
+                                opacity: draggedColumn === column.id ? 0.5 : 1,
+                                backgroundColor: draggedColumn && draggedColumn !== column.id ? 'transparent' : '',
+                              }}
+                            >
                               <div className="flex items-center gap-2 flex-1">
                                 <span className="select-none">{flexRender(header.column.columnDef.header, header.getContext())}</span>
                                 <div className="flex flex-col justify-center items-center">

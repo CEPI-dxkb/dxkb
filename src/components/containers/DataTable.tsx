@@ -70,10 +70,12 @@ interface DataTableProps {
 
   // Optional download handler
   onDownloadAll?: (format: 'csv' | 'txt', visibleColumns: string[] | null) => void;
+  // Loading indicator: parent can set this while data is being fetched
+  isLoading?: boolean;
 }
 
 // This is the actual function...
-export function DataTable({ id, data, columns, totalItems, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, rowSelection: controlledRowSelection, onRowSelectionChange, onDownloadAll }: DataTableProps) {
+export function DataTable({ id, data, columns, totalItems, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, rowSelection: controlledRowSelection, onRowSelectionChange, onDownloadAll, isLoading = false }: DataTableProps) {
 
   // These next consts are used and activated when something about the columm changes
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
@@ -89,18 +91,25 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
   const [internalRowSelection, setInternalRowSelection] = useState({});
   const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
 
-  // This helps set up the pagination
-//  const [pagination, setPagination] = useState<PaginationState>({
-//    pageIndex: pageIndex ?? 0,  // default 0 if parent doesn’t provide
-//    pageSize: pageSize ?? 200,
-//  });
+  // Pagination state: support both controlled (via pageIndex/pageSize props)
+  // and uncontrolled usage. If parent provides pageIndex/pageSize we treat
+  // pagination as controlled for that value; otherwise we keep internal state
+  // so actions like resizing columns don't reset the current page to 0.
+  const [pagination, setPagination] = useState<PaginationState>(() => ({
+    pageIndex: pageIndex ?? 0,
+    pageSize: pageSize ?? 200,
+  }));
 
-  // sync whenever parent changes pageIndex
-//  useEffect(() => {
-//    if (pageIndex !== undefined && pageIndex !== pagination.pageIndex) {
-//      setPagination((prev) => ({ ...prev, pageIndex }));
-//    }
-//  }, [pageIndex]);
+  // Sync when parent provides controlled pageIndex/pageSize values
+  useEffect(() => {
+    if (pageIndex !== undefined && pageIndex !== pagination.pageIndex) {
+      setPagination((prev) => ({ ...prev, pageIndex }));
+    }
+    if (pageSize !== undefined && pageSize !== pagination.pageSize) {
+      setPagination((prev) => ({ ...prev, pageSize }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageIndex, pageSize]);
 
   // This allows us to select multiple rows at once...
   const lastSelectedIndexRef = useRef<number | null>(null);
@@ -112,6 +121,8 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const resizeLineRef = useRef<HTMLDivElement>(null); // This one is used to create the "ghost line" that appears on a column resize to guide the user
   const headerRef = useRef<HTMLTableSectionElement>(null);
+  const isResizingRef = useRef(false);
+  const preventClickRef = useRef<((e: Event) => void) | null>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
@@ -286,10 +297,10 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     columns: columnDefs,
     state: { // These are the various states that are relevant in the table. These were defined up above.
       sorting: controlledSorting ?? [],
-      pagination: {
-        pageIndex: pageIndex ?? 0,
-        pageSize: pageSize ?? 200,
-      },
+      // use the internal pagination state (which is kept in sync with
+      // controlled props when provided). This prevents ephemeral UI
+      // operations like column-resize from resetting the active page.
+      pagination,
       columnOrder,
       columnVisibility,
       columnSizing,
@@ -355,11 +366,14 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
       });
     },
     onPaginationChange: (updater) => {
-      const next =
-        typeof updater === 'function'
-          ? updater({ pageIndex: pageIndex ?? 0, pageSize: pageSize ?? 200 })
-          : updater;
+      const next = typeof updater === 'function' ? updater(pagination) : updater;
 
+      // Update internal pagination state so the UI stays on the same page
+      // during interactions like resizing. If the parent controls pageIndex
+      // it will be synced via the effect above.
+      setPagination(next);
+
+      // Notify parent of page change (if provided)
       onPageChange?.(next.pageIndex);
     },
     onColumnOrderChange: onColumnOrderChange ? (updater) => {
@@ -372,7 +386,7 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
     } : undefined,
     manualPagination: true,
     manualSorting: true,
-    pageCount: Math.ceil(totalItems / (pageSize ?? 200)),
+    pageCount: Math.ceil(totalItems / (pagination.pageSize ?? 200)),
     columnResizeMode: 'onEnd', // This waits to implement the new column size until the mouse is released. This makes the transition smoother as it doesn't have to keep rerendering the column/table in realtime as the user moves the mouse.
     enableColumnResizing: true,
     getCoreRowModel: getCoreRowModel(), // This is what lets react build out the table from the raw data
@@ -444,9 +458,30 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
         resizeLineRef.current.style.display = 'none';
       }
 
+      // Remove listeners. Keep the temporary click blocker active for a
+      // short while to catch the browser's synthesized click event that
+      // often follows mouseup after a drag/resize. Clean up after 50ms.
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
+      setTimeout(() => {
+        if (preventClickRef.current) {
+          document.removeEventListener('click', preventClickRef.current, true);
+          preventClickRef.current = null;
+        }
+        isResizingRef.current = false;
+      }, 50);
     };
+
+    // mark that a resize interaction is in progress
+    isResizingRef.current = true;
+
+    // Block click events during the resize (capture phase) so browsers
+    // that emit a click after mouseup don't trigger header sorting.
+    preventClickRef.current = (ev: Event) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    document.addEventListener('click', preventClickRef.current, true);
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
@@ -626,6 +661,15 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
             paddingBottom: '52px', // leave room for pagination footer
           }}
         >
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 z-40 bg-white/60 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-8 h-8 border-4 border-t-transparent border-blue-600 rounded-full animate-spin" />
+                <div className="text-sm text-foreground">Loading…</div>
+              </div>
+            </div>
+          )}
           {/* This extra nested div is necessary to make sure all the table elements/columns lay out properly. Specifically to ensure things like scrolling, table width, column-resizing, etc, all work as intended. */}
           <div className="min-w-max relative" style={columnSizeVars}>
             <Table className="w-full table-auto text-xs border-collapse" style={{ borderSpacing: 0 }}>
@@ -653,6 +697,14 @@ export function DataTable({ id, data, columns, totalItems, onSelectionChange, on
                             maxWidth: `var(--col-${column.id}-size)`,
                           }}
                           onClick={column.id !== '__select__' ? (e) => {
+                            // If we were resizing just before this click, ignore the click
+                            // because the browser may emit a click after mouseup when the
+                            // user finishes resizing (particularly when shrinking a column).
+                            if (isResizingRef.current) {
+                              e.stopPropagation();
+                              return;
+                            }
+
                             e.stopPropagation();
                             console.log('🟢 Column header clicked:', column.id, 'canSort:', column.getCanSort(), 'isSorted:', column.getIsSorted());
                             const handler = column.getToggleSortingHandler();

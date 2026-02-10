@@ -190,8 +190,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     console.log('🟢 Sorting state changed to:', JSON.stringify(sorting));
   }, [sorting]);
 
-  if (metaLoading || dataLoading) return <div>Loading...</div>;
-
   if (metaError || dataError) {
     return (
       <div>
@@ -324,6 +322,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
             columnVisibility={columnVisibility}
             onColumnVisibilityChange={setColumnVisibility}
             onDownloadAll={handleDownloadAll}
+            isLoading={metaLoading || dataLoading}
           />
         )}
       </div>

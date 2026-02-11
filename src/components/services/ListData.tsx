@@ -39,13 +39,21 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
 
   useEffect(() => {
     (async () => {
-      const mod = await import(`@/constants/datafields/${resource}`);
-      const fieldObj = mod[`${resource}Fields`];
-      setFields(
-        Object.values(fieldObj)
-          .filter((f: any) => f.show_in_table !== false)
-          .map((f: any) => ({ id: f.field, label: f.label, visible: !f.hidden }))
-      );
+      try {
+        const mod = await import(`@/constants/datafields/${resource}`);
+        const fieldObj = mod[`${resource}Fields`];
+        if (!fieldObj) {
+          console.error(`No fields definition found for resource: ${resource}`);
+          return;
+        }
+        setFields(
+          Object.values(fieldObj)
+            .filter((f: any) => f.show_in_table !== false)
+            .map((f: any) => ({ id: f.field, label: f.label, visible: !f.hidden }))
+        );
+      } catch (err) {
+        console.error(`Failed to load fields for resource "${resource}":`, err);
+      }
     })();
   }, [resource]);
 
@@ -61,7 +69,10 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   const searchtype = searchParams.get('searchtype') ?? '';
   const pathname = usePathname();
   const cleanQ = q?.split('#')[0] ?? '';
-  const DataAPI = process.env.NEXT_PUBLIC_DATA_API!;
+  const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
+  if (!DataAPI) {
+    throw new Error('NEXT_PUBLIC_DATA_API environment variable is not configured');
+  }
   const pageSize = 200;
   const listKey = `${resource}-${cleanQ}-${searchtype}`;
 

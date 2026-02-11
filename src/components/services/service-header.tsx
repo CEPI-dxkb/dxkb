@@ -53,7 +53,7 @@ export function ServiceHeader({
           {quickReferenceGuide && (
             <>
               {" "}
-              <a href={quickReferenceGuide}>
+              <a href={quickReferenceGuide} target="_blank" rel="noopener">
                 Quick Reference Guide
                 <ExternalLink className="ml-1 h-3 w-3" />
               </a>
@@ -62,7 +62,7 @@ export function ServiceHeader({
           {tutorial && (
             <>
               {", "}
-              <a href={tutorial}>
+              <a href={tutorial} target="_blank" rel="noopener">
                 Tutorial
                 <ExternalLink className="ml-1 h-3 w-3" />
               </a>
@@ -72,7 +72,7 @@ export function ServiceHeader({
             <>
               {" "}
               and{" "}
-              <a href={instructionalVideo}>
+              <a href={instructionalVideo} target="_blank" rel="noopener">
                 Instructional Video
                 <ExternalLink className="ml-1 h-3 w-3" />
               </a>

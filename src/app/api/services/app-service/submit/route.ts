@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
 import { cookies } from "next/headers";
 import { safeDecodeURIComponent } from "@/lib/auth";
+import { JsonRpcError } from "@/lib/jsonrpc-client";
 
 /**
  * Submit a service job
@@ -56,6 +57,18 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error submitting service:", error);
+
+    // Handle JSON-RPC errors with detailed information
+    if (error instanceof JsonRpcError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          data: error.data,
+        },
+        { status: 500 },
+      );
+    }
 
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

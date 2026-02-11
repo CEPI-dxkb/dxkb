@@ -10,15 +10,11 @@ function sanitizeQuery(input: string): string {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const rawQuery = searchParams.get("q");
+    const rawQuery = searchParams.get("q") || "";
     const limitParam = Number.parseInt(searchParams.get("limit") || "25", 10);
     const limit = Number.isFinite(limitParam)
       ? Math.min(Math.max(limitParam, 1), 50)
       : 25;
-
-    if (!rawQuery || !rawQuery.trim()) {
-      return NextResponse.json({ results: [] });
-    }
 
     const token = await getServerAuthToken();
 
@@ -29,14 +25,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const sanitized = sanitizeQuery(rawQuery.trim());
+    const trimmedQuery = rawQuery.trim();
+    let queryString: string;
 
-    if (!sanitized) {
-      return NextResponse.json({ results: [] });
+    if (!trimmedQuery) {
+      // Blank query - return all genomes with filters (no search filter)
+      queryString = `?or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${limit})`;
+    } else {
+      // Has query - apply search filter
+      const sanitized = sanitizeQuery(trimmedQuery);
+
+      if (!sanitized) {
+        return NextResponse.json({ results: [] });
+      }
+
+      const wildcard = `*${sanitized}*`;
+      queryString = `?or(eq(genome_name,${wildcard}),eq(genome_id,${wildcard}))&or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${limit})`;
     }
 
-    const wildcard = `*${sanitized}*`;
-    const queryString = `?or(eq(genome_name,${wildcard}),eq(genome_id,${wildcard}))&or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${limit})`;
     const url = `${DATA_API_BASE}${queryString}`;
 
     const response = await fetch(url, {

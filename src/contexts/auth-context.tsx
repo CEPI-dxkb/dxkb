@@ -1,5 +1,7 @@
 "use client";
 
+// TODO: Change auth to use better-auth
+
 import React, {
   createContext,
   useContext,
@@ -32,10 +34,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isVerified, setIsVerified] = useState(false);
+interface AuthProviderProps {
+  children: ReactNode;
+  initialUser?: AuthUser | null;
+}
+
+export function AuthProvider({
+  children,
+  initialUser = null,
+}: AuthProviderProps): React.ReactElement {
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isVerified, setIsVerified] = useState(
+    initialUser?.email_verified ?? false,
+  );
 
   // Check for existing session on mount
   useEffect(() => {
@@ -46,12 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (savedUser) {
           setUser(savedUser);
           setIsVerified(savedUser.email_verified ?? false);
+        } else {
+          setUser(null);
+          setIsVerified(false);
         }
       } catch (error) {
         console.error("Auth initialization failed:", error);
         await AuthStorage.clear();
-      } finally {
-        setIsLoading(false);
       }
     };
 

@@ -279,8 +279,26 @@ export async function submitServiceJob(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+        // Include additional error details if available
+        if (errorData.details) {
+          errorMessage += `: ${JSON.stringify(errorData.details)}`;
+        }
+      } catch {
+        // If response is not JSON, try to get text
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        } catch {
+          // Keep the default error message
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();

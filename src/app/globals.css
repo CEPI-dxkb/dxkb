@@ -488,7 +488,7 @@
 }
 
 .accordion-item {
-  @apply w-full rounded-lg border-1;
+  @apply w-full rounded-lg border;
 }
 
 .accordion-trigger {
@@ -893,7 +893,7 @@
 }
 
 .timeline-bar {
-  @apply w-full bg-primary rounded-t min-h-5;
+  @apply w-full bg-primary rounded-t-lg min-h-5;
 }
 
 .timeline-label {
@@ -964,7 +964,7 @@
 }
 
 .impact-bar {
-  @apply w-full bg-primary rounded-t min-h-5;
+  @apply w-full bg-primary rounded-t-lg min-h-5;
 }
 
 /* Author Network */

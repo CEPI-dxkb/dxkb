@@ -341,9 +341,6 @@ export default function VariationAnalysisPage() {
                     setSelectedLibraries(libs);
                     syncLibrariesToForm(libs);
                   }}
-                  onAdd={(srrIds, title) => {
-                    // Libraries are already added and synced via setSelectedLibraries prop
-                  }}
                   allowDuplicates={false}
                 />
               </CardContent>

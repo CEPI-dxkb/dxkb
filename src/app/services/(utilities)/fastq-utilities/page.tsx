@@ -538,9 +538,6 @@ export default function FastqUtilitiesPage() {
                   placeholder="SRR..."
                   selectedLibraries={selectedLibraries}
                   setSelectedLibraries={setLibrariesAndSync}
-                  onAdd={() => {
-                    // Libraries are already added and synced via setSelectedLibraries prop
-                  }}
                   allowDuplicates={false}
                 />
 

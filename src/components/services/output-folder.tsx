@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { HelpCircle, Loader2 } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";

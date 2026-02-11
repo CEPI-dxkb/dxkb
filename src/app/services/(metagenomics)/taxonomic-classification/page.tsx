@@ -458,9 +458,6 @@ export default function TaxonomicClassificationPage() {
                   placeholder="SRR..."
                   selectedLibraries={selectedLibraries}
                   setSelectedLibraries={handleSetSelectedLibraries}
-                  onAdd={() => {
-                    // Libraries are already added and synced via setSelectedLibraries prop
-                  }}
                   onChange={(value) => {
                     // Auto-populate sample identifier as user types SRA accession
                     setSrrSampleId(value);

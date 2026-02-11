@@ -96,7 +96,9 @@ export function useLibrarySelection<
   const shouldSyncRef = useRef(false);
   // Store config in ref to avoid effect dependency issues
   const configRef = useRef(config);
-  configRef.current = config;
+  useEffect(() => {
+    configRef.current = config;
+  }, [config]);
 
   // Sync libraries to form in an effect to avoid setState during render
   useEffect(() => {

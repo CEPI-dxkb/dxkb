@@ -370,10 +370,6 @@ export default function GenomeAssemblyPage() {
                     setSelectedLibraries(libs);
                     syncLibrariesToForm(libs);
                   }}
-                  onAdd={(srrIds, title) => {
-                    // Libraries are already added and synced via setSelectedLibraries prop
-                    // This callback is here for potential future use (e.g., logging, analytics)
-                  }}
                   allowDuplicates={false}
                 />
               </CardContent>

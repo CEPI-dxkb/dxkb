@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack -p 3019",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "scan": "next dev --turbopack -p 3019 & pnpm exec wait-on http://localhost:3019 && npx react-scan@latest localhost:3019"
   },
   "dependencies": {
@@ -71,7 +71,6 @@
     "zod": "^4"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@svgr/webpack": "^8.1.0",
     "@tailwindcss/postcss": "^4.1",
     "@types/jest": "^30.0.0",

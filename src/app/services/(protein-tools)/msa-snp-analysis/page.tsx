@@ -96,6 +96,7 @@ export default function MSAandSNPAnalysisPage() {
     } | null>(null);
   const [showStrategy, setShowStrategy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
   const inputStatus = form.watch("input_status");
@@ -1341,6 +1342,8 @@ export default function MSAandSNPAnalysisPage() {
                             required={true}
                             value={field.value}
                             onChange={field.onChange}
+                            outputFolderPath={form.watch("output_path")}
+                            onValidationChange={setIsOutputNameValid}
                           />
                         </FormControl>
                         <FormMessage />
@@ -1359,7 +1362,7 @@ export default function MSAandSNPAnalysisPage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid}
+              disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner /> : null}
               Submit

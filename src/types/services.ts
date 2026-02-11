@@ -3,6 +3,10 @@ export interface Library {
   name: string;
   type: "paired" | "single" | "sra";
   files?: string[];
+  /** Optional sample identifier; used by services that submit sample_id per library (e.g. Taxonomic Classification) */
+  sampleId?: string;
+  /** Optional study title from SRA API; included in srr_libs when present */
+  title?: string;
   platform?: string;
   interleaved?: boolean;
   read_orientation_outward?: boolean;

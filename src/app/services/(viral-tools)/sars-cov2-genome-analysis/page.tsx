@@ -51,6 +51,7 @@ export default function GenomeAnalysis() {
   const [_selectedFiles, setSelectedFiles] = useState<string[]>([]);
   const [_outputFolder, setOutputFolder] = useState<string>("");
   const [_outputName, setOutputName] = useState<string>("");
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [analysisInput, setAnalysisInput] = useState<string>("read-file");
   const [_strategy, setStrategy] = useState<string>("one-codex");
   const [primer, setPrimer] = useState<string>("artic");
@@ -266,7 +267,13 @@ export default function GenomeAnalysis() {
                 <OutputFolder onChange={setOutputFolder} />
               </div>
               <div className="w-full">
-                <OutputFolder variant="name" onChange={setOutputName} />
+                <OutputFolder
+                variant="name"
+                value={_outputName}
+                onChange={setOutputName}
+                outputFolderPath={_outputFolder}
+                onValidationChange={setIsOutputNameValid}
+              />
               </div>
             </div>
           </CardContent>
@@ -436,7 +443,9 @@ export default function GenomeAnalysis() {
         <Button variant="outline" onClick={handleReset}>
           Reset
         </Button>
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={!isOutputNameValid}>
+                Submit
+              </Button>
       </div>
     </section>
   );

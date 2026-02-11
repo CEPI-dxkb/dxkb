@@ -70,6 +70,7 @@ export default function GenomeAlignmentServicePage() {
   const [selectedGenomes, setSelectedGenomes] = useState<GenomeSummary[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isFetchingGroup, setIsFetchingGroup] = useState(false);
   const [lastSelectedGroup, setLastSelectedGroup] = useState<string | null>(null);
   const [selectedGenomeGroup, setSelectedGenomeGroup] = useState<WorkspaceObject | null>(null);
@@ -393,6 +394,8 @@ export default function GenomeAlignmentServicePage() {
                         required
                         value={field.value}
                         onChange={field.onChange}
+                        outputFolderPath={form.watch("output_path")}
+                        onValidationChange={setIsOutputNameValid}
                       />
                     </FormControl>
                     <FormMessage />
@@ -507,7 +510,7 @@ export default function GenomeAlignmentServicePage() {
             >
               Reset
             </Button>
-            <Button type="submit" disabled={isSubmitting || !hasMinimumGenomes}>
+            <Button type="submit" disabled={isSubmitting || !hasMinimumGenomes || !isOutputNameValid}>
               {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Submit
             </Button>

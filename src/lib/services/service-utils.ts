@@ -16,7 +16,6 @@ export interface PipelineAction {
   id: string;
   name: string;
   color?: string;
-  shape?: string;
 }
 
 export const pipelineActionList = [
@@ -34,8 +33,6 @@ export const actionColors = [
   "bg-green-500",
   "bg-yellow-500",
 ] as const;
-
-export const actionShapes = ["circle", "square", "diamond"] as const;
 
 export function handlePairedLibraryAdd(
   files: FileInput,

@@ -30,6 +30,7 @@ export default function SubspeciesClassification() {
   const [querySequence, setQuerySequence] = useState("");
   const [_outputFolder, setOutputFolder] = useState("");
   const [_outputName, setOutputName] = useState("");
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [querySource, setQuerySource] = useState("enter-sequence");
   const [species, setSpecies] = useState(
     subspeciesClassificationSpeciesList[0].id,
@@ -146,7 +147,13 @@ export default function SubspeciesClassification() {
                   <OutputFolder onChange={setOutputFolder} />
                 </div>
                 <div className="w-full">
-                  <OutputFolder variant="name" onChange={setOutputName} />
+                  <OutputFolder
+                  variant="name"
+                  value={_outputName}
+                  onChange={setOutputName}
+                  outputFolderPath={_outputFolder}
+                  onValidationChange={setIsOutputNameValid}
+                />
                 </div>
               </div>
             </div>
@@ -159,7 +166,9 @@ export default function SubspeciesClassification() {
         <Button variant="outline" onClick={handleReset}>
           Reset
         </Button>
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={!isOutputNameValid}>
+                Submit
+              </Button>
       </div>
     </section>
   );

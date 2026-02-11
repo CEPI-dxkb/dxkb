@@ -137,6 +137,7 @@ export default function BlastServicePage() {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
   const {
@@ -753,6 +754,8 @@ export default function BlastServicePage() {
                             required={true}
                             value={field.value}
                             onChange={field.onChange}
+                            outputFolderPath={form.watch("output_path")}
+                            onValidationChange={setIsOutputNameValid}
                           />
                         </FormControl>
                         <FormMessage />
@@ -874,7 +877,7 @@ export default function BlastServicePage() {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !form.formState.isValid}
+                disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
               >
                 {isSubmitting ? <Spinner /> : null}
                 Submit

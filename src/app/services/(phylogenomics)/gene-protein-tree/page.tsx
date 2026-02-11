@@ -93,6 +93,7 @@ export default function GeneProteinTreePage() {
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const alphabet = form.watch("alphabet");
   const sequences = form.watch("sequences");
@@ -660,6 +661,8 @@ export default function GeneProteinTreePage() {
                               required={true}
                               value={field.value}
                               onChange={field.onChange}
+                              outputFolderPath={form.watch("output_path")}
+                              onValidationChange={setIsOutputNameValid}
                             />
                           </FormControl>
                           <FormMessage />
@@ -775,7 +778,7 @@ export default function GeneProteinTreePage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid}
+              disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner /> : null}
               Submit

@@ -70,6 +70,7 @@ export default function VariationAnalysisPage() {
   const [pairedRead2, setPairedRead2] = useState<string | null>(null);
   const [singleRead, setSingleRead] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const form = useForm<VariationAnalysisFormData>({
     resolver: zodResolver(variationAnalysisFormSchema),
@@ -340,9 +341,6 @@ export default function VariationAnalysisPage() {
                     setSelectedLibraries(libs);
                     syncLibrariesToForm(libs);
                   }}
-                  onAdd={(srrIds, title) => {
-                    // Libraries are already added and synced via setSelectedLibraries prop
-                  }}
                   allowDuplicates={false}
                 />
               </CardContent>
@@ -511,6 +509,8 @@ export default function VariationAnalysisPage() {
                             required={true}
                             value={field.value}
                             onChange={field.onChange}
+                            outputFolderPath={form.watch("output_path")}
+                            onValidationChange={setIsOutputNameValid}
                           />
                         </FormControl>
                         <FormMessage />
@@ -569,7 +569,7 @@ export default function VariationAnalysisPage() {
               >
                 Reset
               </Button>
-              <Button type="submit" disabled={isSubmitting || !form.formState.isValid}>
+              <Button type="submit" disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}>
                 {isSubmitting ? <Spinner /> : null}
                 Submit
               </Button>

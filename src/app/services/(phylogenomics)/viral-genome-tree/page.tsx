@@ -94,6 +94,7 @@ export default function ViralGenomeTreePage() {
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
   const sequences = form.watch("sequences");
@@ -689,6 +690,8 @@ export default function ViralGenomeTreePage() {
                               required={true}
                               value={field.value}
                               onChange={field.onChange}
+                              outputFolderPath={form.watch("output_path")}
+                              onValidationChange={setIsOutputNameValid}
                             />
                           </FormControl>
                           <FormMessage />
@@ -804,7 +807,7 @@ export default function ViralGenomeTreePage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid}
+              disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner /> : null}
               Submit

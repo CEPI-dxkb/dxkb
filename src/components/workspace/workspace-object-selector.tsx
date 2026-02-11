@@ -378,7 +378,7 @@ export function WorkspaceObjectSelector({
                   break;
               }
             }}
-            className="w-full pr-10 pl-10"
+            className="service-card-input w-full pr-10 pl-10"
           />
           {/* Manual Dropdown Trigger */}
           <Button

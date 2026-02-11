@@ -1,6 +1,9 @@
 // Export all types
 export * from "./types";
 
+// Validation helpers
+export { checkWorkspaceObjectExists } from "./validation";
+
 // Export the base client
 export { WorkspaceApiClient, createWorkspaceApiClient, workspaceApi } from "./client";
 

@@ -71,6 +71,7 @@ export default function PrimerDesignServicePage() {
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [sequenceValidation, setSequenceValidation] =
     useState<PrimerSequenceValidationResult | null>(null);
   
@@ -989,6 +990,8 @@ export default function PrimerDesignServicePage() {
                         required
                         value={field.value}
                         onChange={(value) => field.onChange(value)}
+                        outputFolderPath={form.watch("output_path")}
+                        onValidationChange={setIsOutputNameValid}
                       />
                     </FormControl>
                     <FormMessage />
@@ -1004,7 +1007,7 @@ export default function PrimerDesignServicePage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid}
+              disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
             >
               {isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
               Submit

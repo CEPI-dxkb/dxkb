@@ -28,6 +28,7 @@ export default function HASubtypeNumbering() {
   const [inputSequenceValue, setInputSequenceValue] = useState("");
   const [_outputFolder, setOutputFolder] = useState("");
   const [_outputName, setOutputName] = useState("");
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [selectedSchemes, setSelectedSchemes] = useState(["H1PDM34"]);
 
   const handleReset = () => {
@@ -159,7 +160,13 @@ export default function HASubtypeNumbering() {
                   <OutputFolder onChange={setOutputFolder} />
                 </div>
                 <div className="w-full">
-                  <OutputFolder variant="name" onChange={setOutputName} />
+                  <OutputFolder
+                  variant="name"
+                  value={_outputName}
+                  onChange={setOutputName}
+                  outputFolderPath={_outputFolder}
+                  onValidationChange={setIsOutputNameValid}
+                />
                 </div>
               </div>
             </div>
@@ -172,7 +179,9 @@ export default function HASubtypeNumbering() {
         <Button variant="outline" onClick={handleReset}>
           Reset
         </Button>
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={!isOutputNameValid}>
+                Submit
+              </Button>
       </div>
     </section>
   );

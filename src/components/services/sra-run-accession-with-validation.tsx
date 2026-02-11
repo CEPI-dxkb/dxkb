@@ -16,6 +16,8 @@ interface SraRunAccessionWithValidationProps {
   disabled?: boolean;
   allowDuplicates?: boolean;
   onAdd?: (srrIds: string[], title?: string) => void;
+  /** Called when the accession input value changes */
+  onChange?: (value: string) => void;
 }
 
 // Validation is now done via API proxy to avoid CORS issues
@@ -104,6 +106,7 @@ const SraRunAccessionWithValidation = ({
   disabled = false,
   allowDuplicates = false,
   onAdd,
+  onChange,
 }: SraRunAccessionWithValidationProps) => {
   const [sraAccession, setSraAccession] = useState("");
   const [isValidating, setIsValidating] = useState(false);
@@ -166,7 +169,11 @@ const SraRunAccessionWithValidation = ({
             onAdd([accession]);
           }
 
+          // Clear input and validation message after successful add
           setSraAccession("");
+          if (onChange) {
+            onChange("");
+          }
           setValidationMessage("");
         } else {
           toast.error("Duplicate SRA accession detected", {
@@ -206,6 +213,7 @@ const SraRunAccessionWithValidation = ({
             id: runId,
             name: runId,
             type: "sra",
+            ...(studyTitle && { title: studyTitle }),
           });
         }
 
@@ -218,8 +226,11 @@ const SraRunAccessionWithValidation = ({
             onAdd(runs, studyTitle);
           }
 
-          // Clear input and validation message
+          // Clear input and validation message after successful add
           setSraAccession("");
+          if (onChange) {
+            onChange("");
+          }
           setValidationMessage("");
         }
       } catch (parseError) {
@@ -245,13 +256,17 @@ const SraRunAccessionWithValidation = ({
     if (validationMessage) {
       setValidationMessage("");
     }
+    // Notify parent of value change
+    if (onChange) {
+      onChange(value);
+    }
   };
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className="service-card-label">{title}</Label>
-        <div className="bg-border mx-4 h-[1px] flex-1" />
+        <div className="bg-border mx-4 h-px flex-1" />
         <Button
           variant="outline"
           size="icon"

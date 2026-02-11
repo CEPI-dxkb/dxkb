@@ -82,6 +82,7 @@ export default function GenomeAssemblyPage() {
   const [pairedRead2, setPairedRead2] = useState<string | null>(null);
   const [singleRead, setSingleRead] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const form = useForm<GenomeAssemblyFormData>({
     resolver: zodResolver(genomeAssemblyFormSchema),
@@ -369,10 +370,6 @@ export default function GenomeAssemblyPage() {
                     setSelectedLibraries(libs);
                     syncLibrariesToForm(libs);
                   }}
-                  onAdd={(srrIds, title) => {
-                    // Libraries are already added and synced via setSelectedLibraries prop
-                    // This callback is here for potential future use (e.g., logging, analytics)
-                  }}
                   allowDuplicates={false}
                 />
               </CardContent>
@@ -491,12 +488,14 @@ export default function GenomeAssemblyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormControl>
-                          <OutputFolder
-                            variant="name"
-                            required={true}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
+                        <OutputFolder
+                          variant="name"
+                          required={true}
+                          value={field.value}
+                          onChange={field.onChange}
+                          outputFolderPath={form.watch("output_path")}
+                          onValidationChange={setIsOutputNameValid}
+                        />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -816,7 +815,7 @@ export default function GenomeAssemblyPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !form.formState.isValid}
+                disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
               >
                 {isSubmitting ? <Spinner /> : null}
                 Assemble

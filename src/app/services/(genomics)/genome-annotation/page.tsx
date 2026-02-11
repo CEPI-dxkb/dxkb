@@ -66,6 +66,7 @@ const GenomeAnnotationContent = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
   const {
@@ -390,6 +391,8 @@ const GenomeAnnotationContent = () => {
                           value={field.value}
                           onChange={field.onChange}
                           disabled={true}
+                          outputFolderPath={form.watch("output_path")}
+                          onValidationChange={setIsOutputNameValid}
                         />
                       </FormControl>
                       <FormMessage />
@@ -413,7 +416,7 @@ const GenomeAnnotationContent = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !form.formState.isValid}
+                disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
               >
                 {isSubmitting ? <Spinner /> : null}
                 Annotate

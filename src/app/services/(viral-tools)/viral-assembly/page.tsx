@@ -37,6 +37,7 @@ export default function ViralAssembly() {
   const [virusGenome, setVirusGenome] = useState("flu");
   const [_outputFolder, setOutputFolder] = useState("");
   const [_outputName, setOutputName] = useState("");
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [_readFiles, setReadFiles] = useState([
     { id: 1, name: "READ FILE 1" },
@@ -195,7 +196,13 @@ export default function ViralAssembly() {
                 <OutputFolder onChange={setOutputFolder} />
               </div>
               <div className="w-full">
-                <OutputFolder variant="name" onChange={setOutputName} />
+                <OutputFolder
+                  variant="name"
+                  value={_outputName}
+                  onChange={setOutputName}
+                  outputFolderPath={_outputFolder}
+                  onValidationChange={setIsOutputNameValid}
+                />
               </div>
             </div>
           </CardContent>
@@ -207,7 +214,9 @@ export default function ViralAssembly() {
         <Button variant="outline" onClick={handleReset}>
           Reset
         </Button>
-        <Button type="submit">Assemble</Button>
+        <Button type="submit" disabled={!isOutputNameValid}>
+          Assemble
+        </Button>
       </div>
     </section>
   );

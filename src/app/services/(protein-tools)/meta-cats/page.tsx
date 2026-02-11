@@ -107,6 +107,7 @@ export default function MetaCATSPage() {
 
   // General state
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const inputType = form.watch("input_type");
   const metadataGroup = form.watch("metadata_group");
@@ -460,6 +461,8 @@ export default function MetaCATSPage() {
                             required={true}
                             value={field.value}
                             onChange={field.onChange}
+                            outputFolderPath={form.watch("output_path")}
+                            onValidationChange={setIsOutputNameValid}
                           />
                         </FormControl>
                         <FormMessage />
@@ -935,7 +938,7 @@ export default function MetaCATSPage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid}
+              disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner /> : null}
               Submit

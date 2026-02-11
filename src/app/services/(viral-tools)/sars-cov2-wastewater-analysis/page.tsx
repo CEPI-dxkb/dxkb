@@ -49,6 +49,7 @@ export default function WastewaterAnalysis() {
   const [primer, setPrimer] = useState<string>("artic");
   const [_outputFolder, setOutputFolder] = useState<string>("");
   const [_outputName, setOutputName] = useState<string>("");
+  const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [version, setVersion] = useState<string>(
     primerOptions.find((option) => option.id === primer)?.versions[0] ?? "",
   );
@@ -261,7 +262,13 @@ export default function WastewaterAnalysis() {
                 <OutputFolder onChange={setOutputFolder} />
               </div>
               <div className="w-full">
-                <OutputFolder variant="name" onChange={setOutputName} />
+                <OutputFolder
+                variant="name"
+                value={_outputName}
+                onChange={setOutputName}
+                outputFolderPath={_outputFolder}
+                onValidationChange={setIsOutputNameValid}
+              />
               </div>
             </div>
           </CardContent>
@@ -271,7 +278,9 @@ export default function WastewaterAnalysis() {
       {/* Action Buttons */}
       <div className="service-form-controls">
         <Button variant="outline">Reset</Button>
-        <Button type="submit">Submit</Button>
+        <Button type="submit" disabled={!isOutputNameValid}>
+                Submit
+              </Button>
       </div>
     </section>
   );

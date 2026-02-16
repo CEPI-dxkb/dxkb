@@ -1275,6 +1275,12 @@ export const haSubtypeNumberingInput: ServiceInfoPopup = {
   ],
 };
 
+export const haSubtypeNumberingConversionScheme: ServiceInfoPopup = {
+  title: "Conversion Sequence Numbering Scheme",
+  description:
+    "Select one or more HA subtype numbering schemes to which your sequences will be converted. The service uses the Burke and Smith cross-subtype numbering scheme based on structurally equivalent positions across HA subtypes.",
+};
+
 // ------------------------------------------------------------ //
 // ------------- SARS-CoV-2 Genome Analysis Service Info ------------- //
 // ------------------------------------------------------------ //

@@ -1303,6 +1303,11 @@ export const sarsCov2GenomeAnalysisParameters: ServiceInfoPopup = {
       header: "Strategy",
       subsections: [
         {
+          subheader: "One Codex",
+          subdescription:
+            "Uses the One Codex pipeline for SARS-CoV-2 assembly. When selected, Primers and Version can be specified (e.g. ARTIC, midnight, qiagen, swift, varskip).",
+        },
+        {
           subheader: "Auto",
           subdescription:
             "Uses CDC-Illumina or CDC-Nanopore protocol based on the type of reads provided (see below).",
@@ -1323,6 +1328,11 @@ export const sarsCov2GenomeAnalysisParameters: ServiceInfoPopup = {
             "Implements the ARTICnetwork-prescribed protocol for nCoV-19 genome sequences for Nanopore-generated sequences.",
         },
       ],
+    },
+    {
+      header: "Primers and Version",
+      description:
+        "When Strategy is One Codex, select the primer set (e.g. ARTIC, midnight, qiagen, swift, varskip, varskip-long) and the corresponding version. These options are disabled for CDC-Illumina, CDC-Nanopore, and ARTIC-Nanopore strategies.",
     },
     {
       header: "Taxonomy ID",

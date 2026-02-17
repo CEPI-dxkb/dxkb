@@ -16,7 +16,7 @@ const HelpFAQs = () => {
             </TabsList>
 
             <TabsContent value="general">
-              <Accordion type="single" collapsible className="w-full">
+              <Accordion>
                 <AccordionItem value="item-1">
                   <AccordionTrigger>What is VirusDB?</AccordionTrigger>
                   <AccordionContent>
@@ -59,7 +59,7 @@ const HelpFAQs = () => {
             </TabsContent>
 
             <TabsContent value="technical">
-              <Accordion type="single" collapsible className="w-full">
+              <Accordion>
                 <AccordionItem value="item-1">
                   <AccordionTrigger>What file formats are supported for sequence uploads?</AccordionTrigger>
                   <AccordionContent>
@@ -104,7 +104,7 @@ const HelpFAQs = () => {
             </TabsContent>
 
             <TabsContent value="account">
-              <Accordion type="single" collapsible className="w-full">
+              <Accordion>
                 <AccordionItem value="item-1">
                   <AccordionTrigger>How do I create a VirusDB account?</AccordionTrigger>
                   <AccordionContent>

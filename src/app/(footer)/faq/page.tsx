@@ -1,5 +1,4 @@
 import FooterHeader from '@/components/headers/footer-header'
-import React from 'react'
 import {
   Accordion,
   AccordionContent,
@@ -61,21 +60,11 @@ const FAQ = () => {
           <div key={section} className="section-content">
             <h2 className="section-content-header">{section}</h2>
             <div className="section-content-body">
-              <Accordion
-                type="single"
-                collapsible
-                className="space-y-4"
-              >
-                {questions.map((faq, index) => (
-                  <AccordionItem
-                    key={index}
-                    value={`${section}-${index}`}
-                    className="accordion-item"
-                  >
-                    <AccordionTrigger className="accordion-trigger">{faq.question}</AccordionTrigger>
-                    <AccordionContent className="accordion-content">
-                      {faq.answer}
-                    </AccordionContent>
+              <Accordion multiple className="space-y-4">
+                {questions.map((question) => (
+                  <AccordionItem key={question.question} value={question.question}>
+                    <AccordionTrigger>{question.question}</AccordionTrigger>
+                    <AccordionContent>{question.answer}</AccordionContent>
                   </AccordionItem>
                 ))}
               </Accordion>

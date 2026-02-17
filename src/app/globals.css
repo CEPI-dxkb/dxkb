@@ -1005,31 +1005,31 @@
   @apply flex flex-col gap-8;
 }
 
-/* Accordion Animations */
+/* Accordion Animations (Base UI: data-open / data-closed, --accordion-panel-height) */
 [data-slot="accordion-content"] {
   overflow: hidden;
 }
 
-[data-slot="accordion-content"][data-state="open"] {
-  animation: slideDown 200ms ease-out;
+[data-slot="accordion-content"][data-open] {
+  animation: accordionSlideDown 200ms ease-out;
 }
 
-[data-slot="accordion-content"][data-state="closed"] {
-  animation: slideUp 200ms ease-out;
+[data-slot="accordion-content"][data-closed] {
+  animation: accordionSlideUp 200ms ease-out;
 }
 
-@keyframes slideDown {
+@keyframes accordionSlideDown {
   from {
     height: 0;
   }
   to {
-    height: var(--radix-accordion-content-height);
+    height: var(--accordion-panel-height);
   }
 }
 
-@keyframes slideUp {
+@keyframes accordionSlideUp {
   from {
-    height: var(--radix-accordion-content-height);
+    height: var(--accordion-panel-height);
   }
   to {
     height: 0;

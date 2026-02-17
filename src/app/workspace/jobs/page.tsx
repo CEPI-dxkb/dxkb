@@ -536,15 +536,14 @@ function JobsContent() {
                     </div>
 
                     {/* Parameters */}
-                    <Accordion type="single" collapsible>
+                    <Accordion>
                       <AccordionItem
                         value={`parameters-${job.id}`}
-                        className="accordion-item"
                       >
-                        <AccordionTrigger className="accordion-trigger">
+                        <AccordionTrigger>
                           Job Parameters
                         </AccordionTrigger>
-                        <AccordionContent className="accordion-content">
+                        <AccordionContent>
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
                               {JSON.stringify(job.parameters, null, 2)}
@@ -554,12 +553,11 @@ function JobsContent() {
                       </AccordionItem>
                     </Accordion>
 
-                    <Accordion type="single" collapsible>
+                    <Accordion>
                       <AccordionItem
                         value={`stdout-${job.id}`}
-                        className="accordion-item"
                       >
-                        <AccordionTrigger className="accordion-trigger">
+                        <AccordionTrigger>
                           Standard Output
                         </AccordionTrigger>
                         <AccordionContent className="accordion-content">
@@ -575,15 +573,14 @@ function JobsContent() {
                       </AccordionItem>
                     </Accordion>
 
-                    <Accordion type="single" collapsible>
+                    <Accordion>
                       <AccordionItem
                         value={`stderr-${job.id}`}
-                        className="accordion-item"
                       >
-                        <AccordionTrigger className="accordion-trigger">
+                        <AccordionTrigger>
                           Standard Error
                         </AccordionTrigger>
-                        <AccordionContent className="accordion-content">
+                        <AccordionContent>
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
                               {loading.output

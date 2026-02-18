@@ -247,9 +247,8 @@ export default function VariationAnalysisPage() {
         description="The Variation Analysis Service can be used to identify and annotate sequence variations."
         infoPopupTitle={variationAnalysisInfo.title}
         infoPopupDescription={variationAnalysisInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/variation_analysis_service.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/variation_analysis/variation_analysis.html"
       />
 
       <Form {...form}>

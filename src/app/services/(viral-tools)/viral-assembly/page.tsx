@@ -59,8 +59,6 @@ import {
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
 
-const quickReference =
-  "https://www.bv-brc.org/docs/quick_references/services/viral_assembly.html";
 const tutorial =
   "https://www.bv-brc.org/docs/tutorial/viral_assembly/assembly.html";
 
@@ -204,7 +202,6 @@ export default function ViralAssemblyPage() {
         description="The Viral Assembly Service utilizes IRMA (Iterative Refinement Meta-Assembler) to assemble viral genomes. Users must select the virus genome for processing. This service is currently in beta; any feedback or improvement is welcomed."
         infoPopupTitle={viralAssemblyInfo.title}
         infoPopupDescription={viralAssemblyInfo.description}
-        quickReferenceGuide={quickReference}
         tutorial={tutorial}
       />
 

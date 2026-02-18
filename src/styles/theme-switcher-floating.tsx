@@ -33,16 +33,18 @@ export function ThemeSwitcher() {
   return (
     <div className="fixed right-6 bottom-6 z-50">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="default"
-            size="icon"
-            className="bg-primary hover:bg-foreground border border-accent h-12 w-12 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <LuPalette className="h-5 w-5" />
-          </Button>
-        </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="default"
+              size="icon"
+              className="bg-primary hover:bg-foreground border border-accent h-12 w-12 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              <LuPalette className="h-5 w-5" />
+            </Button>
+          }
+        />
         <PopoverContent
           className="w-40 p-4"
           align="end"

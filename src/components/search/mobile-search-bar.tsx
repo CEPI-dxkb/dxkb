@@ -120,15 +120,17 @@ function MobileSearchBarContent({
       <div className="bg-muted/80 dark:bg-muted/60 border-muted-foreground/30 relative flex w-full items-center overflow-hidden rounded-full border">
         {/* Data Types Selector - Left Side */}
         <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              size="sm"
-              className="text-foreground bg-background hover:bg-muted/60 border-muted-foreground/30 h-10 shrink-0 rounded-none rounded-l-full border-0 border-r px-3 text-xs font-medium whitespace-nowrap"
-            >
-              {selectedType.typeTitle}
-            </Button>
-          </PopoverTrigger>
+          <PopoverTrigger
+            render={
+              <Button
+                type="button"
+                size="sm"
+                className="text-foreground bg-background hover:bg-muted/60 border-muted-foreground/30 h-10 shrink-0 rounded-none rounded-l-full border-0 border-r px-3 text-xs font-medium whitespace-nowrap"
+              >
+                {selectedType.typeTitle}
+              </Button>
+            }
+          />
           <PopoverContent
             className="z-50 w-56 p-1"
             align="start"

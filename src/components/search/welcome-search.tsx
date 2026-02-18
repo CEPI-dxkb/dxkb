@@ -51,7 +51,7 @@ const WelcomeSearch = () => {
 
           {/* Search Interface */}
           <div className="mx-auto max-w-4xl">
-            <div className="bg-card rounded-lg p-6 shadow-lg">
+            <div className="welcome-search-card bg-card rounded-lg p-6 shadow-lg">
               <Tabs defaultValue="basic" className="w-full">
                 <TabsList className="mb-4">
                   <TabsTrigger value="basic">Basic Search</TabsTrigger>

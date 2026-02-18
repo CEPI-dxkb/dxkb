@@ -356,7 +356,7 @@ export default function PrimerDesignServicePage() {
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="service-card-content space-y-6">
+            <CardContent>
               <Tabs
                 value={inputType}
                 onValueChange={(value) => {
@@ -390,7 +390,7 @@ export default function PrimerDesignServicePage() {
                 }}
                 className="w-full"
               >
-                <TabsList className="mb-4 grid w-full grid-cols-2">
+                <TabsList>
                   <TabsTrigger value="sequence_text">
                     Paste Sequence
                   </TabsTrigger>
@@ -399,7 +399,7 @@ export default function PrimerDesignServicePage() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="sequence_text" className="mt-0 space-y-6">
+                <TabsContent value="sequence_text" >
                   <FormField
                     control={form.control}
                     name="SEQUENCE_ID"
@@ -577,9 +577,7 @@ export default function PrimerDesignServicePage() {
                       </FormLabel>
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="service-card-tooltip-icon mb-2" />
-                          </TooltipTrigger>
+                          <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
                           <TooltipContent className="max-w-sm">
                             Minimum, optimum, and maximum lengths (in bases) of
                             the PCR product. Primer3 attempts to pick primers
@@ -615,9 +613,7 @@ export default function PrimerDesignServicePage() {
                   <FormLabel className="service-card-label ">Primer Size (bp)</FormLabel>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="service-card-tooltip-icon mb-2" />
-                      </TooltipTrigger>
+                      <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
                       <TooltipContent className="max-w-sm">
                         Specify minimum, optimum, and maximum primer lengths.
                         Primer3 will not pick primers shorter than the minimum
@@ -711,9 +707,7 @@ export default function PrimerDesignServicePage() {
                           </FormLabel>
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircle className="service-card-tooltip-icon mb-2" />
-                              </TooltipTrigger>
+<TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
                               <TooltipContent className="max-w-sm">
                                 {tooltip}
                               </TooltipContent>
@@ -772,9 +766,7 @@ export default function PrimerDesignServicePage() {
                             </FormLabel>
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <HelpCircle className="service-card-tooltip-icon mb-2" />
-                                </TooltipTrigger>
+                                <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
                                 <TooltipContent className="max-w-sm">
                                   Maximum number of primer pairs to return.
                                   Larger values may increase runtime.
@@ -805,9 +797,7 @@ export default function PrimerDesignServicePage() {
                         </FormLabel>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="service-card-tooltip-icon mb-2" />
-                            </TooltipTrigger>
+                            <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
                             <TooltipContent className="max-w-sm">
                               Define minimum, optimum, and maximum melting
                               temperatures as well as the maximum pairwise
@@ -860,9 +850,7 @@ export default function PrimerDesignServicePage() {
                         <FormLabel className="service-card-label ">Primer GC%</FormLabel>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="service-card-tooltip-icon mb-2" />
-                            </TooltipTrigger>
+                            <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
                             <TooltipContent className="max-w-sm">
                               Specify acceptable GC content range for designed
                               primers.

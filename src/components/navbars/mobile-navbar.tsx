@@ -34,11 +34,13 @@ const MobileNavbar = () => {
       <div className="flex items-center justify-between px-4 py-4 text-foreground">
       <div className="flex items-center gap-4">
         <Sheet>
-          <SheetTrigger asChild className="group hover:bg-gray-300/50">
-            <Button variant="ghost">
-              <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" data-icon="inline-start" />
-            </Button>
-          </SheetTrigger>
+          <SheetTrigger
+            render={(triggerProps) => (
+              <Button variant="ghost" className="group hover:bg-gray-300/50" {...triggerProps}>
+                <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" data-icon="inline-start" />
+              </Button>
+            )}
+          />
           <SheetContent
             side="left"
             className="w-[85vw] max-w-md overflow-y-auto p-0"

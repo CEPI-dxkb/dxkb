@@ -594,7 +594,9 @@ export default function GenomeAssemblyPage() {
                                 <FormControl>
                                   <Switch
                                     checked={field.value}
-                                    onCheckedChange={field.onChange}
+                                    onCheckedChange={(checked) =>
+                                      field.onChange(checked)
+                                    }
                                   />
                                 </FormControl>
                               </FormItem>
@@ -612,7 +614,9 @@ export default function GenomeAssemblyPage() {
                                 <FormControl>
                                   <Switch
                                     checked={field.value}
-                                    onCheckedChange={field.onChange}
+                                    onCheckedChange={(checked) =>
+                                      field.onChange(checked)
+                                    }
                                   />
                                 </FormControl>
                               </FormItem>
@@ -630,7 +634,9 @@ export default function GenomeAssemblyPage() {
                                 <FormControl>
                                   <Switch
                                     checked={field.value}
-                                    onCheckedChange={field.onChange}
+                                    onCheckedChange={(checked) =>
+                                      field.onChange(checked)
+                                    }
                                   />
                                 </FormControl>
                               </FormItem>

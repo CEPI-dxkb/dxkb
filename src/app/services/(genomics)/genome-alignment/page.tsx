@@ -434,7 +434,9 @@ export default function GenomeAlignmentServicePage() {
                             <Switch
                               id="manual-seed-weight"
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onCheckedChange={(checked) =>
+                                field.onChange(checked)
+                              }
                             />
                           </FormControl>
                         </div>

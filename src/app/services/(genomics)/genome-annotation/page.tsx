@@ -53,9 +53,12 @@ import { submitServiceJob } from "@/lib/services/service-utils";
 import {
   RequiredFormLabel,
 } from "@/components/forms/required-form-components";
-import { TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Tooltip } from "@/components/ui/tooltip";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
 import { Spinner } from "@/components/ui/spinner";

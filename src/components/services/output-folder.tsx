@@ -4,7 +4,12 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "../ui/tooltip";
 import { WorkspaceObjectSelector } from "../workspace/workspace-object-selector";
 import { checkWorkspaceObjectExists } from "@/lib/services/workspace/validation";
 
@@ -127,14 +132,14 @@ const OutputFolder = ({
         <div className="flex flex-row items-center gap-2">
           <Label className="service-card-label">{resolvedTitle}</Label>
           {tooltipContent && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="service-card-tooltip-icon mb-2" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-sm font-normal text-white">
-                {resolvedTooltipText}
-              </TooltipContent>
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon mb-2" />} />
+                <TooltipContent className="max-w-sm font-normal text-white">
+                  {resolvedTooltipText}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           {required && <span className="text-red-500">*</span>}
         </div>

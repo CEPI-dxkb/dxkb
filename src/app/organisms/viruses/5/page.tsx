@@ -240,11 +240,9 @@ export default function TaxonomyView() {
               </TooltipProvider>
 
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-1">
-                    Tools
-                    <PiCaretDown className="h-4 w-4" />
-                  </Button>
+                <DropdownMenuTrigger render={<Button variant="outline" className="gap-1" />}>
+                  Tools
+                  <PiCaretDown className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem>

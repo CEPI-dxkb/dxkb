@@ -205,11 +205,9 @@ export default function BrucellaGenomeViewer() {
                       <span>Download</span>
                     </Button>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-1">
-                          <span>Columns</span>
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
+                      <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-1" />}>
+                        <span>Columns</span>
+                        <ChevronDown className="h-4 w-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         <DropdownMenuItem>

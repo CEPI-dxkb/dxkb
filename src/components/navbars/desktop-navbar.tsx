@@ -282,14 +282,12 @@ const DesktopNavbar = () => {
             <>
               <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
                 <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-white/10 text-white">
-                          {user?.username?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                    </div>
+                  <DropdownMenuTrigger render={<div className="flex items-center space-x-2" />}>
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-white/10 text-white">
+                        {user?.username?.charAt(0).toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent side="bottom" sideOffset={8} align="end">
                     <DropdownMenuLabel>User Actions</DropdownMenuLabel>

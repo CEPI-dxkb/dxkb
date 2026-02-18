@@ -479,10 +479,8 @@ function JobsContent() {
 
                 <div className="flex items-center justify-end gap-2">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
-                      </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+                      <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onViewDetails(job)}>

@@ -855,7 +855,7 @@ export function DataTable({ id, data, columns, totalItems, resource, onSelection
                 const totalRows = totalItems; // total from backend
                 const start = pageIndex * pageSize + 1;
                 const end = Math.min(start + data.length - 1, totalRows);
-                return <div>Showing {start}–{end} of {totalRows} results</div>;
+                return <div>Showing {start}-{end} of {totalRows} results</div>;
               })()}
             </div>
             <div className="flex items-center space-x-2">

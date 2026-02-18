@@ -1,8 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,214 +20,462 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { HelpCircle } from "lucide-react";
-import { ServiceHeader } from "@/components/services/service-header";
-import SearchReadLibrary from "@/components/services/search-read-library";
-import OutputFolder from "@/components/services/output-folder";
-import SraRunAccession from "@/components/services/sra-run-accession";
-import { Library } from "@/types/services";
-import {
-  handlePairedLibraryAdd,
-  handleSingleLibraryAdd,
-  handleFormSubmit,
-} from "@/lib/services/service-utils";
 
-export default function ViralAssembly() {
-  // States for the form
-  const [inputType, setInputType] = useState("paired");
-  const [assemblyStrategy, setAssemblyStrategy] = useState("irma");
-  const [virusGenome, setVirusGenome] = useState("flu");
-  const [_outputFolder, setOutputFolder] = useState("");
-  const [_outputName, setOutputName] = useState("");
+import { ServiceHeader } from "@/components/services/service-header";
+import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
+import OutputFolder from "@/components/services/output-folder";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { Spinner } from "@/components/ui/spinner";
+
+import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import {
+  viralAssemblyInfo,
+  viralAssemblyInputFile,
+  viralAssemblyParameters,
+} from "@/lib/services/service-info";
+
+import {
+  viralAssemblyFormSchema,
+  defaultViralAssemblyFormValues,
+  strategyOptions,
+  moduleOptions,
+  type ViralAssemblyFormData,
+  type ViralAssemblyLibraryItem,
+} from "@/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-schema";
+import {
+  transformViralAssemblyParams,
+  getPairedLibraryBuildFn,
+  getSingleLibraryBuildFn,
+} from "@/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-utils";
+import {
+  buildBaseLibraryItem,
+  getPairedLibraryId,
+  useLibrarySelection,
+} from "@/lib/forms/shared-library-selection";
+
+import type { WorkspaceObject } from "@/lib/workspace-client";
+
+const tutorial =
+  "https://www.bv-brc.org/docs/tutorial/viral_assembly/assembly.html";
+
+export const ViralAssemblyPage = function ViralAssemblyPage() {
+  const form = useForm<ViralAssemblyFormData>({
+    resolver: zodResolver(viralAssemblyFormSchema),
+    defaultValues: defaultViralAssemblyFormValues,
+    mode: "onChange",
+  });
+
+  const [pairedRead1, setPairedRead1] = useState<string | null>(null);
+  const [pairedRead2, setPairedRead2] = useState<string | null>(null);
+  const [singleRead, setSingleRead] = useState<string | null>(null);
+  const [sraResetKey, setSraResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-  const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  const [_readFiles, setReadFiles] = useState([
-    { id: 1, name: "READ FILE 1" },
-    { id: 2, name: "READ FILE 2" },
+
+  const inputType = form.watch("input_type");
+
+  const { selectedLibraries, setLibrariesAndSync } = useLibrarySelection<
+    ViralAssemblyFormData,
+    ViralAssemblyLibraryItem,
+    string
+  >({
+    form,
+    mapLibraryToItem: buildBaseLibraryItem,
+    fields: {
+      paired: "paired_end_libs",
+      single: "single_end_libs",
+      srr: "srr_ids",
+    },
+  });
+
+  // Sync selected single read into form when Single Read Library is selected (no Add button on this page)
+  useEffect(() => {
+    if (inputType !== "single") return;
+    const desiredSingleId = singleRead ?? null;
+    const currentSingleIds = selectedLibraries
+      .filter((lib) => lib.type === "single")
+      .map((lib) => lib.id);
+    const alreadyMatches =
+      (desiredSingleId === null && currentSingleIds.length === 0) ||
+      (desiredSingleId !== null &&
+        currentSingleIds.length === 1 &&
+        currentSingleIds[0] === desiredSingleId);
+    if (alreadyMatches) return;
+    const otherLibs = selectedLibraries.filter((lib) => lib.type !== "single");
+    if (singleRead) {
+      const result = getSingleLibraryBuildFn()(singleRead);
+      if (result.library) {
+        setLibrariesAndSync([...otherLibs, result.library]);
+      }
+    } else {
+      setLibrariesAndSync(otherLibs);
+    }
+  }, [
+    inputType,
+    singleRead,
+    selectedLibraries,
+    setLibrariesAndSync,
+  ]);
+
+  const currentPairedIdsKey = useMemo(
+    () =>
+      JSON.stringify(
+        selectedLibraries
+          .filter((lib) => lib.type === "paired")
+          .map((lib) => lib.id),
+      ),
+    [selectedLibraries],
+  );
+
+  // Sync selected paired reads into form when Paired Read Library is selected (no Add button on this page)
+  useEffect(() => {
+    if (inputType !== "paired") return;
+    const desiredPairId =
+      pairedRead1 && pairedRead2
+        ? getPairedLibraryId(pairedRead1, pairedRead2)
+        : null;
+    const currentPairedIds = selectedLibraries
+      .filter((lib) => lib.type === "paired")
+      .map((lib) => lib.id);
+    const alreadyMatches =
+      (desiredPairId === null && currentPairedIds.length === 0) ||
+      (desiredPairId !== null &&
+        currentPairedIds.length === 1 &&
+        currentPairedIds[0] === desiredPairId);
+    if (alreadyMatches) return;
+    const otherLibs = selectedLibraries.filter((lib) => lib.type !== "paired");
+    if (pairedRead1 && pairedRead2) {
+      const libraryId = getPairedLibraryId(pairedRead1, pairedRead2);
+      const result = getPairedLibraryBuildFn()(
+        pairedRead1,
+        pairedRead2,
+        libraryId,
+      );
+      if (result.library) {
+        setLibrariesAndSync([...otherLibs, result.library]);
+      }
+    } else {
+      setLibrariesAndSync(otherLibs);
+    }
+  }, [
+    inputType,
+    pairedRead1,
+    pairedRead2,
+    currentPairedIdsKey,
+    setLibrariesAndSync,
   ]);
 
   const handleReset = () => {
-    setInputType("paired");
-    setAssemblyStrategy("irma");
-    setVirusGenome("flu");
-    setOutputFolder("");
-    setOutputName("");
-    setReadFiles([
-      { id: 1, name: "READ FILE 1" },
-      { id: 2, name: "READ FILE 2" },
-    ]);
+    form.reset(
+      { ...defaultViralAssemblyFormValues },
+      { keepDefaultValues: false },
+    );
+    setLibrariesAndSync([]);
+    setPairedRead1(null);
+    setPairedRead2(null);
+    setSingleRead(null);
+    setSraResetKey((k) => k + 1);
+    setIsOutputNameValid(true);
   };
+
+  const {
+    handleSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+    serviceName,
+    isSubmitting,
+  } = useServiceFormSubmission<ViralAssemblyFormData>({
+    serviceName: "ViralAssembly",
+    displayName: "Viral Assembly",
+    transformParams: transformViralAssemblyParams,
+    onSuccess: handleReset,
+  });
 
   return (
     <section>
       <ServiceHeader
         title="Viral Assembly - BETA"
-        description="The Viral Assembly Service utilizes IRMA (Iterative Refinement Meta-Assembler)
-          to assemble viral genomes. Users must select the virus genome for processing.
-          This service is currently in beta, any feedback or improvement is welcomed."
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        description="The Viral Assembly Service utilizes IRMA (Iterative Refinement Meta-Assembler) to assemble viral genomes. Users must select the virus genome for processing. This service is currently in beta; any feedback or improvement is welcomed."
+        infoPopupTitle={viralAssemblyInfo.title}
+        infoPopupDescription={viralAssemblyInfo.description}
+        tutorial={tutorial}
       />
 
-      {/* Main Form Content */}
-      <form onSubmit={handleFormSubmit} className="flex flex-col gap-6">
-        {/* Input File Section */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">Input File</CardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
-            <RadioGroup
-              defaultValue={inputType}
-              onValueChange={setInputType}
-              className="service-radio-group"
-            >
-              <div className="service-radio-group-item">
-                <RadioGroupItem value="paired" id="paired" />
-                <Label htmlFor="paired">Paired Read Library</Label>
-              </div>
-              <div className="service-radio-group-item">
-                <RadioGroupItem value="single" id="single" />
-                <Label htmlFor="single">Single Read Library</Label>
-              </div>
-              <div className="service-radio-group-item">
-                <RadioGroupItem value="sra" id="sra" />
-                <Label htmlFor="sra">SRA Run Accession</Label>
-              </div>
-            </RadioGroup>
-
-            {inputType === "paired" && (
-              <SearchReadLibrary
-                title="Select Files"
-                firstPlaceholder="Select File 1..."
-                secondPlaceholder="Select File 2..."
-                variant="pair"
-                onAdd={(files) => {
-                  const newLibraries = handlePairedLibraryAdd(
-                    files,
-                    selectedLibraries,
-                  );
-                  setSelectedLibraries(newLibraries);
-                }}
-              />
-            )}
-
-            {inputType === "single" && (
-              <SearchReadLibrary
-                title="Select File"
-                firstPlaceholder="Select File 1..."
-                variant="single"
-                onAdd={(files) => {
-                  const newLibraries = handleSingleLibraryAdd(
-                    files,
-                    selectedLibraries,
-                  );
-                  setSelectedLibraries(newLibraries);
-                }}
-              />
-            )}
-
-            {inputType === "sra" && (
-              <SraRunAccession
-                title="Select Accession"
-                selectedLibraries={selectedLibraries}
-                setSelectedLibraries={setSelectedLibraries}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Parameters Section */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Parameters
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <HelpCircle className="service-card-tooltip-icon" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Configure assembly parameters</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
-            <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-              <div className="w-full">
-                <Label className="service-card-label">Assembly Strategy</Label>
-
-                <Select
-                  value={assemblyStrategy}
-                  onValueChange={setAssemblyStrategy}
-                >
-                  <SelectTrigger className="service-card-select-trigger">
-                    <SelectValue placeholder="Select assembly strategy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="irma">IRMA</SelectItem>
-                    <SelectItem value="other">Other Strategy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-full">
-                <Label className="service-card-label">Virus Genome</Label>
-
-                <Select value={virusGenome} onValueChange={setVirusGenome}>
-                  <SelectTrigger className="service-card-select-trigger">
-                    <SelectValue placeholder="Select virus genome" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="flu">Flu</SelectItem>
-                    <SelectItem value="cov">CoV</SelectItem>
-                    <SelectItem value="rsv">RSV</SelectItem>
-                    <SelectItem value="ebola">Ebola</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="service-card-row">
-              <div className="w-full">
-                <OutputFolder onChange={setOutputFolder} />
-              </div>
-              <div className="w-full">
-                <OutputFolder
-                  variant="name"
-                  value={_outputName}
-                  onChange={setOutputName}
-                  outputFolderPath={_outputFolder}
-                  onValidationChange={setIsOutputNameValid}
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="grid grid-cols-1 gap-6 md:grid-cols-12"
+        >
+          {/* Input File */}
+          <div className="md:col-span-12">
+            <Card>
+              <CardHeader className="service-card-header">
+                <RequiredFormCardTitle className="service-card-title">
+                  Input File
+                  <DialogInfoPopup
+                    title={viralAssemblyInputFile.title}
+                    description={viralAssemblyInputFile.description}
+                    sections={viralAssemblyInputFile.sections}
+                  />
+                </RequiredFormCardTitle>
+              </CardHeader>
+              <CardContent className="service-card-content space-y-6">
+                <FormField
+                  control={form.control}
+                  name="input_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="flex flex-col gap-4 sm:flex-row"
+                        >
+                          <div className="service-radio-group-item flex items-center gap-2">
+                            <RadioGroupItem value="paired" id="input-paired" />
+                            <Label htmlFor="input-paired">
+                              Paired Read Library
+                            </Label>
+                          </div>
+                          <div className="service-radio-group-item flex items-center gap-2">
+                            <RadioGroupItem value="single" id="input-single" />
+                            <Label htmlFor="input-single">
+                              Single Read Library
+                            </Label>
+                          </div>
+                          <div className="service-radio-group-item flex items-center gap-2">
+                            <RadioGroupItem
+                              value="srr_accession"
+                              id="input-sra"
+                            />
+                            <Label htmlFor="input-sra">
+                              SRA Run Accession
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </form>
 
-      {/* Action Buttons */}
-      <div className="service-form-controls">
-        <Button variant="outline" onClick={handleReset}>
-          Reset
-        </Button>
-        <Button type="submit" disabled={!isOutputNameValid}>
-          Assemble
-        </Button>
-      </div>
+                <div
+                  className={inputType === "paired" ? "space-y-3" : "hidden"}
+                  aria-hidden={inputType !== "paired"}
+                >
+                  <WorkspaceObjectSelector
+                    types={["reads"]}
+                    placeholder="Select READ FILE 1..."
+                    value={pairedRead1 ?? ""}
+                    onObjectSelect={(object: WorkspaceObject) =>
+                      setPairedRead1(object.path)
+                    }
+                  />
+                  <WorkspaceObjectSelector
+                    types={["reads"]}
+                    placeholder="Select READ FILE 2..."
+                    value={pairedRead2 ?? ""}
+                    onObjectSelect={(object: WorkspaceObject) =>
+                      setPairedRead2(object.path)
+                    }
+                  />
+                </div>
+
+                <div
+                  className={inputType === "single" ? "space-y-3" : "hidden"}
+                  aria-hidden={inputType !== "single"}
+                >
+                  <WorkspaceObjectSelector
+                    types={["reads"]}
+                    placeholder="Select READ FILE..."
+                    value={singleRead ?? ""}
+                    onObjectSelect={(object: WorkspaceObject) =>
+                      setSingleRead(object.path)
+                    }
+                  />
+                </div>
+
+                <div
+                  className={inputType === "srr_accession" ? "block" : "hidden"}
+                  aria-hidden={inputType !== "srr_accession"}
+                >
+                  <SraRunAccessionWithValidation
+                    key={sraResetKey}
+                    title="SRA Run Accession"
+                    placeholder="SRA Accession"
+                    selectedLibraries={selectedLibraries}
+                    setSelectedLibraries={setLibrariesAndSync}
+                    allowDuplicates={false}
+                    showLabel={false}
+                    showAddButton={false}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="paired_end_libs"
+                  render={() => (
+                    <FormItem>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Parameters */}
+          <div className="md:col-span-12">
+            <Card>
+              <CardHeader className="service-card-header">
+                <RequiredFormCardTitle className="service-card-title">
+                  Parameters
+                  <DialogInfoPopup
+                    title={viralAssemblyParameters.title}
+                    sections={viralAssemblyParameters.sections}
+                  />
+                </RequiredFormCardTitle>
+              </CardHeader>
+              <CardContent className="service-card-content space-y-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                  <div className="flex-1 space-y-2">
+                    <Label className="service-card-label">
+                      Assembly Strategy
+                    </Label>
+                    <FormField
+                      control={form.control}
+                      name="strategy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger className="service-card-select-trigger">
+                              <SelectValue placeholder="Select strategy" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {strategyOptions.map((opt) => (
+                                <SelectItem
+                                  key={opt.value}
+                                  value={opt.value}
+                                >
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <Label className="service-card-label">
+                      Reference Database
+                    </Label>
+                    <FormField
+                      control={form.control}
+                      name="module"
+                      render={({ field }) => (
+                        <FormItem>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <SelectTrigger className="service-card-select-trigger">
+                              <SelectValue placeholder="Select reference database" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {moduleOptions.map((opt) => (
+                                <SelectItem
+                                  key={opt.value}
+                                  value={opt.value}
+                                >
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="output_path"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <OutputFolder
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="output_file"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <OutputFolder
+                          variant="name"
+                          value={field.value}
+                          onChange={field.onChange}
+                          outputFolderPath={form.watch("output_path")}
+                          onValidationChange={setIsOutputNameValid}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Form controls */}
+          <div className="md:col-span-12">
+            <div className="service-form-controls">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting || !form.formState.isValid || !isOutputNameValid
+                }
+              >
+                {isSubmitting ? (
+                  <Spinner className="mr-2 h-4 w-4" />
+                ) : null}
+                Assemble
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Form>
+
+      <JobParamsDialog
+        open={showParamsDialog}
+        onOpenChange={setShowParamsDialog}
+        params={currentParams}
+        serviceName={serviceName}
+      />
     </section>
   );
-}
+};
+
+export default ViralAssemblyPage;

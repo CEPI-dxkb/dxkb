@@ -59,7 +59,12 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
 
     // Legacy callback path - for backward compatibility during migration
     if (onSubmit) {
-      await onSubmit(data);
+      try {
+        setIsSubmitting(true);
+        await onSubmit(data);
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 

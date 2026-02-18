@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,430 +33,802 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { HelpCircle, Info } from "lucide-react";
-import { ServiceHeader } from "@/components/services/service-header";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import SearchWorkspaceInput from "@/components/services/search-workspace-input";
-import { Library, primerOptions } from "@/types/services";
-import SearchReadLibrary from "@/components/services/search-read-library";
+import { ChevronRight, HelpCircle } from "lucide-react";
+import { toast } from "sonner";
+
+import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import SelectedItemsTable from "@/components/services/selected-items-table";
-import SraRunAccession from "@/components/services/sra-run-accession";
+import OutputFolder from "@/components/services/output-folder";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
+import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
+import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { Spinner } from "@/components/ui/spinner";
+
+import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import {
-  handlePairedLibraryAdd,
-  handleSingleLibraryAdd,
-  removeFromSelectedLibraries,
-  handleFormSubmit,
-} from "@/lib/services/service-utils";
-import {
-  readInputFileInfo,
   sarsCov2GenomeAnalysisInfo,
   sarsCov2GenomeAnalysisParameters,
   sarsCov2GenomeAnalysisStartWith,
+  readInputFileInfo,
 } from "@/lib/services/service-info";
 
-export default function GenomeAnalysis() {
-  const [_selectedFiles, setSelectedFiles] = useState<string[]>([]);
-  const [_outputFolder, setOutputFolder] = useState<string>("");
-  const [_outputName, setOutputName] = useState<string>("");
+import {
+  sarsCov2GenomeAnalysisFormSchema,
+  defaultSarsCov2GenomeAnalysisFormValues,
+  recipeOptions,
+  primerOptions,
+  primerVersionOptions,
+  defaultPrimerVersion,
+  type SarsCov2GenomeAnalysisFormData,
+  type SarsCov2LibraryItem,
+  type SarsCov2Platform,
+  type Primers,
+} from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-schema";
+import {
+  transformSarsCov2GenomeAnalysisParams,
+  computeOutputName,
+  handleLibraryError as handleLibraryErrorUtil,
+  getPairedLibraryBuildFn,
+  getSingleLibraryBuildFn,
+  singleLibraryDuplicateMatcher,
+} from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-utils";
+import {
+  buildBaseLibraryItem,
+  useLibrarySelection,
+} from "@/lib/forms/shared-library-selection";
+import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
+
+import type { WorkspaceObject } from "@/lib/workspace-client";
+import {
+  sarsCov2PairedPlatformOptions,
+  sarsCov2SinglePlatformOptions,
+} from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-schema";
+
+const quickReference =
+  "https://www.bv-brc.org/docs/quick_references/services/sars_cov_2_assembly_annotation_service.html";
+const tutorial =
+  "https://www.bv-brc.org/docs/tutorial/sars_cov_2_assembly_annotation/sars_cov_2_assembly_annotation.html";
+
+export default function SarsCov2GenomeAnalysisPage() {
+  const form = useForm<SarsCov2GenomeAnalysisFormData>({
+    resolver: zodResolver(sarsCov2GenomeAnalysisFormSchema),
+    defaultValues: defaultSarsCov2GenomeAnalysisFormValues,
+    mode: "onChange",
+  });
+
+  const [pairedRead1, setPairedRead1] = useState<string | null>(null);
+  const [pairedRead2, setPairedRead2] = useState<string | null>(null);
+  const [pairedPlatform, setPairedPlatform] =
+    useState<SarsCov2Platform>("illumina");
+  const [singleRead, setSingleRead] = useState<string | null>(null);
+  const [singlePlatform, setSinglePlatform] =
+    useState<SarsCov2Platform>("illumina");
+  const [sraResetKey, setSraResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-  const [analysisInput, setAnalysisInput] = useState<string>("read-file");
-  const [_strategy, setStrategy] = useState<string>("one-codex");
-  const [primer, setPrimer] = useState<string>("artic");
-  const [_taxonomyName, setTaxonomyName] = useState<string>("sars");
-  const [_contigsFolder, setContigsFolder] = useState<string>("");
-  const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  const [prlPlatform, setPrlPlatform] = useState<string>("");
-  const [srlPlatform, setSrlPlatform] = useState<string>("");
-  const [version, setVersion] = useState<string>(
-    primerOptions.find((option) => option.id === primer)?.versions[0] ?? "",
-  );
+
+  const inputType = form.watch("input_type");
+  const recipe = form.watch("recipe");
+  const primers = form.watch("primers");
+  const scientificName = form.watch("scientific_name");
+  const myLabel = form.watch("my_label");
+
+  const showPrimersSection = recipe === "onecodex";
+  const primerVersionOpts =
+    primerVersionOptions[primers] ?? primerVersionOptions.ARTIC;
+
+  const {
+    selectedLibraries,
+    addPairedLibrary,
+    addSingleLibrary,
+    removeLibrary,
+    setLibrariesAndSync,
+  } = useLibrarySelection<SarsCov2GenomeAnalysisFormData, SarsCov2LibraryItem>({
+    form,
+    mapLibraryToItem: (library) => ({
+      ...buildBaseLibraryItem(library),
+      ...(library.platform && {
+        platform: library.platform as SarsCov2Platform,
+      }),
+    }),
+    fields: {
+      paired: "paired_end_libs",
+      single: "single_end_libs",
+      srr: "srr_ids",
+    },
+  });
+
+  // Sync output_file when scientific_name or my_label changes
+  useEffect(() => {
+    const outputName = computeOutputName(scientificName ?? "", myLabel ?? "");
+    if (outputName) {
+      form.setValue("output_file", outputName, { shouldValidate: true });
+    }
+  }, [scientificName, myLabel, form]);
+
+  // When primers change, set default primer_version
+  useEffect(() => {
+    if (showPrimersSection && primers) {
+      const defaultVersion = defaultPrimerVersion[primers];
+      if (
+        defaultVersion &&
+        form.getValues("primer_version") !== defaultVersion
+      ) {
+        form.setValue("primer_version", defaultVersion, {
+          shouldValidate: true,
+        });
+      }
+    }
+  }, [primers, showPrimersSection, form]);
+
+  const handleLibraryError = (message: string) => {
+    handleLibraryErrorUtil(message, toast);
+  };
+
+  const handlePairedLibraryAdd = () => {
+    addPairedLibrary({
+      read1: pairedRead1,
+      read2: pairedRead2,
+      buildLibrary: getPairedLibraryBuildFn(pairedPlatform),
+      onError: handleLibraryError,
+      onAfterAdd: () => {
+        setPairedRead1(null);
+        setPairedRead2(null);
+      },
+    });
+  };
+
+  const handleSingleLibraryAdd = () => {
+    addSingleLibrary({
+      read: singleRead,
+      buildLibrary: getSingleLibraryBuildFn(singlePlatform),
+      duplicateMatcher: singleLibraryDuplicateMatcher,
+      onError: handleLibraryError,
+      onAfterAdd: () => {
+        setSingleRead(null);
+      },
+    });
+  };
 
   const handleReset = () => {
-    setSelectedFiles([]);
-    setOutputFolder("");
-    setOutputName("");
-    setAnalysisInput("read-file");
+    form.reset(
+      { ...defaultSarsCov2GenomeAnalysisFormValues },
+      { keepDefaultValues: false },
+    );
+    setLibrariesAndSync([]);
+    setPairedRead1(null);
+    setPairedRead2(null);
+    setSingleRead(null);
+    setPairedPlatform("illumina");
+    setSinglePlatform("illumina");
+    setSraResetKey((k) => k + 1);
   };
+
+  const {
+    handleSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+    serviceName,
+    isSubmitting,
+  } = useServiceFormSubmission<SarsCov2GenomeAnalysisFormData>({
+    serviceName: "ComprehensiveSARS2Analysis",
+    displayName: "SARS-CoV-2 Genome Analysis",
+    transformParams: transformSarsCov2GenomeAnalysisParams,
+    onSuccess: handleReset,
+  });
 
   return (
     <section>
       <ServiceHeader
         title="SARS-CoV-2 Genome Analysis"
-        description="The SARS-CoV-2 Genome Analysis Service provides a streamlined
-          meta-service that accepts raw reads and performs genome assembly,
-          annotation, and variation analysis."
+        description="The SARS-CoV-2 Genome Analysis Service provides a streamlined meta-service that accepts raw reads and performs genome assembly, annotation, and variation analysis."
         infoPopupTitle={sarsCov2GenomeAnalysisInfo.title}
         infoPopupDescription={sarsCov2GenomeAnalysisInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide={quickReference}
+        tutorial={tutorial}
       />
 
-      {/* Main Content */}
-      <form
-        onSubmit={handleFormSubmit}
-        className="grid grid-cols-1 gap-6 md:grid-cols-6"
-      >
-        {/* Start With Section */}
-        <Card className="md:col-span-2">
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Start With:
-              <DialogInfoPopup
-                title={sarsCov2GenomeAnalysisStartWith.title}
-                description={sarsCov2GenomeAnalysisStartWith.description}
-                sections={sarsCov2GenomeAnalysisStartWith.sections}
-              />
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
-            <RadioGroup
-              defaultValue="read-file"
-              className="gap-4; flex flex-col lg:flex-row"
-              onValueChange={setAnalysisInput}
-            >
-              <div className="service-radio-group-item">
-                <RadioGroupItem value="read-file" id="read-file" />
-                <Label htmlFor="read-file">Read File</Label>
-              </div>
-              <div className="service-radio-group-item">
-                <RadioGroupItem
-                  value="assembly-contigs"
-                  id="assembly-contigs"
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleSubmit)}
+          className="grid grid-cols-1 gap-6 md:grid-cols-12"
+        >
+          {/* Start With */}
+          <div className="md:col-span-12">
+            <Card>
+              <CardHeader className="service-card-header">
+                <RequiredFormCardTitle className="service-card-title">
+                  Start With
+                  <DialogInfoPopup
+                    title={sarsCov2GenomeAnalysisStartWith.title}
+                    description={sarsCov2GenomeAnalysisStartWith.description}
+                    sections={sarsCov2GenomeAnalysisStartWith.sections}
+                  />
+                </RequiredFormCardTitle>
+              </CardHeader>
+              <CardContent className="service-card-content">
+                <FormField
+                  control={form.control}
+                  name="input_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="flex flex-col gap-4 sm:flex-row"
+                        >
+                          <div className="service-radio-group-item flex items-center gap-2">
+                            <RadioGroupItem value="reads" id="start-reads" />
+                            <Label htmlFor="start-reads">Read File</Label>
+                          </div>
+                          <div className="service-radio-group-item flex items-center gap-2">
+                            <RadioGroupItem
+                              value="contigs"
+                              id="start-contigs"
+                            />
+                            <Label htmlFor="start-contigs">
+                              Assembled Contigs
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <Label htmlFor="assembly-contigs">Assembly/Contigs</Label>
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Parameters Section */}
-        <Card className="md:col-span-4">
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Parameters
-              <DialogInfoPopup
-                title={sarsCov2GenomeAnalysisParameters.title}
-                description={sarsCov2GenomeAnalysisParameters.description}
-                sections={sarsCov2GenomeAnalysisParameters.sections}
-              />
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
-            {analysisInput === "read-file" && (
-              <div className="flex flex-col gap-4">
-                <div className="space-y-2">
-                  <Label className="service-card-label">Strategy</Label>
-
-                  <Select defaultValue="one-codex" onValueChange={setStrategy}>
-                    <SelectTrigger className="service-card-select-trigger">
-                      <SelectValue placeholder="Select a strategy" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="one-codex">One Codex</SelectItem>
-                      <SelectItem value="cdc-illumina">CDC-Illumina</SelectItem>
-                      <SelectItem value="cdc-nanopore">CDC-Nanopore</SelectItem>
-                      <SelectItem value="artic-nanopore">
-                        ARTIC-Nanopore
-                      </SelectItem>
-                      <SelectItem value="auto">Auto</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <div className="flex w-full flex-col gap-4 sm:flex-row sm:gap-6">
-                    <div className="w-full space-y-2">
-                      <Label className="service-card-label">Primer</Label>
-
+          {/* Parameters */}
+          {inputType === "reads" && (
+            <div className="md:col-span-6">
+              <Card>
+                <CardHeader className="service-card-header">
+                  <RequiredFormCardTitle className="service-card-title">
+                    Input Library
+                    <DialogInfoPopup
+                      title={readInputFileInfo.title}
+                      description={readInputFileInfo.description}
+                      sections={readInputFileInfo.sections}
+                    />
+                  </RequiredFormCardTitle>
+                </CardHeader>
+                <CardContent className="service-card-content space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="service-card-label">
+                        Paired Read Library
+                      </Label>
+                      <div className="bg-border mx-4 h-px flex-1" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handlePairedLibraryAdd}
+                        disabled={!pairedRead1 || !pairedRead2}
+                      >
+                        <ChevronRight size={16} />
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      <WorkspaceObjectSelector
+                        types={["reads"]}
+                        placeholder="Select READ FILE 1..."
+                        value={pairedRead1 ?? ""}
+                        onObjectSelect={(object: WorkspaceObject) =>
+                          setPairedRead1(object.path)
+                        }
+                      />
+                      <WorkspaceObjectSelector
+                        types={["reads"]}
+                        placeholder="Select READ FILE 2..."
+                        value={pairedRead2 ?? ""}
+                        onObjectSelect={(object: WorkspaceObject) =>
+                          setPairedRead2(object.path)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="service-card-sublabel">Platform</Label>
                       <Select
-                        defaultValue="artic"
-                        onValueChange={(value) => {
-                          setPrimer(value);
-                          const selectedPrimer = primerOptions.find(
-                            (option) => option.id === value,
-                          );
-                          setVersion(selectedPrimer?.versions[0] ?? "");
-                        }}
+                        value={pairedPlatform}
+                        onValueChange={(v) =>
+                          setPairedPlatform(v as SarsCov2Platform)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select primer" />
+                          <SelectValue placeholder="Select a platform..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {primerOptions.map((option) => (
-                            <SelectItem key={option.id} value={option.id}>
-                              {option.label}
+                          {sarsCov2PairedPlatformOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
 
-                    <div className="w-[50%] space-y-2">
-                      <Label className="service-card-label">Version</Label>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="service-card-label">
+                        Single Read Library
+                      </Label>
+                      <div className="bg-border mx-4 h-px flex-1" />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleSingleLibraryAdd}
+                        disabled={!singleRead || !singlePlatform}
+                      >
+                        <ChevronRight size={16} />
+                      </Button>
+                    </div>
 
-                      <Select value={version} onValueChange={setVersion}>
+                    <WorkspaceObjectSelector
+                      types={["reads"]}
+                      placeholder="Select READ FILE..."
+                      value={singleRead ?? ""}
+                      onObjectSelect={(object: WorkspaceObject) =>
+                        setSingleRead(object.path)
+                      }
+                    />
+
+                    <div className="space-y-2">
+                      <Label className="service-card-sublabel">Platform</Label>
+                      <Select
+                        value={singlePlatform}
+                        onValueChange={(v) =>
+                          setSinglePlatform(v as SarsCov2Platform)
+                        }
+                      >
                         <SelectTrigger className="service-card-select-trigger">
-                          <SelectValue placeholder="Select version" />
+                          <SelectValue placeholder="Select a platform..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {primerOptions
-                            .find((option) => option.id === primer)
-                            ?.versions.map((version) => (
-                              <SelectItem key={version} value={version}>
-                                {version}
-                              </SelectItem>
-                            ))}
+                          {sarsCov2SinglePlatformOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
 
-            <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-              <div className="w-full">
-                <div className="flex items-center">
-                  <Label className="service-card-label">Taxonomy Name</Label>
-
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <HelpCircle className="service-card-tooltip-icon mb-2 ml-2" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Select the taxonomy name</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-
-                <Select defaultValue="sars" onValueChange={setTaxonomyName}>
-                  <SelectTrigger className="service-card-select-trigger">
-                    <SelectValue placeholder="Select taxonomy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sars">
-                      Severe acute respiratory syndrome
-                    </SelectItem>
-                    <SelectItem value="other">Other Taxonomy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex w-[50%] flex-col">
-                <Label className="service-card-label">Taxonomy ID</Label>
-                <Select defaultValue="2697049">
-                  <SelectTrigger className="service-card-select-trigger">
-                    <SelectValue placeholder="Select taxonomy ID" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2697049">2697049</SelectItem>
-                    <SelectItem value="other">Other ID</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="service-card-label">My Label</Label>
-              <Input
-                className="service-card-input"
-                placeholder="My identifier123"
-              />
-            </div>
-
-            <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-              <div className="w-full">
-                <OutputFolder onChange={setOutputFolder} />
-              </div>
-              <div className="w-full">
-                <OutputFolder
-                variant="name"
-                value={_outputName}
-                onChange={setOutputName}
-                outputFolderPath={_outputFolder}
-                onValidationChange={setIsOutputNameValid}
-              />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {analysisInput === "read-file" && (
-          <>
-            {/* Input File Section */}
-            <Card className="md:col-span-3">
-              <CardHeader className="service-card-header">
-                <CardTitle className="service-card-title">
-                  Input File
-                  <DialogInfoPopup
-                    title={readInputFileInfo.title}
-                    description={readInputFileInfo.description}
-                    sections={readInputFileInfo.sections}
-                  />
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="service-card-content">
-                {/* TODO: Should only be able to submit Libraries once a platform is selected */}
-                <div className="flex flex-col gap-4">
-                  <SearchReadLibrary
-                    title="Paired Read Library"
-                    firstPlaceholder="Select File 1..."
-                    secondPlaceholder="Select File 2..."
-                    variant="pair"
-                    onAdd={(files) => {
-                      const newLibraries = handlePairedLibraryAdd(
-                        files,
-                        selectedLibraries,
-                      );
-                      setSelectedLibraries(newLibraries);
-                    }}
-                    canAdd={Boolean(prlPlatform)}
-                  />
-                  <Select
-                    value={prlPlatform}
-                    onValueChange={(value) => setPrlPlatform(value)}
-                  >
-                    <SelectTrigger className="service-card-select-trigger">
-                      <SelectValue placeholder="Select a platform..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="illumina">Illumina</SelectItem>
-                      <SelectItem value="ion-torrent">Ion Torrent</SelectItem>
-                      <SelectItem value="infer-platform">
-                        Infer Platform
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* TODO: Should only be able to submit Libraries once a platform is selected */}
-                <div className="flex flex-col gap-4">
-                  <SearchReadLibrary
-                    title="Single Read Library"
-                    firstPlaceholder="Select File 1..."
-                    variant="single"
-                    canAdd={Boolean(srlPlatform)}
-                    onAdd={(files) => {
-                      const newLibraries = handleSingleLibraryAdd(
-                        files,
-                        selectedLibraries,
-                      );
-                      setSelectedLibraries(newLibraries);
-                    }}
-                  />
-
-                  <Select
-                    value={srlPlatform}
-                    onValueChange={(value) => setSrlPlatform(value)}
-                  >
-                    <SelectTrigger className="service-card-select-trigger">
-                      <SelectValue placeholder="Select a platform..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="illumina">Illumina</SelectItem>
-                      <SelectItem value="ion-torrent">Ion Torrent</SelectItem>
-                      <SelectItem value="nanopore">Nanopore</SelectItem>
-                      <SelectItem value="pacbio">PacBio</SelectItem>
-                      <SelectItem value="infer-platform">
-                        Infer Platform
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <SraRunAccession
+                  <SraRunAccessionWithValidation
+                    key={sraResetKey}
+                    title="SRA Run Accession"
+                    placeholder="SRR..."
                     selectedLibraries={selectedLibraries}
-                    setSelectedLibraries={setSelectedLibraries}
+                    setSelectedLibraries={setLibrariesAndSync}
+                    allowDuplicates={false}
                   />
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Selected Libraries Section */}
-            <Card className="md:col-span-3">
+                  <FormField
+                    control={form.control}
+                    name="paired_end_libs"
+                    render={() => (
+                      <FormItem>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Selected Libraries (when reads) */}
+          {inputType === "reads" && (
+            <div className="md:col-span-6">
+              <Card className="h-full">
+                <CardHeader className="service-card-header">
+                  <CardTitle className="service-card-title">
+                    Selected Libraries
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <HelpCircle className="service-card-tooltip-icon" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Place read files here using the arrow buttons</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Place read files here using the arrow buttons.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="service-card-content">
+                  <SelectedItemsTable
+                    items={selectedLibraries.map((lib) => ({
+                      id: lib.id,
+                      name: lib.name,
+                      type: getLibraryTypeLabel(lib.type),
+                    }))}
+                    onRemove={removeLibrary}
+                    className="max-h-80 overflow-y-auto"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Contigs (when contigs) */}
+          {inputType === "contigs" && (
+            <div className="md:col-span-12">
+              <Card>
+                <CardHeader className="service-card-header">
+                  <RequiredFormCardTitle className="service-card-title">
+                    Input File
+                  </RequiredFormCardTitle>
+                </CardHeader>
+                <CardContent className="service-card-content">
+                  <FormField
+                    control={form.control}
+                    name="contigs"
+                    render={({ field }) => (
+                      <FormItem>
+                        <Label className="service-card-label">Contigs</Label>
+                        <FormControl>
+                          <WorkspaceObjectSelector
+                            types={["contigs"]}
+                            placeholder="Select or Upload Contigs to your workspace for Annotation"
+                            value={field.value ?? ""}
+                            onObjectSelect={(object: WorkspaceObject) =>
+                              field.onChange(object.path)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Input Library (when reads) */}
+          <div className="col-span-full">
+            <Card className="h-full">
               <CardHeader className="service-card-header">
-                <CardTitle className="service-card-title">
-                  Selected Libraries
-                </CardTitle>
-                <CardDescription>
-                  Place read files here using the arrow buttons.
-                </CardDescription>
+                <RequiredFormCardTitle className="service-card-title">
+                  Parameters
+                  <DialogInfoPopup
+                    title={sarsCov2GenomeAnalysisParameters.title}
+                    sections={sarsCov2GenomeAnalysisParameters.sections}
+                  />
+                </RequiredFormCardTitle>
               </CardHeader>
+              <CardContent className="service-card-content space-y-4">
+                {inputType === "reads" && (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="service-card-label">Strategy</Label>
+                      <FormField
+                        control={form.control}
+                        name="recipe"
+                        render={({ field }) => (
+                          <FormItem>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger className="service-card-select-trigger">
+                                <SelectValue placeholder="Select strategy" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {recipeOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-              <CardContent className="service-card-content">
-                <SelectedItemsTable
-                  items={selectedLibraries.map((lib) => ({
-                    id: lib.id,
-                    name: lib.name,
-                    type:
-                      lib.type === "paired"
-                        ? "Paired Read"
-                        : lib.type === "single"
-                          ? "Single Read"
-                          : "SRA Accession",
-                  }))}
-                  onRemove={(id) => {
-                    const newLibraries = removeFromSelectedLibraries(
-                      id,
-                      selectedLibraries,
-                    );
-                    setSelectedLibraries(newLibraries);
-                  }}
-                  className="max-h-84 overflow-y-auto"
+                    {showPrimersSection && (
+                      <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                        <div className="flex-1 space-y-2">
+                          <Label className="service-card-label">Primers</Label>
+                          <FormField
+                            control={form.control}
+                            name="primers"
+                            render={({ field }) => (
+                              <FormItem>
+                                <Select
+                                  value={field.value}
+                                  onValueChange={(v) =>
+                                    field.onChange(v as Primers)
+                                  }
+                                >
+                                  <SelectTrigger className="service-card-select-trigger">
+                                    <SelectValue placeholder="Select primers" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {primerOptions.map((opt) => (
+                                      <SelectItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                      >
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <div className="w-full space-y-2 sm:w-32">
+                          <Label className="service-card-label">Version</Label>
+                          <FormField
+                            control={form.control}
+                            name="primer_version"
+                            render={({ field }) => (
+                              <FormItem>
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger className="service-card-select-trigger">
+                                    <SelectValue placeholder="Version" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {primerVersionOpts.map((opt) => (
+                                      <SelectItem
+                                        key={opt.value}
+                                        value={opt.value}
+                                      >
+                                        {opt.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                  <div className="flex-1 space-y-2">
+                    <Label className="service-card-label">
+                      Taxonomy Name
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <HelpCircle className="service-card-tooltip-icon ml-1 inline-block" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Select the taxonomy name for SARS-CoV-2</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </Label>
+                    <FormField
+                      control={form.control}
+                      name="scientific_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <TaxonNameSelector
+                              value={
+                                field.value || form.getValues("taxonomy_id")
+                                  ? {
+                                      taxon_id:
+                                        parseInt(
+                                          form.getValues("taxonomy_id") || "0",
+                                          10,
+                                        ) || 0,
+                                      taxon_name: field.value || "",
+                                    }
+                                  : null
+                              }
+                              onChange={(item) => {
+                                if (item) {
+                                  field.onChange(item.taxon_name);
+                                  form.setValue(
+                                    "taxonomy_id",
+                                    String(item.taxon_id),
+                                    {
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                  const out = computeOutputName(
+                                    item.taxon_name,
+                                    form.getValues("my_label"),
+                                  );
+                                  if (out)
+                                    form.setValue("output_file", out, {
+                                      shouldValidate: true,
+                                    });
+                                } else {
+                                  field.onChange("");
+                                  form.setValue("taxonomy_id", "", {
+                                    shouldValidate: true,
+                                  });
+                                }
+                              }}
+                              placeholder="e.g. Severe acute respiratory syndrome coronavirus 2"
+                              includeViruses={false}
+                              includeBacteria={false}
+                              includeEukaryotes={false}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="w-full space-y-2 sm:w-40">
+                    <Label className="service-card-label">Taxonomy ID</Label>
+                    <FormField
+                      control={form.control}
+                      name="taxonomy_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <TaxIDSelector
+                              value={
+                                field.value
+                                  ? {
+                                      taxon_id: parseInt(field.value, 10) || 0,
+                                      taxon_name:
+                                        form.getValues("scientific_name") || "",
+                                    }
+                                  : null
+                              }
+                              onChange={(item) => {
+                                if (item) {
+                                  field.onChange(String(item.taxon_id));
+                                  form.setValue(
+                                    "scientific_name",
+                                    item.taxon_name,
+                                    {
+                                      shouldValidate: true,
+                                    },
+                                  );
+                                  const out = computeOutputName(
+                                    item.taxon_name,
+                                    form.getValues("my_label"),
+                                  );
+                                  if (out)
+                                    form.setValue("output_file", out, {
+                                      shouldValidate: true,
+                                    });
+                                } else {
+                                  field.onChange("");
+                                  form.setValue("scientific_name", "", {
+                                    shouldValidate: true,
+                                  });
+                                }
+                              }}
+                              placeholder="NCBI Taxonomy ID"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="my_label"
+                  render={({ field }) => (
+                    <FormItem>
+                      <Label className="service-card-label">My Label</Label>
+                      <FormControl>
+                        <Input
+                          placeholder="My identifier123"
+                          className="service-card-input"
+                          {...field}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                            const out = computeOutputName(
+                              form.getValues("scientific_name"),
+                              e.target.value,
+                            );
+                            if (out)
+                              form.setValue("output_file", out, {
+                                shouldValidate: true,
+                              });
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="output_path"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <OutputFolder
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="output_file"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <OutputFolder
+                          variant="name"
+                          value={field.value}
+                          onChange={field.onChange}
+                          outputFolderPath={form.watch("output_path")}
+                          onValidationChange={setIsOutputNameValid}
+                          disabled={true}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
               </CardContent>
             </Card>
-          </>
-        )}
+          </div>
 
-        {analysisInput === "assembly-contigs" && (
-          <Card className="md:col-span-3">
-            <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
-                Input File
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Info className="service-card-tooltip-icon" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Select input files for analysis</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </CardTitle>
-            </CardHeader>
-
-            <CardContent className="service-card-content">
-              <SearchWorkspaceInput
-                title="Contigs"
-                placeholder="Select Contigs Folder"
-                onChange={setContigsFolder}
-              />
-            </CardContent>
-          </Card>
-        )}
-      </form>
-
-      {/* Action Buttons */}
-      <div className="service-form-controls">
-        <Button variant="outline" onClick={handleReset}>
-          Reset
-        </Button>
-        <Button type="submit" disabled={!isOutputNameValid}>
+          {/* Form controls */}
+          <div className="md:col-span-12">
+            <div className="service-form-controls">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  isSubmitting || !form.formState.isValid || !isOutputNameValid
+                }
+              >
+                {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
                 Submit
               </Button>
-      </div>
+            </div>
+          </div>
+        </form>
+      </Form>
+
+      <JobParamsDialog
+        open={showParamsDialog}
+        onOpenChange={setShowParamsDialog}
+        params={currentParams}
+        serviceName={serviceName}
+      />
     </section>
   );
 }

@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -87,12 +87,13 @@ export default function ForgotPasswordPage() {
                 If you don&apos;t see the email, check your spam folder or try again.
               </AlertDescription>
             </Alert>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/login">
-                <LuArrowLeft className="mr-2 h-4 w-4" />
-                Back to login
-              </Link>
-            </Button>
+            <Link
+              href="/login"
+              className={buttonVariants({ variant: "outline", className: "w-full" })}
+            >
+              <LuArrowLeft className="h-4 w-4" data-icon="inline-start" />
+              Back to login
+            </Link>
           </CardContent>
         </Card>
       </div>

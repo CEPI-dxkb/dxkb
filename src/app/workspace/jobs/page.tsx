@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
 import { useWorkspace } from "../../../hooks/services/workspace/use-workspace";
 import { JobStatus, JobListItem } from "../../../types/workspace";
-import { Button } from "../../../components/ui/button";
+import { Button, buttonVariants } from "../../../components/ui/button";
 import {
   Card,
   CardContent,
@@ -276,7 +276,8 @@ function JobsContent() {
           className="text-white"
         >
           <RefreshCw
-            className={`mr-2 h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            className={`h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            data-icon="inline-start"
           />
           Refresh
         </Button>
@@ -421,11 +422,12 @@ function JobsContent() {
                       {statusLabels[job.status]}
                     </Badge>
                     <div className="flex space-x-1">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/workspace/jobs/${job.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                      <Link
+                        href={`/workspace/jobs/${job.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        <Eye className="h-4 w-4" data-icon="inline-start" />
+                      </Link>
                       {(job.status === "in-progress" ||
                         job.status === "queued") && (
                         <Button
@@ -434,7 +436,7 @@ function JobsContent() {
                           onClick={() => handleKillJob(job.id)}
                           disabled={loading.kill}
                         >
-                          <StopCircle className="h-4 w-4" />
+                          <StopCircle className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                       )}
                     </div>
@@ -479,7 +481,7 @@ function JobsContent() {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
+                        <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">

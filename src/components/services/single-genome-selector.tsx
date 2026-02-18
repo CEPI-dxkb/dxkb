@@ -440,7 +440,7 @@ export function SingleGenomeSelector({
               suggestions.map((genome, index) => {
                 const isHighlighted = highlightedIndex === index;
                 return (
-                  <button
+                  <Button
                     key={genome.genome_id}
                     ref={(el) => {
                       itemRefs.current[index] = el;
@@ -465,7 +465,7 @@ export function SingleGenomeSelector({
                       {genome.genome_id}
                       {genome.strain ? ` • ${genome.strain}` : ""}
                     </span>
-                  </button>
+                  </Button>
                 );
               })
             ) : showEmptyState ? (

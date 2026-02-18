@@ -473,16 +473,18 @@ export function WorkspaceObjectSelector({
 
         {/* Folder Icon Button */}
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleFolderClick}
-              className="shrink-0"
-            >
-              <FolderOpen className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleFolderClick}
+                className="shrink-0"
+              >
+                <FolderOpen className="h-4 w-4" />
+              </Button>
+            }
+          />
           <DialogContent className="max-h-[80vh] max-w-4xl">
             <DialogHeader>
               <DialogTitle>Choose or Upload a Workspace Object</DialogTitle>

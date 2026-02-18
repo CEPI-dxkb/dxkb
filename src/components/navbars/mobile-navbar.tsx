@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/buttons/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { LuMenu, LuSearch, LuChevronUp } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,7 +36,7 @@ const MobileNavbar = () => {
         <Sheet>
           <SheetTrigger asChild className="group hover:bg-gray-300/50">
             <Button variant="ghost">
-              <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
+              <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" data-icon="inline-start" />
             </Button>
           </SheetTrigger>
           <SheetContent
@@ -176,22 +176,26 @@ const MobileNavbar = () => {
         {/* Show login/register when NOT authenticated and not loading */}
         {!isLoading && !isAuthenticated && (
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-foreground hover:bg-gray-300/50"
-              asChild
+            <Link
+              href="/login"
+              className={buttonVariants({
+                variant: "ghost",
+                size: "sm",
+                className: "text-foreground hover:bg-gray-300/50",
+              })}
             >
-              <Link href="/login">Login</Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-foreground text-foreground hover:bg-foreground hover:text-background"
-              asChild
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className={buttonVariants({
+                variant: "outline",
+                size: "sm",
+                className: "border-foreground text-foreground hover:bg-foreground hover:text-background",
+              })}
             >
-              <Link href="/register">Register</Link>
-            </Button>
+              Register
+            </Link>
           </>
         )}
 

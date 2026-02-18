@@ -22,21 +22,23 @@ export function DialogInfoPopup({
 }: ServiceInfoPopup & { isHeader?: boolean; className?: string }) {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            isHeader
-              ? "h-8 w-8 rounded-full p-2 text-primary font-bold"
-              : "h-5 w-5 rounded-full p-0.5",
-            "hover:bg-accent hover:text-accent-foreground hover:cursor-pointer",
-            className,
-          )}
-        >
-          <Info className={cn({ "h-6! w-6! font-bold!": isHeader, "h-4! w-4!": !isHeader })} strokeWidth={isHeader ? 3 : 2} />
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              isHeader
+                ? "h-8 w-8 rounded-full p-2 text-primary font-bold"
+                : "h-5 w-5 rounded-full p-0.5",
+              "hover:bg-accent hover:text-accent-foreground hover:cursor-pointer",
+              className,
+            )}
+          >
+            <Info className={cn({ "h-6! w-6! font-bold!": isHeader, "h-4! w-4!": !isHeader })} strokeWidth={isHeader ? 3 : 2} />
+          </Button>
+        }
+      />
 
       <DialogContent className="sm:max-w-xl">
         <DialogHeader className="w-full">

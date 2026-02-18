@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/buttons/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -254,22 +254,26 @@ const DesktopNavbar = () => {
           {/* Show login/register when NOT authenticated and not loading */}
           {!isLoading && !isAuthenticated && (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/10 hover:text-white"
-                asChild
+              <Link
+                href="/login"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "text-white hover:bg-white/10 hover:text-white",
+                })}
               >
-                <Link href="/login">Login</Link>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-foreground hover:text-secondary hover:bg-white"
-                asChild
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                  className: "text-foreground hover:text-secondary hover:bg-white",
+                })}
               >
-                <Link href="/register">Register</Link>
-              </Button>
+                Register
+              </Link>
             </>
           )}
 

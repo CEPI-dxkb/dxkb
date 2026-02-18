@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
@@ -407,7 +407,7 @@ export default function PublicationsListView() {
                     </SelectContent>
                   </Select>
                   <Button variant="outline" size="icon">
-                    <Download className="h-4 w-4" />
+                    <Download className="h-4 w-4" data-icon="inline-start" />
                   </Button>
                 </div>
               </div>
@@ -434,16 +434,22 @@ export default function PublicationsListView() {
                               <p className="text-sm text-muted-foreground italic">{publication.journal}</p>
                               <p className="text-sm mt-2">{publication.abstract}</p>
                               <div className="flex items-center gap-2 mt-4">
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href={`/publications/${publication.id}`}>View Details</Link>
-                                </Button>
-                                <Button variant="outline" size="sm" asChild>
-                                  <a href={publication.doi} target="_blank" rel="noopener noreferrer">
-                                    View Original
-                                  </a>
-                                </Button>
+                                <Link
+                                  href={`/publications/${publication.id}`}
+                                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                                >
+                                  View Details
+                                </Link>
+                                <a
+                                  href={publication.doi}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                                >
+                                  View Original
+                                </a>
                                 <Button variant="outline" size="sm">
-                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                  <Download className="h-3.5 w-3.5" data-icon="inline-start" />
                                   Cite
                                 </Button>
                               </div>

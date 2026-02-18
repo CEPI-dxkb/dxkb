@@ -313,7 +313,7 @@ export function GenomeNameSelector({
                   const isDuplicate = existingGenomeIds.has(genome.genome_id);
                   const isHighlighted = highlightedIndex === index;
                   return (
-                    <button
+                    <Button
                       key={genome.genome_id}
                       ref={(el) => {
                         itemRefs.current[index] = el;
@@ -338,7 +338,7 @@ export function GenomeNameSelector({
                         {genome.genome_id}
                         {genome.strain ? ` • ${genome.strain}` : ""}
                       </span>
-                    </button>
+                    </Button>
                   );
                 })
               ) : showEmptyState ? (

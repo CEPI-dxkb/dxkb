@@ -144,7 +144,7 @@ function MobileSearchBarContent({
               }}
             >
               {searchTypes.map((option) => (
-                <button
+                <Button
                   key={option.id}
                   type="button"
                   onClick={() => {
@@ -159,7 +159,7 @@ function MobileSearchBarContent({
                   )}
                 >
                   {option.typeTitle}
-                </button>
+                </Button>
               ))}
             </div>
           </PopoverContent>
@@ -186,7 +186,7 @@ function MobileSearchBarContent({
 
           {/* Clear Button - Only clears input, does not close search bar */}
           {inputValue && (
-            <button
+            <Button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
@@ -197,7 +197,7 @@ function MobileSearchBarContent({
               aria-label="Clear search"
             >
               <LuX size={18} />
-            </button>
+            </Button>
           )}
         </div>
       </div>

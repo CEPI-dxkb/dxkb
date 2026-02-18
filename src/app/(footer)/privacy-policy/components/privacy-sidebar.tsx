@@ -1,14 +1,14 @@
-import React from 'react'
-import { Input } from '@/components/ui/input'
+import React from "react";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Progress,
   ProgressLabel,
   ProgressValue,
-} from "@/components/ui/progress"
-import { Button } from '@/components/ui/button'
-import { LuSearch } from 'react-icons/lu'
-import { privacyPolicySections } from '../data/privacy-policy-sections'
+} from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { LuSearch } from "react-icons/lu";
+import { privacyPolicySections } from "../data/privacy-policy-sections";
 
 const PrivacySidebar = () => {
   return (

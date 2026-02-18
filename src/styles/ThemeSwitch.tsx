@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useTheme } from 'next-themes'
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { themeList } from "@/styles/themes";
 

@@ -92,6 +92,7 @@ const Footer = () => {
               <Link
                 href="https://twitter.com"
                 target="_blank"
+                rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
                 <FaTwitter className="h-4 w-4" data-icon="inline-start" />
@@ -100,6 +101,7 @@ const Footer = () => {
               <Link
                 href="https://facebook.com"
                 target="_blank"
+                rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
                 <FaFacebook className="h-4 w-4" data-icon="inline-start" />
@@ -108,6 +110,7 @@ const Footer = () => {
               <Link
                 href="https://instagram.com"
                 target="_blank"
+                rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
                 <FaInstagram className="h-4 w-4" data-icon="inline-start" />
@@ -116,6 +119,7 @@ const Footer = () => {
               <Link
                 href="https://github.com"
                 target="_blank"
+                rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
                 <FaGithub className="h-4 w-4" data-icon="inline-start" />
@@ -124,6 +128,7 @@ const Footer = () => {
               <Link
                 href="https://youtube.com"
                 target="_blank"
+                rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
                 <FaYoutube className="h-4 w-4" data-icon="inline-start" />

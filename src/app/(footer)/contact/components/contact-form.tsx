@@ -1,12 +1,11 @@
-import { Separator } from '@/components/ui/separator'
-import React from 'react'
-import { LuMail, LuMapPin, LuTwitter, LuLinkedin, LuGithub, LuClock, LuPhone } from 'react-icons/lu'
-import { Card, CardContent } from '@/components/ui/card'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
+import { Separator } from "@/components/ui/separator";
+import { LuMail, LuMapPin, LuTwitter, LuLinkedin, LuGithub, LuClock, LuPhone } from "react-icons/lu";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 const ContactForm = () => {
   return (

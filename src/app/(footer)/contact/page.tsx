@@ -1,7 +1,6 @@
-import React from 'react'
-import Offices from './components/offices'
-import ContactForm from './components/contact-form'
-import FooterHeader from '@/components/headers/footer-header'
+import Offices from "./components/offices";
+import ContactForm from "./components/contact-form";
+import FooterHeader from "@/components/headers/footer-header";
 
 const ContactUs = () => {
   return (

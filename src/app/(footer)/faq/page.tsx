@@ -1,10 +1,10 @@
-import FooterHeader from '@/components/headers/footer-header'
+import FooterHeader from "@/components/headers/footer-header";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/components/ui/accordion'
+} from "@/components/ui/accordion";
 
 const faqSections = {
   DXKB: [

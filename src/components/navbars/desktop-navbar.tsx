@@ -281,20 +281,22 @@ const DesktopNavbar = () => {
           {!isLoading && isAuthenticated && (
             <>
               <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger
-                  nativeButton={false}
-                  render={<div className="flex items-center space-x-2" />}
-                >
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-white/10 text-white">
-                        {user?.username?.charAt(0).toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="bottom" sideOffset={8} align="end">
-                    <DropdownMenuLabel>User Actions</DropdownMenuLabel>
-
+                <div className="size-8 shrink-0 overflow-hidden rounded-full **:data-[slot=dropdown-menu-trigger]:size-full **:data-[slot=dropdown-menu-trigger]:min-w-0">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger
+                      nativeButton={false}
+                      render={<div className="flex size-full items-center justify-center" />}
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-white/10 text-white">
+                          {user?.username?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" sideOffset={8} align="end" className="w-[200px]">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>User Actions</DropdownMenuLabel>
+                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                       <DropdownMenuItem>
@@ -339,6 +341,7 @@ const DesktopNavbar = () => {
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </div>
               </div>
             </>
           )}

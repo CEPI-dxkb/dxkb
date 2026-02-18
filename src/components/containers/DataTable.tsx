@@ -4,19 +4,17 @@
 import {
   ColumnDef,
   getCoreRowModel,
-  getPaginationRowModel,
   useReactTable,
   flexRender,
   SortingState,
   PaginationState,
-  Header,
-} from '@tanstack/react-table';
+} from "@tanstack/react-table";
 
 // The following imports are usual hooks used in React to do things on events. The only non-standard one is useMemo, which isused to cache data and checks on rerenders to see if the data has changed. This is relevant to when the columns are resized.
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from "react";
 
 // This helps with rendering rows more quickly in situations that have thousands of rows
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 // These imports are used to actually build the table structure
 import {
@@ -26,16 +24,16 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '../ui/table';
+} from "../ui/table";
 
 // This allows for using shorthand to conditionally apply CSS classes
-import clsx from 'clsx';
-import { Button } from '@base-ui/react/button';
+import clsx from "clsx";
+import { Button } from "@base-ui/react/button";
 
 // This sets the structure of the columns that are sent in as JSON
 interface ColumnInfo {
   id: string; // The key in the JSON for this column
-  label: string; // The readable string that gets displayed as the column header 
+  label: string; // The readable string that gets displayed as the column header
   visible?: boolean; // Whether or not we see this column. There is a default that it comes in with from the parent, but it can be changed dynamically, as we'll see later
 }
 

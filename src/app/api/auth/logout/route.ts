@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { clearAuthCookies } from '../utils';
+import { NextRequest, NextResponse } from "next/server";
+import { clearAuthCookies } from "../utils";
 
 export async function POST(request: NextRequest) {
   try {

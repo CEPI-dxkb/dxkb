@@ -1,4 +1,4 @@
-import { Info } from 'lucide-react';
+import { Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +23,9 @@ export function DialogInfoPopup({
   return (
     <Dialog>
       <DialogTrigger
-        render={
+        render={(triggerProps) => (
           <Button
+            {...triggerProps}
             variant="ghost"
             size="icon"
             className={cn(
@@ -33,11 +34,12 @@ export function DialogInfoPopup({
                 : "h-5 w-5 rounded-full p-0.5",
               "hover:bg-accent hover:text-accent-foreground hover:cursor-pointer",
               className,
+              triggerProps.className,
             )}
           >
             <Info className={cn({ "h-6! w-6! font-bold!": isHeader, "h-4! w-4!": !isHeader })} strokeWidth={isHeader ? 3 : 2} />
           </Button>
-        }
+        )}
       />
 
       <DialogContent className="sm:max-w-xl">

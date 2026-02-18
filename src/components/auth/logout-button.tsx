@@ -60,13 +60,8 @@ export function LogoutButton({
     }
   };
 
-  const LogoutButtonContent = (
-    <Button
-      variant={variant}
-      size={size}
-      disabled={isLoggingOut}
-      className={className}
-    >
+  const triggerChildren = (
+    <>
       {isLoggingOut ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
@@ -77,16 +72,39 @@ export function LogoutButton({
           {isLoggingOut ? "Signing out..." : "Sign Out"}
         </span>
       )}
-    </Button>
+    </>
   );
 
   if (!confirmDialog) {
-    return <div onClick={handleLogout}>{LogoutButtonContent}</div>;
+    return (
+      <div onClick={handleLogout}>
+        <Button
+          variant={variant}
+          size={size}
+          disabled={isLoggingOut}
+          className={className}
+        >
+          {triggerChildren}
+        </Button>
+      </div>
+    );
   }
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger render={LogoutButtonContent} />
+      <AlertDialogTrigger
+        render={(props) => (
+          <Button
+            {...props}
+            variant={variant}
+            size={size}
+            className={className}
+            disabled={isLoggingOut}
+          >
+            {triggerChildren}
+          </Button>
+        )}
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Sign out of BV-BRC?</AlertDialogTitle>

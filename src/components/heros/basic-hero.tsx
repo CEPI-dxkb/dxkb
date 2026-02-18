@@ -1,5 +1,3 @@
-import React from 'react'
-
 const BasicHero = ({ title, description }: { title: string, description: string }) => {
   return (
     <section className="bg-gray-300 text-black">

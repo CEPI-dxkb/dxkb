@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
-import { DataTable } from '@/components/containers/DataTable';
-import { SortingState, RowSelectionState } from '@tanstack/react-table';
-import { useQuery } from '@tanstack/react-query';
+import { DataTable } from "@/components/containers/DataTable";
+import { SortingState, RowSelectionState } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
 
 interface ListDataProps { 
   q: string; 

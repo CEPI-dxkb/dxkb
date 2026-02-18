@@ -62,13 +62,13 @@ import {
 
 import {
   taxonomicClassificationFormSchema,
-  DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES,
-  WGS_ANALYSIS_TYPE_OPTIONS,
-  SIXTEENS_ANALYSIS_TYPE_OPTIONS,
-  WGS_DATABASE_OPTIONS,
-  SIXTEENS_DATABASE_OPTIONS,
-  HOST_GENOME_OPTIONS,
-  CONFIDENCE_INTERVAL_OPTIONS,
+  defaultTaxonomicClassificationFormValues,
+  wgsAnalysisTypeOptions,
+  sixteenSAnalysisTypeOptions,
+  wgsDatabaseOptions,
+  sixteenSDatabaseOptions,
+  hostGenomeOptions,
+  confidenceIntervalOptions,
   type TaxonomicClassificationFormData,
   type LibraryItem,
 } from "@/lib/forms/(metagenomics)/taxonomic-classification/taxonomic-classification-form-schema";
@@ -109,7 +109,7 @@ function findNewSraLibraries(
 export default function TaxonomicClassificationPage() {
   const form = useForm<TaxonomicClassificationFormData>({
     resolver: zodResolver(taxonomicClassificationFormSchema),
-    defaultValues: DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES,
+    defaultValues: defaultTaxonomicClassificationFormValues,
     mode: "onChange",
   });
 
@@ -301,7 +301,7 @@ export default function TaxonomicClassificationPage() {
   // Handle form reset
   const handleReset = () => {
     form.reset(
-      { ...DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES },
+      { ...defaultTaxonomicClassificationFormValues },
       { keepDefaultValues: false },
     );
     // Clear any stale validation errors after reset
@@ -350,11 +350,11 @@ export default function TaxonomicClassificationPage() {
   // Get current options based on sequence type
   const analysisTypeOptions =
     sequenceType === "wgs"
-      ? WGS_ANALYSIS_TYPE_OPTIONS
-      : SIXTEENS_ANALYSIS_TYPE_OPTIONS;
+      ? wgsAnalysisTypeOptions
+      : sixteenSAnalysisTypeOptions;
 
   const databaseOptions =
-    sequenceType === "wgs" ? WGS_DATABASE_OPTIONS : SIXTEENS_DATABASE_OPTIONS;
+    sequenceType === "wgs" ? wgsDatabaseOptions : sixteenSDatabaseOptions;
 
   return (
     <section>
@@ -648,10 +648,7 @@ export default function TaxonomicClassificationPage() {
                             </FormLabel>
                             <FormControl>
                               <Select
-                                items={analysisTypeOptions.map((option) => ({
-                                  value: option.value,
-                                  label: option.label,
-                                }))}
+                                items={analysisTypeOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                                 disabled={
@@ -703,10 +700,7 @@ export default function TaxonomicClassificationPage() {
                             </FormLabel>
                             <FormControl>
                               <Select
-                                items={databaseOptions.map((option) => ({
-                                  value: option.value,
-                                  label: option.label,
-                                }))}
+                                items={databaseOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                               >
@@ -754,10 +748,7 @@ export default function TaxonomicClassificationPage() {
                             </FormLabel>
                             <FormControl>
                               <Select
-                                items={HOST_GENOME_OPTIONS.map((option) => ({
-                                  value: option.value,
-                                  label: option.label,
-                                }))}
+                                items={hostGenomeOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                                 disabled={
@@ -769,7 +760,7 @@ export default function TaxonomicClassificationPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
-                                    {HOST_GENOME_OPTIONS.map((option) => (
+                                    {hostGenomeOptions.map((option) => (
                                       <SelectItem
                                         key={option.value}
                                         value={option.value}
@@ -808,12 +799,7 @@ export default function TaxonomicClassificationPage() {
                             </FormLabel>
                             <FormControl>
                               <Select
-                                items={CONFIDENCE_INTERVAL_OPTIONS.map(
-                                  (option) => ({
-                                    value: option.value,
-                                    label: option.label,
-                                  }),
-                                )}
+                                items={confidenceIntervalOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                               >
@@ -822,7 +808,7 @@ export default function TaxonomicClassificationPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
-                                    {CONFIDENCE_INTERVAL_OPTIONS.map(
+                                    {confidenceIntervalOptions.map(
                                       (option) => (
                                         <SelectItem key={option.value} value={option.value}>
                                           {option.label}

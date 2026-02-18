@@ -259,9 +259,7 @@ export default function SimilarGenomeFinderServicePage() {
                               </FormLabel>
                               <FormControl>
                                 <Select
-                                  items={["1", "10", "50", "100", "500"].map(
-                                    (v) => ({ value: v, label: v }),
-                                  )}
+                                  items={maxHitsOptions}
                                   value={(field.value ?? 10).toString()}
                                   onValueChange={(value) =>
                                     value != null &&
@@ -273,11 +271,14 @@ export default function SimilarGenomeFinderServicePage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectGroup>
-                                      <SelectItem value="1">1</SelectItem>
-                                      <SelectItem value="10">10</SelectItem>
-                                      <SelectItem value="50">50</SelectItem>
-                                      <SelectItem value="100">100</SelectItem>
-                                      <SelectItem value="500">500</SelectItem>
+                                      {maxHitsOptions.map((o) => (
+                                        <SelectItem
+                                          key={o.value}
+                                          value={String(o.value)}
+                                        >
+                                          {o.label}
+                                        </SelectItem>
+                                      ))}
                                     </SelectGroup>
                                   </SelectContent>
                                 </Select>
@@ -297,9 +298,7 @@ export default function SimilarGenomeFinderServicePage() {
                               </FormLabel>
                               <FormControl>
                                 <Select
-                                  items={["0.001", "0.01", "0.1", "1"].map(
-                                    (v) => ({ value: v, label: v }),
-                                  )}
+                                  items={pValueOptions}
                                   value={field.value?.toString() ?? "1"}
                                   onValueChange={(value) =>
                                     value != null &&
@@ -311,12 +310,14 @@ export default function SimilarGenomeFinderServicePage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectGroup>
-                                      <SelectItem value="0.001">
-                                        0.001
-                                      </SelectItem>
-                                      <SelectItem value="0.01">0.01</SelectItem>
-                                      <SelectItem value="0.1">0.1</SelectItem>
-                                      <SelectItem value="1">1</SelectItem>
+                                      {pValueOptions.map((o) => (
+                                        <SelectItem
+                                          key={o.value}
+                                          value={String(o.value)}
+                                        >
+                                          {o.label}
+                                        </SelectItem>
+                                      ))}
                                     </SelectGroup>
                                   </SelectContent>
                                 </Select>
@@ -336,13 +337,7 @@ export default function SimilarGenomeFinderServicePage() {
                               </FormLabel>
                               <FormControl>
                                 <Select
-                                  items={[
-                                    "0.01",
-                                    "0.05",
-                                    "0.1",
-                                    "0.5",
-                                    "1",
-                                  ].map((v) => ({ value: v, label: v }))}
+                                  items={distanceOptions}
                                   value={field.value?.toString() ?? "1"}
                                   onValueChange={(value) =>
                                     value != null &&
@@ -354,11 +349,14 @@ export default function SimilarGenomeFinderServicePage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectGroup>
-                                      <SelectItem value="0.01">0.01</SelectItem>
-                                      <SelectItem value="0.05">0.05</SelectItem>
-                                      <SelectItem value="0.1">0.1</SelectItem>
-                                      <SelectItem value="0.5">0.5</SelectItem>
-                                      <SelectItem value="1">1</SelectItem>
+                                      {distanceOptions.map((o) => (
+                                        <SelectItem
+                                          key={o.value}
+                                          value={String(o.value)}
+                                        >
+                                          {o.label}
+                                        </SelectItem>
+                                      ))}
                                     </SelectGroup>
                                   </SelectContent>
                                 </Select>

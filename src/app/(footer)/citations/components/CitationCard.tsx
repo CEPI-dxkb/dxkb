@@ -23,7 +23,7 @@ export function CitationCard({ citation }: CitationCardProps) {
             </div>
             <div className="citation-card-badges">
               <Badge variant="outline" className="flex items-center gap-1">
-                <BarChart className="h-3 w-3" />
+                <BarChart className="h-3 w-3" data-icon="inline-start" />
                 IF: {citation.impactFactor.toFixed(1)}
               </Badge>
               <Badge variant="outline" className="flex items-center gap-1">

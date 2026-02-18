@@ -362,6 +362,7 @@ export default function BrucellaGenomeViewerAlt() {
                             <span className="text-xs">2017</span>
                           </div>
                           <Slider
+                            aria-label="Year range"
                             defaultValue={[2010, 2017]}
                             min={2005}
                             max={2017}
@@ -435,6 +436,7 @@ export default function BrucellaGenomeViewerAlt() {
                             <span className="text-xs">3.5Mb</span>
                           </div>
                           <Slider
+                            aria-label="Genome size range (Mb)"
                             defaultValue={[3.2, 3.5]}
                             min={3.2}
                             max={3.5}
@@ -604,15 +606,15 @@ export default function BrucellaGenomeViewerAlt() {
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary" className="flex items-center gap-1">
                 <span>Species: B. ceti</span>
-                <X className="h-3 w-3 cursor-pointer" />
+                <X className="h-3 w-3 cursor-pointer" data-icon="inline-end" />
               </Badge>
               <Badge variant="secondary" className="flex items-center gap-1">
                 <span>Host: Dolphin, Grey Seal</span>
-                <X className="h-3 w-3 cursor-pointer" />
+                <X className="h-3 w-3 cursor-pointer" data-icon="inline-end" />
               </Badge>
               <Badge variant="secondary" className="flex items-center gap-1">
                 <span>Country: France, Finland, UK</span>
-                <X className="h-3 w-3 cursor-pointer" />
+                <X className="h-3 w-3 cursor-pointer" data-icon="inline-end" />
               </Badge>
               <Badge
                 variant="outline"

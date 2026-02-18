@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../../components/ui/card";
-import { Badge } from "../../../../components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "../../../../components/ui/input";
 import {
   Select,
@@ -28,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../../components/ui/dialog";
-import { Separator } from "../../../../components/ui/separator";
+import { Separator } from "@/components/ui/separator";
 import {
   RefreshCw,
   Search,

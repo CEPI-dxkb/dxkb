@@ -1,6 +1,6 @@
 import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
+import { Badge } from "@/components/ui/badge";
 import { Button } from '../ui/button';
 import ProteinIcon from '../../../public/icons/protein.svg';
 import EnzymeIcon from '../../../public/icons/enzyme.svg';

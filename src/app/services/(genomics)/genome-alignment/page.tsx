@@ -459,6 +459,7 @@ export default function GenomeAlignmentServicePage() {
                           </div>
                           <FormControl>
                             <Slider
+                              aria-label="Seed weight"
                               value={[field.value ?? seedWeightValue]}
                               onValueChange={(value) => field.onChange(value[0])}
                               min={3}

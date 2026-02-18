@@ -4,7 +4,7 @@ import { Calendar, Download, ExternalLink, Search, SortDesc } from "lucide-react
 import Link from "next/link"
 import { useState } from "react"
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"

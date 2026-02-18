@@ -4,7 +4,7 @@ import { BarChart3, BookOpen, Download, ExternalLink, LineChart, TrendingUp, Use
 import Link from "next/link"
 import { useState, useMemo } from "react"
 
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -576,7 +576,7 @@ export default function CitationsMetricsPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="flex items-center gap-1">
-                            <BarChart3 className="h-3 w-3" />
+                            <BarChart3 className="h-3 w-3" data-icon="inline-start" />
                             IF: {citation.impactFactor.toFixed(1)}
                           </Badge>
                           <Badge variant="outline" className="flex items-center gap-1">

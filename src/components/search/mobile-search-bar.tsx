@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/buttons/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface MobileSearchBarProps {

@@ -38,7 +38,6 @@ import {
   blastServiceDatabaseSource,
   blastServiceDatabaseType,
 } from "@/lib/services/service-info";
-import { Checkbox } from "@/components/ui/checkbox";
 import OutputFolder from "@/components/services/output-folder";
 import {
   RequiredFormLabel,
@@ -66,8 +65,8 @@ import {
   createInputSourceOverrides,
   createDatabaseSourceOverrides,
   extractInputFields,
-  maxHitsOptions,
-  evalueOptions,
+  maxHitsOptionsBlast,
+  evalueOptionsBlast,
 } from "@/lib/forms/(genomics)";
 
 export default function BlastServicePage() {
@@ -789,7 +788,7 @@ export default function BlastServicePage() {
                           </FormLabel>
                           <FormControl>
                             <Select
-                              items={maxHitsOptions}
+                              items={maxHitsOptionsBlast}
                               value={field.value}
                               onValueChange={(value) =>
                                 value != null && field.onChange(Number(value))
@@ -800,7 +799,7 @@ export default function BlastServicePage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                  {maxHitsOptions.map((o) => (
+                                  {maxHitsOptionsBlast.map((o) => (
                                     <SelectItem key={o.value} value={o.value}>
                                       {o.label}
                                     </SelectItem>
@@ -827,7 +826,7 @@ export default function BlastServicePage() {
                           </FormLabel>
                           <FormControl>
                             <Select
-                              items={evalueOptions}
+                              items={evalueOptionsBlast}
                               value={field.value}
                               onValueChange={(value) =>
                                 value != null && field.onChange(Number(value))
@@ -838,7 +837,7 @@ export default function BlastServicePage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                  {evalueOptions.map((o) => (
+                                  {evalueOptionsBlast.map((o) => (
                                     <SelectItem key={o.value} value={o.value}>
                                     {o.label}
                                   </SelectItem>

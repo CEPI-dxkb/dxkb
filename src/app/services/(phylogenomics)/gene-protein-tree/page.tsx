@@ -356,7 +356,7 @@ export default function GeneProteinTreePage() {
                         <RadioGroup
                           value={field.value}
                           onValueChange={field.onChange}
-                          className="grid gap-2 w-full"
+                          className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
                             <RadioGroupItem value="DNA" id="DNA" />
@@ -585,7 +585,7 @@ export default function GeneProteinTreePage() {
                           <RadioGroup
                             value={field.value}
                             onValueChange={field.onChange}
-                            className="grid gap-2 w-full"
+                            className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
                               <RadioGroupItem value="RAxML" id="raxml" />

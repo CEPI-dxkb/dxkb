@@ -1,6 +1,6 @@
 "use client"
 
-import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible"
+import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 
 function Collapsible({ ...props }: CollapsiblePrimitive.Root.Props) {
   return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />
@@ -14,6 +14,7 @@ function CollapsibleTrigger({ ...props }: CollapsiblePrimitive.Trigger.Props) {
 
 function CollapsibleContent({
   keepMounted = true,
+  children,
   ...props
 }: CollapsiblePrimitive.Panel.Props) {
   return (
@@ -21,8 +22,15 @@ function CollapsibleContent({
       data-slot="collapsible-content"
       keepMounted={keepMounted}
       {...props}
-    />
-  )
+    >
+      <div
+        data-slot="collapsible-divider"
+        role="separator"
+        className="h-px shrink-0 bg-border"
+      />
+      {children}
+    </CollapsiblePrimitive.Panel>
+  );
 }
 
 export { Collapsible, CollapsibleTrigger, CollapsibleContent }

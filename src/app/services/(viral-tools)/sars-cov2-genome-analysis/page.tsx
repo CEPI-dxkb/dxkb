@@ -547,14 +547,14 @@ export default function SarsCov2GenomeAnalysisPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectGroup>
-                                {recipeOptions.map((recipe) => (
-                                  <SelectItem
-                                    key={recipe.value}
-                                    value={recipe.value}
-                                  >
-                                    {recipe.label}
-                                  </SelectItem>
-                                ))}
+                                  {recipeOptions.map((recipe) => (
+                                    <SelectItem
+                                      key={recipe.value}
+                                      value={recipe.value}
+                                    >
+                                      {recipe.label}
+                                    </SelectItem>
+                                  ))}
                                 </SelectGroup>
                               </SelectContent>
                             </Select>
@@ -618,7 +618,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectGroup>
-                                    {primerVersionOpts.map((opt) => (
+                                      {primerVersionOpts.map((opt) => (
                                         <SelectItem
                                           key={opt.value}
                                           value={opt.value}

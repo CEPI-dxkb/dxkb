@@ -463,10 +463,14 @@ export default function GenomeAlignmentServicePage() {
                             <Slider
                               aria-label="Seed weight"
                               value={[field.value ?? seedWeightValue]}
-                              onValueChange={(value) => field.onChange(value[0])}
                               min={3}
                               max={21}
                               step={1}
+                              onValueChange={(value) =>
+                                field.onChange(
+                                  Array.isArray(value) ? value[0] : value,
+                                )
+                              }
                             />
                           </FormControl>
                           <div className="text-muted-foreground flex justify-between text-xs">

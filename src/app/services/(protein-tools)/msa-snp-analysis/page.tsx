@@ -546,7 +546,7 @@ export default function MSAandSNPAnalysisPage() {
                             setFeatureOptions([]);
                           }
                         }}
-                        className="grid gap-2 w-full"
+                        className="service-radio-group-horizontal"
                       >
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value="unaligned" id="unaligned" />
@@ -605,7 +605,7 @@ export default function MSAandSNPAnalysisPage() {
                                 setFeatureOptions([]);
                               }
                             }}
-                            className="grid gap-2 w-full"
+                            className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
                               <RadioGroupItem
@@ -691,7 +691,7 @@ export default function MSAandSNPAnalysisPage() {
                               <RadioGroup
                                 value={field.value}
                                 onValueChange={field.onChange}
-                                className="grid gap-2 w-full"
+                                className="service-radio-group-horizontal"
                               >
                                 <div className="flex items-center gap-3">
                                   <RadioGroupItem value="dna" id="dna" />
@@ -998,7 +998,7 @@ export default function MSAandSNPAnalysisPage() {
                               setGenomeIdDropdownOpen(false);
                             }
                           }}
-                          className="grid gap-2 w-full"
+                          className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
                             <RadioGroupItem value="none" id="ref_none" />
@@ -1223,9 +1223,6 @@ export default function MSAandSNPAnalysisPage() {
                 {/* Input Reference Sequence */}
                 {refType === "string" && (
                   <div className="space-y-2">
-                    <FormLabel className="service-card-label">
-                      Input Reference Sequence
-                    </FormLabel>
                     <Textarea
                       value={referenceFastaText}
                       onChange={(e) => setReferenceFastaText(e.target.value)}

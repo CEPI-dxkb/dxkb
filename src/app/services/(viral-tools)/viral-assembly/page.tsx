@@ -353,6 +353,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                       render={({ field }) => (
                         <FormItem>
                           <Select
+                            items={strategyOptions}
                             value={field.value}
                             onValueChange={field.onChange}
                           >
@@ -360,14 +361,16 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                               <SelectValue placeholder="Select strategy" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectGroup>
                               {strategyOptions.map((opt) => (
                                 <SelectItem
                                   key={opt.value}
                                   value={opt.value}
                                 >
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -385,21 +388,21 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                       render={({ field }) => (
                         <FormItem>
                           <Select
+                            items={moduleOptions}
                             value={field.value}
                             onValueChange={field.onChange}
                           >
                             <SelectTrigger className="service-card-select-trigger">
-                              <SelectValue placeholder="Select reference database" />
+                              <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {moduleOptions.map((opt) => (
-                                <SelectItem
-                                  key={opt.value}
-                                  value={opt.value}
-                                >
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
+                              <SelectGroup>
+                                {moduleOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                           <FormMessage />

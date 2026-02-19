@@ -221,22 +221,24 @@ export function WorkspaceObjectSelector({
     const preferredHeight = 640;
     const minHeight = 288;
     const gap = 4;
+    // Cap height when opening upward so dropdown stays near the trigger instead of at viewport top
+    const maxHeightUpward = 360;
 
     let openUpward = false;
     let maxHeight = preferredHeight;
 
-    if (spaceBelow >= preferredHeight) {
+    // Prefer opening downward when there's any reasonable space below so dropdown stays next to trigger
+    if (spaceBelow >= minHeight) {
       openUpward = false;
-      maxHeight = preferredHeight;
-    } else if (spaceAbove >= preferredHeight) {
+      maxHeight = Math.min(spaceBelow - gap - 20, preferredHeight);
+      maxHeight = Math.max(maxHeight, minHeight);
+    } else if (spaceAbove >= minHeight) {
       openUpward = true;
-      maxHeight = preferredHeight;
-    } else if (spaceBelow >= spaceAbove) {
+      maxHeight = Math.min(spaceAbove - gap - 20, maxHeightUpward);
+      maxHeight = Math.max(maxHeight, minHeight);
+    } else {
       openUpward = false;
       maxHeight = Math.max(spaceBelow - 20, minHeight);
-    } else {
-      openUpward = true;
-      maxHeight = Math.max(spaceAbove - 20, minHeight);
     }
 
     setDropdownPosition({ openUpward, maxHeight });
@@ -249,10 +251,13 @@ export function WorkspaceObjectSelector({
 
   React.useEffect(() => {
     if (showDropdown && inputRef.current) {
-      updateDropdownLayout();
-    } else {
-      setDropdownRect(null);
+      // Defer so layout is measured after DOM update (avoids wrong position when opening)
+      const raf = requestAnimationFrame(() => {
+        updateDropdownLayout();
+      });
+      return () => cancelAnimationFrame(raf);
     }
+    setDropdownRect(null);
   }, [showDropdown, updateDropdownLayout]);
 
   // Update portal position on scroll/resize so dropdown stays aligned

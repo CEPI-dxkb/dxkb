@@ -272,7 +272,7 @@ export default function BlastServicePage() {
                       <RadioGroup
                         value={field.value}
                         onValueChange={field.onChange}
-                        className="grid gap-2 w-full"
+                        className="grid grid-cols-2 gap-4 w-full"
                       >
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value="blastn" id="blastn" />
@@ -350,7 +350,7 @@ export default function BlastServicePage() {
                             );
                           }}
                           value={field.value}
-                          className="grid gap-2 w-full"
+                          className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
                             <RadioGroupItem

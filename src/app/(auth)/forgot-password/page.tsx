@@ -90,11 +90,11 @@ export default function ForgotPasswordPage() {
               </AlertDescription>
             </Alert>
             <Link
-              href="/login"
+              href="/sign-in"
               className={buttonVariants({ variant: "outline", className: "w-full" })}
             >
               <LuArrowLeft className="h-4 w-4" data-icon="inline-start" />
-              Back to login
+              Back to sign in
             </Link>
           </CardContent>
         </Card>

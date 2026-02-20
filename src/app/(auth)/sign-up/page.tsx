@@ -106,7 +106,7 @@ function SignupForm() {
       setError(
         err instanceof Error
           ? err.message
-          : "Registration failed. Please try again.",
+          : "Sign up failed. Please try again.",
       );
     }
   };

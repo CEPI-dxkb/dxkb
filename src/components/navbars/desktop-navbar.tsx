@@ -255,24 +255,24 @@ const DesktopNavbar = () => {
           {!isLoading && !isAuthenticated && (
             <>
               <Link
-                href="/login"
+                href="/sign-in"
                 className={buttonVariants({
                   variant: "ghost",
                   size: "sm",
                   className: "text-white hover:bg-white/10 hover:text-white",
                 })}
               >
-                Login
+                Sign In
               </Link>
               <Link
-                href="/register"
+                href="/sign-up"
                 className={buttonVariants({
                   variant: "outline",
                   size: "sm",
                   className: "text-foreground hover:text-secondary hover:bg-white",
                 })}
               >
-                Register
+                Sign Up
               </Link>
             </>
           )}

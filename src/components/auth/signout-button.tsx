@@ -63,7 +63,7 @@ export function SignoutButton({
 
   const triggerChildren = (
     <>
-      {isLoggingOut ? (
+      {isSigningOut ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         showIcon && <LogOut className="h-4 w-4" />
@@ -81,9 +81,9 @@ export function SignoutButton({
       <Button
         variant={variant}
         size={size}
-        disabled={isLoggingOut}
+        disabled={isSigningOut}
         className={className}
-        onClick={handleLogout}
+        onClick={handleSignout}
       >
         {triggerChildren}
       </Button>
@@ -99,7 +99,7 @@ export function SignoutButton({
             type="button"
             data-slot="button"
             className={cn(buttonVariants({ variant, size, className }))}
-            disabled={isLoggingOut}
+            disabled={isSigningOut}
           >
             {triggerChildren}
           </button>

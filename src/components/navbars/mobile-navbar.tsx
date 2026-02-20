@@ -179,24 +179,24 @@ const MobileNavbar = () => {
         {!isLoading && !isAuthenticated && (
           <>
             <Link
-              href="/login"
+              href="/sign-in"
               className={buttonVariants({
                 variant: "ghost",
                 size: "sm",
                 className: "text-foreground hover:bg-gray-300/50",
               })}
             >
-              Login
+              Sign In
             </Link>
             <Link
-              href="/register"
+              href="/sign-up"
               className={buttonVariants({
                 variant: "outline",
                 size: "sm",
                 className: "border-foreground text-foreground hover:bg-foreground hover:text-background",
               })}
             >
-              Register
+              Sign Up
             </Link>
           </>
         )}

@@ -31,11 +31,15 @@ import { LuEye, LuEyeOff, LuLock, LuUser } from "react-icons/lu";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z.object({
-  username: z.string().min(1, { message: "Username is required" }),
-  password: z.string().min(8, { message: "Password is required" }),
+  username: z.string().min(1, {
+    error: "Username is required"
+}),
+  password: z.string().min(8, {
+    error: "Password of at least 8 characters is required"
+}),
 });
 
-function LoginForm() {
+function SigninForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -46,7 +50,7 @@ function LoginForm() {
 
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading, isAuthenticated } = useAuth();
+  const { signIn, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -61,13 +65,11 @@ function LoginForm() {
   }, [isAuthenticated, router, redirectTo]);
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    console.log(data);
     try {
-      await login(data);
+      await signIn(data);
       toast.success("Logged in successfully. Welcome to DXKB!", {closeButton: true});
       // Navigation will happen automatically via useEffect
     } catch (err) {
-      console.log("Login error:", err);
       setError(
         err instanceof Error ? err.message : "Invalid username or password",
       );
@@ -188,18 +190,18 @@ function LoginForm() {
               <p className="text-muted-foreground text-sm">
                 Don&apos;t have an account?{" "}
                 <Link
-                  href="/register"
+                  href="/sign-up"
                   className="text-primary hover:text-secondary font-medium transition-all duration-300 hover:font-medium"
                 >
-                  Register on DXKB
+                  Sign up on DXKB
                 </Link>
               </p>
               <p className="text-muted-foreground mt-6 text-xs">
                 <span className="font-bold">Note: </span>
-                You may use your DXKB or BV-BRC username or email to login to
+                You may use your DXKB or BV-BRC username or email to sign in to
                 this resource if you already had an account on one of those
                 resources. While we are merging these resources together, you
-                may login at those sites directly as well.
+                may sign in at those sites directly as well.
               </p>
             </div>
           </Form>
@@ -209,7 +211,7 @@ function LoginForm() {
   );
 }
 
-export default function LoginPage() {
+export default function SigninPage() {
   return (
     <Suspense fallback={
       <div className="bg-background flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
@@ -230,7 +232,7 @@ export default function LoginPage() {
         </Card>
       </div>
     }>
-      <LoginForm />
+      <SigninForm />
     </Suspense>
   );
 }

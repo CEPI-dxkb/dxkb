@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { LogOut, Loader2 } from "lucide-react";
 
-interface LogoutButtonProps {
+interface SignoutButtonProps {
   variant?:
     | "default"
     | "destructive"
@@ -33,44 +33,44 @@ interface LogoutButtonProps {
   redirectTo?: string;
 }
 
-export function LogoutButton({
+export function SignoutButton({
   variant = "outline",
   size = "default",
   showIcon = true,
   confirmDialog = true,
   className = "",
   redirectTo = "/",
-}: LogoutButtonProps) {
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const { logout } = useAuth();
+}: SignoutButtonProps) {
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const { signOut } = useAuth();
   const router = useRouter();
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true);
+  const handleSignout = async () => {
+    setIsSigningOut(true);
     try {
-      await logout();
-      // Without the timeout, the body will not have 'pointer-events: none' applied to the redirect
-      setTimeout(() => (document.body.style.pointerEvents = ""), 0)
+      await signOut();
       router.push(redirectTo);
     } catch (error) {
-      console.error("Logout error:", error);
-      // Even if logout fails, redirect to login
+      console.error("Signout error:", error);
+      // Even if signout fails, redirect to signin
       router.push(redirectTo);
     } finally {
-      setIsLoggingOut(false);
+      // Ensure any temporary pointer-events lock is cleared even on errors.
+      setTimeout(() => (document.body.style.pointerEvents = ""), 0);
+      setIsSigningOut(false);
     }
   };
 
   const triggerChildren = (
     <>
-      {isLoggingOut ? (
+      {isSigningOut ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         showIcon && <LogOut className="h-4 w-4" />
       )}
       {size !== "icon" && (
         <span>
-          {isLoggingOut ? "Signing out..." : "Sign Out"}
+          {isSigningOut ? "Signing out..." : "Sign Out"}
         </span>
       )}
     </>
@@ -81,9 +81,9 @@ export function LogoutButton({
       <Button
         variant={variant}
         size={size}
-        disabled={isLoggingOut}
+        disabled={isSigningOut}
         className={className}
-        onClick={handleLogout}
+        onClick={handleSignout}
       >
         {triggerChildren}
       </Button>
@@ -99,7 +99,7 @@ export function LogoutButton({
             type="button"
             data-slot="button"
             className={cn(buttonVariants({ variant, size, className }))}
-            disabled={isLoggingOut}
+            disabled={isSigningOut}
           >
             {triggerChildren}
           </button>
@@ -115,8 +115,8 @@ export function LogoutButton({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleLogout} disabled={isLoggingOut}>
-            {isLoggingOut ? (
+          <AlertDialogAction onClick={handleSignout} disabled={isSigningOut}>
+            {isSigningOut ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Signing out...

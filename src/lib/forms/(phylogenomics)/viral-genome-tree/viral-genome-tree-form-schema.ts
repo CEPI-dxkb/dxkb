@@ -17,7 +17,7 @@ export const viralGenomeSequenceItemSchema = z.object({
 export const viralGenomeTreeFormSchema = z
   .object({
     recipe: z.enum(["RAxML", "PhyML", "FastTree"], {
-      required_error: "Recipe must be selected",
+      error: "Recipe must be selected",
     }),
     substitution_model: z.string().min(1, "Substitution model is required"),
     trim_threshold: z
@@ -28,7 +28,7 @@ export const viralGenomeTreeFormSchema = z
           return !isNaN(num) && num >= 0 && num <= 1;
         },
         {
-          message: "Trim threshold must be a number between 0 and 1",
+            error: "Trim threshold must be a number between 0 and 1"
         },
       ),
     gap_threshold: z
@@ -39,7 +39,7 @@ export const viralGenomeTreeFormSchema = z
           return !isNaN(num) && num >= 0 && num <= 1;
         },
         {
-          message: "Gap threshold must be a number between 0 and 1",
+            error: "Gap threshold must be a number between 0 and 1"
         },
       ),
     sequences: z
@@ -56,7 +56,7 @@ export const viralGenomeTreeFormSchema = z
 
     if (!dnaModels.includes(data.substitution_model)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Substitution model ${data.substitution_model} is not valid for genome sequences`,
         path: ["substitution_model"],
       });

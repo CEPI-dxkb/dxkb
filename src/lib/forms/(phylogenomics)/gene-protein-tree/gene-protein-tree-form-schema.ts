@@ -19,10 +19,10 @@ export const sequenceItemSchema = z.object({
 export const geneProteinTreeFormSchema = z
   .object({
     alphabet: z.enum(["DNA", "Protein"], {
-      required_error: "Alphabet must be selected",
+      error: "Alphabet must be selected",
     }),
     recipe: z.enum(["RAxML", "PhyML", "FastTree"], {
-      required_error: "Recipe must be selected",
+      error: "Recipe must be selected",
     }),
     substitution_model: z.string().min(1, "Substitution model is required"),
     trim_threshold: z
@@ -33,7 +33,7 @@ export const geneProteinTreeFormSchema = z
           return !isNaN(num) && num >= 0 && num <= 1;
         },
         {
-          message: "Trim threshold must be a number between 0 and 1",
+            error: "Trim threshold must be a number between 0 and 1"
         },
       ),
     gap_threshold: z
@@ -44,7 +44,7 @@ export const geneProteinTreeFormSchema = z
           return !isNaN(num) && num >= 0 && num <= 1;
         },
         {
-          message: "Gap threshold must be a number between 0 and 1",
+            error: "Gap threshold must be a number between 0 and 1"
         },
       ),
     sequences: z
@@ -65,7 +65,7 @@ export const geneProteinTreeFormSchema = z
     data.sequences.forEach((seq, index) => {
       if (!validTypes.includes(seq.type)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `Sequence type ${seq.type} does not match selected alphabet ${data.alphabet}`,
           path: ["sequences", index, "type"],
         });
@@ -87,7 +87,7 @@ export const geneProteinTreeFormSchema = z
     const validModels = isDNA ? dnaModels : proteinModels;
     if (!validModels.includes(data.substitution_model)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Substitution model ${data.substitution_model} is not valid for ${data.alphabet} sequences`,
         path: ["substitution_model"],
       });

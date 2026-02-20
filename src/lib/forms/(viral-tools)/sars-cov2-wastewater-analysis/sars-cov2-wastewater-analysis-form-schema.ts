@@ -68,7 +68,7 @@ const INVALID_DATE_MESSAGE =
 export interface LibraryDateValidationResult {
   valid: boolean;
   message?: string;
-  code?: z.ZodIssueCode;
+  code?: z.core.$ZodIssueCode;
 }
 
 /**
@@ -84,7 +84,7 @@ export function validateLibraryDate(lib: {
     return {
       valid: false,
       message: INVALID_DATE_MESSAGE,
-      code: z.ZodIssueCode.invalid_date,
+      code: "custom",
     };
   }
   return { valid: true };
@@ -107,7 +107,7 @@ export const sarsCov2WastewaterAnalysisFormSchema = z
     const hasSrr = data.srr_libs && data.srr_libs.length > 0;
     if (!hasPaired && !hasSingle && !hasSrr) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "At least one library (paired, single, or SRA) must be provided",
         path: ["paired_end_libs"],
       });
@@ -116,7 +116,7 @@ export const sarsCov2WastewaterAnalysisFormSchema = z
       const result = validateLibraryDate(lib);
       if (!result.valid) {
         ctx.addIssue({
-          code: z.ZodIssueCode.invalid_date,
+          code: "custom",
           message: result.message ?? INVALID_DATE_MESSAGE,
           path: ["paired_end_libs", i, "sample_level_date"],
         });
@@ -126,7 +126,7 @@ export const sarsCov2WastewaterAnalysisFormSchema = z
       const result = validateLibraryDate(lib);
       if (!result.valid) {
         ctx.addIssue({
-          code: z.ZodIssueCode.invalid_date,
+          code: "custom",
           message: result.message ?? INVALID_DATE_MESSAGE,
           path: ["single_end_libs", i, "sample_level_date"],
         });
@@ -136,7 +136,7 @@ export const sarsCov2WastewaterAnalysisFormSchema = z
       const result = validateLibraryDate(lib);
       if (!result.valid) {
         ctx.addIssue({
-          code: z.ZodIssueCode.invalid_date,
+          code: "custom",
           message: result.message ?? INVALID_DATE_MESSAGE,
           path: ["srr_libs", i, "sample_level_date"],
         });

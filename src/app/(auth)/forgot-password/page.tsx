@@ -32,7 +32,9 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 const formSchema = z.object({
   usernameOrEmail: z
     .string()
-    .min(1, { message: "Username or email is required" }),
+    .min(1, {
+        error: "Username or email is required"
+    }),
 });
 
 export default function ForgotPasswordPage() {
@@ -45,7 +47,7 @@ export default function ForgotPasswordPage() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const { resetPassword, isLoading, isAuthenticated } = useAuth();
+  const { requestPasswordReset, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   // Get redirect URL from query params (for protected route redirects)
   const redirectTo = "/";
@@ -61,7 +63,7 @@ export default function ForgotPasswordPage() {
     setError(""); // Clear any previous errors
 
     try {
-      await resetPassword(data.usernameOrEmail);
+      await requestPasswordReset(data.usernameOrEmail);
       setSuccess(true);
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -88,11 +90,11 @@ export default function ForgotPasswordPage() {
               </AlertDescription>
             </Alert>
             <Link
-              href="/login"
+              href="/sign-in"
               className={buttonVariants({ variant: "outline", className: "w-full" })}
             >
               <LuArrowLeft className="h-4 w-4" data-icon="inline-start" />
-              Back to login
+              Back to sign in
             </Link>
           </CardContent>
         </Card>
@@ -160,11 +162,11 @@ export default function ForgotPasswordPage() {
 
               <div className="text-center text-sm">
                 <Link
-                  href="/login"
+                  href="/sign-in"
                   className="group text-primary hover:text-secondary font-medium transition-all duration-300 hover:font-medium"
                 >
                   <LuArrowLeft className="mr-1 inline h-3 w-3" />
-                  Back to login
+                  Back to sign in
                 </Link>
               </div>
             </form>

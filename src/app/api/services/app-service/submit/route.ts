@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
-import { cookies } from "next/headers";
-import { safeDecodeURIComponent } from "@/lib/auth";
+import { getBvbrcAuthToken } from "@/lib/auth";
 import { JsonRpcError } from "@/lib/jsonrpc-client";
 
 /**
@@ -10,10 +9,8 @@ import { JsonRpcError } from "@/lib/jsonrpc-client";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get authentication token from cookies
-    const cookieStore = await cookies();
-    const rawToken = cookieStore.get("token")?.value;
-    const token = rawToken ? safeDecodeURIComponent(rawToken) : undefined;
+    // Get BV-BRC authentication token from cookies
+    const token = await getBvbrcAuthToken();
 
     if (!token) {
       return NextResponse.json(

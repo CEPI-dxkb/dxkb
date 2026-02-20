@@ -13,7 +13,7 @@ export const taxonomyItemSchema = z.object({
 export const baseGenomeAnnotationSchema = z.object({
   contigs: z.string().min(1, "Contigs must be provided"),
   recipe: z.enum(["default", "viral", "viral-lowvan", "phage"], {
-    required_error: "Annotation recipe must be selected",
+    error: "Annotation recipe must be selected",
   }),
   scientific_name: z.string().nullable(),
   taxonomy_id: z.string().nullable(),
@@ -27,14 +27,14 @@ export const completeGenomeAnnotationSchema = baseGenomeAnnotationSchema.superRe
   (data, ctx) => {
     if (data.scientific_name === null) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Taxonomy Name is required",
         path: ["scientific_name"],
       });
     }
     if (data.taxonomy_id === null) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Taxonomy ID is required",
         path: ["taxonomy_id"],
       });

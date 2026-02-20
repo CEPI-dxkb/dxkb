@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerAuthToken } from "@/lib/auth";
+import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
-const DATA_API_BASE = "https://p3.theseed.org/services/data_api/genome/";
 
 function sanitizeQuery(input: string): string {
   return input.replace(/[^a-zA-Z0-9._-]/g, "");
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       ? Math.min(Math.max(limitParam, 1), 50)
       : 25;
 
-    const token = await getServerAuthToken();
+    const token = await getBvbrcAuthToken();
 
     if (!token) {
       return NextResponse.json(
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       queryString = `?or(eq(genome_name,${wildcard}),eq(genome_id,${wildcard}))&or(eq(public,true),eq(public,false))&in(superkingdom,(Eukaryota,Bacteria,Viruses))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${limit})`;
     }
 
-    const url = `${DATA_API_BASE}${queryString}`;
+    const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

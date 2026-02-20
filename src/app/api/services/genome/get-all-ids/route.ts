@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerAuthToken } from "@/lib/auth";
+import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
-const GENOME_API_BASE = "https://www.bv-brc.org/api-for-website/genome/";
 
 export async function POST(request: NextRequest) {
   try {
-    const token = await getServerAuthToken();
+    const token = await getBvbrcAuthToken();
 
     if (!token) {
       return NextResponse.json(
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       `limit(${limit})`,
     ];
     const queryString = `?${queryParts.join("&")}`;
-    const url = `${GENOME_API_BASE}${queryString}`;
+    const url = `${getRequiredEnv("BVBRC_WEBSITE_API_URL")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

@@ -79,7 +79,7 @@ export const metaCatsFormSchema = z
     // Validate p_value
     if (data.p_value <= 0 || data.p_value > 1) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "P-value must be between 0 and 1",
         path: ["p_value"],
       });
@@ -89,7 +89,7 @@ export const metaCatsFormSchema = z
     if (data.input_type === "auto") {
       if (!data.auto_groups || data.auto_groups.length === 0) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "At least one feature group must be added",
           path: ["auto_groups"],
         });
@@ -100,14 +100,14 @@ export const metaCatsFormSchema = z
       const uniqueGroups = new Set(data.auto_groups.map((item) => item.group));
       if (uniqueGroups.size < MIN_GROUPS) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `At least ${MIN_GROUPS} different groups are required`,
           path: ["auto_groups"],
         });
       }
       if (uniqueGroups.size > MAX_GROUPS) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `Maximum ${MAX_GROUPS} groups are allowed`,
           path: ["auto_groups"],
         });
@@ -118,7 +118,7 @@ export const metaCatsFormSchema = z
     if (data.input_type === "groups") {
       if (!data.groups || data.groups.length === 0) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "At least one feature group must be selected",
           path: ["groups"],
         });
@@ -127,14 +127,14 @@ export const metaCatsFormSchema = z
 
       if (data.groups.length < MIN_GROUPS) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `At least ${MIN_GROUPS} feature groups are required`,
           path: ["groups"],
         });
       }
       if (data.groups.length > MAX_GROUPS) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `Maximum ${MAX_GROUPS} feature groups are allowed`,
           path: ["groups"],
         });
@@ -145,14 +145,14 @@ export const metaCatsFormSchema = z
     if (data.input_type === "files") {
       if (!data.alignment_file || data.alignment_file.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Alignment file is required",
           path: ["alignment_file"],
         });
       }
       if (!data.group_file || data.group_file.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Group file is required",
           path: ["group_file"],
         });

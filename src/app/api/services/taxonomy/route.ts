@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * Taxonomy API proxy route
- * Forwards requests to https://www.bv-brc.org/api-for-website/taxonomy
+ * Forwards requests to BVBRC_WEBSITE_API_URL/taxonomy
  */
 export async function GET(request: NextRequest) {
   try {
@@ -11,10 +12,11 @@ export async function GET(request: NextRequest) {
 
     // Forward all query parameters to the BV-BRC taxonomy API
     const queryString = searchParams.toString();
+    const baseUrl = getRequiredEnv("BVBRC_WEBSITE_API_URL");
 
     // Make the request to BV-BRC Taxonomy API
     const response = await fetch(
-      `https://www.bv-brc.org/api-for-website/taxonomy?${queryString}`,
+      `${baseUrl}/taxonomy?${queryString}`,
       {
         method: "GET",
         headers: {

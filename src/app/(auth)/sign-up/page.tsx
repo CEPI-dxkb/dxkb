@@ -40,25 +40,33 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z
   .object({
-    first_name: z.string().min(2, { message: "First name is required" }),
+    first_name: z.string().min(2, {
+      error: "First name is required",
+    }),
     middle_name: z.string(),
-    last_name: z.string().min(2, { message: "Last name is required" }),
-    username: z.string().min(1, { message: "Username is required" }),
-    email: z.string().email({ message: "Invalid email address" }),
+    last_name: z.string().min(2, {
+      error: "Last name is required",
+    }),
+    username: z.string().min(1, {
+      error: "Username is required",
+    }),
+    email: z.email({
+      error: "Invalid email address",
+    }),
     affiliation: z.string(),
     organisms: z.string(),
     interests: z.string(),
-    password: z
-      .string()
-      .min(8, { message: "Password must be at least 8 characters long" }),
-    password_repeat: z.string().min(8, { message: "Passwords do not match" }),
+    password: z.string().min(8, {
+      error: "Password must be at least 8 characters long",
+    }),
+    password_repeat: z.string().min(8),
   })
   .refine((data) => data.password === data.password_repeat, {
     path: ["password_repeat"],
-    message: "Passwords do not match",
+    error: "Passwords do not match",
   });
 
-function RegisterForm() {
+function SignupForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,12 +82,14 @@ function RegisterForm() {
       password_repeat: "",
     },
   });
-  const { register, isLoading, isAuthenticated } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState("");
+  const { signUp, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       router.push(redirectTo);
@@ -87,23 +97,19 @@ function RegisterForm() {
   }, [isAuthenticated, router, redirectTo]);
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    console.log(data);
     try {
-      await register(data);
-      toast.success("Account created successfully. Welcome to DXKB!", {closeButton: true});
+      await signUp(data);
+      toast.success("Account created successfully. Welcome to DXKB!", {
+        closeButton: true,
+      });
     } catch (err) {
-      console.log("Registration error:", err);
       setError(
         err instanceof Error
           ? err.message
-          : "Registration failed. Please try again.",
+          : "Sign up failed. Please try again.",
       );
     }
   };
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState("");
 
   return (
     <div className="bg-background flex items-center justify-center p-4">
@@ -390,7 +396,7 @@ function RegisterForm() {
               <div className="text-center text-sm">
                 Already have an account?{" "}
                 <Link
-                  href="/login"
+                  href="/sign-in"
                   className="text-primary font-medium hover:underline"
                 >
                   Sign in
@@ -404,28 +410,30 @@ function RegisterForm() {
   );
 }
 
-export default function RegisterPage() {
+export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div className="bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-center text-2xl font-bold">
-              Create an account
-            </CardTitle>
-            <CardDescription className="text-center">
-              Loading...
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    }>
-      <RegisterForm />
+    <Suspense
+      fallback={
+        <div className="bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-center text-2xl font-bold">
+                Create an account
+              </CardTitle>
+              <CardDescription className="text-center">
+                Loading...
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      }
+    >
+      <SignupForm />
     </Suspense>
   );
 }

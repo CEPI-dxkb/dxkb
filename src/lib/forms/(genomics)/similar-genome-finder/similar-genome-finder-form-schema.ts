@@ -39,28 +39,28 @@ export const similarGenomeFinderFormSchema = z
     output_file: z
       .string()
       .refine((value) => !value || !OUTPUT_NAME_INVALID_CHARS.test(value), {
-        message: "Output name cannot contain slashes",
-      })
+          error: "Output name cannot contain slashes"
+    })
       .optional(),
 
     // Parameters
     max_pvalue: z.number().refine(
       (val) => [0.001, 0.01, 0.1, 1].includes(val),
       {
-        message: "P-value must be one of: 0.001, 0.01, 0.1, 1",
-      },
+          error: "P-value must be one of: 0.001, 0.01, 0.1, 1"
+    },
     ),
     max_distance: z.number().refine(
       (val) => [0.01, 0.05, 0.1, 0.5, 1].includes(val),
       {
-        message: "Distance must be one of: 0.01, 0.05, 0.1, 0.5, 1",
-      },
+          error: "Distance must be one of: 0.01, 0.05, 0.1, 0.5, 1"
+    },
     ),
     max_hits: z.number().refine(
       (val) => [1, 10, 50, 100, 500].includes(val),
       {
-        message: "Max hits must be one of: 1, 10, 50, 100, 500",
-      },
+          error: "Max hits must be one of: 1, 10, 50, 100, 500"
+    },
     ),
 
     // Organism type
@@ -80,7 +80,7 @@ export const similarGenomeFinderFormSchema = z
       // The error will clear automatically when fasta_file gets a value
       // because the validation condition will no longer be true
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Please provide either a genome ID/name or a FASTA file",
         path: ["selectedGenomeId"],
       });
@@ -89,7 +89,7 @@ export const similarGenomeFinderFormSchema = z
     // Validate that at least one organism type is selected
     if (!data.include_bacterial && !data.include_viral) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Please select at least one organism type",
         path: ["include_bacterial"],
       });

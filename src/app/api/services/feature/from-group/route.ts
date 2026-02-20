@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerAuthToken } from "@/lib/auth";
+import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
-const FEATURE_API_BASE = "https://www.bv-brc.org/api-for-website/genome_feature/";
 
 export async function POST(request: NextRequest) {
   try {
-    const token = await getServerAuthToken();
+    const token = await getBvbrcAuthToken();
 
     if (!token) {
       return NextResponse.json(
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // Build the query: ?in(feature_id,FeatureGroup(ENCODED_PATH))&limit(1000,0)
     // Select fields that are useful for display: feature_id, patric_id, annotation
     const queryString = `?in(feature_id,FeatureGroup(${encodedPath}))&limit(1000,0)`;
-    const url = `${FEATURE_API_BASE}${queryString}`;
+    const url = `${getRequiredEnv("BVBRC_WEBSITE_API_URL")}/genome_feature/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

@@ -1,7 +1,5 @@
 "use client";
 
-// TODO: Change auth to use better-auth
-
 import React, {
   createContext,
   useContext,
@@ -13,19 +11,18 @@ import React, {
 } from "react";
 import {
   AuthUser,
-  LoginCredentials,
-  RegisterCredentials,
+  SigninCredentials,
+  SignupCredentials,
 } from "../app/api/auth/types";
-import { AuthStorage } from "../app/api/auth/storage";
+import { bvbrcAuth } from "../lib/auth-client";
 
 interface AuthContextType {
   user: AuthUser | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (credentials: RegisterCredentials) => Promise<void>;
+  signIn: (credentials: SigninCredentials) => Promise<void>;
+  signOut: () => Promise<void>;
+  signUp: (credentials: SignupCredentials) => Promise<void>;
   refreshAuth: () => Promise<void>;
-  validateUser: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  requestPasswordReset: (usernameOrEmail: string) => Promise<void>;
   sendVerificationEmail: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -49,12 +46,22 @@ export function AuthProvider({
     initialUser?.email_verified ?? false,
   );
 
+  /**
+   * Fetch current session from the server using better-auth style endpoint
+   */
+  const fetchSession = useCallback(async (): Promise<AuthUser | null> => {
+    const { data, error } = await bvbrcAuth.getSession();
+    if (error || !data?.user) {
+      return null;
+    }
+    return data.user;
+  }, []);
+
   // Check for existing session on mount
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Check authentication status via secure cookies
-        const savedUser = await AuthStorage.load();
+        const savedUser = await fetchSession();
         if (savedUser) {
           setUser(savedUser);
           setIsVerified(savedUser.email_verified ?? false);
@@ -64,12 +71,13 @@ export function AuthProvider({
         }
       } catch (error) {
         console.error("Auth initialization failed:", error);
-        await AuthStorage.clear();
+        setUser(null);
+        setIsVerified(false);
       }
     };
 
     initAuth();
-  }, []);
+  }, [fetchSession]);
 
   // Auto-refresh auth status periodically to sync with server-side session
   useEffect(() => {
@@ -78,7 +86,7 @@ export function AuthProvider({
     const interval = setInterval(
       async () => {
         try {
-          const userData = await AuthStorage.load();
+          const userData = await fetchSession();
           if (userData) {
             setUser(userData);
             setIsVerified(userData.email_verified ?? false);
@@ -94,167 +102,135 @@ export function AuthProvider({
     ); // Check every 5 minutes
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, fetchSession]);
 
-  const login = useCallback(async (credentials: LoginCredentials) => {
+  /**
+   * Sign in with username and password (better-auth style)
+   */
+  const signIn = useCallback(async (credentials: SigninCredentials) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-        credentials: "include",
-      });
+      const result = await bvbrcAuth.signIn.email(credentials);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Login failed");
+      if (result.error) {
+        throw new Error(result.error.message);
       }
 
-      // Login sets cookies server-side, now fetch user data
-      const userData = await AuthStorage.load();
+      if (result.data?.user) {
+        setUser(result.data.user);
+        setIsVerified(result.data.user.email_verified ?? false);
+      } else {
+        const userData = await fetchSession();
+        if (userData) {
+          setUser(userData);
+          setIsVerified(userData.email_verified ?? false);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchSession]);
+
+  /**
+   * Sign up with user details (better-auth style)
+   */
+  const signUp = useCallback(async (credentials: SignupCredentials) => {
+    setIsLoading(true);
+    try {
+      const { error } = await bvbrcAuth.signUp.email(credentials);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Fetch full user data after successful sign up
+      const userData = await fetchSession();
       if (userData) {
         setUser(userData);
         setIsVerified(userData.email_verified ?? false);
       }
-    } catch (error) {
-      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchSession]);
 
-  const register = useCallback(async (credentials: RegisterCredentials) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(credentials),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
-      }
-
-      // Registration sets cookies server-side, now fetch user data
-      const userData = await AuthStorage.load();
-      if (userData) {
-        setUser(userData);
-        setIsVerified(userData.email_verified ?? false);
-      }
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const resetPassword = useCallback(async (usernameOrEmail: string) => {
-    setIsLoading(true);
-    try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ usernameOrEmail }),
-      });
-
-      if (!response.ok) {
-        console.warn("Password reset request failed:", response.status);
-      }
-    } catch (error) {
-      console.error("Password reset error:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
+  /**
+   * Sign out (better-auth style)
+   */
+  const signOutHandler = useCallback(async () => {
     setUser(null);
     setIsVerified(false);
 
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
+      await bvbrcAuth.signOut();
     } catch (error) {
-      console.error("Logout API call failed:", error);
+      console.error("Sign out failed:", error);
     }
-
-    await AuthStorage.clear();
   }, []);
 
-  const refreshAuth = useCallback(async () => {
+  /**
+   * Request password reset (better-auth style)
+   */
+  const requestPasswordReset = useCallback(async (usernameOrEmail: string) => {
+    setIsLoading(true);
     try {
-      const userData = await AuthStorage.load();
-      if (userData) {
-        setUser(userData);
-        setIsVerified(userData.email_verified ?? false);
-      } else {
-        await logout();
-      }
-    } catch (error) {
-      console.error("Auth refresh failed:", error);
-      await logout();
+      const { error } = await bvbrcAuth.requestPasswordReset({ usernameOrEmail });
+      if (error) throw new Error(error.message || "Password reset request failed");
+    } finally {
+      setIsLoading(false);
     }
-  }, [logout]);
+  }, []);
 
+  /**
+   * Send verification email (better-auth style)
+   */
   const sendVerificationEmail = useCallback(async () => {
     try {
-      const response = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        console.log("Verification email sent successfully");
-      } else {
-        console.error("Failed to send verification email:", response.status);
+      const { error } = await bvbrcAuth.sendVerificationEmail();
+      if (error) {
+        console.error("Failed to send verification email:", error.message);
       }
     } catch (error) {
       console.error("Failed to send verification email:", error);
     }
   }, []);
 
-  const validateUser = useCallback(async () => {
+  /**
+   * Refresh auth status from server
+   */
+  const refreshAuth = useCallback(async () => {
     try {
-      const userData = await AuthStorage.load();
+      const userData = await fetchSession();
       if (userData) {
         setUser(userData);
         setIsVerified(userData.email_verified ?? false);
       } else {
-        await logout();
+        await signOutHandler();
       }
     } catch (error) {
-      console.error("User validation failed:", error);
-      await logout();
+      console.error("Auth refresh failed:", error);
+      await signOutHandler();
     }
-  }, [logout]);
+  }, [fetchSession, signOutHandler]);
 
-  // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user,
-    login,
-    logout,
-    register,
+    signIn,
+    signOut: signOutHandler,
+    signUp,
     refreshAuth,
-    validateUser,
-    resetPassword,
+    requestPasswordReset,
     sendVerificationEmail,
     isLoading,
     isAuthenticated: !!user,
     isVerified,
   }), [
     user,
-    login,
-    logout,
-    register,
+    signIn,
+    signOutHandler,
+    signUp,
     refreshAuth,
-    validateUser,
-    resetPassword,
+    requestPasswordReset,
     sendVerificationEmail,
     isLoading,
     isVerified,

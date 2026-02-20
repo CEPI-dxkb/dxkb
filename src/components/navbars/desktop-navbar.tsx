@@ -33,7 +33,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
-import { LogoutButton } from "../auth/logout-button";
+import { SignoutButton } from "../auth/signout-button";
 import {
   UserRound,
   Settings,
@@ -251,33 +251,33 @@ const DesktopNavbar = () => {
             </div>
           )}
 
-          {/* Show login/register when NOT authenticated and not loading */}
+          {/* Show sign in/sign up when NOT authenticated and not loading */}
           {!isLoading && !isAuthenticated && (
             <>
               <Link
-                href="/login"
+                href="/sign-in"
                 className={buttonVariants({
                   variant: "ghost",
                   size: "sm",
                   className: "text-white hover:bg-white/10 hover:text-white",
                 })}
               >
-                Login
+                Sign In
               </Link>
               <Link
-                href="/register"
+                href="/sign-up"
                 className={buttonVariants({
                   variant: "outline",
                   size: "sm",
                   className: "text-foreground hover:text-secondary hover:bg-white",
                 })}
               >
-                Register
+                Sign Up
               </Link>
             </>
           )}
 
-          {/* Show user info and logout when authenticated and not loading */}
+          {/* Show user info and signout when authenticated and not loading */}
           {!isLoading && isAuthenticated && (
             <>
               <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
@@ -337,7 +337,7 @@ const DesktopNavbar = () => {
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <LogoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
+                      <SignoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>

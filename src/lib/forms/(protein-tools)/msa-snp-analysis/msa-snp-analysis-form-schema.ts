@@ -80,7 +80,7 @@ export const msaSnpAnalysisFormSchema = z
     if (data.input_status === "unaligned") {
       if (!data.input_type) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Input type is required for unaligned sequences",
           path: ["input_type"],
         });
@@ -91,14 +91,14 @@ export const msaSnpAnalysisFormSchema = z
       if (data.input_type === "input_feature_group") {
         if (!data.feature_groups || data.feature_groups.trim() === "") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Feature group is required",
             path: ["feature_groups"],
           });
         }
         if (!data.alphabet) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Alphabet (DNA or Protein) is required for feature groups",
             path: ["alphabet"],
           });
@@ -106,7 +106,7 @@ export const msaSnpAnalysisFormSchema = z
       } else if (data.input_type === "input_genome_group") {
         if (!data.select_genomegroup || data.select_genomegroup.length === 0) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Genome group is required",
             path: ["select_genomegroup"],
           });
@@ -114,7 +114,7 @@ export const msaSnpAnalysisFormSchema = z
       } else if (data.input_type === "input_fasta") {
         if (!data.fasta_files || data.fasta_files.length === 0) {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "FASTA file is required",
             path: ["fasta_files"],
           });
@@ -122,7 +122,7 @@ export const msaSnpAnalysisFormSchema = z
       } else if (data.input_type === "input_sequence") {
         if (!data.fasta_keyboard_input || data.fasta_keyboard_input.trim() === "") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "FASTA sequence input is required",
             path: ["fasta_keyboard_input"],
           });
@@ -133,14 +133,14 @@ export const msaSnpAnalysisFormSchema = z
       if (data.ref_type === "feature_id") {
         if (data.input_type !== "input_feature_group" && data.input_type !== "input_genome_group") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Feature ID reference is only available for feature groups or genome groups",
             path: ["ref_type"],
           });
         }
         if (!data.ref_string || data.ref_string.trim() === "") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Feature ID is required",
             path: ["ref_string"],
           });
@@ -148,14 +148,14 @@ export const msaSnpAnalysisFormSchema = z
       } else if (data.ref_type === "genome_id") {
         if (data.input_type !== "input_genome_group") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Genome ID reference is only available for genome groups",
             path: ["ref_type"],
           });
         }
         if (!data.ref_string || data.ref_string.trim() === "") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Genome ID is required",
             path: ["ref_string"],
           });
@@ -163,7 +163,7 @@ export const msaSnpAnalysisFormSchema = z
       } else if (data.ref_type === "first") {
         if (data.input_type !== "input_fasta" && data.input_type !== "input_sequence") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "First sequence reference is only available for FASTA files or input sequences",
             path: ["ref_type"],
           });
@@ -171,7 +171,7 @@ export const msaSnpAnalysisFormSchema = z
       } else if (data.ref_type === "string") {
         if (!data.ref_string || data.ref_string.trim() === "") {
           ctx.addIssue({
-            code: z.ZodIssueCode.custom,
+            code: "custom",
             message: "Reference sequence is required",
             path: ["ref_string"],
           });
@@ -181,16 +181,16 @@ export const msaSnpAnalysisFormSchema = z
       // For aligned sequences, only fasta_files is needed
       if (!data.fasta_files || data.fasta_files.length === 0) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Aligned FASTA file is required",
           path: ["fasta_files"],
         });
       }
-      
+
       // For aligned sequences, only "none" or "first" reference types are allowed
       if (data.ref_type !== "none" && data.ref_type !== "first") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "For aligned sequences, only 'None' or 'First sequence' reference types are allowed",
           path: ["ref_type"],
         });
@@ -200,7 +200,7 @@ export const msaSnpAnalysisFormSchema = z
     // Validate strategy is only for Mafft
     if (data.aligner === "Muscle" && data.strategy) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Strategy is only available for Mafft aligner",
         path: ["strategy"],
       });

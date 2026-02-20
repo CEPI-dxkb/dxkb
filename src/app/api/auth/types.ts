@@ -37,12 +37,12 @@ export interface UserProfile {
   verification_send_date?: string;
 }
 
-export interface LoginCredentials {
+export interface SigninCredentials {
   username: string;
   password: string;
 }
 
-export interface RegisterCredentials {
+export interface SignupCredentials {
   email: string;
   username: string;
   first_name: string;

@@ -27,7 +27,7 @@ export const baseFormSchema = z.object({
   blast_max_hits: z
     .number()
     .refine((val) => [1, 10, 20, 50, 100, 500, 5000].includes(val), {
-      message: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000",
+        error: "blast_max_hits must be one of: 1, 10, 20, 50, 100, 500, 5000"
     }),
   blast_evalue_cutoff: z
     .number()
@@ -35,9 +35,8 @@ export const baseFormSchema = z.object({
       (val) =>
         [0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000].includes(val),
       {
-        message:
-          "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000",
-      },
+          error: "blast_evalue_cutoff must be one of: 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000"
+    },
     ),
 });
 
@@ -75,7 +74,7 @@ export const completeFormSchema = baseFormSchema
     if (data.db_precomputed_database === "selGenome") {
       if (!data.db_genome_list || data.db_genome_list.length === 0) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "At least one genome must be selected",
           path: ["db_genome_list"],
         });
@@ -83,7 +82,7 @@ export const completeFormSchema = baseFormSchema
     } else if (data.db_precomputed_database === "selGroup") {
       if (!data.db_genome_group || data.db_genome_group.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Genome group is required",
           path: ["db_genome_group"],
         });
@@ -91,7 +90,7 @@ export const completeFormSchema = baseFormSchema
     } else if (data.db_precomputed_database === "selFeatureGroup") {
       if (!data.db_feature_group || data.db_feature_group.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Feature group is required",
           path: ["db_feature_group"],
         });
@@ -99,7 +98,7 @@ export const completeFormSchema = baseFormSchema
     } else if (data.db_precomputed_database === "selTaxon") {
       if (!data.db_taxon_list || data.db_taxon_list.length === 0) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "At least one taxon must be selected",
           path: ["db_taxon_list"],
         });
@@ -107,7 +106,7 @@ export const completeFormSchema = baseFormSchema
     } else if (data.db_precomputed_database === "selFasta") {
       if (!data.db_fasta_file || data.db_fasta_file.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "FASTA file is required",
           path: ["db_fasta_file"],
         });

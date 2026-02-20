@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Constants
+export const MAX_COMPARISON_GENOMES = 9;
+export const MIN_COMPARISON_GENOMES = 1;
+export const PROTEOME_COMPARISON_STARTING_ROWS = 9;
+
 // Reference source types
 export const REFERENCE_SOURCE_TYPES = ["genome", "fasta", "feature_group"] as const;
 export type ReferenceSourceType = (typeof REFERENCE_SOURCE_TYPES)[number];
@@ -47,7 +52,7 @@ export const proteomeComparisonFormSchema = z
     if (data.ref_source_type === "genome") {
       if (!data.ref_genome_id || data.ref_genome_id.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Please select a reference genome",
           path: ["ref_genome_id"],
         });
@@ -55,7 +60,7 @@ export const proteomeComparisonFormSchema = z
     } else if (data.ref_source_type === "fasta") {
       if (!data.ref_fasta_file || data.ref_fasta_file.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Please select a protein FASTA file",
           path: ["ref_fasta_file"],
         });
@@ -63,7 +68,7 @@ export const proteomeComparisonFormSchema = z
     } else if (data.ref_source_type === "feature_group") {
       if (!data.ref_feature_group || data.ref_feature_group.trim() === "") {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Please select a feature group",
           path: ["ref_feature_group"],
         });
@@ -73,8 +78,8 @@ export const proteomeComparisonFormSchema = z
     // Validate that at least 1 comparison item is added (legacy requires at least 2 total)
     if (data.comparison_items.length < 1) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "At least 1 comparison genome must be added",
+        code: "custom",
+        message: `At least ${MIN_COMPARISON_GENOMES} comparison genome must be added`,
         path: ["comparison_items"],
       });
     }
@@ -82,7 +87,7 @@ export const proteomeComparisonFormSchema = z
     // Validate max comparison items
     if (data.comparison_items.length > MAX_COMPARISON_GENOMES) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Maximum ${MAX_COMPARISON_GENOMES} comparison genomes allowed`,
         path: ["comparison_items"],
       });
@@ -92,7 +97,7 @@ export const proteomeComparisonFormSchema = z
     const evalPattern = /^[0-9]+(\.[0-9]+)?(e-?[0-9]+)?$/i;
     if (data.max_e_val && !evalPattern.test(data.max_e_val.trim())) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Invalid E-value format (e.g., 1e-5, 0.001)",
         path: ["max_e_val"],
       });
@@ -100,11 +105,6 @@ export const proteomeComparisonFormSchema = z
   });
 
 export type ProteomeComparisonFormData = z.infer<typeof proteomeComparisonFormSchema>;
-
-// Constants
-export const MAX_COMPARISON_GENOMES = 9;
-export const MIN_COMPARISON_GENOMES = 1;
-export const PROTEOME_COMPARISON_STARTING_ROWS = 9;
 
 // Default form values
 export const DEFAULT_PROTEOME_COMPARISON_FORM_VALUES: ProteomeComparisonFormData = {

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerAuthToken } from "@/lib/auth";
+import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
 /**
  * Workspace API proxy route
- * Forwards JSON-RPC requests to https://p3.theseed.org/services/Workspace
+ * Forwards JSON-RPC requests to WORKSPACE_API_URL
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get the auth token from cookies
-    const authToken = await getServerAuthToken();
+    // Get the BV-BRC auth token from cookies
+    const authToken = await getBvbrcAuthToken();
 
     if (!authToken) {
       return NextResponse.json(
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Make the request to BV-BRC Workspace API
-    const response = await fetch("https://p3.theseed.org/services/Workspace", {
+    const response = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
       method: "POST",
       headers: {
         "Content-Type": "application/jsonrpc+json",

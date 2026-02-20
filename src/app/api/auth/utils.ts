@@ -1,8 +1,16 @@
 import { cookies } from "next/headers";
 import { safeDecodeURIComponent } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 
-// Re-export for backward compatibility
-export { safeDecodeURIComponent };
+// Cookie configuration for BV-BRC authentication
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "strict" as const,
+  path: "/",
+};
+
+const SESSION_MAX_AGE = 3600 * 4; // 4 hours
 
 // Helper function to fetch user profile metadata from BV-BRC
 export async function getProfileMetadata(
@@ -11,7 +19,7 @@ export async function getProfileMetadata(
 ): Promise<any | null> {
   try {
     const userResponse = await fetch(
-      `https://user.bv-brc.org/user/${username}`,
+      `${getRequiredEnv("USER_URL")}/${username}`,
       {
         headers: {
           Authorization: token,
@@ -41,7 +49,7 @@ export async function getUserEmailByUsername(
 ): Promise<string | null> {
   try {
     const userResponse = await fetch(
-      `https://user.bv-brc.org/user/${username}`,
+      `${getRequiredEnv("USER_URL")}/${username}`,
       {
         headers: {
           Accept: "application/json",
@@ -65,119 +73,84 @@ export async function getUserEmailByUsername(
   }
 }
 
-// Helper function to set authentication cookies
-export async function setAuthCookies(
+// Helper function to set BV-BRC authentication cookies
+export async function setBvbrcAuthCookies(
   token: string,
   username: string,
   realm?: string,
   userProfile?: any,
 ) {
   const cookieStore = await cookies();
-  const maxAge = 3600 * 4; // 4 hours
 
-  // Set token cookie
-  cookieStore.set("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: maxAge,
-    path: "/",
+  // Set BV-BRC token cookie (renamed from 'token' to avoid conflicts with better-auth)
+  cookieStore.set("bvbrc_token", token, {
+    ...COOKIE_OPTIONS,
+    maxAge: SESSION_MAX_AGE,
   });
 
-  // Create auth cookie with JSON containing token
-  const authData = JSON.stringify({ token });
-  cookieStore.set("auth", authData, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: maxAge,
-    path: "/",
-  });
-
+  // Set realm if provided
   if (realm) {
-    cookieStore.set("realm", realm, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: maxAge,
-      path: "/",
+    cookieStore.set("bvbrc_realm", realm, {
+      ...COOKIE_OPTIONS,
+      maxAge: SESSION_MAX_AGE,
     });
   }
 
-  // Set user profile cookie if we have user data
-  if (userProfile) {
-    cookieStore.set("user_profile", JSON.stringify(userProfile), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: maxAge,
-      path: "/",
-    });
-  }
-
-  cookieStore.set(
-    "user_id",
-    userProfile.id || username.match(/[A-Za-z\W0-9]+(?=[@])/)?.[0] || username,
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: maxAge,
-      path: "/",
-    },
-  );
+  // Set only a stable user ID (no PII); full profile is fetched server-side when needed
+  const userId = userProfile?.id ?? username.split("@")[0];
+  cookieStore.set("bvbrc_user_id", userId, {
+    ...COOKIE_OPTIONS,
+    maxAge: SESSION_MAX_AGE,
+  });
 }
 
-// Helper function to clear all authentication cookies
-export async function clearAuthCookies() {
+// Helper function to clear all BV-BRC authentication cookies
+export async function clearBvbrcAuthCookies() {
   const cookieStore = await cookies();
 
-  // Clear all authentication cookies by setting them to expire immediately
-  cookieStore.set("token", "", {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  const cookiesToClear = [
+    "bvbrc_token",
+    "bvbrc_realm",
+    "bvbrc_user_profile",
+    "bvbrc_user_id",
+    // Legacy cookie names (for cleanup during migration)
+    "token",
+    "auth",
+    "refresh_token",
+    "user_id",
+    "realm",
+    "user_profile",
+  ];
 
-  cookieStore.set("auth", "", {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
-
-  cookieStore.set("refresh_token", "", {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
-
-  cookieStore.set("user_id", "", {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
-
-  cookieStore.set("realm", "", {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
-
-  cookieStore.set("user_profile", "", {
-    maxAge: 0,
-    path: "/",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-  });
+  for (const name of cookiesToClear) {
+    cookieStore.set(name, "", {
+      ...COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+  }
 }
+
+// Helper function to get BV-BRC auth data from cookies (ID only; fetch full profile server-side via getProfileMetadata when needed)
+export async function getBvbrcAuthData() {
+  const cookieStore = await cookies();
+
+  const rawToken = cookieStore.get("bvbrc_token")?.value;
+  const token = rawToken ? safeDecodeURIComponent(rawToken) : undefined;
+  const userId = cookieStore.get("bvbrc_user_id")?.value;
+  const realm = cookieStore.get("bvbrc_realm")?.value;
+
+  return { token, userId, realm };
+}
+
+export function extractRealmFromToken(token: string): string | undefined {
+  const unMatch = token.match(/un=([^|]+)/);
+  if (unMatch) {
+    const unValue = unMatch[1];
+    const atIndex = unValue.indexOf("@");
+    if (atIndex !== -1) {
+      return unValue.substring(atIndex + 1);
+    }
+  }
+  return undefined;
+}
+

@@ -1,11 +1,55 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { betterAuth } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
 
 /**
- * Authentication utilities for both client and server contexts
+ * Better Auth configuration for stateless session management.
+ * No database is required - sessions are stored in signed/encrypted cookies.
+ *
+ * BV-BRC authentication is integrated through custom sign-in/sign-up flows
+ * that validate credentials against the BV-BRC API and create sessions.
  */
+export const auth = betterAuth({
+  // No database configuration = stateless mode
+  session: {
+    expiresIn: 60 * 60 * 4, // 4 hours (matches BV-BRC token expiry)
+    updateAge: 60 * 60, // Refresh session every 1 hour
+    cookieCache: {
+      enabled: true,
+      maxAge: 60 * 60 * 4, // 4 hours cache duration
+      strategy: "jwt", // Use JWT strategy for stateless sessions
+      refreshCache: true, // Enable stateless refresh
+    },
+  },
+  account: {
+    // For stateless mode without OAuth
+    storeStateStrategy: "cookie",
+    storeAccountCookie: true,
+  },
+  // Custom trustedOrigins for development
+  trustedOrigins: [
+    process.env.BETTER_AUTH_URL || "http://localhost:3019",
+  ],
+  plugins: [
+    // Enable automatic cookie handling in Next.js server actions
+    // Must be the last plugin in the array
+    nextCookies(),
+  ],
+});
+
+/**
+ * Get the current session from better-auth (server-side)
+ * Use this in RSC and server actions
+ */
+export async function getSession() {
+  const headersList = await headers();
+  return auth.api.getSession({
+    headers: headersList,
+  });
+}
 
 // ============================================================================
-// Client & Server Shared Utilities
+// BV-BRC Authentication Utilities
 // ============================================================================
 
 /**
@@ -21,23 +65,20 @@ export function safeDecodeURIComponent(value: string): string {
   }
 }
 
-// ============================================================================
-// Server-Side Only Utilities
-// ============================================================================
-
 /**
- * Get server-side auth token from cookies
- * @returns The decoded authentication token or undefined if not found
+ * Get BV-BRC auth token from cookies
+ * This token is needed for BV-BRC API calls
+ * @returns The decoded BV-BRC authentication token or undefined if not found
  */
-export async function getServerAuthToken(): Promise<string | undefined> {
+export async function getBvbrcAuthToken(): Promise<string | undefined> {
   const cookieStore = await cookies();
-  const rawToken = cookieStore.get("token")?.value;
+  const rawToken = cookieStore.get("bvbrc_token")?.value;
   return rawToken ? safeDecodeURIComponent(rawToken) : undefined;
 }
 
 /**
- * Server-side authenticated fetch for API routes
- * Automatically includes authentication token from cookies
+ * Server-side authenticated fetch for BV-BRC API routes
+ * Automatically includes BV-BRC authentication token from cookies
  * @param url - The URL to fetch
  * @param options - Fetch options
  * @returns The fetch response
@@ -47,7 +88,7 @@ export async function serverAuthenticatedFetch(
   url: string,
   options: RequestInit = {},
 ) {
-  const token = await getServerAuthToken();
+  const token = await getBvbrcAuthToken();
 
   if (!token) {
     throw new Error("Not authenticated");
@@ -66,4 +107,3 @@ export async function serverAuthenticatedFetch(
 
   return response;
 }
-

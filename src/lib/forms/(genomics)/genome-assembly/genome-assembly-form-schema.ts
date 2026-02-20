@@ -49,8 +49,8 @@ export const genomeAssemblyFormSchema = z
       return hasPaired || hasSingle || hasSrr;
     },
     {
-      message: "At least one library (paired, single, or SRA) must be provided",
       path: ["paired_end_libs"],
+        error: "At least one library (paired, single, or SRA) must be provided"
     },
   )
   .refine(
@@ -62,8 +62,8 @@ export const genomeAssemblyFormSchema = z
       return true;
     },
     {
-      message: "Genome size is required when using Canu assembly strategy",
       path: ["genome_size"],
+        error: "Genome size is required when using Canu assembly strategy"
     },
   );
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerAuthToken } from "@/lib/auth";
+import { getBvbrcAuthToken } from "@/lib/auth";
+import { getRequiredEnv } from "@/lib/env";
 import type { ViralGenomeValidationResult } from "@/lib/services/genome";
 
-const DATA_API_BASE = "https://p3.theseed.org/services/data_api/genome/";
 
 function buildInClause(ids: string[]): string {
   const sanitizedIds = ids
@@ -14,7 +14,7 @@ function buildInClause(ids: string[]): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = await getServerAuthToken();
+    const token = await getBvbrcAuthToken();
 
     if (!token) {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Query with fields needed for viral genome validation
     const queryString = `?in(genome_id,(${inClause}))&select(genome_id,superkingdom,genome_length,contigs)&limit(${Math.min(genomeIds.length, 5000)})`;
-    const url = `${DATA_API_BASE}${queryString}`;
+    const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
     const response = await fetch(url, {
       method: "GET",

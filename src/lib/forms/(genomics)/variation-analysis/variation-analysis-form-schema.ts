@@ -24,18 +24,18 @@ export const variationAnalysisFormSchema = z
     // Required parameters
     reference_genome_id: z.string().min(1, "Target genome is required"),
     mapper: z.enum(["BWA-mem", "BWA-mem-strict", "Bowtie2", "LAST", "minimap2"], {
-      required_error: "Aligner must be selected",
+      error: "Aligner must be selected",
     }),
     caller: z.enum(["FreeBayes", "BCFtools"], {
-      required_error: "SNP caller must be selected",
+      error: "SNP caller must be selected",
     }),
     output_path: z.string().min(1, "Output folder is required"),
     output_file: z
       .string()
       .min(1, "Output name is required")
       .refine((value) => !OUTPUT_NAME_INVALID_CHARS.test(value), {
-        message: "Output name cannot contain slashes",
-      }),
+          error: "Output name cannot contain slashes"
+    }),
   })
   .refine(
     (data) => {
@@ -46,8 +46,8 @@ export const variationAnalysisFormSchema = z
       return hasPaired || hasSingle || hasSrr;
     },
     {
-      message: "At least one library (paired, single, or SRA) must be provided",
       path: ["paired_end_libs"],
+        error: "At least one library (paired, single, or SRA) must be provided"
     },
   );
 

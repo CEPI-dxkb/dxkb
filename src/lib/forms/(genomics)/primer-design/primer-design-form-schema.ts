@@ -8,12 +8,12 @@ export const primerDesignFormSchema = z
       .string()
       .min(1, "Output name is required")
       .refine((value) => !OUTPUT_NAME_INVALID_CHARS.test(value), {
-        message: "Output name cannot contain slashes",
-      }),
-    output_path: z.string().default(""),
+          error: "Output name cannot contain slashes"
+    }),
+    output_path: z.string().prefault(""),
     input_type: z.enum(["sequence_text", "workplace_fasta", "database_id"]),
-    sequence_input: z.string().default(""),
-    SEQUENCE_ID: z.string().default("").optional(),
+    sequence_input: z.string().prefault(""),
+    SEQUENCE_ID: z.string().prefault("").optional(),
     SEQUENCE_TARGET: z.array(z.string()).optional(),
     SEQUENCE_INCLUDED_REGION: z.array(z.string()).optional(),
     SEQUENCE_EXCLUDED_REGION: z.array(z.string()).optional(),
@@ -40,7 +40,7 @@ export const primerDesignFormSchema = z
     if (data.input_type === "sequence_text") {
       if (!data.sequence_input.trim()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Sequence input is required when pasting a sequence",
           path: ["sequence_input"],
         });
@@ -50,7 +50,7 @@ export const primerDesignFormSchema = z
     if (data.input_type === "workplace_fasta") {
       if (!data.sequence_input.trim()) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: "Select a FASTA file from the workspace",
           path: ["sequence_input"],
         });
@@ -59,7 +59,7 @@ export const primerDesignFormSchema = z
 
     if (!data.output_path.trim()) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Output folder is required",
         path: ["output_path"],
       });

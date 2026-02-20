@@ -29,7 +29,7 @@ export const privacyPolicySections: PrivacyPolicySection[] = [
     id: 3,
     title: "User Behavioral Profile",
     description:
-      "When you use DXKB services that require login (such as Genome Annotation), \
+      "When you use DXKB services that require sign in (such as Genome Annotation), \
       usage information is automatically recorded by your Username including what services you used, \
       time of submission, service input parameters, and input/output file locations.",
   },

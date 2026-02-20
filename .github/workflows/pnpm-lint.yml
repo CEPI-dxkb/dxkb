@@ -1,4 +1,4 @@
-name: pnpm Build Verification
+name: pnpm lint Verification
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ on:
       - main
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     
     strategy:

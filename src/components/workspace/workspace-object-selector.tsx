@@ -431,7 +431,7 @@ export function WorkspaceObjectSelector({
             createPortal(
               <div
                 ref={dropdownRef}
-                className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50 fixed z-100 overflow-y-auto rounded-md border shadow-md"
+                className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50 fixed z-25 overflow-y-auto rounded-md border shadow-md"
                 style={{
                   ...(dropdownPosition.openUpward
                     ? { bottom: dropdownRect.bottom, top: "auto" }

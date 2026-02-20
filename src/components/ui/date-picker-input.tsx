@@ -138,18 +138,20 @@ export function DatePickerInput({
     <div className="relative flex w-full flex-col items-start gap-1">
       <div className="relative flex w-full items-center">
         <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
-          <PopoverTrigger asChild>
-            <Button
-              ref={popoverRef}
-              variant="ghost"
-              size="icon"
-              className="hover:bg-secondary/10 absolute left-0.5 h-[90%] border border-border hover:border-muted-foreground focus-visible:border focus-visible:border-muted-foreground"
-              tabIndex={-1}
-              aria-label="Open calendar"
-            >
-              <CalendarIcon className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
+          <PopoverTrigger
+            render={
+              <Button
+                ref={popoverRef}
+                variant="ghost"
+                size="icon"
+                className="hover:bg-secondary/10 absolute left-0.5 h-[90%] border border-border hover:border-muted-foreground focus-visible:border focus-visible:border-muted-foreground"
+                tabIndex={-1}
+                aria-label="Open calendar"
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </Button>
+            }
+          />
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               mode="single"

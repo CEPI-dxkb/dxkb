@@ -1,6 +1,5 @@
-import React from 'react'
-import { Button } from '@/components/ui/button'
-import { LuMapPin, LuExternalLink } from 'react-icons/lu'
+import { Button } from "@/components/ui/button";
+import { LuMapPin, LuExternalLink } from "react-icons/lu";
 
 const Offices = () => {
   return (

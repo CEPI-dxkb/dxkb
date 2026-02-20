@@ -1,18 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
-import { genomeFields } from "@/constants/datafields/genomes";
-import { sequenceFields } from "@/constants/datafields/sequence";
-import { amrphenotypeFields } from "@/constants/datafields/amrphenotypes";
-import { featureFields } from "@/constants/datafields/features";
-import { biosetFields } from "@/constants/datafields/biosets";
-import { domainsandmotifsFields } from "@/constants/datafields/domainsandmotifs";
-import { epitopeFields } from "@/constants/datafields/epitopes";
-import { experimentFields } from "@/constants/datafields/experiments";
-import { proteinstructureFields } from "@/constants/datafields/proteinstructures";
+import { genomeFields } from "@/constants/datafields/genome";
+import { genome_sequenceFields } from "@/constants/datafields/genome_sequence";
+import { genome_amrFields } from "@/constants/datafields/genome_amr";
+import { genome_featureFields } from "@/constants/datafields/genome_feature";
+import { biosetFields } from "@/constants/datafields/bioset";
+import { protein_featureFields } from "@/constants/datafields/protein_feature";
+import { epitopeFields } from "@/constants/datafields/epitope";
+import { experimentFields } from "@/constants/datafields/experiment";
+import { protein_structureFields } from "@/constants/datafields/protein_structure";
 import { serologyFields } from "@/constants/datafields/serology";
-import { strainsFields } from "@/constants/datafields/strains";
+import { strainFields } from "@/constants/datafields/strain";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
-import { taxaFields } from "@/constants/datafields/taxa";
+import { taxonomyFields } from "@/constants/datafields/taxonomy";
+import { Button } from "@/components/ui/button";
 
 export function InfoPanel({
   rows,
@@ -22,57 +23,56 @@ export function InfoPanel({
   activeTab: string;
 }) {
 
-  var panelTitleField = "";
-  var displayColumns;
-  var allowedFields;
-  var order;
-  var fieldFile;
+  let order: string[] = []; // default empty
+  let fieldFile = {};
+  let allowedFields: string[] = [];
+  let panelTitleField = '';
 
   switch (activeTab) {
-    case 'genomes':
+    case 'genome':
       panelTitleField = 'genome_name'; 
       fieldFile = genomeFields;
       allowedFields = ["genome_id", "genome_name", "other_names", "taxon_id", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "genome_status", "strain", "serovar", "biovar", "pathovar", "mlst", "segment", "subtype", "h_type", "n_type", "h1_clade_gobal", "h1_clade_us", "h3_clade", "h5_clade", "ph1n1_like", "lineage", "clade", "subclade", "other_typing", "culture_collection", "type_strain", "reference_genome", "completion_date", "publication", "authors", "bioproject_accession", "biosample_accession", "assembly_accession", "sra_accession", "genbank_accessions", "sequencing_centers", "sequencing_status", "sequencing_platform", "sequencing_depth", "assembly_method", "chromosomes", "plasmids", "contigs", "genome_length", "gc_content", "contig_l50", "contig_n50", "trna", "rrna", "mat_peptide", "cds", "genome_quality", "coarse_consistency", "fine_consistency", "checkm_completeness", "checkm_contamination", "genome_quality_flags", "isolation_source", "isolation_comments", "collection_date", "collection_year", "season", "isolation_country", "state_province", "geographic_group", "geographic_location", "other_environmental", "host_name", "host_common_name", "host_gender", "host_age", "host_health", "host_group", "lab_host", "passage", "other_clinical", "additional_metadata", "comments", "date_inserted", "date_modified"];
       order = ["General Info","Taxonomy Info","Status","Type Info","DB Cross Reference","Sequence Info","Genome Statistics","Annotation Statistics","Genome Quality","Isolate Info","Host Info","Additional Info",];
       break;
-    case 'sequences':
+    case 'genome_sequence':
       panelTitleField = 'sequence_id';
-      fieldFile = sequenceFields;
+      fieldFile = genome_sequenceFields;
       allowedFields = ["genome_id", "genome_name", "taxon_id", "sequence_id", "accession", "sequence_status", "topology", "description", "gc_content", "length", "sequence_md5", "release_date", "version", "date_inserted", "date_modified"];
       order = ["General Info","Taxonomy Info", "Sequence Info", "Additional Info",];
       break;
-    case 'amrphenotypes':
-      fieldFile = amrphenotypeFields;
+    case 'genome_amr':
+      fieldFile = genome_amrFields;
       allowedFields = ['taxon_id', 'genome_id', 'genome_name', 'antibiotic', 'evidence', 'pmid', 'resistant_phenotype', 'measurement_sign', 'measurement_value', 'measurement_unit', 'laboratory_typing_method', 'laboratory_typing_method_version', 'laboratory_typing_platform', 'vendor', 'testing_standard', 'testing_standard_year', 'computational_method', 'computational_method_version', 'computational_method_performance'];
       order = ["Summary","Measurement","Laboratory Method","Computational Method"];
       break;
-    case 'features':
+    case 'genome_feature':
       panelTitleField = 'patric_id';
-      fieldFile = featureFields;
+      fieldFile = genome_featureFields;
       allowedFields = ['genome_id', 'genome_name', 'taxon_id', 'sequence_id', 'accession', 'annotation', 'feature_type', 'feature_id', 'alt_locus_tag', 'patric_id', 'refseq_locus_tag', 'protein_id', 'gene_id', 'uniprotkb_accession', 'pdb_accession', 'start', 'end', 'strand', 'location', 'segments', 'Codon Start', 'na_length', 'aa_length', 'na_sequence_md5', 'aa_sequence_md5', 'gene', 'date_inserted', 'product', 'plfam_id','pgfam_id', 'sog_id', 'og_id', 'go','property', 'notes', 'classifier_score', 'classifier_round'];
       order = ['Genome','Source','Identifiers','DB Cross References','Location','Sequences','Annotation','Families','Misc','Provenance'];
       break;
-    case 'strains':
+    case 'strain':
       panelTitleField = 'strain';
-      fieldFile = strainsFields;
+      fieldFile = strainFields;
       allowedFields = ['taxon_id', 'family', 'genus', 'species', 'strain', 'subtype', 'h_type', 'n_type', 'genome_ids', 'genbank_accessions', 'segment_count', 'status', 'host_group', 'host_common_name', 'host_name', 'lab_host', 'passage', 'geographic_group', 'isolation_country', 'collection_year', 'collection_date', 'season', '1_pb2', '2_pb1', '3_pa', '4_ha', '5_np', '6_na', '7_mp', '8_ns', 's', 'm', 'l', 'other_segments', 'date_inserted'];
       order = ['Genome Info','Strain Info'];
       break;
-    case 'domainsandmotifs':
+    case 'protein_feature':
       panelTitleField = 'genome_id';
-      fieldFile = domainsandmotifsFields;
+      fieldFile = protein_featureFields;
       allowedFields = ['genome_id', 'genome_name', 'taxon_id', 'patric_id', 'refseq_locus_tag', 'gene', 'product', 'interpro_id', 'interpro_description', 'feature_type', 'source', 'source_id', 'description', 'classification', 'score', 'e_value', 'evidence', 'publication', 'start', 'end', 'segments', 'length', 'sequence', 'comments', 'date_inserted'];
       order = ['Genome Info','Sequence Info','Feature Info','Additional Info'];
       break;
-    case 'epitopes':
+    case 'epitope':
       panelTitleField = 'epitope_id';
       fieldFile = epitopeFields;
       allowedFields = ['epitope_id', 'epitope_type', 'epitope_sequence', 'organism', 'taxon_id', 'protein_name', 'protein_id', 'protein_accession', 'start', 'end', 'host_name', 'total_assays', 'assay_results', 'bcell_assays', 'tcell_assays', 'mhc_assays', 'comments', 'date_inserted'];
       order = ['Epitope Info','Additional Info'];
       break;
-    case 'proteinstructures':
+    case 'protein_structure':
       panelTitleField = 'pdb_id';
-      fieldFile = proteinstructureFields;
+      fieldFile = protein_structureFields;
       allowedFields = ['pdb_id', 'title', 'organism_name', 'taxon_id', 'genome_id', 'patric_id', 'uniprotkb_accession', 'gene', 'product', 'method', 'resolution', 'pmid', 'institution', 'authors', 'release_date', 'file_path', 'date_inserted'];
       order = ['General Info','Structure Info','Additional Info'];
       break;
@@ -88,19 +88,19 @@ export function InfoPanel({
       allowedFields = ['project_identifier', 'contributing_institution', 'sample_identifier', 'host_identifier', 'host_type', 'host_species', 'host_common_name', 'host_sex', 'host_age', 'host_age_group', 'host_health', 'collection_country', 'collection_state', 'collection_city', 'collection_date', 'collection_year', 'geographic_group', 'test_type', 'test_result', 'test_interpretation', 'serotype', 'comments'];
       order = ['Sample Info', 'Host Info', 'Sample Collection', 'Sample Tests', 'Other'];
       break;
-    case 'taxa':
+    case 'taxonomy':
       panelTitleField = 'taxon_name';
-      fieldFile = taxaFields;
+      fieldFile = taxonomyFields;
       allowedFields = ['taxon_id', 'taxon_name', 'taxon_rank', 'other_names', 'genetic_code', 'lineage_names', 'parent_id', 'division', 'description', 'genomes'];
       order = ['Taxon Info'];
       break;
-    case 'experiments':
+    case 'experiment':
       panelTitleField = 'exp_name'
       fieldFile = experimentFields;
       allowedFields = ['exp_id', 'study_name', 'study_title', 'study_description','study_pi','study_institution','exp_name', 'exp_title', 'exp_description', 'exp_poc', 'experimenters', 'public_repositories', 'public_identifier', 'exp_type', 'measurement_technique','organism', 'strain', 'treatment_type', 'treatment_name', 'treatment_amount', 'treatment_duration', 'samples', 'biosets', 'genome_id','additional_metadata'];
       order = ['Study Info', 'Experiment Info', 'Additional Metadata'];
       break;
-    case 'biosets':
+    case 'bioset':
       panelTitleField = 'bioset_name';
       fieldFile = biosetFields;
       allowedFields = ['exp_id', 'exp_name', 'exp_title', 'exp_type', 'bioset_id', 'bioset_name', 'bioset_description', 'bioset_type', 'analysis_method', 'bioset_criter','result_type','protocol','bioset_result','organism', 'strain', 'treatment_type', 'treatment_name', 'treatment_amount', 'treatment_duration', 'entity_count', 'additonal_metadata'];
@@ -108,15 +108,23 @@ export function InfoPanel({
       break;
   }
 
-  displayColumns = Object.values(fieldFile).map((obj: any) => ({
+  const displayColumns = Object.values(fieldFile ?? {}).map((obj: any) => ({
     id: obj.field,
     label: obj.label,
     visible: !obj.hidden,
     group: obj.group,
-    link: obj.link,
-    linkType: obj.linkType,
-    linkText: obj.linkText
+    link: obj?.link,
+    linkType: obj?.linkType,
+    linkText: obj?.linkText
   }));
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
+    () =>
+      order.reduce((acc, group) => {
+        acc[group] = true;
+        return acc;
+      }, {} as Record<string, boolean>)
+  );
 
   const grouped = displayColumns.reduce(
     (acc: Record<string, typeof displayColumns>, item) => {
@@ -125,15 +133,6 @@ export function InfoPanel({
       return acc;
     },
     {}
-  );
-
-
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () =>
-      order.reduce((acc, group) => {
-        acc[group] = true;
-        return acc;
-      }, {} as Record<string, boolean>)
   );
 
   const toggleGroup = (group: string) => {
@@ -169,6 +168,12 @@ export function InfoPanel({
       return new URL(url, 'https://www.dxkb.org').href;
     }
   }
+
+//  console.log("Active Tab:", activeTab);
+//  console.log("Panel Title Field:", panelTitleField);
+//  console.log("Rows:", rows);
+//  console.log("Order:", order);
+//  console.log("Grouped Columns:", grouped);
 
   return (
     <div className="w-full p-4 overflow-y-auto text-xs">
@@ -239,12 +244,12 @@ export function InfoPanel({
                                   console.log(resolved);
 
                                   return item.linkType === 'button' ? (
-                                    <button
-                                      onClick={() => window.open(resolved, '_blank')}
+                                    <Button
+                                      onClick={() => window.open(resolved, '_blank', 'noopener,noreferrer')}
                                       className="text-sm border-black bg-primary text-secondary py-1 px-2 rounded"
                                     >
                                       {item.linkText ?? 'View'}
-                                    </button>
+                                    </Button>
                                   ) : (
                                     <a
                                       href={resolved}

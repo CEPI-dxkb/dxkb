@@ -236,13 +236,13 @@ export default function MetagenomicBinningPage() {
                         <RadioGroup
                           value={field.value}
                           onValueChange={field.onChange}
-                          className="service-radio-group"
+                          className="service-radio-group-horizontal"
                         >
-                          <div className="service-radio-group-item">
+                          <div className="flex items-center gap-3">
                             <RadioGroupItem value="reads" id="reads" />
                             <Label htmlFor="reads">Read Files</Label>
                           </div>
-                          <div className="service-radio-group-item">
+                          <div className="flex items-center gap-3">
                             <RadioGroupItem value="contigs" id="contigs" />
                             <Label htmlFor="contigs">Assembled Contigs</Label>
                           </div>
@@ -473,9 +473,9 @@ export default function MetagenomicBinningPage() {
                                 <RadioGroup
                                   value={field.value}
                                   onValueChange={field.onChange}
-                                  className="service-radio-group"
+                                  className="service-radio-group-horizontal"
                                 >
-                                  <div className="service-radio-group-item">
+                                  <div className="flex items-center gap-3">
                                     <RadioGroupItem
                                       value="metaspades"
                                       id="metaspades"
@@ -488,7 +488,7 @@ export default function MetagenomicBinningPage() {
                                       MetaSPAdes
                                     </Label>
                                   </div>
-                                  <div className="service-radio-group-item">
+                                  <div className="flex items-center gap-3">
                                     <RadioGroupItem
                                       value="megahit"
                                       id="megahit"
@@ -500,7 +500,7 @@ export default function MetagenomicBinningPage() {
                                       MEGAHIT
                                     </Label>
                                   </div>
-                                  <div className="service-radio-group-item">
+                                  <div className="flex items-center gap-3">
                                     <RadioGroupItem value="auto" id="auto" />
                                     <Label htmlFor="auto" className="text-sm">
                                       Auto
@@ -529,9 +529,9 @@ export default function MetagenomicBinningPage() {
                               <RadioGroup
                                 value={field.value}
                                 onValueChange={field.onChange}
-                                className="service-radio-group"
+                                className="service-radio-group-horizontal"
                               >
-                                <div className="service-radio-group-item">
+                                <div className="flex items-center gap-3">
                                   <RadioGroupItem
                                     value="bacteria"
                                     id="bacteria"
@@ -540,13 +540,13 @@ export default function MetagenomicBinningPage() {
                                     Bacteria/Archaea
                                   </Label>
                                 </div>
-                                <div className="service-radio-group-item">
+                                <div className="flex items-center gap-3">
                                   <RadioGroupItem value="viral" id="viral" />
                                   <Label htmlFor="viral" className="text-sm">
                                     Viruses
                                   </Label>
                                 </div>
-                                <div className="service-radio-group-item">
+                                <div className="flex items-center gap-3">
                                   <RadioGroupItem value="both" id="both" />
                                   <Label htmlFor="both" className="text-sm">
                                     Both
@@ -704,6 +704,7 @@ export default function MetagenomicBinningPage() {
                               <FormControl>
                                 <Checkbox
                                   id="disable_dangling"
+                                  name="disable_dangling"
                                   checked={field.value}
                                   onCheckedChange={field.onChange}
                                   className="mb-2 bg-white"

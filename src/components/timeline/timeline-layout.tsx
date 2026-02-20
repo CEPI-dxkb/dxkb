@@ -5,9 +5,9 @@ import {
   TimelineDescription,
   TimelineTime,
   TimelineHeader,
-} from '@/components/timeline/timeline';
+} from "@/components/timeline/timeline";
 
-import { TimelineItemType } from '@/types/index';
+import { TimelineItemType } from "@/types/index";
 
 const timelineData: TimelineItemType[] = [
   {

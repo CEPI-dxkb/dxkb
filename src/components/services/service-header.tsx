@@ -16,6 +16,11 @@ interface ServiceHeaderProps {
   isHeader?: boolean;
 }
 
+interface ResourceLink {
+  href: string;
+  label: string;
+}
+
 export function ServiceHeader({
   title,
   description,
@@ -27,6 +32,16 @@ export function ServiceHeader({
   instructionalVideo,
   version,
 }: ServiceHeaderProps) {
+  const resourceLinks: ResourceLink[] = [
+    ...(quickReferenceGuide
+      ? [{ href: quickReferenceGuide, label: "Quick Reference Guide" }]
+      : []),
+    ...(tutorial ? [{ href: tutorial, label: "Tutorial" }] : []),
+    ...(instructionalVideo
+      ? [{ href: instructionalVideo, label: "Instructional Video" }]
+      : []),
+  ];
+
   return (
     <div className="service-header">
       <div className="service-header-title">
@@ -48,37 +63,23 @@ export function ServiceHeader({
       <div className="service-header-description">
         <p>
           {description}
-          <br />
-          For more information, please see the
-          {quickReferenceGuide && (
+          {resourceLinks.length > 0 && (
             <>
-              {" "}
-              <a href={quickReferenceGuide} target="_blank" rel="noopener">
-                Quick Reference Guide
-                <ExternalLink className="ml-1 h-3 w-3" />
-              </a>
+              <br />
+              For more information, please see the{" "}
+              {resourceLinks.map((link, index) => (
+                <span key={link.label}>
+                  {index > 0 && index < resourceLinks.length - 1 && ", "}
+                  {index > 0 && index === resourceLinks.length - 1 && (resourceLinks.length > 2 ? ", and " : " and ")}
+                  <a href={link.href} target="_blank" rel="noopener">
+                    {link.label}
+                    <ExternalLink className="ml-1 h-3 w-3" />
+                  </a>
+                </span>
+              ))}
+              .
             </>
           )}
-          {tutorial && (
-            <>
-              {", "}
-              <a href={tutorial} target="_blank" rel="noopener">
-                Tutorial
-                <ExternalLink className="ml-1 h-3 w-3" />
-              </a>
-            </>
-          )}
-          {instructionalVideo && (
-            <>
-              {" "}
-              and{" "}
-              <a href={instructionalVideo} target="_blank" rel="noopener">
-                Instructional Video
-                <ExternalLink className="ml-1 h-3 w-3" />
-              </a>
-            </>
-          )}
-          .
         </p>
       </div>
     </div>

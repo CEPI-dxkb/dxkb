@@ -1,10 +1,9 @@
-import React from 'react'
-import FooterHeader from '@/components/headers/footer-header'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
-import { ArrowUp } from 'lucide-react'
-import PrivacySidebar from './components/privacy-sidebar'
-import { privacyPolicySections } from './data/privacy-policy-sections'
+import FooterHeader from "@/components/headers/footer-header";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { ArrowUp } from "lucide-react";
+import PrivacySidebar from "./components/privacy-sidebar";
+import { privacyPolicySections } from "./data/privacy-policy-sections";
 
 const PrivacyPolicy = () => {
   return (

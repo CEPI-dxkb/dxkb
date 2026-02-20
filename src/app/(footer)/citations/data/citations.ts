@@ -97,4 +97,4 @@ export const citations: Citation[] = [
     impactFactor: 6.2,
     doi: "https://doi.org/10.5678/air.2023.037",
   },
-]; 
+];

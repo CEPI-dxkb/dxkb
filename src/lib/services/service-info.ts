@@ -1195,12 +1195,12 @@ export const taxonomyClassificatioConfidenceInterval: ServiceInfoPopup = {
 };
 
 // ------------------------------------------------------------ //
-// ------------- Fastq Utilities Service Info ------------- //
+// ------------- FastQ Utilities Service Info ------------- //
 // ------------------------------------------------------------ //
 export const fastqUtilitiesInfo: ServiceInfoPopup = {
   title: "Overview",
   description:
-    "The Fastq Utilities Service makes available common operations for FASTQ files from high throughput sequencing, including: generating FastQC reports of base call quality; aligning reads to genomes using Bowtie2 to generate BAM files, saving unmapped reads and generating SamStat reports of the amount and quality of alignments; and trimming of adapters and low quality sequences using TrimGalore and CutAdapt. The Fastq Utiliites app allows the user to define a pipeline of activities to be performed to designated FASTQ files. The three components (trim, fastqc and align) can be used independently, or in any combination.These actions happen in the order in which they are specified. In the case of trimming, the action will replace untrimmed read files with trimmed ones as the target for all subsequent actions. FASTQ reads (paired-or single-end, long or short, zipped or not), as well as Sequence Read Archive accession numbers are supported.",
+    "The FastQ Utilities Service makes available common operations for FASTQ files from high throughput sequencing, including: generating FastQC reports of base call quality; aligning reads to genomes using Bowtie2 to generate BAM files, saving unmapped reads and generating SamStat reports of the amount and quality of alignments; and trimming of adapters and low quality sequences using TrimGalore and CutAdapt. The FastQ Utiliites app allows the user to define a pipeline of activities to be performed to designated FASTQ files. The three components (trim, fastqc and align) can be used independently, or in any combination.These actions happen in the order in which they are specified. In the case of trimming, the action will replace untrimmed read files with trimmed ones as the target for all subsequent actions. FASTQ reads (paired-or single-end, long or short, zipped or not), as well as Sequence Read Archive accession numbers are supported.",
 };
 
 export const fastqUtilitiesParameters: ServiceInfoPopup = {
@@ -1275,6 +1275,12 @@ export const haSubtypeNumberingInput: ServiceInfoPopup = {
   ],
 };
 
+export const haSubtypeNumberingConversionScheme: ServiceInfoPopup = {
+  title: "Conversion Sequence Numbering Scheme",
+  description:
+    "Select one or more HA subtype numbering schemes to which your sequences will be converted. The service uses the Burke and Smith cross-subtype numbering scheme based on structurally equivalent positions across HA subtypes.",
+};
+
 // ------------------------------------------------------------ //
 // ------------- SARS-CoV-2 Genome Analysis Service Info ------------- //
 // ------------------------------------------------------------ //
@@ -1297,6 +1303,11 @@ export const sarsCov2GenomeAnalysisParameters: ServiceInfoPopup = {
       header: "Strategy",
       subsections: [
         {
+          subheader: "One Codex",
+          subdescription:
+            "Uses the One Codex pipeline for SARS-CoV-2 assembly. When selected, Primers and Version can be specified (e.g. ARTIC, midnight, qiagen, swift, varskip).",
+        },
+        {
           subheader: "Auto",
           subdescription:
             "Uses CDC-Illumina or CDC-Nanopore protocol based on the type of reads provided (see below).",
@@ -1317,6 +1328,11 @@ export const sarsCov2GenomeAnalysisParameters: ServiceInfoPopup = {
             "Implements the ARTICnetwork-prescribed protocol for nCoV-19 genome sequences for Nanopore-generated sequences.",
         },
       ],
+    },
+    {
+      header: "Primers and Version",
+      description:
+        "When Strategy is One Codex, select the primer set (e.g. ARTIC, midnight, qiagen, swift, varskip, varskip-long) and the corresponding version. These options are disabled for CDC-Illumina, CDC-Nanopore, and ARTIC-Nanopore strategies.",
     },
     {
       header: "Taxonomy ID",
@@ -1418,6 +1434,73 @@ export const sarsCov2WastewaterAnalysisParameters: ServiceInfoPopup = {
                 "The text entered here will be used to create the job results directory.",
         },
     ],
+};
+
+// ------------------------------------------------------------------ //
+// ------------- Viral Assembly Service Info ------------- //
+// ------------------------------------------------------------------ //
+export const viralAssemblyInfo: ServiceInfoPopup = {
+  title: "Overview",
+  description:
+    "The Viral Assembly Service utilizes IRMA (Iterative Refinement Meta-Assembler) to assemble viral genomes. Users must select the virus genome for processing. This service is currently in beta; any feedback or improvement is welcomed.",
+};
+
+export const viralAssemblyInputFile: ServiceInfoPopup = {
+  title: "Input File",
+  description:
+    "Select paired-end reads, single reads, or provide an SRA run accession.",
+  sections: [
+    {
+      header: "Paired Read Library",
+      subsections: [
+        {
+          subheader: "Read File 1 & 2",
+          subdescription:
+            "Select the two read files that make up the paired-end library.",
+        },
+      ],
+    },
+    {
+      header: "Single Read Library",
+      subsections: [
+        {
+          subheader: "Read File",
+          subdescription: "Select the FASTQ file containing the reads.",
+        },
+      ],
+    },
+    {
+      header: "SRA Run Accession",
+      description:
+        "Enter an SRA run accession (e.g. SRR...) to use reads from the NCBI Sequence Read Archive. The accession is validated before submission.",
+    },
+  ],
+};
+
+export const viralAssemblyParameters: ServiceInfoPopup = {
+  title: "Parameters",
+  sections: [
+    {
+      header: "Assembly Strategy",
+      description:
+        "IRMA (Iterative Refinement Meta-Assembler) is used to assemble viral genomes from the selected reference database.",
+    },
+    {
+      header: "Reference Database",
+      description:
+        "Select the virus reference (e.g. FLU, CoV, RSV, EBOLA) used for assembly.",
+    },
+    {
+      header: "Output Folder",
+      description:
+        "Navigate the workspace to or create the directory for the results.",
+    },
+    {
+      header: "Output Name",
+      description:
+        "The text entered here will be used to create the job results directory.",
+    },
+  ],
 };
 
 // ------------------------------------------------------------------ //

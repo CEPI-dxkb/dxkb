@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -46,14 +47,18 @@ import {
   transformGenomeAnnotationParams,
   generateOutputFileName,
   validateMyLabel,
+  genomeAnnotationRecipes,
 } from "@/lib/forms/(genomics)";
 import { submitServiceJob } from "@/lib/services/service-utils";
 import {
   RequiredFormLabel,
 } from "@/components/forms/required-form-components";
-import { TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Tooltip } from "@/components/ui/tooltip";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
 import { Spinner } from "@/components/ui/spinner";
@@ -215,17 +220,21 @@ const GenomeAnnotationContent = () => {
                       <RequiredFormLabel>Annotation Recipe</RequiredFormLabel>
                       <FormControl>
                         <Select
+                          items={genomeAnnotationRecipes}
                           value={field.value}
                           onValueChange={field.onChange}
                         >
                           <SelectTrigger className="service-card-select-trigger">
                             <SelectValue placeholder="--- Select Recipe ---" />
                           </SelectTrigger>
-                          <SelectContent className="service-card-select-content">
-                            <SelectItem value="default">Bacteria / Archaea</SelectItem>
-                            <SelectItem value="viral">Viruses - VIGOR4 annotation</SelectItem>
-                            <SelectItem value="viral-lowvan">Viruses - Lowvan annotation</SelectItem>
-                            <SelectItem value="phage">Bacteriophages</SelectItem>
+                          <SelectContent>
+                            <SelectGroup>
+                              {genomeAnnotationRecipes.map((recipe) => (
+                                <SelectItem key={recipe.value} value={recipe.value}>
+                                  {recipe.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                       </FormControl>

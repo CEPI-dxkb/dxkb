@@ -9,7 +9,7 @@ import {
   TimelineDescription,
   TimelineTime,
   TimelineHeader,
-} from '@/components/timeline/timeline';
+} from "@/components/timeline/timeline";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";

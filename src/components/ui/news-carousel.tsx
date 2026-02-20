@@ -1,8 +1,5 @@
-import React from "react";
-
 import { Card, CardContent } from "@/components/ui/card"
 import Image from "next/image";
-
 
 import {
   Carousel,

@@ -22,7 +22,7 @@ export function TaxIDSelector({
   required = false,
   disabled = false,
   className,
-  apiServiceUrl,
+  apiServiceUrl = "/api/services/taxonomy",
   queryFilter,
 }: TaxIDSelectorProps) {
   const resolvedApiServiceUrl = apiServiceUrl ?? DEFAULT_TAXONOMY_API_URL;

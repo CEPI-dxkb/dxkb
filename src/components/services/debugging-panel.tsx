@@ -92,8 +92,9 @@ export function DebuggingPanel() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="debug-mode"
+              name="debug-mode"
               checked={localDebugMode}
-              onCheckedChange={(checked) => setLocalDebugMode(checked === true)}
+              onCheckedChange={(checked) => setLocalDebugMode(checked)}
             />
             <Label
               htmlFor="debug-mode"

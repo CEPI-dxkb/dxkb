@@ -4,11 +4,11 @@ import { Calendar, Download, ExternalLink, Search, SortDesc } from "lucide-react
 import Link from "next/link"
 import { useState } from "react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { CitationNav } from "../components/citation-nav"
 import { citations as citationsData } from "../data/citations"
@@ -70,27 +70,49 @@ export default function CitationsTimelinePage() {
         {/* Filters and Search */}
         <div className="citation-filters">
           <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
-            <Select defaultValue="all" onValueChange={setTypeFilter}>
+            <Select
+              items={[
+                { value: "all", label: "All Types" },
+                { value: "Journal Article", label: "Journal Articles" },
+                { value: "Conference Paper", label: "Conference Papers" },
+                { value: "Book Chapter", label: "Book Chapters" },
+              ]}
+              defaultValue="all"
+              onValueChange={(value) => setTypeFilter(value ?? "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Publication Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="Journal Article">Journal Articles</SelectItem>
-                <SelectItem value="Conference Paper">Conference Papers</SelectItem>
-                <SelectItem value="Book Chapter">Book Chapters</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Journal Article">Journal Articles</SelectItem>
+                  <SelectItem value="Conference Paper">Conference Papers</SelectItem>
+                  <SelectItem value="Book Chapter">Book Chapters</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
-            <Select defaultValue="newest" onValueChange={setSortOption}>
+            <Select
+              items={[
+                { value: "newest", label: "Newest First" },
+                { value: "oldest", label: "Oldest First" },
+                { value: "citations", label: "Most Cited" },
+                { value: "impact", label: "Highest Impact" },
+              ]}
+              defaultValue="newest"
+              onValueChange={(value) => setSortOption(value ?? "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SortDesc className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="citations">Most Cited</SelectItem>
-                <SelectItem value="impact">Highest Impact</SelectItem>
+                <SelectGroup>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="citations">Most Cited</SelectItem>
+                  <SelectItem value="impact">Highest Impact</SelectItem>
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -159,13 +181,16 @@ export default function CitationsTimelinePage() {
                             <p className="citation-card-abstract">{citation.abstract}</p>
 
                             <div className="citation-card-actions">
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={citation.doi} target="_blank" rel="noopener noreferrer">
-                                  View Paper
-                                </a>
-                              </Button>
+                              <a
+                                href={citation.doi}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={buttonVariants({ variant: "outline", size: "sm" })}
+                              >
+                                View Paper
+                              </a>
                               <Button variant="outline" size="sm">
-                                <Download className="h-3.5 w-3.5 mr-1.5" />
+                                <Download className="h-3.5 w-3.5" data-icon="inline-start" />
                                 Export Citation
                               </Button>
                             </div>

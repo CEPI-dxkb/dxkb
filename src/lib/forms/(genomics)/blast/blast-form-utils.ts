@@ -2,6 +2,29 @@ import type { BlastFormData } from "./blast-form-schema";
 import { blastPrecomputedDatabases } from "@/types/services";
 import { getDefaultBlastDatabaseType } from "@/lib/services/service-utils";
 
+export const maxHitsOptionsBlast = [
+  { value: 1, label: "1" },
+  { value: 10, label: "10" },
+  { value: 20, label: "20" },
+  { value: 50, label: "50" },
+  { value: 100, label: "100" },
+  { value: 500, label: "500" },
+  { value: 5000, label: "5000" },
+] as const;
+
+/** Options for E-value threshold dropdown */
+export const evalueOptionsBlast = [
+  { value: 0.0001, label: "0.0001" },
+  { value: 0.001, label: "0.001" },
+  { value: 0.01, label: "0.01" },
+  { value: 0.1, label: "0.1" },
+  { value: 1, label: "1" },
+  { value: 10, label: "10" },
+  { value: 100, label: "100" },
+  { value: 1000, label: "1000" },
+  { value: 10000, label: "10000" },
+] as const;
+
 const DB_SOURCE_MAP: Record<
   BlastFormData["db_precomputed_database"],
   BlastFormData["db_source"]

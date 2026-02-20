@@ -5,14 +5,15 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { LuSearch } from "react-icons/lu";
-import { useRouter } from "next/navigation";
-import { searchTypes } from '../../constants/searchInfo';
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { searchTypes } from "../../constants/searchInfo";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface SearchBarProps {
   initialValue?: string;
@@ -50,27 +51,37 @@ function SearchBarContent({
   size = "default",
   showIcon = true,
 }: SearchBarProps) {
-  const [inputValue, setInputValue] = useState(initialValue);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const handleSearch = (e?: FormEvent) => {
-    if (e) e.preventDefault();
-    if (!inputValue.trim()) return;
-
-    router.push(`/buildsearch?q=${encodeURIComponent(inputValue)}&searchtype=${selected}`);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
+  const [inputValue, setInputValue] = useState(initialValue);
   const [selected, setSelected] = useState("everything");
 
   const handleQueryChange = useCallback((value: string) => {
     setInputValue(value);
   }, []);
+
+  const handleSearch = (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputValue.trim()) return;
+
+    router.push(
+      `/search?q=${encodeURIComponent(inputValue)}&searchtype=${selected}`
+    );
+    queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        return (
+          key === "genome-meta" ||
+          key === "genome-full"
+        );
+      },
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
   return (
     <form onSubmit={handleSearch} className={`flex w-full max-w-[880px] ${className}`}>
@@ -78,7 +89,11 @@ function SearchBarContent({
         <SearchParamsSync onQueryChange={handleQueryChange} />
       </Suspense>
       <div className="relative flex w-full h-full items-stretch rounded-md border border-input bg-background overflow-hidden">
-        <Select value={selected} onValueChange={setSelected}>
+        <Select
+          items={searchTypes.map((option) => ({ value: option.id, label: option.typeTitle }))}
+          value={selected}
+          onValueChange={(value) => setSelected(value ?? "everything")}
+        >
           <SelectTrigger
             id="searchtype"
             className={`${size === "lg" ? "h-auto py-6" : ""} text-sm min-w-[120px] rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-foreground shadow-none focus:ring-0`}
@@ -86,11 +101,13 @@ function SearchBarContent({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {searchTypes.map((option) => (
-              <SelectItem key={option.id} value={option.id}>
-                {option.typeTitle}
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              {searchTypes.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.typeTitle}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
 

@@ -1,5 +1,3 @@
-import React from 'react'
-
 const DBStatistics = () => {
   return (
     <section className="py-12 bg-secondary text-white">

@@ -1,37 +1,36 @@
 "use client"
 
-import * as CollapsiblePrimitive from "@radix-ui/react-collapsible"
-import { Separator } from "./separator"
+import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 
-function Collapsible({
-  ...props
-}: React.ComponentProps<typeof CollapsiblePrimitive.Root>) {
+function Collapsible({ ...props }: CollapsiblePrimitive.Root.Props) {
   return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />
 }
 
-function CollapsibleTrigger({
-  ...props
-}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleTrigger>) {
+function CollapsibleTrigger({ ...props }: CollapsiblePrimitive.Trigger.Props) {
   return (
-    <CollapsiblePrimitive.CollapsibleTrigger
-      data-slot="collapsible-trigger"
-      {...props}
-    />
+    <CollapsiblePrimitive.Trigger data-slot="collapsible-trigger" {...props} />
   )
 }
 
 function CollapsibleContent({
+  keepMounted = true,
+  children,
   ...props
-}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleContent>) {
+}: CollapsiblePrimitive.Panel.Props) {
   return (
-    <CollapsiblePrimitive.CollapsibleContent
+    <CollapsiblePrimitive.Panel
       data-slot="collapsible-content"
+      keepMounted={keepMounted}
       {...props}
     >
-      <Separator />
-      {props.children}
-    </CollapsiblePrimitive.CollapsibleContent>
-  )
+      <div
+        data-slot="collapsible-divider"
+        role="separator"
+        className="h-px shrink-0 bg-border"
+      />
+      {children}
+    </CollapsiblePrimitive.Panel>
+  );
 }
 
 export { Collapsible, CollapsibleTrigger, CollapsibleContent }

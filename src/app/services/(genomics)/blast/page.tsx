@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -37,7 +38,6 @@ import {
   blastServiceDatabaseSource,
   blastServiceDatabaseType,
 } from "@/lib/services/service-info";
-import { Checkbox } from "@/components/ui/checkbox";
 import OutputFolder from "@/components/services/output-folder";
 import {
   RequiredFormLabel,
@@ -65,6 +65,8 @@ import {
   createInputSourceOverrides,
   createDatabaseSourceOverrides,
   extractInputFields,
+  maxHitsOptionsBlast,
+  evalueOptionsBlast,
 } from "@/lib/forms/(genomics)";
 
 export default function BlastServicePage() {
@@ -271,9 +273,9 @@ export default function BlastServicePage() {
                       <RadioGroup
                         value={field.value}
                         onValueChange={field.onChange}
-                        className="service-radio-group-grid"
+                        className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"
                       >
-                        <div className="service-radio-group-item">
+                        <div className="flex items-center gap-3">
                           <RadioGroupItem value="blastn" id="blastn" />
                           <FormLabel
                             htmlFor="blastn"
@@ -282,7 +284,7 @@ export default function BlastServicePage() {
                             BLASTN (nucleotide → nucleotide database)
                           </FormLabel>
                         </div>
-                        <div className="service-radio-group-item">
+                        <div className="flex items-center gap-3">
                           <RadioGroupItem value="blastp" id="blastp" />
                           <FormLabel
                             htmlFor="blastp"
@@ -291,7 +293,7 @@ export default function BlastServicePage() {
                             BLASTP (protein → protein database)
                           </FormLabel>
                         </div>
-                        <div className="service-radio-group-item">
+                        <div className="flex items-center gap-3">
                           <RadioGroupItem value="blastx" id="blastx" />
                           <FormLabel
                             htmlFor="blastx"
@@ -300,7 +302,7 @@ export default function BlastServicePage() {
                             BLASTX (translated nucleotide → protein database)
                           </FormLabel>
                         </div>
-                        <div className="service-radio-group-item">
+                        <div className="flex items-center gap-3">
                           <RadioGroupItem value="tblastn" id="tblastn" />
                           <FormLabel
                             htmlFor="tblastn"
@@ -349,9 +351,9 @@ export default function BlastServicePage() {
                             );
                           }}
                           value={field.value}
-                          className="service-radio-group"
+                          className="service-radio-group-horizontal"
                         >
-                          <div className="service-radio-group-item">
+                          <div className="flex items-center gap-3">
                             <RadioGroupItem
                               value="fasta_data"
                               id="fastaSequence"
@@ -360,13 +362,13 @@ export default function BlastServicePage() {
                               Enter sequence
                             </FormLabel>
                           </div>
-                          <div className="service-radio-group-item">
+                          <div className="flex items-center gap-3">
                             <RadioGroupItem value="fasta_file" id="fastaFile" />
                             <FormLabel htmlFor="fastaFile">
                               Select FASTA file
                             </FormLabel>
                           </div>
-                          <div className="service-radio-group-item">
+                          <div className="flex items-center gap-3">
                             <RadioGroupItem
                               value="feature_group"
                               id="featureGroup"
@@ -489,6 +491,7 @@ export default function BlastServicePage() {
                             infoPopup={blastServiceDatabaseSource}
                           />
                           <Select
+                            items={blastPrecomputedDatabases}
                             value={field.value}
                             onValueChange={(value) => {
                               field.onChange(
@@ -502,15 +505,14 @@ export default function BlastServicePage() {
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select database source" />
                             </SelectTrigger>
-                            <SelectContent className="service-card-select-content">
-                              {blastPrecomputedDatabases.map((dbSource) => (
-                                <SelectItem
-                                  key={dbSource.value}
-                                  value={dbSource.value}
-                                >
-                                  {dbSource.label}
-                                </SelectItem>
-                              ))}
+                            <SelectContent>
+                              <SelectGroup>
+                                {blastPrecomputedDatabases.map((dbSource) => (
+                                  <SelectItem key={dbSource.value} value={dbSource.value}>
+                                    {dbSource.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         </div>
@@ -532,6 +534,7 @@ export default function BlastServicePage() {
                             infoPopup={blastServiceDatabaseType}
                           />
                           <Select
+                            items={availableDatabaseTypes}
                             key={`${currentBlastProgram}-${dbPrecomputedDatabase}-${availableDatabaseTypes.length}`}
                             value={field.value || ""}
                             onValueChange={field.onChange}
@@ -540,20 +543,13 @@ export default function BlastServicePage() {
                               <SelectValue placeholder="Select database type" />
                             </SelectTrigger>
                             <SelectContent>
-                              {availableDatabaseTypes.length === 0 ? (
-                                <SelectItem value="" disabled>
-                                  No options available
-                                </SelectItem>
-                              ) : (
-                                availableDatabaseTypes.map((dbType) => (
-                                  <SelectItem
-                                    key={dbType.value}
-                                    value={dbType.value}
-                                  >
+                              <SelectGroup>
+                                {availableDatabaseTypes.map((dbType) => (
+                                  <SelectItem key={dbType.value} value={dbType.value}>
                                     {dbType.label}
                                   </SelectItem>
-                                ))
-                              )}
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         </div>
@@ -792,22 +788,23 @@ export default function BlastServicePage() {
                           </FormLabel>
                           <FormControl>
                             <Select
-                              value={(field.value ?? 10).toString()}
+                              items={maxHitsOptionsBlast}
+                              value={field.value}
                               onValueChange={(value) =>
-                                field.onChange(parseInt(value, 10))
+                                value != null && field.onChange(Number(value))
                               }
                             >
                               <SelectTrigger className="service-card-select-trigger">
                                 <SelectValue placeholder="Select max hits" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="1">1</SelectItem>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="20">20</SelectItem>
-                                <SelectItem value="50">50</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                                <SelectItem value="500">500</SelectItem>
-                                <SelectItem value="5000">5000</SelectItem>
+                                <SelectGroup>
+                                  {maxHitsOptionsBlast.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
                               </SelectContent>
                             </Select>
                           </FormControl>
@@ -829,24 +826,23 @@ export default function BlastServicePage() {
                           </FormLabel>
                           <FormControl>
                             <Select
-                              value={(field.value ?? 0.0001).toString()}
+                              items={evalueOptionsBlast}
+                              value={field.value}
                               onValueChange={(value) =>
-                                field.onChange(parseFloat(value))
+                                value != null && field.onChange(Number(value))
                               }
                             >
                               <SelectTrigger className="service-card-select-trigger">
                                 <SelectValue placeholder="Select E-Value Threshold" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="0.0001">0.0001</SelectItem>
-                                <SelectItem value="0.001">0.001</SelectItem>
-                                <SelectItem value="0.01">0.01</SelectItem>
-                                <SelectItem value="0.1">0.1</SelectItem>
-                                <SelectItem value="1">1</SelectItem>
-                                <SelectItem value="10">10</SelectItem>
-                                <SelectItem value="100">100</SelectItem>
-                                <SelectItem value="1000">1000</SelectItem>
-                                <SelectItem value="10000">10000</SelectItem>
+                                <SelectGroup>
+                                  {evalueOptionsBlast.map((o) => (
+                                    <SelectItem key={o.value} value={o.value}>
+                                    {o.label}
+                                  </SelectItem>
+                                ))}
+                                </SelectGroup>
                               </SelectContent>
                             </Select>
                           </FormControl>
@@ -862,10 +858,6 @@ export default function BlastServicePage() {
 
           {/* Form Controls */}
           <div className="service-form-controls">
-            <div className="flex items-center gap-2">
-              <Checkbox id="view-results" />
-              <Label htmlFor="view-results">View Results</Label>
-            </div>
             <div className="flex items-center gap-2">
               <Button
                 type="button"

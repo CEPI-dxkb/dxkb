@@ -20,6 +20,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -487,41 +488,42 @@ export default function MetaCATSPage() {
               </RequiredFormCardTitle>
             </CardHeader>
 
-            <CardContent className="service-card-content">
-              {/* Input Type Selection */}
-              <FormField
-                control={form.control}
-                name="input_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <RadioGroup
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        className="service-radio-group"
-                      >
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="auto" id="auto" />
-                          <Label htmlFor="auto">Auto Grouping</Label>
-                        </div>
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="groups" id="groups" />
-                          <Label htmlFor="groups">Feature Groups</Label>
-                        </div>
-                        <div className="service-radio-group-item">
-                          <RadioGroupItem value="files" id="files" />
-                          <Label htmlFor="files">Alignment File</Label>
-                        </div>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <CardContent className="space-y-6 pt-1">
+              <div className="flex flex-col gap-6">
+                {/* Input Type Selection */}
+                <FormField
+                  control={form.control}
+                  name="input_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="service-radio-group-horizontal"
+                        >
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="auto" id="auto" />
+                            <Label htmlFor="auto">Auto Grouping</Label>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="groups" id="groups" />
+                            <Label htmlFor="groups">Feature Groups</Label>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <RadioGroupItem value="files" id="files" />
+                            <Label htmlFor="files">Alignment File</Label>
+                          </div>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {/* Auto Grouping Section */}
-              {inputType === "auto" && (
-                <div className="mt-4 space-y-4">
+                {/* Auto Grouping Section */}
+                {inputType === "auto" && (
+                  <div className="space-y-4">
                   {/* Metadata Selection */}
                   <div className="flex flex-wrap gap-4">
                     <FormField
@@ -532,8 +534,10 @@ export default function MetaCATSPage() {
                           <FormLabel className="service-card-label">Metadata</FormLabel>
                           <FormControl>
                             <Select
+                              items={METADATA_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                               value={field.value}
                               onValueChange={(value) => {
+                                if (value == null) return;
                                 field.onChange(value);
                                 // Reset year ranges when metadata changes
                                 if (value !== "collection_year") {
@@ -546,12 +550,18 @@ export default function MetaCATSPage() {
                               <SelectTrigger className="service-card-select-trigger">
                                 <SelectValue placeholder="Select metadata" />
                               </SelectTrigger>
-                              <SelectContent className="service-card-select-content max-h-80">
-                                {METADATA_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
+                              <SelectContent
+                                alignItemWithTrigger={true}
+                                side="bottom"
+                                sideOffset={4}
+                              >
+                                <SelectGroup>
+                                  {METADATA_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
                               </SelectContent>
                             </Select>
                           </FormControl>
@@ -589,16 +599,14 @@ export default function MetaCATSPage() {
                   <div className="space-y-2">
                     <Label className="service-card-label">Select Feature Group</Label>
                     <div className="flex gap-2">
-                      <div className="flex-1">
-                        <WorkspaceObjectSelector
-                          types={["feature_group"]}
-                          placeholder="Select feature group"
-                          onSelectedObjectChange={(object: WorkspaceObject | null) => {
-                            setSelectedAutoFeatureGroupObject(object);
-                          }}
-                          value={selectedAutoFeatureGroupObject?.path}
-                        />
-                      </div>
+                      <WorkspaceObjectSelector
+                        types={["feature_group"]}
+                        placeholder="Select feature group"
+                        onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                          setSelectedAutoFeatureGroupObject(object);
+                        }}
+                        value={selectedAutoFeatureGroupObject?.path}
+                      />
                       <Button
                         type="button"
                         variant="outline"
@@ -625,13 +633,13 @@ export default function MetaCATSPage() {
                           <RadioGroup
                             value={field.value}
                             onValueChange={field.onChange}
-                            className="service-radio-group"
+                            className="service-radio-group-horizontal"
                           >
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem value="na" id="auto_dna" />
                               <Label htmlFor="auto_dna">DNA</Label>
                             </div>
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem value="aa" id="auto_protein" />
                               <Label htmlFor="auto_protein">Protein</Label>
                             </div>
@@ -647,18 +655,21 @@ export default function MetaCATSPage() {
                     <Label className="service-card-label">Group Names</Label>
                     <div className="flex gap-2">
                       <Select
+                        items={groupNames.map((name) => ({ value: name, label: name }))}
                         value={selectedGroupName}
-                        onValueChange={setSelectedGroupName}
+                        onValueChange={(value) => setSelectedGroupName(value ?? "")}
                       >
                         <SelectTrigger className="flex-1 service-card-select-trigger">
                           <SelectValue placeholder="Select or enter group name" />
                         </SelectTrigger>
                         <SelectContent>
-                          {groupNames.map((name) => (
-                            <SelectItem key={name} value={name}>
-                              {name}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            {groupNames.map((name) => (
+                              <SelectItem key={name} value={name}>
+                                {name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                       <Button
@@ -693,6 +704,8 @@ export default function MetaCATSPage() {
                           <TableRow>
                             <TableHead className="w-12">
                               <Checkbox
+                                id="select-all-meta-cats"
+                                name="select-all-meta-cats"
                                 checked={
                                   selectedGridRows.size === autoGroups.length &&
                                   autoGroups.length > 0
@@ -723,6 +736,8 @@ export default function MetaCATSPage() {
                               <TableRow key={item.id}>
                                 <TableCell>
                                   <Checkbox
+                                    id={`row-${item.id}-checkbox`}
+                                    name={`row-${item.id}-checkbox`}
                                     checked={selectedGridRows.has(item.id)}
                                     onCheckedChange={() => handleRowSelect(item.id)}
                                   />
@@ -811,13 +826,13 @@ export default function MetaCATSPage() {
                           <RadioGroup
                             value={field.value}
                             onValueChange={field.onChange}
-                            className="service-radio-group"
+                            className="service-radio-group-horizontal"
                           >
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem value="na" id="group_dna" />
                               <Label htmlFor="group_dna">DNA</Label>
                             </div>
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem value="aa" id="group_protein" />
                               <Label htmlFor="group_protein">Protein</Label>
                             </div>
@@ -928,6 +943,7 @@ export default function MetaCATSPage() {
                   />
                 </div>
               )}
+              </div>
             </CardContent>
           </Card>
 

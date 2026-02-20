@@ -24,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -56,8 +57,8 @@ import {
 
 import {
   metagenomicReadMappingFormSchema,
-  DEFAULT_METAGENOMIC_READ_MAPPING_FORM_VALUES,
-  PREDEFINED_GENE_SET_OPTIONS,
+  defaultMetagenomicReadMappingFormValues,
+  predefinedGeneSetOptions,
   type MetagenomicReadMappingFormData,
   type LibraryItem,
 } from "@/lib/forms/(metagenomics)/metagenomic-read-mapping/metagenomic-read-mapping-form-schema";
@@ -77,7 +78,7 @@ import type { WorkspaceObject } from "@/lib/workspace-client";
 export default function MetagenomicReadMappingPage() {
   const form = useForm<MetagenomicReadMappingFormData>({
     resolver: zodResolver(metagenomicReadMappingFormSchema),
-    defaultValues: DEFAULT_METAGENOMIC_READ_MAPPING_FORM_VALUES,
+    defaultValues: defaultMetagenomicReadMappingFormValues,
     mode: "onChange",
   });
 
@@ -151,7 +152,7 @@ export default function MetagenomicReadMappingPage() {
   // Handle form reset
   const handleReset = () => {
     form.reset(
-      { ...DEFAULT_METAGENOMIC_READ_MAPPING_FORM_VALUES },
+      { ...defaultMetagenomicReadMappingFormValues },
       { keepDefaultValues: false }
     );
     setLibrariesAndSync([]);
@@ -361,9 +362,9 @@ export default function MetagenomicReadMappingPage() {
                             <RadioGroup
                               value={field.value}
                               onValueChange={field.onChange}
-                              className="service-radio-group"
+                              className="service-radio-group-horizontal"
                             >
-                              <div className="service-radio-group-item">
+                              <div className="flex items-center gap-3">
                                 <RadioGroupItem
                                   value="predefined_list"
                                   id="predefined_list"
@@ -372,7 +373,7 @@ export default function MetagenomicReadMappingPage() {
                                   Predefined List
                                 </Label>
                               </div>
-                              <div className="service-radio-group-item">
+                              <div className="flex items-center gap-3">
                                 <RadioGroupItem
                                   value="fasta_file"
                                   id="fasta_file"
@@ -381,7 +382,7 @@ export default function MetagenomicReadMappingPage() {
                                   FASTA File
                                 </Label>
                               </div>
-                              <div className="service-radio-group-item">
+                              <div className="flex items-center gap-3">
                                 <RadioGroupItem
                                   value="feature_group"
                                   id="feature_group"
@@ -411,6 +412,7 @@ export default function MetagenomicReadMappingPage() {
                             </FormLabel>
                             <FormControl>
                               <Select
+                                items={predefinedGeneSetOptions}
                                 value={field.value}
                                 onValueChange={field.onChange}
                               >
@@ -418,11 +420,13 @@ export default function MetagenomicReadMappingPage() {
                                   <SelectValue placeholder="Select Gene Set" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {PREDEFINED_GENE_SET_OPTIONS.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
+                                  <SelectGroup>
+                                    {predefinedGeneSetOptions.map((option) => (
+                                      <SelectItem key={option.value} value={option.value}>
+                                        {option.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectGroup>
                                 </SelectContent>
                               </Select>
                             </FormControl>

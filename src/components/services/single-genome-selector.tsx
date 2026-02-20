@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { Search, Loader2, ShieldUser, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,9 +65,16 @@ export function SingleGenomeSelector({
   const [selectedGenome, setSelectedGenome] = useState<GenomeSummary | null>(null);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const [dropdownRect, setDropdownRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const latestAbortController = useRef<AbortController | null>(null);
   const selectedGenomeIdRef = useRef<string | null>(null);
@@ -222,6 +231,55 @@ export function SingleGenomeSelector({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Compute dropdown position for portal (avoids Card overflow-hidden clipping)
+  const updateDropdownLayout = useCallback(() => {
+    if (!showDropdown || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const preferredHeight = 256; // max-h-64
+    const minHeight = 160;
+    const gap = 4;
+    let top: number;
+    let maxHeight: number;
+    if (spaceBelow >= preferredHeight) {
+      top = rect.bottom + gap;
+      maxHeight = preferredHeight;
+    } else if (spaceBelow >= minHeight) {
+      top = rect.bottom + gap;
+      maxHeight = Math.max(spaceBelow - gap, minHeight);
+    } else {
+      const spaceAbove = rect.top;
+      maxHeight = Math.max(spaceAbove - gap, minHeight);
+      top = rect.top - maxHeight - gap;
+    }
+    setDropdownRect({
+      top,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
+  }, [showDropdown]);
+
+  useEffect(() => {
+    if (showDropdown && containerRef.current) {
+      updateDropdownLayout();
+    } else {
+      setDropdownRect(null);
+    }
+  }, [showDropdown, updateDropdownLayout]);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleUpdate = () => updateDropdownLayout();
+    window.addEventListener("scroll", handleUpdate, true);
+    window.addEventListener("resize", handleUpdate);
+    return () => {
+      window.removeEventListener("scroll", handleUpdate, true);
+      window.removeEventListener("resize", handleUpdate);
+    };
+  }, [showDropdown, updateDropdownLayout]);
 
   // Reset highlighted index when suggestions change
   useEffect(() => {
@@ -388,7 +446,7 @@ export function SingleGenomeSelector({
     // TODO: A
     <div className={cn("space-y-2", className)}>
       {title && <Label className="service-card-label">{title}</Label>}
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
           ref={inputRef}
@@ -427,54 +485,68 @@ export function SingleGenomeSelector({
               className={`h-4 w-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}
             />
           </Button>
-        {showDropdown && (suggestions.length > 0 || isLoading || error || showEmptyState || isManualTrigger) && (
-          <div ref={dropdownRef} className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border shadow-md">
-            {isLoading ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="text-muted-foreground text-sm">Searching...</span>
-              </div>
-            ) : error ? (
-              <div className="text-destructive p-4 text-sm">{error}</div>
-            ) : suggestions.length > 0 ? (
-              suggestions.map((genome, index) => {
-                const isHighlighted = highlightedIndex === index;
-                return (
-                  <button
-                    key={genome.genome_id}
-                    ref={(el) => {
-                      itemRefs.current[index] = el;
-                    }}
-                    type="button"
-                    className={cn(
-                      "flex w-full flex-col items-start gap-1 px-4 py-2 text-left hover:bg-accent",
-                      isHighlighted && "bg-accent",
-                    )}
-                    onClick={() => {
-                      handleDropdownClick(genome);
-                    }}
-                    onMouseEnter={() => setHighlightedIndex(index)}
-                  >
-                    <span className="flex items-center gap-1 truncate text-sm font-medium">
-                      {genome.public === false && (
-                        <ShieldUser className="text-foreground/90 h-3.5 w-3.5 shrink-0" />
+        {showDropdown &&
+          (suggestions.length > 0 || isLoading || error || showEmptyState || isManualTrigger) &&
+          dropdownRect &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <div
+              ref={dropdownRef}
+              className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 fixed z-40 overflow-y-auto rounded-md border shadow-md"
+              style={{
+                top: dropdownRect.top,
+                left: dropdownRect.left,
+                width: dropdownRect.width,
+                maxHeight: dropdownRect.maxHeight,
+              }}
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center p-4">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="text-muted-foreground text-sm">Searching...</span>
+                </div>
+              ) : error ? (
+                <div className="text-destructive p-4 text-sm">{error}</div>
+              ) : suggestions.length > 0 ? (
+                suggestions.map((genome, index) => {
+                  const isHighlighted = highlightedIndex === index;
+                  return (
+                    <button
+                      key={genome.genome_id}
+                      ref={(el) => {
+                        itemRefs.current[index] = el;
+                      }}
+                      type="button"
+                      className={cn(
+                        "flex w-full flex-col items-start gap-1 px-4 py-2 text-left hover:bg-accent rounded-md border-0 bg-transparent cursor-pointer text-sm",
+                        isHighlighted && "bg-accent",
                       )}
-                      <span className="truncate">{genome.genome_name}</span>
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      {genome.genome_id}
-                      {genome.strain ? ` • ${genome.strain}` : ""}
-                    </span>
-                  </button>
-                );
-              })
-            ) : showEmptyState ? (
-              <p className="text-muted-foreground py-4 text-center text-sm">
-                {query.trim() ? `No genomes found for "${query.trim()}"` : "No genomes found"}
-              </p>
-            ) : null}
-          </div>
-        )}
+                      onClick={() => {
+                        handleDropdownClick(genome);
+                      }}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                    >
+                      <span className="flex items-center gap-1 truncate text-sm font-medium">
+                        {genome.public === false && (
+                          <ShieldUser className="text-foreground/90 h-3.5 w-3.5 shrink-0" />
+                        )}
+                        <span className="truncate">{genome.genome_name}</span>
+                      </span>
+                      <span className="text-muted-foreground text-xs">
+                        {genome.genome_id}
+                        {genome.strain ? ` • ${genome.strain}` : ""}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : showEmptyState ? (
+                <p className="text-muted-foreground py-4 text-center text-sm">
+                  {query.trim() ? `No genomes found for "${query.trim()}"` : "No genomes found"}
+                </p>
+              ) : null}
+            </div>,
+            document.body
+          )}
       </div>
       {helperText && (
         <p className="text-muted-foreground text-xs">{helperText}</p>

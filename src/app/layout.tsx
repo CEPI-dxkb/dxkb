@@ -7,7 +7,6 @@ import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
 import { Providers } from "./providers"; // adjust the path as needed
 import { AuthProvider } from "@/contexts/auth-context";
-import { ReactScan } from "@/components/react-scan";
 import { cookies } from "next/headers";
 import type { AuthUser } from "@/app/api/auth/types";
 
@@ -78,19 +77,10 @@ export default async function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
-      <head>
-        {/* <script src="https://unpkg.com/react-scan/dist/auto.global.js" /> */}
-      </head>
-
-      {/* <ReactScan /> */}
-
-      {/* TODO: Might need to fox <Suspense /> wrapping everything in the app */}
       <body>
         <Providers>
           <ThemeProvider defaultTheme="dxkb-light">
-            <AuthProvider initialUser={initialUser}>
-              {children}
-            </AuthProvider>
+            <AuthProvider initialUser={initialUser}>{children}</AuthProvider>
             <ThemeSwitcher />
           </ThemeProvider>
           <Toaster

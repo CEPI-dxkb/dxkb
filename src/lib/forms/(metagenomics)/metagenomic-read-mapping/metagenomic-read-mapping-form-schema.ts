@@ -81,13 +81,13 @@ export const metagenomicReadMappingFormSchema = z
 export type MetagenomicReadMappingFormData = z.infer<typeof metagenomicReadMappingFormSchema>;
 
 // Predefined gene set options for UI
-export const PREDEFINED_GENE_SET_OPTIONS = [
+export const predefinedGeneSetOptions = [
   { value: "CARD", label: "CARD" },
   { value: "VFDB", label: "VFDB" },
 ] as const;
 
 // Default form values
-export const DEFAULT_METAGENOMIC_READ_MAPPING_FORM_VALUES: MetagenomicReadMappingFormData = {
+export const defaultMetagenomicReadMappingFormValues: MetagenomicReadMappingFormData = {
   paired_end_libs: [],
   single_end_libs: [],
   srr_ids: [],

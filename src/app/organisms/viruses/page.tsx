@@ -37,8 +37,8 @@ function VirusesContent() {
         />
       </Suspense>
 
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={75}>
+      <ResizablePanelGroup orientation="horizontal" className="flex-1">
+        <ResizablePanel defaultSize="75%">
           <div id="content-section" className="h-full border border-gray-200 rounded-lg p-4">
             <h1 className="text-3xl font-bold mb-6">All Viruses</h1>
             <ViewComponent />
@@ -47,7 +47,7 @@ function VirusesContent() {
 
         <ResizableHandle withHandle className="w-0 border-none" />
 
-        <ResizablePanel defaultSize={12} maxSize={25}>
+        <ResizablePanel defaultSize="12%" maxSize="25%">
           <div id="guide-section" className="h-full border border-gray-200 bg-background rounded-l-lg p-4">
           </div>
         </ResizablePanel>

@@ -156,7 +156,7 @@ const serviceItems = {
     title: "Utilities",
     items: [
       {
-        title: "Fastq Utilities",
+        title: "FastQ Utilities",
         href: "/services/fastq-utilities",
         target: "_self",
       },

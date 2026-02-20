@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -53,6 +54,8 @@ import {
   type VariationAnalysisFormData,
   type VariationLibraryItem,
   transformVariationAnalysisParams,
+  variationAnalysisMappers,
+  variationAnalysisCallers,
 } from "@/lib/forms/(genomics)";
 import { submitServiceJob } from "@/lib/services/service-utils";
 import {
@@ -247,9 +250,8 @@ export default function VariationAnalysisPage() {
         description="The Variation Analysis Service can be used to identify and annotate sequence variations."
         infoPopupTitle={variationAnalysisInfo.title}
         infoPopupDescription={variationAnalysisInfo.description}
-        quickReferenceGuide="#"
-        tutorial="#"
-        instructionalVideo="#"
+        quickReferenceGuide="https://www.bv-brc.org/docs/quick_references/services/variation_analysis_service.html"
+        tutorial="https://www.bv-brc.org/docs/tutorial/variation_analysis/variation_analysis.html"
       />
 
       <Form {...form}>
@@ -433,6 +435,7 @@ export default function VariationAnalysisPage() {
                         <RequiredFormLabel>Aligner</RequiredFormLabel>
                         <FormControl>
                           <Select
+                            items={variationAnalysisMappers}
                             value={field.value}
                             onValueChange={field.onChange}
                           >
@@ -440,11 +443,13 @@ export default function VariationAnalysisPage() {
                               <SelectValue placeholder="Select aligner" />
                             </SelectTrigger>
                             <SelectContent className="service-card-select-content">
-                              <SelectItem value="BWA-mem">BWA-mem</SelectItem>
-                              <SelectItem value="BWA-mem-strict">BWA-mem-strict</SelectItem>
-                              <SelectItem value="Bowtie2">Bowtie2</SelectItem>
-                              <SelectItem value="LAST">LAST</SelectItem>
-                              <SelectItem value="minimap2">minimap2</SelectItem>
+                              <SelectGroup>
+                                {variationAnalysisMappers.map((mapper) => (
+                                  <SelectItem key={mapper.value} value={mapper.value}>
+                                    {mapper.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         </FormControl>
@@ -462,6 +467,7 @@ export default function VariationAnalysisPage() {
                         <RequiredFormLabel>SNP Caller</RequiredFormLabel>
                         <FormControl>
                           <Select
+                            items={variationAnalysisCallers}
                             value={field.value}
                             onValueChange={field.onChange}
                           >
@@ -469,8 +475,13 @@ export default function VariationAnalysisPage() {
                               <SelectValue placeholder="Select SNP caller" />
                             </SelectTrigger>
                             <SelectContent className="service-card-select-content">
-                              <SelectItem value="FreeBayes">FreeBayes</SelectItem>
-                              <SelectItem value="BCFtools">BCFtools</SelectItem>
+                              <SelectGroup>
+                                {variationAnalysisCallers.map((caller) => (
+                                  <SelectItem key={caller.value} value={caller.value}>
+                                    {caller.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         </FormControl>

@@ -657,6 +657,11 @@
 .service-radio-group {
   @apply flex flex-col sm:flex-row gap-4;
 }
+
+.service-radio-group-horizontal {
+  @apply flex flex-row flex-wrap gap-4;
+}
+
 .service-radio-group-grid {
   @apply grid grid-cols-1 gap-4 md:grid-cols-2;
 }
@@ -683,6 +688,18 @@
 
 .service-collapsible-header {
   @apply flex flex-row justify-between w-full;
+}
+
+/* Smooth open/close animation for Base UI Collapsible Panel */
+[data-slot="collapsible-content"] {
+  height: var(--collapsible-panel-height);
+  overflow: hidden;
+  transition: height 0.1s ease-out;
+}
+
+[data-slot="collapsible-content"][data-starting-style],
+[data-slot="collapsible-content"][data-ending-style] {
+  height: 0;
 }
 
 .service-collapsible-content {
@@ -1005,31 +1022,31 @@
   @apply flex flex-col gap-8;
 }
 
-/* Accordion Animations */
+/* Accordion Animations (Base UI: data-open / data-closed, --accordion-panel-height) */
 [data-slot="accordion-content"] {
   overflow: hidden;
 }
 
-[data-slot="accordion-content"][data-state="open"] {
-  animation: slideDown 200ms ease-out;
+[data-slot="accordion-content"][data-open] {
+  animation: accordionSlideDown 200ms ease-out;
 }
 
-[data-slot="accordion-content"][data-state="closed"] {
-  animation: slideUp 200ms ease-out;
+[data-slot="accordion-content"][data-closed] {
+  animation: accordionSlideUp 200ms ease-out;
 }
 
-@keyframes slideDown {
+@keyframes accordionSlideDown {
   from {
     height: 0;
   }
   to {
-    height: var(--radix-accordion-content-height);
+    height: var(--accordion-panel-height);
   }
 }
 
-@keyframes slideUp {
+@keyframes accordionSlideUp {
   from {
-    height: var(--radix-accordion-content-height);
+    height: var(--accordion-panel-height);
   }
   to {
     height: 0;

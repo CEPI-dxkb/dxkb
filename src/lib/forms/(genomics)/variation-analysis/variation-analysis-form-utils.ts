@@ -1,5 +1,18 @@
 import { VariationAnalysisFormData } from "./variation-analysis-form-schema";
 
+export const variationAnalysisMappers = [
+  { value: "BWA-mem", label: "BWA-mem" },
+  { value: "BWA-mem-strict", label: "BWA-mem-strict" },
+  { value: "Bowtie2", label: "Bowtie2" },
+  { value: "LAST", label: "LAST" },
+  { value: "minimap2", label: "minimap2" },
+];
+
+export const variationAnalysisCallers = [
+  { value: "FreeBayes", label: "FreeBayes" },
+  { value: "BCFtools", label: "BCFtools" },
+];
+
 /**
  * Transform variation analysis form data to the format expected by the backend service
  */

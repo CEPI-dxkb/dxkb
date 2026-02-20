@@ -2,6 +2,11 @@ import type { MsaSnpAnalysisFormData, FastaFileItem } from "./msa-snp-analysis-f
 import * as MsaSnpAnalysisSchema from "./msa-snp-analysis-form-schema";
 import { validateFasta, type FastaValidationResult } from "@/lib/fasta-validation";
 
+export const msaSNPAnalysisAligners = [
+  { value: "Mafft", label: "Mafft" },
+  { value: "Muscle", label: "Muscle" },
+];
+
 // Utility functions
 export function getFastaFileTypeLabel(type: FastaFileItem["type"]): string {
   if (type === "feature_protein_fasta") return "Protein FASTA";

@@ -342,10 +342,10 @@ export default function PrimerDesignServicePage() {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleFormSubmit)}
-          className="service-form-section"
+          className="space-y-4"
         >
-          <Card>
-            <CardHeader className="service-card-header">
+          <Card className="gap-0">
+            <CardHeader className="service-card-header pb-1">
               <CardTitle className="service-card-title">
                 Input Sequence
                 <DialogInfoPopup
@@ -356,7 +356,7 @@ export default function PrimerDesignServicePage() {
               </CardTitle>
             </CardHeader>
 
-            <CardContent className="service-card-content space-y-6">
+            <CardContent className="space-y-3 pt-1">
               <Tabs
                 value={inputType}
                 onValueChange={(value) => {
@@ -390,7 +390,7 @@ export default function PrimerDesignServicePage() {
                 }}
                 className="w-full"
               >
-                <TabsList className="mb-4 grid w-full grid-cols-2">
+                <TabsList>
                   <TabsTrigger value="sequence_text">
                     Paste Sequence
                   </TabsTrigger>
@@ -399,7 +399,7 @@ export default function PrimerDesignServicePage() {
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="sequence_text" className="mt-0 space-y-6">
+                <TabsContent value="sequence_text" className="space-y-3">
                   <FormField
                     control={form.control}
                     name="SEQUENCE_ID"
@@ -549,7 +549,7 @@ export default function PrimerDesignServicePage() {
                 control={form.control}
                 name="PRIMER_PICK_INTERNAL_OLIGO"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center gap-3">
+                  <FormItem className="flex flex-row items-center gap-2">
                     <FormLabel className="service-card-sublabel ">
                       Pick Internal Oligo
                     </FormLabel>
@@ -577,9 +577,7 @@ export default function PrimerDesignServicePage() {
                       </FormLabel>
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="service-card-tooltip-icon mb-2" />
-                          </TooltipTrigger>
+                          <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
                           <TooltipContent className="max-w-sm">
                             Minimum, optimum, and maximum lengths (in bases) of
                             the PCR product. Primer3 attempts to pick primers
@@ -610,14 +608,12 @@ export default function PrimerDesignServicePage() {
                 )}
               />
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <FormLabel className="service-card-label ">Primer Size (bp)</FormLabel>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="service-card-tooltip-icon mb-2" />
-                      </TooltipTrigger>
+                      <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
                       <TooltipContent className="max-w-sm">
                         Specify minimum, optimum, and maximum primer lengths.
                         Primer3 will not pick primers shorter than the minimum
@@ -626,7 +622,7 @@ export default function PrimerDesignServicePage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {(
                     [
                       { label: "Min", name: "PRIMER_MIN_SIZE" },
@@ -662,7 +658,7 @@ export default function PrimerDesignServicePage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {(
                   [
                     {
@@ -711,9 +707,7 @@ export default function PrimerDesignServicePage() {
                           </FormLabel>
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger asChild>
-                                <HelpCircle className="service-card-tooltip-icon mb-2" />
-                              </TooltipTrigger>
+<TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
                               <TooltipContent className="max-w-sm">
                                 {tooltip}
                               </TooltipContent>
@@ -760,7 +754,7 @@ export default function PrimerDesignServicePage() {
                 </CollapsibleTrigger>
 
                 <CollapsibleContent className="service-collapsible-content">
-                  <div className="space-y-6 px-2 py-4">
+                  <div className="space-y-3 px-2 py-3">
                     <FormField
                       control={form.control}
                       name="PRIMER_NUM_RETURN"
@@ -772,9 +766,7 @@ export default function PrimerDesignServicePage() {
                             </FormLabel>
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <HelpCircle className="service-card-tooltip-icon mb-2" />
-                                </TooltipTrigger>
+                                <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
                                 <TooltipContent className="max-w-sm">
                                   Maximum number of primer pairs to return.
                                   Larger values may increase runtime.
@@ -805,9 +797,7 @@ export default function PrimerDesignServicePage() {
                         </FormLabel>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="service-card-tooltip-icon mb-2" />
-                            </TooltipTrigger>
+                            <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
                             <TooltipContent className="max-w-sm">
                               Define minimum, optimum, and maximum melting
                               temperatures as well as the maximum pairwise
@@ -816,7 +806,7 @@ export default function PrimerDesignServicePage() {
                           </Tooltip>
                         </TooltipProvider>
                       </div>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
                         {(
                           [
                             { label: "Min", name: "PRIMER_MIN_TM" },
@@ -860,9 +850,7 @@ export default function PrimerDesignServicePage() {
                         <FormLabel className="service-card-label ">Primer GC%</FormLabel>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <HelpCircle className="service-card-tooltip-icon mb-2" />
-                            </TooltipTrigger>
+                            <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
                             <TooltipContent className="max-w-sm">
                               Specify acceptable GC content range for designed
                               primers.
@@ -870,7 +858,7 @@ export default function PrimerDesignServicePage() {
                           </Tooltip>
                         </TooltipProvider>
                       </div>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                         {(
                           [
                             { label: "Min", name: "PRIMER_MIN_GC" },
@@ -905,7 +893,7 @@ export default function PrimerDesignServicePage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                       {(
                         [
                           {
@@ -957,11 +945,11 @@ export default function PrimerDesignServicePage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="service-card-header">
+          <Card className="gap-0">
+            <CardHeader className="service-card-header pb-1">
               <CardTitle className="service-card-title">Output</CardTitle>
             </CardHeader>
-            <CardContent className="service-card-content space-y-6">
+            <CardContent className="service-card-content space-y-3 pt-1">
               <FormField
                 control={form.control}
                 name="output_path"
@@ -1001,7 +989,7 @@ export default function PrimerDesignServicePage() {
             </CardContent>
           </Card>
 
-          <div className="service-form-controls">
+          <div className="flex flex-row justify-end gap-4 mt-3!">
             <Button type="button" variant="outline" onClick={handleReset}>
               Reset
             </Button>

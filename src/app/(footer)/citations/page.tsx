@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CitationNav } from "./components/citation-nav";
 import { citations as citationsData } from "./data/citations";
@@ -33,6 +33,13 @@ interface Citation {
   impactFactor: number;
   doi: string;
 }
+
+const sortOptions = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "citations", label: "Most Cited" },
+  { value: "impact", label: "Highest Impact" },
+];
 
 export default function CitationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -193,29 +200,45 @@ export default function CitationsPage() {
         {/* Filters and Search */}
         <div className="citation-filters">
           <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
-            <Select defaultValue="all" onValueChange={setYearFilter}>
+            <Select
+              items={[
+                { value: "all", label: "All Years" },
+                ...uniqueYears.map((year) => ({ value: year.toString(), label: year.toString() })),
+              ]}
+              defaultValue="all"
+              onValueChange={(value) => setYearFilter(value ?? "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Filter by Year" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Years</SelectItem>
-                {uniqueYears.map((year) => (
-                  <SelectItem key={year} value={year.toString()}>
-                    {year}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {uniqueYears.map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
-            <Select defaultValue="newest" onValueChange={setSortOption}>
+            <Select
+              items={sortOptions}
+              value={sortOption}
+              onValueChange={(value) => setSortOption(value ?? "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SortDesc className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="citations">Most Cited</SelectItem>
-                <SelectItem value="impact">Highest Impact</SelectItem>
+                <SelectGroup>
+                  {sortOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -341,7 +364,7 @@ function CitationCard({ citation }: { citation: Citation }) {
             </div>
             <div className="citation-card-badges">
               <Badge variant="outline" className="flex items-center gap-1">
-                <BarChart className="h-3 w-3" />
+                <BarChart className="h-3 w-3" data-icon="inline-start" />
                 IF: {citation.impactFactor.toFixed(1)}
               </Badge>
               <Badge variant="outline" className="flex items-center gap-1">
@@ -366,13 +389,16 @@ function CitationCard({ citation }: { citation: Citation }) {
           <p className="citation-card-abstract">{citation.abstract}</p>
 
           <div className="citation-card-actions">
-            <Button variant="outline" size="sm" asChild>
-              <a href={citation.doi} target="_blank" rel="noopener noreferrer">
-                View Paper
-              </a>
-            </Button>
+            <a
+              href={citation.doi}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              View Paper
+            </a>
             <Button variant="outline" size="sm">
-              <Download className="h-3.5 w-3.5 mr-1.5" />
+              <Download className="h-3.5 w-3.5" data-icon="inline-start" />
               Export Citation
             </Button>
           </div>

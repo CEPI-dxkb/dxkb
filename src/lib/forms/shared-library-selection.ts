@@ -86,6 +86,22 @@ export function getSingleLibraryName(read: string): string {
   return `S(${read.split("/").pop()})`;
 }
 
+/**
+ * Find newly added SRA libraries by comparing next state against previous state.
+ * Used to identify which SRA entries need sample ID assignment and trigger side effects.
+ */
+export function findNewSraLibraries(
+  nextLibs: Library[],
+  prevLibs: Library[],
+): Library[] {
+  const prevSraIds = new Set(
+    prevLibs.filter((lib) => lib.type === "sra").map((lib) => lib.id),
+  );
+  return nextLibs.filter(
+    (lib) => lib.type === "sra" && !prevSraIds.has(lib.id),
+  );
+}
+
 export function useLibrarySelection<
   TFormValues extends FieldValues,
   LibraryItem,

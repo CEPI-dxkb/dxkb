@@ -1,5 +1,12 @@
 import { GenomeAnnotationFormData } from "./genome-annotation-form-schema";
 
+export const genomeAnnotationRecipes = [
+  { value: "default", label: "Bacteria / Archaea" },
+  { value: "viral", label: "Viruses - VIGOR4 annotation" },
+  { value: "viral-lowvan", label: "Viruses - Lowvan annotation" },
+  { value: "phage", label: "Bacteriophages" },
+];
+
 /**
  * Transform genome annotation form data to API parameters
  */

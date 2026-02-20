@@ -2,6 +2,7 @@
 import { ViewType } from "../views";
 import { LuList, LuLayoutGrid, LuChevronLeft, LuChevronRight } from "react-icons/lu";
 import { VerticalMenu } from "@/components/ui/vertical-menu";
+import { Button } from "@/components/ui/button";
 
 interface NavigationMenuProps {
   activeView: ViewType;
@@ -95,7 +96,7 @@ export function NavigationMenu({
                 View Options
               </h2>
             }
-            <button
+            <Button
               onClick={() => onCollapseToggle()}
               className="p-1 hover:bg-gray-200 rounded-lg shrink-0"
               aria-label={navCollapsed ? "Expand menu" : "Collapse menu"}
@@ -105,7 +106,7 @@ export function NavigationMenu({
               ) : (
                 <LuChevronLeft className="shrink-0 w-4 h-4" />
               )}
-            </button>
+            </Button>
           </div>
           <div className="px-4 pb-4">
             <VerticalMenu

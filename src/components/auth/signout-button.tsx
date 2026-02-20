@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,9 +61,9 @@ export function SignoutButton({
     }
   };
 
-  const buttonContent = (
+  const triggerChildren = (
     <>
-      {isSigningOut ? (
+      {isLoggingOut ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
         showIcon && <LogOut className="h-4 w-4" />
@@ -75,25 +76,35 @@ export function SignoutButton({
     </>
   );
 
-  const signoutButton = (
-    <Button
-      variant={variant}
-      size={size}
-      disabled={isSigningOut}
-      className={className}
-      {...(!confirmDialog && { onClick: handleSignout })}
-    >
-      {buttonContent}
-    </Button>
-  );
-
   if (!confirmDialog) {
-    return signoutButton;
+    return (
+      <Button
+        variant={variant}
+        size={size}
+        disabled={isLoggingOut}
+        className={className}
+        onClick={handleLogout}
+      >
+        {triggerChildren}
+      </Button>
+    );
   }
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>{signoutButton}</AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={(props) => (
+          <button
+            {...props}
+            type="button"
+            data-slot="button"
+            className={cn(buttonVariants({ variant, size, className }))}
+            disabled={isLoggingOut}
+          >
+            {triggerChildren}
+          </button>
+        )}
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Sign out of BV-BRC?</AlertDialogTitle>

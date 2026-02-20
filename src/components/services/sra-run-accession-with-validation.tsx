@@ -1,12 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { Label } from "../ui/label";
 import { Library } from "@/types/services";
 import { toast } from "sonner";
+
+const VALIDATION_DEBOUNCE_MS = 500;
+
+/** Strips HTML tags so only plain text is stored/displayed (XSS safety). */
+function toPlainText(s: string): string {
+  return s.replace(/<[^>]+>/g, "").trim() || s;
+}
+
+interface ValidationResult {
+  runs: string[];
+  title: string;
+}
 
 interface SraRunAccessionWithValidationProps {
   title?: string;
@@ -18,6 +30,12 @@ interface SraRunAccessionWithValidationProps {
   onAdd?: (srrIds: string[], title?: string) => void;
   /** Called when the accession input value changes */
   onChange?: (value: string) => void;
+  label?: React.ReactNode;
+  addButton?: React.ReactNode;
+  /** Whether to show the label. Defaults to true. */
+  showLabel?: boolean;
+  /** Whether to show the ChevronRight add button. Defaults to true. When false, add via Enter key. */
+  showAddButton?: boolean;
 }
 
 // Validation is now done via API proxy to avoid CORS issues
@@ -107,108 +125,59 @@ const SraRunAccessionWithValidation = ({
   allowDuplicates = false,
   onAdd,
   onChange,
+  label,
+  addButton,
+  showLabel = true,
+  showAddButton = true,
 }: SraRunAccessionWithValidationProps) => {
   const [sraAccession, setSraAccession] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string>("");
+  const [isValidSra, setIsValidSra] = useState(false);
+  const validationCacheRef = useRef<{ accession: string; result: ValidationResult } | null>(null);
+  const selectedLibrariesRef = useRef(selectedLibraries);
+  selectedLibrariesRef.current = selectedLibraries;
 
-  const handleAdd = async () => {
-    const accession = sraAccession.trim();
+  const applyValidationResult = useCallback(
+    (
+      accession: string,
+      result: ValidationResult,
+      options?: { skipClear?: boolean },
+    ) => {
+      const { runs, title: studyTitle } = result;
+      const skipClear = options?.skipClear ?? false;
+      const current = selectedLibrariesRef.current;
 
-    // Validate format: 3 letters followed by numbers (case insensitive)
-    if (!accession.match(/^[a-z]{3}[0-9]+$/i)) {
-      setValidationMessage("Your input is not valid. Hint: only one SRR at a time.");
-      return;
-    }
-
-    setIsValidating(true);
-    setValidationMessage(`Validating ${accession}...`);
-
-    try {
-      // Use our API proxy to avoid CORS issues
-      const response = await fetch(
-        `/api/services/sra-validation?accession=${encodeURIComponent(accession)}`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status >= 400 && response.status < 500) {
-          setValidationMessage(errorData.error || `Your input ${accession} is not valid`);
-        } else {
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-        setIsValidating(false);
-        return;
-      }
-
-      const data = await response.json();
-
-      // Handle timeout case (accession is still added)
-      if (data.timeout) {
-        setValidationMessage("Timeout exceeded.");
-        const isDuplicate = selectedLibraries.some(
+      // Timeout case: accession is a single run
+      if (runs.length === 1 && runs[0] === accession) {
+        const isDuplicate = current.some(
           (lib) => lib.id === accession && lib.type === "sra",
         );
-
-        if (!isDuplicate || allowDuplicates) {
-          const newLibrary: Library = {
-            id: accession,
-            name: accession,
-            type: "sra",
-          };
-          const updatedLibraries = [...selectedLibraries, newLibrary];
-          setSelectedLibraries(updatedLibraries);
-
-          if (onAdd) {
-            onAdd([accession]);
-          }
-
-          // Clear input and validation message after successful add
-          setSraAccession("");
-          if (onChange) {
-            onChange("");
-          }
-          setValidationMessage("");
-        } else {
+        if (isDuplicate && !allowDuplicates) {
           toast.error("Duplicate SRA accession detected", {
             description: `SRA accession ${accession} has already been added.`,
           });
-        }
-        setIsValidating(false);
-        return;
-      }
-
-      try {
-        const { title: studyTitle, runs, isValid } = parseXmlAndExtract(data.xml);
-
-        if (!isValid || runs.length === 0) {
-          setValidationMessage("The accession is not a run id.");
-          setIsValidating(false);
           return;
         }
-
-        // Add each run ID to the libraries
+        const newLibrary: Library = {
+          id: accession,
+          name: accession,
+          type: "sra",
+        };
+        setSelectedLibraries([...current, newLibrary]);
+        onAdd?.([accession]);
+      } else {
         const newLibraries: Library[] = [];
-
         for (const runId of runs) {
-          // Check for duplicates
-          const isDuplicate = selectedLibraries.some(
+          const isDuplicate = current.some(
             (lib) => lib.id === runId && lib.type === "sra",
           );
-
           if (isDuplicate && !allowDuplicates) {
             toast.error("Duplicate SRA accession detected", {
               description: `SRA accession ${runId} has already been added.`,
             });
             continue;
           }
-
           newLibraries.push({
             id: runId,
             name: runId,
@@ -216,76 +185,188 @@ const SraRunAccessionWithValidation = ({
             ...(studyTitle && { title: studyTitle }),
           });
         }
-
         if (newLibraries.length > 0) {
-          const updatedLibraries = [...selectedLibraries, ...newLibraries];
-          setSelectedLibraries(updatedLibraries);
-
-          // Call onAdd callback if provided
-          if (onAdd) {
-            onAdd(runs, studyTitle);
-          }
-
-          // Clear input and validation message after successful add
-          setSraAccession("");
-          if (onChange) {
-            onChange("");
-          }
-          setValidationMessage("");
+          setSelectedLibraries([...current, ...newLibraries]);
+          onAdd?.(runs, studyTitle);
         }
-      } catch (parseError) {
-        console.error("Error parsing XML:", parseError);
-        setValidationMessage("Failed to parse validation response");
       }
-    } catch (error) {
-      console.error("Error validating SRA accession:", error);
-      if (error instanceof Error) {
-        setValidationMessage(error.message || "Something went wrong during validation.");
-      } else {
-        setValidationMessage("Something went wrong during validation.");
+
+      if (!skipClear) {
+        setSraAccession("");
+        onChange?.("");
+        setValidationMessage("");
+        setIsValidSra(false);
+        validationCacheRef.current = null;
       }
-    } finally {
-      setIsValidating(false);
+    },
+    [setSelectedLibraries, allowDuplicates, onAdd, onChange],
+  );
+
+  const validateAccession = useCallback(
+    async (accession: string): Promise<ValidationResult | null> => {
+      if (!accession.match(/^[a-z]{3}[0-9]+$/i)) {
+        setValidationMessage("Your input is not valid. Hint: only one SRR at a time.");
+        setIsValidSra(false);
+        return null;
+      }
+
+      setIsValidating(true);
+      setIsValidSra(false);
+      setValidationMessage(`Validating ${accession}...`);
+
+      try {
+        const response = await fetch(
+          `/api/services/sra-validation?accession=${encodeURIComponent(accession)}`,
+          {
+            method: "GET",
+            headers: { Accept: "application/json" },
+          },
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const rawError = errorData?.error != null ? String(errorData.error) : "";
+          const plainError = rawError ? toPlainText(rawError) : `Your input ${accession} is not valid`;
+          if (response.status >= 400 && response.status < 500) {
+            setValidationMessage(plainError);
+            setIsValidSra(false);
+          } else {
+            throw new Error(plainError);
+          }
+          return null;
+        }
+
+        const data = await response.json();
+
+        if (data.timeout) {
+          setValidationMessage("Timeout exceeded.");
+          validationCacheRef.current = { accession, result: { runs: [accession], title: "" } };
+          setIsValidSra(true);
+          return validationCacheRef.current.result;
+        }
+
+        const { title: studyTitle, runs, isValid } = parseXmlAndExtract(data.xml);
+        if (!isValid || runs.length === 0) {
+          setValidationMessage("The accession is not a run id.");
+          setIsValidSra(false);
+          return null;
+        }
+
+        setValidationMessage("");
+        setIsValidSra(true);
+        const result: ValidationResult = { runs, title: studyTitle };
+        validationCacheRef.current = { accession, result };
+        return result;
+      } catch (error) {
+        console.error("Error validating SRA accession:", error);
+        const raw = error instanceof Error ? error.message : "Something went wrong during validation.";
+        setValidationMessage(toPlainText(raw));
+        setIsValidSra(false);
+        return null;
+      } finally {
+        setIsValidating(false);
+      }
+    },
+    [],
+  );
+
+  // Debounced validation when user types
+  useEffect(() => {
+    const trimmed = sraAccession.trim();
+    if (!trimmed) {
+      setValidationMessage("");
+      setIsValidSra(false);
+      validationCacheRef.current = null;
+      return;
     }
-  };
+
+    const timer = setTimeout(() => {
+      validateAccession(trimmed).then((result) => {
+        // When there's no add button, auto-add the valid SRA so the form becomes valid (keep input visible)
+        if (result && !showAddButton) {
+          const libs = selectedLibrariesRef.current;
+          const alreadyAdded = result.runs.every((runId) =>
+            libs.some((lib) => lib.type === "sra" && lib.id === runId),
+          );
+          if (!alreadyAdded) {
+            applyValidationResult(trimmed, result, { skipClear: true });
+          }
+        }
+      });
+    }, VALIDATION_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [sraAccession, validateAccession, showAddButton, applyValidationResult]);
+
+  const handleAdd = useCallback(async () => {
+    const accession = sraAccession.trim();
+    if (!accession) return;
+
+    const cached = validationCacheRef.current;
+    if (cached && cached.accession === accession && cached.result) {
+      applyValidationResult(accession, cached.result);
+      return;
+    }
+
+    const result = await validateAccession(accession);
+    if (result) {
+      applyValidationResult(accession, result);
+    }
+  }, [sraAccession, validateAccession, applyValidationResult]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSraAccession(value);
-    // Clear validation message when user starts typing
-    if (validationMessage) {
-      setValidationMessage("");
-    }
-    // Notify parent of value change
-    if (onChange) {
-      onChange(value);
+    if (validationMessage) setValidationMessage("");
+    setIsValidSra(false);
+    onChange?.(value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !showAddButton) {
+      e.preventDefault();
+      handleAdd();
     }
   };
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label className="service-card-label">{title}</Label>
-        <div className="bg-border mx-4 h-px flex-1" />
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleAdd}
-          disabled={!sraAccession.trim() || disabled || isValidating}
-        >
-          {isValidating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+      {(showLabel || showAddButton) && (
+        <div className="flex items-center justify-between">
+          {showLabel ? (
+            <>
+              {label ?? (
+                <Label className="service-card-label">{title}</Label>
+              )}
+              <div className="bg-border mx-4 h-px flex-1" />
+            </>
           ) : (
-            <ChevronRight size={16} />
+            <div className="bg-border mx-4 h-px flex-1" />
           )}
-        </Button>
-      </div>
+          {showAddButton &&
+            (addButton ?? (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleAdd}
+                disabled={!sraAccession.trim() || disabled || isValidating}
+              >
+                {isValidating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ChevronRight size={16} />
+                )}
+              </Button>
+            ))}
+        </div>
+      )}
       <div className="space-y-2">
         <Input
           className="service-card-input"
           placeholder={placeholder}
           value={sraAccession}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           disabled={disabled || isValidating}
         />
         {validationMessage && (
@@ -295,8 +376,12 @@ const SraRunAccessionWithValidation = ({
                 ? "text-muted-foreground"
                 : "text-destructive"
             }`}
-            dangerouslySetInnerHTML={{ __html: validationMessage }}
-          />
+          >
+            {validationMessage}
+          </p>
+        )}
+        {isValidSra && !validationMessage && (
+          <p className="text-sm text-muted-foreground">Provided SRA is valid</p>
         )}
       </div>
     </div>

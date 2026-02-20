@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
-import { useTheme } from 'next-themes'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { themeList } from "@/styles/themes";
 
 const ThemeSwitch = () => {
@@ -16,19 +16,27 @@ const ThemeSwitch = () => {
     return null
   }
 
+  const themeItems = themeList.map((t) => ({ value: t, label: t }));
+
   return (
-    <Select value={theme} onValueChange={(value) => {
-      setTheme(value);
-    }}>
+    <Select
+      items={themeItems}
+      value={theme}
+      onValueChange={(value) => {
+        if (value != null) setTheme(value);
+      }}
+    >
       <SelectTrigger>
         <SelectValue placeholder="Theme" />
       </SelectTrigger>
       <SelectContent>
-        {themeList.map((theme) => (
-          <SelectItem key={theme} value={theme}>
-            {theme}
-          </SelectItem>
-        ))}
+        <SelectGroup>
+          {themeList.map((t) => (
+            <SelectItem key={t} value={t}>
+              {t}
+            </SelectItem>
+          ))}
+        </SelectGroup>
       </SelectContent>
     </Select>
   )

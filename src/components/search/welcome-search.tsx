@@ -51,7 +51,7 @@ const WelcomeSearch = () => {
 
           {/* Search Interface */}
           <div className="mx-auto max-w-4xl">
-            <div className="bg-card rounded-lg p-6 shadow-lg">
+            <div className="welcome-search-card bg-card rounded-lg p-6 shadow-lg">
               <Tabs defaultValue="basic" className="w-full">
                 <TabsList className="mb-4">
                   <TabsTrigger value="basic">Basic Search</TabsTrigger>
@@ -140,21 +140,19 @@ const WelcomeSearch = () => {
                 </TabsContent>
 
                 <TabsContent value="sequence">
-                  <div className="mb-4">
+                  <div className="mb-4 space-y-4">
+                    <Label className="card-sublabel">Sequence Type</Label>
                     <RadioGroup
                       defaultValue="nucleotide"
-                      className="radio-group"
+                      className="service-radio-group-horizontal"
                     >
-                      <Label className="card-sublabel">Sequence Type</Label>
-                      <div className="radio-group-item-container">
-                        <div>
-                          <RadioGroupItem id="nucleotide" value="nucleotide" />
-                          <Label htmlFor="nucleotide">Nucleotide</Label>
-                        </div>
-                        <div>
-                          <RadioGroupItem id="protein" value="protein" />
-                          <Label htmlFor="protein">Protein</Label>
-                        </div>
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem id="nucleotide" value="nucleotide" />
+                        <Label htmlFor="nucleotide">Nucleotide</Label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <RadioGroupItem id="protein" value="protein" />
+                        <Label htmlFor="protein">Protein</Label>
                       </div>
                     </RadioGroup>
 

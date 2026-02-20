@@ -3,18 +3,19 @@
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
 import { useWorkspace } from "../../../hooks/services/workspace/use-workspace";
 import { JobStatus, JobListItem } from "../../../types/workspace";
-import { Button } from "../../../components/ui/button";
+import { Button, buttonVariants } from "../../../components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
-import { Badge } from "../../../components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "../../../components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -275,7 +276,8 @@ function JobsContent() {
           className="text-white"
         >
           <RefreshCw
-            className={`mr-2 h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            className={`h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            data-icon="inline-start"
           />
           Refresh
         </Button>
@@ -337,35 +339,50 @@ function JobsContent() {
         </div>
         <div className="flex space-x-2">
           <Select
+            items={[
+              { value: "all", label: "All Status" },
+              ...Object.entries(statusLabels).map(([status, label]) => ({ value: status, label })),
+            ]}
             value={statusFilter}
             onValueChange={(value) =>
-              setStatusFilter(value as JobStatus | "all")
+              value != null && setStatusFilter(value as JobStatus | "all")
             }
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {Object.entries(statusLabels).map(([status, label]) => (
-                <SelectItem key={status} value={status}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="all">All Status</SelectItem>
+                {Object.entries(statusLabels).map(([status, label]) => (
+                  <SelectItem key={status} value={status}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
 
-          <Select value={appFilter} onValueChange={setAppFilter}>
+          <Select
+            items={[
+              { value: "all", label: "All Apps" },
+              ...uniqueApps.map((app) => ({ value: app, label: app })),
+            ]}
+            value={appFilter}
+            onValueChange={(value) => setAppFilter(value ?? "")}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Application" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Apps</SelectItem>
-              {uniqueApps.map((app, index) => (
-                <SelectItem key={`app-${app}-${index}`} value={app}>
-                  {app}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="all">All Apps</SelectItem>
+                {uniqueApps.map((app, index) => (
+                  <SelectItem key={`app-${app}-${index}`} value={app}>
+                    {app}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -405,11 +422,12 @@ function JobsContent() {
                       {statusLabels[job.status]}
                     </Badge>
                     <div className="flex space-x-1">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/workspace/jobs/${job.id}`}>
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                      <Link
+                        href={`/workspace/jobs/${job.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        <Eye className="h-4 w-4" data-icon="inline-start" />
+                      </Link>
                       {(job.status === "in-progress" ||
                         job.status === "queued") && (
                         <Button
@@ -418,7 +436,7 @@ function JobsContent() {
                           onClick={() => handleKillJob(job.id)}
                           disabled={loading.kill}
                         >
-                          <StopCircle className="h-4 w-4" />
+                          <StopCircle className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                       )}
                     </div>
@@ -461,10 +479,8 @@ function JobsContent() {
 
                 <div className="flex items-center justify-end gap-2">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+                      <MoreHorizontal className="h-4 w-4" data-icon="inline-start" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onViewDetails(job)}>
@@ -520,15 +536,14 @@ function JobsContent() {
                     </div>
 
                     {/* Parameters */}
-                    <Accordion type="single" collapsible>
+                    <Accordion>
                       <AccordionItem
                         value={`parameters-${job.id}`}
-                        className="accordion-item"
                       >
-                        <AccordionTrigger className="accordion-trigger">
+                        <AccordionTrigger>
                           Job Parameters
                         </AccordionTrigger>
-                        <AccordionContent className="accordion-content">
+                        <AccordionContent>
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
                               {JSON.stringify(job.parameters, null, 2)}
@@ -538,12 +553,11 @@ function JobsContent() {
                       </AccordionItem>
                     </Accordion>
 
-                    <Accordion type="single" collapsible>
+                    <Accordion>
                       <AccordionItem
                         value={`stdout-${job.id}`}
-                        className="accordion-item"
                       >
-                        <AccordionTrigger className="accordion-trigger">
+                        <AccordionTrigger>
                           Standard Output
                         </AccordionTrigger>
                         <AccordionContent className="accordion-content">
@@ -559,15 +573,14 @@ function JobsContent() {
                       </AccordionItem>
                     </Accordion>
 
-                    <Accordion type="single" collapsible>
+                    <Accordion>
                       <AccordionItem
                         value={`stderr-${job.id}`}
-                        className="accordion-item"
                       >
-                        <AccordionTrigger className="accordion-trigger">
+                        <AccordionTrigger>
                           Standard Error
                         </AccordionTrigger>
-                        <AccordionContent className="accordion-content">
+                        <AccordionContent>
                           <div className="bg-muted rounded-md p-3">
                             <pre className="text-foreground text-xs whitespace-pre-wrap">
                               {loading.output

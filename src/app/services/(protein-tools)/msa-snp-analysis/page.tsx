@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -41,9 +42,12 @@ import {
   validateViralGenomes,
   getGenomeIdsFromGroup,
   type GenomeSummary,
-  fetchAllGenomeIds,
+  fetchGenomesByIds,
 } from "@/lib/services/genome";
-import { fetchFeaturesFromGroup, type FeatureSummary } from "@/lib/services/feature";
+import {
+  fetchFeaturesFromGroup,
+  type FeatureSummary,
+} from "@/lib/services/feature";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { toast } from "sonner";
@@ -58,6 +62,7 @@ import {
 import * as MsaSnpAnalysis from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-schema";
 import * as MsaSnpAnalysisUtils from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 import { validateFasta } from "@/lib/fasta-validation";
+import { msaSNPAnalysisAligners } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 
 export default function MSAandSNPAnalysisPage() {
   const form = useForm<MsaSnpAnalysis.MsaSnpAnalysisFormData>({
@@ -180,7 +185,8 @@ export default function MSAandSNPAnalysisPage() {
 
   // Fetch features from feature group when Feature ID reference is selected
   useEffect(() => {
-    const shouldFetch = refType === "feature_id" && featureGroup && featureGroup.trim() !== "";
+    const shouldFetch =
+      refType === "feature_id" && featureGroup && featureGroup.trim() !== "";
 
     if (!shouldFetch) {
       setFeatureOptions([]);
@@ -237,7 +243,10 @@ export default function MSAandSNPAnalysisPage() {
 
   // Fetch genomes from genome group when Genome ID reference is selected
   useEffect(() => {
-    const shouldFetch = refType === "genome_id" && selectGenomegroup && selectGenomegroup.length > 0;
+    const shouldFetch =
+      refType === "genome_id" &&
+      selectGenomegroup &&
+      selectGenomegroup.length > 0;
 
     if (!shouldFetch) {
       setGenomeOptions([]);
@@ -270,14 +279,24 @@ export default function MSAandSNPAnalysisPage() {
           return;
         }
 
-        // Now fetch genomes using the website API
-        const allGenomeIds = await fetchAllGenomeIds({ signal: abortController.signal });
+        // Fetch summaries for only the genomes in the selected group
+        const groupGenomes = await fetchGenomesByIds(genomeIds, {
+          signal: abortController.signal,
+        });
 
-        setGenomeOptions(allGenomeIds.map((genome) => ({ genome_id: genome.genome_id, genome_name: genome.genome_name })));
+        setGenomeOptions(
+          groupGenomes.map((genome) => ({
+            genome_id: genome.genome_id,
+            genome_name: genome.genome_name,
+          })),
+        );
       } catch (error) {
         console.error("Failed to fetch genome IDs:", error);
         toast.error("Failed to fetch genome IDs", {
-          description: error instanceof Error ? error.message : "Failed to fetch genome IDs",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch genome IDs",
           closeButton: true,
         });
         setGenomeOptions([]);
@@ -356,7 +375,6 @@ export default function MSAandSNPAnalysisPage() {
       // Replace the existing group (only one group allowed)
       form.setValue("select_genomegroup", [inputValue]);
       setSelectedGenomeGroupObject(null);
-
     } catch (error) {
       console.error("Failed to validate genome group:", error);
       const errorMessage =
@@ -443,7 +461,6 @@ export default function MSAandSNPAnalysisPage() {
     },
   });
 
-
   // Determine which reference options are available
   const availableRefTypes = useMemo((): Array<
     MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"]
@@ -529,13 +546,13 @@ export default function MSAandSNPAnalysisPage() {
                             setFeatureOptions([]);
                           }
                         }}
-                        className="service-radio-group"
+                        className="service-radio-group-horizontal"
                       >
-                        <div className="service-radio-group-item">
+                        <div className="flex items-center gap-3">
                           <RadioGroupItem value="unaligned" id="unaligned" />
                           <Label htmlFor="unaligned">Unaligned Sequences</Label>
                         </div>
-                        <div className="service-radio-group-item">
+                        <div className="flex items-center gap-3">
                           <RadioGroupItem value="aligned" id="aligned" />
                           <Label htmlFor="aligned">Aligned Sequences</Label>
                         </div>
@@ -576,7 +593,7 @@ export default function MSAandSNPAnalysisPage() {
                               // Reset reference type to "none" when input type changes
                               const previousInputType = field.value;
                               field.onChange(value);
-                              
+
                               // Only reset if the input type actually changed
                               if (previousInputType !== value) {
                                 form.setValue("ref_type", "none");
@@ -588,16 +605,18 @@ export default function MSAandSNPAnalysisPage() {
                                 setFeatureOptions([]);
                               }
                             }}
-                            className="service-radio-group"
+                            className="service-radio-group-horizontal"
                           >
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem
                                 value="input_feature_group"
                                 id="input_feature_group"
                               />
-                              <Label htmlFor="input_feature_group">Feature Group</Label>
+                              <Label htmlFor="input_feature_group">
+                                Feature Group
+                              </Label>
                             </div>
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem
                                 value="input_genome_group"
                                 id="input_genome_group"
@@ -606,7 +625,7 @@ export default function MSAandSNPAnalysisPage() {
                                 Viral Genome Group
                               </Label>
                             </div>
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem
                                 value="input_fasta"
                                 id="input_fasta"
@@ -615,7 +634,7 @@ export default function MSAandSNPAnalysisPage() {
                                 DNA or Protein FASTA File
                               </Label>
                             </div>
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem
                                 value="input_sequence"
                                 id="input_sequence"
@@ -672,13 +691,13 @@ export default function MSAandSNPAnalysisPage() {
                               <RadioGroup
                                 value={field.value}
                                 onValueChange={field.onChange}
-                                className="service-radio-group"
+                                className="service-radio-group-horizontal"
                               >
-                                <div className="service-radio-group-item">
+                                <div className="flex items-center gap-3">
                                   <RadioGroupItem value="dna" id="dna" />
                                   <Label htmlFor="dna">DNA</Label>
                                 </div>
-                                <div className="service-radio-group-item">
+                                <div className="flex items-center gap-3">
                                   <RadioGroupItem
                                     value="protein"
                                     id="protein"
@@ -714,11 +733,13 @@ export default function MSAandSNPAnalysisPage() {
 
                           try {
                             // Fetch genome group members to get genome IDs
-                            const genomes = await fetchGenomeGroupMembers(inputValue);
+                            const genomes =
+                              await fetchGenomeGroupMembers(inputValue);
 
                             if (genomes.length === 0) {
                               toast.error("Empty genome group", {
-                                description: "The selected genome group is empty.",
+                                description:
+                                  "The selected genome group is empty.",
                                 closeButton: true,
                               });
                               setIsValidatingGenomeGroup(false);
@@ -737,12 +758,18 @@ export default function MSAandSNPAnalysisPage() {
                             const genomeIds = genomes.map((g) => g.genome_id);
 
                             // Validate viral genomes
-                            const validation = await validateViralGenomes(genomeIds, {
-                              maxGenomeLength: MsaSnpAnalysis.MAX_GENOME_LENGTH,
-                            });
+                            const validation = await validateViralGenomes(
+                              genomeIds,
+                              {
+                                maxGenomeLength:
+                                  MsaSnpAnalysis.MAX_GENOME_LENGTH,
+                              },
+                            );
 
                             if (!validation.allValid) {
-                              const errorMessages = Object.values(validation.errors).filter(Boolean);
+                              const errorMessages = Object.values(
+                                validation.errors,
+                              ).filter(Boolean);
                               const errorMsg =
                                 errorMessages.length > 0
                                   ? errorMessages.join("\n")
@@ -760,9 +787,11 @@ export default function MSAandSNPAnalysisPage() {
                             // Replace the existing group (only one group allowed)
                             form.setValue("select_genomegroup", [inputValue]);
                             setSelectedGenomeGroupObject(null);
-
                           } catch (error) {
-                            console.error("Failed to validate genome group:", error);
+                            console.error(
+                              "Failed to validate genome group:",
+                              error,
+                            );
                             const errorMessage =
                               error instanceof Error
                                 ? error.message
@@ -778,7 +807,7 @@ export default function MSAandSNPAnalysisPage() {
                         value={selectedGenomeGroupObject?.path}
                       />
                       {isValidatingGenomeGroup && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="text-muted-foreground flex items-center gap-2 text-sm">
                           <Spinner className="h-4 w-4" />
                           <span>Validating genome group...</span>
                         </div>
@@ -810,19 +839,27 @@ export default function MSAandSNPAnalysisPage() {
                           }
 
                           const inputValue = object.path;
-                          
+
                           // Determine file type - default to DNA, check path for protein indicators
-                          let type: MsaSnpAnalysis.FastaFileItem["type"] = "feature_dna_fasta";
+                          let type: MsaSnpAnalysis.FastaFileItem["type"] =
+                            "feature_dna_fasta";
                           const pathLower = inputValue.toLowerCase();
-                          if (pathLower.includes("protein") || pathLower.includes("aa") || pathLower.includes("pep")) {
+                          if (
+                            pathLower.includes("protein") ||
+                            pathLower.includes("aa") ||
+                            pathLower.includes("pep")
+                          ) {
                             type = "feature_protein_fasta";
                           }
 
                           // Replace the existing file (only one file allowed)
-                          const newFile = MsaSnpAnalysisUtils.createFastaFileItem(inputValue, type);
+                          const newFile =
+                            MsaSnpAnalysisUtils.createFastaFileItem(
+                              inputValue,
+                              type,
+                            );
                           form.setValue("fasta_files", [newFile]);
                           setSelectedFastaObject(null);
-
                         }}
                         value={selectedFastaObject?.path}
                       />
@@ -892,20 +929,26 @@ export default function MSAandSNPAnalysisPage() {
                       }
 
                       const inputValue = object.path;
-                      
+
                       // Determine file type - default to DNA, check path for protein indicators
-                      let type: MsaSnpAnalysis.FastaFileItem["type"] = "aligned_dna_fasta";
+                      let type: MsaSnpAnalysis.FastaFileItem["type"] =
+                        "aligned_dna_fasta";
                       const pathLower = inputValue.toLowerCase();
-                      if (pathLower.includes("protein") || pathLower.includes("aa") || pathLower.includes("pep")) {
+                      if (
+                        pathLower.includes("protein") ||
+                        pathLower.includes("aa") ||
+                        pathLower.includes("pep")
+                      ) {
                         type = "aligned_protein_fasta";
                       }
 
                       // Replace the existing file (only one file allowed)
-                      const newFile = MsaSnpAnalysisUtils.createFastaFileItem(inputValue, type);
+                      const newFile = MsaSnpAnalysisUtils.createFastaFileItem(
+                        inputValue,
+                        type,
+                      );
                       form.setValue("fasta_files", [newFile]);
                       setSelectedAlignedFastaObject(null);
-
-
                     }}
                     value={selectedAlignedFastaObject?.path}
                   />
@@ -920,7 +963,6 @@ export default function MSAandSNPAnalysisPage() {
                   />
                 </div>
               )}
-
             </CardContent>
           </Card>
 
@@ -956,14 +998,14 @@ export default function MSAandSNPAnalysisPage() {
                               setGenomeIdDropdownOpen(false);
                             }
                           }}
-                          className="service-radio-group"
+                          className="service-radio-group-horizontal"
                         >
-                          <div className="service-radio-group-item">
+                          <div className="flex items-center gap-3">
                             <RadioGroupItem value="none" id="ref_none" />
                             <Label htmlFor="ref_none">None</Label>
                           </div>
                           {availableRefTypes.includes("first" as const) && (
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem value="first" id="ref_first" />
                               <Label htmlFor="ref_first">First Sequence</Label>
                             </div>
@@ -971,7 +1013,7 @@ export default function MSAandSNPAnalysisPage() {
                           {availableRefTypes.includes(
                             "feature_id" as const,
                           ) && (
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem
                                 value="feature_id"
                                 id="ref_feature_id"
@@ -980,7 +1022,7 @@ export default function MSAandSNPAnalysisPage() {
                             </div>
                           )}
                           {availableRefTypes.includes("genome_id" as const) && (
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem
                                 value="genome_id"
                                 id="ref_genome_id"
@@ -989,7 +1031,7 @@ export default function MSAandSNPAnalysisPage() {
                             </div>
                           )}
                           {availableRefTypes.includes("string" as const) && (
-                            <div className="service-radio-group-item">
+                            <div className="flex items-center gap-3">
                               <RadioGroupItem value="string" id="ref_string" />
                               <Label htmlFor="ref_string">
                                 Input Reference Sequence
@@ -1012,58 +1054,64 @@ export default function MSAandSNPAnalysisPage() {
                     <Select
                       value={selectedFeatureId}
                       onValueChange={(value) => {
+                        if (value == null) return;
                         setSelectedFeatureId(value);
                         // Find the selected feature and use patric_id for ref_string
                         const selectedFeature = featureOptions.find(
                           (f) => f.feature_id === value,
                         );
-                        const refValue = selectedFeature?.patric_id || selectedFeature?.feature_id || value;
+                        const refValue =
+                          selectedFeature?.patric_id ||
+                          selectedFeature?.feature_id ||
+                          value;
                         form.setValue("ref_string", refValue);
                       }}
                       disabled={isLoadingFeatures}
                     >
                       <SelectTrigger className="service-card-select-trigger">
-                        <SelectValue 
+                        <SelectValue
                           placeholder={
                             isLoadingFeatures
                               ? "Loading features..."
                               : featureOptions.length === 0
-                              ? "No features available"
-                              : "Select feature ID"
-                          } 
+                                ? "No features available"
+                                : "Select feature ID"
+                          }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         {isLoadingFeatures ? (
                           <div className="flex items-center justify-center p-4">
-                            <Spinner className="h-4 w-4 mr-2" />
-                            <span className="text-sm text-muted-foreground">
+                            <Spinner className="mr-2 h-4 w-4" />
+                            <span className="text-muted-foreground text-sm">
                               Loading features...
                             </span>
                           </div>
                         ) : featureOptions.length === 0 ? (
-                          <div className="p-4 text-sm text-muted-foreground text-center">
+                          <div className="text-muted-foreground p-4 text-center text-sm">
                             No features found in the selected feature group
                           </div>
                         ) : (
-                          featureOptions.map((feature) => {
-                            const displayLabel = feature.patric_id
-                              ? `${feature.patric_id}${feature.product ? ` --- ${feature.product}` : ""}`
-                              : feature.feature_id;
-                            return (
-                              <SelectItem
-                                key={feature.feature_id}
-                                value={feature.feature_id}
-                              >
-                                {displayLabel}
-                              </SelectItem>
-                            );
-                          })
+                          <SelectGroup>
+                            {featureOptions.map((feature) => {
+                              const displayLabel = feature.patric_id
+                                ? `${feature.patric_id}${feature.product ? ` --- ${feature.product}` : ""}`
+                                : feature.feature_id;
+                              return (
+                                <SelectItem
+                                  key={feature.feature_id}
+                                  value={feature.feature_id}
+                                >
+                                  {displayLabel}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
                         )}
                       </SelectContent>
                     </Select>
                     {isLoadingFeatures && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center gap-2 text-sm">
                         <Spinner className="h-4 w-4" />
                         <span>Loading features from feature group...</span>
                       </div>
@@ -1091,9 +1139,13 @@ export default function MSAandSNPAnalysisPage() {
                       open={genomeIdDropdownOpen}
                       onOpenChange={(open) => {
                         // Check if a valid genome group is selected before allowing dropdown to open
-                        if (open && (!selectGenomegroup || selectGenomegroup.length === 0)) {
+                        if (
+                          open &&
+                          (!selectGenomegroup || selectGenomegroup.length === 0)
+                        ) {
                           toast.error("Genome Group required", {
-                            description: "A valid Genome Group is needed before selecting a Genome ID",
+                            description:
+                              "A valid Genome Group is needed before selecting a Genome ID",
                             closeButton: true,
                           });
                           setGenomeIdDropdownOpen(false);
@@ -1102,53 +1154,56 @@ export default function MSAandSNPAnalysisPage() {
                         setGenomeIdDropdownOpen(open);
                       }}
                       onValueChange={(value) => {
+                        if (value == null) return;
                         setSelectedGenomeId(value);
                         form.setValue("ref_string", value);
                       }}
                       disabled={isLoadingGenomes}
                     >
                       <SelectTrigger className="service-card-select-trigger">
-                        <SelectValue 
+                        <SelectValue
                           placeholder={
                             isLoadingGenomes
                               ? "Loading genomes..."
                               : genomeOptions.length === 0
-                              ? "No genomes available"
-                              : "Select genome ID"
-                          } 
+                                ? "No genomes available"
+                                : "Select genome ID"
+                          }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         {isLoadingGenomes ? (
                           <div className="flex items-center justify-center p-4">
-                            <Spinner className="h-4 w-4 mr-2" />
-                            <span className="text-sm text-muted-foreground">
+                            <Spinner className="mr-2 h-4 w-4" />
+                            <span className="text-muted-foreground text-sm">
                               Loading genomes...
                             </span>
                           </div>
                         ) : genomeOptions.length === 0 ? (
-                          <div className="p-4 text-sm text-muted-foreground text-center">
+                          <div className="text-muted-foreground p-4 text-center text-sm">
                             No genomes found in the selected genome group
                           </div>
                         ) : (
-                          genomeOptions.map((genome) => {
-                            const displayLabel = genome.genome_name
-                              ? `${genome.genome_id} -- ${genome.genome_name}`
-                              : genome.genome_id;
-                            return (
-                              <SelectItem
-                                key={genome.genome_id}
-                                value={genome.genome_id}
-                              >
-                                {displayLabel}
-                              </SelectItem>
-                            );
-                          })
+                          <SelectGroup>
+                            {genomeOptions.map((genome) => {
+                              const displayLabel = genome.genome_name
+                                ? `${genome.genome_id} -- ${genome.genome_name}`
+                                : genome.genome_id;
+                              return (
+                                <SelectItem
+                                  key={genome.genome_id}
+                                  value={genome.genome_id}
+                                >
+                                  {displayLabel}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectGroup>
                         )}
                       </SelectContent>
                     </Select>
                     {isLoadingGenomes && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="text-muted-foreground flex items-center gap-2 text-sm">
                         <Spinner className="h-4 w-4" />
                         <span>Loading genomes from genome group...</span>
                       </div>
@@ -1168,9 +1223,6 @@ export default function MSAandSNPAnalysisPage() {
                 {/* Input Reference Sequence */}
                 {refType === "string" && (
                   <div className="space-y-2">
-                    <FormLabel className="service-card-label">
-                      Input Reference Sequence
-                    </FormLabel>
                     <Textarea
                       value={referenceFastaText}
                       onChange={(e) => setReferenceFastaText(e.target.value)}
@@ -1233,8 +1285,10 @@ export default function MSAandSNPAnalysisPage() {
                       </FormLabel>
                       <FormControl>
                         <Select
+                          items={msaSNPAnalysisAligners.map((aligner) => ({ value: aligner.value, label: aligner.label }))}
                           value={field.value}
                           onValueChange={(value) => {
+                            if (value == null) return;
                             field.onChange(value);
                             // Reset strategy when aligner changes to Muscle
                             if (value === "Muscle") {
@@ -1249,8 +1303,13 @@ export default function MSAandSNPAnalysisPage() {
                             <SelectValue placeholder="Select aligner" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Mafft">Mafft</SelectItem>
-                            <SelectItem value="Muscle">Muscle</SelectItem>
+                            <SelectGroup>
+                              {msaSNPAnalysisAligners.map((aligner) => (
+                                <SelectItem key={aligner.value} value={aligner.value}>
+                                  {aligner.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
                           </SelectContent>
                         </Select>
                       </FormControl>
@@ -1283,13 +1342,13 @@ export default function MSAandSNPAnalysisPage() {
                               <RadioGroup
                                 value={field.value || "auto"}
                                 onValueChange={field.onChange}
-                                className="space-y-2 p-2"
+                                className="grid gap-2 w-full p-2"
                               >
                                 {MsaSnpAnalysis.STRATEGY_OPTIONS.map(
                                   (option) => (
                                     <div
                                       key={option.value}
-                                      className="flex items-center space-x-2"
+                                      className="flex items-center gap-3"
                                     >
                                       <RadioGroupItem
                                         value={option.value}
@@ -1362,7 +1421,9 @@ export default function MSAandSNPAnalysisPage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}
+              disabled={
+                isSubmitting || !form.formState.isValid || !isOutputNameValid
+              }
             >
               {isSubmitting ? <Spinner /> : null}
               Submit

@@ -1,10 +1,14 @@
-import React from 'react'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Button } from '@/components/ui/button'
-import { LuSearch } from 'react-icons/lu'
-import { privacyPolicySections } from '../data/privacy-policy-sections'
+import React from "react";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Progress,
+  ProgressLabel,
+  ProgressValue,
+} from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { LuSearch } from "react-icons/lu";
+import { privacyPolicySections } from "../data/privacy-policy-sections";
 
 const PrivacySidebar = () => {
   return (
@@ -17,8 +21,12 @@ const PrivacySidebar = () => {
 
       <div className="mb-6">
         <Badge className="mb-2">Last Updated: April 8, 2023</Badge>
-        <Progress value={0} className="h-1 mb-2" />
-        <p className="text-xs text-muted-foreground">Reading progress</p>
+        <Progress value={0} className="mb-2">
+          <ProgressLabel className="text-xs text-muted-foreground">
+            Reading progress
+          </ProgressLabel>
+          <ProgressValue />
+        </Progress>
       </div>
 
       <div className="space-y-1 mb-6">

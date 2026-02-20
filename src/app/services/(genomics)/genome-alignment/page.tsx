@@ -434,7 +434,9 @@ export default function GenomeAlignmentServicePage() {
                             <Switch
                               id="manual-seed-weight"
                               checked={field.value}
-                              onCheckedChange={field.onChange}
+                              onCheckedChange={(checked) =>
+                                field.onChange(checked)
+                              }
                             />
                           </FormControl>
                         </div>
@@ -459,11 +461,16 @@ export default function GenomeAlignmentServicePage() {
                           </div>
                           <FormControl>
                             <Slider
+                              aria-label="Seed weight"
                               value={[field.value ?? seedWeightValue]}
-                              onValueChange={(value) => field.onChange(value[0])}
                               min={3}
                               max={21}
                               step={1}
+                              onValueChange={(value) =>
+                                field.onChange(
+                                  Array.isArray(value) ? value[0] : value,
+                                )
+                              }
                             />
                           </FormControl>
                           <div className="text-muted-foreground flex justify-between text-xs">

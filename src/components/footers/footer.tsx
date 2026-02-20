@@ -7,9 +7,12 @@ import {
   FaInstagram,
   FaYoutube,
 } from "react-icons/fa";
-import { Button } from "@/components/ui/button";
 import Logo from "@/components/ui/logo";
 import ThemeContent from "@/components/ui/theme-content";
+
+/** Ghost icon button styles for server component (avoids importing client-only buttonVariants). */
+const socialLinkClassName =
+  "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-sm font-medium outline-none transition-all focus-visible:ring-3 focus-visible:ring-ring/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 icon-link";
 
 interface FooterLink {
   name: string;
@@ -86,61 +89,51 @@ const Footer = () => {
               <ThemeContent type="funding-statement" as="span" />
             </span>
             <div className="gap-auto mt-4 flex lg:gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="icon-link"
-                asChild
+              <Link
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={socialLinkClassName}
               >
-                <Link href="https://twitter.com" target="_blank">
-                  <FaTwitter className="h-4 w-4" />
-                  <span className="sr-only">Twitter</span>
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="icon-link"
-                asChild
+                <FaTwitter className="h-4 w-4" data-icon="inline-start" />
+                <span className="sr-only">Twitter</span>
+              </Link>
+              <Link
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={socialLinkClassName}
               >
-                <Link href="https://facebook.com" target="_blank">
-                  <FaFacebook className="h-4 w-4" />
-                  <span className="sr-only">Facebook</span>
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="icon-link"
-                asChild
+                <FaFacebook className="h-4 w-4" data-icon="inline-start" />
+                <span className="sr-only">Facebook</span>
+              </Link>
+              <Link
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={socialLinkClassName}
               >
-                <Link href="https://instagram.com" target="_blank">
-                  <FaInstagram className="h-4 w-4" />
-                  <span className="sr-only">Instagram</span>
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="icon-link"
-                asChild
+                <FaInstagram className="h-4 w-4" data-icon="inline-start" />
+                <span className="sr-only">Instagram</span>
+              </Link>
+              <Link
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={socialLinkClassName}
               >
-                <Link href="https://github.com" target="_blank">
-                  <FaGithub className="h-4 w-4" />
-                  <span className="sr-only">GitHub</span>
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="icon-link"
-                asChild
+                <FaGithub className="h-4 w-4" data-icon="inline-start" />
+                <span className="sr-only">GitHub</span>
+              </Link>
+              <Link
+                href="https://youtube.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={socialLinkClassName}
               >
-                <Link href="https://youtube.com" target="_blank">
-                  <FaYoutube className="h-4 w-4" />
-                  <span className="sr-only">YouTube</span>
-                </Link>
-              </Button>
+                <FaYoutube className="h-4 w-4" data-icon="inline-start" />
+                <span className="sr-only">YouTube</span>
+              </Link>
             </div>
           </div>
           <div

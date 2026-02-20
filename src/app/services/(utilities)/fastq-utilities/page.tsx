@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -338,18 +339,21 @@ export default function FastqUtilitiesPage() {
                   <Label className="service-card-label">Select Action</Label>
                   <div className="flex items-center gap-2">
                     <Select
+                      items={PIPELINE_ACTION_OPTIONS}
                       value={selectedAction}
-                      onValueChange={(value) => setSelectedAction(value as PipelineAction)}
+                      onValueChange={(value) => value != null && setSelectedAction(value as PipelineAction)}
                     >
                       <SelectTrigger className="service-card-select-trigger">
                         <SelectValue placeholder="Select Action" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectGroup>
                         {PIPELINE_ACTION_OPTIONS.map((action) => (
                           <SelectItem key={action.value} value={action.value}>
                             {action.label}
                           </SelectItem>
                         ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                     <Button
@@ -506,18 +510,21 @@ export default function FastqUtilitiesPage() {
                   <div>
                     <Label className="service-card-sublabel">Platform</Label>
                     <Select
+                      items={PLATFORM_OPTIONS}
                       value={singlePlatform}
-                      onValueChange={(value) => setSinglePlatform(value as Platform)}
+                      onValueChange={(value) => value != null && setSinglePlatform(value as Platform)}
                     >
                       <SelectTrigger className="service-card-select-trigger">
                         <SelectValue placeholder="Select a Platform..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {PLATFORM_OPTIONS.map((platform) => (
-                          <SelectItem key={platform.value} value={platform.value}>
-                            {platform.label}
-                          </SelectItem>
-                        ))}
+                        <SelectGroup>
+                          {PLATFORM_OPTIONS.map((platform) => (
+                            <SelectItem key={platform.value} value={platform.value}>
+                              {platform.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </div>

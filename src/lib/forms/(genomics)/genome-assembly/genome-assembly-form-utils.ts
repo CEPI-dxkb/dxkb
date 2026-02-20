@@ -1,5 +1,22 @@
 import { GenomeAssemblyFormData } from "./genome-assembly-form-schema";
 
+export const genomeAssemblyRecipes = [
+  { value: "auto", label: "Auto" },
+  { value: "unicycler", label: "Unicycler" },
+  { value: "spades", label: "SPAdes" },
+  { value: "canu", label: "Canu" },
+  { value: "meta-spades", label: "metaSPAdes" },
+  { value: "plasmid-spades", label: "plasmidSPAdes" },
+  { value: "single-cell", label: "MDA (single-cell)" },
+  { value: "flye", label: "Flye" },
+  { value: "megahit", label: "MegaHit" },
+];
+
+export const genomeSizeUnitOptions = [
+  { value: "M", label: "M" },
+  { value: "K", label: "K" },
+];
+
 /**
  * Transform genome assembly form data to the format expected by the backend service
  */

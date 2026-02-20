@@ -4,10 +4,10 @@ import { BarChart3, BookOpen, Download, ExternalLink, LineChart, TrendingUp, Use
 import Link from "next/link"
 import { useState, useMemo } from "react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CitationNav } from "../components/citation-nav"
 import { citations as citationsData } from "../data/citations"
@@ -123,31 +123,56 @@ export default function CitationsMetricsPage() {
         {/* Time Range Filter */}
         <div className="citation-filters">
           <div className="flex flex-col space-y-2 md:flex-row md:items-center md:space-x-2 md:space-y-0">
-            <Select value={yearRange} onValueChange={(value: string) => setYearRange(value)}>
+            <Select
+              items={[
+                { value: "all", label: "All Time" },
+                ...(uniqueYears.length > 0 && uniqueYears[0] !== uniqueYears[uniqueYears.length - 1]
+                  ? [
+                      {
+                        value: String(uniqueYears[0]) + "-" + String(uniqueYears[uniqueYears.length - 1]),
+                        label: `${uniqueYears[0]} - ${uniqueYears[uniqueYears.length - 1]}`,
+                      },
+                      ...(uniqueYears.length > 2
+                        ? [
+                            {
+                              value: String(uniqueYears[uniqueYears.length - 3]) + "-" + String(uniqueYears[uniqueYears.length - 1]),
+                              label: "Last 3 Years",
+                            },
+                          ]
+                        : []),
+                    ]
+                  : []),
+                ...uniqueYears.map((year) => ({ value: String(year) + "-" + String(year), label: String(year) })),
+              ]}
+              value={yearRange}
+              onValueChange={(value) => setYearRange(value ?? "")}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select year range" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                {uniqueYears.length > 0 && uniqueYears[0] !== uniqueYears[uniqueYears.length - 1] && (
-                  <>
-                    <SelectItem value={String(uniqueYears[0]) + "-" + String(uniqueYears[uniqueYears.length - 1])}>
-                      {uniqueYears[0]} - {uniqueYears[uniqueYears.length - 1]}
-                    </SelectItem>
-                    {uniqueYears.length > 2 && (
-                      <SelectItem 
-                        value={String(uniqueYears[uniqueYears.length - 3]) + "-" + String(uniqueYears[uniqueYears.length - 1])}
-                      >
-                        Last 3 Years
+                <SelectGroup>
+                  <SelectItem value="all">All Time</SelectItem>
+                  {uniqueYears.length > 0 && uniqueYears[0] !== uniqueYears[uniqueYears.length - 1] && (
+                    <>
+                      <SelectItem value={String(uniqueYears[0]) + "-" + String(uniqueYears[uniqueYears.length - 1])}>
+                        {uniqueYears[0]} - {uniqueYears[uniqueYears.length - 1]}
                       </SelectItem>
-                    )}
-                  </>
-                )}
-                {uniqueYears.map((year) => (
-                  <SelectItem key={year} value={String(year) + "-" + String(year)}>
-                    {year}
-                  </SelectItem>
-                ))}
+                      {uniqueYears.length > 2 && (
+                        <SelectItem 
+                          value={String(uniqueYears[uniqueYears.length - 3]) + "-" + String(uniqueYears[uniqueYears.length - 1])}
+                        >
+                          Last 3 Years
+                        </SelectItem>
+                      )}
+                    </>
+                  )}
+                  {uniqueYears.map((year) => (
+                    <SelectItem key={year} value={String(year) + "-" + String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           </div>
@@ -551,7 +576,7 @@ export default function CitationsMetricsPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="flex items-center gap-1">
-                            <BarChart3 className="h-3 w-3" />
+                            <BarChart3 className="h-3 w-3" data-icon="inline-start" />
                             IF: {citation.impactFactor.toFixed(1)}
                           </Badge>
                           <Badge variant="outline" className="flex items-center gap-1">
@@ -576,13 +601,16 @@ export default function CitationsMetricsPage() {
                       <p className="text-sm mt-2">{citation.abstract}</p>
 
                       <div className="flex items-center gap-2 mt-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={citation.doi} target="_blank" rel="noopener noreferrer">
-                            View Paper
-                          </a>
-                        </Button>
+                        <a
+                          href={citation.doi}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={buttonVariants({ variant: "outline", size: "sm" })}
+                        >
+                          View Paper
+                        </a>
                         <Button variant="outline" size="sm">
-                          <Download className="h-3.5 w-3.5 mr-1.5" />
+                          <Download className="h-3.5 w-3.5" data-icon="inline-start" />
                           Export Citation
                         </Button>
                       </div>

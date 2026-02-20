@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -70,23 +70,23 @@ const DesktopNavbar = () => {
               <NavigationMenuContent>
                 <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
                   <li className="row-span-3">
-                    <NavigationMenuLink asChild>
-                      <div>
+                    <NavigationMenuLink
+                      render={
                         <Link
                           className="from-muted/50 bg-primary hover:bg-primary/80 flex h-full w-full flex-col justify-end rounded-md bg-gradient-to-b p-6 no-underline transition-all duration-300 outline-none select-none focus:shadow-md"
                           href="/"
-                          >
-                          <Logo variant="logo-white" />
-                          <div className="mt-4 mb-2 text-lg font-medium text-white">
-                            shadcn/ui
-                          </div>
-                          <p className="text-sm leading-tight text-white">
-                            Beautifully designed components that you can copy and
-                            paste into your apps. Accessible. Customizable. Open
-                            Source.
-                          </p>
-                        </Link>
+                        />
+                      }
+                    >
+                      <Logo variant="logo-white" />
+                      <div className="mt-4 mb-2 text-lg font-medium text-white">
+                        shadcn/ui
                       </div>
+                      <p className="text-sm leading-tight text-white">
+                        Beautifully designed components that you can copy and
+                        paste into your apps. Accessible. Customizable. Open
+                        Source.
+                      </p>
                     </NavigationMenuLink>
                   </li>
                   {gettingStartedItems.map((item) => (
@@ -94,6 +94,7 @@ const DesktopNavbar = () => {
                       key={item.title}
                       title={item.title}
                       href={item.href}
+                      target={item.target}
                     >
                       {item.description}
                     </ListItem>
@@ -113,6 +114,7 @@ const DesktopNavbar = () => {
                       key={organism.title}
                       title={organism.title}
                       href={organism.href}
+                      target={organism.target}
                     >
                       {organism.description}
                     </ListItem>
@@ -140,9 +142,21 @@ const DesktopNavbar = () => {
                             {section.items.map((item) => (
                               <NavigationMenuLink
                                 key={item.href}
-                                href={item.href}
-                                target={item.target}
-                                className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                render={
+                                  item.target === "_blank" ? (
+                                    <a
+                                      href={item.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                    />
+                                  ) : (
+                                    <Link
+                                      href={item.href}
+                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                    />
+                                  )
+                                }
                               >
                                 {item.title}
                               </NavigationMenuLink>
@@ -164,9 +178,21 @@ const DesktopNavbar = () => {
                             {section.items.map((item) => (
                               <NavigationMenuLink
                                 key={item.href}
-                                href={item.href}
-                                target={item.target}
-                                className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                render={
+                                  item.target === "_blank" ? (
+                                    <a
+                                      href={item.href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                    />
+                                  ) : (
+                                    <Link
+                                      href={item.href}
+                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                    />
+                                  )
+                                }
                               >
                                 {item.title}
                               </NavigationMenuLink>
@@ -228,22 +254,26 @@ const DesktopNavbar = () => {
           {/* Show sign in/sign up when NOT authenticated and not loading */}
           {!isLoading && !isAuthenticated && (
             <>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-white hover:bg-white/10 hover:text-white"
-                asChild
+              <Link
+                href="/login"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                  className: "text-white hover:bg-white/10 hover:text-white",
+                })}
               >
-                <Link href="/sign-in">Sign in</Link>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-foreground hover:text-secondary hover:bg-white"
-                asChild
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className={buttonVariants({
+                  variant: "outline",
+                  size: "sm",
+                  className: "text-foreground hover:text-secondary hover:bg-white",
+                })}
               >
-                <Link href="/sign-up">Sign up</Link>
-              </Button>
+                Register
+              </Link>
             </>
           )}
 
@@ -251,19 +281,22 @@ const DesktopNavbar = () => {
           {!isLoading && isAuthenticated && (
             <>
               <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <div className="flex items-center space-x-2">
+                <div className="size-8 shrink-0 overflow-hidden rounded-full **:data-[slot=dropdown-menu-trigger]:size-full **:data-[slot=dropdown-menu-trigger]:min-w-0">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger
+                      nativeButton={false}
+                      render={<div className="flex size-full items-center justify-center" />}
+                    >
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-white/10 text-white">
                           {user?.username?.charAt(0).toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="bottom" sideOffset={8} align="end">
-                    <DropdownMenuLabel>User Actions</DropdownMenuLabel>
-
+                    </DropdownMenuTrigger>
+                  <DropdownMenuContent side="bottom" sideOffset={8} align="end" className="w-[200px]">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>User Actions</DropdownMenuLabel>
+                    </DropdownMenuGroup>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                       <DropdownMenuItem>
@@ -308,6 +341,7 @@ const DesktopNavbar = () => {
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                </div>
               </div>
             </>
           )}
@@ -317,32 +351,23 @@ const DesktopNavbar = () => {
   );
 };
 
-const ListItem = React.forwardRef<
-  React.ComponentRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
+function ListItem({
+  title,
+  children,
+  href,
+  target,
+  ...props
+}: React.ComponentPropsWithoutRef<"li"> & { href: string; target?: "_self" | "_blank" }) {
   return (
-    <li>
-      <NavigationMenuLink asChild>
-        <div>
-          <a
-            ref={ref}
-            className={cn(
-              "hover:bg-accent/50 hover:text-accent-foreground focus:bg-accent/50 focus:text-accent-foreground block space-y-1 rounded-md p-3 leading-none no-underline transition-colors outline-none select-none",
-              className,
-            )}
-            {...props}
-            >
-            <div className="text-sm leading-none font-medium">{title}</div>
-            <p className="text-muted-foreground line-clamp-2 text-sm leading-snug">
-              {children}
-            </p>
-          </a>
+    <li {...props}>
+      <NavigationMenuLink render={<Link href={href} target={target} />}>
+        <div className="flex flex-col gap-1 text-sm">
+          <div className="leading-none font-medium">{title}</div>
+          <div className="text-muted-foreground line-clamp-2">{children}</div>
         </div>
       </NavigationMenuLink>
     </li>
-  );
-});
-ListItem.displayName = "ListItem";
+  )
+}
 
 export default DesktopNavbar;

@@ -1,22 +1,22 @@
 'use client';
 
+// The following imports are relatively self-explanatory as to what they're used for. They're used to help set up the columns, pagination, sorting, etc on the table
 import {
   ColumnDef,
   getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
   useReactTable,
   flexRender,
   SortingState,
   PaginationState,
-  ColumnOrderState,
-  ColumnSizingState,
-  VisibilityState,
-  RowSelectionState,
-  ColumnPinningState,
-} from '@tanstack/react-table';
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+} from "@tanstack/react-table";
+
+// The following imports are usual hooks used in React to do things on events. The only non-standard one is useMemo, which isused to cache data and checks on rerenders to see if the data has changed. This is relevant to when the columns are resized.
+import { useMemo, useRef, useState, useEffect } from "react";
+
+// This helps with rendering rows more quickly in situations that have thousands of rows
+import { useVirtualizer } from "@tanstack/react-virtual";
+
+// These imports are used to actually build the table structure
 import {
   Table,
   TableHeader,
@@ -24,146 +24,157 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '../ui/table';
-import clsx from 'clsx';
+} from "../ui/table";
 
+// This allows for using shorthand to conditionally apply CSS classes
+import clsx from "clsx";
+import { Button } from "@/components/ui/button";
+
+// This sets the structure of the columns that are sent in as JSON
 interface ColumnInfo {
-  id: string;
-  label: string;
-  visible?: boolean;
+  id: string; // The key in the JSON for this column
+  label: string; // The readable string that gets displayed as the column header
+  visible?: boolean; // Whether or not we see this column. There is a default that it comes in with from the parent, but it can be changed dynamically, as we'll see later
 }
 
+// This sets the structure of the data that is sent in as JSON
 interface DataTableProps {
   id: string;
   data: Record<string, any>[];
   columns: ColumnInfo[];
+  totalItems: number;
+  resource: string;
   onSelectionChange?: (rows: any[]) => void;
   onGenomeSelect?: (id: string | null) => void;
-  pageIndex: number; // controlled page index
-  pageSize: number; // controlled page size
-  totalItems: number; // total items in DB 
-  onPageChange: (page: number) => void; // callback when page changes
-  sorting?: SortingState; // controlled sorting (optional)
-  onSortingChange?: (s: SortingState) => void; // optional sorting callback
+
+  // Pagination
+  pageIndex?: number;
+  pageSize?: number;
+  onPageChange?: (pageIndex: number) => void;
+
+  // Sorting
+  sorting?: SortingState;
+  onSortingChange?: (newSorting: SortingState) => void;
+
+  // column ordering
+  columnOrder?: string[];
+  onColumnOrderChange?: (order: string[]) => void;
+
+  // column visibility
+  columnVisibility?: Record<string, boolean>;
+  onColumnVisibilityChange?: (newVis: Record<string, boolean>) => void;
+
+  // row selection (controlled)
+  rowSelection?: Record<string, boolean>;
+  onRowSelectionChange?: (selection: Record<string, boolean>) => void;
+
+  // Optional download handler
   onDownloadAll?: (format: 'csv' | 'txt', visibleColumns: string[] | null) => void;
-  onColumnVisibilityChange?: (visibility: Record<string, boolean>) => void;
+  // Loading indicator: parent can set this while data is being fetched
+  isLoading?: boolean;
 }
 
-export function DataTable({
-  id,
-  data,
-  columns,
-  onSelectionChange,
-  onGenomeSelect,
-  pageIndex,
-  pageSize,
-  totalItems,
-  onPageChange,
-  sorting,
-  onSortingChange,
-  onDownloadAll
-}: DataTableProps) {
-  // helpers for localStorage persistence (per table id)
-  const getStored = <T,>(key: string, fallback: T): T => {
-    try {
-      if (typeof window === 'undefined') return fallback;
-      const raw = localStorage.getItem(`${id}-${key}`);
-      return raw ? (JSON.parse(raw) as T) : fallback;
-    } catch {
-      return fallback;
-    }
-  };
-  const setStored = (key: string, value: any) => {
-    try {
-      if (typeof window === 'undefined') return;
-      localStorage.setItem(`${id}-${key}`, JSON.stringify(value));
-    } catch {}
-  };
+// This is the actual function...
+export function DataTable({ id, data, columns, totalItems, resource, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, rowSelection: controlledRowSelection, onRowSelectionChange, onDownloadAll, isLoading = false }: DataTableProps) {
 
-  // persisted states
-  const [internalSorting, setInternalSorting] = useState<SortingState>(() =>
-    getStored<SortingState>('sorting', [])
+  // These next consts are used and activated when something about the columm changes
+  const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
+    controlledVisibility || {}
   );
-  const [internalPagination, setInternalPagination] = useState<PaginationState>(() =>
-    getStored<PaginationState>('pagination', { pageIndex: 0, pageSize: pageSize ?? 200 })
-  );
-
-  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(() =>
-    getStored<ColumnOrderState>(
-      'columnOrder',
-      ['__select__', ...columns.map((c) => c.id)]
-    )
-  );
-
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
-    getStored<VisibilityState>(
-      'columnVisibility',
-      Object.fromEntries(columns.map((c) => [c.id, c.visible !== false]))
-    )
-  );
-
-  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>(() =>
-    getStored<ColumnSizingState>('columnSizing', {})
-  );
-
-  const [columnPinning, setColumnPinning] = useState<ColumnPinningState>(() =>
-    getStored<ColumnPinningState>('columnPinning', { left: ['__select__'] })
-  );
-
-  // other UI states
   const [showColumnMenu, setShowColumnMenu] = useState(false);
-  const [onlyVisibleColumns, setOnlyVisibleColumns] = useState(false);
+  
+  // Drag and drop state for column reordering
+  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
 
-  // selection & last shift index
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  // This handles the event of someone selecting a row - use controlled if provided
+  const [internalRowSelection, setInternalRowSelection] = useState({});
+  const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
+
+  // Pagination state: support both controlled (via pageIndex/pageSize props)
+  // and uncontrolled usage. If parent provides pageIndex/pageSize we treat
+  // pagination as controlled for that value; otherwise we keep internal state
+  // so actions like resizing columns don't reset the current page to 0.
+  const [pagination, setPagination] = useState<PaginationState>(() => ({
+    pageIndex: pageIndex ?? 0,
+    pageSize: pageSize ?? 200,
+  }));
+
+  // Sync when parent provides controlled pageIndex/pageSize values
+  useEffect(() => {
+    if (pageIndex !== undefined && pageIndex !== pagination.pageIndex) {
+      setPagination((prev) => ({ ...prev, pageIndex }));
+    }
+    if (pageSize !== undefined && pageSize !== pagination.pageSize) {
+      setPagination((prev) => ({ ...prev, pageSize }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageIndex, pageSize]);
+
+  // This allows us to select multiple rows at once...
   const lastSelectedIndexRef = useRef<number | null>(null);
 
-  // sizing / refs for DOM interactions
+  // This allows the user to only include displayed columns in download
+  const [onlyVisibleColumns, setOnlyVisibleColumns] = useState(false);
+
+  // These reference variables are used since React doesn't naturally have direct access to the DOM. As a result, we need to create hooks to use to be able to access and manipulate the DOM at various points in the code. These are the DOM elements that we'll need references for.
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const resizeLineRef = useRef<HTMLDivElement>(null);
+  const resizeLineRef = useRef<HTMLDivElement>(null); // This one is used to create the "ghost line" that appears on a column resize to guide the user
   const headerRef = useRef<HTMLTableSectionElement>(null);
+  const isResizingRef = useRef(false);
+  const preventClickRef = useRef<((e: Event) => void) | null>(null);
   const columnMenuRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
-  // Prevent sorting right after resizing
-  const isResizingRef = useRef(false);
 
-
-  // Close column menu when clicking outside
+  // This simply closes the columns dropdown if a mouseclick event happens outside of it
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (columnMenuRef.current && !columnMenuRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        columnMenuRef.current &&
+        !columnMenuRef.current.contains(event.target as Node)
+      ) {
         setShowColumnMenu(false);
       }
     };
-    if (showColumnMenu) document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+  
+    if (showColumnMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+  
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [showColumnMenu]);
 
-  // measure/layout niceties (kept from original)
+  // This makes sure the sizing all works right as per the height of the table within the page. This manages the height of the table, the pagination section, etc to make sure everything appears to the user as it should.
   useEffect(() => {
     const measure = () => {
       const controlsHeight = controlsRef.current?.offsetHeight || 0;
       const footerHeight = footerRef.current?.offsetHeight || 0;
       const viewportHeight = window.innerHeight;
-      // placeholder - kept for layout recalculation hook
     };
+  
+    // Delay measurement slightly to allow layout to settle
     const handle = requestAnimationFrame(measure);
+  
     const resizeObserver = new ResizeObserver(() => requestAnimationFrame(measure));
     if (controlsRef.current) resizeObserver.observe(controlsRef.current);
     if (footerRef.current) resizeObserver.observe(footerRef.current);
     window.addEventListener('resize', measure);
+  
     return () => {
       cancelAnimationFrame(handle);
       resizeObserver.disconnect();
       window.removeEventListener('resize', measure);
     };
   }, []);
-
-  // Column defs (checkbox + mapped columns)
+  
+  // This defines how the columns are laid out and react to various actions like being resized or reordered. You can see that the first column - the checkbox - is handled slightly differently in that the actions really cannot be applied to it.
   const columnDefs = useMemo<ColumnDef<any, any>[]>(() => {
     const checkboxColumn: ColumnDef<any> = {
       id: '__select__',
+      // This is specifically the "check all" checkbox in the header. Its value and action affect ALL rows.
       header: ({ table }) => (
         <div className="flex justify-center items-center w-full h-full">
           <input
@@ -177,45 +188,63 @@ export function DataTable({
           />
         </div>
       ),
+      // This is the code for each row's checkbox. Its value and action only affect its row.
       cell: ({ row }) => {
-        // NOTE: row ids are per-page index (string of index)
+        const allRows = table.getRowModel().rows;
+
         return (
           <div className="flex justify-center items-center w-full h-full">
             <input
               type="checkbox"
               checked={row.getIsSelected()}
-              onChange={() => {}}
+              onChange={() => {}} // required to avoid React warning
               onClick={(e) => {
                 e.stopPropagation();
+
                 const isShift = (e as React.MouseEvent<HTMLInputElement>).shiftKey;
-                const allRows = table.getPaginationRowModel().rows;
+                const allRows = table.getRowModel().rows;
                 const currentRowId = row.id;
-                const currentIndex = allRows.findIndex((r) => r.id === currentRowId);
-                if (currentIndex === -1) return;
+                const currentIndex = allRows.findIndex(r => r.id === currentRowId);
+
+                if (currentIndex === -1) {
+                  console.warn('Could not find current row index');
+                  return;
+                }
 
                 const lastSelectedIndex = lastSelectedIndexRef.current;
 
                 if (isShift && lastSelectedIndex !== null && lastSelectedIndex !== currentIndex) {
                   const start = Math.min(lastSelectedIndex, currentIndex);
                   const end = Math.max(lastSelectedIndex, currentIndex);
+
                   const newSelection: Record<string, boolean> = {};
                   for (let i = start; i <= end; i++) {
-                    const rId = allRows[i]?.id;
-                    if (rId) newSelection[rId] = true;
+                    const rowId = allRows[i]?.id;
+                    if (rowId) {
+                      newSelection[rowId] = true;
+                    }
                   }
-                  table.setRowSelection((prev) => ({ ...prev, ...newSelection }));
+
+                  table.setRowSelection((prev) => ({
+                    ...prev,
+                    ...newSelection,
+                  }));
                 } else {
                   const isSelected = row.getIsSelected();
-                  table.setRowSelection((prev) => ({ ...prev, [row.id]: !isSelected }));
+                  table.setRowSelection((prev) => ({
+                    ...prev,
+                    [row.id]: !isSelected,
+                  }));
                 }
 
+                // ✅ Set synchronously
                 lastSelectedIndexRef.current = currentIndex;
 
-                // cascade genome selection id (send first selected row's genome_id)
+                // After updating rowSelection...
                 if (row.getIsSelected()) {
-                  onGenomeSelect?.(null);
+                  onGenomeSelect?.(null); // deselecting, so clear
                 } else {
-                  const genomeId = row.original?.genome_id;
+                  const genomeId = row.original?.genome_id; // or whatever the correct field is
                   if (genomeId) onGenomeSelect?.(genomeId);
                 }
               }}
@@ -226,186 +255,161 @@ export function DataTable({
       },
       enableResizing: false,
       size: 40,
-      minSize: 40,
-      maxSize: 40,
     };
+    return [
+      checkboxColumn,
+      ...columns.map((col) => ({
+        accessorKey: col.id,
+        header: col.label,
+        cell: (info) => {
+          const value = info.getValue();
+          if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+            const date = new Date(value);
+            return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+          }
+          return value;
+        },
+        size: 200,
+        enableResizing: true,
+        enableSorting: true,
+        sortingFn: (rowA, rowB, columnId) => { // This defines the sorting function on each column
+          const a = rowA.getValue(columnId);
+          const b = rowB.getValue(columnId);
+      
+          // Treat empty/undefined/null as "last"
+          const aIsEmpty = a === undefined || a === null || a === '';
+          const bIsEmpty = b === undefined || b === null || b === '';
+      
+          if (aIsEmpty && bIsEmpty) return 0;
+          if (aIsEmpty) return 1;
+          if (bIsEmpty) return -1;
+      
+          // Normal string/number compare
+          return a > b ? 1 : a < b ? -1 : 0;
+        },
+      }))
+    ];
+  }, [columns]);
 
-    const mapped = columns.map((col) => ({
-      accessorKey: col.id,
-      header: col.label,
-      cell: (info: any) => {
-        const value = info.getValue();
-        if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
-          const date = new Date(value);
-          return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
-        }
-        return value;
-      },
-      size: 200,
-      enableResizing: true,
-      enableSorting: true,
-      sortingFn: (rowA: any, rowB: any, columnId: string) => {
-        const a = rowA.getValue(columnId);
-        const b = rowB.getValue(columnId);
-        const aIsEmpty = a === undefined || a === null || a === '';
-        const bIsEmpty = b === undefined || b === null || b === '';
-        if (aIsEmpty && bIsEmpty) return 0;
-        if (aIsEmpty) return 1;
-        if (bIsEmpty) return -1;
-        return a > b ? 1 : a < b ? -1 : 0;
-      },
-    })) as ColumnDef<any, any>[];
-
-    return [checkboxColumn, ...mapped];
-    // columns is stable from props
-  }, [columns, onGenomeSelect]);
-
-  // default pinning (ensure select checkbox pinned left)
-  useEffect(() => {
-    // ensure __select__ is pinned left when nothing stored
-    if (!columnPinning?.left?.includes('__select__')) {
-      setColumnPinning((prev) => {
-        const left = prev?.left ? Array.from(new Set(['__select__', ...prev.left])) : ['__select__'];
-        const updated = { ...prev, left };
-        setStored('columnPinning', updated);
-        return updated;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Controlled vs internal values
-  const currentSorting = sorting ?? internalSorting;
-  const currentPageIndex = pageIndex ?? internalPagination.pageIndex;
-  const currentPageSize = pageSize ?? internalPagination.pageSize;
-
-  // Build react-table
+  // This defines all the features, actions, and hooks for the table.
   const table = useReactTable({
     data,
     columns: columnDefs,
-    state: {
-      sorting: currentSorting,
-      pagination: {
-        pageIndex: currentPageIndex,
-        pageSize: currentPageSize,
-      },
+    state: { // These are the various states that are relevant in the table. These were defined up above.
+      sorting: controlledSorting ?? [],
+      // use the internal pagination state (which is kept in sync with
+      // controlled props when provided). This prevents ephemeral UI
+      // operations like column-resize from resetting the active page.
+      pagination,
       columnOrder,
       columnVisibility,
       columnSizing,
       rowSelection,
-      columnPinning,
     },
-    onSortingChange: (updater) => {
-      const newSorting = typeof updater === 'function' ? updater(currentSorting) : updater;
-      if (onSortingChange) {
-        onSortingChange(newSorting);
+    onRowSelectionChange: (updater) => {
+      const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+      
+      // If controlled, call the parent handler
+      if (onRowSelectionChange) {
+        onRowSelectionChange(newSelection);
       } else {
-        setInternalSorting(newSorting);
-        setStored('sorting', newSorting);
+        // Otherwise update internal state
+        setInternalRowSelection(newSelection);
       }
-      // reset to first page when sorting
-      if (onPageChange) {
-        onPageChange(0);
-      } else {
-        setInternalPagination((prev) => {
-          const next = { ...prev, pageIndex: 0 };
-          setStored('pagination', next);
-          return next;
-        });
-      }
-    },
-    onPaginationChange: (updater) => {
-      if (onPageChange) {
-        const currentPagination = { pageIndex: currentPageIndex, pageSize: currentPageSize };
-        const newPagination = typeof updater === 'function' ? updater(currentPagination) : updater;
-        onPageChange(newPagination.pageIndex);
-      } else {
-        const newPagination = typeof updater === 'function' ? updater(internalPagination) : updater;
-        setInternalPagination(newPagination);
-        setStored('pagination', newPagination);
-      }
-    },
-    onColumnOrderChange: (u) => {
-      setColumnOrder(u);
-      setStored('columnOrder', u);
-    },
-    onColumnVisibilityChange: (u) => {
-      setColumnVisibility(u);
-      setStored('columnVisibility', u);
-    },
-    onColumnSizingChange: (u) => {
-      setColumnSizing(u);
-      setStored('columnSizing', u);
-    },
-    onRowSelectionChange: (u) => {
-      const newSelection = typeof u === 'function' ? u(rowSelection) : u;
-      setRowSelection(newSelection);
-      // cascade up selected row data
+
+      // Always call onSelectionChange for backwards compatibility
       if (onSelectionChange) {
         const selectedRows = Object.keys(newSelection)
-          .filter((k) => newSelection[k])
-          .map((k) => data[parseInt(k, 10)])
+          .filter((key) => newSelection[key])
+          .map((key) => data[parseInt(key, 10)])
           .filter(Boolean);
         onSelectionChange(selectedRows);
       }
     },
-    onColumnPinningChange: (u) => {
-      setColumnPinning(u);
-      setStored('columnPinning', u);
+
+    // These are the definitions of what happens when any of the above states change. Most of them are pretty self-explanatory
+    onSortingChange: (updater) => {
+      const newSorting =
+        typeof updater === 'function'
+          ? updater(controlledSorting ?? [])
+          : updater;
+
+      console.log('🟡 DataTable onSortingChange called. Current sorting:', controlledSorting, 'New sorting:', newSorting);
+
+      // Reset to first page
+      table.setPageIndex(0);
+
+      // Notify parent (parent will handle clearing selection)
+      onSortingChange?.(newSorting);
+      },
+
+    onColumnVisibilityChange: (updater) => {
+      const newVis =
+        typeof updater === 'function' ? updater(columnVisibility) : updater;
+
+      setColumnVisibility(newVis);
+
+      // call parent callback
+      if (onColumnVisibilityChangeProp) {
+        onColumnVisibilityChangeProp(newVis);
+      }
+
+      // Trigger a recalculation of column sizing on visibility toggle
+      setColumnSizing((prev) => {
+        const updated = { ...prev };
+        table.getAllLeafColumns().forEach((col) => {
+          if (!updated[col.id]) {
+            updated[col.id] = col.getSize();
+          }
+        });
+        return updated;
+      });
     },
-    columnResizeMode: 'onEnd',
+    onPaginationChange: (updater) => {
+      const next = typeof updater === 'function' ? updater(pagination) : updater;
+
+      // Update internal pagination state so the UI stays on the same page
+      // during interactions like resizing. If the parent controls pageIndex
+      // it will be synced via the effect above.
+      setPagination(next);
+
+      // Notify parent of page change (if provided)
+      onPageChange?.(next.pageIndex);
+    },
+    onColumnOrderChange: onColumnOrderChange ? (updater) => {
+      const newOrder =
+        typeof updater === 'function'
+          ? updater(columnOrder ?? [])
+          : updater;
+
+      onColumnOrderChange(newOrder);
+    } : undefined,
+    manualPagination: true,
+    manualSorting: true,
+    pageCount: Math.ceil(totalItems / (pagination.pageSize ?? 200)),
+    columnResizeMode: 'onEnd', // This waits to implement the new column size until the mouse is released. This makes the transition smoother as it doesn't have to keep rerendering the column/table in realtime as the user moves the mouse.
     enableColumnResizing: true,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    getCoreRowModel: getCoreRowModel(), // This is what lets react build out the table from the raw data
     enableRowSelection: true,
     enableSortingRemoval: false,
     enableMultiRowSelection: true,
-    enableColumnPinning: true,
-    getRowId: (row, index) => String(index),
-    manualPagination: true, // server-driven
+    getRowId: (row, index) => String(index), // or use row.id if your data has unique ids,
   });
 
-  // Keep CSS variable widths aligned when column visibility changes
-  useEffect(() => {
-    const sizing = table.getState().columnSizing;
-    Object.entries(sizing).forEach(([id, size]) => {
-      document.documentElement.style.setProperty(`--col-${id}-width`, `${size}px`);
-    });
-  }, [table.getState().columnVisibility]);
+  
+  // This controls and handles the actual widths of the columns. It keeps track of any resizing that happens on any given column and manages them all.
+  const columnSizeVars = useMemo(() => {
+    const headers = table.getFlatHeaders();
+    const colSizes: { [key: string]: string } = {};
+    for (const header of headers) {
+      colSizes[`--col-${header.column.id}-size`] = `${header.column.getSize()}px`;
+    }
+    return colSizes;
+  }, [table.getState().columnSizing, table.getState().columnSizingInfo]);
 
-  // persist some states when changed
-  useEffect(() => setStored('columnOrder', columnOrder), [columnOrder]);
-  useEffect(() => setStored('columnVisibility', columnVisibility), [columnVisibility]);
-  useEffect(() => setStored('columnSizing', columnSizing), [columnSizing]);
-  useEffect(() => setStored('columnPinning', columnPinning), [columnPinning]);
+  const rows = table.getRowModel().rows;
 
-// expose some column sizing vars (for CSS custom props)
-// Recompute whenever column sizing *or* visibility changes so visible toggles
-// immediately re-apply the same size variables used by header/cells.
-const columnSizeVars = useMemo(() => {
-  const headers = table.getFlatHeaders();
-  const sizingState = table.getState().columnSizing ?? {};
-  const vars: Record<string, string> = {};
-
-  for (const header of headers) {
-    // Prefer the column's current getSize(), fall back to sizingState, otherwise a default
-    const colId = header.column.id;
-    const size = header.column.getSize() ?? (sizingState[colId] as number) ?? 200;
-    vars[`--col-${colId}-size`] = `${Math.max(40, size)}px`;
-  }
-
-  return vars;
-}, [
-  // trigger recompute when sizing changes OR column visibility changes
-  table.getState().columnSizing,
-  table.getState().columnSizingInfo,
-  table.getState().columnVisibility,
-]);
-
-  const rows = table.getPaginationRowModel().rows;
-
-  // virtualization
+  // This renders rows before they're all ready to go. This is useful in large data sets where we don't necessarily want to wait for thousands of rows of data to be ready before seeing anything at all. This watches for a certain number of rows to be ready, along with a handful extra of a buffer, and renders those while still working on fetching the rest of the data.
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
@@ -415,11 +419,9 @@ const columnSizeVars = useMemo(() => {
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
-  // column resize ghost line behavior
+  // This is what happens when the user clicks the "resize region" in a column header
   const handleResizeStart = (event: React.MouseEvent, header: any) => {
     event.preventDefault();
-    event.stopPropagation(); // 🛑 Prevent click events from triggering sort
-    isResizingRef.current = true; // 🪣 Flag that we’re resizing
 
     const startX = event.clientX;
     const column = header.column;
@@ -429,7 +431,7 @@ const columnSizeVars = useMemo(() => {
 
     const tableRect = colElement.closest('table')!.getBoundingClientRect();
 
-    if (resizeLineRef.current) {
+    if (resizeLineRef.current) { // Make the ghost line appear
       resizeLineRef.current.style.left = `${colElement.getBoundingClientRect().right - tableRect.left}px`;
       resizeLineRef.current.style.display = 'block';
     }
@@ -437,7 +439,8 @@ const columnSizeVars = useMemo(() => {
     const onMouseMove = (e: MouseEvent) => {
       const delta = e.clientX - startX;
       const newSize = Math.max(40, startSize + delta);
-      if (resizeLineRef.current) {
+
+      if (resizeLineRef.current) { // Make the ghost line move
         resizeLineRef.current.style.left = `${colElement.getBoundingClientRect().left - tableRect.left + newSize}px`;
       }
     };
@@ -446,150 +449,234 @@ const columnSizeVars = useMemo(() => {
       const delta = e.clientX - startX;
       const finalSize = Math.max(40, startSize + delta);
 
-      setColumnSizing((prev) => {
-        const updated = { ...prev, [column.id]: finalSize };
-        setStored('columnSizing', updated);
-        return updated;
-      });
+      setColumnSizing((prev) => ({
+        ...prev,
+        [column.id]: finalSize,
+      }));
 
-      if (resizeLineRef.current) {
+      if (resizeLineRef.current) { // Make the ghost line go away
         resizeLineRef.current.style.display = 'none';
       }
 
+      // Remove listeners. Keep the temporary click blocker active for a
+      // short while to catch the browser's synthesized click event that
+      // often follows mouseup after a drag/resize. Clean up after 50ms.
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-
-      // 🧹 Clear resize flag after short delay to avoid triggering sort
       setTimeout(() => {
+        if (preventClickRef.current) {
+          document.removeEventListener('click', preventClickRef.current, true);
+          preventClickRef.current = null;
+        }
         isResizingRef.current = false;
       }, 50);
     };
+
+    // mark that a resize interaction is in progress
+    isResizingRef.current = true;
+
+    // Block click events during the resize (capture phase) so browsers
+    // that emit a click after mouseup don't trigger header sorting.
+    preventClickRef.current = (ev: Event) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    document.addEventListener('click', preventClickRef.current, true);
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   };
 
-  // download logic (supports onlySelected and onlyVisibleColumns)
+  // Handle column drag start
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    setDraggedColumn(columnId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Handle column drag over
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  // Handle column drop
+  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
+    e.preventDefault();
+    
+    if (!draggedColumn || draggedColumn === targetColumnId) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    const allColumns = table.getAllLeafColumns();
+    const columnIds = allColumns.map(col => col.id);
+    
+    const draggedIndex = columnIds.indexOf(draggedColumn);
+    const targetIndex = columnIds.indexOf(targetColumnId);
+    
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedColumn(null);
+      return;
+    }
+
+    // Create new column order
+    const newOrder = [...columnIds];
+    const [removed] = newOrder.splice(draggedIndex, 1);
+    newOrder.splice(targetIndex, 0, removed);
+    
+    // Update column order
+    onColumnOrderChange?.(newOrder);
+    setDraggedColumn(null);
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    setDraggedColumn(null);
+  };
+
+  // This is the section that handles downloading the data. By default, it grabs all the data. However, there is an option to only download the selected rows
   const handleDownload = (format: 'csv' | 'txt', onlySelected = false) => {
+    // If downloading all data and onDownloadAll is provided, use it
+    if (!onlySelected && onDownloadAll) {
+      const allCols = table.getAllLeafColumns();
+      const visibleCols = onlyVisibleColumns
+        ? allCols.filter(col => col.getIsVisible() && col.id !== '__select__')
+        : allCols.filter(col => col.id !== '__select__');
+      
+      const visibleColumnIds = visibleCols.map(col => col.id);
+      onDownloadAll(format, onlyVisibleColumns ? visibleColumnIds : null);
+      return;
+    }
+
+    // Otherwise, use the local download logic (for selected rows or when onDownloadAll is not provided)
     const allCols = table.getAllLeafColumns();
     const visibleCols = onlyVisibleColumns
-      ? allCols.filter((c) => c.getIsVisible() && c.id !== '__select__')
-      : allCols.filter((c) => c.id !== '__select__');
+      ? allCols.filter(col => col.getIsVisible() && col.id !== '__select__')
+      : allCols.filter(col => col.id !== '__select__');
 
-    const headers = visibleCols.map((c) => c.columnDef.header as string);
-    const rowsToExport = onlySelected ? table.getSelectedRowModel().rows : table.getPrePaginationRowModel().rows;
+    const headers = visibleCols.map(col => col.columnDef.header as string);
+
+    const rowsToExport = onlySelected
+      ? table.getSelectedRowModel().rows
+      : table.getPrePaginationRowModel().rows;
 
     const content = [
       headers.join(','),
-      ...rowsToExport.map((row) =>
-        visibleCols.map((col) => {
+      ...rowsToExport.map(row =>
+        visibleCols.map(col => {
           const val = row.getValue(col.id);
           return typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val;
         }).join(',')
-      ),
+      )
     ].join('\n');
 
-    downloadFile(`table-export${onlySelected ? '-selected.' : '.'}${format}`, content);
+    downloadFile(`${resource}-${onlySelected ? 'selected-' : ''}.${format}`, content);
   };
 
-  // Pagination calculations (server-driven)
-  const pageCount = Math.max(1, Math.ceil((totalItems ?? data.length) / currentPageSize));
-  const currentPage = currentPageIndex;
-  const totalRows = totalItems ?? data.length;
-  const start = currentPageIndex * currentPageSize + 1;
-  const end = Math.min(start + currentPageSize - 1, totalRows);
-
-  // safe onPageChange wrapper
-  const safeGoToPage = (p: number) => {
-    if (p < 0) return;
-    const lastPage = Math.max(0, pageCount - 1);
-    const target = Math.min(p, lastPage);
-    if (onPageChange) onPageChange(target);
-    else setInternalPagination((prev) => {
-      const next = { ...prev, pageIndex: target };
-      setStored('pagination', next);
-      return next;
-    });
-  };
-
-  const visibleColumns = table
-  .getVisibleLeafColumns()
-  .filter(col => col.id !== '__select__')
-  .map(col => col.id);
-  
-
+  // Now that all the setup is done, let's render the table!
   return (
-    <div className="flex flex-col h-full w-full text-xs relative items-center border-0">
-      {/* Controls */}
-      <div className="w-[100%] flex justify-end mb-2 px-5" ref={controlsRef}>
-        <div className="relative inline-block text-left" ref={columnMenuRef}>
-          <button
-            className="flex justify-end w-full rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
-            onClick={() => setShowColumnMenu((p) => !p)}
-          >
-            Columns ▾
-          </button>
-          {showColumnMenu && (
-            <div className="absolute left-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-30">
-              <div className="py-1 max-h-64 overflow-auto text-xs">
-                {table.getAllColumns()
-                  .filter((col) => col.id !== '__select__')
-                  .map((column) => (
-                    <label key={column.id} className="flex items-center space-x-2 px-2 py-1 hover:bg-muted-foreground cursor-pointer text-black">
-                      <input type="checkbox" checked={column.getIsVisible()} onChange={() => column.toggleVisibility()} />
-                      <span>{column.columnDef.header as string}</span>
-                    </label>
-                  ))}
+    <div className="flex flex-col h-full w-full text-xs relative items-center border-0">{/* This is the main container. Full width and content centered. */}
+      <div className="w-[100%] flex justify-end mb-2 z-50 px-5" ref={controlsRef}> {/* This is the area above the table for the various buttons. */}
+          <div className="relative inline-block text-left" ref={columnMenuRef}> {/* This is the button for changing the visibility of columns in the table */}
+            <Button
+              className="flex justify-end w-full rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
+              onClick={() => setShowColumnMenu(prev => !prev)}
+            >
+              Columns ▾
+            </Button>
+
+            {showColumnMenu && (
+              <div className="absolute left-0 mt-1 w-40 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                <div className="py-1 max-h-64 overflow-auto text-xs">
+                  {table.getAllColumns()
+                    .filter(col => col.id !== '__select__')
+                    .map((column) => (
+                      <label
+                        key={column.id}
+                        className="flex items-center space-x-2 px-2 py-1 hover:bg-muted-foreground cursor-pointer text-black"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={column.getIsVisible()}
+                          onChange={() => column.toggleVisibility()}
+                        />
+                        <span>{column.columnDef.header as string}</span>
+                      </label>
+                    ))}
+                </div>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Download buttons */}
+          <Button
+            onClick={() => handleDownload('csv')}
+            className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2 ml-2"
+          >
+            Download (CSV)
+          </Button>
+          <Button
+            onClick={() => handleDownload('txt')}
+            className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
+          >
+            Download (TXT)
+          </Button>
+
+          {/* These next two only show up if rows are selected */}
+          {table.getSelectedRowModel().rows.length > 0 && ( 
+            <>
+              <Button
+                onClick={() => handleDownload('csv', true)}
+                className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
+              >
+                Download Selected (CSV)
+              </Button>
+              <Button
+                onClick={() => handleDownload('txt', true)}
+                className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
+              >
+                Download Selected (TXT)
+              </Button>
+            </>
           )}
-        </div>
-
-        <button onClick={() => onDownloadAll?.('csv', onlyVisibleColumns
-        ? table
-            .getVisibleLeafColumns()
-            .filter(col => col.id !== '__select__')
-            .map(col => col.id)
-        : null)} className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2 ml-2">
-          Download (CSV)
-        </button>
-        <button onClick={() => onDownloadAll?.('txt', onlyVisibleColumns
-        ? table
-            .getVisibleLeafColumns()
-            .filter(col => col.id !== '__select__')
-            .map(col => col.id)
-        : null)} className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2">
-          Download (TXT)
-        </button>
-
-        {table.getSelectedRowModel().rows.length > 0 && (
-          <>
-            <button onClick={() => handleDownload('csv', true)} className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2">
-              Download Selected (CSV)
-            </button>
-            <button onClick={() => handleDownload('txt', true)} className="rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2">
-              Download Selected (TXT)
-            </button>
-          </>
-        )}
-
+        
         <label className="flex items-center text-xs text-foreground ml-4">
           <input
             type="checkbox"
             checked={onlyVisibleColumns}
-            onChange={() => setOnlyVisibleColumns((p) => !p)}
+            onChange={() => setOnlyVisibleColumns(prev => !prev)}
             className="mr-1"
           />
           Download Displayed Columns Only
         </label>
       </div>
+      <div className="w-full flex flex-col border border-gray-500 rounded relative h-full overflow-hidden"> {/* This is the main container, which contains both the table and the pagination footer */}
 
-      {/* Table + virtualized body */}
-      <div className="w-full flex flex-col border border-gray-500 rounded relative h-full overflow-hidden">
-        <div className="flex-1 overflow-auto relative" ref={tableContainerRef} style={{ maxHeight: '100%', paddingBottom: '52px' }}>
+        {/* This is the section containing the main data table */}
+        <div
+          className="flex-1 overflow-auto relative"
+          ref={tableContainerRef}
+          style={{
+            maxHeight: '100%',
+            paddingBottom: '52px', // leave room for pagination footer
+          }}
+        >
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="absolute inset-0 z-40 bg-white/60 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-8 h-8 border-4 border-t-transparent border-blue-600 rounded-full animate-spin" />
+                <div className="text-sm text-foreground">Loading…</div>
+              </div>
+            </div>
+          )}
+          {/* This extra nested div is necessary to make sure all the table elements/columns lay out properly. Specifically to ensure things like scrolling, table width, column-resizing, etc, all work as intended. */}
           <div className="min-w-max relative" style={columnSizeVars}>
             <Table className="w-full table-auto text-xs border-collapse" style={{ borderSpacing: 0 }}>
-              <TableHeader ref={headerRef} className="sticky top-0 bg-primary text-secondary uppercase border-black z-20">
+              <TableHeader
+                ref={headerRef}
+                className="sticky top-0 z-30 bg-primary text-secondary uppercase border-black"
+              >
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="flex border-t border-b border-black">
                     {headerGroup.headers.map((header) => {
@@ -600,58 +687,79 @@ const columnSizeVars = useMemo(() => {
                           colSpan={header.colSpan}
                           className={clsx(
                             'border-r border-l border-black bg-primary text-secondary relative',
-                            column.id === '__select__' ? 'p-0 flex justify-center items-center' : 'px-2 py-0 text-sm font-bold leading-none align-middle'
+                            column.id === '__select__'
+                              ? 'p-0 flex justify-center items-center' // ✅ center checkbox
+                              : 'px-2 py-0 text-sm font-bold leading-none align-middle cursor-pointer'
                           )}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text/plain', column.id);
-                            e.dataTransfer.effectAllowed = 'move';
-                          }}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = 'move';
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const draggedColumnId = e.dataTransfer.getData('text/plain');
-                            const targetColumnId = column.id;
-                            if (draggedColumnId && draggedColumnId !== targetColumnId && draggedColumnId !== '__select__' && targetColumnId !== '__select__') {
-                              const newOrder = [...table.getState().columnOrder];
-                              const fromIndex = newOrder.indexOf(draggedColumnId);
-                              const toIndex = newOrder.indexOf(targetColumnId);
-                              newOrder.splice(fromIndex, 1);
-                              newOrder.splice(toIndex, 0, draggedColumnId);
-                              table.setColumnOrder(newOrder);
-                            }
-                          }}
-                          data-pinned={header.column.getIsPinned() === 'left' ? 'left' : undefined}
                           style={{
                             width: `var(--col-${column.id}-size)`,
                             minWidth: `var(--col-${column.id}-size)`,
                             maxWidth: `var(--col-${column.id}-size)`,
-                            ...header.column.getSize() && { width: `${header.column.getSize()}px` },
-                            left: header.column.getIsPinned() === 'left' ? 0 : undefined,
-                            position: header.column.getIsPinned() === 'left' ? 'sticky' : undefined,
-                            zIndex: header.column.getIsPinned() === 'left' ? 2 : 1,
                           }}
+                          onClick={column.id !== '__select__' ? (e) => {
+                            // If we were resizing just before this click, ignore the click
+                            // because the browser may emit a click after mouseup when the
+                            // user finishes resizing (particularly when shrinking a column).
+                            if (isResizingRef.current) {
+                              e.stopPropagation();
+                              return;
+                            }
+
+                            e.stopPropagation();
+                            console.log('🟢 Column header clicked:', column.id, 'canSort:', column.getCanSort(), 'isSorted:', column.getIsSorted());
+                            const handler = column.getToggleSortingHandler();
+                            if (handler) {
+                              handler(e);
+                            } else {
+                              console.log('❌ No toggle handler for column:', column.id);
+                            }
+                          } : undefined}
                         >
-                          <div className="flex items-center justify-between w-full h-full cursor-pointer select-none py-0" onClick={(e) => {
-                              if (isResizingRef.current) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                return; // 🧱 Skip sort if resizing just happened
-                              }
-                              column.getToggleSortingHandler()?.(e);
-                            }}>
-                            {flexRender(header.column.columnDef.header, header.getContext())}
-                            {{
-                              asc: ' ↑',
-                              desc: ' ↓',
-                            }[column.getIsSorted() as string] ?? ''}
-                            {column.getCanResize() && (
-                              <div onMouseDown={(e) => handleResizeStart(e, header)} className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-30 hover:bg-blue-300" style={{ transform: 'translateX(50%)' }} />
-                            )}
-                          </div>
+                          {column.id === '__select__' ? (
+                            // Checkbox column - no sorting or dragging
+                            <div className="flex items-center justify-center w-full h-full py-0">
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                            </div>
+                          ) : (
+                            // Regular column - sortable and draggable
+                            <div 
+                              className="flex items-center justify-between w-full h-full py-0 relative"
+                              draggable={true}
+                              onDragStart={(e) => handleDragStart(e, column.id)}
+                              onDragOver={handleDragOver}
+                              onDrop={(e) => handleDrop(e, column.id)}
+                              onDragEnd={handleDragEnd}
+                              style={{
+                                cursor: 'move',
+                                opacity: draggedColumn === column.id ? 0.5 : 1,
+                                backgroundColor: draggedColumn && draggedColumn !== column.id ? 'transparent' : '',
+                              }}
+                            >
+                              <div className="flex items-center gap-2 flex-1">
+                                <span className="select-none">{flexRender(header.column.columnDef.header, header.getContext())}</span>
+                                <div className="flex flex-col justify-center items-center">
+                                  {column.getIsSorted() === 'asc' ? (
+                                    <span className="text-xs">▲</span>
+                                  ) : column.getIsSorted() === 'desc' ? (
+                                    <span className="text-xs">▼</span>
+                                  ) : (
+                                    <span className="text-xs opacity-30">⇅</span>
+                                  )}
+                                </div>
+                              </div>
+                              {column.getCanResize() && (
+                                // This extra div is the grabbable area for resizing the column 
+                                <div
+                                  onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    handleResizeStart(e, header);
+                                  }}
+                                  className="absolute top-0 right-0 w-2 h-full cursor-col-resize z-30 hover:bg-blue-300"
+                                  style={{ transform: 'translateX(50%)' }}
+                                />
+                              )}
+                            </div>
+                          )}
                         </TableHead>
                       );
                     })}
@@ -659,24 +767,52 @@ const columnSizeVars = useMemo(() => {
                 ))}
               </TableHeader>
 
-              <TableBody style={{ position: 'relative', height: totalSize }} className="relative z-10 border-collapse gap-0">
-                {rows.length === 0 ? (
-                  <TableRow className="flex w-full h-24 items-center justify-center">
-                    <TableCell colSpan={table.getVisibleLeafColumns().length} className="text-left w-full border-t border-black py-8 text-xl font-semibold text-foreground" style={{ justifyContent: 'left' }}>
-                      No results
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  virtualRows.map((virtualRow) => {
-                    const row = rows[virtualRow.index];
-                    return (
-                      <TableRow key={row.id} style={{ position: 'absolute', transform: `translateY(${virtualRow.start}px)`, left: 0, right: 0, display: 'flex', height: '24px' }} className={clsx(row.getIsSelected() ? 'bg-muted-foreground hover:bg-muted-foreground' : 'hover:bg-muted-foreground')}>
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="py-1 border border-primary bg-background" data-pinned={cell.column.getIsPinned() === 'left' ? 'left' : undefined} style={{
-                            ...cell.column.getSize() && { width: `${cell.column.getSize()}px` },
-                            left: cell.column.getIsPinned() === 'left' ? 0 : undefined,
-                            position: cell.column.getIsPinned() === 'left' ? 'sticky' : undefined,
-                            zIndex: cell.column.getIsPinned() === 'left' ? 1 : 0,
+              {/* Now we output the actual data...
+              Most of this is self-explanatory*/}
+              <TableBody
+                style={{
+                  position: 'relative',
+                  height: totalSize,
+                }}
+                className="relative z-10 border-collapse gap-0"
+              >
+                {rows.length === 0 ? ( // If there are no results...
+                <TableRow className="flex w-full h-24 items-center justify-center">
+                  <TableCell
+                    colSpan={table.getVisibleLeafColumns().length}
+                    className="text-left w-full border-t border-black py-8 text-xl font-semibold text-foreground"
+                    style={{ justifyContent: 'left' }}
+                  >
+                    No results
+                  </TableCell>
+                </TableRow>
+              ) : (
+                // If there ARE results...
+                virtualRows.map((virtualRow) => {
+                  const row = rows[virtualRow.index];
+                  return (
+                    <TableRow
+                      key={row.id}
+                      style={{
+                        position: 'absolute',
+                        transform: `translateY(${virtualRow.start}px)`,
+                        left: 0,
+                        right: 0,
+                        display: 'flex',
+                        height: '24px',
+                      }}
+                      className={clsx(
+                        row.getIsSelected()
+                          ? 'bg-muted-foreground hover:bg-muted-foreground' // lock in yellow background
+                          : 'hover:bg-muted-foreground' // only apply white hover if not selected
+                      )}
+                      
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className='py-1 border border-primary'
+                          style={{
                             width: `var(--col-${cell.column.id}-size)`,
                             minWidth: `var(--col-${cell.column.id}-size)`,
                             maxWidth: `var(--col-${cell.column.id}-size)`,
@@ -686,91 +822,100 @@ const columnSizeVars = useMemo(() => {
                             display: 'flex',
                             height: '24px',
                             alignItems: 'center',
-                            justifyContent: cell.column.id === '__select__' ? 'center' : 'flex-start',
-                          }}>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })
-                )}
+                            justifyContent: cell.column.id === '__select__' ? 'center' : 'flex-start',                          
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })
+              )}
               </TableBody>
             </Table>
 
-            <div ref={resizeLineRef} className="absolute top-0 bottom-0 w-[2px] bg-blue-600 opacity-50 pointer-events-none z-40" style={{ display: 'none' }} />
+            {/* This is the "ghost line" that appears when resizing a column width. It remains hidden until triggered to appear by clicking the resizing div */}
+            <div
+              ref={resizeLineRef}
+              className="absolute top-0 bottom-0 w-[2px] bg-blue-600 opacity-50 pointer-events-none z-40"
+              style={{ display: 'none' }}
+            />
           </div>
         </div>
 
         {/* Pagination Footer */}
-        <div className="bg-secondary py-3 border-t z-10 shadow-sm border-black w-full" ref={footerRef}>
+        <div className="bg-secondary py-3 border-t z-10 shadow-sm border-black w-full"ref={footerRef}>
           <div className="flex flex-col md:flex-row justify-between items-center px-4 space-y-2 md:space-y-0">
             <div>
-              <div>Showing {start}–{end} of {totalRows} results</div>
-            </div>
-            <div className="flex items-center space-x-2 mx-10">
               {(() => {
-                const pageCount = Math.ceil(totalItems / pageSize);
-                const current = pageIndex; // zero-based
-                const siblingCount = 2; // pages around current
-
-                const pages: (number | string)[] = [];
-
-                const leftSibling = Math.max(current - siblingCount, 0);
-                const rightSibling = Math.min(current + siblingCount, pageCount - 1);
-
-                // always show first page
-                pages.push(0);
-
-                if (leftSibling > 1) pages.push('...'); // ellipsis after first
-
-                for (let i = leftSibling; i <= rightSibling; i++) {
-                  if (i !== 0 && i !== pageCount - 1) pages.push(i);
-                }
-
-                if (rightSibling < pageCount - 2) pages.push('...'); // ellipsis before last
-                if (pageCount > 1) pages.push(pageCount - 1); // always show last page
-
-                return (
-                  <>
-                    <button
-                      onClick={() => onPageChange?.(pageIndex - 1)}
-                      disabled={pageIndex === 0}
-                      className="px-2 py-1 border rounded border-primary"
-                    >
-                      Prev
-                    </button>
-
-                    {pages.map((p, idx) =>
-                      p === '...' ? (
-                        <span key={idx} className="px-2 py-1">
-                          …
-                        </span>
-                      ) : (
-                        <button
-                          key={idx}
-                          onClick={() => onPageChange?.(p as number)}
-                          className={`font-bold px-2 py-1 border rounded mx-[2px] ${
-                            pageIndex === p
-                              ? "bg-secondary text-primary border-primary"
-                              : "bg-primary text-secondary hover:bg-secondary hover:text-primary hover:border-primary"
-                          }`}
-                        >
-                          {(p as number) + 1}
-                        </button>
-                      )
-                    )}
-
-                    <button
-                      onClick={() => onPageChange?.(pageIndex + 1)}
-                      disabled={pageIndex + 1 >= pageCount}
-                      className="px-2 py-1 border rounded border-primary"
-                    >
-                      Next
-                    </button>
-                  </>
-                );
+                const pageIndex = table.getState().pagination.pageIndex;
+                const pageSize = table.getState().pagination.pageSize;
+                const totalRows = totalItems; // total from backend
+                const start = pageIndex * pageSize + 1;
+                const end = Math.min(start + data.length - 1, totalRows);
+                return <div>Showing {start}-{end} of {totalRows} results</div>;
               })()}
+            </div>
+            <div className="flex items-center space-x-2">
+              {/* Back arrow */}
+              <Button
+                onClick={() => {
+                  table.previousPage();
+                  // Parent will handle this via onPaginationChange
+                }}
+                disabled={!table.getCanPreviousPage()}
+                className="px-2 py-1 border border-primary disabled:opacity-50"
+              >
+                {'Prev'}
+              </Button>
+              {/* Pagination page buttons */}
+              {(() => {
+                const pageCount = table.getPageCount();
+                const currentPage = table.getState().pagination.pageIndex;
+                const pages: number[] = [];
+
+                if (pageCount > 0) pages.push(0);
+                for (let i = currentPage - 2; i <= currentPage + 2; i++) {
+                  if (i > 0 && i < pageCount - 1) pages.push(i);
+                }
+                if (pageCount > 1) pages.push(pageCount - 1);
+                const uniquePages = [...new Set(pages)].sort((a, b) => a - b);
+
+                return uniquePages.map((page, idx) => {
+                  const prev = uniquePages[idx - 1];
+                  const showDots = prev !== undefined && page - prev > 1;
+                  return (
+                    <span key={page}>
+                      {showDots && <span className="px-1">...</span>}
+                      <Button
+                        onClick={() => {
+                          // Update table's internal state for immediate UI feedback
+                          table.setPageIndex(page);
+                          // Parent will handle this via onPaginationChange
+                        }}
+                        className={clsx(
+                          'px-3 py-1 border mx-1 bg-background text-foreground',
+                          currentPage === page ? 'bg-muted-foreground font-bold' : 'bg-background'
+                        )}
+                      >
+                        {page + 1}
+                      </Button>
+                    </span>
+                  );
+                });
+              })()}
+              {/* Forward arrow */}
+              <Button
+                onClick={() => {
+                  table.nextPage();
+                  // Parent will handle this via onPaginationChange
+                }}
+                disabled={!table.getCanNextPage()}
+                className="px-2 py-1 border border-primary disabled:opacity-50"
+              >
+                {'Next'}
+              </Button>
             </div>
           </div>
         </div>
@@ -779,7 +924,7 @@ const columnSizeVars = useMemo(() => {
   );
 }
 
-// download helper
+// This is the function that allows the user to download the data
 function downloadFile(filename: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const link = document.createElement('a');

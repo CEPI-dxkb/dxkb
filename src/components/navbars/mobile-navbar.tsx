@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { LuMenu, LuSearch, LuChevronUp } from "react-icons/lu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,11 +34,13 @@ const MobileNavbar = () => {
       <div className="flex items-center justify-between px-4 py-4 text-foreground">
       <div className="flex items-center gap-4">
         <Sheet>
-          <SheetTrigger asChild className="group hover:bg-gray-300/50">
-            <Button variant="ghost">
-              <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" />
-            </Button>
-          </SheetTrigger>
+          <SheetTrigger
+            render={(triggerProps) => (
+              <Button variant="ghost" className="group hover:bg-gray-300/50" {...triggerProps}>
+                <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" data-icon="inline-start" />
+              </Button>
+            )}
+          />
           <SheetContent
             side="left"
             className="w-[85vw] max-w-md overflow-y-auto p-0"
@@ -176,22 +178,26 @@ const MobileNavbar = () => {
         {/* Show sign in/sign up when NOT authenticated and not loading */}
         {!isLoading && !isAuthenticated && (
           <>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-foreground hover:bg-gray-300/50"
-              asChild
+            <Link
+              href="/login"
+              className={buttonVariants({
+                variant: "ghost",
+                size: "sm",
+                className: "text-foreground hover:bg-gray-300/50",
+              })}
             >
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-foreground text-foreground hover:bg-foreground hover:text-background"
-              asChild
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className={buttonVariants({
+                variant: "outline",
+                size: "sm",
+                className: "border-foreground text-foreground hover:bg-foreground hover:text-background",
+              })}
             >
-              <Link href="/sign-up">Sign up</Link>
-            </Button>
+              Register
+            </Link>
           </>
         )}
 

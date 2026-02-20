@@ -1,5 +1,5 @@
-import MobileNavbar from './mobile-navbar'
-import DesktopNavbar from './desktop-navbar'
+import MobileNavbar from "./mobile-navbar";
+import DesktopNavbar from "./desktop-navbar";
 
 const Navbar = () => {
   return (
@@ -7,7 +7,7 @@ const Navbar = () => {
       <DesktopNavbar />
       <MobileNavbar />
     </div>
-  )
-}
+  );
+};
 
-export default Navbar
+export default Navbar;

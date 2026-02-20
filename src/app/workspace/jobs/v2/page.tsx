@@ -3,18 +3,19 @@
 import { useEffect, useState, useRef, useMemo, Suspense } from "react";
 import { useWorkspace } from "../../../../hooks/services/workspace/use-workspace";
 import { JobStatus, JobListItem } from "../../../../types/workspace";
-import { Button } from "../../../../components/ui/button";
+import { Button, buttonVariants } from "../../../../components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../../../components/ui/card";
-import { Badge } from "../../../../components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "../../../../components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -27,7 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../../../components/ui/dialog";
-import { Separator } from "../../../../components/ui/separator";
+import { Separator } from "@/components/ui/separator";
 import {
   RefreshCw,
   Search,
@@ -383,7 +384,8 @@ function JobsV2Content() {
         <h1 className="text-3xl font-bold">Jobs Dashboard</h1>
         <Button onClick={handleRefresh} disabled={loading.enumerate}>
           <RefreshCw
-            className={`mr-2 h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            className={`h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            data-icon="inline-start"
           />
           Refresh
         </Button>
@@ -465,34 +467,49 @@ function JobsV2Content() {
         </div>
         <div className="flex space-x-2">
           <Select
+            items={[
+              { value: "all", label: "All Status" },
+              ...Object.entries(statusLabels).map(([status, label]) => ({ value: status, label })),
+            ]}
             value={statusFilter}
             onValueChange={(value) =>
-              setStatusFilter(value as JobStatus | "all")
+              value != null && setStatusFilter(value as JobStatus | "all")
             }
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {Object.entries(statusLabels).map(([status, label]) => (
-                <SelectItem key={status} value={status}>
-                  {label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="all">All Status</SelectItem>
+                {Object.entries(statusLabels).map(([status, label]) => (
+                  <SelectItem key={status} value={status}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
-          <Select value={appFilter} onValueChange={setAppFilter}>
+          <Select
+            items={[
+              { value: "all", label: "All Services" },
+              ...uniqueApps.map((app) => ({ value: app, label: app })),
+            ]}
+            value={appFilter}
+            onValueChange={(value) => setAppFilter(value ?? "")}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Application" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Services</SelectItem>
-              {uniqueApps.map((app) => (
-                <SelectItem key={app} value={app}>
-                  {app}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectItem value="all">All Services</SelectItem>
+                {uniqueApps.map((app) => (
+                  <SelectItem key={app} value={app}>
+                    {app}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>
@@ -511,11 +528,11 @@ function JobsV2Content() {
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
+                <Download className="h-4 w-4" data-icon="inline-start" />
                 Download All
               </Button>
               <Button variant="outline" size="sm">
-                <Play className="mr-2 h-4 w-4" />
+                <Play className="h-4 w-4" data-icon="inline-start" />
                 Rerun Selected
               </Button>
               <Button
@@ -523,7 +540,7 @@ function JobsV2Content() {
                 size="sm"
                 className="text-destructive hover:text-destructive"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="h-4 w-4" data-icon="inline-start" />
                 Delete Selected
               </Button>
             </div>
@@ -679,17 +696,18 @@ function JobsV2Content() {
                     </td>
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex space-x-1">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/workspace/jobs/${job.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
+                        <Link
+                          href={`/workspace/jobs/${job.id}`}
+                          className={buttonVariants({ variant: "outline", size: "sm" })}
+                        >
+                          <Eye className="h-4 w-4" data-icon="inline-start" />
+                        </Link>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleCopyJobId(job.id)}
                         >
-                          <Copy className="h-4 w-4" />
+                          <Copy className="h-4 w-4" data-icon="inline-start" />
                         </Button>
                         {(job.status === "running" ||
                           job.status === "queued") && (
@@ -699,7 +717,7 @@ function JobsV2Content() {
                             onClick={() => handleKillJob(job.id)}
                             disabled={loading.kill}
                           >
-                            <StopCircle className="h-4 w-4" />
+                            <StopCircle className="h-4 w-4" data-icon="inline-start" />
                           </Button>
                         )}
                       </div>
@@ -872,23 +890,24 @@ function JobsV2Content() {
 
               <div className="flex justify-end space-x-2">
                 <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
+                  <Download className="h-4 w-4" data-icon="inline-start" />
                   Download Results
                 </Button>
                 <Button variant="outline">
-                  <FileText className="mr-2 h-4 w-4" />
+                  <FileText className="h-4 w-4" data-icon="inline-start" />
                   View Logs
                 </Button>
                 <Button variant="outline">
-                  <Play className="mr-2 h-4 w-4" />
+                  <Play className="h-4 w-4" data-icon="inline-start" />
                   Rerun Job
                 </Button>
-                <Button asChild>
-                  <Link href={`/workspace/jobs/${selectedJobModal.id}`}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Output
-                  </Link>
-                </Button>
+                <Link
+                  href={`/workspace/jobs/${selectedJobModal.id}`}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <Eye className="h-4 w-4" data-icon="inline-start" />
+                  View Output
+                </Link>
               </div>
             </div>
           ) : null}

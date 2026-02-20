@@ -1,5 +1,4 @@
-import FooterHeader from '@/components/headers/footer-header';
-import React from 'react'
+import FooterHeader from "@/components/headers/footer-header";
 import Image from "next/image";
 import Link from "next/link";
 

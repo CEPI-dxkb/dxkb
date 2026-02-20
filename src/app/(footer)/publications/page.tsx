@@ -5,13 +5,13 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import FooterHeader from "@/components/headers/footer-header"
 import {
@@ -201,6 +201,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="journal"
+                          name="journal"
                           checked={typeFilters.journal}
                           onCheckedChange={() => handleTypeFilterChange("journal")}
                         />
@@ -211,6 +212,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="conference"
+                          name="conference"
                           checked={typeFilters.conference}
                           onCheckedChange={() => handleTypeFilterChange("conference")}
                         />
@@ -221,6 +223,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="book"
+                          name="book"
                           checked={typeFilters.book}
                           onCheckedChange={() => handleTypeFilterChange("book")}
                         />
@@ -231,6 +234,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="preprint"
+                          name="preprint"
                           checked={typeFilters.preprint}
                           onCheckedChange={() => handleTypeFilterChange("preprint")}
                         />
@@ -281,6 +285,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="medicine"
+                          name="medicine"
                           checked={fieldFilters.medicine}
                           onCheckedChange={() => handleFieldFilterChange("medicine")}
                         />
@@ -291,6 +296,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="computer-science"
+                          name="computer-science"
                           checked={fieldFilters.computerScience}
                           onCheckedChange={() => handleFieldFilterChange("computerScience")}
                         />
@@ -301,6 +307,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="biology"
+                          name="biology"
                           checked={fieldFilters.biology}
                           onCheckedChange={() => handleFieldFilterChange("biology")}
                         />
@@ -311,6 +318,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="education"
+                          name="education"
                           checked={fieldFilters.education}
                           onCheckedChange={() => handleFieldFilterChange("education")}
                         />
@@ -321,6 +329,7 @@ export default function PublicationsListView() {
                       <div className="flex items-center space-x-2">
                         <Checkbox
                           id="climate"
+                          name="climate"
                           checked={fieldFilters.climate}
                           onCheckedChange={() => handleFieldFilterChange("climate")}
                         />
@@ -374,20 +383,31 @@ export default function PublicationsListView() {
                   />
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Select defaultValue="newest" onValueChange={(value) => setSortOption(value)}>
+                  <Select
+                    items={[
+                      { value: "newest", label: "Newest First" },
+                      { value: "oldest", label: "Oldest First" },
+                      { value: "citations", label: "Most Cited" },
+                      { value: "title", label: "Title (A-Z)" },
+                    ]}
+                    defaultValue="newest"
+                    onValueChange={(value) => setSortOption(value ?? "")}
+                  >
                     <SelectTrigger className="w-[180px]">
                       <SortDesc className="mr-2 h-4 w-4" />
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="newest">Newest First</SelectItem>
-                      <SelectItem value="oldest">Oldest First</SelectItem>
-                      <SelectItem value="citations">Most Cited</SelectItem>
-                      <SelectItem value="title">Title (A-Z)</SelectItem>
+                      <SelectGroup>
+                        <SelectItem value="newest">Newest First</SelectItem>
+                        <SelectItem value="oldest">Oldest First</SelectItem>
+                        <SelectItem value="citations">Most Cited</SelectItem>
+                        <SelectItem value="title">Title (A-Z)</SelectItem>
+                      </SelectGroup>
                     </SelectContent>
                   </Select>
                   <Button variant="outline" size="icon">
-                    <Download className="h-4 w-4" />
+                    <Download className="h-4 w-4" data-icon="inline-start" />
                   </Button>
                 </div>
               </div>
@@ -414,16 +434,22 @@ export default function PublicationsListView() {
                               <p className="text-sm text-muted-foreground italic">{publication.journal}</p>
                               <p className="text-sm mt-2">{publication.abstract}</p>
                               <div className="flex items-center gap-2 mt-4">
-                                <Button variant="outline" size="sm" asChild>
-                                  <Link href={`/publications/${publication.id}`}>View Details</Link>
-                                </Button>
-                                <Button variant="outline" size="sm" asChild>
-                                  <a href={publication.doi} target="_blank" rel="noopener noreferrer">
-                                    View Original
-                                  </a>
-                                </Button>
+                                <Link
+                                  href={`/publications/${publication.id}`}
+                                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                                >
+                                  View Details
+                                </Link>
+                                <a
+                                  href={publication.doi}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={buttonVariants({ variant: "outline", size: "sm" })}
+                                >
+                                  View Original
+                                </a>
                                 <Button variant="outline" size="sm">
-                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                  <Download className="h-3.5 w-3.5" data-icon="inline-start" />
                                   Cite
                                 </Button>
                               </div>

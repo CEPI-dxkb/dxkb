@@ -40,18 +40,18 @@ export const srrLibItemSchema = z.object({
 });
 
 // Confidence interval options
-export const CONFIDENCE_INTERVAL_OPTIONS = [
-  "0",
-  "0.1",
-  "0.2",
-  "0.3",
-  "0.4",
-  "0.5",
-  "0.6",
-  "0.7",
-  "0.8",
-  "0.9",
-  "1",
+export const confidenceIntervalOptions = [
+  { value: "0", label: "0" },
+  { value: "0.1", label: "0.1" },
+  { value: "0.2", label: "0.2" },
+  { value: "0.3", label: "0.3" },
+  { value: "0.4", label: "0.4" },
+  { value: "0.5", label: "0.5" },
+  { value: "0.6", label: "0.6" },
+  { value: "0.7", label: "0.7" },
+  { value: "0.8", label: "0.8" },
+  { value: "0.9", label: "0.9" },
+  { value: "1", label: "1" },
 ] as const;
 
 // Main form schema
@@ -135,26 +135,26 @@ export const taxonomicClassificationFormSchema = z
 export type TaxonomicClassificationFormData = z.infer<typeof taxonomicClassificationFormSchema>;
 
 // UI options for dropdowns
-export const WGS_ANALYSIS_TYPE_OPTIONS = [
+export const wgsAnalysisTypeOptions = [
   { value: "microbiome", label: "Microbiome Analysis" },
   { value: "pathogen", label: "Species Identification" },
 ] as const;
 
-export const SIXTEENS_ANALYSIS_TYPE_OPTIONS = [
+export const sixteenSAnalysisTypeOptions = [
   { value: "default", label: "Default" },
 ] as const;
 
-export const WGS_DATABASE_OPTIONS = [
+export const wgsDatabaseOptions = [
   { value: "bvbrc", label: "BV-BRC Database" },
   { value: "standard", label: "Kraken2 Standard Database" },
 ] as const;
 
-export const SIXTEENS_DATABASE_OPTIONS = [
+export const sixteenSDatabaseOptions = [
   { value: "SILVA", label: "SILVA" },
   { value: "Greengenes", label: "Greengenes" },
 ] as const;
 
-export const HOST_GENOME_OPTIONS = [
+export const hostGenomeOptions = [
   { value: "no_host", label: "None" },
   { value: "homo_sapiens", label: "Homo sapiens" },
   { value: "mus_musculus", label: "Mus musculus" },
@@ -169,7 +169,7 @@ export const HOST_GENOME_OPTIONS = [
 ] as const;
 
 // Default form values
-export const DEFAULT_TAXONOMIC_CLASSIFICATION_FORM_VALUES: TaxonomicClassificationFormData = {
+export const defaultTaxonomicClassificationFormValues: TaxonomicClassificationFormData = {
   paired_end_libs: [],
   single_end_libs: [],
   srr_libs: [],

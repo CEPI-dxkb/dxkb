@@ -2,8 +2,9 @@ import * as React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useState, useRef } from "react";
 import { NumericFormat, NumericFormatProps } from "react-number-format";
-import { Button } from "./button";
-import { Input } from "./input";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export interface NumberInputProps
   extends Omit<NumericFormatProps, "value" | "onValueChange"> {

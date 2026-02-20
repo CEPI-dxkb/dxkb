@@ -66,6 +66,8 @@ export function WorkspaceObjectSelector({
     top: number;
     left: number;
     width: number;
+    /** When openUpward, bottom (from viewport bottom) so dropdown is anchored above input and shrinks from top */
+    bottom?: number;
   } | null>(null);
   const inputRef = React.useRef<HTMLDivElement>(null);
   const inputElementRef = React.useRef<HTMLInputElement | null>(null);
@@ -242,6 +244,7 @@ export function WorkspaceObjectSelector({
       top: openUpward ? rect.top - maxHeight - gap : rect.bottom + gap,
       left: rect.left,
       width: rect.width,
+      ...(openUpward && { bottom: viewportHeight - (rect.top - gap) }),
     });
   }, [showDropdown]);
 
@@ -430,7 +433,9 @@ export function WorkspaceObjectSelector({
                 ref={dropdownRef}
                 className="bg-popover scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/20 hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50 fixed z-100 overflow-y-auto rounded-md border shadow-md"
                 style={{
-                  top: dropdownRect.top,
+                  ...(dropdownPosition.openUpward
+                    ? { bottom: dropdownRect.bottom, top: "auto" }
+                    : { top: dropdownRect.top }),
                   left: dropdownRect.left,
                   width: dropdownRect.width,
                   maxHeight: dropdownPosition.maxHeight,

@@ -87,24 +87,17 @@ export class WorkspaceCrudMethods {
   }
 
   /**
-   * Delete a single object
+   * Delete a single object by full path (e.g. /user@realm/home/file.pdb).
    */
-  async deleteObject(
-    workspace: string,
-    id: string,
-  ): Promise<WorkspaceDeleteResponse> {
-    return this.delete({
-      objects: [{ workspace, id }],
-    });
+  async deleteObject(path: string): Promise<WorkspaceDeleteResponse> {
+    return this.delete({ objects: [path] });
   }
 
   /**
-   * Delete multiple objects
+   * Delete multiple objects by full paths.
    */
-  async deleteMultipleObjects(
-    objects: Array<{ workspace: string; id: string }>,
-  ): Promise<WorkspaceDeleteResponse> {
-    return this.delete({ objects });
+  async deleteMultipleObjects(paths: string[]): Promise<WorkspaceDeleteResponse> {
+    return this.delete({ objects: paths });
   }
 
   /**

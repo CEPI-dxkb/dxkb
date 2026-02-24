@@ -75,10 +75,12 @@ export interface WorkspaceCreateResponse {
 
 // Workspace.delete parameters and response
 export interface WorkspaceDeleteParams {
-  objects: Array<{
-    workspace: string;
-    id: string;
-  }>;
+  /** Full object paths (e.g. /user@realm/home/file.pdb). */
+  objects: string[];
+  /** If true, delete non-empty directories. */
+  force?: boolean;
+  /** If true, delete directory objects; if false, only files. */
+  deleteDirectories?: boolean;
 }
 
 export interface WorkspaceDeleteResponse {

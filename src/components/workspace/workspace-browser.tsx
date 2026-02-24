@@ -31,11 +31,21 @@ import { Button } from "@/components/ui/button";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { WorkspaceApiClient } from "@/lib/services/workspace/client";
+import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
 
 export type WorkspaceViewMode = "home" | "shared";
 
@@ -129,6 +139,17 @@ export function WorkspaceBrowser({
     null,
   );
   const [isDownloading, setIsDownloading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  /** Selection at the time Delete was clicked; used when confirming in the dialog. */
+  const [pendingDeleteSelection, setPendingDeleteSelection] = useState<
+    WorkspaceBrowserItem[]
+  >([]);
+
+  const workspaceCrud = useMemo(
+    () => new WorkspaceCrudMethods(new WorkspaceApiClient()),
+    [],
+  );
 
   const [sort, setSort] = useState<WorkspaceBrowserSort>({
     field: "name",
@@ -303,6 +324,11 @@ export function WorkspaceBrowser({
     actionId: string,
     selection: WorkspaceBrowserItem[],
   ) {
+    if (actionId === "delete") {
+      setPendingDeleteSelection(selection);
+      setDeleteDialogOpen(true);
+      return;
+    }
     if (actionId !== "download") return;
     const downloadable = selection.filter(
       (item) =>
@@ -340,6 +366,39 @@ export function WorkspaceBrowser({
     }
   }
 
+  async function handleConfirmDelete() {
+    if (pendingDeleteSelection.length === 0) {
+      setDeleteDialogOpen(false);
+      return;
+    }
+    const paths = pendingDeleteSelection
+      .map((item) => item.path)
+      .filter((p): p is string => Boolean(p));
+    if (paths.length === 0) {
+      setDeleteDialogOpen(false);
+      setPendingDeleteSelection([]);
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await workspaceCrud.delete({
+        objects: paths,
+        force: true,
+        deleteDirectories: true,
+      });
+      setSelectedItem(null);
+      setDeleteDialogOpen(false);
+      setPendingDeleteSelection([]);
+      refetch();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete.";
+      alert(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   if (!currentUser) {
     if (mode === "shared" && !authChecked) {
       return (
@@ -367,8 +426,60 @@ export function WorkspaceBrowser({
       ? "Failed to load workspace contents"
       : "Failed to load shared folders";
 
+  const deleteTargetLabel =
+    pendingDeleteSelection.length === 0
+      ? "item"
+      : pendingDeleteSelection.length === 1
+        ? pendingDeleteSelection[0]?.name ?? "item"
+        : `${pendingDeleteSelection.length} items`;
+
   const mainContent = (
     <>
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteDialogOpen(false);
+            if (!isDeleting) setPendingDeleteSelection([]);
+          }
+        }}
+      >
+        <DialogContent showCloseButton={!isDeleting}>
+          <DialogTitle>Delete from workspace</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete {deleteTargetLabel}? This action
+            cannot be undone.
+          </DialogDescription>
+          <DialogFooter showCloseButton={false}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!isDeleting) {
+                  setDeleteDialogOpen(false);
+                  setPendingDeleteSelection([]);
+                }
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleConfirmDelete()}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Spinner className="mr-2 h-3.5 w-3.5 shrink-0" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
         <WorkspaceBreadcrumbs
           path={path}
@@ -460,8 +571,14 @@ export function WorkspaceBrowser({
         <WorkspaceActionBar
           selection={selectedItem ? [selectedItem] : []}
           workspaceGuideUrl={workspaceGuideUrl}
-          disabledActionIds={isDownloading ? ["download"] : undefined}
-          loadingActionIds={isDownloading ? ["download"] : undefined}
+          disabledActionIds={[
+            ...(isDownloading ? ["download"] : []),
+            ...(isDeleting ? ["delete"] : []),
+          ]}
+          loadingActionIds={[
+            ...(isDownloading ? ["download"] : []),
+            ...(isDeleting ? ["delete"] : []),
+          ]}
           onAction={handleAction}
         />
       </div>

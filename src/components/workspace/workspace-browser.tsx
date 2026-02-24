@@ -109,6 +109,7 @@ export function WorkspaceBrowser({ username, path }: WorkspaceBrowserProps) {
         path={path}
         username={username}
         itemCount={items.length}
+        currentUsername={currentUser}
       />
 
       <WorkspaceToolbar

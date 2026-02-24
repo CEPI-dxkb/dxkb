@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { encodeWorkspaceSegment } from "@/lib/utils";
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import {
@@ -75,6 +77,10 @@ export function SharedWorkspaceView({
 }: SharedWorkspaceViewProps) {
   const { user } = useAuth();
   const currentUsername = user?.username ?? "";
+  const fullWorkspaceUsername =
+    (user?.realm ? `${user.username}@${user.realm}` : null) ?? user?.username ?? "";
+  const myWorkspaceRoot = fullWorkspaceUsername || currentUsername;
+  const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setAuthChecked(true), 800);
@@ -90,6 +96,16 @@ export function SharedWorkspaceView({
 
   const isAtSharedRoot = !path || path === "";
   const fullPath = path ? `/${path}` : "";
+
+  const isUrlCurrentUser =
+    username === currentUsername ||
+    username === fullWorkspaceUsername ||
+    username === myWorkspaceRoot ||
+    (currentUsername && username.startsWith(`${currentUsername}@`));
+  useEffect(() => {
+    if (!isAtSharedRoot || !myWorkspaceRoot || isUrlCurrentUser) return;
+    router.replace(`/workspace/${encodeWorkspaceSegment(myWorkspaceRoot)}`);
+  }, [isAtSharedRoot, myWorkspaceRoot, isUrlCurrentUser, username, router]);
 
   const sharedQuery = useSharedWithUser({
     username: currentUsername,
@@ -205,6 +221,8 @@ export function SharedWorkspaceView({
         username={username}
         itemCount={items.length}
         viewMode={path ? "shared" : "root"}
+        currentUsername={currentUsername}
+        workspaceRootUsername={myWorkspaceRoot}
       />
 
       <WorkspaceToolbar
@@ -233,7 +251,7 @@ export function SharedWorkspaceView({
         onSortChange={setSort}
         viewMode="shared"
         username={username}
-        sharedRootUsername={currentUsername}
+        sharedRootUsername={myWorkspaceRoot}
         memberCountByPath={memberCountByPath}
       />
     </div>

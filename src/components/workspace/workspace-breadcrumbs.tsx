@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
-import { cn, encodeWorkspaceSegment } from "@/lib/utils";
+import { cn, encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 
 export type BreadcrumbsViewMode = "home" | "shared" | "root";
 
@@ -11,6 +11,27 @@ interface WorkspaceBreadcrumbsProps {
   username: string;
   itemCount?: number;
   viewMode?: BreadcrumbsViewMode;
+  /** When provided, segments matching this user are shown without @bvbrc / @patricbrc.org */
+  currentUsername?: string;
+  /** When viewMode is "shared", first breadcrumb links here (current user's workspace root) */
+  workspaceRootUsername?: string;
+}
+
+function formatSegmentLabel(
+  segment: string,
+  currentUsername?: string,
+): string {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    decoded = segment;
+  }
+  const safe = sanitizePathSegment(decoded);
+  if (!currentUsername) return safe;
+  if (safe === currentUsername) return safe;
+  if (safe.startsWith(`${currentUsername}@`)) return currentUsername;
+  return safe;
 }
 
 export function WorkspaceBreadcrumbs({
@@ -18,12 +39,16 @@ export function WorkspaceBreadcrumbs({
   username,
   itemCount,
   viewMode = "home",
+  currentUsername,
+  workspaceRootUsername,
 }: WorkspaceBreadcrumbsProps) {
   const segments = path
     .split("/")
+    .map((s) => sanitizePathSegment(s))
     .filter(Boolean);
 
-  const encodedUser = encodeWorkspaceSegment(username);
+  const safeUsername = sanitizePathSegment(username);
+  const encodedUser = encodeWorkspaceSegment(safeUsername);
   const usernameRootHref = username ? `/workspace/${encodedUser}` : "/workspace";
   const homeBase = username ? `/workspace/${encodedUser}/home` : "/workspace/home";
   const baseHref = viewMode === "shared" ? usernameRootHref : homeBase;
@@ -37,7 +62,7 @@ export function WorkspaceBreadcrumbs({
           href={usernameRootHref}
           className="text-foreground font-medium transition-colors hover:text-foreground"
         >
-          {username}
+          {formatSegmentLabel(safeUsername, currentUsername)}
         </Link>
         {itemCount !== undefined && (
           <span className="text-muted-foreground ml-2 text-xs">
@@ -56,7 +81,11 @@ export function WorkspaceBreadcrumbs({
             .slice(0, index + 1)
             .map(encodeWorkspaceSegment)
             .join("/");
-          const href = `/workspace/${segmentPath}`;
+          const myRoot = workspaceRootUsername || currentUsername;
+          const href =
+            index === 0 && myRoot
+              ? `/workspace/${encodeWorkspaceSegment(myRoot)}`
+              : `/workspace/${segmentPath}`;
           const isLast = index === segments.length - 1;
 
           return (
@@ -66,14 +95,14 @@ export function WorkspaceBreadcrumbs({
               )}
               {isLast ? (
                 <span className="text-foreground font-medium">
-                  {decodeURIComponent(segment)}
+                  {formatSegmentLabel(segment, currentUsername)}
                 </span>
               ) : (
                 <Link
                   href={href}
                   className="text-muted-foreground font-medium transition-colors hover:text-foreground"
                 >
-                  {decodeURIComponent(segment)}
+                  {formatSegmentLabel(segment, currentUsername)}
                 </Link>
               )}
             </span>
@@ -98,7 +127,7 @@ export function WorkspaceBreadcrumbs({
         )}
       >
         <Home className="h-3.5 w-3.5" />
-        <span>{username}</span>
+        <span>{formatSegmentLabel(safeUsername, currentUsername)}</span>
       </Link>
 
       <ChevronRight className="text-muted-foreground h-3.5 w-3.5" />
@@ -127,14 +156,14 @@ export function WorkspaceBreadcrumbs({
             <ChevronRight className="text-muted-foreground h-3.5 w-3.5" />
             {isLast ? (
               <span className="text-foreground font-medium">
-                {decodeURIComponent(segment)}
+                {formatSegmentLabel(segment, currentUsername)}
               </span>
             ) : (
               <Link
                 href={href}
                 className="text-muted-foreground font-medium transition-colors hover:text-foreground"
               >
-                {decodeURIComponent(segment)}
+                {formatSegmentLabel(segment, currentUsername)}
               </Link>
             )}
           </span>

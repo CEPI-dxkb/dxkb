@@ -5,11 +5,19 @@ interface WorkspaceHomePageProps {
   params: Promise<{ username?: string; path?: string[] }>;
 }
 
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
 export default async function WorkspaceHomePage({ params }: WorkspaceHomePageProps) {
   const resolved = await params;
-  const username = resolved.username ?? "";
+  const username = safeDecode(resolved.username ?? "");
   const segments = resolved.path ?? [];
-  const decodedPath = segments.map((s) => decodeURIComponent(s)).join("/");
+  const decodedPath = segments.map((s) => safeDecode(s)).join("/");
 
   if (!username) {
     redirect("/workspace/home");

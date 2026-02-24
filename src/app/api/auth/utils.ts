@@ -97,7 +97,7 @@ export async function setBvbrcAuthCookies(
   }
 
   // Set only a stable user ID (no PII); full profile is fetched server-side when needed
-  const userId = String(userProfile?.id ?? username.split("@")[0]);
+  const userId = String(userProfile?.id ?? username);
   cookieStore.set("bvbrc_user_id", userId, {
     ...COOKIE_OPTIONS,
     maxAge: SESSION_MAX_AGE,

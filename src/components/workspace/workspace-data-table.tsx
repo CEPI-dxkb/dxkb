@@ -17,7 +17,7 @@ import {
   SortField,
   WorkspaceBrowserSort,
 } from "@/types/workspace-browser";
-import { encodeWorkspaceSegment } from "@/lib/utils";
+import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 
 export type ViewMode = "home" | "shared";
 
@@ -127,12 +127,15 @@ export function WorkspaceDataTable({
 }: WorkspaceDataTableProps) {
   const router = useRouter();
   const isAtRoot = !path || path === "" || path === "/";
-  const pathSegments = path ? path.split("/").filter(Boolean) : [];
-  const homeBase = username ? `/workspace/${encodeWorkspaceSegment(username)}/home` : "/workspace/home";
-  const sharedBase = username ? `/workspace/${encodeWorkspaceSegment(username)}` : "/workspace/shared";
+  const pathSegments = path
+    ? path.split("/").map(sanitizePathSegment).filter(Boolean)
+    : [];
+  const safeUsername = sanitizePathSegment(username);
+  const homeBase = safeUsername ? `/workspace/${encodeWorkspaceSegment(safeUsername)}/home` : "/workspace/home";
+  const sharedBase = safeUsername ? `/workspace/${encodeWorkspaceSegment(safeUsername)}` : "/workspace/shared";
   const sharedRootHref =
     sharedRootUsername != null
-      ? `/workspace/${encodeWorkspaceSegment(sharedRootUsername)}`
+      ? `/workspace/${encodeWorkspaceSegment(sanitizePathSegment(sharedRootUsername))}`
       : sharedBase;
 
   function handleSort(field: SortField) {
@@ -149,12 +152,18 @@ export function WorkspaceDataTable({
   function handleItemClick(item: WorkspaceBrowserItem) {
     if (!isFolderType(item.type)) return;
     if (viewMode === "shared") {
-      const segments = item.path.replace(/^\//, "").split("/").filter(Boolean);
+      const segments = item.path
+        .replace(/^\//, "")
+        .split("/")
+        .map(sanitizePathSegment)
+        .filter(Boolean);
       const encoded = segments.map(encodeWorkspaceSegment).join("/");
       router.push(`/workspace/${encoded}`);
     } else {
-      const segments = path ? path.split("/").filter(Boolean) : [];
-      segments.push(item.name);
+      const segments = path
+        ? path.split("/").map(sanitizePathSegment).filter(Boolean)
+        : [];
+      segments.push(sanitizePathSegment(item.name));
       const encoded = segments.map(encodeWorkspaceSegment).join("/");
       router.push(`${homeBase}/${encoded}`);
     }
@@ -162,9 +171,15 @@ export function WorkspaceDataTable({
 
   function handleParentClick() {
     if (viewMode === "shared") {
-      router.push(sharedRootHref);
+      if (pathSegments.length <= 1) {
+        router.push(sharedRootHref);
+      } else {
+        const parentSegments = pathSegments.slice(0, -1);
+        const encoded = parentSegments.map(encodeWorkspaceSegment).join("/");
+        if (encoded) router.push(`/workspace/${encoded}`);
+      }
     } else {
-      const segments = path.split("/").filter(Boolean);
+      const segments = path.split("/").map(sanitizePathSegment).filter(Boolean);
       segments.pop();
       const parentPath = segments.map(encodeWorkspaceSegment).join("/");
       router.push(`${homeBase}${parentPath ? `/${parentPath}` : ""}`);
@@ -176,7 +191,11 @@ export function WorkspaceDataTable({
       ? pathSegments.length >= 1
       : !isAtRoot;
   const parentRowLabel =
-    viewMode === "shared" ? "Back to my workspace" : "Parent folder";
+    viewMode === "shared"
+      ? pathSegments.length <= 2
+        ? "Back to my workspaces"
+        : "Parent folder"
+      : "Parent folder";
   const showLeadingRow =
     showViewSharedRow && viewMode === "home" && isAtRoot;
 

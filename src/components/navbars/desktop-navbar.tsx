@@ -25,8 +25,15 @@ import {DropdownMenu,
 import { UserRound, Settings, NotebookPen, BriefcaseBusiness, Mail } from "lucide-react";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 
+/** Full username with @domain for workspace URLs (session stores short form in user.username). */
+function workspaceUsername(user: { username?: string; realm?: string } | null): string {
+  if (!user?.username) return "";
+  return user.realm ? `${user.username}@${user.realm}` : user.username;
+}
+
 const DesktopNavbar = () => {
   const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
+  const wsUsername = workspaceUsername(user);
 
   const pathname = usePathname();
   const isHome = pathname === '/';
@@ -199,14 +206,14 @@ const DesktopNavbar = () => {
                     <ListItem
                       key="workspace-nav"
                       title="My Workspace"
-                      href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/home` : "/workspace"}
+                      href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/home` : "/workspace"}
                     >
                       View your workspace.
                     </ListItem>
                     <ListItem
                       key="workspace-jobs-nav"
                       title="Jobs"
-                      href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/jobs` : "/workspace"}
+                      href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/jobs` : "/workspace"}
                     >
                       View all jobs in your workspace.
                     </ListItem>
@@ -291,13 +298,13 @@ const DesktopNavbar = () => {
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <NotebookPen className="text-foreground h-4 w-4" />
-                          <Link href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/home` : "/workspace"}>My Workspace</Link>
+                          <Link href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/home` : "/workspace"}>My Workspace</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <BriefcaseBusiness className="text-foreground h-4 w-4" />
-                          <Link href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/jobs` : "/workspace"}>My Jobs</Link>
+                          <Link href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/jobs` : "/workspace"}>My Jobs</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>

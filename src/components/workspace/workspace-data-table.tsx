@@ -37,6 +37,12 @@ interface WorkspaceDataTableProps {
   username?: string;
   /** When viewMode is "shared", username for "Back to my workspaces" link (current user) */
   sharedRootUsername?: string;
+  /** When set, single click selects (and opens panel); double click navigates. Omit for legacy single-click navigate. */
+  selectedPath?: string | null;
+  /** Called on single click when selection mode is used */
+  onSelect?: (item: WorkspaceBrowserItem) => void;
+  /** Called on double click (folders only) when selection mode is used; parent should navigate */
+  onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -88,19 +94,19 @@ function TableSkeleton({ showMembersColumn = false }: { showMembersColumn?: bool
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={i}>
-          <TableCell>
+          <TableCell className="pl-8">
             <div className="flex items-center gap-2">
               <Skeleton className="h-4 w-4" />
               <Skeleton className="h-4 w-40" />
             </div>
           </TableCell>
-          <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-          <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell className="pl-8"><Skeleton className="h-4 w-16" /></TableCell>
+          <TableCell className="hidden md:table-cell pl-8"><Skeleton className="h-4 w-20" /></TableCell>
           {showMembersColumn && (
-            <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
+            <TableCell className="hidden lg:table-cell pl-8"><Skeleton className="h-4 w-16" /></TableCell>
           )}
-          <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
-          <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
+          <TableCell className="hidden lg:table-cell pl-8"><Skeleton className="h-4 w-16" /></TableCell>
+          <TableCell className="hidden sm:table-cell pl-8"><Skeleton className="h-4 w-28" /></TableCell>
         </TableRow>
       ))}
     </>
@@ -124,7 +130,11 @@ export function WorkspaceDataTable({
   memberCountByPath,
   username = "",
   sharedRootUsername,
+  selectedPath = null,
+  onSelect,
+  onItemDoubleClick,
 }: WorkspaceDataTableProps) {
+  const useSelectionMode = onSelect != null;
   const router = useRouter();
   const isAtRoot = !path || path === "" || path === "/";
   const pathSegments = path
@@ -215,7 +225,7 @@ export function WorkspaceDataTable({
             {sortableColumns.map((col) => (
               <TableHead
                 key={col.field}
-                className={`cursor-pointer select-none ${col.className ?? ""}`}
+                className={`cursor-pointer select-none pl-8 ${col.className ?? ""}`}
                 onClick={() => handleSort(col.field)}
               >
                 {col.label}
@@ -223,9 +233,9 @@ export function WorkspaceDataTable({
               </TableHead>
             ))}
             {showMembersColumn && (
-              <TableHead className="hidden lg:table-cell">Members</TableHead>
+              <TableHead className="hidden lg:table-cell pl-8">Members</TableHead>
             )}
-            <TableHead className="hidden lg:table-cell">Type</TableHead>
+            <TableHead className="hidden lg:table-cell pl-8">Type</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -235,10 +245,10 @@ export function WorkspaceDataTable({
             <>
               {showLeadingRow && (
                 <TableRow
-                  className="cursor-pointer"
+                  className="cursor-pointer pl-8"
                   onClick={() => router.push(sharedBase)}
                 >
-                  <TableCell>
+                  <TableCell className="pl-8">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 shrink-0 text-amber-500" />
                       <span className="text-muted-foreground font-medium italic">
@@ -246,20 +256,20 @@ export function WorkspaceDataTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell />
-                  <TableCell className="hidden md:table-cell" />
-                  {showMembersColumn && <TableCell className="hidden lg:table-cell" />}
-                  <TableCell className="hidden sm:table-cell" />
-                  <TableCell className="hidden lg:table-cell" />
+                  <TableCell className="pl-8" />
+                  <TableCell className="hidden md:table-cell pl-8" />
+                  {showMembersColumn && <TableCell className="hidden lg:table-cell pl-8" />}
+                  <TableCell className="hidden sm:table-cell pl-8" />
+                  <TableCell className="hidden lg:table-cell pl-8" />
                 </TableRow>
               )}
 
               {showParentRow && (
                 <TableRow
-                  className="cursor-pointer"
+                  className="cursor-pointer pl-8"
                   onClick={handleParentClick}
                 >
-                  <TableCell>
+                  <TableCell className="pl-8">
                     <div className="flex items-center gap-2">
                       <FolderUp className="h-4 w-4 shrink-0 text-amber-500" />
                       <span className="text-muted-foreground font-medium italic">
@@ -267,19 +277,19 @@ export function WorkspaceDataTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell />
-                  <TableCell className="hidden md:table-cell" />
-                  {showMembersColumn && <TableCell className="hidden lg:table-cell" />}
-                  <TableCell className="hidden sm:table-cell" />
-                  <TableCell className="hidden lg:table-cell" />
+                  <TableCell className="pl-8" />
+                  <TableCell className="hidden md:table-cell pl-8" />
+                  {showMembersColumn && <TableCell className="hidden lg:table-cell pl-8" />}
+                  <TableCell className="hidden sm:table-cell pl-8" />
+                  <TableCell className="hidden lg:table-cell pl-8" />
                 </TableRow>
               )}
 
               {items.length === 0 && !isLoading ? (
-                <TableRow>
+                <TableRow className="pl-8">
                   <TableCell
                     colSpan={showMembersColumn ? 6 : 5}
-                    className="text-muted-foreground py-12 text-center"
+                    className="text-muted-foreground py-12 text-center pl-8"
                   >
                     This folder is empty
                   </TableCell>
@@ -288,14 +298,41 @@ export function WorkspaceDataTable({
                 items.map((item) => {
                   const isNavigable = isFolderType(item.type);
                   const memberCount = memberCountByPath?.[item.path];
+                  const normalizedItemPath = (item.path ?? "").replace(/\/+/g, "/").replace(/^\//, "").replace(/\/$/, "") || "/";
+                  const normalizedSelectedPath = (selectedPath ?? "").replace(/\/+/g, "/").replace(/^\//, "").replace(/\/$/, "") || "/";
+                  const isSelected = useSelectionMode && selectedPath != null && normalizedItemPath === normalizedSelectedPath;
+
+                  function handleRowClick() {
+                    if (useSelectionMode) {
+                      onSelect?.(item);
+                    } else if (isNavigable) {
+                      handleItemClick(item);
+                    }
+                  }
+
+                  function handleRowDoubleClick() {
+                    if (useSelectionMode && isNavigable) {
+                      onItemDoubleClick?.(item);
+                    }
+                  }
 
                   return (
                     <TableRow
                       key={item.id}
-                      className={isNavigable ? "cursor-pointer" : ""}
-                      onClick={() => isNavigable && handleItemClick(item)}
+                      className={
+                        (isNavigable ? "cursor-pointer pl-8" : "")
+                        + (isSelected ? " bg-muted border-l-2 border-l-primary" : "")
+                      }
+                      onClick={handleRowClick}
+                      onDoubleClick={handleRowDoubleClick}
+                      title={
+                        useSelectionMode && isNavigable
+                          ? "Double-click to open folder"
+                          : undefined
+                      }
+                      aria-selected={useSelectionMode ? isSelected : undefined}
                     >
-                      <TableCell>
+                      <TableCell className="pl-8">
                         <div className="flex items-center gap-2">
                           <WorkspaceItemIcon type={item.type} />
                           <span
@@ -309,23 +346,23 @@ export function WorkspaceDataTable({
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground pl-8">
                         {formatFileSize(item.size)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground hidden md:table-cell">
+                      <TableCell className="text-muted-foreground hidden md:table-cell pl-8">
                         {formatOwner(item.owner_id)}
                       </TableCell>
                       {showMembersColumn && (
-                        <TableCell className="text-muted-foreground hidden lg:table-cell">
+                        <TableCell className="text-muted-foreground hidden lg:table-cell pl-8">
                           {memberCount != null
                             ? formatMemberCount(memberCount)
                             : "—"}
                         </TableCell>
                       )}
-                      <TableCell className="text-muted-foreground hidden sm:table-cell">
+                      <TableCell className="text-muted-foreground hidden sm:table-cell pl-8">
                         {formatDate(item.creation_time)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground hidden lg:table-cell">
+                      <TableCell className="text-muted-foreground hidden lg:table-cell pl-8">
                         {item.type}
                       </TableCell>
                     </TableRow>

@@ -23,5 +23,7 @@ export default async function WorkspaceHomePage({ params }: WorkspaceHomePagePro
     redirect("/workspace/home");
   }
 
-  return <WorkspaceBrowser username={username} path={decodedPath} />;
+  return (
+    <WorkspaceBrowser mode="home" username={username} path={decodedPath} />
+  );
 }

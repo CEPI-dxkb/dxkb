@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, PanelRightClose } from "lucide-react";
 import { genomeFields } from "@/constants/datafields/genome";
 import { genome_sequenceFields } from "@/constants/datafields/genome_sequence";
 import { genome_amrFields } from "@/constants/datafields/genome_amr";
@@ -14,15 +14,119 @@ import { strainFields } from "@/constants/datafields/strain";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
 import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import { Button } from "@/components/ui/button";
+import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
+import { WorkspaceItemIcon } from "@/components/workspace/workspace-item-icon";
 
-export function InfoPanel({
-  rows,
-  activeTab,
+export type InfoPanelProps =
+  | {
+      variant: "workspace";
+      workspaceItem: WorkspaceBrowserItem;
+      onClose?: () => void;
+      onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
+    }
+  | {
+      variant?: "search";
+      rows: Record<string, unknown>[];
+      activeTab: string;
+    };
+
+function formatWorkspaceDate(value: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return date.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatWorkspaceOwner(ownerId: string): string {
+  if (!ownerId) return "—";
+  return ownerId.replace(/@bvbrc$/, "");
+}
+
+function WorkspaceItemDetailContent({
+  workspaceItem,
+  onClose,
+  onAction,
 }: {
-  rows: Record<string, unknown>[];
-  activeTab: string;
+  workspaceItem: WorkspaceBrowserItem;
+  onClose?: () => void;
+  onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
 }) {
+  const fullPath = `${workspaceItem.path}${workspaceItem.name}`.replace(/\/+/g, "/");
+  const pathDisplay = fullPath || workspaceItem.path || "—";
 
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center justify-between gap-2 border-b pb-2">
+        <h3 className="truncate text-sm font-semibold">{workspaceItem.name}</h3>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onClose}
+          title="Hide panel"
+        >
+          <PanelRightClose className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="flex-1 overflow-y-auto py-3 text-xs">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <WorkspaceItemIcon type={workspaceItem.type} className="h-6 w-6" />
+            <span className="font-medium capitalize text-muted-foreground">
+              {workspaceItem.type || "—"}
+            </span>
+          </div>
+          <dl className="grid gap-1.5">
+            <div>
+              <dt className="text-muted-foreground">Owner</dt>
+              <dd className="break-all">{formatWorkspaceOwner(workspaceItem.owner_id)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Created</dt>
+              <dd>{formatWorkspaceDate(workspaceItem.creation_time)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Path</dt>
+              <dd className="break-all font-mono text-[11px]">{pathDisplay}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground mb-1">Workspace Members</dt>
+              <dd className="text-muted-foreground">
+                {formatWorkspaceOwner(workspaceItem.owner_id)}
+                {workspaceItem.user_permission === "o" ? " (me) – Owner" : " – Owner"}
+              </dd>
+            </div>
+          </dl>
+          <div>
+            <dt className="text-muted-foreground mb-1">Disk Usage</dt>
+            <dd className="text-muted-foreground">—</dd>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function InfoPanel(props: InfoPanelProps) {
+  if (props.variant === "workspace") {
+    return (
+      <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
+        <WorkspaceItemDetailContent
+          workspaceItem={props.workspaceItem}
+          onClose={props.onClose}
+          onAction={props.onAction}
+        />
+      </div>
+    );
+  }
+
+  const { rows, activeTab } = props;
   let order: string[] = []; // default empty
   let fieldFile = {};
   let allowedFields: string[] = [];

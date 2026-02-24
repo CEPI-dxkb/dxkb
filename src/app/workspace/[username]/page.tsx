@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { SharedWorkspaceView } from "@/components/workspace/shared-workspace-view";
+import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
 import { getBvbrcAuthToken } from "@/lib/auth";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 
@@ -23,5 +23,5 @@ export default async function WorkspaceUsernamePage({ params }: WorkspaceUsernam
     redirect(`/sign-in?redirect=${encodeURIComponent(`/workspace/${encodeWorkspaceSegment(username)}`)}`);
   }
 
-  return <SharedWorkspaceView username={username} path="" />;
+  return <WorkspaceBrowser mode="shared" username={username} path="" />;
 }

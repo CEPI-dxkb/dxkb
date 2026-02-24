@@ -70,7 +70,7 @@ const footerLinks: FooterSection[] = [
 
 const Footer = () => {
   return (
-    <footer className="bg-primary rounded-t-xl py-8 text-white">
+    <footer className="bg-primary py-8 text-white">
       <div className="mx-auto w-full px-12">
         <div className="grid gap-8 md:grid-cols-[40%_60%]">
           <div id="website-info" className="order-2 flex flex-col md:order-1">

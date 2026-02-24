@@ -1,4 +1,4 @@
-import { SharedWorkspaceView } from "@/components/workspace/shared-workspace-view";
+import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
 
 interface WorkspaceFolderPageProps {
   params: Promise<{ username: string; folder: string; path?: string[] }>;
@@ -18,5 +18,5 @@ export default async function WorkspaceFolderPage({
   const rest = segments.map((s) => decodeURIComponent(s)).join("/");
   const path = rest ? `${username}/${folder}/${rest}` : `${username}/${folder}`;
 
-  return <SharedWorkspaceView username={username} path={path} />;
+  return <WorkspaceBrowser mode="shared" username={username} path={path} />;
 }

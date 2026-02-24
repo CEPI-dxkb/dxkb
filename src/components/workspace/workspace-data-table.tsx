@@ -94,19 +94,19 @@ function TableSkeleton({ showMembersColumn = false }: { showMembersColumn?: bool
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={i}>
-          <TableCell className="pl-8">
+          <TableCell className="pl-6">
             <div className="flex items-center gap-2">
               <Skeleton className="h-4 w-4" />
               <Skeleton className="h-4 w-40" />
             </div>
           </TableCell>
-          <TableCell className="pl-8"><Skeleton className="h-4 w-16" /></TableCell>
-          <TableCell className="hidden md:table-cell pl-8"><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell className="pl-6"><Skeleton className="h-4 w-16" /></TableCell>
+          <TableCell className="hidden md:table-cell pl-6"><Skeleton className="h-4 w-20" /></TableCell>
           {showMembersColumn && (
-            <TableCell className="hidden lg:table-cell pl-8"><Skeleton className="h-4 w-16" /></TableCell>
+            <TableCell className="hidden lg:table-cell pl-6"><Skeleton className="h-4 w-16" /></TableCell>
           )}
-          <TableCell className="hidden lg:table-cell pl-8"><Skeleton className="h-4 w-16" /></TableCell>
-          <TableCell className="hidden sm:table-cell pl-8"><Skeleton className="h-4 w-28" /></TableCell>
+          <TableCell className="hidden lg:table-cell pl-6"><Skeleton className="h-4 w-16" /></TableCell>
+          <TableCell className="hidden sm:table-cell pl-6"><Skeleton className="h-4 w-28" /></TableCell>
         </TableRow>
       ))}
     </>
@@ -225,7 +225,7 @@ export function WorkspaceDataTable({
             {sortableColumns.map((col) => (
               <TableHead
                 key={col.field}
-                className={`cursor-pointer select-none pl-8 ${col.className ?? ""}`}
+                className={`cursor-pointer select-none pl-6 ${col.className ?? ""}`}
                 onClick={() => handleSort(col.field)}
               >
                 {col.label}
@@ -233,9 +233,9 @@ export function WorkspaceDataTable({
               </TableHead>
             ))}
             {showMembersColumn && (
-              <TableHead className="hidden lg:table-cell pl-8">Members</TableHead>
+              <TableHead className="hidden lg:table-cell pl-6">Members</TableHead>
             )}
-            <TableHead className="hidden lg:table-cell pl-8">Type</TableHead>
+            <TableHead className="hidden lg:table-cell pl-6">Type</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -245,10 +245,10 @@ export function WorkspaceDataTable({
             <>
               {showLeadingRow && (
                 <TableRow
-                  className="cursor-pointer pl-8"
+                  className="cursor-pointer pl-6"
                   onClick={() => router.push(sharedBase)}
                 >
-                  <TableCell className="pl-8">
+                  <TableCell className="pl-6">
                     <div className="flex items-center gap-2">
                       <Users className="h-4 w-4 shrink-0 text-amber-500" />
                       <span className="text-muted-foreground font-medium italic">
@@ -256,20 +256,20 @@ export function WorkspaceDataTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="pl-8" />
-                  <TableCell className="hidden md:table-cell pl-8" />
-                  {showMembersColumn && <TableCell className="hidden lg:table-cell pl-8" />}
-                  <TableCell className="hidden sm:table-cell pl-8" />
-                  <TableCell className="hidden lg:table-cell pl-8" />
+                  <TableCell className="pl-6" />
+                  <TableCell className="hidden md:table-cell pl-6" />
+                  {showMembersColumn && <TableCell className="hidden lg:table-cell pl-6" />}
+                  <TableCell className="hidden sm:table-cell pl-6" />
+                  <TableCell className="hidden lg:table-cell pl-6" />
                 </TableRow>
               )}
 
               {showParentRow && (
                 <TableRow
-                  className="cursor-pointer pl-8"
+                  className="cursor-pointer pl-6"
                   onClick={handleParentClick}
                 >
-                  <TableCell className="pl-8">
+                  <TableCell className="pl-6">
                     <div className="flex items-center gap-2">
                       <FolderUp className="h-4 w-4 shrink-0 text-amber-500" />
                       <span className="text-muted-foreground font-medium italic">
@@ -277,19 +277,19 @@ export function WorkspaceDataTable({
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="pl-8" />
-                  <TableCell className="hidden md:table-cell pl-8" />
-                  {showMembersColumn && <TableCell className="hidden lg:table-cell pl-8" />}
-                  <TableCell className="hidden sm:table-cell pl-8" />
-                  <TableCell className="hidden lg:table-cell pl-8" />
+                  <TableCell className="pl-6" />
+                  <TableCell className="hidden md:table-cell pl-6" />
+                  {showMembersColumn && <TableCell className="hidden lg:table-cell pl-6" />}
+                  <TableCell className="hidden sm:table-cell pl-6" />
+                  <TableCell className="hidden lg:table-cell pl-6" />
                 </TableRow>
               )}
 
               {items.length === 0 && !isLoading ? (
-                <TableRow className="pl-8">
+                <TableRow className="pl-6">
                   <TableCell
                     colSpan={showMembersColumn ? 6 : 5}
-                    className="text-muted-foreground py-12 text-center pl-8"
+                    className="text-muted-foreground py-12 text-center pl-6"
                   >
                     This folder is empty
                   </TableCell>
@@ -321,7 +321,7 @@ export function WorkspaceDataTable({
                       key={item.id}
                       className={
                         (useSelectionMode ? "border-l-2 " + (isSelected ? "border-l-primary" : "border-l-transparent") : "")
-                        + (isNavigable ? " cursor-pointer pl-8" : "")
+                        + (isNavigable ? " cursor-pointer pl-6" : "")
                         + (isSelected ? " bg-muted" : "")
                       }
                       onClick={handleRowClick}
@@ -333,7 +333,7 @@ export function WorkspaceDataTable({
                       }
                       aria-selected={useSelectionMode ? isSelected : undefined}
                     >
-                      <TableCell className="pl-8">
+                      <TableCell className="pl-6">
                         <div className="flex items-center gap-2">
                           <WorkspaceItemIcon type={item.type} />
                           <span
@@ -347,23 +347,23 @@ export function WorkspaceDataTable({
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground pl-8">
+                      <TableCell className="text-muted-foreground pl-6">
                         {formatFileSize(item.size)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground hidden md:table-cell pl-8">
+                      <TableCell className="text-muted-foreground hidden md:table-cell pl-6">
                         {formatOwner(item.owner_id)}
                       </TableCell>
                       {showMembersColumn && (
-                        <TableCell className="text-muted-foreground hidden lg:table-cell pl-8">
+                        <TableCell className="text-muted-foreground hidden lg:table-cell pl-6">
                           {memberCount != null
                             ? formatMemberCount(memberCount)
                             : "—"}
                         </TableCell>
                       )}
-                      <TableCell className="text-muted-foreground hidden sm:table-cell pl-8">
+                      <TableCell className="text-muted-foreground hidden sm:table-cell pl-6">
                         {formatDate(item.creation_time)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground hidden lg:table-cell pl-8">
+                      <TableCell className="text-muted-foreground hidden lg:table-cell pl-6">
                         {item.type}
                       </TableCell>
                     </TableRow>

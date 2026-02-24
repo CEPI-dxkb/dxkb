@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -14,7 +14,10 @@ import {
 } from "@/hooks/services/workspace/use-shared-with-user";
 import type { ListPermissionsResult } from "@/lib/services/workspace/shared";
 import { useAuth } from "@/contexts/auth-context";
-import { useWorkspacePanel } from "@/contexts/workspace-panel-context";
+import {
+  useWorkspacePanel,
+  WORKSPACE_PANEL_IDS,
+} from "@/contexts/workspace-panel-context";
 import { WorkspaceBreadcrumbs } from "./workspace-breadcrumbs";
 import { WorkspaceToolbar } from "./workspace-toolbar";
 import { WorkspaceDataTable } from "./workspace-data-table";
@@ -26,6 +29,11 @@ import { Button } from "@/components/ui/button";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
 
 export type WorkspaceViewMode = "home" | "shared";
 
@@ -105,44 +113,18 @@ export function WorkspaceBrowser({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const { panelManuallyHidden, setPanelManuallyHidden, showHiddenFiles, setShowHiddenFiles } =
-    useWorkspacePanel();
+  const {
+    panelManuallyHidden,
+    setPanelManuallyHidden,
+    panelExpanded,
+    setPanelExpanded,
+    showHiddenFiles,
+    setShowHiddenFiles,
+    panelLayout,
+    setPanelLayout,
+  } = useWorkspacePanel();
   const [selectedItem, setSelectedItem] = useState<WorkspaceBrowserItem | null>(
     null,
-  );
-  const [panelExpanded, setPanelExpanded] = useState(false);
-  const [panelWidth, setPanelWidth] = useState(320);
-
-  const MIN_PANEL_WIDTH = 280;
-  const MAX_PANEL_WIDTH = 600;
-
-  const handlePanelResizeStart = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startW = panelWidth;
-
-      function onMove(moveEvent: MouseEvent) {
-        const delta = startX - moveEvent.clientX;
-        const next = Math.min(
-          MAX_PANEL_WIDTH,
-          Math.max(MIN_PANEL_WIDTH, startW + delta),
-        );
-        setPanelWidth(next);
-      }
-      function onUp() {
-        document.body.style.cursor = "";
-        document.body.style.userSelect = "";
-        document.removeEventListener("mousemove", onMove);
-        document.removeEventListener("mouseup", onUp);
-      }
-
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-      document.addEventListener("mousemove", onMove);
-      document.addEventListener("mouseup", onUp);
-    },
-    [panelWidth],
   );
 
   const [sort, setSort] = useState<WorkspaceBrowserSort>({
@@ -341,151 +323,170 @@ export function WorkspaceBrowser({
       ? "Failed to load workspace contents"
       : "Failed to load shared folders";
 
-  return (
-    <div className="flex min-h-[calc(100vh-12rem)] w-full flex-row gap-0">
-      <div className="flex min-h-[calc(100vh-12rem)] min-w-0 flex-1 flex-col">
-        <div className="shrink-0 space-y-4 p-4">
-          <WorkspaceBreadcrumbs
-            path={path}
-            username={username}
-            itemCount={items.length}
-            viewMode={isHome ? "home" : isAtSharedRoot ? "root" : "shared"}
-            currentUsername={currentUser}
-            workspaceRootUsername={isHome ? undefined : myWorkspaceRoot}
-          />
+  const mainContent = (
+    <>
+      <div className="shrink-0 space-y-4 p-4">
+        <WorkspaceBreadcrumbs
+          path={path}
+          username={username}
+          itemCount={items.length}
+          viewMode={isHome ? "home" : isAtSharedRoot ? "root" : "shared"}
+          currentUsername={currentUser}
+          workspaceRootUsername={isHome ? undefined : myWorkspaceRoot}
+        />
 
-          <WorkspaceToolbar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            typeFilter={typeFilter}
-            onTypeFilterChange={setTypeFilter}
-            onRefresh={() => refetch()}
-            isRefreshing={isFetching}
-            showHiddenFiles={showHiddenFiles}
-            onShowHiddenFilesChange={setShowHiddenFiles}
-          />
+        <WorkspaceToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          typeFilter={typeFilter}
+          onTypeFilterChange={setTypeFilter}
+          onRefresh={() => refetch()}
+          isRefreshing={isFetching}
+          showHiddenFiles={showHiddenFiles}
+          onShowHiddenFilesChange={setShowHiddenFiles}
+        />
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {errorMessage}: {error.message}
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        <div>
-          <WorkspaceDataTable
-            items={processedItems}
-            isLoading={isLoading}
-            path={path}
-            sort={sort}
-            onSortChange={setSort}
-            showViewSharedRow={
-              isHome && (!path || path === "" || path === "/" || !path.trim())
-            }
-            viewMode={isHome ? "home" : "shared"}
-            username={username}
-            sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
-            memberCountByPath={memberCountByPath}
-            selectedPath={selectedItem?.path ?? null}
-            onSelect={handleSelectItem}
-            onItemDoubleClick={handleItemDoubleClick}
-          />
-        </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {errorMessage}: {error.message}
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
 
-      <aside className="bg-muted/30 flex min-h-full shrink-0 rounded-tl-lg rounded-bl-lg border-l">
-        <div className="border-border/50 bg-muted/50 flex h-full w-[80px] shrink-0 flex-col rounded-l-lg border-r py-2">
-          {/* Show / Hide panel: same slot, smooth transition by state */}
-          <div className="relative mx-0.5 mb-1 h-8 shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`absolute inset-0 h-full w-full justify-start gap-1 font-normal ${
-                panelExpanded ? "pointer-events-none opacity-0" : "opacity-100"
-              }`}
-              onClick={() => {
-                setPanelManuallyHidden(false);
-                setPanelExpanded(true);
-              }}
-              title="Show details panel"
-            >
-              <PanelRightOpen className="h-4 w-4 shrink-0" />
-              Show
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={`absolute inset-0 h-full w-full justify-start gap-1 font-normal ${
-                panelExpanded ? "opacity-100" : "pointer-events-none opacity-0"
-              }`}
-              onClick={() => {
-                setPanelManuallyHidden(true);
-                setPanelExpanded(false);
-              }}
-              title="Hide panel"
-            >
-              <PanelRightClose className="h-4 w-4 shrink-0" />
-              Hide
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
-            <WorkspaceActionBar
-              selection={selectedItem ? [selectedItem] : []}
-              workspaceGuideUrl={workspaceGuideUrl}
-              onAction={() => {}}
-            />
-          </div>
-          {/* <Button
-              variant="ghost"
-              size="sm"
-              className="mx-0.5 mt-1 shrink-0 justify-start gap-1 font-normal text-muted-foreground"
-              onClick={() => setSelectedItem(null)}
-              title="Close"
-            >
-              <X className="h-4 w-4 shrink-0" />
-              Close
-            </Button> */}
-        </div>
-        {panelExpanded && (
-          <>
-            <div
-              role="separator"
-              aria-label="Resize panel"
-              className="border-border/50 bg-border/30 hover:bg-primary/20 active:bg-primary/30 w-1 shrink-0 cursor-col-resize touch-none border-l transition-colors"
-              onMouseDown={handlePanelResizeStart}
-            />
-            <div
-              className="flex h-full min-h-0 shrink-0 flex-col overflow-hidden py-2"
-              style={{ width: panelWidth, minWidth: MIN_PANEL_WIDTH }}
-            >
-              {selectedItem ? (
-                <InfoPanel
-                  variant="workspace"
-                  workspaceItem={selectedItem}
-                  onClose={() => {
-                    setPanelManuallyHidden(true);
-                    setPanelExpanded(false);
-                  }}
-                />
-              ) : (
-                <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
-                  <div className="flex items-center justify-between gap-2 border-b pb-2">
-                    <h3 className="text-muted-foreground truncate text-sm font-semibold">
-                      Nothing selected
-                    </h3>
-                  </div>
-                  <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
-                    Select an item to view details
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </aside>
+      <div>
+        <WorkspaceDataTable
+          items={processedItems}
+          isLoading={isLoading}
+          path={path}
+          sort={sort}
+          onSortChange={setSort}
+          showViewSharedRow={
+            isHome && (!path || path === "" || path === "/" || !path.trim())
+          }
+          viewMode={isHome ? "home" : "shared"}
+          username={username}
+          sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
+          memberCountByPath={memberCountByPath}
+          selectedPath={selectedItem?.path ?? null}
+          onSelect={handleSelectItem}
+          onItemDoubleClick={handleItemDoubleClick}
+        />
+      </div>
+    </>
+  );
+
+  const actionStrip = (
+    <div className="border-border/50 bg-muted/50 flex h-full w-[80px] shrink-0 flex-col rounded-l-lg border-r py-2">
+      <div className="relative mx-0.5 mb-1 h-8 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`absolute inset-0 h-full w-full justify-start gap-1 font-normal ${
+            panelExpanded ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
+          onClick={() => {
+            setPanelManuallyHidden(false);
+            setPanelExpanded(true);
+          }}
+          title="Show details panel"
+        >
+          <PanelRightOpen className="h-4 w-4 shrink-0" />
+          Show
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={`absolute inset-0 h-full w-full justify-start gap-1 font-normal ${
+            panelExpanded ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+          onClick={() => {
+            setPanelManuallyHidden(true);
+            setPanelExpanded(false);
+          }}
+          title="Hide panel"
+        >
+          <PanelRightClose className="h-4 w-4 shrink-0" />
+          Hide
+        </Button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
+        <WorkspaceActionBar
+          selection={selectedItem ? [selectedItem] : []}
+          workspaceGuideUrl={workspaceGuideUrl}
+          onAction={() => {}}
+        />
+      </div>
     </div>
+  );
+
+  const detailsPanelContent = selectedItem ? (
+    <InfoPanel
+      variant="workspace"
+      workspaceItem={selectedItem}
+      onClose={() => {
+        setPanelManuallyHidden(true);
+        setPanelExpanded(false);
+      }}
+    />
+  ) : (
+    <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
+      <div className="flex items-center justify-between gap-2 border-b pb-2">
+        <h3 className="text-muted-foreground truncate text-sm font-semibold">
+          Nothing selected
+        </h3>
+      </div>
+      <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
+        Select an item to view details
+      </div>
+    </div>
+  );
+
+  if (!panelExpanded) {
+    return (
+      <div className="flex min-h-[calc(100vh-12rem)] w-full flex-row gap-0">
+        <div className="flex min-h-[calc(100vh-12rem)] min-w-0 flex-1 flex-col">
+          {mainContent}
+        </div>
+        <aside className="bg-muted/30 flex min-h-full shrink-0 rounded-tl-lg rounded-bl-lg border-l">
+          {actionStrip}
+        </aside>
+      </div>
+    );
+  }
+
+  return (
+    <ResizablePanelGroup
+      orientation="horizontal"
+      className="min-h-[calc(100vh-12rem)] w-full"
+      defaultLayout={panelLayout}
+      onLayoutChanged={setPanelLayout}
+    >
+      <ResizablePanel
+        id={WORKSPACE_PANEL_IDS.main}
+        defaultSize={panelLayout[WORKSPACE_PANEL_IDS.main] ?? 75}
+        minSize={50}
+        className="flex min-h-[calc(100vh-12rem)] flex-row"
+      >
+        <div className="flex min-h-[calc(100vh-12rem)] min-w-0 flex-1 flex-col">
+          {mainContent}
+        </div>
+        <aside className="bg-muted/30 flex min-h-full shrink-0 rounded-tl-lg rounded-bl-lg border-l">
+          {actionStrip}
+        </aside>
+      </ResizablePanel>
+      <ResizableHandle withHandle className="shrink-0" />
+      <ResizablePanel
+        id={WORKSPACE_PANEL_IDS.details}
+        defaultSize={panelLayout[WORKSPACE_PANEL_IDS.details] ?? 25}
+        minSize={110}
+        maxSize={600}
+        className="flex min-h-0 flex-col overflow-hidden py-2"
+      >
+        {detailsPanelContent}
+      </ResizablePanel>
+    </ResizablePanelGroup>
   );
 }

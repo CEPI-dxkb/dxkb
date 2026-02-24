@@ -6,6 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
+ * Encode a path segment for use in workspace URLs. Keeps `@` as `@` so it
+ * displays correctly in the browser address bar (instead of %40).
+ */
+export function encodeWorkspaceSegment(segment: string): string {
+  return encodeURIComponent(segment).replace(/%40/g, "@");
+}
+
+/**
  * Returns the first non-null/undefined value for the given keys on the object.
  */
 export function getFirstDefined<T extends Record<string, unknown>>(

@@ -1,15 +1,19 @@
-import { use } from "react";
+import { redirect } from "next/navigation";
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
 
 interface WorkspaceHomePageProps {
-  params: Promise<{ path?: string[] }>;
+  params: Promise<{ username?: string; path?: string[] }>;
 }
 
-export default function WorkspaceHomePage({ params }: WorkspaceHomePageProps) {
-  const { path: segments } = use(params);
-  const decodedPath = (segments ?? [])
-    .map(decodeURIComponent)
-    .join("/");
+export default async function WorkspaceHomePage({ params }: WorkspaceHomePageProps) {
+  const resolved = await params;
+  const username = resolved.username ?? "";
+  const segments = resolved.path ?? [];
+  const decodedPath = segments.map((s) => decodeURIComponent(s)).join("/");
 
-  return <WorkspaceBrowser path={decodedPath} />;
+  if (!username) {
+    redirect("/workspace/home");
+  }
+
+  return <WorkspaceBrowser username={username} path={decodedPath} />;
 }

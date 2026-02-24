@@ -23,6 +23,7 @@ import {DropdownMenu,
 } from "@/components/ui/dropdown-menu";
 
 import { UserRound, Settings, NotebookPen, BriefcaseBusiness, Mail } from "lucide-react";
+import { encodeWorkspaceSegment } from "@/lib/utils";
 
 const DesktopNavbar = () => {
   const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
@@ -198,14 +199,14 @@ const DesktopNavbar = () => {
                     <ListItem
                       key="workspace-nav"
                       title="My Workspace"
-                      href={`/workspace/${user?.username}/home`}
+                      href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/home` : "/workspace"}
                     >
                       View your workspace.
                     </ListItem>
                     <ListItem
                       key="workspace-jobs-nav"
                       title="Jobs"
-                      href={`/workspace/${user?.username}/jobs`}
+                      href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/jobs` : "/workspace"}
                     >
                       View all jobs in your workspace.
                     </ListItem>
@@ -290,13 +291,13 @@ const DesktopNavbar = () => {
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <NotebookPen className="text-foreground h-4 w-4" />
-                          <Link href="/workspace">My Workspace</Link>
+                          <Link href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/home` : "/workspace"}>My Workspace</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <BriefcaseBusiness className="text-foreground h-4 w-4" />
-                          <Link href="/workspace/jobs">My Jobs</Link>
+                          <Link href={user?.username ? `/workspace/${encodeWorkspaceSegment(user.username)}/jobs` : "/workspace"}>My Jobs</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>

@@ -6,17 +6,22 @@ import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 
 const client = new WorkspaceApiClient();
 
-function buildWorkspacePath(username: string, relativePath: string): string {
+function buildWorkspacePath(
+  username: string,
+  base: string,
+  relativePath: string,
+): string {
   const trimmed = relativePath.replace(/^\/+|\/+$/g, "");
-  const base = `/${username}@bvbrc/home`;
-  return trimmed ? `${base}/${trimmed}` : base;
+  const root = `/${username}@bvbrc/${base}`;
+  return trimmed ? `${root}/${trimmed}` : root;
 }
 
 async function fetchDirectoryContents(
   username: string,
+  base: string,
   relativePath: string,
 ): Promise<WorkspaceBrowserItem[]> {
-  const fullPath = buildWorkspacePath(username, relativePath);
+  const fullPath = buildWorkspacePath(username, base, relativePath);
 
   const results = await client.makeRequest<WorkspaceBrowserItem[]>(
     "Workspace.ls",
@@ -29,17 +34,19 @@ async function fetchDirectoryContents(
 interface UseWorkspaceBrowserOptions {
   username: string;
   path: string;
+  base?: string;
   enabled?: boolean;
 }
 
 export function useWorkspaceBrowser({
   username,
   path,
+  base = "home",
   enabled = true,
 }: UseWorkspaceBrowserOptions) {
   return useQuery<WorkspaceBrowserItem[], Error>({
-    queryKey: ["workspace-browser", username, path],
-    queryFn: () => fetchDirectoryContents(username, path),
+    queryKey: ["workspace-browser", username, base, path],
+    queryFn: () => fetchDirectoryContents(username, base, path),
     enabled: enabled && !!username,
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: false,

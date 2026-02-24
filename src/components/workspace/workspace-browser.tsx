@@ -15,6 +15,8 @@ import {
 } from "@/types/workspace-browser";
 
 interface WorkspaceBrowserProps {
+  /** Username from URL segment (e.g. workspace/chrescobar/home) */
+  username: string;
   path: string;
 }
 
@@ -54,9 +56,9 @@ function sortItems(
   });
 }
 
-export function WorkspaceBrowser({ path }: WorkspaceBrowserProps) {
+export function WorkspaceBrowser({ username, path }: WorkspaceBrowserProps) {
   const { user } = useAuth();
-  const username = user?.username ?? "";
+  const currentUser = user?.username ?? "";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -71,7 +73,7 @@ export function WorkspaceBrowser({ path }: WorkspaceBrowserProps) {
     error,
     refetch,
     isFetching,
-  } = useWorkspaceBrowser({ username, path });
+  } = useWorkspaceBrowser({ username: currentUser, path });
 
   const processedItems = useMemo(() => {
     let filtered = items;
@@ -90,7 +92,7 @@ export function WorkspaceBrowser({ path }: WorkspaceBrowserProps) {
     return sortItems(filtered, sort);
   }, [items, typeFilter, searchQuery, sort]);
 
-  if (!username) {
+  if (!currentUser) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
@@ -133,6 +135,9 @@ export function WorkspaceBrowser({ path }: WorkspaceBrowserProps) {
         path={path}
         sort={sort}
         onSortChange={setSort}
+        showViewSharedRow={!path || path === "" || path === "/" || !path.trim()}
+        viewMode="home"
+        username={username}
       />
     </div>
   );

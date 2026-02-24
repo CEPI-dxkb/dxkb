@@ -51,7 +51,20 @@ export class WorkspaceApiClient {
 
       console.log("RESULT", result);
 
-      // Replicate the original logic for processing results
+      // Workspace.list_permissions returns a map path -> [user, perm][]
+      if (method === "Workspace.list_permissions") {
+        if (!result.result || !result.result[0]) {
+          return {} as T;
+        }
+        return result.result[0] as T;
+      }
+
+      // Workspace.get returns nested array of object metadata
+      if (method === "Workspace.get") {
+        return (result.result ?? []) as T;
+      }
+
+      // Replicate the original logic for processing results (Workspace.ls)
       if (!result.result || !result.result[0]) {
         return [] as T;
       }

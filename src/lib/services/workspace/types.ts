@@ -203,6 +203,7 @@ export interface JsonRpcResponse<T = unknown> {
 // Workspace API method names
 export type WorkspaceMethod =
   | "Workspace.ls"
+  | "Workspace.list_permissions"
   | "Workspace.get_permissions"
   | "Workspace.create"
   | "Workspace.delete"

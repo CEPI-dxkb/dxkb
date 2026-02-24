@@ -107,6 +107,16 @@ export interface WorkspaceCopyResponse {
   }>;
 }
 
+/** Path-based copy params (BV-BRC API: objects as [sourcePath, destPath][]). */
+export interface WorkspaceCopyByPathsParams {
+  objects: [string, string][];
+  recursive: boolean;
+  move: boolean;
+}
+
+/** Response from Workspace.copy when using path-based params (result array). */
+export type WorkspaceCopyByPathsResponse = unknown[];
+
 // Workspace.move parameters and response
 export interface WorkspaceMoveParams {
   objects: Array<{

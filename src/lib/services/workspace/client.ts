@@ -35,10 +35,13 @@ export class WorkspaceApiClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`,
-        );
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(
+          (errorData as { error?: string }).error ||
+            `HTTP error! status: ${response.status}`,
+        ) as Error & { apiResponse?: unknown };
+        err.apiResponse = (errorData as { apiResponse?: unknown }).apiResponse ?? errorData;
+        throw err;
       }
 
       const result = await response.json();
@@ -46,7 +49,12 @@ export class WorkspaceApiClient {
 
       // Handle JSON-RPC response format
       if (result.error) {
-        throw new Error(result.error.message || "API error");
+        const rpcError = result.error as { message?: string };
+        const err = new Error(rpcError.message || "API error") as Error & {
+          apiResponse?: unknown;
+        };
+        err.apiResponse = result.error;
+        throw err;
       }
 
       console.log("RESULT", result);
@@ -66,6 +74,11 @@ export class WorkspaceApiClient {
 
       // Workspace.get_download_url returns array of URL arrays: [[url], [url], ...]
       if (method === "Workspace.get_download_url") {
+        return (result.result ?? []) as T;
+      }
+
+      // Workspace.copy returns result array (path-based copy)
+      if (method === "Workspace.copy") {
         return (result.result ?? []) as T;
       }
 

@@ -46,9 +46,19 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      console.error("BV-BRC API error:", response.status, response.statusText);
+      const responseText = await response.text();
+      let apiResponse: unknown = null;
+      try {
+        apiResponse = responseText ? JSON.parse(responseText) : null;
+      } catch {
+        apiResponse = responseText || null;
+      }
+      console.error("BV-BRC API error:", response.status, response.statusText, apiResponse);
       return NextResponse.json(
-        { error: `BV-BRC API error: ${response.status} ${response.statusText}` },
+        {
+          error: `BV-BRC API error: ${response.status} ${response.statusText}`,
+          apiResponse,
+        },
         { status: response.status },
       );
     }

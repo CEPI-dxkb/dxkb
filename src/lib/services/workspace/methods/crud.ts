@@ -6,6 +6,8 @@ import {
   WorkspaceDeleteResponse,
   WorkspaceCopyParams,
   WorkspaceCopyResponse,
+  WorkspaceCopyByPathsParams,
+  WorkspaceCopyByPathsResponse,
   WorkspaceMoveParams,
   WorkspaceMoveResponse,
   WorkspaceRenameParams,
@@ -107,6 +109,18 @@ export class WorkspaceCrudMethods {
     return this.client.makeRequest<WorkspaceCopyResponse>("Workspace.copy", [
       params,
     ]);
+  }
+
+  /**
+   * Copy by path pairs (BV-BRC API: objects as [sourcePath, destPath][]).
+   */
+  async copyByPaths(
+    params: WorkspaceCopyByPathsParams,
+  ): Promise<WorkspaceCopyByPathsResponse> {
+    return this.client.makeRequest<WorkspaceCopyByPathsResponse>(
+      "Workspace.copy",
+      [params],
+    );
   }
 
   /**

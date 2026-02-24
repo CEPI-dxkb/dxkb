@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { useWorkspaceBrowser } from "@/hooks/services/workspace/use-workspace-browser";
 import {
   useSharedWithUser,
@@ -44,6 +45,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CopyToDialog } from "./copy-to-dialog";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
 
@@ -145,6 +147,11 @@ export function WorkspaceBrowser({
   const [pendingDeleteSelection, setPendingDeleteSelection] = useState<
     WorkspaceBrowserItem[]
   >([]);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [pendingCopySelection, setPendingCopySelection] = useState<
+    WorkspaceBrowserItem[]
+  >([]);
+  const [isCopying, setIsCopying] = useState(false);
 
   const workspaceCrud = useMemo(
     () => new WorkspaceCrudMethods(new WorkspaceApiClient()),
@@ -329,6 +336,11 @@ export function WorkspaceBrowser({
       setDeleteDialogOpen(true);
       return;
     }
+    if (actionId === "copy") {
+      setPendingCopySelection(selection);
+      setCopyDialogOpen(true);
+      return;
+    }
     if (actionId !== "download") return;
     const downloadable = selection.filter(
       (item) =>
@@ -399,6 +411,89 @@ export function WorkspaceBrowser({
     }
   }
 
+  const currentUserWorkspaceRoot =
+    myWorkspaceRoot ? `/${myWorkspaceRoot}` : `/${currentUser}`;
+
+  async function handleCopyConfirm(
+    destinationPath: string,
+    filenameOverride?: string,
+  ) {
+    if (pendingCopySelection.length === 0) return;
+    const base = destinationPath.replace(/\/+$/, "") || destinationPath;
+    const firstDestName =
+      filenameOverride ?? pendingCopySelection[0]?.name ?? "";
+    const objects: [string, string][] = pendingCopySelection
+      .map((item, index) => {
+        const src = item.path;
+        if (!src || item.name == null) return null;
+        const name =
+          index === 0 && filenameOverride != null
+            ? filenameOverride
+            : item.name;
+        const dest = `${base}/${name}`;
+        return [src, dest] as [string, string];
+      })
+      .filter((p): p is [string, string] => p != null);
+    if (objects.length === 0) {
+      setCopyDialogOpen(false);
+      setPendingCopySelection([]);
+      return;
+    }
+    setIsCopying(true);
+    try {
+      await workspaceCrud.copyByPaths({
+        objects,
+        recursive: true,
+        move: false,
+      });
+      setCopyDialogOpen(false);
+      setPendingCopySelection([]);
+      setSelectedItem(null);
+      refetch();
+
+      const description =
+        objects.length === 1
+          ? `${base}/${firstDestName}`
+          : `${base} (${objects.length} items)`;
+      toast.success("Copy Successful", { description });
+    } catch (err) {
+      const apiResponse = (err as Error & { apiResponse?: unknown }).apiResponse;
+      const errorCode =
+        apiResponse != null &&
+        typeof apiResponse === "object" &&
+        "error" in apiResponse &&
+        typeof (apiResponse as { error?: { code?: number } }).error === "object"
+          ? (apiResponse as { error: { code?: number } }).error?.code
+          : (apiResponse as { code?: number } | null)?.code;
+      const isOverwriteError = errorCode === -32603;
+
+      let message: string;
+      let description: string | undefined;
+
+      if (isOverwriteError) {
+        const base = destinationPath.replace(/\/+$/, "") || destinationPath;
+        const fullPath = firstDestName
+          ? `${base}/${firstDestName}`
+          : base;
+        message = `Can not overwrite '${fullPath}'`;
+        description = undefined;
+      } else {
+        message =
+          err instanceof Error ? err.message : "Copy failed.";
+        description =
+          apiResponse !== undefined && apiResponse !== null
+            ? typeof apiResponse === "string"
+              ? apiResponse
+              : JSON.stringify(apiResponse, null, 2)
+            : undefined;
+      }
+
+      toast.error(message, { description });
+    } finally {
+      setIsCopying(false);
+    }
+  }
+
   if (!currentUser) {
     if (mode === "shared" && !authChecked) {
       return (
@@ -435,6 +530,14 @@ export function WorkspaceBrowser({
 
   const mainContent = (
     <>
+      <CopyToDialog
+        open={copyDialogOpen}
+        onOpenChange={setCopyDialogOpen}
+        sourceItems={pendingCopySelection}
+        currentUserWorkspaceRoot={currentUserWorkspaceRoot}
+        onConfirm={handleCopyConfirm}
+        isCopying={isCopying}
+      />
       <Dialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
@@ -574,10 +677,12 @@ export function WorkspaceBrowser({
           disabledActionIds={[
             ...(isDownloading ? ["download"] : []),
             ...(isDeleting ? ["delete"] : []),
+            ...(isCopying ? ["copy"] : []),
           ]}
           loadingActionIds={[
             ...(isDownloading ? ["download"] : []),
             ...(isDeleting ? ["delete"] : []),
+            ...(isCopying ? ["copy"] : []),
           ]}
           onAction={handleAction}
         />

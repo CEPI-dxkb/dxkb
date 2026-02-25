@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -26,6 +27,10 @@ import { InfoPanel } from "@/components/containers/InfoPanel";
 import { WorkspaceActionBar } from "./workspace-action-bar";
 import { isFolderType } from "./workspace-item-icon";
 import { getDownloadUrls } from "@/lib/services/workspace/methods/download";
+import {
+  loadFavorites,
+  toggleFavorite,
+} from "@/lib/services/workspace/favorites";
 import { forbiddenDownloadTypes } from "@/lib/services/workspace/types";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -45,7 +50,17 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CopyToDialog } from "./copy-to-dialog";
+import { EditTypeDialog } from "./edit-type-dialog";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
 
@@ -155,11 +170,24 @@ export function WorkspaceBrowser({
     WorkspaceBrowserItem[]
   >([]);
   const [isCopying, setIsCopying] = useState(false);
+  const [editTypeDialogOpen, setEditTypeDialogOpen] = useState(false);
+  const [pendingEditTypeItem, setPendingEditTypeItem] =
+    useState<WorkspaceBrowserItem | null>(null);
+  const [isUpdatingType, setIsUpdatingType] = useState(false);
+  const [isFavoriting, setIsFavoriting] = useState(false);
 
   const workspaceCrud = useMemo(
     () => new WorkspaceCrudMethods(new WorkspaceApiClient()),
     [],
   );
+  const queryClient = useQueryClient();
+  const { data: favoritePaths = [] } = useQuery({
+    queryKey: ["workspace-favorites", myWorkspaceRoot],
+    queryFn: () => loadFavorites(myWorkspaceRoot),
+    enabled: mode === "home" && !!myWorkspaceRoot,
+  });
+  const isCurrentSelectionFavorite =
+    selectedItem?.path != null && favoritePaths.includes(selectedItem.path);
 
   const [sort, setSort] = useState<WorkspaceBrowserSort>({
     field: "name",
@@ -351,6 +379,43 @@ export function WorkspaceBrowser({
       setCopyDialogOpen(true);
       return;
     }
+    if (actionId === "editType") {
+      const single = selection[0] ?? null;
+      if (single?.path) {
+        setPendingEditTypeItem(single);
+        setEditTypeDialogOpen(true);
+      }
+      return;
+    }
+    if (actionId === "favorite") {
+      const single = selection[0] ?? null;
+      if (
+        !currentUser ||
+        !myWorkspaceRoot ||
+        !single?.path ||
+        single.type !== "folder"
+      ) {
+        return;
+      }
+      setIsFavoriting(true);
+      try {
+        const added = await toggleFavorite(myWorkspaceRoot, single.path);
+        await queryClient.invalidateQueries({
+          queryKey: ["workspace-favorites", myWorkspaceRoot],
+        });
+        toast.success(
+          added ? "Added to favorites" : "Removed from favorites",
+          { description: single.path },
+        );
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to update favorites.";
+        toast.error(message);
+      } finally {
+        setIsFavoriting(false);
+      }
+      return;
+    }
     if (actionId !== "download") return;
     const downloadable = selection.filter(
       (item) =>
@@ -510,6 +575,28 @@ export function WorkspaceBrowser({
     }
   }
 
+  async function handleEditTypeConfirm(newType: string) {
+    const item = pendingEditTypeItem;
+    if (!item?.path) return;
+    setIsUpdatingType(true);
+    try {
+      await workspaceCrud.updateObjectType(item.path, newType);
+      setSelectedItem(null);
+      setEditTypeDialogOpen(false);
+      setPendingEditTypeItem(null);
+      refetch();
+      toast.success("Object type updated", {
+        description: `${item.name} is now type "${newType}".`,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to update object type.";
+      toast.error(message);
+    } finally {
+      setIsUpdatingType(false);
+    }
+  }
+
   if (!currentUser) {
     if (mode === "shared" && !authChecked) {
       return (
@@ -555,35 +642,32 @@ export function WorkspaceBrowser({
         isCopying={isCopying}
         mode={copyMoveDialogMode}
       />
-      <Dialog
+      <EditTypeDialog
+        open={editTypeDialogOpen}
+        onOpenChange={(open) => {
+          setEditTypeDialogOpen(open);
+          if (!open && !isUpdatingType) setPendingEditTypeItem(null);
+        }}
+        item={pendingEditTypeItem}
+        onConfirm={(newType) => handleEditTypeConfirm(newType)}
+        isUpdating={isUpdatingType}
+      />
+      <AlertDialog
         open={deleteDialogOpen}
         onOpenChange={(open) => {
-          if (!open) {
-            setDeleteDialogOpen(false);
-            if (!isDeleting) setPendingDeleteSelection([]);
-          }
+          setDeleteDialogOpen(open);
+          if (!open && !isDeleting) setPendingDeleteSelection([]);
         }}
       >
-        <DialogContent showCloseButton={!isDeleting}>
-          <DialogTitle>Delete from workspace</DialogTitle>
-          <DialogDescription>
+        <AlertDialogContent>
+          <AlertDialogTitle>Delete from workspace</AlertDialogTitle>
+          <AlertDialogDescription>
             Are you sure you want to delete {deleteTargetLabel}? This action
             cannot be undone.
-          </DialogDescription>
-          <DialogFooter showCloseButton={false}>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!isDeleting) {
-                  setDeleteDialogOpen(false);
-                  setPendingDeleteSelection([]);
-                }
-              }}
-              disabled={isDeleting}
-            >
-              Cancel
-            </Button>
-            <Button
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
               variant="destructive"
               onClick={() => void handleConfirmDelete()}
               disabled={isDeleting}
@@ -596,10 +680,10 @@ export function WorkspaceBrowser({
               ) : (
                 "Delete"
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
         <WorkspaceBreadcrumbs
           path={path}
@@ -691,15 +775,20 @@ export function WorkspaceBrowser({
         <WorkspaceActionBar
           selection={selectedItem ? [selectedItem] : []}
           workspaceGuideUrl={workspaceGuideUrl}
+          isCurrentSelectionFavorite={isCurrentSelectionFavorite}
           disabledActionIds={[
             ...(isDownloading ? ["download"] : []),
             ...(isDeleting ? ["delete"] : []),
             ...(isCopying ? ["copy", "move"] : []),
+            ...(isUpdatingType ? ["editType"] : []),
+            ...(isFavoriting ? ["favorite"] : []),
           ]}
           loadingActionIds={[
             ...(isDownloading ? ["download"] : []),
             ...(isDeleting ? ["delete"] : []),
             ...(isCopying ? ["copy", "move"] : []),
+            ...(isUpdatingType ? ["editType"] : []),
+            ...(isFavoriting ? ["favorite"] : []),
           ]}
           onAction={handleAction}
         />

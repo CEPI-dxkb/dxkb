@@ -6,7 +6,6 @@ import {
   Pencil,
   Copy,
   Move,
-  Share2,
   Star,
   BookOpen,
   Type,
@@ -36,8 +35,7 @@ const actionConfig: ActionConfig[] = [
   { id: "copy", label: "COPY", icon: Copy, validTypes: "*" },
   { id: "move", label: "MOVE", icon: Move, validTypes: "*", requireWrite: true },
   { id: "editType", label: "EDIT TYPE", icon: Type, validTypes: "*", requireWrite: true },
-  { id: "share", label: "SHARE", icon: Share2, validTypes: "*", requireWrite: true },
-  { id: "favorite", label: "FAVORITE", icon: Star, validTypes: "*" },
+  { id: "favorite", label: "FAVORITE", icon: Star, validTypes: ["folder"] },
 ];
 
 function isActionValidForSelection(
@@ -73,6 +71,8 @@ export interface WorkspaceActionBarProps {
   disabledActionIds?: string[];
   /** Action IDs currently loading (show spinner instead of icon). */
   loadingActionIds?: string[];
+  /** When true, the Favorite action shows a filled star (selected folder is favorited). */
+  isCurrentSelectionFavorite?: boolean;
   onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
 }
 
@@ -81,6 +81,7 @@ export function WorkspaceActionBar({
   workspaceGuideUrl,
   disabledActionIds,
   loadingActionIds,
+  isCurrentSelectionFavorite = false,
   onAction,
 }: WorkspaceActionBarProps) {
   const visibleActions = actionConfig.filter((action) =>
@@ -96,6 +97,9 @@ export function WorkspaceActionBar({
       {visibleActions.map((action) => {
         const Icon = action.icon;
         const showSpinner = isLoading(action.id);
+        const isFavoriteAction = action.id === "favorite";
+        const showFilledStar =
+          isFavoriteAction && isCurrentSelectionFavorite && !showSpinner;
         return (
           <Button
             key={action.id}
@@ -111,6 +115,8 @@ export function WorkspaceActionBar({
           >
             {showSpinner ? (
               <Spinner className="h-3.5 w-3.5 shrink-0" />
+            ) : showFilledStar ? (
+              <Star className="h-3.5 w-3.5 shrink-0 fill-current" />
             ) : (
               <Icon className="h-3.5 w-3.5 shrink-0" />
             )}

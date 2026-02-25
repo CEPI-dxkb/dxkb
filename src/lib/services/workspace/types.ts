@@ -213,6 +213,12 @@ export interface JsonRpcResponse<T = unknown> {
 }
 
 // Workspace API method names
+// Workspace.update_metadata parameters: objects are [path, meta, type][] per object
+export interface WorkspaceUpdateMetadataParams {
+  /** Array of [path, meta, type] tuples; meta is typically {} */
+  objects: Array<[string, Record<string, unknown>, string]>;
+}
+
 export type WorkspaceMethod =
   | "Workspace.ls"
   | "Workspace.list_permissions"
@@ -224,7 +230,8 @@ export type WorkspaceMethod =
   | "Workspace.rename"
   | "Workspace.get"
   | "Workspace.save"
-  | "Workspace.get_download_url";
+  | "Workspace.get_download_url"
+  | "Workspace.update_metadata";
 
 export const forbiddenDownloadTypes = [
   "experiment_group",
@@ -495,5 +502,48 @@ export type changeableTypes = {
   xlsx: { label: "xlsx"; value: "xlsx" };
   xml: { label: "xml"; value: "xml" };
 };
+
+/** Sorted list of object type IDs for the "Change Object Type" dialog. */
+export const editTypeOptions: string[] = [
+  "aligned_dna_fasta",
+  "aligned_protein_fasta",
+  "bai",
+  "bam",
+  "contigs",
+  "csv",
+  "diffexp_input_data",
+  "diffexp_input_metadata",
+  "doc",
+  "docx",
+  "embl",
+  "feature_dna_fasta",
+  "feature_protein_fasta",
+  "genbank_file",
+  "gff",
+  "gif",
+  "jpg",
+  "json",
+  "nwk",
+  "pdb",
+  "pdf",
+  "phyloxml",
+  "png",
+  "ppt",
+  "pptx",
+  "reads",
+  "string",
+  "svg",
+  "tar_gz",
+  "tbi",
+  "tsv",
+  "txt",
+  "unspecified",
+  "vcf",
+  "vcf_gz",
+  "wig",
+  "xls",
+  "xlsx",
+  "xml",
+].sort((a, b) => a.localeCompare(b));
 
 

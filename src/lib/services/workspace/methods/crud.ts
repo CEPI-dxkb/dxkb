@@ -16,6 +16,7 @@ import {
   WorkspaceGetResponse,
   WorkspaceSaveParams,
   WorkspaceSaveResponse,
+  WorkspaceUpdateMetadataParams,
 } from "@/lib/services/workspace/types";
 
 /**
@@ -222,6 +223,27 @@ export class WorkspaceCrudMethods {
     return this.get({
       objects: [{ workspace, id }],
       infos: [{ workspace, id, metadata_only: false }],
+    });
+  }
+
+  /**
+   * Workspace.update_metadata - Update object type (and optional metadata)
+   */
+  async updateMetadata(
+    params: WorkspaceUpdateMetadataParams,
+  ): Promise<unknown[][]> {
+    return this.client.makeRequest<unknown[][]>(
+      "Workspace.update_metadata",
+      [params],
+    );
+  }
+
+  /**
+   * Update the type of a single object by path
+   */
+  async updateObjectType(path: string, newType: string): Promise<unknown[][]> {
+    return this.updateMetadata({
+      objects: [[path, {}, newType]],
     });
   }
 

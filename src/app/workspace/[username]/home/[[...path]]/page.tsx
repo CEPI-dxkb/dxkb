@@ -1,17 +1,10 @@
 import { redirect } from "next/navigation";
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
 import { getRequiredEnv } from "@/lib/env";
+import { safeDecode } from "@/lib/url";
 
 interface WorkspaceHomePageProps {
   params: Promise<{ username?: string; path?: string[] }>;
-}
-
-function safeDecode(s: string): string {
-  try {
-    return decodeURIComponent(s);
-  } catch {
-    return s;
-  }
 }
 
 export default async function WorkspaceHomePage({ params }: WorkspaceHomePageProps) {

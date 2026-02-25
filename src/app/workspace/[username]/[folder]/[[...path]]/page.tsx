@@ -1,5 +1,6 @@
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
 import { getRequiredEnv } from "@/lib/env";
+import { safeDecode } from "@/lib/url";
 
 interface WorkspaceFolderPageProps {
   params: Promise<{ username: string; folder: string; path?: string[] }>;
@@ -13,10 +14,10 @@ export default async function WorkspaceFolderPage({
   params,
 }: WorkspaceFolderPageProps) {
   const resolved = await params;
-  const username = decodeURIComponent(resolved.username ?? "");
-  const folder = decodeURIComponent(resolved.folder ?? "");
+  const username = safeDecode(resolved.username ?? "");
+  const folder = safeDecode(resolved.folder ?? "");
   const segments = resolved.path ?? [];
-  const rest = segments.map((s) => decodeURIComponent(s)).join("/");
+  const rest = segments.map((s) => safeDecode(s)).join("/");
   const path = rest ? `${username}/${folder}/${rest}` : `${username}/${folder}`;
   const workspaceGuideUrl = getRequiredEnv("WORKSPACE_GUIDE_URL");
 

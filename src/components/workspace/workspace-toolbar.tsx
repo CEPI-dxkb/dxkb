@@ -38,6 +38,7 @@ interface WorkspaceToolbarProps {
   showHiddenFiles: boolean;
   onShowHiddenFilesChange: (show: boolean) => void;
   onNewFolder?: () => void;
+  onUpload?: () => void;
 }
 
 export function WorkspaceToolbar({
@@ -50,6 +51,7 @@ export function WorkspaceToolbar({
   showHiddenFiles,
   onShowHiddenFilesChange,
   onNewFolder,
+  onUpload,
 }: WorkspaceToolbarProps) {
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -125,7 +127,12 @@ export function WorkspaceToolbar({
           New Folder
         </Button>
 
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onUpload}
+          disabled={!onUpload}
+        >
           <Upload className="h-4 w-4" data-icon="inline-start" />
           Upload
         </Button>

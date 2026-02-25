@@ -2,6 +2,7 @@ import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import {
   WorkspaceCreateParams,
   WorkspaceCreateResponse,
+  WorkspaceCreateUploadNodeResult,
   WorkspaceDeleteParams,
   WorkspaceDeleteResponse,
   WorkspaceCopyParams,
@@ -17,6 +18,7 @@ import {
   WorkspaceSaveParams,
   WorkspaceSaveResponse,
   WorkspaceUpdateMetadataParams,
+  WorkspaceUpdateAutoMetaParams,
 } from "@/lib/services/workspace/types";
 
 /**
@@ -45,6 +47,31 @@ export class WorkspaceCrudMethods {
     return this.client.makeRequest<WorkspaceCreateResponse>("Workspace.create", [
       { objects: [[fullPath, "Directory"]] },
     ]);
+  }
+
+  /**
+   * Create an upload node for a file (Workspace.create with createUploadNodes: true).
+   * Returns the Shock URL to PUT the file to. Directory path should be full path with trailing slash.
+   */
+  async createUploadNode(
+    directoryPath: string,
+    filename: string,
+    type: string,
+  ): Promise<WorkspaceCreateUploadNodeResult> {
+    const dir = directoryPath.endsWith("/") ? directoryPath : directoryPath + "/";
+    const fullPath = dir + filename;
+    const result = await this.client.makeRequest<unknown[][]>("Workspace.create", [
+      {
+        objects: [[fullPath, type, {}, ""]],
+        createUploadNodes: true,
+      },
+    ]);
+    const tuple = result?.[0]?.[0] as unknown[] | undefined;
+    const linkReference = tuple?.[11];
+    if (typeof linkReference !== "string") {
+      throw new Error("Workspace.create did not return a Shock URL (link_reference)");
+    }
+    return { link_reference: linkReference };
   }
 
   /**
@@ -255,6 +282,20 @@ export class WorkspaceCrudMethods {
     return this.updateMetadata({
       objects: [[path, {}, newType]],
     });
+  }
+
+  /**
+   * Workspace.update_auto_meta - Trigger auto metadata inspection for object(s) by path.
+   * Call after uploading a file to Shock so the workspace updates size/type etc.
+   */
+  async updateAutoMetadata(paths: string[]): Promise<unknown[][]> {
+    const params: WorkspaceUpdateAutoMetaParams = {
+      objects: paths,
+    };
+    return this.client.makeRequest<unknown[][]>(
+      "Workspace.update_auto_meta",
+      [params],
+    );
   }
 
   /**

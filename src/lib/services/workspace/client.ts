@@ -92,6 +92,11 @@ export class WorkspaceApiClient {
         return (result.result ?? []) as T;
       }
 
+      // Workspace.update_auto_meta returns result array (updated object metadata)
+      if (method === "Workspace.update_auto_meta") {
+        return (result.result ?? []) as T;
+      }
+
       // Replicate the original logic for processing results (Workspace.ls)
       if (!result.result || !result.result[0]) {
         return [] as T;

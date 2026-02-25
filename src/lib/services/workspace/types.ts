@@ -73,6 +73,22 @@ export interface WorkspaceCreateResponse {
   }>;
 }
 
+/**
+ * Path-based Workspace.create params for uploads.
+ * objects: [fullPath, type, userMeta, content][] (BV-BRC API format).
+ * createUploadNodes: true returns Shock node URLs in the result (index 11 = link_reference).
+ */
+export interface WorkspaceCreateUploadParams {
+  objects: [string, string, Record<string, unknown>, string][];
+  createUploadNodes?: boolean;
+  overwrite?: boolean;
+}
+
+/** Parsed result from Workspace.create with createUploadNodes: true (result[0][0] tuple; index 11 = link_reference). */
+export interface WorkspaceCreateUploadNodeResult {
+  link_reference: string;
+}
+
 // Workspace.delete parameters and response
 export interface WorkspaceDeleteParams {
   /** Full object paths (e.g. /user@realm/home/file.pdb). */
@@ -219,6 +235,11 @@ export interface WorkspaceUpdateMetadataParams {
   objects: Array<[string, Record<string, unknown>, string]>;
 }
 
+/** Params for Workspace.update_auto_meta (trigger inspection/metadata update for uploaded objects). */
+export interface WorkspaceUpdateAutoMetaParams {
+  objects: string[];
+}
+
 export type WorkspaceMethod =
   | "Workspace.ls"
   | "Workspace.list_permissions"
@@ -231,7 +252,8 @@ export type WorkspaceMethod =
   | "Workspace.get"
   | "Workspace.save"
   | "Workspace.get_download_url"
-  | "Workspace.update_metadata";
+  | "Workspace.update_metadata"
+  | "Workspace.update_auto_meta";
 
 export const forbiddenDownloadTypes = [
   "experiment_group",

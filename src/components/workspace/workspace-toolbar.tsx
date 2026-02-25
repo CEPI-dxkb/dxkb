@@ -1,8 +1,9 @@
 "use client";
 
-import { RefreshCw, Search, FolderPlus, Upload, Eye, EyeOff } from "lucide-react";
+import { RefreshCw, Search, FolderPlus, Upload, Eye, EyeOff, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip } from 'recharts';
 import {
   Select,
   SelectContent,
@@ -39,6 +40,9 @@ interface WorkspaceToolbarProps {
   onShowHiddenFilesChange: (show: boolean) => void;
   onNewFolder?: () => void;
   onUpload?: () => void;
+  /** When true, show "New Workspace" instead of New Folder/Upload (root directory). Type filter, search, and refresh remain. */
+  isAtRoot?: boolean;
+  onNewWorkspace?: () => void;
 }
 
 export function WorkspaceToolbar({
@@ -52,7 +56,73 @@ export function WorkspaceToolbar({
   onShowHiddenFilesChange,
   onNewFolder,
   onUpload,
+  isAtRoot = false,
+  onNewWorkspace,
 }: WorkspaceToolbarProps) {
+  if (isAtRoot) {
+    return (
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="flex min-w-0 items-center gap-2">
+          <Select
+            items={typeFilterOptions}
+            value={typeFilter}
+            onValueChange={(value) => {
+              if (value != null) onTypeFilterChange(value);
+            }}
+          >
+            <SelectTrigger className="w-36 shrink-0">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {typeFilterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+
+          <div className="relative min-w-0 flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Input
+              placeholder="Search files..."
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            title="Refresh the workspace"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              data-icon="inline-start"
+            />
+            Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={onNewWorkspace}
+            disabled={!onNewWorkspace}
+            title="Create a new workspace directory"
+          >
+            <HardDrive className="h-4 w-4" data-icon="inline-start" />
+            New WS
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
       <div className="flex min-w-0 items-center gap-2">
@@ -91,7 +161,6 @@ export function WorkspaceToolbar({
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="outline"
-          size="sm"
           onClick={() => onShowHiddenFilesChange(!showHiddenFiles)}
           title={showHiddenFiles ? "Hide dotfiles and hidden items" : "Show hidden files (e.g. .folder)"}
           aria-pressed={showHiddenFiles}
@@ -106,9 +175,9 @@ export function WorkspaceToolbar({
 
         <Button
           variant="outline"
-          size="sm"
           onClick={onRefresh}
           disabled={isRefreshing}
+          title="Refresh the workspace"
         >
           <RefreshCw
             className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
@@ -119,9 +188,9 @@ export function WorkspaceToolbar({
 
         <Button
           variant="outline"
-          size="sm"
           onClick={onNewFolder}
           disabled={!onNewFolder}
+          title="Create a new folder"
         >
           <FolderPlus className="h-4 w-4" data-icon="inline-start" />
           New Folder
@@ -129,9 +198,9 @@ export function WorkspaceToolbar({
 
         <Button
           variant="outline"
-          size="sm"
           onClick={onUpload}
           disabled={!onUpload}
+          title="Upload a file to the workspace"
         >
           <Upload className="h-4 w-4" data-icon="inline-start" />
           Upload

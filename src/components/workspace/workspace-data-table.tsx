@@ -608,6 +608,7 @@ export const WorkspaceDataTable = forwardRef<
       onKeyDown={handleKeyDown}
     >
       <DndContext
+        id="workspace-table-dnd"
         collisionDetection={closestCenter}
         modifiers={[restrictToHorizontalAxis]}
         onDragEnd={handleColumnDragEnd}

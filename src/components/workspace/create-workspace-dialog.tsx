@@ -11,54 +11,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
-export interface CreateFolderDialogProps {
+export interface CreateWorkspaceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreateFolder: (folderName: string) => Promise<void>;
+  onCreateWorkspace: (workspaceName: string) => Promise<void>;
   isCreating: boolean;
 }
 
-export function CreateFolderDialog({
+export function CreateWorkspaceDialog({
   open,
   onOpenChange,
-  onCreateFolder,
+  onCreateWorkspace,
   isCreating,
-}: CreateFolderDialogProps) {
-  const [folderName, setFolderName] = React.useState("");
+}: CreateWorkspaceDialogProps) {
+  const [workspaceName, setWorkspaceName] = React.useState("");
 
   React.useEffect(() => {
     if (open) {
-      setFolderName("");
+      setWorkspaceName("");
     }
   }, [open]);
 
   const handleCreate = React.useCallback(() => {
-    const name = folderName.trim();
+    const name = workspaceName.trim();
     if (!name || isCreating) return;
-    onCreateFolder(name).then(
+    onCreateWorkspace(name).then(
       () => onOpenChange(false),
       () => {},
     );
-  }, [folderName, isCreating, onCreateFolder, onOpenChange]);
+  }, [workspaceName, isCreating, onCreateWorkspace, onOpenChange]);
 
-  const canCreate = folderName.trim().length > 0 && !isCreating;
+  const canCreate = workspaceName.trim().length > 0 && !isCreating;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogTitle className="text-start">Create Folder</DialogTitle>
+        <DialogTitle className="text-start">Create Workspace</DialogTitle>
         <div className="flex flex-col gap-2 py-2">
           <label
             className="text-muted-foreground text-xs font-medium"
-            htmlFor="create-folder-input"
+            htmlFor="create-workspace-input"
           >
-            Folder name
+            Workspace name
           </label>
           <Input
-            id="create-folder-input"
-            value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
-            placeholder="My Folder"
+            id="create-workspace-input"
+            value={workspaceName}
+            onChange={(e) => setWorkspaceName(e.target.value)}
+            placeholder="My Workspace"
             disabled={isCreating}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -83,7 +83,7 @@ export function CreateFolderDialog({
                 Creating…
               </>
             ) : (
-              "Create Folder"
+              "Create Workspace"
             )}
           </Button>
         </DialogFooter>

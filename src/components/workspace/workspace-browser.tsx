@@ -59,6 +59,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CopyToDialog } from "./copy-to-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
+import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 import { DownloadOptionsDialog } from "./download-options-dialog";
 import { UploadDialog } from "./upload-dialog";
 import { EditTypeDialog } from "./edit-type-dialog";
@@ -186,6 +187,9 @@ export function WorkspaceBrowser({
   const [downloadOptionsPaths, setDownloadOptionsPaths] = useState<string[]>(
     [],
   );
+  const [createWorkspaceDialogOpen, setCreateWorkspaceDialogOpen] =
+    useState(false);
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
   const workspaceCrud = useMemo(
     () => new WorkspaceCrudMethods(new WorkspaceApiClient()),
@@ -654,6 +658,31 @@ export function WorkspaceBrowser({
     }
   }
 
+  async function handleCreateWorkspace(workspaceName: string) {
+    const name = workspaceName.trim();
+    if (!name) return;
+    const safeName = sanitizePathSegment(name);
+    if (!safeName) return;
+    setIsCreatingWorkspace(true);
+    try {
+      const fullPath = `/${username}/${safeName}/`;
+      await workspaceCrud.createFolderByPath(fullPath);
+      setCreateWorkspaceDialogOpen(false);
+      setSelectedItems([]);
+      setAnchorPath(null);
+      refetch();
+      toast.success("Workspace created", {
+        description: safeName,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create workspace.";
+      toast.error(message);
+    } finally {
+      setIsCreatingWorkspace(false);
+    }
+  }
+
   async function handleEditTypeConfirm(newType: string) {
     const item = pendingEditTypeItem;
     if (!item?.path) return;
@@ -749,6 +778,12 @@ export function WorkspaceBrowser({
         onCreateFolder={handleCreateFolder}
         isCreating={isCreatingFolder}
       />
+      <CreateWorkspaceDialog
+        open={createWorkspaceDialogOpen}
+        onOpenChange={setCreateWorkspaceDialogOpen}
+        onCreateWorkspace={handleCreateWorkspace}
+        isCreating={isCreatingWorkspace}
+      />
       <UploadDialog
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
@@ -817,6 +852,10 @@ export function WorkspaceBrowser({
           onShowHiddenFilesChange={setShowHiddenFiles}
           onNewFolder={isHome ? () => setNewFolderDialogOpen(true) : undefined}
           onUpload={isHome ? () => setUploadDialogOpen(true) : undefined}
+          isAtRoot={isAtSharedRoot}
+          onNewWorkspace={
+            isAtSharedRoot ? () => setCreateWorkspaceDialogOpen(true) : undefined
+          }
         />
 
         {error && (

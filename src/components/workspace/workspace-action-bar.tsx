@@ -27,6 +27,7 @@ interface ActionConfig {
   requireWrite?: boolean;
 }
 
+// TODO: Add "View" buttons to FASTA/PDB files once the viewer/datagrid is implemented fully.
 const actionConfig: ActionConfig[] = [
   { id: "guide", label: "GUIDE", icon: BookOpen, validTypes: "*" },
   { id: "download", label: "DWNLD", icon: Download, validTypes: "*" },
@@ -104,8 +105,7 @@ export function WorkspaceActionBar({
           <Button
             key={action.id}
             variant="secondary"
-            size="sm"
-            className="h-[60px] w-full flex-col gap-0.5 py-1.5 font-normal"
+            className="h-[60px] w-full flex-col gap-1 font-normal"
             disabled={isDisabled(action.id)}
             onClick={() =>
               action.id === "guide"
@@ -114,13 +114,13 @@ export function WorkspaceActionBar({
             }
           >
             {showSpinner ? (
-              <Spinner className="h-3.5 w-3.5 shrink-0" />
+              <Spinner className="h-4 w-4 shrink-0" />
             ) : showFilledStar ? (
-              <Star className="h-3.5 w-3.5 shrink-0 fill-current" />
+              <Star className="h-4 w-4 shrink-0 fill-current" />
             ) : (
-              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <Icon className="h-4 w-4 shrink-0" />
             )}
-            <span className="text-[10px] leading-tight">{action.label}</span>
+            <span className="text-[11px] font-medium leading-tight">{action.label}</span>
           </Button>
         );
       })}

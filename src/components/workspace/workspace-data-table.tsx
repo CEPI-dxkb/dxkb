@@ -127,7 +127,9 @@ function SortIcon({
   currentSort: WorkspaceBrowserSort;
 }) {
   if (currentSort.field !== field) {
-    return <ArrowUpDown className="text-muted-foreground/50 ml-1 inline h-3 w-3" />;
+    return (
+      <ArrowUpDown className="text-muted-foreground/50 ml-1 inline h-3 w-3" />
+    );
   }
   return currentSort.direction === "asc" ? (
     <ArrowUp className="ml-1 inline h-3 w-3" />
@@ -145,25 +147,35 @@ function TableSkeleton() {
     <>
       {Array.from({ length: 8 }).map((_, i) => (
         <TableRow key={i} className="pl-6">
-          <TableCell className={`text-left pl-6 ${skeletonRowHeight}`}>
+          <TableCell className={`pl-6 text-left ${skeletonRowHeight}`}>
             <div className="flex h-5 items-center gap-2">
               <Skeleton className="h-4 w-4 shrink-0 rounded" />
               <Skeleton className="h-4 w-40 shrink-0" />
             </div>
           </TableCell>
-          <TableCell className={`text-muted-foreground text-left pl-6 ${skeletonRowHeight}`}>
+          <TableCell
+            className={`text-muted-foreground pl-6 text-left ${skeletonRowHeight}`}
+          >
             <Skeleton className="h-4 w-14" />
           </TableCell>
-          <TableCell className={`text-muted-foreground hidden md:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+          <TableCell
+            className={`text-muted-foreground hidden pl-6 text-left md:table-cell ${skeletonRowHeight}`}
+          >
             <Skeleton className="h-4 w-20" />
           </TableCell>
-          <TableCell className={`text-muted-foreground text-left pl-6 ${skeletonRowHeight}`}>
+          <TableCell
+            className={`text-muted-foreground pl-6 text-left ${skeletonRowHeight}`}
+          >
             <Skeleton className="h-4 w-16" />
           </TableCell>
-          <TableCell className={`text-muted-foreground hidden sm:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+          <TableCell
+            className={`text-muted-foreground hidden pl-6 text-left sm:table-cell ${skeletonRowHeight}`}
+          >
             <Skeleton className="h-4 w-24" />
           </TableCell>
-          <TableCell className={`text-muted-foreground hidden lg:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+          <TableCell
+            className={`text-muted-foreground hidden pl-6 text-left lg:table-cell ${skeletonRowHeight}`}
+          >
             <Skeleton className="h-4 w-16" />
           </TableCell>
         </TableRow>
@@ -183,6 +195,7 @@ const SORTABLE_FIELDS: SortField[] = [
   "size",
   "owner_id",
   "creation_time",
+  "type",
 ];
 
 function DraggableTableHeader({
@@ -209,9 +222,10 @@ function DraggableTableHeader({
     zIndex: isDragging ? 1 : 0,
   };
 
-  const meta = header.column.columnDef.meta as { className?: string } | undefined;
-  const className = clsx("pl-6 relative", meta?.className ?? "");
-  const isSortable = SORTABLE_FIELDS.includes(header.column.id as SortField);
+  const meta = header.column.columnDef.meta as
+    | { className?: string }
+    | undefined;
+  const className = clsx("pl-6 relative bg-background", meta?.className ?? "");
 
   return (
     <TableHead
@@ -223,19 +237,14 @@ function DraggableTableHeader({
         minWidth: style.width,
         maxWidth: style.width,
       }}
-      onClick={
-        isSortable
-          ? () => onSort(header.column.id as SortField)
-          : undefined
-      }
     >
-      <div className="flex items-center justify-between w-full py-0 relative">
+      <div className="relative flex w-full items-center justify-between py-0">
         <div className="flex min-w-0 flex-1 cursor-pointer select-none">
           {flexRender(header.column.columnDef.header, header.getContext())}
         </div>
         <button
           type="button"
-          className="touch-none cursor-grab active:cursor-grabbing p-1 rounded hover:bg-primary/10"
+          className="hover:bg-primary/10 cursor-grab touch-none rounded p-1 active:cursor-grabbing"
           {...attributes}
           {...listeners}
           onClick={(e) => e.stopPropagation()}
@@ -253,7 +262,7 @@ function DraggableTableHeader({
             onTouchStart={header.getResizeHandler()}
             onDoubleClick={() => header.column.resetSize()}
             className={clsx(
-              "absolute top-0 right-0 w-2 h-full cursor-col-resize z-10 border-r border-border",
+              "border-border absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize border-r",
               "hover:bg-primary/15 hover:border-primary/50",
               header.column.getIsResizing() && "bg-primary/25 border-primary",
             )}
@@ -312,8 +321,7 @@ export const WorkspaceDataTable = forwardRef<
       if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
 
       const paths = selectedPaths ?? [];
-      const focusPath =
-        paths.length > 0 ? paths[paths.length - 1] : null;
+      const focusPath = paths.length > 0 ? paths[paths.length - 1] : null;
       const normalizedFocus = normalizePath(focusPath ?? undefined);
       const currentIndex = items.findIndex(
         (i) => normalizePath(i.path) === normalizedFocus,
@@ -321,7 +329,8 @@ export const WorkspaceDataTable = forwardRef<
 
       let nextIndex: number;
       if (e.key === "ArrowDown") {
-        nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1);
+        nextIndex =
+          currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1);
       } else {
         nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
       }
@@ -338,8 +347,12 @@ export const WorkspaceDataTable = forwardRef<
     ? path.split("/").map(sanitizePathSegment).filter(Boolean)
     : [];
   const safeUsername = sanitizePathSegment(username);
-  const homeBase = safeUsername ? `/workspace/${encodeWorkspaceSegment(safeUsername)}/home` : "/workspace/home";
-  const sharedBase = safeUsername ? `/workspace/${encodeWorkspaceSegment(safeUsername)}` : "/workspace/shared";
+  const homeBase = safeUsername
+    ? `/workspace/${encodeWorkspaceSegment(safeUsername)}/home`
+    : "/workspace/home";
+  const sharedBase = safeUsername
+    ? `/workspace/${encodeWorkspaceSegment(safeUsername)}`
+    : "/workspace/shared";
   const sharedRootHref =
     sharedRootUsername != null
       ? `/workspace/${encodeWorkspaceSegment(sanitizePathSegment(sharedRootUsername))}`
@@ -394,17 +407,14 @@ export const WorkspaceDataTable = forwardRef<
   }
 
   const showParentRow =
-    viewMode === "shared"
-      ? pathSegments.length >= 1
-      : !isAtRoot;
+    viewMode === "shared" ? pathSegments.length >= 1 : !isAtRoot;
   const parentRowLabel =
     viewMode === "shared"
       ? pathSegments.length <= 2
         ? "Back to my workspaces"
         : "Parent folder"
       : "Parent folder";
-  const showLeadingRow =
-    showViewSharedRow && viewMode === "home" && isAtRoot;
+  const showLeadingRow = showViewSharedRow && viewMode === "home" && isAtRoot;
 
   const sortingState: SortingState = useMemo(
     () => [{ id: sort.field, desc: sort.direction === "desc" }],
@@ -413,20 +423,25 @@ export const WorkspaceDataTable = forwardRef<
 
   const columns = useMemo<ColumnDef<WorkspaceBrowserItem>[]>(() => {
     const sortableHeader = (field: SortField, label: string) => (
-      <span
-        className="cursor-pointer select-none"
-        onClick={() => handleSort(field)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            handleSort(field);
-          }
-        }}
-      >
+      <span className="inline-flex items-center gap-1">
         {label}
-        <SortIcon field={field} currentSort={sort} />
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSort(field);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              handleSort(field);
+            }
+          }}
+          className="hover:bg-primary/10 focus-visible:ring-primary cursor-pointer rounded p-0.5 select-none focus:outline-none focus-visible:ring-2"
+          aria-label={`Sort by ${label}`}
+        >
+          <SortIcon field={field} currentSort={sort} />
+        </button>
       </span>
     );
     const base: ColumnDef<WorkspaceBrowserItem>[] = [
@@ -440,7 +455,9 @@ export const WorkspaceDataTable = forwardRef<
           return (
             <div className="flex items-center gap-2">
               <WorkspaceItemIcon type={item.type} />
-              <span className={isNavigable ? "font-medium hover:underline" : ""}>
+              <span
+                className={isNavigable ? "font-medium hover:underline" : ""}
+              >
                 {item.name}
               </span>
             </div>
@@ -508,9 +525,11 @@ export const WorkspaceDataTable = forwardRef<
     base.push({
       id: "type",
       accessorKey: "type",
-      header: "Type",
+      header: () => sortableHeader("type", "Type"),
       cell: ({ getValue }) => (
-        <span className="text-muted-foreground">{String(getValue() ?? "")}</span>
+        <span className="text-muted-foreground">
+          {String(getValue() ?? "")}
+        </span>
       ),
       meta: { className: "hidden lg:table-cell" },
       size: 90,
@@ -555,7 +574,8 @@ export const WorkspaceDataTable = forwardRef<
     const headers = table.getFlatHeaders();
     const colSizes: Record<string, string> = {};
     for (const header of headers) {
-      colSizes[`--col-${header.column.id}-size`] = `${header.column.getSize()}px`;
+      colSizes[`--col-${header.column.id}-size`] =
+        `${header.column.getSize()}px`;
     }
     return colSizes;
   }, [columnSizingState, columnSizingInfoState]);
@@ -584,7 +604,7 @@ export const WorkspaceDataTable = forwardRef<
       role="grid"
       tabIndex={useSelectionMode ? 0 : undefined}
       aria-label="Workspace items"
-      className="scrollbar-themed h-full min-h-0 overflow-y-auto rounded-md border outline-none"
+      className="scrollbar-themed h-full min-h-0 overflow-auto rounded-md border outline-none"
       onKeyDown={handleKeyDown}
     >
       <DndContext
@@ -593,11 +613,11 @@ export const WorkspaceDataTable = forwardRef<
         onDragEnd={handleColumnDragEnd}
         sensors={sensors}
       >
-        <div className="min-w-max relative" style={columnSizeVars}>
-          <Table>
-            <TableHeader>
+        <div className="relative min-w-max" style={columnSizeVars}>
+          <Table disableScrollWrapper>
+            <TableHeader className="border-border bg-background sticky top-0 z-20 border-b shadow-sm [&_tr]:bg-background">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow key={headerGroup.id} className="bg-background">
                   <SortableContext
                     items={columnOrder}
                     strategy={horizontalListSortingStrategy}
@@ -614,177 +634,184 @@ export const WorkspaceDataTable = forwardRef<
                 </TableRow>
               ))}
             </TableHeader>
-        <TableBody>
-          {isLoading ? (
-            <TableSkeleton />
-          ) : (
-            <>
-              {showLeadingRow && (
-                <TableRow
-                  className="cursor-pointer pl-6"
-                  onClick={() => router.push(sharedBase)}
-                >
-                  {table.getVisibleLeafColumns().map((column) => {
-                    const meta = column.columnDef.meta as
-                      | { className?: string }
-                      | undefined;
-                    const className = clsx("pl-6", meta?.className ?? "");
-                    return (
-                      <TableCell
-                        key={column.id}
-                        className={className}
-                        style={{
-                          width: `var(--col-${column.id}-size)`,
-                          minWidth: `var(--col-${column.id}-size)`,
-                          maxWidth: `var(--col-${column.id}-size)`,
-                        }}
-                      >
-                        {column.id === "name" ? (
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 shrink-0 text-amber-500" />
-                            <span className="text-muted-foreground font-medium italic">
-                              View Shared Folders
-                            </span>
-                          </div>
-                        ) : null}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              )}
-
-              {showParentRow && (
-                <TableRow
-                  className="cursor-pointer pl-6"
-                  onClick={handleParentClick}
-                >
-                  {table.getVisibleLeafColumns().map((column) => {
-                    const meta = column.columnDef.meta as
-                      | { className?: string }
-                      | undefined;
-                    const className = clsx("pl-6", meta?.className ?? "");
-                    return (
-                      <TableCell
-                        key={column.id}
-                        className={className}
-                        style={{
-                          width: `var(--col-${column.id}-size)`,
-                          minWidth: `var(--col-${column.id}-size)`,
-                          maxWidth: `var(--col-${column.id}-size)`,
-                        }}
-                      >
-                        {column.id === "name" ? (
-                          <div className="flex items-center gap-2">
-                            <FolderUp className="h-4 w-4 shrink-0 text-amber-500" />
-                            <span className="text-muted-foreground font-medium italic">
-                              {parentRowLabel}
-                            </span>
-                          </div>
-                        ) : null}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              )}
-
-              {items.length === 0 && !isLoading ? (
-                <TableRow className="pl-6">
-                  <TableCell
-                    colSpan={table.getAllLeafColumns().length}
-                    className="text-muted-foreground py-12 text-center pl-6"
-                  >
-                    This folder is empty
-                  </TableCell>
-                </TableRow>
+            <TableBody>
+              {isLoading ? (
+                <TableSkeleton />
               ) : (
-                table.getRowModel().rows.map((row) => {
-                  const item = row.original;
-                  const isNavigable = isFolderType(item.type);
-                  const normalizedItemPath = normalizePath(item.path);
-                  const selectedSet = new Set(
-                    (selectedPaths ?? []).map(normalizePath),
-                  );
-                  const isSelected =
-                    useSelectionMode && selectedSet.has(normalizedItemPath);
-
-                  function handleRowMouseDown(e: React.MouseEvent) {
-                    if (
-                      useSelectionMode &&
-                      (e.shiftKey || e.ctrlKey || e.metaKey)
-                    ) {
-                      e.preventDefault();
-                    }
-                  }
-
-                  function handleRowClick(e: React.MouseEvent) {
-                    if (useSelectionMode) {
-                      onSelect?.(item, {
-                        ctrlOrMeta: e.ctrlKey || e.metaKey,
-                        shift: e.shiftKey,
-                      });
-                    } else if (isNavigable) {
-                      handleItemClick(item);
-                    }
-                  }
-
-                  function handleRowDoubleClick() {
-                    if (useSelectionMode && isNavigable) {
-                      onItemDoubleClick?.(item);
-                    }
-                  }
-
-                  return (
+                <>
+                  {showLeadingRow && (
                     <TableRow
-                      key={row.id}
-                      className={
-                        (useSelectionMode
-                          ? "border-l-2 " +
-                            (isSelected ? "border-l-primary" : "border-l-transparent")
-                          : "") +
-                        (useSelectionMode || isNavigable
-                          ? " cursor-pointer pl-6"
-                          : " pl-6") +
-                        (isSelected ? " bg-muted" : "")
-                      }
-                      onMouseDown={handleRowMouseDown}
-                      onClick={handleRowClick}
-                      onDoubleClick={handleRowDoubleClick}
-                      title={
-                        useSelectionMode && isNavigable
-                          ? "Double-click to open folder"
-                          : undefined
-                      }
-                      aria-selected={useSelectionMode ? isSelected : undefined}
+                      className="cursor-pointer pl-6"
+                      onClick={() => router.push(sharedBase)}
                     >
-                      {row.getVisibleCells().map((cell) => {
-                        const meta = cell.column.columnDef.meta as
+                      {table.getVisibleLeafColumns().map((column) => {
+                        const meta = column.columnDef.meta as
                           | { className?: string }
                           | undefined;
                         const className = clsx("pl-6", meta?.className ?? "");
                         return (
                           <TableCell
-                            key={cell.id}
+                            key={column.id}
                             className={className}
                             style={{
-                              width: `var(--col-${cell.column.id}-size)`,
-                              minWidth: `var(--col-${cell.column.id}-size)`,
-                              maxWidth: `var(--col-${cell.column.id}-size)`,
+                              width: `var(--col-${column.id}-size)`,
+                              minWidth: `var(--col-${column.id}-size)`,
+                              maxWidth: `var(--col-${column.id}-size)`,
                             }}
                           >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
-                            )}
+                            {column.id === "name" ? (
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 shrink-0 text-amber-500" />
+                                <span className="text-muted-foreground font-medium italic">
+                                  View Shared Folders
+                                </span>
+                              </div>
+                            ) : null}
                           </TableCell>
                         );
                       })}
                     </TableRow>
-                  );
-                })
+                  )}
+
+                  {showParentRow && (
+                    <TableRow
+                      className="cursor-pointer pl-6"
+                      onClick={handleParentClick}
+                    >
+                      {table.getVisibleLeafColumns().map((column) => {
+                        const meta = column.columnDef.meta as
+                          | { className?: string }
+                          | undefined;
+                        const className = clsx("pl-6", meta?.className ?? "");
+                        return (
+                          <TableCell
+                            key={column.id}
+                            className={className}
+                            style={{
+                              width: `var(--col-${column.id}-size)`,
+                              minWidth: `var(--col-${column.id}-size)`,
+                              maxWidth: `var(--col-${column.id}-size)`,
+                            }}
+                          >
+                            {column.id === "name" ? (
+                              <div className="flex items-center gap-2">
+                                <FolderUp className="h-4 w-4 shrink-0 text-amber-500" />
+                                <span className="text-muted-foreground font-medium italic">
+                                  {parentRowLabel}
+                                </span>
+                              </div>
+                            ) : null}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+
+                  {items.length === 0 && !isLoading ? (
+                    <TableRow className="pl-6">
+                      <TableCell
+                        colSpan={table.getAllLeafColumns().length}
+                        className="text-muted-foreground py-12 pl-6 text-center"
+                      >
+                        This folder is empty
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    table.getRowModel().rows.map((row) => {
+                      const item = row.original;
+                      const isNavigable = isFolderType(item.type);
+                      const normalizedItemPath = normalizePath(item.path);
+                      const selectedSet = new Set(
+                        (selectedPaths ?? []).map(normalizePath),
+                      );
+                      const isSelected =
+                        useSelectionMode && selectedSet.has(normalizedItemPath);
+
+                      function handleRowMouseDown(e: React.MouseEvent) {
+                        if (
+                          useSelectionMode &&
+                          (e.shiftKey || e.ctrlKey || e.metaKey)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }
+
+                      function handleRowClick(e: React.MouseEvent) {
+                        if (useSelectionMode) {
+                          onSelect?.(item, {
+                            ctrlOrMeta: e.ctrlKey || e.metaKey,
+                            shift: e.shiftKey,
+                          });
+                        } else if (isNavigable) {
+                          handleItemClick(item);
+                        }
+                      }
+
+                      function handleRowDoubleClick() {
+                        if (useSelectionMode && isNavigable) {
+                          onItemDoubleClick?.(item);
+                        }
+                      }
+
+                      return (
+                        <TableRow
+                          key={row.id}
+                          className={
+                            (useSelectionMode
+                              ? "border-l-2 " +
+                                (isSelected
+                                  ? "border-l-primary"
+                                  : "border-l-transparent")
+                              : "") +
+                            (useSelectionMode || isNavigable
+                              ? " cursor-pointer pl-6"
+                              : " pl-6") +
+                            (isSelected ? " bg-muted" : "")
+                          }
+                          onMouseDown={handleRowMouseDown}
+                          onClick={handleRowClick}
+                          onDoubleClick={handleRowDoubleClick}
+                          title={
+                            useSelectionMode && isNavigable
+                              ? "Double-click to open folder"
+                              : undefined
+                          }
+                          aria-selected={
+                            useSelectionMode ? isSelected : undefined
+                          }
+                        >
+                          {row.getVisibleCells().map((cell) => {
+                            const meta = cell.column.columnDef.meta as
+                              | { className?: string }
+                              | undefined;
+                            const className = clsx(
+                              "pl-6",
+                              meta?.className ?? "",
+                            );
+                            return (
+                              <TableCell
+                                key={cell.id}
+                                className={className}
+                                style={{
+                                  width: `var(--col-${cell.column.id}-size)`,
+                                  minWidth: `var(--col-${cell.column.id}-size)`,
+                                  maxWidth: `var(--col-${cell.column.id}-size)`,
+                                }}
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </>
               )}
-            </>
-          )}
-        </TableBody>
+            </TableBody>
           </Table>
         </div>
       </DndContext>

@@ -67,38 +67,25 @@ export class WorkspaceApiClient {
         return result.result[0] as T;
       }
 
-      // Workspace.get returns nested array of object metadata
-      if (method === "Workspace.get") {
-        return (result.result ?? []) as T;
-      }
-
-      // Workspace.get_download_url returns array of URL arrays: [[url], [url], ...]
-      if (method === "Workspace.get_download_url") {
-        return (result.result ?? []) as T;
-      }
-
-      // Workspace.get_archive_url returns [url, file_count, total_size]
-      if (method === "Workspace.get_archive_url") {
-        return (result.result ?? []) as T;
-      }
-
-      // Workspace.copy returns result array (path-based copy)
-      if (method === "Workspace.copy") {
-        return (result.result ?? []) as T;
-      }
-
-      // Workspace.update_metadata returns result array of updated object metadata
-      if (method === "Workspace.update_metadata") {
-        return (result.result ?? []) as T;
-      }
-
-      // Workspace.create returns result array (nested array of created object metadata)
-      if (method === "Workspace.create") {
-        return (result.result ?? []) as T;
-      }
-
-      // Workspace.update_auto_meta returns result array (updated object metadata)
-      if (method === "Workspace.update_auto_meta") {
+      // Methods that return result.result as-is (array or nested array).
+      // Must include any method called via makeRequest that does not return
+      // Workspace.ls-style path-keyed listing; otherwise they fall through to
+      // the ls path and get incorrectly processed with metaListToObj.
+      const rawResultMethods: Set<WorkspaceMethod> = new Set([
+        "Workspace.get",
+        "Workspace.get_download_url",
+        "Workspace.get_archive_url",
+        "Workspace.copy",
+        "Workspace.update_metadata",
+        "Workspace.create",
+        "Workspace.update_auto_meta",
+        "Workspace.delete",
+        "Workspace.move",
+        "Workspace.rename",
+        "Workspace.save",
+        "Workspace.get_permissions",
+      ]);
+      if (rawResultMethods.has(method)) {
         return (result.result ?? []) as T;
       }
 

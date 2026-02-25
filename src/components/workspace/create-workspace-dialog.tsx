@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 
 export interface CreateWorkspaceDialogProps {
   open: boolean;
@@ -32,13 +33,20 @@ export function CreateWorkspaceDialog({
     }
   }, [open]);
 
-  const handleCreate = React.useCallback(() => {
+  const handleCreate = React.useCallback(async () => {
     const name = workspaceName.trim();
     if (!name || isCreating) return;
-    onCreateWorkspace(name).then(
-      () => onOpenChange(false),
-      () => {},
-    );
+    try {
+      await onCreateWorkspace(name);
+      onOpenChange(false);
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Create workspace failed:", err);
+      }
+      const message =
+        err instanceof Error ? err.message : "Failed to create workspace.";
+      toast.error(message);
+    }
   }, [workspaceName, isCreating, onCreateWorkspace, onOpenChange]);
 
   const canCreate = workspaceName.trim().length > 0 && !isCreating;

@@ -41,14 +41,20 @@ export function CopyToDialog({
   const [showAllFiles, setShowAllFiles] = React.useState(false);
 
   const homePath = `${currentUserWorkspaceRoot}/home`;
+  const prevOpenRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!open) {
       setDestinationPath(null);
       setCustomFilename("");
     } else {
-      setCustomFilename(sourceItems[0]?.name ?? "");
+      // Only initialize when opening (false → true), so we don't reset
+      // customFilename on parent re-renders that pass a new sourceItems reference.
+      if (!prevOpenRef.current) {
+        setCustomFilename(sourceItems[0]?.name ?? "");
+      }
     }
+    prevOpenRef.current = open;
   }, [open, sourceItems]);
 
   const handleConfirm = React.useCallback(() => {

@@ -29,9 +29,7 @@ import {
 import { InfoPanel } from "@/components/containers/InfoPanel";
 import { WorkspaceActionBar } from "./workspace-action-bar";
 import { isFolderType } from "./workspace-item-icon";
-import {
-  getDownloadUrls,
-} from "@/lib/services/workspace/methods/download";
+import { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
 import {
   loadFavorites,
   toggleFavorite,
@@ -191,9 +189,14 @@ export function WorkspaceBrowser({
     useState(false);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
 
+  const workspaceClient = useMemo(() => new WorkspaceApiClient(), []);
   const workspaceCrud = useMemo(
-    () => new WorkspaceCrudMethods(new WorkspaceApiClient()),
-    [],
+    () => new WorkspaceCrudMethods(workspaceClient),
+    [workspaceClient],
+  );
+  const workspaceDownload = useMemo(
+    () => new WorkspaceDownloadMethods(workspaceClient),
+    [workspaceClient],
   );
   const queryClient = useQueryClient();
   const { data: favoritePaths = [] } = useQuery({
@@ -487,7 +490,7 @@ export function WorkspaceBrowser({
     if (singleFile) {
       setIsDownloading(true);
       try {
-        const urlArrays = await getDownloadUrls(paths);
+        const urlArrays = await workspaceDownload.getDownloadUrls(paths);
         for (let i = 0; i < urlArrays.length; i++) {
           const url = urlArrays[i]?.[0];
           if (!url) continue;
@@ -804,6 +807,7 @@ export function WorkspaceBrowser({
         onOpenChange={setDownloadOptionsOpen}
         paths={downloadOptionsPaths}
         defaultArchiveName="archive"
+        downloadMethods={workspaceDownload}
       />
       <AlertDialog
         open={deleteDialogOpen}

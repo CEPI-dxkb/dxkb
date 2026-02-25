@@ -58,41 +58,45 @@ export function WorkspaceToolbar({
   isAtRoot = false,
   onNewWorkspace,
 }: WorkspaceToolbarProps) {
+  const filterSearchSection = (
+    <div className="flex min-w-0 items-center gap-2">
+      <Select
+        items={typeFilterOptions}
+        value={typeFilter}
+        onValueChange={(value) => {
+          if (value != null) onTypeFilterChange(value);
+        }}
+      >
+        <SelectTrigger className="w-36 shrink-0">
+          <SelectValue placeholder="All Types" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {typeFilterOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+
+      <div className="relative min-w-0 flex-1">
+        <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+        <Input
+          placeholder="Search files..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+    </div>
+  );
+
   if (isAtRoot) {
     return (
       <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div className="flex min-w-0 items-center gap-2">
-          <Select
-            items={typeFilterOptions}
-            value={typeFilter}
-            onValueChange={(value) => {
-              if (value != null) onTypeFilterChange(value);
-            }}
-          >
-            <SelectTrigger className="w-36 shrink-0">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {typeFilterOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-
-          <div className="relative min-w-0 flex-1">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-            <Input
-              placeholder="Search files..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
+        {filterSearchSection}
 
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -124,38 +128,7 @@ export function WorkspaceToolbar({
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
-      <div className="flex min-w-0 items-center gap-2">
-        <Select
-          items={typeFilterOptions}
-          value={typeFilter}
-          onValueChange={(value) => {
-            if (value != null) onTypeFilterChange(value);
-          }}
-        >
-          <SelectTrigger className="w-36 shrink-0">
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {typeFilterOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-
-        <div className="relative min-w-0 flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
-            placeholder="Search files..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
+      {filterSearchSection}
 
       <div className="flex flex-wrap items-center gap-2">
         <Button

@@ -17,7 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { getArchiveUrl } from "@/lib/services/workspace/methods/download";
+import {
+  WorkspaceDownloadMethods,
+} from "@/lib/services/workspace/methods/download";
+import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { toast } from "sonner";
 
 const ARCHIVE_TYPE_OPTIONS = [{ value: "zip", label: "zip" }];
@@ -30,6 +33,8 @@ export interface DownloadOptionsDialogProps {
   onOpenChange: (open: boolean) => void;
   paths: string[];
   defaultArchiveName?: string;
+  /** Injected for consistency and testability; uses default client when omitted. */
+  downloadMethods?: WorkspaceDownloadMethods;
 }
 
 export function DownloadOptionsDialog({
@@ -37,7 +42,14 @@ export function DownloadOptionsDialog({
   onOpenChange,
   paths,
   defaultArchiveName = "archive",
+  downloadMethods: downloadMethodsProp,
 }: DownloadOptionsDialogProps) {
+  const defaultDownloadMethods = React.useMemo(
+    () => new WorkspaceDownloadMethods(new WorkspaceApiClient()),
+    [],
+  );
+  const downloadMethods = downloadMethodsProp ?? defaultDownloadMethods;
+
   const [archiveName, setArchiveName] = React.useState("");
   const [archiveType, setArchiveType] = React.useState("zip");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -84,7 +96,7 @@ export function DownloadOptionsDialog({
 
     setIsSubmitting(true);
     try {
-      const [url] = await getArchiveUrl({
+      const [url] = await downloadMethods.getArchiveUrl({
         objects: paths,
         recursive: true,
         archive_name: nameWithExt,
@@ -103,7 +115,7 @@ export function DownloadOptionsDialog({
     } finally {
       setIsSubmitting(false);
     }
-  }, [archiveName, archiveType, paths, onOpenChange]);
+  }, [archiveName, archiveType, paths, onOpenChange, downloadMethods]);
 
   const canSubmit =
     archiveName.trim().length > 0 && !isSubmitting && paths.length > 0;

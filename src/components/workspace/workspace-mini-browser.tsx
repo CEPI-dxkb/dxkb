@@ -126,12 +126,13 @@ export function WorkspaceMiniBrowser({
     if (!showHidden) {
       list = list.filter((item) => !item.name.startsWith("."));
     }
-    return list.sort((a, b) => {
+    const sortCompare = (a: WorkspaceBrowserItem, b: WorkspaceBrowserItem) => {
       const aFolder = isFolderType(a.type);
       const bFolder = isFolderType(b.type);
       if (aFolder !== bFolder) return aFolder ? -1 : 1;
       return (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
-    });
+    };
+    return [...list].sort(sortCompare);
   }, [items, mode, showHidden]);
 
   const handleNavigate = (path: string) => {

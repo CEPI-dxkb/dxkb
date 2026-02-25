@@ -11,8 +11,10 @@ function buildWorkspacePath(
   base: string,
   relativePath: string,
 ): string {
-  const trimmed = relativePath.replace(/^\/+|\/+$/g, "");
-  const root = `/${username}@bvbrc/${base}`;
+  const decodedUser = decodeURIComponent(username);
+  const decodedPath = decodeURIComponent(relativePath);
+  const trimmed = decodedPath.replace(/^\/+|\/+$/g, "");
+  const root = `/${decodedUser}@bvbrc/${base}`;
   return trimmed ? `${root}/${trimmed}` : root;
 }
 

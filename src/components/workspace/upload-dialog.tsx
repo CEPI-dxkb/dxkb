@@ -47,6 +47,7 @@ export function UploadDialog({
   const [uploadType, setUploadType] = React.useState<string>("unspecified");
   const [files, setFiles] = React.useState<File[]>([]);
   const [isUploading, setIsUploading] = React.useState(false);
+  const [isDragActive, setIsDragActive] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const workspaceApi = React.useMemo(() => createWorkspaceApiClient(), []);
@@ -88,7 +89,7 @@ export function UploadDialog({
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      (e.currentTarget as HTMLElement).classList.remove("dnd-active");
+      setIsDragActive(false);
       if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
     },
     [addFiles],
@@ -97,12 +98,12 @@ export function UploadDialog({
   const onDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    (e.currentTarget as HTMLElement).classList.add("dnd-active");
+    setIsDragActive(true);
     e.dataTransfer.dropEffect = "copy";
   }, []);
 
-  const onDragLeave = React.useCallback((e: React.DragEvent) => {
-    (e.currentTarget as HTMLElement).classList.remove("dnd-active");
+  const onDragLeave = React.useCallback((_e: React.DragEvent) => {
+    setIsDragActive(false);
   }, []);
 
   const handleStartUpload = React.useCallback(async () => {
@@ -199,7 +200,7 @@ export function UploadDialog({
               className={cn(
                 "border-border bg-muted/30 flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 transition-colors",
                 "hover:bg-muted/50 focus-visible:ring-ring outline-none focus-visible:ring-2",
-                "dnd-active:bg-muted/50",
+                isDragActive && "bg-muted/50",
               )}
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}

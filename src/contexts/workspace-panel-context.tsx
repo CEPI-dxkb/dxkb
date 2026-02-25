@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useMemo,
   useState,
   useCallback,
   type ReactNode,
@@ -52,19 +53,31 @@ export function WorkspacePanelProvider({ children }: { children: ReactNode }) {
     setPanelLayoutState(layout);
   }, []);
 
+  const value = useMemo<WorkspacePanelContextType>(
+    () => ({
+      panelManuallyHidden,
+      setPanelManuallyHidden,
+      panelExpanded,
+      setPanelExpanded,
+      showHiddenFiles,
+      setShowHiddenFiles,
+      panelLayout,
+      setPanelLayout,
+    }),
+    [
+      panelManuallyHidden,
+      setPanelManuallyHidden,
+      panelExpanded,
+      setPanelExpanded,
+      showHiddenFiles,
+      setShowHiddenFiles,
+      panelLayout,
+      setPanelLayout,
+    ]
+  );
+
   return (
-    <WorkspacePanelContext.Provider
-      value={{
-        panelManuallyHidden,
-        setPanelManuallyHidden,
-        panelExpanded,
-        setPanelExpanded,
-        showHiddenFiles,
-        setShowHiddenFiles,
-        panelLayout,
-        setPanelLayout,
-      }}
-    >
+    <WorkspacePanelContext.Provider value={value}>
       {children}
     </WorkspacePanelContext.Provider>
   );

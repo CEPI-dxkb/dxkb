@@ -44,12 +44,15 @@ export function EditTypeDialog({
     }
   }, [open, item]);
 
-  const handleSave = React.useCallback(() => {
+  const handleSave = React.useCallback(async () => {
     if (!selectedType.trim()) return;
-    onConfirm(selectedType.trim()).then(
-      () => onOpenChange(false),
-      () => {},
-    );
+    try {
+      await onConfirm(selectedType.trim());
+      onOpenChange(false);
+    } catch (err) {
+      // Parent typically handles errors (e.g. toast). Log if rejection is unexpected.
+      console.error("[EditTypeDialog] onConfirm failed:", err);
+    }
   }, [selectedType, onConfirm, onOpenChange]);
 
   const canSave = selectedType.trim().length > 0 && !isUpdating;

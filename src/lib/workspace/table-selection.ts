@@ -53,7 +53,7 @@ export function computeNextSelection(
     }
     return {
       nextSelection,
-      nextAnchorPath: anchorPath,
+      nextAnchorPath: anchorPath ?? clickedPath,
     };
   }
 

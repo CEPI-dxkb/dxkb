@@ -5,7 +5,7 @@ import { getRequiredEnv } from "@/lib/env";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 
 interface WorkspaceUsernamePageProps {
-  params: Promise<{ username?: string }>;
+  params: Promise<{ username: string }>;
 }
 
 /**
@@ -14,7 +14,7 @@ interface WorkspaceUsernamePageProps {
  */
 export default async function WorkspaceUsernamePage({ params }: WorkspaceUsernamePageProps) {
   const resolved = await params;
-  const username = decodeURIComponent(resolved.username ?? "");
+  const username = decodeURIComponent(resolved.username);
   if (!username) {
     redirect("/workspace/home");
   }

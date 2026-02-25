@@ -111,7 +111,12 @@ const MobileNavbar = () => {
               <div className="p-3">
                 <h2 className="mobile-nav-section-header">Workspace</h2>
                 <div className="grid grid-cols-1 gap-y-1">
-                  {isAuthenticated ? (
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-5 w-24 bg-muted" />
+                      <Skeleton className="h-9 w-20 bg-muted" />
+                    </>
+                  ) : isAuthenticated ? (
                     <Link
                       href="/jobs"
                       className="mobile-nav-link"

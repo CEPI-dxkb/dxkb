@@ -113,6 +113,7 @@ export function InfoPanel(props: InfoPanelProps) {
   if (props.variant === "workspace") {
     const { selection } = props;
     const isMultiSelect = selection.length > 1;
+    const hasSingleSelection = selection.length === 1;
 
     return (
       <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
@@ -127,12 +128,16 @@ export function InfoPanel(props: InfoPanelProps) {
               Select a single item to view details
             </div>
           </>
-        ) : (
+        ) : hasSingleSelection ? (
           <WorkspaceItemDetailContent
             workspaceItem={selection[0]}
             onClose={props.onClose}
             onAction={props.onAction}
           />
+        ) : (
+          <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
+            Select an item to view details
+          </div>
         )}
       </div>
     );
@@ -267,7 +272,7 @@ export function InfoPanel(props: InfoPanelProps) {
   const toggleGroup = (group: string) => {
     setExpandedGroups((prev) => ({
       ...prev,
-      [group]: !prev[group],
+      [group]: !(prev[group] ?? true),
     }));
   };
 

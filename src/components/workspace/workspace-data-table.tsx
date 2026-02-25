@@ -326,6 +326,10 @@ export const WorkspaceDataTable = forwardRef<
       path ? path.split("/").map(sanitizePathSegment).filter(Boolean) : [],
     [path],
   );
+  const selectedPathSet = useMemo(
+    () => new Set((selectedPaths ?? []).map(normalizePath)),
+    [selectedPaths],
+  );
   const safeUsername = sanitizePathSegment(username);
   const homeBase = safeUsername
     ? `/workspace/${encodeWorkspaceSegment(safeUsername)}/home`
@@ -553,7 +557,7 @@ export const WorkspaceDataTable = forwardRef<
         header: () => sortableHeader("size", "Size"),
         cell: ({ getValue }) => (
           <span className="text-muted-foreground">
-            {formatFileSize(Number(getValue()) ?? 0)}
+            {formatFileSize(Number(getValue()) || 0)}
           </span>
         ),
         meta: { className: "" },
@@ -832,11 +836,9 @@ export const WorkspaceDataTable = forwardRef<
                       const item = row.original;
                       const isNavigable = isFolderType(item.type);
                       const normalizedItemPath = normalizePath(item.path);
-                      const selectedSet = new Set(
-                        (selectedPaths ?? []).map(normalizePath),
-                      );
                       const isSelected =
-                        useSelectionMode && selectedSet.has(normalizedItemPath);
+                        useSelectionMode &&
+                        selectedPathSet.has(normalizedItemPath);
 
                       function handleRowMouseDown(e: React.MouseEvent) {
                         if (

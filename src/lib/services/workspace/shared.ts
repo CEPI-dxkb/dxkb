@@ -1,7 +1,5 @@
-import { WorkspaceApiClient } from "./client";
+import { workspaceApi } from "./client";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
-
-const client = new WorkspaceApiClient();
 
 /** Permission entry: [user, perm] where perm is 'r' | 'w' | 'n' | 'a' | 'o' etc. */
 export type PermissionEntry = [string, string];
@@ -14,7 +12,7 @@ export type ListPermissionsResult = Record<string, PermissionEntry[]>;
  * Uses Workspace.ls with path "/" and filters by global_permission and user_permission.
  */
 export async function listSharedWithUser(): Promise<WorkspaceBrowserItem[]> {
-  const raw = await client.makeRequest<WorkspaceBrowserItem[]>("Workspace.ls", [
+  const raw = await workspaceApi.makeRequest<WorkspaceBrowserItem[]>("Workspace.ls", [
     {
       paths: ["/"],
       includeSubDirs: false,
@@ -43,7 +41,7 @@ export async function listUserWorkspaces(
   if (!username) return [];
   const decoded = decodeURIComponent(username);
   const path = `/${decoded}@bvbrc`;
-  return client.makeRequest<WorkspaceBrowserItem[]>("Workspace.ls", [
+  return workspaceApi.makeRequest<WorkspaceBrowserItem[]>("Workspace.ls", [
     {
       paths: [path],
       includeSubDirs: false,
@@ -62,7 +60,7 @@ export async function listByFullPath(
 ): Promise<WorkspaceBrowserItem[]> {
   const decoded = decodeURIComponent(fullPath);
   const normalized = decoded.startsWith("/") ? decoded : `/${decoded}`;
-  return client.makeRequest<WorkspaceBrowserItem[]>("Workspace.ls", [
+  return workspaceApi.makeRequest<WorkspaceBrowserItem[]>("Workspace.ls", [
     {
       paths: [normalized],
       includeSubDirs: false,
@@ -80,7 +78,7 @@ export async function listPermissions(
 ): Promise<ListPermissionsResult> {
   if (paths.length === 0) return {};
   const decodedPaths = paths.map((p) => decodeURIComponent(p));
-  return client.makeRequest<ListPermissionsResult>(
+  return workspaceApi.makeRequest<ListPermissionsResult>(
     "Workspace.list_permissions",
     [{ objects: decodedPaths }],
   );
@@ -99,7 +97,7 @@ export async function getWorkspaceMetadata(
 ): Promise<WorkspaceGetResult> {
   if (objectPaths.length === 0) return [];
   const decodedPaths = objectPaths.map((p) => decodeURIComponent(p));
-  return client.makeRequest<WorkspaceGetResult>("Workspace.get", [
+  return workspaceApi.makeRequest<WorkspaceGetResult>("Workspace.get", [
     { objects: decodedPaths, metadata_only: true },
   ]);
 }

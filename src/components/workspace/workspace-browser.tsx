@@ -148,6 +148,9 @@ export function WorkspaceBrowser({
     WorkspaceBrowserItem[]
   >([]);
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyMoveDialogMode, setCopyMoveDialogMode] = useState<"copy" | "move">(
+    "copy",
+  );
   const [pendingCopySelection, setPendingCopySelection] = useState<
     WorkspaceBrowserItem[]
   >([]);
@@ -337,6 +340,13 @@ export function WorkspaceBrowser({
       return;
     }
     if (actionId === "copy") {
+      setCopyMoveDialogMode("copy");
+      setPendingCopySelection(selection);
+      setCopyDialogOpen(true);
+      return;
+    }
+    if (actionId === "move") {
+      setCopyMoveDialogMode("move");
       setPendingCopySelection(selection);
       setCopyDialogOpen(true);
       return;
@@ -440,22 +450,28 @@ export function WorkspaceBrowser({
       return;
     }
     setIsCopying(true);
+    const isMove = copyMoveDialogMode === "move";
     try {
       await workspaceCrud.copyByPaths({
         objects,
         recursive: true,
-        move: false,
+        move: isMove,
       });
       setCopyDialogOpen(false);
       setPendingCopySelection([]);
       setSelectedItem(null);
       refetch();
 
-      const description =
-        objects.length === 1
+      const description = isMove
+        ? objects
+            .map(([src, dest]) => `Moved ${src} to ${dest}`)
+            .join("; ")
+        : objects.length === 1
           ? `${base}/${firstDestName}`
           : `${base} (${objects.length} items)`;
-      toast.success("Copy Successful", { description });
+      toast.success(isMove ? "Move Successful" : "Copy Successful", {
+        description,
+      });
     } catch (err) {
       const apiResponse = (err as Error & { apiResponse?: unknown }).apiResponse;
       const errorCode =
@@ -479,7 +495,7 @@ export function WorkspaceBrowser({
         description = undefined;
       } else {
         message =
-          err instanceof Error ? err.message : "Copy failed.";
+          err instanceof Error ? err.message : isMove ? "Move failed." : "Copy failed.";
         description =
           apiResponse !== undefined && apiResponse !== null
             ? typeof apiResponse === "string"
@@ -537,6 +553,7 @@ export function WorkspaceBrowser({
         currentUserWorkspaceRoot={currentUserWorkspaceRoot}
         onConfirm={handleCopyConfirm}
         isCopying={isCopying}
+        mode={copyMoveDialogMode}
       />
       <Dialog
         open={deleteDialogOpen}
@@ -677,12 +694,12 @@ export function WorkspaceBrowser({
           disabledActionIds={[
             ...(isDownloading ? ["download"] : []),
             ...(isDeleting ? ["delete"] : []),
-            ...(isCopying ? ["copy"] : []),
+            ...(isCopying ? ["copy", "move"] : []),
           ]}
           loadingActionIds={[
             ...(isDownloading ? ["download"] : []),
             ...(isDeleting ? ["delete"] : []),
-            ...(isCopying ? ["copy"] : []),
+            ...(isCopying ? ["copy", "move"] : []),
           ]}
           onAction={handleAction}
         />

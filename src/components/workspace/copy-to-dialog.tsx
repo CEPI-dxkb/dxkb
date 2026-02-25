@@ -21,6 +21,8 @@ export interface CopyToDialogProps {
   currentUserWorkspaceRoot: string;
   onConfirm: (destinationPath: string, filenameOverride?: string) => Promise<void>;
   isCopying: boolean;
+  /** When "move", dialog shows Move wording and the parent calls API with move: true. */
+  mode?: "copy" | "move";
 }
 
 export function CopyToDialog({
@@ -30,6 +32,7 @@ export function CopyToDialog({
   currentUserWorkspaceRoot,
   onConfirm,
   isCopying,
+  mode = "copy",
 }: CopyToDialogProps) {
   const [destinationPath, setDestinationPath] = React.useState<string | null>(
     null,
@@ -61,7 +64,10 @@ export function CopyToDialog({
 
   const canConfirm = destinationPath != null && !isCopying;
   const n = sourceItems.length;
-  const title = `Copy contents of ${n} ${n === 1 ? "item" : "items"} to…`;
+  const title =
+    mode === "move"
+      ? `Move contents of ${n} ${n === 1 ? "item" : "items"} to…`
+      : `Copy contents of ${n} ${n === 1 ? "item" : "items"} to…`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,7 +98,11 @@ export function CopyToDialog({
               id="copy-dialog-filename"
               value={customFilename}
               onChange={(e) => setCustomFilename(e.target.value)}
-              placeholder="Name for the copied file"
+              placeholder={
+                mode === "move"
+                  ? "Name for the moved file"
+                  : "Name for the copied file"
+              }
               className="font-mono text-sm"
             />
           </div>
@@ -135,8 +145,10 @@ export function CopyToDialog({
             {isCopying ? (
               <>
                 <Spinner className="mr-2 h-3.5 w-3.5 shrink-0" />
-                Copying…
+                {mode === "move" ? "Moving…" : "Copying…"}
               </>
+            ) : mode === "move" ? (
+              "Move"
             ) : (
               "OK"
             )}

@@ -3,7 +3,6 @@
 import { RefreshCw, Search, FolderPlus, Upload, Eye, EyeOff, HardDrive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip } from 'recharts';
 import {
   Select,
   SelectContent,

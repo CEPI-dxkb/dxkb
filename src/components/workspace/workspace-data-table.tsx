@@ -193,18 +193,10 @@ function formatMemberCount(count: number): string {
   return `${count} members`;
 }
 
-const SORTABLE_FIELDS: SortField[] = [
-  "name",
-  "size",
-  "owner_id",
-  "creation_time",
-  "type",
-];
-
 function DraggableTableHeader({
   header,
-  onSort,
-  sort,
+  onSort: _onSort,
+  sort: _sort,
 }: {
   header: Header<WorkspaceBrowserItem, unknown>;
   onSort: (field: SortField) => void;
@@ -329,9 +321,11 @@ export const WorkspaceDataTable = forwardRef<
     if ((selectedPaths ?? []).length > 0) setFocusedSpecialRow(null);
   }, [selectedPaths]);
 
-  const pathSegments = path
-    ? path.split("/").map(sanitizePathSegment).filter(Boolean)
-    : [];
+  const pathSegments = useMemo(
+    () =>
+      path ? path.split("/").map(sanitizePathSegment).filter(Boolean) : [],
+    [path],
+  );
   const safeUsername = sanitizePathSegment(username);
   const homeBase = safeUsername
     ? `/workspace/${encodeWorkspaceSegment(safeUsername)}/home`
@@ -344,16 +338,19 @@ export const WorkspaceDataTable = forwardRef<
       ? `/workspace/${encodeWorkspaceSegment(sanitizePathSegment(sharedRootUsername))}`
       : sharedBase;
 
-  function handleSort(field: SortField) {
-    if (sort.field === field) {
-      onSortChange({
-        field,
-        direction: sort.direction === "asc" ? "desc" : "asc",
-      });
-    } else {
-      onSortChange({ field, direction: "asc" });
-    }
-  }
+  const handleSort = useCallback(
+    (field: SortField) => {
+      if (sort.field === field) {
+        onSortChange({
+          field,
+          direction: sort.direction === "asc" ? "desc" : "asc",
+        });
+      } else {
+        onSortChange({ field, direction: "asc" });
+      }
+    },
+    [sort.field, sort.direction, onSortChange],
+  );
 
   function handleItemClick(item: WorkspaceBrowserItem) {
     if (!isFolderType(item.type)) return;
@@ -375,7 +372,7 @@ export const WorkspaceDataTable = forwardRef<
     }
   }
 
-  function handleParentClick() {
+  const handleParentClick = useCallback(() => {
     if (viewMode === "shared") {
       if (pathSegments.length <= 1) {
         router.push(sharedRootHref);
@@ -390,7 +387,7 @@ export const WorkspaceDataTable = forwardRef<
       const parentPath = segments.map(encodeWorkspaceSegment).join("/");
       router.push(`${homeBase}${parentPath ? `/${parentPath}` : ""}`);
     }
-  }
+  }, [viewMode, pathSegments, path, sharedRootHref, homeBase, router]);
 
   const showParentRow =
     viewMode === "shared" ? pathSegments.length >= 1 : !isAtRoot;
@@ -619,7 +616,7 @@ export const WorkspaceDataTable = forwardRef<
       enableResizing: true,
     });
     return base;
-  }, [sort, onSortChange, memberCountByPath]);
+  }, [sort, memberCountByPath, handleSort]);
 
   const table = useReactTable<WorkspaceBrowserItem>({
     data: items ?? EMPTY_ITEMS,
@@ -653,6 +650,7 @@ export const WorkspaceDataTable = forwardRef<
 
   const columnSizingState = table.getState().columnSizing;
   const columnSizingInfoState = table.getState().columnSizingInfo;
+  // Intentionally depend on sizing state only; table identity changes every render
   const columnSizeVars = useMemo(() => {
     const headers = table.getFlatHeaders();
     const colSizes: Record<string, string> = {};
@@ -661,6 +659,7 @@ export const WorkspaceDataTable = forwardRef<
         `${header.column.getSize()}px`;
     }
     return colSizes;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- table is unstable from useReactTable
   }, [columnSizingState, columnSizingInfoState]);
 
   const handleColumnDragEnd = useCallback((event: DragEndEvent) => {

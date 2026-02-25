@@ -223,6 +223,12 @@ export function WorkspaceBrowser({
     const id = setTimeout(() => tableRef.current?.focus(), 50);
     return () => clearTimeout(id);
   }, [selectedItems]);
+
+  // After route change (e.g. opening a folder via Enter), focus the table so keyboard navigation works without re-clicking
+  useEffect(() => {
+    const id = setTimeout(() => tableRef.current?.focus(), 100);
+    return () => clearTimeout(id);
+  }, [path, mode]);
   const isAtSharedRoot = !isHome && (!path || path === "");
   const fullPath = path ? `/${path}` : "";
 
@@ -886,6 +892,10 @@ export function WorkspaceBrowser({
           selectedPaths={selectedItems.map((i) => normalizePath(i.path))}
           onSelect={handleSelectItem}
           onItemDoubleClick={handleItemDoubleClick}
+          onClearSelection={() => {
+            setSelectedItems([]);
+            setAnchorPath(null);
+          }}
         />
       </div>
     </>

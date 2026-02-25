@@ -5,6 +5,7 @@ import React, {
   useCallback,
   forwardRef,
   useImperativeHandle,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -86,6 +87,8 @@ interface WorkspaceDataTableProps {
   ) => void;
   /** Called on double click (folders only) when selection mode is used; parent should navigate */
   onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
+  /** Called when focus moves to Parent folder or View Shared row so parent can clear selection */
+  onClearSelection?: () => void;
 }
 
 export interface WorkspaceDataTableHandle {
@@ -294,6 +297,7 @@ export const WorkspaceDataTable = forwardRef<
     selectedPaths = [],
     onSelect,
     onItemDoubleClick,
+    onClearSelection,
   },
   ref,
 ) {
@@ -301,6 +305,11 @@ export const WorkspaceDataTable = forwardRef<
   const router = useRouter();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const isAtRoot = !path || path === "" || path === "/";
+
+  /** When set, keyboard focus is on a special row (not an item); clear when selection changes */
+  const [focusedSpecialRow, setFocusedSpecialRow] = useState<
+    "leading" | "parent" | null
+  >(null);
 
   const [columnOrder, setColumnOrder] = useState<string[]>([
     "name",
@@ -315,34 +324,11 @@ export const WorkspaceDataTable = forwardRef<
     focus: () => tableContainerRef.current?.focus(),
   }));
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!useSelectionMode || items.length === 0) return;
-      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  // Clear special-row focus when user selects an item (e.g. by clicking)
+  useEffect(() => {
+    if ((selectedPaths ?? []).length > 0) setFocusedSpecialRow(null);
+  }, [selectedPaths]);
 
-      const paths = selectedPaths ?? [];
-      const focusPath = paths.length > 0 ? paths[paths.length - 1] : null;
-      const normalizedFocus = normalizePath(focusPath ?? undefined);
-      const currentIndex = items.findIndex(
-        (i) => normalizePath(i.path) === normalizedFocus,
-      );
-
-      let nextIndex: number;
-      if (e.key === "ArrowDown") {
-        nextIndex =
-          currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1);
-      } else {
-        nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
-      }
-
-      const nextItem = items[nextIndex];
-      if (nextItem) {
-        e.preventDefault();
-        onSelect?.(nextItem, { ctrlOrMeta: false, shift: false });
-      }
-    },
-    [useSelectionMode, items, selectedPaths, onSelect],
-  );
   const pathSegments = path
     ? path.split("/").map(sanitizePathSegment).filter(Boolean)
     : [];
@@ -415,6 +401,103 @@ export const WorkspaceDataTable = forwardRef<
         : "Parent folder"
       : "Parent folder";
   const showLeadingRow = showViewSharedRow && viewMode === "home" && isAtRoot;
+
+  const leadingOffset = showLeadingRow ? 1 : 0;
+  const parentOffset = showParentRow ? 1 : 0;
+  const virtualRowCount = leadingOffset + parentOffset + items.length;
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!useSelectionMode) return;
+      if (virtualRowCount === 0) return;
+
+      const paths = selectedPaths ?? [];
+      const focusPath = paths.length > 0 ? paths[paths.length - 1] : null;
+      const normalizedFocus = normalizePath(focusPath ?? undefined);
+      const currentItemIndex = items.findIndex(
+        (i) => normalizePath(i.path) === normalizedFocus,
+      );
+
+      let currentVirtual: number;
+      if (focusedSpecialRow === "leading") {
+        currentVirtual = 0;
+      } else if (focusedSpecialRow === "parent") {
+        currentVirtual = leadingOffset;
+      } else if (currentItemIndex >= 0) {
+        currentVirtual = leadingOffset + parentOffset + currentItemIndex;
+      } else {
+        currentVirtual = -1;
+      }
+
+      if (e.key === "Enter") {
+        if (focusedSpecialRow === "parent") {
+          e.preventDefault();
+          handleParentClick();
+          return;
+        }
+        if (focusedSpecialRow === "leading") {
+          e.preventDefault();
+          router.push(sharedBase);
+          return;
+        }
+        const focusedItem =
+          currentItemIndex >= 0 ? items[currentItemIndex] : null;
+        if (focusedItem) {
+          e.preventDefault();
+          onItemDoubleClick?.(focusedItem);
+        }
+        return;
+      }
+
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+
+      let nextVirtual: number;
+      if (e.shiftKey) {
+        nextVirtual =
+          e.key === "ArrowDown" ? virtualRowCount - 1 : 0;
+      } else if (e.key === "ArrowDown") {
+        nextVirtual =
+          currentVirtual < 0 ? 0 : Math.min(currentVirtual + 1, virtualRowCount - 1);
+      } else {
+        nextVirtual =
+          currentVirtual <= 0 ? virtualRowCount - 1 : currentVirtual - 1;
+      }
+
+      e.preventDefault();
+
+      if (nextVirtual < leadingOffset) {
+        setFocusedSpecialRow("leading");
+        onClearSelection?.();
+        return;
+      }
+      if (nextVirtual < leadingOffset + parentOffset) {
+        setFocusedSpecialRow("parent");
+        onClearSelection?.();
+        return;
+      }
+      const nextItemIndex = nextVirtual - leadingOffset - parentOffset;
+      const nextItem = items[nextItemIndex];
+      if (nextItem != null) {
+        setFocusedSpecialRow(null);
+        onSelect?.(nextItem, { ctrlOrMeta: false, shift: false });
+      }
+    },
+    [
+      useSelectionMode,
+      virtualRowCount,
+      leadingOffset,
+      parentOffset,
+      items,
+      selectedPaths,
+      focusedSpecialRow,
+      onSelect,
+      onItemDoubleClick,
+      onClearSelection,
+      sharedBase,
+      router,
+      handleParentClick,
+    ],
+  );
 
   const sortingState: SortingState = useMemo(
     () => [{ id: sort.field, desc: sort.direction === "desc" }],
@@ -642,8 +725,22 @@ export const WorkspaceDataTable = forwardRef<
                 <>
                   {showLeadingRow && (
                     <TableRow
-                      className="cursor-pointer pl-6"
+                      className={
+                        (useSelectionMode
+                          ? "border-l-2 " +
+                            (focusedSpecialRow === "leading"
+                              ? "border-l-primary"
+                              : "border-l-transparent") +
+                            " cursor-pointer pl-6 "
+                          : "cursor-pointer pl-6 ") +
+                        (focusedSpecialRow === "leading" ? " bg-muted" : "")
+                      }
                       onClick={() => router.push(sharedBase)}
+                      aria-selected={
+                        useSelectionMode && focusedSpecialRow === "leading"
+                          ? true
+                          : undefined
+                      }
                     >
                       {table.getVisibleLeafColumns().map((column) => {
                         const meta = column.columnDef.meta as
@@ -676,8 +773,22 @@ export const WorkspaceDataTable = forwardRef<
 
                   {showParentRow && (
                     <TableRow
-                      className="cursor-pointer pl-6"
+                      className={
+                        (useSelectionMode
+                          ? "border-l-2 " +
+                            (focusedSpecialRow === "parent"
+                              ? "border-l-primary"
+                              : "border-l-transparent") +
+                            " cursor-pointer pl-6 "
+                          : "cursor-pointer pl-6 ") +
+                        (focusedSpecialRow === "parent" ? " bg-muted" : "")
+                      }
                       onClick={handleParentClick}
+                      aria-selected={
+                        useSelectionMode && focusedSpecialRow === "parent"
+                          ? true
+                          : undefined
+                      }
                     >
                       {table.getVisibleLeafColumns().map((column) => {
                         const meta = column.columnDef.meta as

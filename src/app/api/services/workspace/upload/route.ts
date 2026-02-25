@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBvbrcAuthToken } from "@/lib/auth";
 import { getRequiredEnv } from "@/lib/env";
 
-const allowedShockOrigins = getRequiredEnv("SHOCK_ORIGINS");
-
-function isAllowedShockUrl(urlString: string): boolean {
+function isAllowedShockUrl(urlString: string, allowedOrigins: string): boolean {
   try {
     const url = new URL(urlString);
     const origin = url.origin;
-    return allowedShockOrigins.split(",").includes(origin);
+    return allowedOrigins.split(",").map((o) => o.trim()).includes(origin);
   } catch {
     return false;
   }
@@ -20,6 +18,16 @@ function isAllowedShockUrl(urlString: string): boolean {
  */
 export async function POST(request: NextRequest) {
   try {
+    let allowedShockOrigins: string;
+    try {
+      allowedShockOrigins = getRequiredEnv("SHOCK_ORIGINS");
+    } catch {
+      return NextResponse.json(
+        { error: "Server configuration error: SHOCK_ORIGINS not set" },
+        { status: 503 },
+      );
+    }
+
     const authToken = await getBvbrcAuthToken();
     if (!authToken) {
       return NextResponse.json(
@@ -45,7 +53,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!isAllowedShockUrl(urlRaw)) {
+    if (!isAllowedShockUrl(urlRaw, allowedShockOrigins)) {
       return NextResponse.json(
         { error: "URL is not an allowed Shock endpoint" },
         { status: 400 },

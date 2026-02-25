@@ -418,6 +418,30 @@
   }
 }
 
+/* Themed scrollbars: use --muted-foreground so they match light/dark theme */
+.scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--muted-foreground) 35%, transparent) transparent;
+}
+
+.scrollbar-themed::-webkit-scrollbar {
+  width: 0.375rem;
+  height: 0.375rem;
+}
+
+.scrollbar-themed::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-themed::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--muted-foreground) 25%, transparent);
+  border-radius: 9999px;
+}
+
+.scrollbar-themed::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+}
+
 .about-section {
   @apply mx-8 my-16 grid w-[calc(100%-4rem)] max-w-[1200px] grid-cols-1 items-center gap-8 lg:mx-auto lg:w-[90%] lg:grid-cols-2 lg:gap-16;
 }

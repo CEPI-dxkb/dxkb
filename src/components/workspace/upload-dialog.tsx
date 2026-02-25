@@ -149,7 +149,7 @@ export function UploadDialog({
     } finally {
       setIsUploading(false);
     }
-  }, [files, targetPath, uploadType, isUploading, workspaceCrud, onUploadComplete, onOpenChange]);
+  }, [files, targetPath, uploadType, isUploading, workspaceCrud, onUploadComplete]);
 
   const canStart = files.length > 0 && !isUploading;
 

@@ -157,7 +157,7 @@ export function DownloadOptionsDialog({
             </label>
             <Select
               value={archiveType}
-              onValueChange={setArchiveType}
+              onValueChange={(value) => value != null && setArchiveType(value)}
               disabled={isSubmitting}
             >
               <SelectTrigger id="download-archive-type" className="w-full">

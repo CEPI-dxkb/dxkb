@@ -53,8 +53,8 @@ function formatWorkspaceOwner(ownerId: string): string {
 
 function WorkspaceItemDetailContent({
   workspaceItem,
-  onClose,
-  onAction,
+  onClose: _onClose,
+  onAction: _onAction,
 }: {
   workspaceItem: WorkspaceBrowserItem;
   onClose?: () => void;
@@ -68,7 +68,7 @@ function WorkspaceItemDetailContent({
       <div className="flex items-center justify-between gap-2 border-b pb-2">
         <h3 className="truncate text-sm font-semibold">{workspaceItem.name}</h3>
       </div>
-      <div className="flex-1 overflow-y-auto py-3 text-xs">
+      <div className="scrollbar-themed flex-1 overflow-y-auto py-3 text-xs">
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <WorkspaceItemIcon type={workspaceItem.type} className="h-6 w-6" />
@@ -108,6 +108,8 @@ function WorkspaceItemDetailContent({
 }
 
 export function InfoPanel(props: InfoPanelProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
   if (props.variant === "workspace") {
     const { selection } = props;
     const isMultiSelect = selection.length > 1;
@@ -244,12 +246,12 @@ export function InfoPanel(props: InfoPanelProps) {
     };
   });
 
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () =>
-      order.reduce((acc, group) => {
-        acc[group] = true;
-        return acc;
-      }, {} as Record<string, boolean>)
+  const effectiveExpanded = order.reduce(
+    (acc, group) => {
+      acc[group] = expandedGroups[group] ?? true;
+      return acc;
+    },
+    { ...expandedGroups } as Record<string, boolean>
   );
 
   const grouped = displayColumns.reduce(
@@ -303,7 +305,7 @@ export function InfoPanel(props: InfoPanelProps) {
 //  console.log("Grouped Columns:", grouped);
 
   return (
-    <div className="w-full p-4 overflow-y-auto text-xs">
+    <div className="scrollbar-themed w-full p-4 overflow-y-auto text-xs">
       <div className="mb-2 text-secondary text-lg">
         {String(rows[0]?.[panelTitleField] ?? "")}
       </div>
@@ -317,7 +319,7 @@ export function InfoPanel(props: InfoPanelProps) {
               );
               if (items.length === 0) return null;
 
-              const isExpanded = expandedGroups[group] ?? true;
+              const isExpanded = effectiveExpanded[group] ?? true;
               const hasAtLeastOneValue = items.some(
                 (item) => rows[0]?.[String(item.id)]
               );

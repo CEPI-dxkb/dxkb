@@ -8,12 +8,12 @@ export default function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <Navbar />
       <WorkspacePanelProvider>
-        <main className="flex flex-col">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</main>
       </WorkspacePanelProvider>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

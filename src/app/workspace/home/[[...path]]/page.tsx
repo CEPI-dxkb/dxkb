@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import { encodeWorkspaceSegment } from "@/lib/utils";
@@ -13,7 +13,11 @@ export default function WorkspaceHomeRedirect() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
-  const pathSegments = (params.path as string[] | undefined) ?? [];
+  const pathSegments = useMemo(
+    () => (params.path as string[] | undefined) ?? [],
+    [params.path]
+  );
+  const pathKey = pathSegments.join("/");
 
   useEffect(() => {
     const username = user?.username;
@@ -21,7 +25,7 @@ export default function WorkspaceHomeRedirect() {
     const encodedPath = pathSegments.map(encodeWorkspaceSegment).join("/");
     const pathPart = encodedPath ? `/${encodedPath}` : "";
     router.replace(`/workspace/${encodeWorkspaceSegment(username)}/home${pathPart}`);
-  }, [router, user?.username, pathSegments.join("/")]);
+  }, [router, user?.username, pathKey, pathSegments]);
 
   return null;
 }

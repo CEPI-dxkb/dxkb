@@ -51,7 +51,7 @@ export function WorkspaceBreadcrumbs({
   const encodedUser = encodeWorkspaceSegment(safeUsername);
   const usernameRootHref = username ? `/workspace/${encodedUser}` : "/workspace";
   const homeBase = username ? `/workspace/${encodedUser}/home` : "/workspace/home";
-  const baseHref = viewMode === "shared" ? usernameRootHref : homeBase;
+  const _baseHref = viewMode === "shared" ? usernameRootHref : homeBase;
   const segmentHrefPrefix =
     viewMode === "shared" ? `${usernameRootHref}/` : `${homeBase}/`;
 

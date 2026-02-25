@@ -49,13 +49,6 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -268,11 +261,21 @@ export function WorkspaceBrowser({
     return Array.from(byPath.values());
   }, [isHome, isAtSharedRoot, sharedQuery.data, userWorkspacesQuery.data]);
 
-  const items = isHome
-    ? (homeQuery.data ?? [])
-    : isAtSharedRoot
-      ? rootItems
-      : (pathQuery.data ?? []);
+  const items = useMemo(
+    () =>
+      isHome
+        ? (homeQuery.data ?? [])
+        : isAtSharedRoot
+          ? rootItems
+          : (pathQuery.data ?? []),
+    [
+      isHome,
+      isAtSharedRoot,
+      homeQuery.data,
+      rootItems,
+      pathQuery.data,
+    ]
+  );
   const itemPaths = useMemo(() => items.map((i) => i.path), [items]);
   const permissionsQuery = useWorkspacePermissions({
     paths: itemPaths,
@@ -677,11 +680,22 @@ export function WorkspaceBrowser({
   if (!currentUser) {
     if (mode === "shared" && !authChecked) {
       return (
-        <div className="space-y-4">
-          <Skeleton className="h-5 w-64" />
-          <Skeleton className="h-10 w-full" />
-          <div className="rounded-md border">
-            <Skeleton className="h-64 w-full" />
+        <div className="flex min-h-[calc(100vh-12rem)] w-full flex-col overflow-hidden">
+          <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
+            <Skeleton className="h-5 w-64" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+          <div>
+            <WorkspaceDataTable
+              items={[]}
+              isLoading={true}
+              path={path}
+              sort={{ field: "name", direction: "asc" }}
+              onSortChange={() => {}}
+              showViewSharedRow={false}
+              viewMode="shared"
+              username={username}
+            />
           </div>
         </div>
       );
@@ -815,7 +829,7 @@ export function WorkspaceBrowser({
         )}
       </div>
 
-      <div>
+      <div className="min-h-0 flex-1">
         <WorkspaceDataTable
           ref={tableRef}
           items={processedItems}
@@ -872,7 +886,7 @@ export function WorkspaceBrowser({
           Hide
         </Button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto px-1.5">
+      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-1.5">
         <WorkspaceActionBar
           selection={selectedItems}
           workspaceGuideUrl={workspaceGuideUrl}
@@ -921,8 +935,8 @@ export function WorkspaceBrowser({
 
   if (!panelExpanded) {
     return (
-      <div className="flex min-h-[calc(100vh-12rem)] w-full flex-row gap-0">
-        <div className="flex min-h-[calc(100vh-12rem)] min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 w-full flex-row gap-0">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {mainContent}
         </div>
         <aside className="bg-muted/30 flex min-h-full shrink-0 rounded-tl-lg rounded-bl-lg border-l">
@@ -935,7 +949,7 @@ export function WorkspaceBrowser({
   return (
     <ResizablePanelGroup
       orientation="horizontal"
-      className="min-h-[calc(100vh-12rem)] w-full"
+      className="h-full min-h-0 w-full"
       defaultLayout={panelLayout}
       onLayoutChanged={setPanelLayout}
     >
@@ -943,9 +957,9 @@ export function WorkspaceBrowser({
         id={WORKSPACE_PANEL_IDS.main}
         defaultSize={panelLayout[WORKSPACE_PANEL_IDS.main] ?? 75}
         minSize={50}
-        className="flex min-h-[calc(100vh-12rem)] flex-row overflow-hidden"
+        className="flex h-full min-h-0 flex-row overflow-hidden"
       >
-        <div className="flex min-h-[calc(100vh-12rem)] min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {mainContent}
         </div>
         <aside className="bg-muted/30 flex min-h-full shrink-0 rounded-tl-lg rounded-bl-lg border-l">

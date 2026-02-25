@@ -98,24 +98,38 @@ function SortIcon({
   );
 }
 
-function TableSkeleton({ showMembersColumn = false }: { showMembersColumn?: boolean }) {
+/** Row height matching real data: TableCell p-2 (8px top/bottom) + 20px content = 36px (h-9). */
+const skeletonRowHeight = "h-9";
+
+/** Skeleton rows matching real table column order and dimensions (Name, Size, Owner, Members?, Created, Type). */
+function TableSkeleton({ showMembersColumn = true }: { showMembersColumn?: boolean }) {
   return (
     <>
       {Array.from({ length: 8 }).map((_, i) => (
-        <TableRow key={i}>
-          <TableCell className="pl-6">
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-4 w-4" />
-              <Skeleton className="h-4 w-40" />
+        <TableRow key={i} className="pl-6">
+          <TableCell className={`text-left pl-6 ${skeletonRowHeight}`}>
+            <div className="flex h-5 items-center gap-2">
+              <Skeleton className="h-4 w-4 shrink-0 rounded" />
+              <Skeleton className="h-4 w-40 shrink-0" />
             </div>
           </TableCell>
-          <TableCell className="pl-6"><Skeleton className="h-4 w-16" /></TableCell>
-          <TableCell className="hidden md:table-cell pl-6"><Skeleton className="h-4 w-20" /></TableCell>
+          <TableCell className={`text-muted-foreground text-left pl-6 ${skeletonRowHeight}`}>
+            <Skeleton className="h-4 w-14" />
+          </TableCell>
+          <TableCell className={`text-muted-foreground hidden md:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+            <Skeleton className="h-4 w-20" />
+          </TableCell>
           {showMembersColumn && (
-            <TableCell className="hidden lg:table-cell pl-6"><Skeleton className="h-4 w-16" /></TableCell>
+            <TableCell className={`text-muted-foreground hidden lg:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+              <Skeleton className="h-4 w-16" />
+            </TableCell>
           )}
-          <TableCell className="hidden lg:table-cell pl-6"><Skeleton className="h-4 w-16" /></TableCell>
-          <TableCell className="hidden sm:table-cell pl-6"><Skeleton className="h-4 w-28" /></TableCell>
+          <TableCell className={`text-muted-foreground hidden sm:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+            <Skeleton className="h-4 w-24" />
+          </TableCell>
+          <TableCell className={`text-muted-foreground hidden lg:table-cell text-left pl-6 ${skeletonRowHeight}`}>
+            <Skeleton className="h-4 w-16" />
+          </TableCell>
         </TableRow>
       ))}
     </>
@@ -259,6 +273,9 @@ export const WorkspaceDataTable = forwardRef<
     showViewSharedRow && viewMode === "home" && isAtRoot;
 
   const showMembersColumn = memberCountByPath != null;
+  /** When loading in shared folder view, show Members column in header/skeleton so layout matches once data loads. */
+  const showMembersColumnInUI =
+    showMembersColumn || (isLoading && viewMode === "shared" && !isAtRoot);
   const sortableColumns: { field: SortField; label: string; className?: string }[] = [
     { field: "name", label: "Name" },
     { field: "size", label: "Size" },
@@ -272,7 +289,7 @@ export const WorkspaceDataTable = forwardRef<
       role="grid"
       tabIndex={useSelectionMode ? 0 : undefined}
       aria-label="Workspace items"
-      className="rounded-md border outline-none"
+      className="scrollbar-themed h-full min-h-0 overflow-y-auto rounded-md border outline-none"
       onKeyDown={handleKeyDown}
     >
       <Table>
@@ -288,7 +305,7 @@ export const WorkspaceDataTable = forwardRef<
                 <SortIcon field={col.field} currentSort={sort} />
               </TableHead>
             ))}
-            {showMembersColumn && (
+            {showMembersColumnInUI && (
               <TableHead className="hidden lg:table-cell pl-6">Members</TableHead>
             )}
             <TableHead className="hidden lg:table-cell pl-6">Type</TableHead>
@@ -296,7 +313,7 @@ export const WorkspaceDataTable = forwardRef<
         </TableHeader>
         <TableBody>
           {isLoading ? (
-            <TableSkeleton showMembersColumn={showMembersColumn} />
+            <TableSkeleton showMembersColumn={showMembersColumnInUI} />
           ) : (
             <>
               {showLeadingRow && (

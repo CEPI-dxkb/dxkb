@@ -13,14 +13,17 @@ export class WorkspaceApiClient {
   }
 
   /**
-   * Make a generic JSON-RPC request to the Workspace API
+   * Make a generic JSON-RPC request to the Workspace API.
+   * @param options.silent - When true, do not log errors (e.g. when caller handles missing/expected failures).
    */
   async makeRequest<T = unknown>(
     method: WorkspaceMethod,
     params: unknown[],
+    options?: { silent?: boolean },
   ): Promise<T> {
+    const silent = options?.silent ?? false;
     try {
-      console.log(`Making workspace API call: ${method}`, params);
+      if (!silent) console.log(`Making workspace API call: ${method}`, params);
 
       const response = await fetch(this.baseUrl, {
         method: "POST",
@@ -45,7 +48,7 @@ export class WorkspaceApiClient {
       }
 
       const result = await response.json();
-      console.log(`Workspace API response for ${method}:`, result);
+      if (!silent) console.log(`Workspace API response for ${method}:`, result);
 
       // Handle JSON-RPC response format
       if (result.error) {
@@ -57,7 +60,7 @@ export class WorkspaceApiClient {
         throw err;
       }
 
-      console.log("RESULT", result);
+      if (!silent) console.log("RESULT", result);
 
       // Workspace.list_permissions returns a map path -> [user, perm][]
       if (method === "Workspace.list_permissions") {
@@ -126,15 +129,17 @@ export class WorkspaceApiClient {
       // Hidden files/folders (names starting with .) are not filtered here;
       // the workspace browser UI filters them by default and shows them when
       // the user toggles "Show hidden".
-      console.log("PROCESSED RESULTS!!!", res);
+      if (!silent) console.log("PROCESSED RESULTS!!!", res);
       return res as T;
     } catch (error) {
-      console.error(`Failed to call ${method}:`, error);
-      console.error("Error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        status: (error as { status?: number })?.status,
-        response: (error as { response?: unknown })?.response,
-      });
+      if (!silent) {
+        console.error(`Failed to call ${method}:`, error);
+        console.error("Error details:", {
+          message: error instanceof Error ? error.message : String(error),
+          status: (error as { status?: number })?.status,
+          response: (error as { response?: unknown })?.response,
+        });
+      }
       throw error;
     }
   }

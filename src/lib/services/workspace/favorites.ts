@@ -39,9 +39,11 @@ export async function loadFavorites(userId: string): Promise<string[]> {
   if (!userId) return [];
   const filePath = getFavoritesFilePath(userId);
   try {
-    const result = await workspaceApi.makeRequest<unknown>("Workspace.get", [
-      { objects: [filePath] },
-    ]);
+    const result = await workspaceApi.makeRequest<unknown>(
+      "Workspace.get",
+      [{ objects: [filePath] }],
+      { silent: true },
+    );
     const content = parseGetFileContent(result);
     if (!content) return [];
     const data = JSON.parse(content) as { folders?: string[] };

@@ -73,6 +73,24 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
+      // Missing favorites file is expected when .preferences folder or file does not exist
+      const isFavoritesGet =
+        method === "Workspace.get" &&
+        Array.isArray(params) &&
+        (params[0] as { objects?: string[] })?.objects?.some?.((path: unknown) =>
+          typeof path === "string" && path.endsWith("/home/.preferences/favorites.json")
+        );
+      if (
+        isFavoritesGet &&
+        (response.status === 404 || response.status === 500)
+      ) {
+        return NextResponse.json({
+          id: 1,
+          result: [],
+          jsonrpc: "2.0",
+        });
+      }
+
       const responseText = await response.text();
       let apiResponse: unknown = null;
       try {

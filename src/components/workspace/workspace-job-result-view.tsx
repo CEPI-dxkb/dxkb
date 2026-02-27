@@ -242,8 +242,6 @@ export function WorkspaceJobResultView({
           <AlertDialogHeader>
             <AlertDialogMedia className="flex items-center justify-center gap-2">
               <Construction className="h-6 w-6 text-amber-600" />
-              <HardHat className="h-6 w-6 text-amber-600" />
-              <Wrench className="h-5 w-5 text-muted-foreground" />
             </AlertDialogMedia>
             <AlertDialogTitle>File viewer coming soon</AlertDialogTitle>
             <AlertDialogDescription>

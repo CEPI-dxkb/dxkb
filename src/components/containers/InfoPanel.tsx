@@ -63,6 +63,15 @@ function formatDiskUsage(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2)} TB`;
 }
 
+/** Build the full path to a workspace item (parent + name) for API calls like Workspace.du. */
+function getItemFullPath(item: WorkspaceBrowserItem): string {
+  const rawPath = (item.path ?? "").replace(/\/+$/, "").replace(/\/+/g, "/");
+  const name = (item.name ?? "").trim();
+  const fullPath = (rawPath.endsWith(name) ? rawPath : `${rawPath}/${name}`).replace(/\/+/g, "/");
+  const normalized = (fullPath || rawPath || item.path || "").trim();
+  return normalized ? (normalized.startsWith("/") ? normalized : `/${normalized}`) : "";
+}
+
 function WorkspaceItemDetailContent({
   workspaceItem,
   onClose: _onClose,
@@ -72,10 +81,10 @@ function WorkspaceItemDetailContent({
   onClose?: () => void;
   onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
 }) {
-  const fullPath = `${workspaceItem.path}${workspaceItem.name}`.replace(/\/+/g, "/");
+  const fullPath = getItemFullPath(workspaceItem);
   const pathDisplay = fullPath || workspaceItem.path || "—";
 
-  const { data: diskUsage, isPending: isDiskUsageLoading, error: diskUsageError } = useWorkspaceDu(workspaceItem.path || null);
+  const { data: diskUsage, isPending: isDiskUsageLoading, error: diskUsageError } = useWorkspaceDu(fullPath || null);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

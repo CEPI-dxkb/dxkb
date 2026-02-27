@@ -41,8 +41,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Construction,
-  HardHat,
-  Wrench,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort } from "@/types/workspace-browser";
@@ -251,7 +250,9 @@ export function WorkspaceBrowser({
     if (!path || path.trim() === "") return "";
     if (isHome) {
       const trimmed = path.replace(/^\/+|\/+$/g, "");
-      return `/${username}@bvbrc/home${trimmed ? `/${trimmed}` : ""}`;
+      // Username may already be "user@realm" from URL; do not append @bvbrc again.
+      const userSegment = username.includes("@") ? username : `${username}@bvbrc`;
+      return `/${userSegment}/home${trimmed ? `/${trimmed}` : ""}`;
     }
     return fullPath;
   }, [path, isHome, username, fullPath]);

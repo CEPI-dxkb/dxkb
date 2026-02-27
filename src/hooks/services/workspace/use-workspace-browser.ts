@@ -13,8 +13,10 @@ function buildWorkspacePath(
 ): string {
   // Callers (page components) already decode params via safeDecode; do not
   // decode again—decodeURIComponent throws on already-decoded strings with "%".
+  // Username may already be "user@realm" from URL; do not append @bvbrc again.
+  const userSegment = username.includes("@") ? username : `${username}@bvbrc`;
   const trimmed = relativePath.replace(/^\/+|\/+$/g, "");
-  const root = `/${username}@bvbrc/${base}`;
+  const root = `/${userSegment}/${base}`;
   return trimmed ? `${root}/${trimmed}` : root;
 }
 

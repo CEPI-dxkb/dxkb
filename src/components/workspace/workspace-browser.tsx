@@ -20,6 +20,8 @@ import {
   useWorkspacePanel,
   WORKSPACE_PANEL_IDS,
 } from "@/contexts/workspace-panel-context";
+import { useWorkspacePathResolve } from "@/hooks/services/workspace/use-workspace-path-resolve";
+import { WorkspaceJobResultView } from "./workspace-job-result-view";
 import { WorkspaceBreadcrumbs } from "./workspace-breadcrumbs";
 import { WorkspaceToolbar } from "./workspace-toolbar";
 import {
@@ -35,7 +37,13 @@ import {
   toggleFavorite,
 } from "@/lib/services/workspace/favorites";
 import { forbiddenDownloadTypes } from "@/lib/services/workspace/types";
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import {
+  PanelRightClose,
+  PanelRightOpen,
+  Construction,
+  HardHat,
+  Wrench,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
@@ -53,6 +61,8 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { CopyToDialog } from "./copy-to-dialog";
@@ -188,6 +198,8 @@ export function WorkspaceBrowser({
   const [createWorkspaceDialogOpen, setCreateWorkspaceDialogOpen] =
     useState(false);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
+  const [fileViewerConstructionOpen, setFileViewerConstructionOpen] =
+    useState(false);
 
   const workspaceClient = useMemo(() => new WorkspaceApiClient(), []);
   const workspaceCrud = useMemo(
@@ -235,10 +247,28 @@ export function WorkspaceBrowser({
   const isAtSharedRoot = !isHome && (!path || path === "");
   const fullPath = path ? `/${path}` : "";
 
+  const currentFullPath = useMemo(() => {
+    if (!path || path.trim() === "") return "";
+    if (isHome) {
+      const trimmed = path.replace(/^\/+|\/+$/g, "");
+      return `/${username}@bvbrc/home${trimmed ? `/${trimmed}` : ""}`;
+    }
+    return fullPath;
+  }, [path, isHome, username, fullPath]);
+
+  const resolveQuery = useWorkspacePathResolve({
+    fullPath: currentFullPath,
+    enabled: !!currentFullPath,
+  });
+  const isJobResultView =
+    !!path &&
+    path.trim() !== "" &&
+    resolveQuery.data?.type === "job_result";
+
   const homeQuery = useWorkspaceBrowser({
     username: currentUser,
     path,
-    enabled: isHome && !!currentUser,
+    enabled: isHome && !!currentUser && !isJobResultView,
   });
 
   const sharedQuery = useSharedWithUser({
@@ -254,7 +284,8 @@ export function WorkspaceBrowser({
 
   const pathQuery = useWorkspaceListByPath({
     fullPath,
-    enabled: !isHome && !isAtSharedRoot && !!fullPath,
+    enabled:
+      !isHome && !isAtSharedRoot && !!fullPath && !isJobResultView,
     initialData: !isHome && !isAtSharedRoot ? initialPathItems : undefined,
   });
 
@@ -376,6 +407,28 @@ export function WorkspaceBrowser({
   ]);
 
   function handleItemDoubleClick(item: WorkspaceBrowserItem) {
+    if (item.type === "job_result") {
+      if (isHome) {
+        const segments = path
+          ? path.split("/").map(sanitizePathSegment).filter(Boolean)
+          : [];
+        segments.push(sanitizePathSegment(item.name));
+        const encoded = segments.map(encodeWorkspaceSegment).join("/");
+        const homeBase = `/workspace/${encodeWorkspaceSegment(username)}/home`;
+        router.push(`${homeBase}/${encoded}`);
+      } else {
+        const segments = item.path
+          .replace(/^\//, "")
+          .split("/")
+          .map(sanitizePathSegment)
+          .filter(Boolean);
+        const encoded = segments.map(encodeWorkspaceSegment).join("/");
+        router.push(`/workspace/${encoded}`);
+      }
+      setSelectedItems([]);
+      setAnchorPath(null);
+      return;
+    }
     if (!isFolderType(item.type)) return;
     if (isHome) {
       const segments = path
@@ -715,6 +768,46 @@ export function WorkspaceBrowser({
     }
   }
 
+  if (path && path.trim() !== "" && resolveQuery.isLoading) {
+    return (
+      <div className="flex min-h-[calc(100vh-12rem)] w-full flex-col overflow-hidden">
+        <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
+          <Skeleton className="h-5 w-64" />
+          <Skeleton className="h-8 w-full" />
+        </div>
+        <div className="min-h-0 flex-1 px-4">
+          <WorkspaceDataTable
+            items={[]}
+            isLoading={true}
+            path={path}
+            sort={{ field: "name", direction: "asc" }}
+            onSortChange={() => {}}
+            showViewSharedRow={false}
+            viewMode={isHome ? "home" : "shared"}
+            username={username}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (isJobResultView && resolveQuery.data) {
+    return (
+      <WorkspaceJobResultView
+        path={path}
+        username={username}
+        viewMode={isHome ? "home" : "shared"}
+        jobResultFullPath={currentFullPath}
+        resolvedJobMeta={resolveQuery.data}
+        workspaceGuideUrl={workspaceGuideUrl}
+        currentUser={currentUser}
+        myWorkspaceRoot={myWorkspaceRoot}
+        onAction={handleAction}
+        onRefetch={() => void resolveQuery.refetch()}
+      />
+    );
+  }
+
   if (!currentUser) {
     if (mode === "shared" && !authChecked) {
       return (
@@ -841,6 +934,26 @@ export function WorkspaceBrowser({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog
+        open={fileViewerConstructionOpen}
+        onOpenChange={setFileViewerConstructionOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="flex items-center justify-center gap-2">
+              <Construction className="h-6 w-6 text-amber-600" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>File viewer coming soon</AlertDialogTitle>
+            <AlertDialogDescription>
+              The file viewer is still under construction. Please check back at
+              a later date for this feature.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>OK</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
         <WorkspaceBreadcrumbs
           path={path}
@@ -896,6 +1009,7 @@ export function WorkspaceBrowser({
           selectedPaths={selectedItems.map((i) => normalizePath(i.path))}
           onSelect={handleSelectItem}
           onItemDoubleClick={handleItemDoubleClick}
+          onOpenFileRequested={() => setFileViewerConstructionOpen(true)}
           onClearSelection={() => {
             setSelectedItems([]);
             setAnchorPath(null);

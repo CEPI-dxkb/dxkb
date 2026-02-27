@@ -1,4 +1,15 @@
-import { ValidWorkspaceObjectTypes, knownUploadTypes, otherWorkspaceObjectTypes, viewableTypes } from "./types";
+import {
+  ValidWorkspaceObjectTypes,
+  knownUploadTypes,
+  otherWorkspaceObjectTypes,
+  viewableTypes,
+} from "./types";
+import type {
+  WorkspaceGetRawResult,
+  ResolvedPathObject,
+  JobResultTaskData,
+  JobResultSysMeta,
+} from "./types";
 
 export function metaListToObj(list: unknown[]) {
   return {
@@ -16,6 +27,57 @@ export function metaListToObj(list: unknown[]) {
     global_permission: list[10],
     timestamp: Date.parse(String(list[3])),
   };
+}
+
+/**
+ * Parse raw Workspace.get result for a single path into ResolvedPathObject.
+ * Raw shape: result[0][pathIndex][0] = [name, type, path (parent), creation_time, id, owner_id, size, userMeta, sysMeta, ...].
+ */
+export function parseWorkspaceGetSingle(
+  raw: WorkspaceGetRawResult,
+  pathIndex = 0,
+): ResolvedPathObject | null {
+  const pathResults = raw[0];
+  if (!Array.isArray(pathResults)) return null;
+  const objectsAtPath = pathResults[pathIndex];
+  if (!Array.isArray(objectsAtPath) || objectsAtPath.length === 0) return null;
+  const list = objectsAtPath[0] as unknown[];
+  if (!Array.isArray(list)) return null;
+
+  const parent = String(list[2] ?? "");
+  const name = String(list[0] ?? "");
+  const fullPath = (parent + name).replace(/\/+/g, "/");
+  const userMeta = (list[7] as Record<string, unknown>) ?? {};
+  const sysMeta = (list[8] as Record<string, unknown>) ?? {};
+
+  const resolved: ResolvedPathObject = {
+    name,
+    type: String(list[1] ?? ""),
+    path: fullPath,
+    creation_time: String(list[3] ?? ""),
+    id: String(list[4] ?? ""),
+    owner_id: String(list[5] ?? ""),
+    size: Number(list[6]) || 0,
+    userMeta,
+    sysMeta,
+  };
+
+  if (resolved.type === "job_result") {
+    resolved.taskData = userMeta.task_data as JobResultTaskData | undefined;
+    resolved.jobSysMeta = sysMeta as JobResultSysMeta;
+  }
+
+  return resolved;
+}
+
+/**
+ * Compute the dot-folder path for a job_result (hidden folder containing output files).
+ * e.g. /user/home/folder/jobname -> /user/home/folder/.jobname
+ */
+export function getJobResultDotPath(resolved: ResolvedPathObject): string {
+  const fullPath = resolved.path.replace(/\/+$/, "");
+  const parent = fullPath.slice(0, Math.max(0, fullPath.length - resolved.name.length)).replace(/\/+$/, "");
+  return parent ? `${parent}/.${resolved.name}` : `.${resolved.name}`;
 }
 
 // Validator function to check if a type is a valid knownUploadType

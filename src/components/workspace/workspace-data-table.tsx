@@ -87,6 +87,8 @@ interface WorkspaceDataTableProps {
   ) => void;
   /** Called on double click (folders only) when selection mode is used; parent should navigate */
   onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
+  /** Called when user tries to open a non-folder item (click, double-click, or Enter); e.g. show "under construction" dialog */
+  onOpenFileRequested?: (item: WorkspaceBrowserItem) => void;
   /** Called when focus moves to Parent folder or View Shared row so parent can clear selection */
   onClearSelection?: () => void;
 }
@@ -289,6 +291,7 @@ export const WorkspaceDataTable = forwardRef<
     selectedPaths = [],
     onSelect,
     onItemDoubleClick,
+    onOpenFileRequested,
     onClearSelection,
   },
   ref,
@@ -445,7 +448,11 @@ export const WorkspaceDataTable = forwardRef<
           currentItemIndex >= 0 ? items[currentItemIndex] : null;
         if (focusedItem) {
           e.preventDefault();
-          onItemDoubleClick?.(focusedItem);
+          if (!isFolderType(focusedItem.type)) {
+            onOpenFileRequested?.(focusedItem);
+          } else {
+            onItemDoubleClick?.(focusedItem);
+          }
         }
         return;
       }
@@ -493,6 +500,7 @@ export const WorkspaceDataTable = forwardRef<
       focusedSpecialRow,
       onSelect,
       onItemDoubleClick,
+      onOpenFileRequested,
       onClearSelection,
       sharedBase,
       router,
@@ -857,12 +865,18 @@ export const WorkspaceDataTable = forwardRef<
                           });
                         } else if (isNavigable) {
                           handleItemClick(item);
+                        } else {
+                          onOpenFileRequested?.(item);
                         }
                       }
 
                       function handleRowDoubleClick() {
-                        if (useSelectionMode && isNavigable) {
-                          onItemDoubleClick?.(item);
+                        if (useSelectionMode) {
+                          if (isNavigable) {
+                            onItemDoubleClick?.(item);
+                          } else {
+                            onOpenFileRequested?.(item);
+                          }
                         }
                       }
 
@@ -876,7 +890,7 @@ export const WorkspaceDataTable = forwardRef<
                                   ? "border-l-primary"
                                   : "border-l-transparent")
                               : "") +
-                            (useSelectionMode || isNavigable
+                            (useSelectionMode || isNavigable || onOpenFileRequested
                               ? " cursor-pointer pl-6"
                               : " pl-6") +
                             (isSelected ? " bg-muted" : "")
@@ -887,7 +901,9 @@ export const WorkspaceDataTable = forwardRef<
                           title={
                             useSelectionMode && isNavigable
                               ? "Double-click to open folder"
-                              : undefined
+                              : useSelectionMode && !isNavigable && onOpenFileRequested
+                                ? "Double-click to open file"
+                                : undefined
                           }
                           aria-selected={
                             useSelectionMode ? isSelected : undefined

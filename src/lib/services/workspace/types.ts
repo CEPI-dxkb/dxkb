@@ -189,6 +189,49 @@ export interface WorkspaceGetResponse {
   }>;
 }
 
+/** Raw Workspace.get result: result[0] = path results, result[0][i][0] = object tuple. */
+export type WorkspaceGetRawResult = unknown[];
+
+/** task_data from userMeta (index 7) for job_result objects. */
+export interface JobResultTaskData {
+  success?: number;
+  start_time?: number;
+  end_time?: number;
+  app_id?: string;
+  task_id?: string;
+  elapsed_time?: number;
+}
+
+/** sysMeta (tuple index 8) for job_result objects. */
+export interface JobResultSysMeta {
+  success?: number;
+  elapsed_time?: number;
+  id?: string;
+  parameters?: Record<string, unknown>;
+  end_time?: number;
+  start_time?: number;
+  is_folder?: number;
+  output_files?: [string, string][];
+  app?: { script?: string; label?: string; id?: string; description?: string };
+  hostname?: string;
+  job_output?: number;
+}
+
+/** Parsed object from Workspace.get single-path response (one tuple). */
+export interface ResolvedPathObject {
+  name: string;
+  type: string;
+  path: string;
+  creation_time: string;
+  id: string;
+  owner_id: string;
+  size: number;
+  userMeta: Record<string, unknown>;
+  sysMeta: Record<string, unknown>;
+  taskData?: JobResultTaskData;
+  jobSysMeta?: JobResultSysMeta;
+}
+
 // Workspace.save parameters and response
 export interface WorkspaceSaveParams {
   objects: Array<{

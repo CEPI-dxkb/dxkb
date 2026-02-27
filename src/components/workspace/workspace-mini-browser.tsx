@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useCallback,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Table,
@@ -11,13 +18,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspaceItemIcon, isFolderType } from "./workspace-item-icon";
+import { WorkspaceItemIcon, isFolderType, isFolder } from "./workspace-item-icon";
 import { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
+import { useSharedWithUser, useUserWorkspaces } from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
-import { ChevronRight, FolderOpen } from "lucide-react";
+import { ChevronRight, FolderUp } from "lucide-react";
 
 const client = new WorkspaceApiClient();
+
+/** Derive username (e.g. "user") from workspace root path (e.g. "/user@bvbrc"). */
+function usernameFromWorkspaceRoot(workspaceRoot: string): string {
+  return workspaceRoot.replace(/^\//, "").split("@")[0] ?? "";
+}
+
+function normalizePath(path: string | null | undefined): string {
+  if (!path) return "/";
+  const trimmed = path.replace(/\/+$/, "");
+  return trimmed || "/";
+}
 
 async function fetchListByPath(fullPath: string): Promise<WorkspaceBrowserItem[]> {
   const results = await client.makeRequest<WorkspaceBrowserItem[]>(
@@ -52,9 +71,14 @@ function formatSize(bytes: number): string {
 function MiniBrowserBreadcrumbs({
   currentPath,
   onNavigate,
+  className,
+  clickable = true,
 }: {
   currentPath: string;
   onNavigate: (path: string) => void;
+  className?: string;
+  /** When false, breadcrumbs are display-only (e.g. when viewing a shared folder). */
+  clickable?: boolean;
 }) {
   const segments = currentPath.split("/").filter(Boolean);
   if (segments.length === 0) return null;
@@ -62,24 +86,31 @@ function MiniBrowserBreadcrumbs({
   return (
     <nav
       aria-label="Current path"
-      className="text-muted-foreground flex flex-wrap items-center gap-1 text-sm"
+      className={cn("text-muted-foreground flex flex-wrap items-center gap-1 text-sm", className)}
     >
       {segments.map((segment, index) => {
         const pathUpToHere = "/" + segments.slice(0, index + 1).join("/");
         const isLast = index === segments.length - 1;
+        const segmentClassName = cn(
+          "truncate max-w-[150px] px-0.5 py-0.5 text-left",
+          isLast && "text-foreground font-medium",
+        );
         return (
           <span key={pathUpToHere} className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onNavigate(pathUpToHere)}
-              className={cn(
-                "hover:text-foreground truncate max-w-[120px] rounded px-0.5 py-0.5 text-left transition-colors",
-                isLast && "text-foreground font-medium",
-              )}
-              title={pathUpToHere}
-            >
-              {segment}
-            </button>
+            {clickable ? (
+              <button
+                type="button"
+                onClick={() => onNavigate(pathUpToHere)}
+                className={cn("hover:text-foreground rounded transition-colors", segmentClassName)}
+                title={pathUpToHere}
+              >
+                {segment}
+              </button>
+            ) : (
+              <span className={segmentClassName} title={pathUpToHere}>
+                {segment}
+              </span>
+            )}
             {!isLast && <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
           </span>
         );
@@ -96,6 +127,12 @@ export interface WorkspaceMiniBrowserProps {
   showHidden?: boolean;
   /** Currently selected path for highlight */
   selectedPath?: string | null;
+  /**
+   * When set, at this path the mini browser shows merged user workspaces + shared folders
+   * (e.g. "/user@bvbrc"). Enables choosing shared folders as destination.
+   */
+  workspaceRoot?: string;
+  className?: string;
 }
 
 export function WorkspaceMiniBrowser({
@@ -104,27 +141,69 @@ export function WorkspaceMiniBrowser({
   mode = "folders-only",
   showHidden = false,
   selectedPath = null,
+  workspaceRoot,
+  className,
 }: WorkspaceMiniBrowserProps) {
   const [currentPath, setCurrentPath] = useState(initialPath);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [focusedRow, setFocusedRow] = useState<"parent" | string | null>(null);
 
   useEffect(() => {
     setCurrentPath(initialPath);
   }, [initialPath]);
 
-  const { data: items = [], isLoading, error } = useQuery({
+  const normalizedCurrent = currentPath.replace(/\/+$/, "") || "/";
+  const normalizedRoot = workspaceRoot?.replace(/\/+$/, "") ?? "";
+  const isAtRoot = !!workspaceRoot && normalizedCurrent === normalizedRoot;
+
+  useEffect(() => {
+    onSelectPath(normalizedCurrent);
+  }, [normalizedCurrent, onSelectPath]);
+
+  const username = workspaceRoot ? usernameFromWorkspaceRoot(workspaceRoot) : "";
+
+  const userWorkspacesQuery = useUserWorkspaces({
+    username,
+    enabled: isAtRoot && !!username,
+  });
+  const sharedQuery = useSharedWithUser({
+    username,
+    enabled: isAtRoot && !!username,
+  });
+
+  const pathQuery = useQuery({
     queryKey: ["workspace-mini-browser", currentPath],
     queryFn: () => fetchListByPath(currentPath),
-    enabled: !!currentPath,
+    enabled: !!currentPath && !isAtRoot,
     staleTime: 60 * 1000,
   });
+
+  const rootItems = useMemo(() => {
+    if (!isAtRoot) return [];
+    const userData = userWorkspacesQuery.data ?? [];
+    const shared = sharedQuery.data ?? [];
+    const byPath = new Map<string, WorkspaceBrowserItem>();
+    for (const item of [...userData, ...shared]) {
+      if (!byPath.has(item.path)) byPath.set(item.path, item);
+    }
+    return Array.from(byPath.values());
+  }, [isAtRoot, userWorkspacesQuery.data, sharedQuery.data]);
+
+  const items = isAtRoot ? rootItems : (pathQuery.data ?? []);
+  const isLoading = isAtRoot
+    ? userWorkspacesQuery.isLoading || sharedQuery.isLoading
+    : pathQuery.isLoading;
+  const error = isAtRoot
+    ? userWorkspacesQuery.error ?? sharedQuery.error
+    : pathQuery.error;
 
   const displayItems = useMemo(() => {
     let list = items;
     if (mode === "folders-only") {
-      list = list.filter((item) => isFolderType(item.type));
+      list = list.filter((item) => isFolder(item.type ?? ""));
     }
     if (!showHidden) {
-      list = list.filter((item) => !item.name.startsWith("."));
+      list = list.filter((item) => !(item.name ?? "").startsWith("."));
     }
     const sortCompare = (a: WorkspaceBrowserItem, b: WorkspaceBrowserItem) => {
       const aFolder = isFolderType(a.type);
@@ -151,21 +230,162 @@ export function WorkspaceMiniBrowser({
     }
   };
 
-  const currentPathNormalized = currentPath.endsWith("/")
-    ? currentPath.slice(0, -1)
-    : currentPath;
-  const isCurrentSelected = selectedPath != null && (
-    selectedPath === currentPath ||
-    selectedPath === currentPath + "/" ||
-    selectedPath + "/" === currentPath ||
-    selectedPath === currentPathNormalized
+  const pathSegments = useMemo(
+    () => currentPath.split("/").filter(Boolean),
+    [currentPath],
+  );
+  const isInSharedFolder =
+    !!workspaceRoot &&
+    normalizedCurrent !== normalizedRoot &&
+    !normalizedCurrent.startsWith(normalizedRoot + "/");
+  const showParentRow = !isAtRoot && pathSegments.length > 0;
+  const parentRowLabel =
+    isInSharedFolder && pathSegments.length <= 2
+      ? "Back to my workspaces"
+      : "Parent folder";
+
+  const handleParentClick = () => {
+    if (isInSharedFolder && pathSegments.length <= 2) {
+      setCurrentPath(workspaceRoot!);
+      return;
+    }
+    const parentSegments = pathSegments.slice(0, -1);
+    const parentPath = parentSegments.length > 0 ? "/" + parentSegments.join("/") : "/";
+    setCurrentPath(parentPath);
+  };
+
+  const breadcrumbsClickable = !isInSharedFolder;
+
+  const navigableItems = useMemo(
+    () => displayItems.filter((item) => isFolderType(item.type)),
+    [displayItems],
   );
 
-  return (
-    <div className="flex flex-col gap-2">
-      <MiniBrowserBreadcrumbs currentPath={currentPath} onNavigate={handleNavigate} />
+  const navigationTargets = useMemo<("parent" | string)[]>(
+    () => {
+      const targets: ("parent" | string)[] = [];
+      if (showParentRow) {
+        targets.push("parent");
+      }
+      for (const item of navigableItems) {
+        targets.push(normalizePath(item.path));
+      }
+      return targets;
+    },
+    [showParentRow, navigableItems],
+  );
 
-      <div className="rounded-md border">
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter") {
+        if (focusedRow === "parent") {
+          if (!showParentRow) return;
+          e.preventDefault();
+          handleParentClick();
+          return;
+        }
+        if (!focusedRow && selectedPath == null) return;
+        const key = focusedRow ?? normalizePath(selectedPath);
+        const focusedItem =
+          navigableItems.find(
+            (item) => normalizePath(item.path) === key,
+          ) ?? null;
+        if (focusedItem) {
+          e.preventDefault();
+          setCurrentPath(focusedItem.path);
+        }
+        return;
+      }
+
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      if (navigationTargets.length === 0) return;
+
+      const selectedKey =
+        selectedPath != null ? normalizePath(selectedPath) : null;
+      const currentKey =
+        focusedRow ?? selectedKey ?? (showParentRow ? "parent" : null);
+
+      let currentIndex = currentKey
+        ? navigationTargets.indexOf(currentKey)
+        : -1;
+
+      let nextIndex: number;
+      if (e.shiftKey) {
+        nextIndex = e.key === "ArrowDown"
+          ? navigationTargets.length - 1
+          : 0;
+      } else if (e.key === "ArrowDown") {
+        nextIndex =
+          currentIndex < 0
+            ? 0
+            : Math.min(currentIndex + 1, navigationTargets.length - 1);
+      } else {
+        // ArrowUp without Shift: clamp at the first row (no wrapping)
+        if (currentIndex <= 0) {
+          nextIndex = 0;
+        } else {
+          nextIndex = currentIndex - 1;
+        }
+      }
+
+      e.preventDefault();
+      const nextKey = navigationTargets[nextIndex];
+      setFocusedRow(nextKey);
+      if (nextKey === "parent") {
+        return;
+      }
+      onSelectPath(nextKey);
+    },
+    [
+      focusedRow,
+      selectedPath,
+      navigationTargets,
+      showParentRow,
+      navigableItems,
+      handleParentClick,
+      onSelectPath,
+    ],
+  );
+
+  useEffect(() => {
+    if (!tableContainerRef.current) return;
+
+    const key =
+      focusedRow ??
+      (selectedPath != null ? normalizePath(selectedPath) : null);
+    if (!key) return;
+
+    const container = tableContainerRef.current;
+    const row = container.querySelector<HTMLElement>(
+      `[data-row-key="${key}"]`,
+    );
+    if (!row) return;
+
+    // Defer so DOM has the new focus/selection; use "start" so first row scrolls into view
+    const id = requestAnimationFrame(() => {
+      row.scrollIntoView({ block: "center", inline: "start"});
+    });
+    return () => cancelAnimationFrame(id);
+  }, [focusedRow, selectedPath]);
+
+  return (
+    <div className={cn("flex flex-col gap-2", className)}>
+      {/* <MiniBrowserBreadcrumbs
+        currentPath={currentPath}
+        onNavigate={handleNavigate}
+        className="px-2 pt-2"
+        clickable={breadcrumbsClickable}
+      /> */}
+
+      <div
+        ref={tableContainerRef}
+        role="grid"
+        tabIndex={0}
+        aria-label="Workspace destination browser"
+        className="scrollbar-themed flex h-full min-h-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onKeyDown={handleKeyDown}
+        onPointerDownCapture={() => tableContainerRef.current?.focus()}
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -176,23 +396,26 @@ export function WorkspaceMiniBrowser({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {/* Row to select current folder as destination */}
-            <TableRow
-              className={cn(
-                "cursor-pointer hover:bg-muted/50",
-                isCurrentSelected && "bg-muted",
-              )}
-              onClick={() => onSelectPath(currentPath)}
-            >
-              <TableCell className="pl-3" colSpan={4}>
-                <div className="flex items-center gap-2">
-                  <FolderOpen className="text-amber-500 h-4 w-4 shrink-0" />
-                  <span className="text-muted-foreground text-sm">
-                    (Current folder)
-                  </span>
-                </div>
-              </TableCell>
-            </TableRow>
+            {/* Back to my workspaces / Parent folder */}
+            {showParentRow && (
+              <TableRow
+                data-row-key="parent"
+                className={cn(
+                  "cursor-pointer hover:bg-muted/50",
+                  focusedRow === "parent" && "bg-muted",
+                )}
+                onClick={handleParentClick}
+              >
+                <TableCell className="pl-3" colSpan={4}>
+                  <div className="flex items-center gap-2">
+                    <FolderUp className="text-muted-foreground h-4 w-4 shrink-0" />
+                    <span className="text-muted-foreground text-sm">
+                      {parentRowLabel}
+                    </span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
 
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
@@ -230,9 +453,13 @@ export function WorkspaceMiniBrowser({
                 return (
                   <TableRow
                     key={item.id ?? item.path}
+                    data-row-key={normalizePath(item.path)}
                     className={cn(
                       "cursor-pointer hover:bg-muted/50",
-                      isFolderType(item.type) && isSelected && "bg-muted",
+                      isFolderType(item.type) &&
+                        isSelected &&
+                        focusedRow !== "parent" &&
+                        "bg-muted",
                     )}
                     onClick={() => handleFolderClick(item)}
                     onDoubleClick={() => handleFolderDoubleClick(item)}

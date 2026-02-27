@@ -6,7 +6,9 @@ import {
   DialogContent,
   DialogFooter,
   DialogTitle,
+  DialogHeader,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -40,7 +42,10 @@ export function CopyToDialog({
   const [customFilename, setCustomFilename] = React.useState("");
   const [showAllFiles, setShowAllFiles] = React.useState(false);
 
-  const homePath = `${currentUserWorkspaceRoot}/home`;
+  const workspaceRootPath =
+    currentUserWorkspaceRoot.startsWith("/")
+      ? currentUserWorkspaceRoot
+      : `/${currentUserWorkspaceRoot}`;
   const prevOpenRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -51,11 +56,13 @@ export function CopyToDialog({
       // Only initialize when opening (false → true), so we don't reset
       // customFilename on parent re-renders that pass a new sourceItems reference.
       if (!prevOpenRef.current) {
+        setDestinationPath(workspaceRootPath);
         setCustomFilename(sourceItems[0]?.name ?? "");
+        setShowAllFiles(false); // Default: only folders, no hidden files/folders
       }
     }
     prevOpenRef.current = open;
-  }, [open, sourceItems]);
+  }, [open, sourceItems, workspaceRootPath]);
 
   const handleConfirm = React.useCallback(() => {
     if (destinationPath == null) return;
@@ -77,29 +84,29 @@ export function CopyToDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] w-full max-w-2xl overflow-hidden sm:max-w-2xl">
-        <div className="flex min-h-0 flex-col gap-4">
+      <DialogContent className="scrollbar-themed flex max-h-[90vh] md:max-h-[60vh] h-full max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-w-2xl lg:max-w-4xl">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="pr-8">{title}</DialogTitle>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-muted-foreground text-xs font-medium">
+        </DialogHeader>
+        <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-4 px-4 pt-1">
+          <div className="flex shrink-0 flex-col gap-2">
+            <Label className="text-muted-foreground text-xs font-medium">
               Destination
-            </label>
-            <div
-              className="bg-muted/50 rounded-md border px-3 py-2 font-mono text-sm"
+            </Label>
+            <Input
               title={destinationPath ?? undefined}
-            >
-              {destinationPath ?? "Select a folder below"}
-            </div>
+              disabled
+              value={destinationPath ?? "Select a folder below"}
+            />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label
+          <div className="flex shrink-0 flex-col gap-2">
+            <Label
               className="text-muted-foreground text-xs font-medium"
               htmlFor="copy-dialog-filename"
             >
               Filename
-            </label>
+            </Label>
             <Input
               id="copy-dialog-filename"
               value={customFilename}
@@ -113,18 +120,18 @@ export function CopyToDialog({
             />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto">
             <WorkspaceMiniBrowser
-              initialPath={homePath}
+              className="min-h-0 flex-1"
+              initialPath={workspaceRootPath}
+              workspaceRoot={workspaceRootPath}
               onSelectPath={setDestinationPath}
               mode={showAllFiles ? "all" : "folders-only"}
               showHidden={showAllFiles}
               selectedPath={destinationPath}
             />
-          </div>
 
-          <div className="flex items-center gap-4">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <div className="flex shrink-0 items-center">
+            <Label className="flex cursor-pointer items-center gap-2 text-sm">
               <Checkbox
                 checked={showAllFiles}
                 onCheckedChange={(checked) =>
@@ -132,11 +139,11 @@ export function CopyToDialog({
                 }
               />
               <span>Show all files and folders</span>
-            </label>
+            </Label>
           </div>
         </div>
 
-        <DialogFooter showCloseButton={false} className="mt-4">
+        <DialogFooter className="shrink-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -156,7 +163,7 @@ export function CopyToDialog({
             ) : mode === "move" ? (
               "Move"
             ) : (
-              "OK"
+              "Copy"
             )}
           </Button>
         </DialogFooter>

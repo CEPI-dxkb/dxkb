@@ -761,7 +761,7 @@ export function WorkspaceBrowser({
         : `${pendingDeleteSelection.length} items`;
 
   const mainContent = (
-    <>
+    <div>
       <CopyToDialog
         open={copyDialogOpen}
         onOpenChange={setCopyDialogOpen}
@@ -902,7 +902,7 @@ export function WorkspaceBrowser({
           }}
         />
       </div>
-    </>
+    </div>
   );
 
   const actionStrip = (

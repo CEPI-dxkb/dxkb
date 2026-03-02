@@ -1,0 +1,40 @@
+src/lib/services/workspace/helpers.ts
+  a6890f32c14f7408 13
+src/components/workspace/workspace-item-icon.tsx
+  a6890f32c14f7408 57,59
+src/components/workspace/workspace-browser.tsx
+  81a4f5e546973629 667,674,676-678
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "3ee2243cde7507a6a84418b3c8179cd928c1ae42",
+  "prompts": {
+    "81a4f5e546973629": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6cd73473-f621-4c5b-a97f-690b565eae79",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 2,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "a6890f32c14f7408": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "63ddf990-7a69-4276-9019-dc9c89d5072a",
+        "model": "gpt-5.3-codex"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 36,
+      "total_deletions": 31,
+      "accepted_lines": 30,
+      "overriden_lines": 1
+    }
+  }
+}

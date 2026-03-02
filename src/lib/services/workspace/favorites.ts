@@ -59,14 +59,19 @@ export async function loadFavorites(userId: string): Promise<string[]> {
  */
 async function ensurePreferencesDir(userId: string): Promise<void> {
   const dirPath = getPreferencesDirPath(userId);
-  const result = await workspaceApi.makeRequest<unknown>("Workspace.get", [
-    { objects: [dirPath], metadata_only: true },
-  ], { silent: true });
-  const exists =
-    Array.isArray(result) &&
-    result.length > 0 &&
-    Array.isArray(result[0]) &&
-    result[0].length > 0;
+  let exists = false;
+  try {
+    const result = await workspaceApi.makeRequest<unknown>("Workspace.get", [
+      { objects: [dirPath], metadata_only: true },
+    ], { silent: true });
+    exists =
+      Array.isArray(result) &&
+      result.length > 0 &&
+      Array.isArray(result[0]) &&
+      result[0].length > 0;
+  } catch {
+    // Directory missing or API error — fall through to create.
+  }
   if (exists) return;
   await workspaceApi.makeRequest<unknown>("Workspace.create", [
     { objects: [[dirPath, "folder", {}]] },

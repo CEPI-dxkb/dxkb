@@ -282,7 +282,7 @@ export function useWorkspaceBrowserActions(
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Download failed.";
-        alert(message);
+        toast.error(message);
       } finally {
         setIsDownloading(false);
       }
@@ -331,7 +331,7 @@ export function useWorkspaceBrowserActions(
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to delete.";
-      alert(message);
+      toast.error(message);
     } finally {
       setIsDeleting(false);
     }

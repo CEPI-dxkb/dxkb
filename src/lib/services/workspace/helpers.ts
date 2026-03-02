@@ -348,7 +348,7 @@ export async function ensureDestinationWriteAccess(
   destinationPath: string,
   listFolder: (path: string) => Promise<WorkspaceBrowserItem[]>,
 ): Promise<EnsureDestinationWriteAccessResult> {
-  const normalized = destinationPath.replace(/\/+$/, "") || "/";
+  const normalized = normalizeWsPath(destinationPath);
   const lastSlash = normalized.lastIndexOf("/");
   const parentPath =
     lastSlash > 0 ? normalized.slice(0, lastSlash) || "/" : "/";
@@ -357,21 +357,42 @@ export async function ensureDestinationWriteAccess(
     const listing = await listFolder(parentPath);
 
     const target = listing.find(
-      (item) => (item.path ?? "").replace(/\/+$/, "") === normalized,
+      (item) => normalizeWsPath(item.path ?? "") === normalized,
     );
 
-    if (!target || !hasWriteAccess(target)) {
-      return {
-        ok: false,
-        errorMessage: `Access denied, you do not have write access to ${normalized}`,
-      };
+    if (target) {
+      if (!hasWriteAccess(target)) {
+        return {
+          ok: false,
+          errorMessage: `Access denied, you do not have write access to ${normalized || "/"}`,
+        };
+      }
+      return { ok: true };
     }
 
+    // Destination is a new name (not in listing); check write access on the parent.
+    if (parentPath === "/" || !parentPath) {
+      return {
+        ok: false,
+        errorMessage: `Access denied, you do not have write access to ${normalized || "/"}`,
+      };
+    }
+    const grandparentPath = parentPath.slice(0, parentPath.lastIndexOf("/")) || "/";
+    const parentListing = await listFolder(grandparentPath);
+    const parentItem = parentListing.find(
+      (item) => normalizeWsPath(item.path ?? "") === normalizeWsPath(parentPath),
+    );
+    if (!parentItem || !hasWriteAccess(parentItem)) {
+      return {
+        ok: false,
+        errorMessage: `Access denied, you do not have write access to ${normalized || "/"}`,
+      };
+    }
     return { ok: true };
   } catch {
     return {
       ok: false,
-      errorMessage: `Access denied, you do not have write access to ${normalized}`,
+      errorMessage: `Access denied, you do not have write access to ${normalized || "/"}`,
     };
   }
 }

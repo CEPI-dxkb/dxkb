@@ -1,0 +1,97 @@
+src/app/api/services/workspace/route.ts
+  ccf746d92642d22e 77-78,89
+src/hooks/services/workspace/use-workspace-browser-actions.ts
+  4e044fa5191521fc 285,334
+src/lib/services/workspace/helpers.ts
+  38ea3e1212fe3e2a 351,360,377,395
+  caff695a9b8bc7dd 363-374,380-388
+src/lib/services/workspace/favorites.ts
+  339bf4f46ac9a9a1 62-63,66,72-74
+src/app/workspace/[username]/page.tsx
+  21e927ec37342664 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "92dd6b3f2f2156c0d9d898e56376a572bdfb8116",
+  "prompts": {
+    "21e927ec37342664": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f5428494-9a8a-4e44-ad72-c90b4fc85aae",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "339bf4f46ac9a9a1": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8e3f6227-6f79-485f-9a7a-38c59668fcb5",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 8,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "38ea3e1212fe3e2a": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "454de8cb-5050-41c1-b494-18065ae8f2a3",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    },
+    "4e044fa5191521fc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e48e60c8-8de2-4be1-9969-aac7eda6ff54",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "caff695a9b8bc7dd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "41bc033a-e163-419d-92af-c91649d8e620",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 24,
+      "total_deletions": 3,
+      "accepted_lines": 23,
+      "overriden_lines": 0
+    },
+    "ccf746d92642d22e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c4d619a4-693f-43da-aa94-dbfe922d375f",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 2,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    }
+  }
+}

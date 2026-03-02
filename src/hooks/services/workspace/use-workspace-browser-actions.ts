@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import type { QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
@@ -85,10 +85,6 @@ export function useWorkspaceBrowserActions(
   >([]);
   const [nonEmptyFolderPathsInDelete, setNonEmptyFolderPathsInDelete] =
     useState<string[]>([]);
-  const [deleteHoldProgress, setDeleteHoldProgress] = useState(0);
-  const deleteHoldIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [copyMoveDialogMode, setCopyMoveDialogMode] = useState<"copy" | "move">(
     "copy",
@@ -528,41 +524,7 @@ export function useWorkspaceBrowserActions(
 
   function onDeleteDialogOpenChange(open: boolean) {
     setDeleteDialogOpen(open);
-    if (!open && !isDeleting) {
-      setPendingDeleteSelection([]);
-      setDeleteHoldProgress(0);
-      if (deleteHoldIntervalRef.current) {
-        clearInterval(deleteHoldIntervalRef.current);
-        deleteHoldIntervalRef.current = null;
-      }
-    }
-  }
-
-  function onDeleteHoldStart() {
-    if (deleteHoldIntervalRef.current) return;
-    const start = Date.now();
-    const durationMs = 1000;
-    deleteHoldIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const next = Math.min(100, (elapsed / durationMs) * 100);
-      setDeleteHoldProgress(next);
-      if (next >= 100) {
-        if (deleteHoldIntervalRef.current) {
-          clearInterval(deleteHoldIntervalRef.current);
-          deleteHoldIntervalRef.current = null;
-        }
-        setDeleteHoldProgress(0);
-        void handleConfirmDelete();
-      }
-    }, 50);
-  }
-
-  function onDeleteHoldEnd() {
-    if (deleteHoldIntervalRef.current) {
-      clearInterval(deleteHoldIntervalRef.current);
-      deleteHoldIntervalRef.current = null;
-    }
-    setDeleteHoldProgress(0);
+    if (!open && !isDeleting) setPendingDeleteSelection([]);
   }
 
   return {
@@ -572,8 +534,6 @@ export function useWorkspaceBrowserActions(
     isDeleting,
     pendingDeleteSelection,
     nonEmptyFolderPathsInDelete,
-    deleteHoldProgress,
-    deleteHoldIntervalRef,
     copyDialogOpen,
     setCopyDialogOpen,
     copyMoveDialogMode,
@@ -610,8 +570,6 @@ export function useWorkspaceBrowserActions(
     handleCreateFolder,
     handleCreateWorkspace,
     handleEditTypeConfirm,
-    onDeleteHoldStart,
-    onDeleteHoldEnd,
     // For dialogs
     currentUserWorkspaceRoot,
     currentDirectoryPath,

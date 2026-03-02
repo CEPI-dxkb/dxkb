@@ -348,7 +348,6 @@ export function WorkspaceBrowser({
     isDeleting,
     pendingDeleteSelection,
     nonEmptyFolderPathsInDelete,
-    deleteHoldProgress,
     copyDialogOpen,
     setCopyDialogOpen,
     copyMoveDialogMode,
@@ -383,8 +382,6 @@ export function WorkspaceBrowser({
     handleCreateFolder,
     handleCreateWorkspace,
     handleEditTypeConfirm,
-    onDeleteHoldStart,
-    onDeleteHoldEnd,
   } = actions;
 
   if (path && path.trim() !== "" && resolveQuery.isLoading) {
@@ -526,9 +523,6 @@ export function WorkspaceBrowser({
         isDeleting={isDeleting}
         pendingDeleteSelection={pendingDeleteSelection}
         nonEmptyFolderPathsInDelete={nonEmptyFolderPathsInDelete}
-        deleteHoldProgress={deleteHoldProgress}
-        onDeleteHoldStart={onDeleteHoldStart}
-        onDeleteHoldEnd={onDeleteHoldEnd}
         onConfirmDelete={handleConfirmDelete}
       />
       <FileViewerConstructionDialog

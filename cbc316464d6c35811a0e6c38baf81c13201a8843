@@ -1,0 +1,27 @@
+src/components/workspace/workspace-browser.tsx
+  92c755aa2713c3a4 201-255,655-656,658-670
+src/components/workspace/copy-to-dialog.tsx
+  92c755aa2713c3a4 79-81,83-87
+src/components/workspace/workspace-mini-browser.tsx
+  92c755aa2713c3a4 30-45,200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "cbc316464d6c35811a0e6c38baf81c13201a8843",
+  "prompts": {
+    "92c755aa2713c3a4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "383c6883-56bd-4e82-afd1-43ebb78b5a50",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 98,
+      "total_deletions": 2,
+      "accepted_lines": 95,
+      "overriden_lines": 3
+    }
+  }
+}

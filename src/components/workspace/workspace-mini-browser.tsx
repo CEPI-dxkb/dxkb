@@ -18,13 +18,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspaceItemIcon, isFolderType, isFolder } from "./workspace-item-icon";
+import { WorkspaceItemIcon } from "./workspace-item-icon";
 import { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { useSharedWithUser, useUserWorkspaces } from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
 import { hasWriteAccess, formatDate, formatFileSize } from "@/lib/services/workspace/helpers";
 import { ChevronRight, FolderUp } from "lucide-react";
+import { isFolderType, isFolder } from "@/lib/services/workspace/utils";
 
 const client = new WorkspaceApiClient();
 

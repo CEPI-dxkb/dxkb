@@ -30,7 +30,7 @@ import {
 } from "./workspace-data-table";
 import { InfoPanel } from "@/components/containers/InfoPanel";
 import { WorkspaceActionBar } from "./workspace-action-bar";
-import { isFolder, isFolderType } from "./workspace-item-icon";
+import { isFolderType, isFolder } from "@/lib/services/workspace/utils";
 import { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
 import {
   getJobResultDotPath,
@@ -664,14 +664,18 @@ export function WorkspaceBrowser({
     filenameOverride?: string,
   ) {
     if (pendingCopySelection.length === 0) return;
+    const isMove = copyMoveDialogMode === "move";
     const base = destinationPath.replace(/\/+$/, "") || destinationPath;
     const destIsRoot = base === currentUserWorkspaceRoot;
     const hasNonFolder = pendingCopySelection.some(
       (item) => !isFolder(item.type),
     );
     if (destIsRoot && hasNonFolder) {
+      const actionVerb = isMove ? "Moving" : "Copying";
       toast.error(
-        "Sorry! Moving objects to the top level directory, " +
+        "Sorry! " +
+          actionVerb +
+          " objects to the top level directory, " +
           currentUserWorkspaceRoot +
           ", is not allowed.",
       );
@@ -701,7 +705,6 @@ export function WorkspaceBrowser({
       return;
     }
     setIsCopying(true);
-    const isMove = copyMoveDialogMode === "move";
     try {
       await workspaceCrud.copyByPaths({
         objects,

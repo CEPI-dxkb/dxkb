@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isFolderType, normalizeWorkspaceObjectType } from "@/lib/services/workspace/utils";
 
 const typeIconMap: Record<string, LucideIcon> = {
   folder: Folder,
@@ -47,35 +48,15 @@ const typeIconMap: Record<string, LucideIcon> = {
   tar_gz: FileArchive,
 };
 
-const typeFolderLike = new Set([
-  "folder",
-  "directory",
-  "job_result",
-  "modelfolder",
-  "genome_group",
-  "feature_group",
-  "experiment_group",
-]);
-
-const typeFolder= new Set([
-  "folder",
-  "directory",
-  "modelfolder",
-]);
-
-function normalizeType(type: string): string {
-  return (type ?? "").toLowerCase();
-}
-
 interface WorkspaceItemIconProps {
   type: string;
   className?: string;
 }
 
 export function WorkspaceItemIcon({ type, className }: WorkspaceItemIconProps) {
-  const key = normalizeType(type);
+  const key = normalizeWorkspaceObjectType(type);
   const Icon = typeIconMap[key] ?? typeIconMap[type] ?? File;
-  const isFolderLike = typeFolderLike.has(key);
+  const isFolderLike = isFolderType(type);
 
   return (
     <Icon
@@ -86,12 +67,4 @@ export function WorkspaceItemIcon({ type, className }: WorkspaceItemIconProps) {
       )}
     />
   );
-}
-
-export function isFolderType(type: string): boolean {
-  return typeFolderLike.has(normalizeType(type));
-}
-
-export function isFolder(type: string): boolean {
-  return typeFolder.has(normalizeType(type));
 }

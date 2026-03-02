@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceMiniBrowser } from "./workspace-mini-browser";
 import { WorkspaceBrowserItem } from "@/types/workspace-browser";
-import { isFolder } from "./workspace-item-icon";
+import { isFolder } from "@/lib/services/workspace/utils";
 
 export interface CopyToDialogProps {
   open: boolean;

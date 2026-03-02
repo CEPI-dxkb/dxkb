@@ -10,7 +10,7 @@ import type {
   JobResultTaskData,
   JobResultSysMeta,
 } from "./types";
-import { isFolderType } from "@/components/workspace/workspace-item-icon";
+import { isFolderType } from "./utils";
 import type {
   WorkspaceBrowserItem,
   WorkspaceBrowserSort,

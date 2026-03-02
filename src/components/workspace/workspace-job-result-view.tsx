@@ -21,7 +21,7 @@ import { WorkspaceToolbar } from "./workspace-toolbar";
 import { WorkspaceDataTable } from "./workspace-data-table";
 import { InfoPanel } from "@/components/containers/InfoPanel";
 import { WorkspaceActionBar } from "./workspace-action-bar";
-import { isFolderType } from "./workspace-item-icon";
+import { isFolderType } from "@/lib/services/workspace/utils";
 import { sortItems } from "@/lib/services/workspace/helpers";
 import {
   ResizableHandle,

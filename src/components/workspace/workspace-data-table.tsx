@@ -48,7 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspaceItemIcon, isFolderType } from "./workspace-item-icon";
+import { WorkspaceItemIcon } from "./workspace-item-icon";
 import {
   WorkspaceBrowserItem,
   SortField,
@@ -57,6 +57,7 @@ import {
 import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 import { normalizePath } from "@/lib/workspace/table-selection";
 import { formatFileSize, formatDate } from "@/lib/services/workspace/helpers";
+import { isFolderType } from "@/lib/services/workspace/utils";
 
 /** Stable empty array for table data fallback (avoids infinite re-renders per TanStack Data guide). */
 const EMPTY_ITEMS: WorkspaceBrowserItem[] = [];

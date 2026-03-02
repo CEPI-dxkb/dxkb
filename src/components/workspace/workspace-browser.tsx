@@ -33,6 +33,13 @@ import { WorkspaceActionBar } from "./workspace-action-bar";
 import { isFolder, isFolderType } from "./workspace-item-icon";
 import { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
 import {
+  getJobResultDotPath,
+  hasWriteAccess,
+  sortItems,
+  normalizeWsPath,
+  dedupeKeepOrder,
+} from "@/lib/services/workspace/helpers";
+import {
   loadFavorites,
   toggleFavorite,
 } from "@/lib/services/workspace/favorites";
@@ -88,42 +95,6 @@ interface WorkspaceBrowserProps {
   initialSharedItems?: WorkspaceBrowserItem[];
   initialPathItems?: WorkspaceBrowserItem[];
   initialPermissions?: ListPermissionsResult;
-}
-
-function sortItems(
-  items: WorkspaceBrowserItem[],
-  sort: WorkspaceBrowserSort,
-): WorkspaceBrowserItem[] {
-  return [...items].sort((a, b) => {
-    const aIsFolder = isFolderType(a.type);
-    const bIsFolder = isFolderType(b.type);
-    if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
-
-    let comparison = 0;
-    switch (sort.field) {
-      case "name":
-        comparison = a.name.localeCompare(b.name, undefined, {
-          sensitivity: "base",
-        });
-        break;
-      case "size":
-        comparison = (a.size ?? 0) - (b.size ?? 0);
-        break;
-      case "owner_id":
-        comparison = (a.owner_id ?? "").localeCompare(b.owner_id ?? "");
-        break;
-      case "creation_time":
-        comparison = (a.timestamp ?? 0) - (b.timestamp ?? 0);
-        break;
-      case "type":
-        comparison = a.type.localeCompare(b.type);
-        break;
-      default:
-        comparison = 0;
-    }
-
-    return sort.direction === "asc" ? comparison : -comparison;
-  });
 }
 
 export function WorkspaceBrowser({
@@ -191,6 +162,8 @@ export function WorkspaceBrowser({
   const [downloadOptionsPaths, setDownloadOptionsPaths] = useState<string[]>(
     [],
   );
+  const [downloadOptionsDefaultName, setDownloadOptionsDefaultName] =
+    useState<string>("archive");
   const [createWorkspaceDialogOpen, setCreateWorkspaceDialogOpen] =
     useState(false);
   const [isCreatingWorkspace, setIsCreatingWorkspace] = useState(false);
@@ -198,22 +171,6 @@ export function WorkspaceBrowser({
     useState(false);
 
   const workspaceClient = useMemo(() => new WorkspaceApiClient(), []);
-
-  function hasWriteAccess(item: WorkspaceBrowserItem): boolean {
-    const userPerm = String(item.user_permission ?? "");
-    const globalPerm = String(item.global_permission ?? "");
-
-    const hasUserWrite =
-      userPerm === "o" ||
-      userPerm === "a" ||
-      userPerm.includes("w");
-    const hasGlobalWrite =
-      globalPerm === "o" ||
-      globalPerm === "a" ||
-      globalPerm.includes("w");
-
-    return hasUserWrite || hasGlobalWrite;
-  }
 
   async function ensureDestinationWriteAccess(destinationPath: string): Promise<boolean> {
     const normalized = destinationPath.replace(/\/+$/, "") || "/";
@@ -567,22 +524,67 @@ export function WorkspaceBrowser({
     if (actionId !== "download") return;
     const downloadable = selection.filter(
       (item) =>
-        !isFolderType(item.type) &&
-        !(forbiddenDownloadTypes as readonly string[]).includes(item.type),
+        Boolean(item.path) &&
+        !(forbiddenDownloadTypes as readonly string[]).includes(
+          (item.type ?? "").toLowerCase(),
+        ),
     );
     if (downloadable.length === 0) {
-      alert(
-        "Select a file to download. Folders and some object types cannot be downloaded.",
+      toast.error(
+        "Nothing to download for this selection.",
+        {
+          description:
+            "Some object types are not downloadable. Try selecting files or standard folders.",
+        },
       );
       return;
     }
-    const paths = downloadable.map((item) => item.path);
+
+    function getSiblingJobResultPathForDotFolder(dotFolderPath: string): string | null {
+      const normalized = normalizeWsPath(dotFolderPath);
+      if (!normalized) return null;
+
+      const segments = normalized.split("/").filter(Boolean);
+      const last = segments[segments.length - 1] ?? "";
+      if (!last.startsWith(".") || last.length < 2) return null;
+
+      const siblingLast = last.slice(1);
+      const siblingPath = `/${[...segments.slice(0, -1), siblingLast].join("/")}`;
+      const siblingNormalized = normalizeWsPath(siblingPath);
+      const sibling = items.find(
+        (it) =>
+          normalizeWsPath(it.path ?? "") === siblingNormalized &&
+          String(it.type ?? "").toLowerCase() === "job_result",
+      );
+      return sibling ? siblingNormalized : null;
+    }
+
+    const expandedPaths = downloadable.flatMap((item) => {
+      const p = normalizeWsPath(item.path ?? "");
+      if (!p) return [];
+
+      const type = String(item.type ?? "").toLowerCase();
+      if (type === "job_result") {
+        const name = String(item.name ?? "").trim() || p.split("/").filter(Boolean).pop() || "";
+        const dotPath = normalizeWsPath(getJobResultDotPath({ path: p, name }));
+        // Include dot-folder first, then the job_result itself (requested payload order).
+        return [dotPath, p].filter(Boolean);
+      }
+
+      // If user selects the hidden dot-folder itself, include the sibling job_result too (when present).
+      const siblingJobResultPath = getSiblingJobResultPathForDotFolder(p);
+      if (siblingJobResultPath) return [p, siblingJobResultPath];
+
+      return [p];
+    });
+
+    const mappedPaths = dedupeKeepOrder(expandedPaths);
     const singleFile =
-      downloadable.length === 1 && downloadable[0]?.type !== "job_result";
+      downloadable.length === 1 && !isFolderType(downloadable[0]?.type ?? "");
     if (singleFile) {
       setIsDownloading(true);
       try {
-        const urlArrays = await workspaceDownload.getDownloadUrls(paths);
+        const urlArrays = await workspaceDownload.getDownloadUrls(mappedPaths);
         for (let i = 0; i < urlArrays.length; i++) {
           const url = urlArrays[i]?.[0];
           if (!url) continue;
@@ -605,7 +607,18 @@ export function WorkspaceBrowser({
       }
       return;
     }
-    setDownloadOptionsPaths(paths);
+    const single = downloadable.length === 1 ? downloadable[0] : null;
+    const singleType = String(single?.type ?? "").toLowerCase();
+    const defaultName =
+      singleType === "job_result"
+        ? String(single?.name ?? "").replace(/^\./, "").trim() || "archive"
+        : single?.name != null && String(single.name).startsWith(".")
+          ? (getSiblingJobResultPathForDotFolder(single.path ?? "")?.split("/").filter(Boolean).pop() ??
+              String(single.name).replace(/^\./, "")).trim() || "archive"
+          : "archive";
+
+    setDownloadOptionsDefaultName(defaultName);
+    setDownloadOptionsPaths(mappedPaths);
     setDownloadOptionsOpen(true);
   }
 
@@ -953,7 +966,7 @@ export function WorkspaceBrowser({
         open={downloadOptionsOpen}
         onOpenChange={setDownloadOptionsOpen}
         paths={downloadOptionsPaths}
-        defaultArchiveName="archive"
+        defaultArchiveName={downloadOptionsDefaultName}
         downloadMethods={workspaceDownload}
       />
       <AlertDialog

@@ -22,6 +22,7 @@ import { WorkspaceDataTable } from "./workspace-data-table";
 import { InfoPanel } from "@/components/containers/InfoPanel";
 import { WorkspaceActionBar } from "./workspace-action-bar";
 import { isFolderType } from "./workspace-item-icon";
+import { sortItems } from "@/lib/services/workspace/helpers";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -82,40 +83,6 @@ function formatUnixTimestamp(ts: number | undefined): string {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  });
-}
-
-function sortItems(
-  items: WorkspaceBrowserItem[],
-  sort: WorkspaceBrowserSort,
-): WorkspaceBrowserItem[] {
-  return [...items].sort((a, b) => {
-    const aIsFolder = isFolderType(a.type);
-    const bIsFolder = isFolderType(b.type);
-    if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
-    let comparison = 0;
-    switch (sort.field) {
-      case "name":
-        comparison = (a.name ?? "").localeCompare(b.name ?? "", undefined, {
-          sensitivity: "base",
-        });
-        break;
-      case "size":
-        comparison = (a.size ?? 0) - (b.size ?? 0);
-        break;
-      case "owner_id":
-        comparison = (a.owner_id ?? "").localeCompare(b.owner_id ?? "");
-        break;
-      case "creation_time":
-        comparison = (a.timestamp ?? 0) - (b.timestamp ?? 0);
-        break;
-      case "type":
-        comparison = (a.type ?? "").localeCompare(b.type ?? "");
-        break;
-      default:
-        comparison = 0;
-    }
-    return sort.direction === "asc" ? comparison : -comparison;
   });
 }
 

@@ -41,7 +41,7 @@ export function DownloadOptionsDialog({
   open,
   onOpenChange,
   paths,
-  defaultArchiveName = "archive",
+  defaultArchiveName = "",
   downloadMethods: downloadMethodsProp,
 }: DownloadOptionsDialogProps) {
   const defaultDownloadMethods = React.useMemo(
@@ -59,7 +59,7 @@ export function DownloadOptionsDialog({
 
   React.useEffect(() => {
     if (open) {
-      setArchiveName(defaultArchiveName);
+      setArchiveName(defaultArchiveName ?? "");
       setArchiveType("zip");
       setValidationError(null);
     }

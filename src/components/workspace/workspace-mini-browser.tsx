@@ -23,25 +23,10 @@ import { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { useSharedWithUser, useUserWorkspaces } from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
+import { hasWriteAccess, formatDate, formatFileSize } from "@/lib/services/workspace/helpers";
 import { ChevronRight, FolderUp } from "lucide-react";
 
 const client = new WorkspaceApiClient();
-
-function hasWriteAccess(item: WorkspaceBrowserItem): boolean {
-  const userPerm = String(item.user_permission ?? "");
-  const globalPerm = String(item.global_permission ?? "");
-
-  const hasUserWrite =
-    userPerm === "o" ||
-    userPerm === "a" ||
-    userPerm.includes("w");
-  const hasGlobalWrite =
-    globalPerm === "o" ||
-    globalPerm === "a" ||
-    globalPerm.includes("w");
-
-  return hasUserWrite || hasGlobalWrite;
-}
 
 /** Derive username (e.g. "user") from workspace root path (e.g. "/user@bvbrc"). */
 function usernameFromWorkspaceRoot(workspaceRoot: string): string {
@@ -60,28 +45,6 @@ async function fetchListByPath(fullPath: string): Promise<WorkspaceBrowserItem[]
     [{ paths: [fullPath], includeSubDirs: false, recursive: false }],
   );
   return results ?? [];
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "2-digit",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatSize(bytes: number): string {
-  if (!bytes || bytes === 0) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
 function _MiniBrowserBreadcrumbs({
@@ -490,7 +453,7 @@ export function WorkspaceMiniBrowser({
                       </div>
                     </TableCell>
                     <TableCell className="hidden pl-3 sm:table-cell text-sm">
-                      {isFolderType(item.type) ? "—" : formatSize(item.size ?? 0)}
+                      {isFolderType(item.type) ? "—" : formatFileSize(item.size ?? 0)}
                     </TableCell>
                     <TableCell className="hidden pl-3 md:table-cell text-sm">
                       {(item.owner_id ?? "").replace(/@bvbrc$/, "")}

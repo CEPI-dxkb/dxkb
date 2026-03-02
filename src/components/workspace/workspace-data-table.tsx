@@ -56,6 +56,7 @@ import {
 } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 import { normalizePath } from "@/lib/workspace/table-selection";
+import { formatFileSize, formatDate } from "@/lib/services/workspace/helpers";
 
 /** Stable empty array for table data fallback (avoids infinite re-renders per TanStack Data guide). */
 const EMPTY_ITEMS: WorkspaceBrowserItem[] = [];
@@ -95,28 +96,6 @@ interface WorkspaceDataTableProps {
 
 export interface WorkspaceDataTableHandle {
   focus: () => void;
-}
-
-function formatFileSize(bytes: number): string {
-  if (!bytes || bytes === 0) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "2-digit",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
 }
 
 function formatOwner(ownerId: string): string {

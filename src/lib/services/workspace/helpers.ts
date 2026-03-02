@@ -10,6 +10,11 @@ import type {
   JobResultTaskData,
   JobResultSysMeta,
 } from "./types";
+import { isFolderType } from "@/components/workspace/workspace-item-icon";
+import type {
+  WorkspaceBrowserItem,
+  WorkspaceBrowserSort,
+} from "@/types/workspace-browser";
 
 export function metaListToObj(list: unknown[]) {
   return {
@@ -74,10 +79,31 @@ export function parseWorkspaceGetSingle(
  * Compute the dot-folder path for a job_result (hidden folder containing output files).
  * e.g. /user/home/folder/jobname -> /user/home/folder/.jobname
  */
-export function getJobResultDotPath(resolved: ResolvedPathObject): string {
-  const fullPath = resolved.path.replace(/\/+$/, "");
-  const parent = fullPath.slice(0, Math.max(0, fullPath.length - resolved.name.length)).replace(/\/+$/, "");
-  return parent ? `${parent}/.${resolved.name}` : `.${resolved.name}`;
+export function getJobResultDotPath(
+  resolved: Pick<ResolvedPathObject, "path" | "name">,
+): string {
+  const fullPath = String(resolved.path ?? "").replace(/\/+$/, "");
+  const name = String(resolved.name ?? "").replace(/^\/+|\/+$/g, "");
+
+  const fallbackName = fullPath.split("/").filter(Boolean).pop() ?? "";
+  const dotName = name || fallbackName;
+
+  let parent = "";
+  if (dotName) {
+    const suffix = `/${dotName}`;
+    const nameAlreadyInPath =
+      fullPath === dotName || fullPath.endsWith(suffix);
+    if (nameAlreadyInPath) {
+      parent = fullPath
+        .slice(0, Math.max(0, fullPath.length - dotName.length))
+        .replace(/\/+$/, "");
+    } else {
+      const lastSlash = fullPath.lastIndexOf("/");
+      parent = lastSlash > 0 ? fullPath.slice(0, lastSlash) : "";
+    }
+  }
+
+  return parent ? `${parent}/.${dotName}` : `.${dotName}`;
 }
 
 // Validator function to check if a type is a valid knownUploadType
@@ -112,4 +138,98 @@ export function validateWorkspaceObjectTypes(types: string[]): {
   });
 
   return { valid, invalid };
+}
+
+export function hasWriteAccess(item: WorkspaceBrowserItem): boolean {
+  const userPerm = String(item.user_permission ?? "");
+  const globalPerm = String(item.global_permission ?? "");
+
+  const hasUserWrite =
+    userPerm === "o" ||
+    userPerm === "a" ||
+    userPerm.includes("w");
+  const hasGlobalWrite =
+    globalPerm === "o" ||
+    globalPerm === "a" ||
+    globalPerm.includes("w");
+
+  return hasUserWrite || hasGlobalWrite;
+}
+
+export function sortItems(
+  items: WorkspaceBrowserItem[],
+  sort: WorkspaceBrowserSort,
+): WorkspaceBrowserItem[] {
+  return [...items].sort((a, b) => {
+    const aIsFolder = isFolderType(a.type);
+    const bIsFolder = isFolderType(b.type);
+    if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
+
+    let comparison = 0;
+    switch (sort.field) {
+      case "name":
+        comparison = (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          sensitivity: "base",
+        });
+        break;
+      case "size":
+        comparison = (a.size ?? 0) - (b.size ?? 0);
+        break;
+      case "owner_id":
+        comparison = (a.owner_id ?? "").localeCompare(b.owner_id ?? "");
+        break;
+      case "creation_time":
+        comparison = (a.timestamp ?? 0) - (b.timestamp ?? 0);
+        break;
+      case "type":
+        comparison = (a.type ?? "").localeCompare(b.type ?? "");
+        break;
+      default:
+        comparison = 0;
+    }
+
+    return sort.direction === "asc" ? comparison : -comparison;
+  });
+}
+
+export function formatDate(dateString: string): string {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return date.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+export function formatFileSize(bytes: number): string {
+  if (!bytes || bytes === 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+export function normalizeWsPath(p: string): string {
+  const trimmed = (p ?? "").trim();
+  if (!trimmed) return "";
+  const withLeading = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return withLeading.replace(/\/+$/, "").replace(/\/+/g, "/");
+}
+
+export function dedupeKeepOrder(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of values) {
+    const n = normalizeWsPath(v);
+    if (!n) continue;
+    if (seen.has(n)) continue;
+    seen.add(n);
+    out.push(n);
+  }
+  return out;
 }

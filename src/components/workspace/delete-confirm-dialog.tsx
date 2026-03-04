@@ -61,7 +61,7 @@ export function DeleteConfirmDialog({
               {"\n"}This folder is NOT empty.
             </span>
           )}
-          This action cannot be undone.
+          {" "}This action cannot be undone.
         </AlertDialogDescription>
         {requiresAcknowledgment && (
           <div className="flex items-center gap-2">

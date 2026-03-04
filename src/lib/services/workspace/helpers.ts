@@ -163,10 +163,13 @@ export function sortItems(
   return [...items].sort((a, b) => {
     const aIsFolder = isFolderType(a.type);
     const bIsFolder = isFolderType(b.type);
-    // Only put folders first when NOT sorting by name or type
-    if (sort.field !== "name" && sort.field !== "type") {
-      if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
-    }
+
+    if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
+
+    // Uncomment to mix folders with other items when sorting
+    // if (sort.field !== "name" && sort.field !== "type") {
+    //   if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
+    // }
 
     let comparison = 0;
     switch (sort.field) {

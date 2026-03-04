@@ -13,14 +13,17 @@ export class WorkspaceApiClient {
   }
 
   /**
-   * Make a generic JSON-RPC request to the Workspace API
+   * Make a generic JSON-RPC request to the Workspace API.
+   * @param options.silent - When true, do not log errors (e.g. when caller handles missing/expected failures).
    */
   async makeRequest<T = unknown>(
     method: WorkspaceMethod,
     params: unknown[],
+    options?: { silent?: boolean },
   ): Promise<T> {
+    const silent = options?.silent ?? false;
     try {
-      console.log(`Making workspace API call: ${method}`, params);
+      if (!silent) console.log(`Making workspace API call: ${method}`, params);
 
       const response = await fetch(this.baseUrl, {
         method: "POST",
@@ -35,23 +38,62 @@ export class WorkspaceApiClient {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(
-          errorData.error || `HTTP error! status: ${response.status}`,
-        );
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error(
+          (errorData as { error?: string }).error ||
+            `HTTP error! status: ${response.status}`,
+        ) as Error & { apiResponse?: unknown };
+        err.apiResponse = (errorData as { apiResponse?: unknown }).apiResponse ?? errorData;
+        throw err;
       }
 
       const result = await response.json();
-      console.log(`Workspace API response for ${method}:`, result);
+      if (!silent) console.log(`Workspace API response for ${method}:`, result);
 
       // Handle JSON-RPC response format
       if (result.error) {
-        throw new Error(result.error.message || "API error");
+        const rpcError = result.error as { message?: string };
+        const err = new Error(rpcError.message || "API error") as Error & {
+          apiResponse?: unknown;
+        };
+        err.apiResponse = result.error;
+        throw err;
       }
 
-      console.log("RESULT", result);
+      if (!silent) console.log("RESULT", result);
 
-      // Replicate the original logic for processing results
+      // Workspace.list_permissions returns a map path -> [user, perm][]
+      if (method === "Workspace.list_permissions") {
+        if (!result.result || !result.result[0]) {
+          return {} as T;
+        }
+        return result.result[0] as T;
+      }
+
+      // Methods that return result.result as-is (array or nested array).
+      // Must include any method called via makeRequest that does not return
+      // Workspace.ls-style path-keyed listing; otherwise they fall through to
+      // the ls path and get incorrectly processed with metaListToObj.
+      const rawResultMethods: Set<WorkspaceMethod> = new Set([
+        "Workspace.get",
+        "Workspace.get_download_url",
+        "Workspace.get_archive_url",
+        "Workspace.copy",
+        "Workspace.update_metadata",
+        "Workspace.create",
+        "Workspace.update_auto_meta",
+        "Workspace.delete",
+        "Workspace.move",
+        "Workspace.rename",
+        "Workspace.save",
+        "Workspace.get_permissions",
+        "Workspace.du",
+      ]);
+      if (rawResultMethods.has(method)) {
+        return (result.result ?? []) as T;
+      }
+
+      // Replicate the original logic for processing results (Workspace.ls)
       if (!result.result || !result.result[0]) {
         return [] as T;
       }
@@ -85,28 +127,20 @@ export class WorkspaceApiClient {
         return metaListToObj(r as unknown[]);
       });
 
-      // Filter out hidden folders and apply type filtering (same as original)
-      res = res.filter((r: unknown) => {
-        const obj = r as Record<string, unknown>;
-        if (obj.type === "folder") {
-          if (String(obj.path).split("/").some((p: string) => {
-            return p.charAt(0) === '.';
-          })) {
-            return false;
-          }
-        }
-        return true; // We'll handle type filtering in the specific methods
-      });
-
-      console.log("PROCESSED RESULTS!!!", res);
+      // Hidden files/folders (names starting with .) are not filtered here;
+      // the workspace browser UI filters them by default and shows them when
+      // the user toggles "Show hidden".
+      if (!silent) console.log("PROCESSED RESULTS!!!", res);
       return res as T;
     } catch (error) {
-      console.error(`Failed to call ${method}:`, error);
-      console.error("Error details:", {
-        message: error instanceof Error ? error.message : String(error),
-        status: (error as { status?: number })?.status,
-        response: (error as { response?: unknown })?.response,
-      });
+      if (!silent) {
+        console.error(`Failed to call ${method}:`, error);
+        console.error("Error details:", {
+          message: error instanceof Error ? error.message : String(error),
+          status: (error as { status?: number })?.status,
+          response: (error as { response?: unknown })?.response,
+        });
+      }
       throw error;
     }
   }

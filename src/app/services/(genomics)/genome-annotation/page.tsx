@@ -109,7 +109,7 @@ const GenomeAnnotationContent = () => {
           });
 
           // Optionally redirect to jobs page
-          // router.push(`/workspace/jobs/${result.job.id}`);
+          // router.push(`/jobs/${result.job.id}`);
         } else {
           throw new Error(result.error);
         }

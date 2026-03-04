@@ -23,9 +23,17 @@ import {DropdownMenu,
 } from "@/components/ui/dropdown-menu";
 
 import { UserRound, Settings, NotebookPen, BriefcaseBusiness, Mail } from "lucide-react";
+import { encodeWorkspaceSegment } from "@/lib/utils";
+
+/** Full username with @domain for workspace URLs (session stores short form in user.username). */
+function workspaceUsername(user: { username?: string; realm?: string } | null): string {
+  if (!user?.username) return "";
+  return user.realm ? `${user.username}@${user.realm}` : user.username;
+}
 
 const DesktopNavbar = () => {
   const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
+  const wsUsername = workspaceUsername(user);
 
   const pathname = usePathname();
   const isHome = pathname === '/';
@@ -187,32 +195,51 @@ const DesktopNavbar = () => {
               </NavigationMenuContent>
             </NavigationMenuItem>
 
-            {/* Workspace - only show when authenticated */}
-            {isAuthenticated && (
-              <NavigationMenuItem id="workspace-nav">
-                <NavigationMenuTrigger className="bg-primary">
-                  Workspace
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
+            {/* Workspace - always visible; when not signed in, prompt to Sign In */}
+            <NavigationMenuItem id="workspace-nav">
+              <NavigationMenuTrigger className="bg-primary">
+                Workspace
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                {isAuthenticated ? (
                   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                     <ListItem
                       key="workspace-nav"
                       title="My Workspace"
-                      href="/workspace"
+                      href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/home` : "/workspace"}
                     >
                       View your workspace.
                     </ListItem>
                     <ListItem
                       key="workspace-jobs-nav"
                       title="Jobs"
-                      href="/workspace/jobs"
+                      href="/jobs"
                     >
                       View all jobs in your workspace.
                     </ListItem>
                   </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
-            )}
+                ) : (
+                  <ul className="grid w-[300px] gap-3 p-4 md:w-[400px] md:grid-cols-2 lg:w-[500px]">
+                    <ListItem
+                      key="workspace-sign-in"
+                      title="My Workspace"
+                      href="/sign-in?redirect=/workspace"
+                      className="w-full"
+                    >
+                      Sign in required
+                    </ListItem>
+                    <ListItem
+                      key="jobs-sign-in"
+                      title="My Jobs"
+                      href="/sign-in?redirect=/jobs"
+                      className="w-full"
+                    >
+                      Sign in required
+                    </ListItem>
+                  </ul>
+                )}
+              </NavigationMenuContent>
+            </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
         </div>
@@ -290,13 +317,13 @@ const DesktopNavbar = () => {
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <NotebookPen className="text-foreground h-4 w-4" />
-                          <Link href="/workspace">My Workspace</Link>
+                          <Link href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/home` : "/workspace"}>My Workspace</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <BriefcaseBusiness className="text-foreground h-4 w-4" />
-                          <Link href="/workspace/jobs">My Jobs</Link>
+                          <Link href="/jobs">My Jobs</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>

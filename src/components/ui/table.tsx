@@ -4,16 +4,25 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+interface TableProps extends React.ComponentProps<"table"> {
+  /** When true, render only the table (no scroll wrapper). Use when the parent is the scroll container (e.g. for sticky headers). */
+  disableScrollWrapper?: boolean;
+}
+
+function Table({ className, disableScrollWrapper, ...props }: TableProps) {
+  const tableEl = (
+    <table
+      data-slot="table"
+      className={cn("w-full caption-bottom text-sm", className)}
+      {...props}
+    />
+  );
+  if (disableScrollWrapper) return tableEl;
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table
-        data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
-        {...props}
-      />
+      {tableEl}
     </div>
-  )
+  );
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {

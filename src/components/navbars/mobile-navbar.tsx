@@ -107,20 +107,44 @@ const MobileNavbar = () => {
                 </div>
               </div>
 
-              {/* Workspace Section - only show when authenticated */}
-              {isAuthenticated && (
-                <div className="p-3">
-                  <h2 className="mobile-nav-section-header">Workspace</h2>
-                  <div className="grid grid-cols-1 gap-y-1">
+              {/* Workspace Section - always show; when not signed in, prompt to Sign In */}
+              <div className="p-3">
+                <h2 className="mobile-nav-section-header">Workspace</h2>
+                <div className="grid grid-cols-1 gap-y-1">
+                  {isLoading ? (
+                    <>
+                      <Skeleton className="h-5 w-24 bg-muted" />
+                      <Skeleton className="h-9 w-20 bg-muted" />
+                    </>
+                  ) : isAuthenticated ? (
                     <Link
-                      href="/workspace"
+                      href="/jobs"
                       className="mobile-nav-link"
                     >
                       My Jobs
                     </Link>
-                  </div>
+                  ) : (
+                    <>
+                      <Link
+                        href="/sign-in?redirect=/workspace"
+                        className="text-sm text-muted-foreground mb-2 block hover:text-foreground hover:underline focus:outline-none focus:underline"
+                      >
+                        Sign in to view your workspace.
+                      </Link>
+                      <Link
+                        href="/sign-in?redirect=/workspace"
+                        className={buttonVariants({
+                          variant: "default",
+                          size: "sm",
+                          className: "w-fit",
+                        })}
+                      >
+                        Sign In
+                      </Link>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </SheetContent>
         </Sheet>

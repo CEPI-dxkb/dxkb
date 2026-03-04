@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { useWorkspaceDu } from "@/hooks/services/workspace/use-workspace-du";
+
 import { genomeFields } from "@/constants/datafields/genome";
 import { genome_sequenceFields } from "@/constants/datafields/genome_sequence";
 import { genome_amrFields } from "@/constants/datafields/genome_amr";
@@ -14,15 +15,186 @@ import { strainFields } from "@/constants/datafields/strain";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
 import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import { Button } from "@/components/ui/button";
+import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
+import { WorkspaceItemIcon } from "@/components/workspace/workspace-item-icon";
 
-export function InfoPanel({
-  rows,
-  activeTab,
+import { ChevronRight, ChevronDown } from "lucide-react";
+
+export type InfoPanelProps =
+  | {
+      variant: "workspace";
+      /** When multiple items are selected, single-file details are not shown. */
+      selection: WorkspaceBrowserItem[];
+      onClose?: () => void;
+      onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
+    }
+  | {
+      variant?: "search";
+      rows: Record<string, unknown>[];
+      activeTab: string;
+    };
+
+function formatWorkspaceDate(value: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return date.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatWorkspaceOwner(ownerId: string): string {
+  if (!ownerId) return "—";
+  return ownerId.replace(/@bvbrc$/, "");
+}
+
+function formatDiskUsage(bytes: number): string {
+  if (!bytes || bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2)} TB`;
+}
+
+/** Build the full path to a workspace item (parent + name) for API calls like Workspace.du. */
+function getItemFullPath(item: WorkspaceBrowserItem): string {
+  const rawPath = (item.path ?? "").replace(/\/+$/, "").replace(/\/+/g, "/");
+  const name = (item.name ?? "").trim();
+  const segmentSuffix = `/${name}`;
+  const nameAlreadyInPath = rawPath === name || rawPath.endsWith(segmentSuffix);
+  const fullPath = (nameAlreadyInPath ? rawPath : `${rawPath}/${name}`).replace(/\/+/g, "/");
+  const normalized = (fullPath || rawPath || item.path || "").trim();
+  return normalized ? (normalized.startsWith("/") ? normalized : `/${normalized}`) : "";
+}
+
+function WorkspaceItemDetailContent({
+  workspaceItem,
+  onClose: _onClose,
+  onAction: _onAction,
 }: {
-  rows: Record<string, unknown>[];
-  activeTab: string;
+  workspaceItem: WorkspaceBrowserItem;
+  onClose?: () => void;
+  onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
 }) {
+  const fullPath = getItemFullPath(workspaceItem);
+  const pathDisplay = fullPath || workspaceItem.path || "—";
 
+  const { data: diskUsage, isPending: isDiskUsageLoading, error: diskUsageError } = useWorkspaceDu(fullPath || null);
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center justify-between gap-2 border-b pb-2">
+        <h3 className="truncate text-sm font-semibold">{workspaceItem.name}</h3>
+      </div>
+      <div className="scrollbar-themed flex-1 overflow-y-auto py-3 text-xs">
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <WorkspaceItemIcon type={workspaceItem.type} className="h-6 w-6" />
+            <span className="font-medium capitalize text-muted-foreground">
+              {workspaceItem.type || "—"}
+            </span>
+          </div>
+          <dl className="grid gap-1.5">
+            <div>
+              <dt className="text-muted-foreground">Owner</dt>
+              <dd className="break-all">{formatWorkspaceOwner(workspaceItem.owner_id)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Created</dt>
+              <dd>{formatWorkspaceDate(workspaceItem.creation_time)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Path</dt>
+              <dd className="break-all font-mono text-[11px]">{pathDisplay}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground mb-1">Workspace Members</dt>
+              <dd className="text-muted-foreground">
+                {formatWorkspaceOwner(workspaceItem.owner_id)}
+                {workspaceItem.user_permission === "o" ? " (me) – Owner" : " – Owner"}
+              </dd>
+            </div>
+          </dl>
+          <dl className="grid gap-1.5">
+            <div>
+              <dt className="text-muted-foreground mb-1">Disk Usage</dt>
+              <dd className="text-muted-foreground">
+                {isDiskUsageLoading
+                  ? "Loading…"
+                  : diskUsageError
+                    ? "—"
+                    : diskUsage !== undefined
+                      ? formatDiskUsage(diskUsage.sizeBytes)
+                      : "—"}
+              </dd>
+            </div>
+            {diskUsage !== undefined && (
+              <>
+                <div>
+                  <dt className="text-muted-foreground">Files</dt>
+                  <dd className="text-muted-foreground">
+                    {diskUsage.files.toLocaleString()}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Folders</dt>
+                  <dd className="text-muted-foreground">
+                    {diskUsage.folders.toLocaleString()}
+                  </dd>
+                </div>
+              </>
+            )}
+          </dl>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function InfoPanel(props: InfoPanelProps) {
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  if (props.variant === "workspace") {
+    const { selection } = props;
+    const isMultiSelect = selection.length > 1;
+    const hasSingleSelection = selection.length === 1;
+
+    return (
+      <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
+        {isMultiSelect ? (
+          <>
+            <div className="flex items-center justify-between gap-2 border-b pb-2">
+              <h3 className="truncate text-sm font-semibold">
+                {selection.length} items selected
+              </h3>
+            </div>
+            <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
+              Select a single item to view details
+            </div>
+          </>
+        ) : hasSingleSelection ? (
+          <WorkspaceItemDetailContent
+            workspaceItem={selection[0]}
+            onClose={props.onClose}
+            onAction={props.onAction}
+          />
+        ) : (
+          <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
+            Select an item to view details
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const { rows, activeTab } = props;
   let order: string[] = []; // default empty
   let fieldFile = {};
   let allowedFields: string[] = [];
@@ -30,7 +202,7 @@ export function InfoPanel({
 
   switch (activeTab) {
     case 'genome':
-      panelTitleField = 'genome_name'; 
+      panelTitleField = 'genome_name';
       fieldFile = genomeFields;
       allowedFields = ["genome_id", "genome_name", "other_names", "taxon_id", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "genome_status", "strain", "serovar", "biovar", "pathovar", "mlst", "segment", "subtype", "h_type", "n_type", "h1_clade_gobal", "h1_clade_us", "h3_clade", "h5_clade", "ph1n1_like", "lineage", "clade", "subclade", "other_typing", "culture_collection", "type_strain", "reference_genome", "completion_date", "publication", "authors", "bioproject_accession", "biosample_accession", "assembly_accession", "sra_accession", "genbank_accessions", "sequencing_centers", "sequencing_status", "sequencing_platform", "sequencing_depth", "assembly_method", "chromosomes", "plasmids", "contigs", "genome_length", "gc_content", "contig_l50", "contig_n50", "trna", "rrna", "mat_peptide", "cds", "genome_quality", "coarse_consistency", "fine_consistency", "checkm_completeness", "checkm_contamination", "genome_quality_flags", "isolation_source", "isolation_comments", "collection_date", "collection_year", "season", "isolation_country", "state_province", "geographic_group", "geographic_location", "other_environmental", "host_name", "host_common_name", "host_gender", "host_age", "host_health", "host_group", "lab_host", "passage", "other_clinical", "additional_metadata", "comments", "date_inserted", "date_modified"];
       order = ["General Info","Taxonomy Info","Status","Type Info","DB Cross Reference","Sequence Info","Genome Statistics","Annotation Statistics","Genome Quality","Isolate Info","Host Info","Additional Info",];
@@ -130,12 +302,12 @@ export function InfoPanel({
     };
   });
 
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () =>
-      order.reduce((acc, group) => {
-        acc[group] = true;
-        return acc;
-      }, {} as Record<string, boolean>)
+  const effectiveExpanded = order.reduce(
+    (acc, group) => {
+      acc[group] = expandedGroups[group] ?? true;
+      return acc;
+    },
+    { ...expandedGroups } as Record<string, boolean>
   );
 
   const grouped = displayColumns.reduce(
@@ -151,7 +323,7 @@ export function InfoPanel({
   const toggleGroup = (group: string) => {
     setExpandedGroups((prev) => ({
       ...prev,
-      [group]: !prev[group],
+      [group]: !(prev[group] ?? true),
     }));
   };
 
@@ -189,7 +361,7 @@ export function InfoPanel({
 //  console.log("Grouped Columns:", grouped);
 
   return (
-    <div className="w-full p-4 overflow-y-auto text-xs">
+    <div className="scrollbar-themed w-full p-4 overflow-y-auto text-xs">
       <div className="mb-2 text-secondary text-lg">
         {String(rows[0]?.[panelTitleField] ?? "")}
       </div>
@@ -203,7 +375,7 @@ export function InfoPanel({
               );
               if (items.length === 0) return null;
 
-              const isExpanded = expandedGroups[group] ?? true;
+              const isExpanded = effectiveExpanded[group] ?? true;
               const hasAtLeastOneValue = items.some(
                 (item) => rows[0]?.[String(item.id)]
               );

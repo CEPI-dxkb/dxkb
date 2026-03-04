@@ -73,12 +73,30 @@ export interface WorkspaceCreateResponse {
   }>;
 }
 
+/**
+ * Path-based Workspace.create params for uploads.
+ * objects: [fullPath, type, userMeta, content][] (BV-BRC API format).
+ * createUploadNodes: true returns Shock node URLs in the result (index 11 = link_reference).
+ */
+export interface WorkspaceCreateUploadParams {
+  objects: [string, string, Record<string, unknown>, string][];
+  createUploadNodes?: boolean;
+  overwrite?: boolean;
+}
+
+/** Parsed result from Workspace.create with createUploadNodes: true (result[0][0] tuple; index 11 = link_reference). */
+export interface WorkspaceCreateUploadNodeResult {
+  link_reference: string;
+}
+
 // Workspace.delete parameters and response
 export interface WorkspaceDeleteParams {
-  objects: Array<{
-    workspace: string;
-    id: string;
-  }>;
+  /** Full object paths (e.g. /user@realm/home/file.pdb). */
+  objects: string[];
+  /** If true, delete non-empty directories. */
+  force?: boolean;
+  /** If true, delete directory objects; if false, only files. */
+  deleteDirectories?: boolean;
 }
 
 export interface WorkspaceDeleteResponse {
@@ -104,6 +122,16 @@ export interface WorkspaceCopyResponse {
     id: string;
   }>;
 }
+
+/** Path-based copy params (BV-BRC API: objects as [sourcePath, destPath][]). */
+export interface WorkspaceCopyByPathsParams {
+  objects: [string, string][];
+  recursive: boolean;
+  move: boolean;
+}
+
+/** Response from Workspace.copy when using path-based params (result array). */
+export type WorkspaceCopyByPathsResponse = unknown[];
 
 // Workspace.move parameters and response
 export interface WorkspaceMoveParams {
@@ -161,6 +189,49 @@ export interface WorkspaceGetResponse {
   }>;
 }
 
+/** Raw Workspace.get result: result[0] = path results, result[0][i][0] = object tuple. */
+export type WorkspaceGetRawResult = unknown[];
+
+/** task_data from userMeta (index 7) for job_result objects. */
+export interface JobResultTaskData {
+  success?: number;
+  start_time?: number;
+  end_time?: number;
+  app_id?: string;
+  task_id?: string;
+  elapsed_time?: number;
+}
+
+/** sysMeta (tuple index 8) for job_result objects. */
+export interface JobResultSysMeta {
+  success?: number;
+  elapsed_time?: number;
+  id?: string;
+  parameters?: Record<string, unknown>;
+  end_time?: number;
+  start_time?: number;
+  is_folder?: number;
+  output_files?: [string, string][];
+  app?: { script?: string; label?: string; id?: string; description?: string };
+  hostname?: string;
+  job_output?: number;
+}
+
+/** Parsed object from Workspace.get single-path response (one tuple). */
+export interface ResolvedPathObject {
+  name: string;
+  type: string;
+  path: string;
+  creation_time: string;
+  id: string;
+  owner_id: string;
+  size: number;
+  userMeta: Record<string, unknown>;
+  sysMeta: Record<string, unknown>;
+  taskData?: JobResultTaskData;
+  jobSysMeta?: JobResultSysMeta;
+}
+
 // Workspace.save parameters and response
 export interface WorkspaceSaveParams {
   objects: Array<{
@@ -201,8 +272,31 @@ export interface JsonRpcResponse<T = unknown> {
 }
 
 // Workspace API method names
+// Workspace.update_metadata parameters: objects are [path, meta, type][] per object
+export interface WorkspaceUpdateMetadataParams {
+  /** Array of [path, meta, type] tuples; meta is typically {} */
+  objects: Array<[string, Record<string, unknown>, string]>;
+}
+
+/** Params for Workspace.update_auto_meta (trigger inspection/metadata update for uploaded objects). */
+export interface WorkspaceUpdateAutoMetaParams {
+  objects: string[];
+}
+
+/** Params for Workspace.du (disk usage). */
+export interface WorkspaceDuParams {
+  paths: string[];
+  recursive?: boolean;
+  adminmode?: boolean;
+}
+
+/** Response from Workspace.du: result[0] = array of [path, sizeBytes, fileCount, dirCount, error]. */
+export type WorkspaceDuResponse = [[string, number, number, number, string][]];
+
 export type WorkspaceMethod =
   | "Workspace.ls"
+  | "Workspace.du"
+  | "Workspace.list_permissions"
   | "Workspace.get_permissions"
   | "Workspace.create"
   | "Workspace.delete"
@@ -210,7 +304,11 @@ export type WorkspaceMethod =
   | "Workspace.move"
   | "Workspace.rename"
   | "Workspace.get"
-  | "Workspace.save";
+  | "Workspace.save"
+  | "Workspace.get_download_url"
+  | "Workspace.get_archive_url"
+  | "Workspace.update_metadata"
+  | "Workspace.update_auto_meta";
 
 export const forbiddenDownloadTypes = [
   "experiment_group",
@@ -481,5 +579,48 @@ export type changeableTypes = {
   xlsx: { label: "xlsx"; value: "xlsx" };
   xml: { label: "xml"; value: "xml" };
 };
+
+/** Sorted list of object type IDs for the "Change Object Type" dialog. */
+export const editTypeOptions: string[] = [
+  "aligned_dna_fasta",
+  "aligned_protein_fasta",
+  "bai",
+  "bam",
+  "contigs",
+  "csv",
+  "diffexp_input_data",
+  "diffexp_input_metadata",
+  "doc",
+  "docx",
+  "embl",
+  "feature_dna_fasta",
+  "feature_protein_fasta",
+  "genbank_file",
+  "gff",
+  "gif",
+  "jpg",
+  "json",
+  "nwk",
+  "pdb",
+  "pdf",
+  "phyloxml",
+  "png",
+  "ppt",
+  "pptx",
+  "reads",
+  "string",
+  "svg",
+  "tar_gz",
+  "tbi",
+  "tsv",
+  "txt",
+  "unspecified",
+  "vcf",
+  "vcf_gz",
+  "wig",
+  "xls",
+  "xlsx",
+  "xml",
+].sort((a, b) => a.localeCompare(b));
 
 

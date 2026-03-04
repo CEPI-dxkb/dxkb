@@ -96,7 +96,8 @@ export async function setBvbrcAuthCookies(
     });
   }
 
-  // Set only a stable user ID (no PII); full profile is fetched server-side when needed
+  // Set only a stable user ID (no PII): local username for USER_URL paths and session (realm stored separately).
+  // Use local part when falling back to username so USER_URL path and workspace principal (username@realm) stay correct.
   const userId = String(userProfile?.id ?? username.split("@")[0]);
   cookieStore.set("bvbrc_user_id", userId, {
     ...COOKIE_OPTIONS,

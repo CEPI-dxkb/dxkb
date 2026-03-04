@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)"
+    ]
+  }
+}

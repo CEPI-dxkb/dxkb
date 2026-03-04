@@ -188,3 +188,50 @@ export interface WorkspaceState {
     total: number;
   };
 }
+
+/** Runtime constant for workspace changeable object types (label/value for dropdowns, etc.). */
+export const WORKSPACE_CHANGEABLE_TYPES = {
+  aligned_dna_fasta: { label: "Aligned DNA Fasta", value: "aligned_dna_fasta" },
+  aligned_protein_fasta: { label: "Aligned Protein Fasta", value: "aligned_protein_fasta" },
+  bam: { label: "BAM", value: "bam" },
+  bai: { label: "BAI", value: "bai" },
+  bigwig: { label: "BigWig", value: "bigwig" },
+  contigs: { label: "Contigs", value: "contigs" },
+  csv: { label: "CSV", value: "csv" },
+  diffexp_input_data: { label: "DiffExp Input Data", value: "diffexp_input_data" },
+  diffexp_input_metadata: { label: "DiffExp Input Metadata", value: "diffexp_input_metadata" },
+  doc: { label: "DOC", value: "doc" },
+  docx: { label: "DOCX", value: "docx" },
+  embl: { label: "EMBL", value: "embl" },
+  feature_dna_fasta: { label: "Feature DNA Fasta", value: "feature_dna_fasta" },
+  feature_protein_fasta: { label: "Feature Protein Fasta", value: "feature_protein_fasta" },
+  genbank_file: { label: "Genbank File", value: "genbank_file" },
+  gff: { label: "GFF", value: "gff" },
+  gif: { label: "GIF", value: "gif" },
+  graph: { label: "Graph", value: "graph" },
+  jpg: { label: "JPG", value: "jpg" },
+  json: { label: "JSON", value: "json" },
+  nwk: { label: "Newick", value: "nwk" },
+  pdf: { label: "PDF", value: "pdf" },
+  phyloxml: { label: "PHYLOXML", value: "phyloxml" },
+  png: { label: "PNG", value: "png" },
+  pdb: { label: "PDB", value: "pdb" },
+  ppt: { label: "PPT", value: "ppt" },
+  pptx: { label: "PPTX", value: "pptx" },
+  reads: { label: "Reads", value: "reads" },
+  string: { label: "String", value: "string" },
+  svg: { label: "SVG", value: "svg" },
+  tar_gz: { label: "TAR.GZ", value: "tar_gz" },
+  tbi: { label: "TBI", value: "tbi" },
+  tsv: { label: "TSV", value: "tsv" },
+  txt: { label: "TXT", value: "txt" },
+  unspecified: { label: "Unspecified", value: "unspecified" },
+  vcf: { label: "VCF", value: "vcf" },
+  vcf_gz: { label: "VCF.GZ", value: "vcf_gz" },
+  wig: { label: "WIG", value: "wig" },
+  xls: { label: "XLS", value: "xls" },
+  xlsx: { label: "XLSX", value: "xlsx" },
+  xml: { label: "XML", value: "xml" },
+} as const;
+
+export type WorkspaceChangeableTypes = typeof WORKSPACE_CHANGEABLE_TYPES;

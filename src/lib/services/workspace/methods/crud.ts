@@ -2,10 +2,13 @@ import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import {
   WorkspaceCreateParams,
   WorkspaceCreateResponse,
+  WorkspaceCreateUploadNodeResult,
   WorkspaceDeleteParams,
   WorkspaceDeleteResponse,
   WorkspaceCopyParams,
   WorkspaceCopyResponse,
+  WorkspaceCopyByPathsParams,
+  WorkspaceCopyByPathsResponse,
   WorkspaceMoveParams,
   WorkspaceMoveResponse,
   WorkspaceRenameParams,
@@ -14,6 +17,8 @@ import {
   WorkspaceGetResponse,
   WorkspaceSaveParams,
   WorkspaceSaveResponse,
+  WorkspaceUpdateMetadataParams,
+  WorkspaceUpdateAutoMetaParams,
 } from "@/lib/services/workspace/types";
 
 /**
@@ -32,6 +37,41 @@ export class WorkspaceCrudMethods {
       "Workspace.create",
       [params],
     );
+  }
+
+  /**
+   * Create a single folder by full path (path-based Workspace.create).
+   * Path format: /username@realm/home/.../folderName (e.g. /chrescobar@bvbrc/home/Testing/newfolder).
+   */
+  async createFolderByPath(fullPath: string): Promise<WorkspaceCreateResponse> {
+    return this.client.makeRequest<WorkspaceCreateResponse>("Workspace.create", [
+      { objects: [[fullPath, "Directory"]] },
+    ]);
+  }
+
+  /**
+   * Create an upload node for a file (Workspace.create with createUploadNodes: true).
+   * Returns the Shock URL to PUT the file to. Directory path should be full path with trailing slash.
+   */
+  async createUploadNode(
+    directoryPath: string,
+    filename: string,
+    type: string,
+  ): Promise<WorkspaceCreateUploadNodeResult> {
+    const dir = directoryPath.endsWith("/") ? directoryPath : directoryPath + "/";
+    const fullPath = dir + filename;
+    const result = await this.client.makeRequest<unknown[][]>("Workspace.create", [
+      {
+        objects: [[fullPath, type, {}, ""]],
+        createUploadNodes: true,
+      },
+    ]);
+    const tuple = result?.[0]?.[0] as unknown[] | undefined;
+    const linkReference = tuple?.[11];
+    if (typeof linkReference !== "string") {
+      throw new Error("Workspace.create did not return a Shock URL (link_reference)");
+    }
+    return { link_reference: linkReference };
   }
 
   /**
@@ -87,24 +127,17 @@ export class WorkspaceCrudMethods {
   }
 
   /**
-   * Delete a single object
+   * Delete a single object by full path (e.g. /user@realm/home/file.pdb).
    */
-  async deleteObject(
-    workspace: string,
-    id: string,
-  ): Promise<WorkspaceDeleteResponse> {
-    return this.delete({
-      objects: [{ workspace, id }],
-    });
+  async deleteObject(path: string): Promise<WorkspaceDeleteResponse> {
+    return this.delete({ objects: [path] });
   }
 
   /**
-   * Delete multiple objects
+   * Delete multiple objects by full paths.
    */
-  async deleteMultipleObjects(
-    objects: Array<{ workspace: string; id: string }>,
-  ): Promise<WorkspaceDeleteResponse> {
-    return this.delete({ objects });
+  async deleteMultipleObjects(paths: string[]): Promise<WorkspaceDeleteResponse> {
+    return this.delete({ objects: paths });
   }
 
   /**
@@ -114,6 +147,19 @@ export class WorkspaceCrudMethods {
     return this.client.makeRequest<WorkspaceCopyResponse>("Workspace.copy", [
       params,
     ]);
+  }
+
+  /**
+   * Copy by path pairs (BV-BRC API: objects as [sourcePath, destPath][]).
+   */
+  async copyByPaths(
+    params: WorkspaceCopyByPathsParams,
+  ): Promise<WorkspaceCopyByPathsResponse> {
+    return this.client.makeRequest<WorkspaceCopyByPathsResponse>(
+      "Workspace.copy",
+      [params],
+      { silent: true },
+    );
   }
 
   /**
@@ -216,6 +262,41 @@ export class WorkspaceCrudMethods {
       objects: [{ workspace, id }],
       infos: [{ workspace, id, metadata_only: false }],
     });
+  }
+
+  /**
+   * Workspace.update_metadata - Update object type (and optional metadata)
+   */
+  async updateMetadata(
+    params: WorkspaceUpdateMetadataParams,
+  ): Promise<unknown[][]> {
+    return this.client.makeRequest<unknown[][]>(
+      "Workspace.update_metadata",
+      [params],
+    );
+  }
+
+  /**
+   * Update the type of a single object by path
+   */
+  async updateObjectType(path: string, newType: string): Promise<unknown[][]> {
+    return this.updateMetadata({
+      objects: [[path, {}, newType]],
+    });
+  }
+
+  /**
+   * Workspace.update_auto_meta - Trigger auto metadata inspection for object(s) by path.
+   * Call after uploading a file to Shock so the workspace updates size/type etc.
+   */
+  async updateAutoMetadata(paths: string[]): Promise<unknown[][]> {
+    const params: WorkspaceUpdateAutoMetaParams = {
+      objects: paths,
+    };
+    return this.client.makeRequest<unknown[][]>(
+      "Workspace.update_auto_meta",
+      [params],
+    );
   }
 
   /**

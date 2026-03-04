@@ -206,8 +206,7 @@ function JobsContent() {
   };
 
   const onViewDetails = (job: JobListItem) => {
-    // Navigate to job details page
-    window.open(`/workspace/jobs/${job.id}`, "_blank");
+    window.open(`/jobs/${job.id}`, "_blank");
   };
 
   const handleExpandJob = async (jobId: string) => {
@@ -245,7 +244,7 @@ function JobsContent() {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground">Workspace</h1>
+        <h1 className="text-3xl font-bold text-foreground">Jobs</h1>
         <Button
           onClick={handleRefresh}
           disabled={loading.enumerate}
@@ -399,7 +398,7 @@ function JobsContent() {
                     </Badge>
                     <div className="flex space-x-1">
                       <Link
-                        href={`/workspace/jobs/${job.id}`}
+                        href={`/jobs/${job.id}`}
                         className={buttonVariants({ variant: "outline", size: "sm" })}
                       >
                         <Eye className="h-4 w-4" data-icon="inline-start" />
@@ -591,7 +590,7 @@ function JobsContent() {
 }
 
 // Main page component with Suspense
-export default function WorkspacePage() {
+export default function JobsPage() {
   return (
     <Suspense fallback={<JobsLoadingFallback />}>
       <JobsContent />

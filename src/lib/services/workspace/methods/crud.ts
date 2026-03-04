@@ -158,6 +158,7 @@ export class WorkspaceCrudMethods {
     return this.client.makeRequest<WorkspaceCopyByPathsResponse>(
       "Workspace.copy",
       [params],
+      { silent: true },
     );
   }
 

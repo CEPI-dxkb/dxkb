@@ -41,10 +41,15 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
   const { state, dispatch } = useWorkspaceDialog();
   const { activeDialog, isLoading } = state;
 
-  // Check for non-empty folders when delete dialog opens
+  // Check for non-empty folders when delete dialog opens.
+  // Depend on `deleteItems` (activeDialog.items reference) rather than the full
+  // `activeDialog` object, so that dispatching SET_DELETE_NON_EMPTY_PATHS — which
+  // spreads a new activeDialog but keeps the same items reference — does NOT
+  // re-trigger this effect and cause an infinite Workspace.ls polling loop.
+  const deleteItems = activeDialog?.type === "delete" ? activeDialog.items : null;
   useEffect(() => {
-    if (activeDialog?.type !== "delete") return;
-    const folderPaths = getFolderPathsFromItems(activeDialog.items);
+    if (!deleteItems) return;
+    const folderPaths = getFolderPathsFromItems(deleteItems);
     if (folderPaths.length === 0) return;
     const controller = new AbortController();
     const listFolder = (p: string) =>
@@ -59,7 +64,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       .then((paths) => dispatch({ type: "SET_DELETE_NON_EMPTY_PATHS", paths }))
       .catch(() => {});
     return () => controller.abort();
-  }, [activeDialog, workspaceClient, dispatch]);
+  }, [deleteItems, workspaceClient, dispatch]);
 
   const handleConfirmDelete = useCallback(async () => {
     if (activeDialog?.type !== "delete") return;
@@ -197,7 +202,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
                 : JSON.stringify(apiResponse, null, 2)
               : undefined;
         }
-
+        
         toast.error(message, { description });
       } finally {
         dispatch({ type: "SET_LOADING", value: false });

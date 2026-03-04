@@ -93,7 +93,7 @@ export function CopyToDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="scrollbar-themed flex max-h-[90vh] md:max-h-[60vh] h-full max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-w-2xl lg:max-w-4xl">
+      <DialogContent className="scrollbar-themed flex max-h-[90vh] md:max-h-[70vh] h-full max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-w-2xl lg:max-w-4xl">
         <DialogHeader className="shrink-0">
           <DialogTitle className="pr-8">{title}</DialogTitle>
         </DialogHeader>

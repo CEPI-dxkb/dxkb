@@ -127,7 +127,7 @@ export function WorkspaceBrowser({
     path.trim() !== "" &&
     resolveQuery.data?.type === "job_result";
 
-  const { items, isLoading, isFetching, error, refetch, memberCountByPath } =
+  const { items, isLoading, isFetching, error, refetch, memberCountByPath, currentDirPermissions } =
     useWorkspaceData({
       mode,
       username,
@@ -175,7 +175,29 @@ export function WorkspaceBrowser({
 
   const currentUserWorkspaceRoot =
     myWorkspaceRoot ? `/${myWorkspaceRoot}` : `/${currentUser}`;
-  const currentDirectoryPath = `${currentUserWorkspaceRoot}/home${fullPath ? fullPath : ""}`;
+  const currentDirectoryPath = isHome
+    ? `${currentUserWorkspaceRoot}/home${fullPath ? fullPath : ""}`
+    : fullPath;
+
+  const canWriteToCurrentDir = useMemo(() => {
+    if (!fullPath) return false;
+    // User owns this path (created it themselves)
+    const decodedFullPath = decodeURIComponent(fullPath);
+    const isOwnedPath =
+      decodedFullPath.startsWith(`/${myWorkspaceRoot}/`) ||
+      decodedFullPath.startsWith(`/${currentUser}/`);
+    if (isOwnedPath) return true;
+    // Folder shared to the user with write access
+    if (!currentDirPermissions) return false;
+    const perms = currentDirPermissions[decodedFullPath] ?? currentDirPermissions[fullPath];
+    if (!perms) return false;
+    const writePerms = ["w", "a", "o"];
+    return perms.some(
+      ([user, perm]) =>
+        (user === currentUser || user === fullWorkspaceUsername) &&
+        writePerms.includes(perm),
+    );
+  }, [currentDirPermissions, fullPath, currentUser, fullWorkspaceUsername, myWorkspaceRoot]);
 
   const {
     isDialogLoading,
@@ -352,8 +374,8 @@ export function WorkspaceBrowser({
           isRefreshing={isFetching}
           showHiddenFiles={showHiddenFiles}
           onShowHiddenFilesChange={setShowHiddenFiles}
-          onNewFolder={isHome ? () => dialogDispatch({ type: "OPEN_CREATE_FOLDER" }) : undefined}
-          onUpload={isHome ? () => dialogDispatch({ type: "OPEN_UPLOAD" }) : undefined}
+          onNewFolder={isHome || canWriteToCurrentDir ? () => dialogDispatch({ type: "OPEN_CREATE_FOLDER" }) : undefined}
+          onUpload={isHome || canWriteToCurrentDir ? () => dialogDispatch({ type: "OPEN_UPLOAD" }) : undefined}
           isAtRoot={isAtSharedRoot}
           onNewWorkspace={
             isAtSharedRoot ? () => dialogDispatch({ type: "OPEN_CREATE_WORKSPACE" }) : undefined

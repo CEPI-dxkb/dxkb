@@ -32,6 +32,7 @@ export interface UseWorkspaceDataReturn {
   error: Error | null;
   refetch: () => void;
   memberCountByPath: Record<string, number> | undefined;
+  currentDirPermissions: ListPermissionsResult | undefined;
 }
 
 export function useWorkspaceData({
@@ -73,6 +74,11 @@ export function useWorkspaceData({
 
   useWorkspaceGet({
     objectPaths: !isHome && !isAtSharedRoot && fullPath ? [fullPath] : [],
+    enabled: !isHome && !isAtSharedRoot && !!fullPath,
+  });
+
+  const currentDirPermsQuery = useWorkspacePermissions({
+    paths: !isHome && !isAtSharedRoot && fullPath ? [fullPath] : [],
     enabled: !isHome && !isAtSharedRoot && !!fullPath,
   });
 
@@ -151,5 +157,6 @@ export function useWorkspaceData({
     error,
     refetch,
     memberCountByPath,
+    currentDirPermissions: currentDirPermsQuery.data,
   };
 }

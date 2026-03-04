@@ -191,13 +191,6 @@ export function DataRow({
       onMouseDown={handleRowMouseDown}
       onClick={handleRowClick}
       onDoubleClick={handleRowDoubleClick}
-      title={
-        useSelectionMode && isNavigable
-          ? "Double-click to open folder"
-          : useSelectionMode && !isNavigable && onOpenFileRequested
-            ? "Double-click to open file"
-            : undefined
-      }
       aria-selected={useSelectionMode ? isSelected : undefined}
     >
       {row.getVisibleCells().map((cell) => {
@@ -206,6 +199,7 @@ export function DataRow({
           | undefined;
         const className = clsx(
           cell.column.id === "name" ? "pl-6" : "pl-2",
+          "overflow-hidden",
           meta?.className ?? "",
         );
         return (

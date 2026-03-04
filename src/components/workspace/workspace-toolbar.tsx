@@ -11,6 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const typeFilterOptions = [
   { value: "all", label: "All Types" },
@@ -158,25 +164,43 @@ export function WorkspaceToolbar({
           Refresh
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={onNewFolder}
-          disabled={!onNewFolder}
-          title="Create a new folder"
-        >
-          <FolderPlus className="h-4 w-4" data-icon="inline-start" />
-          New Folder
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                variant="outline"
+                onClick={onNewFolder}
+                disabled={!onNewFolder}
+                title={onNewFolder ? "Create a new folder" : undefined}
+              >
+                <FolderPlus className="h-4 w-4" data-icon="inline-start" />
+                New Folder
+              </Button>
+            </TooltipTrigger>
+            {!onNewFolder && (
+              <TooltipContent>You do not have write access in this directory</TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
 
-        <Button
-          variant="outline"
-          onClick={onUpload}
-          disabled={!onUpload}
-          title="Upload a file to the workspace"
-        >
-          <Upload className="h-4 w-4" data-icon="inline-start" />
-          Upload
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger render={<span className="inline-flex" />}>
+              <Button
+                variant="outline"
+                onClick={onUpload}
+                disabled={!onUpload}
+                title={onUpload ? "Upload a file to the workspace" : undefined}
+              >
+                <Upload className="h-4 w-4" data-icon="inline-start" />
+                Upload
+              </Button>
+            </TooltipTrigger>
+            {!onUpload && (
+              <TooltipContent>You do not have write access in this directory</TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );

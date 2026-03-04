@@ -104,8 +104,8 @@ export function TableSkeleton() {
 
 export function DraggableTableHeader({
   header,
-  onSort: _onSort,
-  sort: _sort,
+  onSort,
+  sort,
 }: {
   header: Header<WorkspaceBrowserItem, unknown>;
   onSort: (field: SortField) => void;
@@ -127,7 +127,7 @@ export function DraggableTableHeader({
   };
 
   const meta = header.column.columnDef.meta as
-    | { className?: string }
+    | { className?: string; sortField?: SortField }
     | undefined;
   const isFirst = header.column.id === "name";
   const className = clsx(
@@ -135,6 +135,9 @@ export function DraggableTableHeader({
     "relative bg-background",
     meta?.className ?? "",
   );
+
+  const sortField = meta?.sortField;
+  const label = header.column.columnDef.header as string;
 
   return (
     <TableHead
@@ -147,14 +150,24 @@ export function DraggableTableHeader({
         maxWidth: style.width,
       }}
     >
-      <div className="relative flex w-full items-center py-0">
+      <div className="relative flex w-full items-center gap-1 py-0">
         <div
           className="inline-flex cursor-grab touch-none select-none active:cursor-grabbing"
           {...attributes}
           {...listeners}
         >
-          {flexRender(header.column.columnDef.header, header.getContext())}
+          {label}
         </div>
+        {sortField && (
+          <button
+            type="button"
+            onClick={() => onSort(sortField)}
+            className="hover:bg-primary/10 focus-visible:ring-primary cursor-pointer rounded p-0.5 select-none focus:outline-none focus-visible:ring-2"
+            aria-label={`Sort by ${label}`}
+          >
+            <SortIcon field={sortField} currentSort={sort} />
+          </button>
+        )}
         {header.column.getCanResize() && (
           <div
             role="separator"
@@ -197,34 +210,11 @@ export function useWorkspaceColumns(
   );
 
   const columns = useMemo<ColumnDef<WorkspaceBrowserItem>[]>(() => {
-    const sortableHeader = (field: SortField, label: string) => (
-      <span className="inline-flex items-center gap-1">
-        {label}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSort(field);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleSort(field);
-            }
-          }}
-          className="hover:bg-primary/10 focus-visible:ring-primary cursor-pointer rounded p-0.5 select-none focus:outline-none focus-visible:ring-2"
-          aria-label={`Sort by ${label}`}
-        >
-          <SortIcon field={field} currentSort={sort} />
-        </button>
-      </span>
-    );
-
     return [
       {
         id: "name",
         accessorKey: "name",
-        header: () => sortableHeader("name", "Name"),
+        header: "Name",
         cell: ({ row }) => {
           const item = row.original;
           const isNavigable = isFolderType(item.type);
@@ -240,46 +230,46 @@ export function useWorkspaceColumns(
             </div>
           );
         },
-        meta: { className: "" },
+        meta: { className: "", sortField: "name" as SortField },
         size: 220,
         enableResizing: true,
       },
       {
         id: "size",
         accessorKey: "size",
-        header: () => sortableHeader("size", "Size"),
+        header: "Size",
         cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground block truncate">
             {formatFileSize(Number(getValue()) || 0)}
           </span>
         ),
-        meta: { className: "" },
+        meta: { className: "", sortField: "size" as SortField },
         size: 50,
         enableResizing: true,
       },
       {
         id: "owner_id",
         accessorKey: "owner_id",
-        header: () => sortableHeader("owner_id", "Owner"),
+        header: "Owner",
         cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground block truncate">
             {formatOwner(String(getValue() ?? ""))}
           </span>
         ),
-        meta: { className: "hidden md:table-cell" },
+        meta: { className: "hidden md:table-cell", sortField: "owner_id" as SortField },
         size: 70,
         enableResizing: true,
       },
       {
         id: "creation_time",
         accessorKey: "creation_time",
-        header: () => sortableHeader("creation_time", "Created"),
+        header: "Created",
         cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground block truncate">
             {formatDate(String(getValue() ?? ""))}
           </span>
         ),
-        meta: { className: "hidden sm:table-cell" },
+        meta: { className: "hidden sm:table-cell", sortField: "creation_time" as SortField },
         size: 80,
         enableResizing: true,
       },
@@ -289,7 +279,7 @@ export function useWorkspaceColumns(
         cell: ({ row }) => {
           const count = memberCountByPath?.[row.original.path];
           return (
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground block truncate">
               {count != null ? formatMemberCount(count) : "\u2014"}
             </span>
           );
@@ -301,18 +291,18 @@ export function useWorkspaceColumns(
       {
         id: "type",
         accessorKey: "type",
-        header: () => sortableHeader("type", "Type"),
+        header: "Type",
         cell: ({ getValue }) => (
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground block truncate">
             {String(getValue() ?? "")}
           </span>
         ),
-        meta: { className: "hidden lg:table-cell" },
+        meta: { className: "hidden lg:table-cell", sortField: "type" as SortField },
         size: 60,
         enableResizing: true,
       },
     ];
-  }, [sort, memberCountByPath, handleSort]);
+  }, [memberCountByPath]);
 
   return { columns, handleSort };
 }

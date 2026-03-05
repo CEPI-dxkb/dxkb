@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useWorkspace } from "@/hooks/services/workspace/use-workspace";
+import {
+  useJobDetails,
+  useJobSummary,
+  useKillJob,
+} from "@/hooks/services/workspace/use-workspace";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -117,36 +121,23 @@ function JobDetailContent() {
   const router = useRouter();
   const jobId = params.id as string;
 
-  const {
-    jobDetails,
-    getJobDetails,
-    getJobSummary,
-    killJob,
-    loading,
-    error,
-  } = useWorkspace();
-
   const [includeLogs, setIncludeLogs] = useState(false);
 
-  // Load job details on mount
-  useEffect(() => {
-    if (jobId) {
-      getJobDetails(jobId, includeLogs);
-      getJobSummary(jobId);
-    }
-  }, [jobId, includeLogs, getJobDetails, getJobSummary]);
+  const detailsQuery = useJobDetails(jobId, includeLogs);
+  const _summaryQuery = useJobSummary(jobId);
+  const killJobMutation = useKillJob();
+
+  const jobDetails = detailsQuery.data ?? null;
 
   const handleRefresh = () => {
-    if (jobId) {
-      getJobDetails(jobId, includeLogs);
-      getJobSummary(jobId);
-    }
+    void detailsQuery.refetch();
+    void _summaryQuery.refetch();
   };
 
   const handleKillJob = async () => {
     if (jobId) {
       try {
-        await killJob(jobId);
+        await killJobMutation.mutateAsync(jobId);
         toast.success("Job killed successfully");
         handleRefresh();
       } catch (error) {
@@ -194,7 +185,7 @@ function JobDetailContent() {
     }
   };
 
-  if (error.details) {
+  if (detailsQuery.error) {
     return (
       <div className="space-y-4">
         <div className="flex items-center space-x-4">
@@ -205,7 +196,7 @@ function JobDetailContent() {
         </div>
         <Alert variant="destructive">
           <AlertDescription>
-            Error loading job details: {error.details}
+            Error loading job details: {detailsQuery.error.message}
           </AlertDescription>
         </Alert>
       </div>
@@ -255,14 +246,14 @@ function JobDetailContent() {
               variant="outline"
               size="sm"
               onClick={handleKillJob}
-              disabled={loading.kill}
+              disabled={killJobMutation.isPending}
             >
               <StopCircle className="h-4 w-4 mr-2" />
               Kill Job
             </Button>
           )}
-          <Button onClick={handleRefresh} disabled={loading.details}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading.details ? "animate-spin" : ""}`} />
+          <Button onClick={handleRefresh} disabled={detailsQuery.isFetching}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${detailsQuery.isFetching ? "animate-spin" : ""}`} />
             Refresh
           </Button>
         </div>

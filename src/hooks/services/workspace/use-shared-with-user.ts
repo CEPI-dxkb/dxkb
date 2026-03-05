@@ -29,7 +29,7 @@ export function useSharedWithUser({
     enabled: enabled && !!username,
     initialData,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
+
   });
 }
 
@@ -50,7 +50,7 @@ export function useUserWorkspaces({
     enabled: enabled && !!username,
     initialData,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
+
   });
 }
 
@@ -68,7 +68,7 @@ export function useWorkspaceGet({
     queryFn: () => getWorkspaceMetadata(objectPaths),
     enabled: enabled && objectPaths.length > 0,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
+
   });
 }
 
@@ -89,7 +89,7 @@ export function useWorkspaceListByPath({
     enabled: enabled && !!fullPath,
     initialData,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
+
   });
 }
 
@@ -110,6 +110,6 @@ export function useWorkspacePermissions({
     enabled: enabled && paths.length > 0,
     initialData,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
+
   });
 }

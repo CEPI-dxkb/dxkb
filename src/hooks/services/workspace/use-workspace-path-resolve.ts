@@ -25,6 +25,5 @@ export function useWorkspacePathResolve({
     },
     enabled: enabled && !!fullPath,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 }

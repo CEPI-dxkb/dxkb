@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo, Suspense } from "react";
-import { useWorkspace } from "@/hooks/services/workspace/use-workspace";
+import { useState, useMemo, Suspense } from "react";
+import {
+  useEnumerateJobs,
+  useKillJob,
+  useJobOutput,
+} from "@/hooks/services/workspace/use-workspace";
 import { JobStatus, JobListItem } from "@/types/workspace";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -139,36 +143,61 @@ function JobsLoadingFallback() {
   );
 }
 
+// Sub-component to fetch and display job output (hooks can't be called conditionally)
+function JobOutputSection({ jobId, expanded }: { jobId: string; expanded: boolean }) {
+  const stdoutQuery = useJobOutput(jobId, "stdout", expanded);
+  const stderrQuery = useJobOutput(jobId, "stderr", expanded);
+
+  return (
+    <>
+      <Accordion>
+        <AccordionItem value={`stdout-${jobId}`}>
+          <AccordionTrigger>Standard Output</AccordionTrigger>
+          <AccordionContent className="accordion-content">
+            <div className="bg-muted rounded-md p-3">
+              <pre className="text-foreground text-xs whitespace-pre-wrap">
+                {stdoutQuery.isLoading
+                  ? "Loading..."
+                  : stdoutQuery.data || "No output available"}
+              </pre>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <Accordion>
+        <AccordionItem value={`stderr-${jobId}`}>
+          <AccordionTrigger>Standard Error</AccordionTrigger>
+          <AccordionContent>
+            <div className="bg-muted rounded-md p-3">
+              <pre className="text-foreground text-xs whitespace-pre-wrap">
+                {stderrQuery.isLoading
+                  ? "Loading..."
+                  : stderrQuery.data || "No output available"}
+              </pre>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </>
+  );
+}
+
 // Main jobs content component
 function JobsContent() {
-  const { jobs, enumerateJobs, killJob, fetchJobOutput, loading, error } =
-    useWorkspace();
-  const isMountedRef = useRef(false);
+  const { data: jobs = [], isLoading: isLoadingJobs, error: jobsError, refetch } =
+    useEnumerateJobs();
+  const killJobMutation = useKillJob();
 
   const [expandedJobIds, setExpandedJobIds] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
   const [appFilter, setAppFilter] = useState<string>("all");
-  const [jobOutputs, setJobOutputs] = useState<
-    Record<string, { stdout?: string; stderr?: string }>
-  >({});
 
-  // Load jobs on mount only
-  useEffect(() => {
-    if (!isMountedRef.current) {
-      isMountedRef.current = true;
-      enumerateJobs();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Filter jobs based on search and filters - memoized to prevent unnecessary re-computations
+  // Filter jobs based on search and filters
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
-      // Skip jobs with missing required fields
-      if (!job?.id || !job?.app) {
-        return false;
-      }
+      if (!job?.id || !job?.app) return false;
 
       const outputFile = String(job.parameters?.output_file ?? "");
       const matchesSearch =
@@ -184,7 +213,7 @@ function JobsContent() {
     });
   }, [jobs, searchTerm, statusFilter, appFilter]);
 
-  // Get unique apps for filter - memoized
+  // Get unique apps for filter
   const uniqueApps = useMemo(() => {
     return Array.from(
       new Set(jobs.map((job) => job.app).filter(Boolean)),
@@ -192,14 +221,12 @@ function JobsContent() {
   }, [jobs]);
 
   const handleRefresh = () => {
-    enumerateJobs();
+    void refetch();
   };
 
   const handleKillJob = async (jobId: string) => {
     try {
-      await killJob(jobId);
-      // Refresh the jobs list after killing
-      await enumerateJobs();
+      await killJobMutation.mutateAsync(jobId);
     } catch (error) {
       console.error("Failed to kill job:", error);
     }
@@ -209,32 +236,16 @@ function JobsContent() {
     window.open(`/jobs/${job.id}`, "_blank");
   };
 
-  const handleExpandJob = async (jobId: string) => {
-    const newExpandedJobIds = new Set(expandedJobIds);
-
-    if (newExpandedJobIds.has(jobId)) {
-      newExpandedJobIds.delete(jobId);
-    } else {
-      newExpandedJobIds.add(jobId);
-    }
-
-    setExpandedJobIds(newExpandedJobIds);
-
-    if (newExpandedJobIds.has(jobId) && !jobOutputs[jobId]) {
-      try {
-        const [stdout, stderr] = await Promise.all([
-          fetchJobOutput({ job_id: jobId, output_type: "stdout" }),
-          fetchJobOutput({ job_id: jobId, output_type: "stderr" }),
-        ]);
-
-        setJobOutputs((prev) => ({
-          ...prev,
-          [jobId]: { stdout, stderr },
-        }));
-      } catch (error) {
-        console.error("Failed to fetch job outputs:", error);
+  const handleExpandJob = (jobId: string) => {
+    setExpandedJobIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
       }
-    }
+      return next;
+    });
   };
 
   const formatDate = (dateString: string) => {
@@ -247,21 +258,21 @@ function JobsContent() {
         <h1 className="text-3xl font-bold text-foreground">Jobs</h1>
         <Button
           onClick={handleRefresh}
-          disabled={loading.enumerate}
+          disabled={isLoadingJobs}
           className="text-white"
         >
           <RefreshCw
-            className={`h-4 w-4 ${loading.enumerate ? "animate-spin" : ""}`}
+            className={`h-4 w-4 ${isLoadingJobs ? "animate-spin" : ""}`}
             data-icon="inline-start"
           />
           Refresh
         </Button>
       </div>
 
-      {error.enumerate && (
+      {jobsError && (
         <Alert variant="destructive">
           <AlertDescription>
-            Error loading jobs: {error.enumerate}
+            Error loading jobs: {jobsError.message}
           </AlertDescription>
         </Alert>
       )}
@@ -409,7 +420,7 @@ function JobsContent() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleKillJob(job.id)}
-                          disabled={loading.kill}
+                          disabled={killJobMutation.isPending}
                         >
                           <StopCircle className="h-4 w-4" data-icon="inline-start" />
                         </Button>
@@ -528,45 +539,10 @@ function JobsContent() {
                       </AccordionItem>
                     </Accordion>
 
-                    <Accordion>
-                      <AccordionItem
-                        value={`stdout-${job.id}`}
-                      >
-                        <AccordionTrigger>
-                          Standard Output
-                        </AccordionTrigger>
-                        <AccordionContent className="accordion-content">
-                          <div className="bg-muted rounded-md p-3">
-                            <pre className="text-foreground text-xs whitespace-pre-wrap">
-                              {loading.output
-                                ? "Loading..."
-                                : jobOutputs[job.id]?.stdout ||
-                                  "No output available"}
-                            </pre>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-
-                    <Accordion>
-                      <AccordionItem
-                        value={`stderr-${job.id}`}
-                      >
-                        <AccordionTrigger>
-                          Standard Error
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <div className="bg-muted rounded-md p-3">
-                            <pre className="text-foreground text-xs whitespace-pre-wrap">
-                              {loading.output
-                                ? "Loading..."
-                                : jobOutputs[job.id]?.stderr ||
-                                  "No output available"}
-                            </pre>
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
+                    <JobOutputSection
+                      jobId={job.id}
+                      expanded={expandedJobIds.has(job.id)}
+                    />
 
                     {job.status === "failed" && (
                       <div className="rounded-md border border-red-200 bg-red-50 p-3">

@@ -35,6 +35,5 @@ export function useWorkspaceDu(path: string | null) {
     queryFn: () => fetchWorkspaceDu(path!),
     enabled: !!path,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 }

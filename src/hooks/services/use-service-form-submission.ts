@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServiceDebugging } from "@/contexts/service-debugging-context";
 import { submitServiceJob } from "@/lib/services/service-utils";
@@ -29,11 +30,45 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
   const { isDebugMode, containerBuildId } = useServiceDebugging();
   const [showParamsDialog, setShowParamsDialog] = useState(false);
   const [currentParams, setCurrentParams] = useState<Record<string, unknown>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Format display name from service name (e.g., "MetagenomeBinning" -> "Metagenomic Binning")
   const formattedDisplayName =
     displayName ?? serviceName.replace(/([A-Z])/g, " $1").trim();
+
+  const submitMutation = useMutation({
+    mutationFn: async (finalParams: Record<string, unknown>) => {
+      const result = await submitServiceJob(serviceName, finalParams);
+      if (!result.success) {
+        throw new Error(result.error || "Failed to submit job");
+      }
+      return result;
+    },
+    onSuccess: (result) => {
+      toast.success(`${formattedDisplayName} job submitted successfully!`, {
+        description: result.job?.[0]?.id
+          ? `Job ID: ${result.job[0].id}`
+          : "Job submitted successfully",
+        closeButton: true,
+      });
+      onSuccess?.();
+    },
+    onError: (error) => {
+      console.error(`Failed to submit ${formattedDisplayName} job:`, error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to submit job";
+      toast.error("Submission failed", {
+        description: errorMessage,
+        closeButton: true,
+      });
+    },
+  });
+
+  // Legacy mutation for deprecated onSubmit callback
+  const legacyMutation = useMutation({
+    mutationFn: async (data: T) => {
+      await onSubmit?.(data);
+    },
+  });
 
   const handleSubmit = async (data: T) => {
     // Transform the form data into submission params
@@ -47,9 +82,6 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
         : {}),
     };
 
-    // Log params to console
-    console.log(`${serviceName} Submission Params:`, finalParams);
-
     if (isDebugMode) {
       // Show the params dialog instead of submitting
       setCurrentParams(finalParams);
@@ -59,42 +91,12 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
 
     // Legacy callback path - for backward compatibility during migration
     if (onSubmit) {
-      try {
-        setIsSubmitting(true);
-        await onSubmit(data);
-      } finally {
-        setIsSubmitting(false);
-      }
+      legacyMutation.mutate(data);
       return;
     }
 
     // Standard job submission path
-    try {
-      setIsSubmitting(true);
-      const result = await submitServiceJob(serviceName, finalParams);
-
-      if (result.success) {
-        toast.success(`${formattedDisplayName} job submitted successfully!`, {
-          description: result.job?.[0]?.id
-            ? `Job ID: ${result.job[0].id}`
-            : "Job submitted successfully",
-          closeButton: true,
-        });
-        onSuccess?.();
-      } else {
-        throw new Error(result.error || "Failed to submit job");
-      }
-    } catch (error) {
-      console.error(`Failed to submit ${formattedDisplayName} job:`, error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to submit job";
-      toast.error("Submission failed", {
-        description: errorMessage,
-        closeButton: true,
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    submitMutation.mutate(finalParams);
   };
 
   return {
@@ -103,8 +105,7 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
     setShowParamsDialog,
     currentParams,
     isDebugMode,
-    isSubmitting,
+    isSubmitting: submitMutation.isPending || legacyMutation.isPending,
     serviceName,
   };
 }
-

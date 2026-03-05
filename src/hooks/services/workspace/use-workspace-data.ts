@@ -72,6 +72,9 @@ export function useWorkspaceData({
     initialData: !isHome && !isAtSharedRoot ? initialPathItems : undefined,
   });
 
+  // Intentionally discarded — warms the ["workspace-get"] TanStack Query cache so
+  // that other components (e.g. details panel) can read the metadata without a
+  // separate fetch when they mount shortly after.
   useWorkspaceGet({
     objectPaths: !isHome && !isAtSharedRoot && fullPath ? [fullPath] : [],
     enabled: !isHome && !isAtSharedRoot && !!fullPath,

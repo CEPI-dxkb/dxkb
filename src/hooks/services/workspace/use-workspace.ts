@@ -1,5 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthenticatedFetch } from "@/hooks/use-authenticated-fetch-client";
 import {
   EnumerateJobsResponse,
@@ -9,379 +8,151 @@ import {
   FetchJobOutputResponse,
   EnumerateJobsParams,
   QueryJobsParams,
-  FetchJobOutputParams,
 } from "@/types/workspace";
 
-// Hook for enumerating jobs
-export function useEnumerateJobs() {
-  const [jobs, setJobs] = useState<EnumerateJobsResponse>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// Hook for enumerating jobs — auto-fetches on mount
+export function useEnumerateJobs(params?: EnumerateJobsParams) {
   const authenticatedFetch = useAuthenticatedFetch();
 
-  const enumerateJobs = useCallback(
-    async (params?: EnumerateJobsParams) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const searchParams = new URLSearchParams();
-
-        if (params?.offset !== undefined) {
-          searchParams.append("offset", params.offset.toString());
-        }
-        if (params?.limit !== undefined) {
-          searchParams.append("limit", params.limit.toString());
-        }
-        if (params?.status_filter?.length) {
-          searchParams.append("status_filter", params.status_filter.join(","));
-        }
-        if (params?.app_filter?.length) {
-          searchParams.append("app_filter", params.app_filter.join(","));
-        }
-
-        const response = await authenticatedFetch(
-          `/api/services/app-service/jobs?${searchParams.toString()}`,
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to enumerate jobs: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        // Extract jobs from the wrapped response
-        const jobsArray = data.jobs[0] || [];
-        setJobs(jobsArray);
-
-        return data;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setLoading(false);
+  return useQuery<EnumerateJobsResponse, Error>({
+    queryKey: ["jobs", params],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      if (params?.offset !== undefined) {
+        searchParams.append("offset", params.offset.toString());
       }
-    },
-    [authenticatedFetch],
-  );
+      if (params?.limit !== undefined) {
+        searchParams.append("limit", params.limit.toString());
+      }
+      if (params?.status_filter?.length) {
+        searchParams.append("status_filter", params.status_filter.join(","));
+      }
+      if (params?.app_filter?.length) {
+        searchParams.append("app_filter", params.app_filter.join(","));
+      }
 
-  return {
-    jobs,
-    loading,
-    error,
-    enumerateJobs,
-  };
+      const response = await authenticatedFetch(
+        `/api/services/app-service/jobs?${searchParams.toString()}`,
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to enumerate jobs: ${response.statusText}`);
+      }
+      const data = await response.json();
+      return data.jobs[0] || [];
+    },
+  });
 }
 
-// Hook for querying specific jobs
+// Hook for querying specific jobs — imperative POST
 export function useQueryJobs() {
-  const [jobs, setJobs] = useState<QueryJobsResponse>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const authenticatedFetch = useAuthenticatedFetch();
 
-  const queryJobs = useCallback(
-    async (params: QueryJobsParams) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await authenticatedFetch(
-          "/api/services/app-service/jobs/query",
-          {
-            method: "POST",
-            body: JSON.stringify({ job_ids: params.job_ids }),
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to query jobs: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        setJobs(data.jobs);
-        return data;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setLoading(false);
+  return useMutation<QueryJobsResponse, Error, QueryJobsParams>({
+    mutationFn: async (params) => {
+      const response = await authenticatedFetch(
+        "/api/services/app-service/jobs/query",
+        {
+          method: "POST",
+          body: JSON.stringify({ job_ids: params.job_ids }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to query jobs: ${response.statusText}`);
       }
+      const data = await response.json();
+      return data.jobs;
     },
-    [authenticatedFetch],
-  );
-
-  return {
-    jobs,
-    loading,
-    error,
-    queryJobs,
-  };
+  });
 }
 
 // Hook for getting job summary
-export function useJobSummary() {
-  const [jobSummary, setJobSummary] =
-    useState<QueryJobSummaryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useJobSummary(jobId: string | undefined) {
   const authenticatedFetch = useAuthenticatedFetch();
 
-  const getJobSummary = useCallback(
-    async (jobId: string) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await authenticatedFetch(
-          `/api/services/app-service/jobs/${jobId}/summary`,
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to get job summary: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        setJobSummary(data);
-        return data;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setLoading(false);
+  return useQuery<QueryJobSummaryResponse, Error>({
+    queryKey: ["job-summary", jobId],
+    queryFn: async () => {
+      const response = await authenticatedFetch(
+        `/api/services/app-service/jobs/${jobId}/summary`,
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to get job summary: ${response.statusText}`);
       }
+      return response.json();
     },
-    [authenticatedFetch],
-  );
-
-  return {
-    jobSummary,
-    loading,
-    error,
-    getJobSummary,
-  };
+    enabled: !!jobId,
+  });
 }
 
 // Hook for getting job details
-export function useJobDetails() {
-  const [jobDetails, setJobDetails] =
-    useState<QueryJobDetailsResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useJobDetails(
+  jobId: string | undefined,
+  includeLogs: boolean = false,
+) {
   const authenticatedFetch = useAuthenticatedFetch();
 
-  const getJobDetails = useCallback(
-    async (jobId: string, includeLogs: boolean = false) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const searchParams = new URLSearchParams();
-        if (includeLogs) {
-          searchParams.append("include_logs", "true");
-        }
-
-        const response = await authenticatedFetch(
-          `/api/services/app-service/jobs/${jobId}?${searchParams.toString()}`,
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to get job details: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        setJobDetails(data);
-        return data;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setLoading(false);
+  return useQuery<QueryJobDetailsResponse, Error>({
+    queryKey: ["job-details", jobId, includeLogs],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      if (includeLogs) {
+        searchParams.append("include_logs", "true");
       }
+      const response = await authenticatedFetch(
+        `/api/services/app-service/jobs/${jobId}?${searchParams.toString()}`,
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to get job details: ${response.statusText}`);
+      }
+      return response.json();
     },
-    [authenticatedFetch],
-  );
-
-  return {
-    jobDetails,
-    loading,
-    error,
-    getJobDetails,
-  };
+    enabled: !!jobId,
+  });
 }
 
-// Hook for killing jobs
+// Hook for killing jobs — invalidates jobs list on success
 export function useKillJob() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const authenticatedFetch = useAuthenticatedFetch();
+  const queryClient = useQueryClient();
 
-  const killJob = useCallback(
-    async (jobId: string) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await authenticatedFetch(
-          `/api/services/app-service/jobs/${jobId}/kill`,
-          {
-            method: "POST",
-          },
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to kill job: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        return data;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setLoading(false);
+  return useMutation<unknown, Error, string>({
+    mutationFn: async (jobId) => {
+      const response = await authenticatedFetch(
+        `/api/services/app-service/jobs/${jobId}/kill`,
+        { method: "POST" },
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to kill job: ${response.statusText}`);
       }
+      return response.json();
     },
-    [authenticatedFetch],
-  );
-
-  return {
-    loading,
-    error,
-    killJob,
-  };
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["jobs"] });
+    },
+  });
 }
 
 // Hook for fetching job output (stdout/stderr)
-export function useJobOutput() {
-  const [output, setOutput] = useState<FetchJobOutputResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useJobOutput(
+  jobId: string | undefined,
+  outputType: "stdout" | "stderr",
+  enabled: boolean = true,
+) {
   const authenticatedFetch = useAuthenticatedFetch();
 
-  const fetchJobOutput = useCallback(
-    async (params: FetchJobOutputParams) => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await authenticatedFetch(
-          `/api/services/app-service/jobs/${params.job_id}/${params.output_type}`,
+  return useQuery<FetchJobOutputResponse, Error>({
+    queryKey: ["job-output", jobId, outputType],
+    queryFn: async () => {
+      const response = await authenticatedFetch(
+        `/api/services/app-service/jobs/${jobId}/${outputType}`,
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch ${outputType}: ${response.statusText}`,
         );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ${params.output_type}: ${response.statusText}`);
-        }
-
-        const data = await response.text();
-        setOutput(data);
-        return data;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-        setError(errorMessage);
-        throw err;
-      } finally {
-        setLoading(false);
       }
+      return response.text();
     },
-    [authenticatedFetch],
-  );
-
-  return {
-    output,
-    loading,
-    error,
-    fetchJobOutput,
-  };
-}
-
-// Combined hook for workspace operations
-export function useWorkspace() {
-  const enumerateJobsHook = useEnumerateJobs();
-  const queryJobsHook = useQueryJobs();
-  const jobSummaryHook = useJobSummary();
-  const jobDetailsHook = useJobDetails();
-  const killJobHook = useKillJob();
-  const jobOutputHook = useJobOutput();
-
-  const workspaceData = useMemo(() => {
-    return {
-      // Job enumeration
-      jobs: enumerateJobsHook.jobs,
-      enumerateJobs: enumerateJobsHook.enumerateJobs,
-
-      // Job querying
-      queryJobs: queryJobsHook.queryJobs,
-
-      // Job summary
-      jobSummary: jobSummaryHook.jobSummary,
-      getJobSummary: jobSummaryHook.getJobSummary,
-
-      // Job details
-      jobDetails: jobDetailsHook.jobDetails,
-      getJobDetails: jobDetailsHook.getJobDetails,
-
-      // Job killing
-      killJob: killJobHook.killJob,
-
-      // Job output
-      jobOutput: jobOutputHook.output,
-      fetchJobOutput: jobOutputHook.fetchJobOutput,
-
-      // Loading states
-      loading: {
-        enumerate: enumerateJobsHook.loading,
-        query: queryJobsHook.loading,
-        summary: jobSummaryHook.loading,
-        details: jobDetailsHook.loading,
-        kill: killJobHook.loading,
-        output: jobOutputHook.loading,
-      },
-
-      // Error states
-      error: {
-        enumerate: enumerateJobsHook.error,
-        query: queryJobsHook.error,
-        summary: jobSummaryHook.error,
-        details: jobDetailsHook.error,
-        kill: killJobHook.error,
-        output: jobOutputHook.error,
-      },
-    };
-  }, [
-    enumerateJobsHook.jobs,
-    enumerateJobsHook.enumerateJobs,
-    enumerateJobsHook.loading,
-    enumerateJobsHook.error,
-    queryJobsHook.queryJobs,
-    queryJobsHook.loading,
-    queryJobsHook.error,
-    jobSummaryHook.jobSummary,
-    jobSummaryHook.getJobSummary,
-    jobSummaryHook.loading,
-    jobSummaryHook.error,
-    jobDetailsHook.jobDetails,
-    jobDetailsHook.getJobDetails,
-    jobDetailsHook.loading,
-    jobDetailsHook.error,
-    killJobHook.killJob,
-    killJobHook.loading,
-    killJobHook.error,
-    jobOutputHook.output,
-    jobOutputHook.fetchJobOutput,
-    jobOutputHook.loading,
-    jobOutputHook.error,
-  ]);
-
-  return workspaceData;
+    enabled: enabled && !!jobId,
+  });
 }

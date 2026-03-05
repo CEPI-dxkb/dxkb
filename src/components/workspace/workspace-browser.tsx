@@ -96,6 +96,7 @@ export function WorkspaceBrowser({
     queryKey: ["workspace-favorites", myWorkspaceRoot],
     queryFn: () => loadFavorites(myWorkspaceRoot),
     enabled: mode === "home" && !!myWorkspaceRoot,
+    staleTime: 2 * 60 * 1000,
   });
 
   const [sort, setSort] = useState<WorkspaceBrowserSort>({
@@ -218,7 +219,6 @@ export function WorkspaceBrowser({
     currentUserWorkspaceRoot,
     username,
     myWorkspaceRoot,
-    refetch,
     clearSelection,
   });
 

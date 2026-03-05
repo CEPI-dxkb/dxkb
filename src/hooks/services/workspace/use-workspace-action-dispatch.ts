@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import type { QueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import type { WorkspaceApiClient } from "@/lib/services/workspace/client";
@@ -32,8 +32,62 @@ export function useWorkspaceActionDispatch({
   items,
 }: UseWorkspaceActionDispatchOptions) {
   const { dispatch } = useWorkspaceDialog();
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isFavoriting, setIsFavoriting] = useState(false);
+
+  const favoriteMutation = useMutation({
+    mutationFn: async (folderPath: string) => {
+      return toggleFavorite(myWorkspaceRoot, folderPath);
+    },
+    onSuccess: (added, folderPath) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["workspace-favorites", myWorkspaceRoot],
+      });
+      toast.success(
+        added ? "Added to favorites" : "Removed from favorites",
+        { description: folderPath },
+      );
+    },
+    onError: (err) => {
+      const message =
+        err instanceof Error ? err.message : "Failed to update favorites.";
+      toast.error(message);
+    },
+  });
+
+  const downloadMutation = useMutation({
+    mutationFn: async ({
+      mappedPaths,
+      downloadable,
+    }: {
+      mappedPaths: string[];
+      downloadable: WorkspaceBrowserItem[];
+    }) => {
+      const urlArrays = await workspaceDownload.getDownloadUrls(mappedPaths);
+      return { urlArrays, downloadable };
+    },
+    onSuccess: ({ urlArrays, downloadable }) => {
+      for (let i = 0; i < urlArrays.length; i++) {
+        const url = urlArrays[i]?.[0];
+        if (!url) continue;
+        const name = downloadable[i]?.name ?? "download";
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.rel = "noopener noreferrer";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    },
+    onError: (err) => {
+      const message =
+        err instanceof Error ? err.message : "Download failed.";
+      toast.error(message);
+    },
+  });
+
+  const { mutate: favoriteMutate } = favoriteMutation;
+  const { mutate: downloadMutate } = downloadMutation;
 
   const handleAction = useCallback(
     async (actionId: string, selection: WorkspaceBrowserItem[]) => {
@@ -66,23 +120,7 @@ export function useWorkspaceActionDispatch({
         ) {
           return;
         }
-        setIsFavoriting(true);
-        try {
-          const added = await toggleFavorite(myWorkspaceRoot, single.path);
-          await queryClient.invalidateQueries({
-            queryKey: ["workspace-favorites", myWorkspaceRoot],
-          });
-          toast.success(
-            added ? "Added to favorites" : "Removed from favorites",
-            { description: single.path },
-          );
-        } catch (err) {
-          const message =
-            err instanceof Error ? err.message : "Failed to update favorites.";
-          toast.error(message);
-        } finally {
-          setIsFavoriting(false);
-        }
+        favoriteMutate(single.path);
         return;
       }
       if (actionId !== "download") return;
@@ -105,29 +143,7 @@ export function useWorkspaceActionDispatch({
       const singleFile =
         downloadable.length === 1 && !isFolderType(downloadable[0]?.type ?? "");
       if (singleFile) {
-        setIsDownloading(true);
-        try {
-          const urlArrays = await workspaceDownload.getDownloadUrls(mappedPaths);
-          for (let i = 0; i < urlArrays.length; i++) {
-            const url = urlArrays[i]?.[0];
-            if (!url) continue;
-            const name = downloadable[i]?.name ?? "download";
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = name;
-            a.rel = "noopener noreferrer";
-            a.style.display = "none";
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
-        } catch (err) {
-          const message =
-            err instanceof Error ? err.message : "Download failed.";
-          toast.error(message);
-        } finally {
-          setIsDownloading(false);
-        }
+        downloadMutate({ mappedPaths, downloadable });
         return;
       }
       const single = downloadable.length === 1 ? downloadable[0] : null;
@@ -144,12 +160,12 @@ export function useWorkspaceActionDispatch({
 
       dispatch({ type: "OPEN_DOWNLOAD_OPTIONS", paths: mappedPaths, defaultName });
     },
-    [currentUser, myWorkspaceRoot, queryClient, workspaceDownload, items, dispatch],
+    [currentUser, myWorkspaceRoot, items, dispatch, favoriteMutate, downloadMutate],
   );
 
   return {
     handleAction,
-    isDownloading,
-    isFavoriting,
+    isDownloading: downloadMutation.isPending,
+    isFavoriting: favoriteMutation.isPending,
   };
 }

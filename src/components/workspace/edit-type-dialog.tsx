@@ -84,7 +84,6 @@ export function EditTypeDialog({
             value={selectedType}
             onValueChange={(value) => setSelectedType(value ?? "")}
             disabled={isUpdating}
-          
           >
             <SelectTrigger id="edit-type-select" className="w-full">
               <SelectValue placeholder="Select a new type…" />

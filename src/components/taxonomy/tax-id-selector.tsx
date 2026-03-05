@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, Loader2Icon, ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,36 @@ const DEFAULT_TAXONOMY_API_URL = "/api/services/taxonomy";
 interface TaxIDSelectorProps extends TaxonomySelectorProps {
   apiServiceUrl?: string;
   queryFilter?: string;
+}
+
+async function searchTaxonById(
+  apiUrl: string,
+  query: string,
+  queryFilter?: string,
+  signal?: AbortSignal,
+): Promise<TaxonomyItem[]> {
+  const searchQuery = `taxon_id:${query.trim()}`;
+  const params = new URLSearchParams();
+  params.append("q", searchQuery);
+  params.append("fl", "taxon_id,taxon_name,lineage_names");
+  params.append("sort", "taxon_id asc");
+
+  if (queryFilter) {
+    params.append("fq", queryFilter);
+  }
+
+  const response = await fetch(`${apiUrl}?${params.toString()}`, {
+    headers: { Accept: "application/json" },
+    credentials: "include",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data?.response?.docs || [];
 }
 
 export function TaxIDSelector({
@@ -31,64 +62,27 @@ export function TaxIDSelector({
   const [searchQuery, setSearchQuery] = useState(
     value ? String(value.taxon_id) : "",
   );
-  const [results, setResults] = useState<TaxonomyItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
   const [touched, setTouched] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    async (query: string) => {
-      if (!query.trim()) {
-        setResults([]);
-        return;
-      }
+  // Debounce the search query
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
-      setLoading(true);
-      setError(null);
+  const { data: results = [], isLoading: loading, error: queryError } = useQuery<TaxonomyItem[], Error>({
+    queryKey: ["taxonomy-search-id", resolvedApiServiceUrl, debouncedQuery, queryFilter],
+    queryFn: ({ signal }) => searchTaxonById(resolvedApiServiceUrl, debouncedQuery, queryFilter, signal),
+    enabled: !!debouncedQuery.trim() && !disabled,
+    staleTime: 5 * 60 * 1000,
+  });
 
-      try {
-        // Build query for exact taxon_id match
-        const searchQuery = `taxon_id:${query.trim()}`;
-        const params = new URLSearchParams();
-        params.append("q", searchQuery);
-        params.append("fl", "taxon_id,taxon_name,lineage_names");
-        params.append("sort", "taxon_id asc");
-
-        if (queryFilter) {
-          params.append("fq", queryFilter);
-        }
-
-        const response = await fetch(`${resolvedApiServiceUrl}?${params.toString()}`, {
-          headers: {
-            Accept: "application/json",
-          },
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        // Handle SOLR response format
-        const docs = data?.response?.docs || [];
-        setResults(docs);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to search taxonomy";
-        setError(errorMessage);
-        console.error("TaxID search error:", err);
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [resolvedApiServiceUrl, queryFilter],
-  );
+  const error = queryError?.message ?? null;
 
   // Sync searchQuery with value prop when value is set externally
   useEffect(() => {
@@ -106,21 +100,6 @@ export function TaxIDSelector({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, disabled]);
-
-  // Debounce the search (only when not disabled)
-  useEffect(() => {
-    if (disabled) return;
-
-    const timeoutId = setTimeout(() => {
-      if (searchQuery) {
-        debouncedSearch(searchQuery);
-      } else {
-        setResults([]);
-      }
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery, debouncedSearch, disabled]);
 
   const handleSearchChange = (value: string) => {
     if (disabled) return;

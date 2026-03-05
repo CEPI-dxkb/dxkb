@@ -30,9 +30,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
   const setRowSelection = onRowSelectionChange || setInternalRowSelection;
   
-  // Track if we're in the middle of a page transition
-  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
-
   useEffect(() => {
     (async () => {
       try {
@@ -63,9 +60,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   };
 
   const searchParams = useSearchParams();
-  // const q = searchParams.get('q') ?? '';
-  console.log('Search params q:', q);
-
   const searchtype = searchParams.get('searchtype') ?? '';
   const cleanQ = q?.split('#')[0] ?? '';
   const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
@@ -83,7 +77,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     const queryChanged = prevCleanQRef.current !== cleanQ;
     
     if (resourceChanged || queryChanged) {
-      console.log('Resource or query changed, resetting sorting and selection');
       setSorting([]);
       setRowSelection({});
       onSelectionChange?.([]);
@@ -99,9 +92,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   const setPageIndex = onPageChange || setInternalPageIndex;
 
   const setSortingAndResetPage = useCallback((newSorting: SortingState) => {
-    console.log('🔵 setSortingAndResetPage called with:', JSON.stringify(newSorting));
     setSorting(newSorting);
-    console.log('🔵 setSorting called (async state update scheduled)');
     setPageIndex(0);
     setRowSelection({});
     onSelectionChange?.([]); // Clear selection in parent too
@@ -126,11 +117,9 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
 
   // Compute sortingKey from state using useMemo
   const sortingKey = useMemo(() => {
-    const key = sorting.length > 0
+    return sorting.length > 0
       ? `${sorting[0].id}:${sorting[0].desc ? 'desc' : 'asc'}`
       : 'none';
-    console.log('🟣 sortingKey recomputed:', key, 'sorting:', JSON.stringify(sorting));
-    return key;
   }, [sorting]);
 
   // Fetch metadata (numFound)
@@ -138,7 +127,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     queryKey: ['genome-meta', resource, cleanQ, searchtype],
     queryFn: async () => {
       const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
-      console.log('Fetching metadata from URL:', baseURL);
       const res = await fetch(`${baseURL}&limit(1)`, {
         headers: { 'Accept': 'application/solr+json' }
       });
@@ -160,26 +148,22 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       cleanQ,
       pageIndex,
       sortingKey,
-      searchtype
+      searchtype,
+      totalItems,
     ],
     queryFn: async () => {
-      const total = metaData?.response?.numFound ?? 0;
-      console.log('Total items from metadata:', total);
-      if (total === 0) return [];
-      console.log('Fetching data for page:', pageIndex, 'with pageSize:', pageSize);
+      if (totalItems === 0) return [];
 
-      // Use sorting state from query key (not ref)
-      const currentSorting = sorting;
-      console.log('🟠 QueryFn: sorting array:', JSON.stringify(currentSorting));
-      const sortParam = currentSorting[0] ? `${currentSorting[0].desc ? '-' : '+'}${currentSorting[0].id}` : null;
-      console.log('🟠 QueryFn: sortParam:', sortParam);
+      // Derive sort param from sortingKey (already in queryKey) to avoid stale closure
+      const sortParam = sortingKey !== "none"
+        ? (() => { const [field, dir] = sortingKey.split(":"); return `${dir === "desc" ? "-" : "+"}${field}`; })()
+        : null;
       const start = pageIndex * pageSize;
       const end = start + pageSize;
 
       const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
       const url = sortParam ? `${baseURL}&sort(${sortParam})` : baseURL;
 
-      console.log('REQUEST URL:', url);
       const res = await fetch(url, {
         headers: {
           'Content-type': 'application/rqlquery+x-www-form-urlencoded',
@@ -190,29 +174,12 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       });
       if (!res.ok) throw new Error('Failed to fetch genome data');
       const data = await res.json();
-      
-      // Clear transitioning state when data is fetched
-      setIsPageTransitioning(false);
-      
       return data;
     },
     enabled: totalItems > 0,
     placeholderData: (previousData) => previousData,
     staleTime: 0,
-    refetchOnWindowFocus: false,
   });
-
-  // Log sorting state changes for debugging
-  useEffect(() => {
-    console.log('🟢 Sorting state changed to:', JSON.stringify(sorting));
-  }, [sorting]);
-  
-  // Clear transitioning state if there's an error
-  useEffect(() => {
-    if (dataError) {
-      setIsPageTransitioning(false);
-    }
-  }, [dataError]);
 
   if (metaError || dataError) {
     return (
@@ -237,9 +204,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   };
 
   const handlePageChange = (newPage: number) => {
-    console.log('handlePageChange called, newPage:', newPage);
-    // Set transitioning state
-    setIsPageTransitioning(true);
     // Clear selections when page changes
     setRowSelection({});
     onSelectionChange?.([]); // Clear selection in parent too
@@ -335,10 +299,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
             resource={resource}
             rowSelection={rowSelection}
             onRowSelectionChange={handleRowSelectionChange}
-            onSelectionChange={(selectedRows) => {
-              // Backwards compatibility callback - logs for debugging
-              console.log('Selected rows:', selectedRows.length);
-            }}
+            onSelectionChange={() => {}}
             pageIndex={pageIndex}
             pageSize={pageSize}
             totalItems={totalItems}
@@ -350,7 +311,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
             columnVisibility={columnVisibility}
             onColumnVisibilityChange={setColumnVisibility}
             onDownloadAll={handleDownloadAll}
-            isLoading={metaLoading || dataLoading || isPageTransitioning || dataFetching}
+            isLoading={metaLoading || dataLoading || dataFetching}
           />
         )}
       </div>

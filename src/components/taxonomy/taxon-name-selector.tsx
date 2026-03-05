@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, Loader2Icon, ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  TaxonomyItem,
-  TaxonomySelectorProps,
-} from "@/types";
+import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
 
 interface TaxonNameSelectorProps extends TaxonomySelectorProps {
   apiServiceUrl?: string;
@@ -54,6 +52,110 @@ const BOOST_QUERY = [
   "taxon_rank:*",
 ];
 
+// Custom encoding function for SOLR queries - only encode spaces and special URL chars
+function encodeSolrQuery(query: string): string {
+  return query.replace(/ /g, "%20");
+}
+
+function buildSolrQuery(
+  query: string,
+  opts: {
+    includeEukaryotes: boolean;
+    includeBacteria: boolean;
+    includeViruses: boolean;
+    setBacteriophage: boolean;
+    segmentWildcard: boolean;
+  },
+): string {
+  const extraSearch: string[] = [];
+
+  // Clean the query string
+  const qString = query.replace(/\(|\)|\.|\*|\||\[|\]/g, "");
+
+  // Extract rank parts
+  let cleanQuery = qString;
+
+  RANK_LIST.forEach((rank) => {
+    const re = new RegExp(`(\\b)${rank}(\\b)`, "gi");
+    const newQuery = cleanQuery.replace(re, "");
+    if (newQuery !== cleanQuery) {
+      cleanQuery = newQuery.trim();
+    }
+  });
+
+  let searchQuery = "";
+  if (opts.segmentWildcard && cleanQuery) {
+    const queryParts = cleanQuery.split(/[ ,]+/);
+    if (queryParts.length > 0) {
+      // Add wildcard searches
+      extraSearch.push(`(taxon_name:*${queryParts.join("*")}*)`);
+      extraSearch.push(`(taxon_name:${queryParts.join(" ")})`);
+    }
+    searchQuery = `(${extraSearch.join(" OR ")})`;
+  } else {
+    searchQuery = cleanQuery;
+  }
+
+  // Add boost query for ranking
+  if (BOOST_QUERY.length > 0) {
+    searchQuery += ` AND (${BOOST_QUERY.join(" OR ")})`;
+  }
+
+  // Build the complete query string manually to avoid double encoding
+  const params: string[] = [];
+
+  // Use custom encoding for SOLR query - only encode spaces
+  params.push(`q=${encodeSolrQuery(searchQuery)}`);
+  params.push(`fl=taxon_name,taxon_id,taxon_rank,lineage_names,division`);
+  params.push(`qf=taxon_name`);
+
+  // Add filters based on organism type
+  if (opts.includeEukaryotes && !opts.setBacteriophage) {
+    params.push(`fq=lineage_ids:2759`);
+  }
+  if (opts.includeBacteria && !opts.setBacteriophage) {
+    params.push(`fq=lineage_ids:2`);
+  }
+  if (opts.includeViruses && !opts.setBacteriophage) {
+    params.push(`fq=lineage_ids:10239`);
+  }
+  if (opts.setBacteriophage) {
+    params.push(`fq=taxon_name:*phage*`);
+  }
+
+  return params.join("&");
+}
+
+async function searchTaxonByName(
+  apiUrl: string,
+  query: string,
+  filterOpts: {
+    includeEukaryotes: boolean;
+    includeBacteria: boolean;
+    includeViruses: boolean;
+    setBacteriophage: boolean;
+    segmentWildcard: boolean;
+  },
+  signal?: AbortSignal,
+): Promise<TaxonomyItem[]> {
+  const queryParams = buildSolrQuery(query.trim(), filterOpts);
+
+  const response = await fetch(`${apiUrl}?${queryParams}`, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/solrquery+x-www-form-urlencoded",
+    },
+    credentials: "include",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export function TaxonNameSelector({
   value,
   onChange,
@@ -72,147 +174,50 @@ export function TaxonNameSelector({
   const [showDropdown, setShowDropdown] = useState(false);
   // Initialize searchQuery from value prop to ensure SSR/client hydration match
   const [searchQuery, setSearchQuery] = useState(value?.taxon_name || "");
-  const [results, setResults] = useState<TaxonomyItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
   const [touched, setTouched] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
   const isSelectingRef = useRef(false);
-  const prevValueRef = useRef<TaxonomyItem | null>(value || null);
-
-  // Custom encoding function for SOLR queries - only encode spaces and special URL chars
-  const encodeSolrQuery = useCallback((query: string): string => {
-    return query.replace(/ /g, "%20");
-  }, []);
-
-  // Build SOLR query similar to the original TaxonNameSelector
-  const buildSolrQuery = useCallback(
-    (query: string): string => {
-      const extraSearch: string[] = [];
-
-      // Clean the query string
-      const qString = query.replace(/\(|\)|\.|\*|\||\[|\]/g, "");
-
-      // Extract rank parts
-      const rankParts: string[] = [];
-      let cleanQuery = qString;
-
-      RANK_LIST.forEach((rank) => {
-        const re = new RegExp(`(\\b)${rank}(\\b)`, "gi");
-        const newQuery = cleanQuery.replace(re, "");
-        if (newQuery !== cleanQuery) {
-          rankParts.push(rank);
-          cleanQuery = newQuery.trim();
-        }
-      });
-
-      let searchQuery = "";
-      if (segmentWildcard && cleanQuery) {
-        const queryParts = cleanQuery.split(/[ ,]+/);
-        if (queryParts.length > 0) {
-          // Add wildcard searches
-          extraSearch.push(`(taxon_name:*${queryParts.join("*")}*)`);
-          extraSearch.push(`(taxon_name:${queryParts.join(" ")})`);
-        }
-        searchQuery = `(${extraSearch.join(" OR ")})`;
-      } else {
-        searchQuery = cleanQuery;
-      }
-
-      // Add boost query for ranking
-      if (BOOST_QUERY.length > 0) {
-        searchQuery += ` AND (${BOOST_QUERY.join(" OR ")})`;
-      }
-
-      // Build the complete query string manually to avoid double encoding
-      const params: string[] = [];
-
-      // Use custom encoding for SOLR query - only encode spaces
-      params.push(`q=${encodeSolrQuery(searchQuery)}`);
-      params.push(`fl=taxon_name,taxon_id,taxon_rank,lineage_names,division`);
-      params.push(`qf=taxon_name`);
-
-      // Add filters based on organism type
-      if (includeEukaryotes && !setBacteriophage) {
-        params.push(`fq=lineage_ids:2759`);
-      }
-      if (includeBacteria && !setBacteriophage) {
-        params.push(`fq=lineage_ids:2`);
-      }
-      if (includeViruses && !setBacteriophage) {
-        params.push(`fq=lineage_ids:10239`);
-      }
-      if (setBacteriophage) {
-        params.push(`fq=taxon_name:*phage*`);
-      }
-
-      return params.join("&");
-    },
-    [
-      includeEukaryotes,
-      includeBacteria,
-      includeViruses,
-      setBacteriophage,
-      segmentWildcard,
-      encodeSolrQuery,
-    ],
+  const [prevValue, setPrevValue] = useState<TaxonomyItem | null>(
+    value || null,
   );
 
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    async (query: string) => {
-      if (!query.trim()) {
-        setResults([]);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const queryParams = buildSolrQuery(query.trim());
-
-        const response = await fetch(`${apiServiceUrl}?${queryParams}`, {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/solrquery+x-www-form-urlencoded",
-          },
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("data", data);
-        setResults(data);
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to search taxonomy";
-        setError(errorMessage);
-        console.error("Taxon name search error:", err);
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [apiServiceUrl, buildSolrQuery],
-  );
-
-  // Debounce the search
+  // Debounce the search query
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (searchQuery) {
-        debouncedSearch(searchQuery);
-      } else {
-        setResults([]);
-      }
+      setDebouncedQuery(searchQuery);
     }, 300);
-
     return () => clearTimeout(timeoutId);
-  }, [searchQuery, debouncedSearch]);
+  }, [searchQuery]);
+
+  // Stabilize filter flags for queryKey
+  const filterKey = `${includeEukaryotes}-${includeBacteria}-${includeViruses}-${setBacteriophage}-${segmentWildcard}`;
+
+  const {
+    data: results = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery<TaxonomyItem[], Error>({
+    queryKey: ["taxonomy-search-name", debouncedQuery, filterKey],
+    queryFn: ({ signal }) =>
+      searchTaxonByName(
+        apiServiceUrl,
+        debouncedQuery,
+        {
+          includeEukaryotes,
+          includeBacteria,
+          includeViruses,
+          setBacteriophage,
+          segmentWildcard,
+        },
+        signal,
+      ),
+    enabled: !!debouncedQuery.trim(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const error = queryError?.message ?? null;
 
   const handleSearchChange = (newValue: string) => {
     setSearchQuery(newValue);
@@ -241,24 +246,21 @@ export function TaxonNameSelector({
     [onChange],
   );
 
-
   const handleManualDropdownToggle = () => {
     setShowDropdown(!showDropdown);
     setIsManualTrigger(!showDropdown);
   };
 
-  // Sync searchQuery with value prop when value is set externally (not from user typing or selecting)
-  useEffect(() => {
-    // Only sync if value actually changed (from outside) and we're not currently selecting
-    const valueChanged = prevValueRef.current !== value;
-    prevValueRef.current = value || null;
-    
-    if (valueChanged && !isSelectingRef.current && value && !showDropdown) {
-      // Only sync if value changed externally, dropdown is closed, and we're not selecting
+  // Sync searchQuery with value prop when value is set externally.
+  // Uses the React-recommended pattern of storing previous props in state
+  // to avoid both refs-during-render and setState-in-effect lint errors.
+  if (prevValue !== value) {
+    setPrevValue(value || null);
+    if (value && !showDropdown) {
       setSearchQuery(value.taxon_name);
     }
-  }, [value, showDropdown]);
-  
+  }
+
   // Input always displays searchQuery (what user types or what's selected)
   const inputValue = searchQuery;
 
@@ -288,7 +290,10 @@ export function TaxonNameSelector({
             setTouched(true);
             setTimeout(() => setShowDropdown(false), 200);
           }}
-          className={cn("w-full pr-10 pl-10", touched && !isValid && "border-destructive")}
+          className={cn(
+            "w-full pr-10 pl-10",
+            touched && !isValid && "border-destructive",
+          )}
           disabled={disabled}
         />
         <Button

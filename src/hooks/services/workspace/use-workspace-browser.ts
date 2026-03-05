@@ -53,6 +53,5 @@ export function useWorkspaceBrowser({
     queryFn: () => fetchDirectoryContents(username, base, path),
     enabled: enabled && !!username,
     staleTime: 2 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 }

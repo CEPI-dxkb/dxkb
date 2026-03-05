@@ -1,0 +1,25 @@
+src/components/taxonomy/tax-id-selector.tsx
+  765f667fb1dbaa1f 23,38,80
+src/components/services/ListData.tsx
+  765f667fb1dbaa1f 151-152,155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "1a7c0e5da7cfe5c89b309aadd9c3c9825efc3717",
+  "prompts": {
+    "765f667fb1dbaa1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e22b9de1-14b3-4fb4-aa2b-96efb3f0bde1",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 4,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}

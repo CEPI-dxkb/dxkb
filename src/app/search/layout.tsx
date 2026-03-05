@@ -8,9 +8,9 @@ export default function VirusesLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <Navbar />
-      <main className="flex grow flex-col h-full">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Suspense fallback={<div>Loading...</div>}>{children}</Suspense>
       </main>
       <Footer />

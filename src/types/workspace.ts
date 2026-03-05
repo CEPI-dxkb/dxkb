@@ -150,6 +150,26 @@ export type SubmitServiceResponse = {
   ]
 };
 
+// Filtered jobs API types (server-side pagination + archived support)
+export interface EnumerateTasksFilteredParams {
+  offset: number;
+  limit: number;
+  include_archived?: boolean;
+  sort_field?: string;
+  sort_order?: "asc" | "desc";
+}
+export type EnumerateTasksFilteredResponse = JobListItem[];
+
+export interface QueryTaskSummaryFilteredParams {
+  include_archived?: boolean;
+}
+export type QueryTaskSummaryFilteredResponse = Record<string, number>;
+
+export interface QueryAppSummaryFilteredParams {
+  include_archived?: boolean;
+}
+export type QueryAppSummaryFilteredResponse = Record<string, number>;
+
 // Error types
 export interface WorkspaceError {
   code: number;

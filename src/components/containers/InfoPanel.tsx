@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useWorkspaceDu } from "@/hooks/services/workspace/use-workspace-du";
 
 import { genomeFields } from "@/constants/datafields/genome";
@@ -15,10 +15,9 @@ import { strainFields } from "@/constants/datafields/strain";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
 import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import { Button } from "@/components/ui/button";
+import { DetailPanel, type DetailField } from "@/components/detail-panel";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { WorkspaceItemIcon } from "@/components/workspace/workspace-item-icon";
-
-import { ChevronRight, ChevronDown } from "lucide-react";
 
 export type InfoPanelProps =
   | {
@@ -159,8 +158,6 @@ function WorkspaceItemDetailContent({
 }
 
 export function InfoPanel(props: InfoPanelProps) {
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-
   if (props.variant === "workspace") {
     const { selection } = props;
     const isMultiSelect = selection.length > 1;
@@ -170,14 +167,8 @@ export function InfoPanel(props: InfoPanelProps) {
       <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
         {isMultiSelect ? (
           <>
-            <div className="flex items-center justify-between gap-2 border-b pb-2">
-              <h3 className="truncate text-sm font-semibold">
-                {selection.length} items selected
-              </h3>
-            </div>
-            <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
-              Select a single item to view details
-            </div>
+            <DetailPanel.Header title={`${selection.length} items selected`} />
+            <DetailPanel.EmptyState message="Select a single item to view details" />
           </>
         ) : hasSingleSelection ? (
           <WorkspaceItemDetailContent
@@ -186,16 +177,14 @@ export function InfoPanel(props: InfoPanelProps) {
             onAction={props.onAction}
           />
         ) : (
-          <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
-            Select an item to view details
-          </div>
+          <DetailPanel.EmptyState message="Select an item to view details" />
         )}
       </div>
     );
   }
 
   const { rows, activeTab } = props;
-  let order: string[] = []; // default empty
+  let order: string[] = [];
   let fieldFile = {};
   let allowedFields: string[] = [];
   let panelTitleField = '';
@@ -205,13 +194,13 @@ export function InfoPanel(props: InfoPanelProps) {
       panelTitleField = 'genome_name';
       fieldFile = genomeFields;
       allowedFields = ["genome_id", "genome_name", "other_names", "taxon_id", "superkingdom", "kingdom", "phylum", "class", "order", "family", "genus", "species", "genome_status", "strain", "serovar", "biovar", "pathovar", "mlst", "segment", "subtype", "h_type", "n_type", "h1_clade_gobal", "h1_clade_us", "h3_clade", "h5_clade", "ph1n1_like", "lineage", "clade", "subclade", "other_typing", "culture_collection", "type_strain", "reference_genome", "completion_date", "publication", "authors", "bioproject_accession", "biosample_accession", "assembly_accession", "sra_accession", "genbank_accessions", "sequencing_centers", "sequencing_status", "sequencing_platform", "sequencing_depth", "assembly_method", "chromosomes", "plasmids", "contigs", "genome_length", "gc_content", "contig_l50", "contig_n50", "trna", "rrna", "mat_peptide", "cds", "genome_quality", "coarse_consistency", "fine_consistency", "checkm_completeness", "checkm_contamination", "genome_quality_flags", "isolation_source", "isolation_comments", "collection_date", "collection_year", "season", "isolation_country", "state_province", "geographic_group", "geographic_location", "other_environmental", "host_name", "host_common_name", "host_gender", "host_age", "host_health", "host_group", "lab_host", "passage", "other_clinical", "additional_metadata", "comments", "date_inserted", "date_modified"];
-      order = ["General Info","Taxonomy Info","Status","Type Info","DB Cross Reference","Sequence Info","Genome Statistics","Annotation Statistics","Genome Quality","Isolate Info","Host Info","Additional Info",];
+      order = ["General Info","Taxonomy Info","Status","Type Info","DB Cross Reference","Sequence Info","Genome Statistics","Annotation Statistics","Genome Quality","Isolate Info","Host Info","Additional Info"];
       break;
     case 'genome_sequence':
       panelTitleField = 'sequence_id';
       fieldFile = genome_sequenceFields;
       allowedFields = ["genome_id", "genome_name", "taxon_id", "sequence_id", "accession", "sequence_status", "topology", "description", "gc_content", "length", "sequence_md5", "release_date", "version", "date_inserted", "date_modified"];
-      order = ["General Info","Taxonomy Info", "Sequence Info", "Additional Info",];
+      order = ["General Info","Taxonomy Info", "Sequence Info", "Additional Info"];
       break;
     case 'genome_amr':
       fieldFile = genome_amrFields;
@@ -267,7 +256,7 @@ export function InfoPanel(props: InfoPanelProps) {
       order = ['Taxon Info'];
       break;
     case 'experiment':
-      panelTitleField = 'exp_name'
+      panelTitleField = 'exp_name';
       fieldFile = experimentFields;
       allowedFields = ['exp_id', 'study_name', 'study_title', 'study_description','study_pi','study_institution','exp_name', 'exp_title', 'exp_description', 'exp_poc', 'experimenters', 'public_repositories', 'public_identifier', 'exp_type', 'measurement_technique','organism', 'strain', 'treatment_type', 'treatment_name', 'treatment_amount', 'treatment_duration', 'samples', 'biosets', 'genome_id','additional_metadata'];
       order = ['Study Info', 'Experiment Info', 'Additional Metadata'];
@@ -302,14 +291,6 @@ export function InfoPanel(props: InfoPanelProps) {
     };
   });
 
-  const effectiveExpanded = order.reduce(
-    (acc, group) => {
-      acc[group] = expandedGroups[group] ?? true;
-      return acc;
-    },
-    { ...expandedGroups } as Record<string, boolean>
-  );
-
   const grouped = displayColumns.reduce(
     (acc: Record<string, DisplayColumn[]>, item) => {
       const g = String(item.group ?? "");
@@ -320,22 +301,6 @@ export function InfoPanel(props: InfoPanelProps) {
     {} as Record<string, DisplayColumn[]>
   );
 
-  const toggleGroup = (group: string) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [group]: !(prev[group] ?? true),
-    }));
-  };
-
-  function formatDate(value: string): string {
-    const date = new Date(value);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-    });
-  }
-
   function resolveLink(template: string, row: Record<string, unknown>, fallbackField: string) {
     return template.replace(/{([^}]+)}/g, (_, key: string) => {
       const value = row[key] ?? row[fallbackField] ?? "";
@@ -345,135 +310,75 @@ export function InfoPanel(props: InfoPanelProps) {
 
   function toAbsoluteUrl(url: string): string {
     try {
-      // If the URL is already absolute, return it unchanged
       new URL(url);
       return url;
     } catch {
-      // If not, make it absolute using dxkb.org. This is necessary since React kept trying to recode the URL and it was messing stuff up but it won't mess with an absolute URL
       return new URL(url, 'https://www.dxkb.org').href;
     }
   }
 
-//  console.log("Active Tab:", activeTab);
-//  console.log("Panel Title Field:", panelTitleField);
-//  console.log("Rows:", rows);
-//  console.log("Order:", order);
-//  console.log("Grouped Columns:", grouped);
-
   return (
-    <div className="scrollbar-themed w-full p-4 overflow-y-auto text-xs">
-      <div className="mb-2 text-secondary text-lg">
-        {String(rows[0]?.[panelTitleField] ?? "")}
-      </div>
-
+    <DetailPanel>
+      <DetailPanel.Header title={String(rows[0]?.[panelTitleField] ?? "")} />
       {rows.length === 1 ? (
-        <table className="w-full text-left border-separate border-spacing-y-1">
-          <tbody>
-            {order.map((group) => {
-              const items = (grouped[group] || []).filter((item) =>
-                allowedFields.includes(String(item.id))
-              );
-              if (items.length === 0) return null;
+        <>
+          {order.map((group) => {
+            const items = (grouped[group] || []).filter((item) =>
+              allowedFields.includes(String(item.id))
+            );
+            if (items.length === 0) return null;
 
-              const isExpanded = effectiveExpanded[group] ?? true;
-              const hasAtLeastOneValue = items.some(
-                (item) => rows[0]?.[String(item.id)]
-              );
+            const fields: DetailField[] = items.map((item) => {
+              const fieldId = String(item.id);
+              const rawValue = rows[0]?.[fieldId];
 
-              return (
-                <React.Fragment key={group}>
-                  <tr>
-                    <th
-                      colSpan={2}
-                      onClick={() => toggleGroup(group)}
-                      className="border-r border-l border-black bg-primary text-secondary p-2 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        {group}
-                      </div>
-                    </th>
-                  </tr>
-                  {isExpanded &&
-                    (hasAtLeastOneValue ? (
-                      items.map((item) => {
-                        const fieldId = String(item.id);
-                        const rawValue = rows[0]?.[fieldId];
-                        if (
-                          rawValue === undefined ||
-                          rawValue === null ||
-                          rawValue === ""
-                        )
-                          return null;
+              if (item.link) {
+                const resolved = toAbsoluteUrl(
+                  resolveLink(String(item.link), rows[0], fieldId)
+                );
 
-                        const value =
-                          typeof rawValue === "string" &&
-                          /^\d{4}-\d{2}-\d{2}T/.test(rawValue)
-                            ? formatDate(rawValue)
-                            : rawValue;
+                if (item.linkType === "button") {
+                  return {
+                    label: String(item.label),
+                    value: rawValue,
+                    render: () => (
+                      <Button
+                        onClick={() => window.open(resolved, "_blank", "noopener,noreferrer")}
+                        className="text-sm border-black bg-primary text-secondary py-1 px-2 rounded"
+                      >
+                        {String(item.linkText ?? "View")}
+                      </Button>
+                    ),
+                  };
+                }
 
-                        if (item.link) {
-                          const resolved = resolveLink(String(item.link), rows[0], fieldId);
-                          console.log(resolved);
-                        }
+                return {
+                  label: String(item.label),
+                  value: rawValue,
+                  href: resolved,
+                };
+              }
 
-                        return (
-                          <tr key={fieldId}>
-                            <td className="px-2 py-0.5 font-medium text-xs w-[40%] align-top">
-                              {String(item.label)}
-                            </td>
-                            <td className="px-2 py-0.5 text-xs break-all align-top">
-                              {item.link ? (() => {
-                                  let resolved = resolveLink(String(item.link), rows[0], fieldId);
-                                  console.log(resolved);
-                                  resolved = toAbsoluteUrl(resolved);
-                                  console.log(resolved);
+              return {
+                label: String(item.label),
+                value: rawValue,
+              };
+            });
 
-                                  return item.linkType === "button" ? (
-                                    <Button
-                                      onClick={() => window.open(resolved, "_blank", "noopener,noreferrer")}
-                                      className="text-sm border-black bg-primary text-secondary py-1 px-2 rounded"
-                                    >
-                                      {String(item.linkText ?? "View")}
-                                    </Button>
-                                  ) : (
-                                    <a
-                                      href={resolved}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-blue-600 underline hover:text-blue-800"
-                                    >
-                                      {String(value)}
-                                    </a>
-                                  );
-                                })() : String(value)}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td
-                          colSpan={2}
-                          className="italic text-gray-500 px-2 py-1"
-                        >
-                          None available
-                        </td>
-                      </tr>
-                    ))}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+            return (
+              <DetailPanel.CollapsibleSection
+                key={group}
+                label={group}
+                variant="primary"
+              >
+                <DetailPanel.KeyValueTable fields={fields} />
+              </DetailPanel.CollapsibleSection>
+            );
+          })}
+        </>
       ) : (
-        <p>{rows.length} rows selected</p>
+        <p className="px-4 py-2 text-xs">{rows.length} rows selected</p>
       )}
-{/*
-      <p>
-      {JSON.stringify(rows[0])}
-      </p>
-*/}
-    </div>
+    </DetailPanel>
   );
 }

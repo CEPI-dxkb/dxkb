@@ -14,6 +14,12 @@ import {
   KillJobParams,
   FetchJobOutputParams,
   SubmitServiceParams,
+  EnumerateTasksFilteredParams,
+  EnumerateTasksFilteredResponse,
+  QueryTaskSummaryFilteredParams,
+  QueryTaskSummaryFilteredResponse,
+  QueryAppSummaryFilteredParams,
+  QueryAppSummaryFilteredResponse,
 } from "@/types/workspace";
 
 /**
@@ -115,6 +121,49 @@ export class AppService {
         `Failed to fetch ${output_type} for job ${job_id}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  }
+
+  /**
+   * Enumerate jobs with server-side pagination and archived support
+   * (maps to AppService.enumerate_tasks_filtered)
+   */
+  async enumerateTasksFiltered(
+    params: EnumerateTasksFilteredParams,
+  ): Promise<EnumerateTasksFilteredResponse> {
+    const { offset, limit, include_archived, sort_field, sort_order } = params;
+    const opts: Record<string, unknown> = {};
+    if (include_archived) opts.include_archived = 1;
+    if (sort_field) opts.sort_field = sort_field;
+    if (sort_order) opts.sort_order = sort_order;
+    return this.client.call("AppService.enumerate_tasks_filtered", [
+      offset,
+      limit,
+      opts,
+    ]);
+  }
+
+  /**
+   * Query task status summary with optional archived filter
+   * (maps to AppService.query_task_summary_filtered)
+   */
+  async queryTaskSummaryFiltered(
+    params: QueryTaskSummaryFilteredParams,
+  ): Promise<QueryTaskSummaryFilteredResponse> {
+    const opts: Record<string, unknown> = {};
+    if (params.include_archived) opts.include_archived = 1;
+    return this.client.call("AppService.query_task_summary_filtered", [opts]);
+  }
+
+  /**
+   * Query app/service summary with optional archived filter
+   * (maps to AppService.query_app_summary_filtered)
+   */
+  async queryAppSummaryFiltered(
+    params: QueryAppSummaryFilteredParams,
+  ): Promise<QueryAppSummaryFilteredResponse> {
+    const opts: Record<string, unknown> = {};
+    if (params.include_archived) opts.include_archived = 1;
+    return this.client.call("AppService.query_app_summary_filtered", [opts]);
   }
 
   /**

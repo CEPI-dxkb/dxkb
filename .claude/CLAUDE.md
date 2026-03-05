@@ -58,6 +58,7 @@ No test runner is currently configured (jest types are present but no test scrip
 
 **UI**
 - shadcn/ui (New York style, slate base) in `src/components/ui/`
+- All shadcn/ui components are using the @base-ui primitives (ex: https://ui.shadcn.com/docs/components/base/accordion)
 - Tailwind CSS v4 with CSS variable theming; multiple named themes in `src/app/globals.css`
 - SVG imports handled via `@svgr/webpack` (use `import Icon from './file.svg'` or `'./file.svg?url'` for raw URL)
 - `sonner` for toast notifications; `lucide-react` for icons

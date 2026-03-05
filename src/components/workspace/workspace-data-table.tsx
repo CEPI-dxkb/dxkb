@@ -1,60 +1,43 @@
 "use client";
 
 import React, {
-  useRef,
   useCallback,
   forwardRef,
   useImperativeHandle,
   useMemo,
-  useState,
+  useRef,
 } from "react";
 import { useRouter } from "next/navigation";
-import {
-  getCoreRowModel,
-  useReactTable,
-  type SortingState,
-} from "@tanstack/react-table";
-import {
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  closestCenter,
-  type DragEndEvent,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { restrictToHorizontalAxis } from "@dnd-kit/modifiers";
-import {
-  arrayMove,
-  SortableContext,
-  horizontalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import {
-  Table,
-  TableBody,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { Row } from "@tanstack/react-table";
 import type {
   WorkspaceBrowserItem,
-  SortField,
   WorkspaceBrowserSort,
   WorkspaceViewMode,
 } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
 import { normalizePath } from "@/lib/workspace/table-selection";
 import { isFolderType } from "@/lib/services/workspace/utils";
-import { useTableKeyboardNavigation } from "@/hooks/workspace/use-table-keyboard-navigation";
+import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigation";
 import {
-  DraggableTableHeader,
-  TableSkeleton,
   useWorkspaceColumns,
 } from "./workspace-table-columns";
 import { LeadingRow, ParentRow, DataRow, EmptyRow } from "./workspace-table-rows";
+import {
+  DataTable,
+  type DataTableHandle,
+} from "@/components/shared/data-table";
 
 /** Stable empty array for table data fallback (avoids infinite re-renders per TanStack Data guide). */
 const EMPTY_ITEMS: WorkspaceBrowserItem[] = [];
+
+const DEFAULT_COLUMN_ORDER = [
+  "name",
+  "size",
+  "owner_id",
+  "creation_time",
+  "members",
+  "type",
+];
 
 interface WorkspaceDataTableProps {
   items: WorkspaceBrowserItem[];
@@ -62,28 +45,18 @@ interface WorkspaceDataTableProps {
   path: string;
   sort: WorkspaceBrowserSort;
   onSortChange: (sort: WorkspaceBrowserSort) => void;
-  /** When true and viewMode is "home" and at root, show "View Shared Folders" row */
   showViewSharedRow?: boolean;
-  /** When "shared", parent row and item navigation use shared routes */
   viewMode?: WorkspaceViewMode;
-  /** Optional map of item path -> member count; Members column is always shown (displays "—" when absent). */
   memberCountByPath?: Record<string, number>;
-  /** Username for building workspace URLs (e.g. /workspace/${username}/home) */
   username?: string;
-  /** When viewMode is "shared", username for "Back to my workspaces" link (current user) */
   sharedRootUsername?: string;
-  /** When set, single click selects (and opens panel); double click navigates. Omit for legacy single-click navigate. */
   selectedPaths?: string[];
-  /** Called on single click when selection mode is used; modifiers support Ctrl/Cmd+click (toggle) and Shift+click (range). */
   onSelect?: (
     item: WorkspaceBrowserItem,
     modifiers?: { ctrlOrMeta: boolean; shift: boolean },
   ) => void;
-  /** Called on double click (folders only) when selection mode is used; parent should navigate */
   onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
-  /** Called when user tries to open a non-folder item (click, double-click, or Enter); e.g. show "under construction" dialog */
   onOpenFileRequested?: (item: WorkspaceBrowserItem) => void;
-  /** Called when focus moves to Parent folder or View Shared row so parent can clear selection */
   onClearSelection?: () => void;
 }
 
@@ -116,20 +89,11 @@ export const WorkspaceDataTable = forwardRef<
 ) {
   const useSelectionMode = onSelect != null;
   const router = useRouter();
-  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const dataTableRef = useRef<DataTableHandle>(null);
   const isAtRoot = !path || path === "" || path === "/";
 
-  const [columnOrder, setColumnOrder] = useState<string[]>([
-    "name",
-    "size",
-    "owner_id",
-    "creation_time",
-    "members",
-    "type",
-  ]);
-
   useImperativeHandle(ref, () => ({
-    focus: () => tableContainerRef.current?.focus(),
+    focus: () => dataTableRef.current?.focus(),
   }));
 
   const pathSegments = useMemo(
@@ -203,19 +167,35 @@ export const WorkspaceDataTable = forwardRef<
   const leadingOffset = showLeadingRow ? 1 : 0;
   const parentOffset = showParentRow ? 1 : 0;
 
-  const { focusedSpecialRow, handleKeyDown } = useTableKeyboardNavigation({
-    useSelectionMode,
+  const getFocusedIndex = useCallback(() => {
+    const paths = selectedPaths ?? [];
+    if (paths.length === 0) return -1;
+    const normalizedFocus = normalizePath(paths[paths.length - 1]);
+    return items.findIndex((i) => normalizePath(i.path) === normalizedFocus);
+  }, [selectedPaths, items]);
+
+  const handleEnter = useCallback(
+    (item: WorkspaceBrowserItem) => {
+      if (!isFolderType(item.type)) {
+        onOpenFileRequested?.(item);
+      } else {
+        onItemDoubleClick?.(item);
+      }
+    },
+    [onOpenFileRequested, onItemDoubleClick],
+  );
+
+  const { focusedSpecialRow, handleKeyDown } = useTableKeyboardNavigation<WorkspaceBrowserItem>({
     items,
-    selectedPaths,
+    getFocusedIndex,
+    onSelect: onSelect ?? (() => {}),
+    onEnter: handleEnter,
+    enabled: useSelectionMode,
     leadingOffset,
     parentOffset,
-    onSelect,
-    onItemDoubleClick,
-    onOpenFileRequested,
+    onLeadingEnter: () => router.push(sharedBase),
+    onParentEnter: handleParentClick,
     onClearSelection,
-    sharedBase,
-    router,
-    handleParentClick,
   });
 
   const { columns, handleSort } = useWorkspaceColumns(
@@ -224,158 +204,101 @@ export const WorkspaceDataTable = forwardRef<
     memberCountByPath,
   );
 
-  const sortingState: SortingState = useMemo(
-    () => [{ id: sort.field, desc: sort.direction === "desc" }],
-    [sort.field, sort.direction],
+  const handleSortChange = useCallback(
+    (newSort: { field: string; direction: "asc" | "desc" }) => {
+      onSortChange({
+        field: newSort.field as WorkspaceBrowserSort["field"],
+        direction: newSort.direction,
+      });
+    },
+    [onSortChange],
   );
 
-  const table = useReactTable<WorkspaceBrowserItem>({
-    data: items ?? EMPTY_ITEMS,
-    columns,
-    state: {
-      sorting: sortingState,
-      columnOrder,
-    },
-    onSortingChange: (updater) => {
-      const next =
-        typeof updater === "function" ? updater(sortingState) : updater;
-      const entry = next?.[0];
-      if (entry) {
-        onSortChange({
-          field: entry.id as SortField,
-          direction: entry.desc ? "desc" : "asc",
-        });
-      }
-    },
-    onColumnOrderChange: (updater) => {
-      const next =
-        typeof updater === "function" ? updater(columnOrder) : updater;
-      setColumnOrder(next);
-    },
-    getRowId: (row) => row.id,
-    getCoreRowModel: getCoreRowModel(),
-    manualSorting: true,
-    columnResizeMode: "onChange",
-    enableColumnResizing: true,
-  });
+  // Render workspace-specific leading rows
+  const renderLeadingRows = useCallback(() => {
+    // We need access to table columns for leading/parent rows — use column order for sizing
+    return (
+      <>
+        {showLeadingRow && (
+          <LeadingRow
+            columns={[] as never[]}
+            useSelectionMode={useSelectionMode}
+            isFocused={focusedSpecialRow === "leading"}
+            onClick={() => router.push(sharedBase)}
+            _useDataTable
+            columnOrder={DEFAULT_COLUMN_ORDER}
+          />
+        )}
+        {showParentRow && (
+          <ParentRow
+            columns={[] as never[]}
+            useSelectionMode={useSelectionMode}
+            isFocused={focusedSpecialRow === "parent"}
+            onClick={handleParentClick}
+            label={parentRowLabel}
+            _useDataTable
+            columnOrder={DEFAULT_COLUMN_ORDER}
+          />
+        )}
+      </>
+    );
+  }, [
+    showLeadingRow,
+    showParentRow,
+    useSelectionMode,
+    focusedSpecialRow,
+    router,
+    sharedBase,
+    handleParentClick,
+    parentRowLabel,
+  ]);
 
-  const columnSizingState = table.getState().columnSizing;
-  const columnSizingInfoState = table.getState().columnSizingInfo;
-  // Intentionally depend on sizing state only; table identity changes every render
-  const columnSizeVars = useMemo(() => {
-    const headers = table.getFlatHeaders();
-    const colSizes: Record<string, string> = {};
-    for (const header of headers) {
-      colSizes[`--col-${header.column.id}-size`] =
-        `${header.column.getSize()}px`;
-    }
-    return colSizes;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- table is unstable from useReactTable
-  }, [columnSizingState, columnSizingInfoState]);
+  const renderRows = useCallback(
+    (rows: Row<WorkspaceBrowserItem>[]) => (
+      <>
+        {rows.map((row) => (
+          <DataRow
+            key={row.id}
+            row={row}
+            useSelectionMode={useSelectionMode}
+            isSelected={selectedPathSet.has(
+              normalizePath(row.original.path),
+            )}
+            onSelect={onSelect}
+            onItemClick={handleItemClick}
+            onItemDoubleClick={onItemDoubleClick}
+            onOpenFileRequested={onOpenFileRequested}
+          />
+        ))}
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleItemClick changes every render (uses path)
+    [useSelectionMode, selectedPathSet, onSelect, onItemDoubleClick, onOpenFileRequested, path, viewMode, homeBase],
+  );
 
-  const handleColumnDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (active && over && active.id !== over.id) {
-      setColumnOrder((prev) => {
-        const oldIndex = prev.indexOf(active.id as string);
-        const newIndex = prev.indexOf(over.id as string);
-        if (oldIndex === -1 || newIndex === -1) return prev;
-        return arrayMove(prev, oldIndex, newIndex);
-      });
-    }
-  }, []);
-
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {}),
+  const renderEmptyState = useCallback(
+    (colSpan: number) => <EmptyRow colSpan={colSpan} />,
+    [],
   );
 
   return (
-    <div
-      ref={tableContainerRef}
-      role="grid"
-      tabIndex={useSelectionMode ? 0 : undefined}
-      aria-label="Workspace items"
-      className="scrollbar-themed h-full min-h-0 overflow-auto rounded-md border outline-none"
+    <DataTable<WorkspaceBrowserItem>
+      ref={dataTableRef}
+      data={items ?? EMPTY_ITEMS}
+      columns={columns}
+      defaultColumnOrder={DEFAULT_COLUMN_ORDER}
+      isLoading={isLoading}
+      getRowId={(row) => row.id}
+      sort={{ field: sort.field, direction: sort.direction }}
+      onSortChange={handleSortChange}
+      onSort={handleSort}
+      dndId="workspace-table-dnd"
+      renderLeadingRows={renderLeadingRows}
+      renderRows={renderRows}
+      renderEmptyState={renderEmptyState}
       onKeyDown={handleKeyDown}
-    >
-      <DndContext
-        id="workspace-table-dnd"
-        collisionDetection={closestCenter}
-        modifiers={[restrictToHorizontalAxis]}
-        onDragEnd={handleColumnDragEnd}
-        sensors={sensors}
-      >
-        <div className="relative min-w-max" style={columnSizeVars}>
-          <Table disableScrollWrapper>
-            <TableHeader className="border-border bg-background sticky top-0 z-20 border-b shadow-sm [&_tr]:bg-background">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="bg-background">
-                  <SortableContext
-                    items={columnOrder}
-                    strategy={horizontalListSortingStrategy}
-                  >
-                    {headerGroup.headers.map((header) => (
-                      <DraggableTableHeader
-                        key={header.id}
-                        header={header}
-                        onSort={handleSort}
-                        sort={sort}
-                      />
-                    ))}
-                  </SortableContext>
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableSkeleton />
-              ) : (
-                <>
-                  {showLeadingRow && (
-                    <LeadingRow
-                      columns={table.getVisibleLeafColumns()}
-                      useSelectionMode={useSelectionMode}
-                      isFocused={focusedSpecialRow === "leading"}
-                      onClick={() => router.push(sharedBase)}
-                    />
-                  )}
-
-                  {showParentRow && (
-                    <ParentRow
-                      columns={table.getVisibleLeafColumns()}
-                      useSelectionMode={useSelectionMode}
-                      isFocused={focusedSpecialRow === "parent"}
-                      onClick={handleParentClick}
-                      label={parentRowLabel}
-                    />
-                  )}
-
-                  {items.length === 0 && !isLoading ? (
-                    <EmptyRow colSpan={table.getAllLeafColumns().length} />
-                  ) : (
-                    table.getRowModel().rows.map((row) => (
-                      <DataRow
-                        key={row.id}
-                        row={row}
-                        useSelectionMode={useSelectionMode}
-                        isSelected={selectedPathSet.has(
-                          normalizePath(row.original.path),
-                        )}
-                        onSelect={onSelect}
-                        onItemClick={handleItemClick}
-                        onItemDoubleClick={onItemDoubleClick}
-                        onOpenFileRequested={onOpenFileRequested}
-                      />
-                    ))
-                  )}
-                </>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </DndContext>
-    </div>
+      ariaLabel="Workspace items"
+      tabIndex={useSelectionMode ? 0 : undefined}
+    />
   );
 });

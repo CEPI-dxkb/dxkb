@@ -13,6 +13,7 @@ import {
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/containers/InfoPanel";
+import { DetailPanel } from "@/components/detail-panel";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
 interface WorkspaceShellProps {
@@ -87,14 +88,8 @@ export function WorkspaceShell({
     />
   ) : (
     <div className="flex h-full w-full flex-col overflow-hidden px-4 py-2">
-      <div className="flex items-center justify-between gap-2 border-b pb-2">
-        <h3 className="text-muted-foreground truncate text-sm font-semibold">
-          Nothing selected
-        </h3>
-      </div>
-      <div className="text-muted-foreground flex flex-1 items-center justify-center py-6 text-center text-sm">
-        Select an item to view details
-      </div>
+      <DetailPanel.Header title="Nothing selected" />
+      <DetailPanel.EmptyState message="Select an item to view details" />
     </div>
   );
 
@@ -137,7 +132,7 @@ export function WorkspaceShell({
         defaultSize={panelLayout[WORKSPACE_PANEL_IDS.details] ?? 25}
         minSize={110}
         maxSize={600}
-        className="flex min-h-0 flex-col overflow-hidden py-2"
+        className="flex min-h-0 flex-col overflow-hidden"
       >
         {detailsPanelContent}
       </ResizablePanel>

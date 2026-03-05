@@ -27,13 +27,13 @@ export function WithGenomePanel({
   const hasSelection = selectedRows.length > 0;
 
   return (
-    <div className="w-full px-[10px] mt-[10px]">
-      <div className="flex w-full h-full">
-        <div className={hasSelection ? "w-[80%]" : "w-full"}>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-[10px] mt-[10px]">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className={`min-h-0 flex-col overflow-hidden ${hasSelection ? "w-[80%]" : "w-full"}`}>
           {children({ activeTab, setActiveTab })}
         </div>
         {hasSelection && (
-          <div className="w-[20%] h-[85vh] overflow-auto p-2 bg-background text-foreground shadow-md">
+          <div className="w-[20%] min-h-0 flex-col overflow-hidden bg-background text-foreground shadow-md">
             <InfoPanel rows={selectedRows} activeTab={activeTab} />
           </div>
         )}

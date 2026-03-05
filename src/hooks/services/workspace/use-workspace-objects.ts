@@ -87,7 +87,7 @@ export function useWorkspaceObjects({
 
   const refresh = useCallback(async () => {
     await query.refetch();
-  }, [query.refetch]);
+  }, [query]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");

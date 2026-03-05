@@ -78,7 +78,9 @@ export function useWorkspaceObjects({
     staleTime: 5 * 60 * 1000,
   });
 
-  const allObjects = useMemo(() => query.data ?? [], [query.data]);
+  const { data, refetch } = query;
+
+  const allObjects = useMemo(() => data ?? [], [data]);
 
   // Local filtering function - no API calls
   const search = useCallback((q: string) => {
@@ -86,8 +88,8 @@ export function useWorkspaceObjects({
   }, []);
 
   const refresh = useCallback(async () => {
-    await query.refetch();
-  }, [query]);
+    await refetch();
+  }, [refetch]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");

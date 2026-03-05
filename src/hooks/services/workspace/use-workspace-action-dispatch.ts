@@ -86,6 +86,9 @@ export function useWorkspaceActionDispatch({
     },
   });
 
+  const { mutate: favoriteMutate } = favoriteMutation;
+  const { mutate: downloadMutate } = downloadMutation;
+
   const handleAction = useCallback(
     async (actionId: string, selection: WorkspaceBrowserItem[]) => {
       if (actionId === "delete") {
@@ -117,7 +120,7 @@ export function useWorkspaceActionDispatch({
         ) {
           return;
         }
-        favoriteMutation.mutate(single.path);
+        favoriteMutate(single.path);
         return;
       }
       if (actionId !== "download") return;
@@ -140,7 +143,7 @@ export function useWorkspaceActionDispatch({
       const singleFile =
         downloadable.length === 1 && !isFolderType(downloadable[0]?.type ?? "");
       if (singleFile) {
-        downloadMutation.mutate({ mappedPaths, downloadable });
+        downloadMutate({ mappedPaths, downloadable });
         return;
       }
       const single = downloadable.length === 1 ? downloadable[0] : null;
@@ -157,7 +160,7 @@ export function useWorkspaceActionDispatch({
 
       dispatch({ type: "OPEN_DOWNLOAD_OPTIONS", paths: mappedPaths, defaultName });
     },
-    [currentUser, myWorkspaceRoot, items, dispatch, favoriteMutation, downloadMutation],
+    [currentUser, myWorkspaceRoot, items, dispatch, favoriteMutate, downloadMutate],
   );
 
   return {

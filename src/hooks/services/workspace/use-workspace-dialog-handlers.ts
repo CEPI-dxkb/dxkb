@@ -79,9 +79,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
         deleteDirectories: true,
       });
     },
-    onMutate: () => {
-      dispatch({ type: "SET_LOADING", value: true });
-    },
     onSuccess: () => {
       clearSelection();
       dispatch({ type: "CLOSE" });
@@ -91,9 +88,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       const message =
         err instanceof Error ? err.message : "Failed to delete.";
       toast.error(message);
-    },
-    onSettled: () => {
-      dispatch({ type: "SET_LOADING", value: false });
     },
   });
 
@@ -113,9 +107,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
         move: isMove,
       });
       return { objects, isMove };
-    },
-    onMutate: () => {
-      dispatch({ type: "SET_LOADING", value: true });
     },
     onSuccess: ({ objects, isMove }, { firstDestName, destinationPath }) => {
       dispatch({ type: "CLOSE" });
@@ -168,27 +159,16 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
 
       toast.error(message, { description });
     },
-    onSettled: () => {
-      dispatch({ type: "SET_LOADING", value: false });
-    },
   });
 
   const createFolderMutation = useMutation({
-    mutationFn: async (folderName: string) => {
-      const name = folderName.trim();
-      if (!name) return;
-      const safeName = sanitizePathSegment(name);
-      if (!safeName) return;
+    mutationFn: async (safeName: string) => {
       const parent = currentDirectoryPath.replace(/\/+$/, "") || currentDirectoryPath;
       const newFolderPath = `${parent}/${safeName}`;
       await workspaceCrud.createFolderByPath(newFolderPath);
       return safeName;
     },
-    onMutate: () => {
-      dispatch({ type: "SET_LOADING", value: true });
-    },
     onSuccess: (safeName) => {
-      if (!safeName) return;
       dispatch({ type: "CLOSE" });
       clearSelection();
       invalidateWorkspaceQueries(queryClient);
@@ -199,26 +179,15 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
         err instanceof Error ? err.message : "Failed to create folder.";
       toast.error(message);
     },
-    onSettled: () => {
-      dispatch({ type: "SET_LOADING", value: false });
-    },
   });
 
   const createWorkspaceMutation = useMutation({
-    mutationFn: async (workspaceName: string) => {
-      const name = workspaceName.trim();
-      if (!name) return;
-      const safeName = sanitizePathSegment(name);
-      if (!safeName) return;
+    mutationFn: async (safeName: string) => {
       const fullPath = `/${username}/${safeName}/`;
       await workspaceCrud.createFolderByPath(fullPath);
       return safeName;
     },
-    onMutate: () => {
-      dispatch({ type: "SET_LOADING", value: true });
-    },
     onSuccess: (safeName) => {
-      if (!safeName) return;
       dispatch({ type: "CLOSE" });
       clearSelection();
       invalidateWorkspaceQueries(queryClient);
@@ -228,9 +197,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       const message =
         err instanceof Error ? err.message : "Failed to create workspace.";
       toast.error(message);
-    },
-    onSettled: () => {
-      dispatch({ type: "SET_LOADING", value: false });
     },
   });
 
@@ -245,9 +211,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
     }) => {
       await workspaceCrud.updateObjectType(path, newType);
     },
-    onMutate: () => {
-      dispatch({ type: "SET_LOADING", value: true });
-    },
     onSuccess: (_, { newType, itemName }) => {
       clearSelection();
       dispatch({ type: "CLOSE" });
@@ -260,9 +223,6 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       const message =
         err instanceof Error ? err.message : "Failed to update object type.";
       toast.error(message);
-    },
-    onSettled: () => {
-      dispatch({ type: "SET_LOADING", value: false });
     },
   });
 
@@ -337,11 +297,19 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
   };
 
   const handleCreateFolder = async (folderName: string) => {
-    createFolderMutation.mutate(folderName);
+    const name = folderName.trim();
+    if (!name) return;
+    const safeName = sanitizePathSegment(name);
+    if (!safeName) return;
+    createFolderMutation.mutate(safeName);
   };
 
   const handleCreateWorkspace = async (workspaceName: string) => {
-    createWorkspaceMutation.mutate(workspaceName);
+    const name = workspaceName.trim();
+    if (!name) return;
+    const safeName = sanitizePathSegment(name);
+    if (!safeName) return;
+    createWorkspaceMutation.mutate(safeName);
   };
 
   const handleEditTypeConfirm = async (newType: string) => {

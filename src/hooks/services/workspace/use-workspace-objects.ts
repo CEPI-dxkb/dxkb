@@ -87,7 +87,7 @@ export function useWorkspaceObjects({
 
   const refresh = useCallback(async () => {
     await query.refetch();
-  }, [query]);
+  }, [query.refetch]);
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
@@ -109,7 +109,7 @@ export function useWorkspaceObjects({
   return {
     objects: allObjects,
     filteredObjects,
-    loading: query.isLoading,
+    loading: query.isLoading || query.isRefetching,
     error: query.error?.message ?? null,
     searchQuery,
     setSearchQuery,

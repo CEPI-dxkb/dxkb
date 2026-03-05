@@ -23,7 +23,6 @@ export type ActiveDialog =
 
 export interface WorkspaceDialogState {
   activeDialog: ActiveDialog;
-  isLoading: boolean;
 }
 
 export type WorkspaceDialogAction =
@@ -36,12 +35,10 @@ export type WorkspaceDialogAction =
   | { type: "OPEN_UPLOAD" }
   | { type: "OPEN_DOWNLOAD_OPTIONS"; paths: string[]; defaultName: string }
   | { type: "OPEN_FILE_VIEWER_CONSTRUCTION" }
-  | { type: "SET_LOADING"; value: boolean }
   | { type: "CLOSE" };
 
 const initialState: WorkspaceDialogState = {
   activeDialog: null,
-  isLoading: false,
 };
 
 function dialogReducer(
@@ -50,26 +47,24 @@ function dialogReducer(
 ): WorkspaceDialogState {
   switch (action.type) {
     case "OPEN_DELETE":
-      return { activeDialog: { type: "delete", items: action.items, nonEmptyPaths: [] }, isLoading: false };
+      return { activeDialog: { type: "delete", items: action.items, nonEmptyPaths: [] } };
     case "SET_DELETE_NON_EMPTY_PATHS":
       if (state.activeDialog?.type !== "delete") return state;
       return { ...state, activeDialog: { ...state.activeDialog, nonEmptyPaths: action.paths } };
     case "OPEN_COPY":
-      return { activeDialog: { type: "copy", items: action.items, mode: action.mode }, isLoading: false };
+      return { activeDialog: { type: "copy", items: action.items, mode: action.mode } };
     case "OPEN_EDIT_TYPE":
-      return { activeDialog: { type: "editType", item: action.item }, isLoading: false };
+      return { activeDialog: { type: "editType", item: action.item } };
     case "OPEN_CREATE_FOLDER":
-      return { activeDialog: { type: "createFolder" }, isLoading: false };
+      return { activeDialog: { type: "createFolder" } };
     case "OPEN_CREATE_WORKSPACE":
-      return { activeDialog: { type: "createWorkspace" }, isLoading: false };
+      return { activeDialog: { type: "createWorkspace" } };
     case "OPEN_UPLOAD":
-      return { activeDialog: { type: "upload" }, isLoading: false };
+      return { activeDialog: { type: "upload" } };
     case "OPEN_DOWNLOAD_OPTIONS":
-      return { activeDialog: { type: "downloadOptions", paths: action.paths, defaultName: action.defaultName }, isLoading: false };
+      return { activeDialog: { type: "downloadOptions", paths: action.paths, defaultName: action.defaultName } };
     case "OPEN_FILE_VIEWER_CONSTRUCTION":
-      return { activeDialog: { type: "fileViewerConstruction" }, isLoading: false };
-    case "SET_LOADING":
-      return { ...state, isLoading: action.value };
+      return { activeDialog: { type: "fileViewerConstruction" } };
     case "CLOSE":
       return initialState;
     default:

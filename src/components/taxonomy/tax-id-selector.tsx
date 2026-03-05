@@ -76,7 +76,7 @@ export function TaxIDSelector({
   }, [searchQuery]);
 
   const { data: results = [], isLoading: loading, error: queryError } = useQuery<TaxonomyItem[], Error>({
-    queryKey: ["taxonomy-search-id", debouncedQuery, queryFilter],
+    queryKey: ["taxonomy-search-id", resolvedApiServiceUrl, debouncedQuery, queryFilter],
     queryFn: ({ signal }) => searchTaxonById(resolvedApiServiceUrl, debouncedQuery, queryFilter, signal),
     enabled: !!debouncedQuery.trim() && !disabled,
     staleTime: 5 * 60 * 1000,

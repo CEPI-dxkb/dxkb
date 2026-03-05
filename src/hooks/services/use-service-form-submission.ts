@@ -37,20 +37,20 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
 
   const submitMutation = useMutation({
     mutationFn: async (finalParams: Record<string, unknown>) => {
-      return submitServiceJob(serviceName, finalParams);
-    },
-    onSuccess: (result) => {
-      if (result.success) {
-        toast.success(`${formattedDisplayName} job submitted successfully!`, {
-          description: result.job?.[0]?.id
-            ? `Job ID: ${result.job[0].id}`
-            : "Job submitted successfully",
-          closeButton: true,
-        });
-        onSuccess?.();
-      } else {
+      const result = await submitServiceJob(serviceName, finalParams);
+      if (!result.success) {
         throw new Error(result.error || "Failed to submit job");
       }
+      return result;
+    },
+    onSuccess: (result) => {
+      toast.success(`${formattedDisplayName} job submitted successfully!`, {
+        description: result.job?.[0]?.id
+          ? `Job ID: ${result.job[0].id}`
+          : "Job submitted successfully",
+        closeButton: true,
+      });
+      onSuccess?.();
     },
     onError: (error) => {
       console.error(`Failed to submit ${formattedDisplayName} job:`, error);

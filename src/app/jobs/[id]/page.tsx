@@ -139,6 +139,7 @@ function JobDetailContent() {
       try {
         await killJobMutation.mutateAsync(jobId);
         toast.success("Job killed successfully");
+        handleRefresh();
       } catch (error) {
         toast.error("Failed to kill job");
         console.error("Failed to kill job:", error);

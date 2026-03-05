@@ -147,7 +147,6 @@ function JobsLoadingFallback() {
 function JobOutputSection({ jobId, expanded }: { jobId: string; expanded: boolean }) {
   const stdoutQuery = useJobOutput(jobId, "stdout", expanded);
   const stderrQuery = useJobOutput(jobId, "stderr", expanded);
-  const isLoading = stdoutQuery.isLoading || stderrQuery.isLoading;
 
   return (
     <>
@@ -157,7 +156,7 @@ function JobOutputSection({ jobId, expanded }: { jobId: string; expanded: boolea
           <AccordionContent className="accordion-content">
             <div className="bg-muted rounded-md p-3">
               <pre className="text-foreground text-xs whitespace-pre-wrap">
-                {isLoading
+                {stdoutQuery.isLoading
                   ? "Loading..."
                   : stdoutQuery.data || "No output available"}
               </pre>
@@ -172,7 +171,7 @@ function JobOutputSection({ jobId, expanded }: { jobId: string; expanded: boolea
           <AccordionContent>
             <div className="bg-muted rounded-md p-3">
               <pre className="text-foreground text-xs whitespace-pre-wrap">
-                {isLoading
+                {stderrQuery.isLoading
                   ? "Loading..."
                   : stderrQuery.data || "No output available"}
               </pre>

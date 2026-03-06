@@ -1,16 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { useForm, useStore } from "@tanstack/react-form";
+import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -81,12 +73,6 @@ const video =
 export type { SimilarGenomeFinderResultRow } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-result-utils";
 
 export default function SimilarGenomeFinderServicePage() {
-  const form = useForm<SimilarGenomeFinderFormData>({
-    resolver: zodResolver(similarGenomeFinderFormSchema),
-    defaultValues: DEFAULT_SIMILAR_GENOME_FINDER_FORM_VALUES,
-    mode: "onChange",
-  });
-
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [results, setResults] = useState<SimilarGenomeFinderResultRow[]>([]);
 
@@ -130,6 +116,16 @@ export default function SimilarGenomeFinderServicePage() {
     },
   });
 
+  const form = useForm({
+    defaultValues: DEFAULT_SIMILAR_GENOME_FINDER_FORM_VALUES as SimilarGenomeFinderFormData,
+    validators: { onChange: similarGenomeFinderFormSchema },
+    onSubmit: async ({ value }) => {
+      await handleSubmit(value as SimilarGenomeFinderFormData);
+    },
+  });
+
+  const canSubmit = useStore(form.store, (s) => s.canSubmit);
+
   const handleReset = () => {
     form.reset(DEFAULT_SIMILAR_GENOME_FINDER_FORM_VALUES);
     setShowAdvanced(false);
@@ -148,342 +144,309 @@ export default function SimilarGenomeFinderServicePage() {
         instructionalVideo={video}
       />
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="grid grid-cols-1 gap-6 md:grid-cols-12"
-        >
-          {/* Select a Genome */}
-          <div className="md:col-span-12">
-            <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
-                  Select a Genome
-                  <DialogInfoPopup
-                    title={similarGenomeFinderSelectGenome.title}
-                    description={similarGenomeFinderSelectGenome.description}
-                    sections={similarGenomeFinderSelectGenome.sections}
-                  />
-                </RequiredFormCardTitle>
-              </CardHeader>
-              <CardContent className="service-card-content space-y-6">
-                <FormField
-                  control={form.control}
-                  name="selectedGenomeId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="service-card-label">
-                        Search by Genome Name or Genome ID
-                      </FormLabel>
-                      <FormControl>
-                        <SingleGenomeSelector
-                          placeholder="e.g. Mycobacterium tuberculosis H37Rv"
-                          value={field.value ?? ""}
-                          onChange={(value) => {
-                            field.onChange(value);
-                            if (value?.trim()) {
-                              form.setValue("fasta_file", "", {
-                                shouldValidate: true,
-                              });
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className="grid grid-cols-1 gap-6 md:grid-cols-12"
+      >
+        {/* Select a Genome */}
+        <div className="md:col-span-12">
+          <Card>
+            <CardHeader className="service-card-header">
+              <RequiredFormCardTitle className="service-card-title">
+                Select a Genome
+                <DialogInfoPopup
+                  title={similarGenomeFinderSelectGenome.title}
+                  description={similarGenomeFinderSelectGenome.description}
+                  sections={similarGenomeFinderSelectGenome.sections}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="fasta_file"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="service-card-label">
-                        Or Upload FASTA/FASTQ
-                      </FormLabel>
-                      <FormControl>
-                        <WorkspaceObjectSelector
-                          types={["contigs", "reads"]}
-                          placeholder="Select a FASTA/FASTQ file..."
-                          value={field.value ?? ""}
-                          onObjectSelect={(object: WorkspaceObject) => {
-                            field.onChange(object.path);
-                            form.setValue("selectedGenomeId", "", {
-                              shouldValidate: true,
-                            });
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Collapsible
-                  open={showAdvanced}
-                  onOpenChange={setShowAdvanced}
-                  className="service-collapsible-container"
-                >
-                  <CollapsibleTrigger className="service-collapsible-trigger">
-                    Advanced Options
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
+              </RequiredFormCardTitle>
+            </CardHeader>
+            <CardContent className="service-card-content space-y-6">
+              <form.Field name="selectedGenomeId">
+                {(field) => (
+                  <FieldItem>
+                    <FieldLabel field={field} className="service-card-label">
+                      Search by Genome Name or Genome ID
+                    </FieldLabel>
+                    <SingleGenomeSelector
+                      placeholder="e.g. Mycobacterium tuberculosis H37Rv"
+                      value={field.state.value ?? ""}
+                      onChange={(value) => {
+                        field.handleChange(value);
+                        if (value?.trim()) {
+                          form.setFieldValue("fasta_file", "");
+                        }
+                      }}
                     />
-                  </CollapsibleTrigger>
+                    <FieldErrors field={field} />
+                  </FieldItem>
+                )}
+              </form.Field>
 
-                  <CollapsibleContent className="service-collapsible-content">
-                    <div className="flex w-full flex-col justify-between space-y-4">
-                      <div className="flex items-center">
-                        <Label className="service-card-label">Parameters</Label>
-                        <DialogInfoPopup
-                          title={similarGenomeFinderAdvancedParameters.title}
-                          description={
-                            similarGenomeFinderAdvancedParameters.description
-                          }
-                          sections={
-                            similarGenomeFinderAdvancedParameters.sections
-                          }
-                          className="mb-2 ml-2"
-                        />
-                      </div>
+              <form.Field name="fasta_file">
+                {(field) => (
+                  <FieldItem>
+                    <FieldLabel field={field} className="service-card-label">
+                      Or Upload FASTA/FASTQ
+                    </FieldLabel>
+                    <WorkspaceObjectSelector
+                      types={["contigs", "reads"]}
+                      placeholder="Select a FASTA/FASTQ file..."
+                      value={field.state.value ?? ""}
+                      onObjectSelect={(object: WorkspaceObject) => {
+                        field.handleChange(object.path);
+                        form.setFieldValue("selectedGenomeId", "");
+                      }}
+                    />
+                    <FieldErrors field={field} />
+                  </FieldItem>
+                )}
+              </form.Field>
 
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                        <FormField
-                          control={form.control}
-                          name="max_hits"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="service-card-sublabel">
-                                Max Hits
-                              </FormLabel>
-                              <FormControl>
-                                <Select
-                                  items={maxHitsOptions}
-                                  value={(field.value ?? 10).toString()}
-                                  onValueChange={(value) =>
-                                    value != null &&
-                                    field.onChange(parseInt(value, 10))
-                                  }
-                                >
-                                  <SelectTrigger className="service-card-select-trigger">
-                                    <SelectValue placeholder="Select max hits" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectGroup>
-                                      {maxHitsOptions.map((o) => (
-                                        <SelectItem
-                                          key={o.value}
-                                          value={String(o.value)}
-                                        >
-                                          {o.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectGroup>
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+              <Collapsible
+                open={showAdvanced}
+                onOpenChange={setShowAdvanced}
+                className="service-collapsible-container"
+              >
+                <CollapsibleTrigger className="service-collapsible-trigger">
+                  Advanced Options
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
+                  />
+                </CollapsibleTrigger>
 
-                        <FormField
-                          control={form.control}
-                          name="max_pvalue"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="service-card-sublabel">
-                                P-Value Threshold
-                              </FormLabel>
-                              <FormControl>
-                                <Select
-                                  items={pValueOptions}
-                                  value={field.value?.toString() ?? "1"}
-                                  onValueChange={(value) =>
-                                    value != null &&
-                                    field.onChange(parseFloat(value))
-                                  }
-                                >
-                                  <SelectTrigger className="service-card-select-trigger">
-                                    <SelectValue placeholder="Select P-value" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectGroup>
-                                      {pValueOptions.map((o) => (
-                                        <SelectItem
-                                          key={o.value}
-                                          value={String(o.value)}
-                                        >
-                                          {o.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectGroup>
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                <CollapsibleContent className="service-collapsible-content">
+                  <div className="flex w-full flex-col justify-between space-y-4">
+                    <div className="flex items-center">
+                      <Label className="service-card-label">Parameters</Label>
+                      <DialogInfoPopup
+                        title={similarGenomeFinderAdvancedParameters.title}
+                        description={
+                          similarGenomeFinderAdvancedParameters.description
+                        }
+                        sections={
+                          similarGenomeFinderAdvancedParameters.sections
+                        }
+                        className="mb-2 ml-2"
+                      />
+                    </div>
 
-                        <FormField
-                          control={form.control}
-                          name="max_distance"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="service-card-sublabel">
-                                Distance
-                              </FormLabel>
-                              <FormControl>
-                                <Select
-                                  items={distanceOptions}
-                                  value={field.value?.toString() ?? "1"}
-                                  onValueChange={(value) =>
-                                    value != null &&
-                                    field.onChange(parseFloat(value))
-                                  }
-                                >
-                                  <SelectTrigger className="service-card-select-trigger">
-                                    <SelectValue placeholder="Select distance" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectGroup>
-                                      {distanceOptions.map((o) => (
-                                        <SelectItem
-                                          key={o.value}
-                                          value={String(o.value)}
-                                        >
-                                          {o.label}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectGroup>
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                          <div className="flex flex-col gap-2">
-                            <Label className="service-card-label">
-                              Organism Type
-                            </Label>
-
-                            <FormField
-                              control={form.control}
-                              name="include_bacterial"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-y-0 space-x-2">
-                                  <FormControl>
-                                    <Checkbox
-                                      id="include_bacterial"
-                                      name="include_bacterial"
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal">
-                                    Bacterial and Archaeal Genomes
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-
-                            <FormField
-                              control={form.control}
-                              name="include_viral"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-row items-center space-y-0 space-x-2">
-                                  <FormControl>
-                                    <Checkbox
-                                      id="include_viral"
-                                      name="include_viral"
-                                      checked={field.value}
-                                      onCheckedChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="text-sm font-normal">
-                                    Viral Genomes
-                                  </FormLabel>
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-
-                          <div className="flex flex-col gap-2">
-                            <Label className="service-card-label">Scope</Label>
-
-                            <FormField
-                              control={form.control}
-                              name="scope"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <RadioGroup
-                                      value={field.value}
-                                      onValueChange={field.onChange}
-                                      className="grid w-full gap-2"
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <form.Field name="max_hits">
+                        {(field) => (
+                          <FieldItem>
+                            <FieldLabel field={field} className="service-card-sublabel">
+                              Max Hits
+                            </FieldLabel>
+                            <Select
+                              items={maxHitsOptions}
+                              value={(field.state.value ?? 10).toString()}
+                              onValueChange={(value) =>
+                                value != null &&
+                                field.handleChange(parseInt(value, 10))
+                              }
+                            >
+                              <SelectTrigger className="service-card-select-trigger">
+                                <SelectValue placeholder="Select max hits" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {maxHitsOptions.map((o) => (
+                                    <SelectItem
+                                      key={o.value}
+                                      value={String(o.value)}
                                     >
-                                      <div className="flex items-center gap-3">
-                                        <RadioGroupItem
-                                          value="reference"
-                                          id="reference"
-                                        />
-                                        <FormLabel
-                                          htmlFor="reference"
-                                          className="text-sm font-normal"
-                                        >
-                                          Reference and Representative Genomes
-                                        </FormLabel>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <RadioGroupItem value="all" id="all" />
-                                        <FormLabel
-                                          htmlFor="all"
-                                          className="text-sm font-normal"
-                                        >
-                                          All Public Genomes
-                                        </FormLabel>
-                                      </div>
-                                    </RadioGroup>
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                            <FieldErrors field={field} />
+                          </FieldItem>
+                        )}
+                      </form.Field>
+
+                      <form.Field name="max_pvalue">
+                        {(field) => (
+                          <FieldItem>
+                            <FieldLabel field={field} className="service-card-sublabel">
+                              P-Value Threshold
+                            </FieldLabel>
+                            <Select
+                              items={pValueOptions}
+                              value={field.state.value?.toString() ?? "1"}
+                              onValueChange={(value) =>
+                                value != null &&
+                                field.handleChange(parseFloat(value))
+                              }
+                            >
+                              <SelectTrigger className="service-card-select-trigger">
+                                <SelectValue placeholder="Select P-value" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {pValueOptions.map((o) => (
+                                    <SelectItem
+                                      key={o.value}
+                                      value={String(o.value)}
+                                    >
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                            <FieldErrors field={field} />
+                          </FieldItem>
+                        )}
+                      </form.Field>
+
+                      <form.Field name="max_distance">
+                        {(field) => (
+                          <FieldItem>
+                            <FieldLabel field={field} className="service-card-sublabel">
+                              Distance
+                            </FieldLabel>
+                            <Select
+                              items={distanceOptions}
+                              value={field.state.value?.toString() ?? "1"}
+                              onValueChange={(value) =>
+                                value != null &&
+                                field.handleChange(parseFloat(value))
+                              }
+                            >
+                              <SelectTrigger className="service-card-select-trigger">
+                                <SelectValue placeholder="Select distance" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectGroup>
+                                  {distanceOptions.map((o) => (
+                                    <SelectItem
+                                      key={o.value}
+                                      value={String(o.value)}
+                                    >
+                                      {o.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                            <FieldErrors field={field} />
+                          </FieldItem>
+                        )}
+                      </form.Field>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div className="flex flex-col gap-2">
+                          <Label className="service-card-label">
+                            Organism Type
+                          </Label>
+
+                          <form.Field name="include_bacterial">
+                            {(field) => (
+                              <FieldItem className="flex flex-row items-center space-y-0 space-x-2">
+                                <Checkbox
+                                  id="include_bacterial"
+                                  name="include_bacterial"
+                                  checked={field.state.value}
+                                  onCheckedChange={(checked) => field.handleChange(checked)}
+                                />
+                                <Label htmlFor="include_bacterial" className="text-sm font-normal">
+                                  Bacterial and Archaeal Genomes
+                                </Label>
+                                <FieldErrors field={field} />
+                              </FieldItem>
+                            )}
+                          </form.Field>
+
+                          <form.Field name="include_viral">
+                            {(field) => (
+                              <FieldItem className="flex flex-row items-center space-y-0 space-x-2">
+                                <Checkbox
+                                  id="include_viral"
+                                  name="include_viral"
+                                  checked={field.state.value}
+                                  onCheckedChange={(checked) => field.handleChange(checked)}
+                                />
+                                <Label htmlFor="include_viral" className="text-sm font-normal">
+                                  Viral Genomes
+                                </Label>
+                                <FieldErrors field={field} />
+                              </FieldItem>
+                            )}
+                          </form.Field>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <Label className="service-card-label">Scope</Label>
+
+                          <form.Field name="scope">
+                            {(field) => (
+                              <FieldItem>
+                                <RadioGroup
+                                  value={field.state.value}
+                                  onValueChange={(value) => field.handleChange(value)}
+                                  className="grid w-full gap-2"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <RadioGroupItem
+                                      value="reference"
+                                      id="reference"
+                                    />
+                                    <Label
+                                      htmlFor="reference"
+                                      className="text-sm font-normal"
+                                    >
+                                      Reference and Representative Genomes
+                                    </Label>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <RadioGroupItem value="all" id="all" />
+                                    <Label
+                                      htmlFor="all"
+                                      className="text-sm font-normal"
+                                    >
+                                      All Public Genomes
+                                    </Label>
+                                  </div>
+                                </RadioGroup>
+                                <FieldErrors field={field} />
+                              </FieldItem>
+                            )}
+                          </form.Field>
                         </div>
                       </div>
                     </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </CardContent>
-            </Card>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardContent>
+          </Card>
 
-            {/* Form controls */}
-            <div className="md:col-span-12">
-              <div className="service-form-controls">
-                <Button type="button" variant="outline" onClick={handleReset}>
-                  Reset
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !form.formState.isValid}
-                >
-                  {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                  <Search className="mr-2 h-4 w-4" />
-                  Search
-                </Button>
-              </div>
+          {/* Form controls */}
+          <div className="md:col-span-12">
+            <div className="service-form-controls">
+              <Button type="button" variant="outline" onClick={handleReset}>
+                Reset
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !canSubmit}
+              >
+                {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+                <Search className="mr-2 h-4 w-4" />
+                Search
+              </Button>
             </div>
           </div>
-        </form>
-      </Form>
+        </div>
+      </form>
 
       {/* Results (DataTable) */}
       <div className="mt-8">

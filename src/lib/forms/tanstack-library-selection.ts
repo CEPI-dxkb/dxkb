@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from "react";
-import type { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import type { AnyFormApi } from "@tanstack/react-form";
 import type { Library } from "@/types/services";
 
 export interface BaseLibraryItem {
@@ -13,23 +13,6 @@ export interface BaseLibraryItem {
 export interface BuildLibraryResult {
   library?: Library;
   error?: string;
-}
-
-export interface UseLibrarySelectionConfig<
-  TFormValues extends FieldValues,
-  LibraryItem,
-  SrrItem
-> {
-  form: UseFormReturn<TFormValues>;
-  mapLibraryToItem: (library: Library) => LibraryItem;
-  mapSraLibraryToItem?: (library: Library) => SrrItem;
-  fields: {
-    paired: Path<TFormValues>;
-    single: Path<TFormValues>;
-    srr: Path<TFormValues>;
-  };
-  triggerFields?: Array<Path<TFormValues>>;
-  normalizeLibraries?: (nextLibraries: Library[], previousLibraries: Library[]) => Library[];
 }
 
 export interface AddPairedLibraryOptions {
@@ -86,10 +69,6 @@ export function getSingleLibraryName(read: string): string {
   return `S(${read.split("/").pop()})`;
 }
 
-/**
- * Find newly added SRA libraries by comparing next state against previous state.
- * Used to identify which SRA entries need sample ID assignment and trigger side effects.
- */
 export function findNewSraLibraries(
   nextLibs: Library[],
   prevLibs: Library[],
@@ -102,23 +81,33 @@ export function findNewSraLibraries(
   );
 }
 
-export function useLibrarySelection<
-  TFormValues extends FieldValues,
+export interface UseTanstackLibrarySelectionConfig<
+  LibraryItem,
+  SrrItem
+> {
+  form: AnyFormApi;
+  mapLibraryToItem: (library: Library) => LibraryItem;
+  mapSraLibraryToItem?: (library: Library) => SrrItem;
+  fields: {
+    paired: string;
+    single: string;
+    srr: string;
+  };
+  normalizeLibraries?: (nextLibraries: Library[], previousLibraries: Library[]) => Library[];
+}
+
+export function useTanstackLibrarySelection<
   LibraryItem,
   SrrItem = string
->(config: UseLibrarySelectionConfig<TFormValues, LibraryItem, SrrItem>) {
+>(config: UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem>) {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
-  // Track if we need to sync to form (skip initial mount)
   const shouldSyncRef = useRef(false);
-  // Store config in ref to avoid effect dependency issues
   const configRef = useRef(config);
   useEffect(() => {
     configRef.current = config;
   }, [config]);
 
-  // Sync libraries to form in an effect to avoid setState during render
   useEffect(() => {
-    // Skip initial mount - only sync after state updates
     if (!shouldSyncRef.current) {
       shouldSyncRef.current = true;
       return;
@@ -143,23 +132,9 @@ export function useLibrarySelection<
       }
     });
 
-    currentConfig.form.setValue(currentConfig.fields.paired as never, pairedLibs as never, {
-      shouldValidate: false,
-    });
-    currentConfig.form.setValue(currentConfig.fields.single as never, singleLibs as never, {
-      shouldValidate: false,
-    });
-    currentConfig.form.setValue(currentConfig.fields.srr as never, srrItems as never, {
-      shouldValidate: false,
-    });
-
-    currentConfig.form.trigger(
-      (currentConfig.triggerFields ?? [
-        currentConfig.fields.paired,
-        currentConfig.fields.single,
-        currentConfig.fields.srr,
-      ]) as never
-    );
+    currentConfig.form.setFieldValue(currentConfig.fields.paired, pairedLibs);
+    currentConfig.form.setFieldValue(currentConfig.fields.single, singleLibs);
+    currentConfig.form.setFieldValue(currentConfig.fields.srr, srrItems);
   }, [selectedLibraries]);
 
   const syncLibrariesToForm = useCallback(
@@ -182,23 +157,9 @@ export function useLibrarySelection<
         }
       });
 
-      config.form.setValue(config.fields.paired as never, pairedLibs as never, {
-        shouldValidate: false,
-      });
-      config.form.setValue(config.fields.single as never, singleLibs as never, {
-        shouldValidate: false,
-      });
-      config.form.setValue(config.fields.srr as never, srrItems as never, {
-        shouldValidate: false,
-      });
-
-      config.form.trigger(
-        (config.triggerFields ?? [
-          config.fields.paired,
-          config.fields.single,
-          config.fields.srr,
-        ]) as never
-      );
+      config.form.setFieldValue(config.fields.paired, pairedLibs);
+      config.form.setFieldValue(config.fields.single, singleLibs);
+      config.form.setFieldValue(config.fields.srr, srrItems);
     },
     [config]
   );

@@ -15,7 +15,7 @@ export function RequiredFormCardTitle({
   );
 }
 
-import { FormLabel } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { ServiceInfoPopup } from "@/types/services";
 
@@ -32,9 +32,9 @@ export function RequiredFormLabelInfo({
 }: RequiredFormLabelInfoProps) {
   return (
     <div className="flex flex-row items-center gap-1">
-      <FormLabel className={`service-card-label !mb-0 ${className}`}>
+      <Label className={`service-card-label !mb-0 ${className}`}>
         {label}
-      </FormLabel>
+      </Label>
       <DialogInfoPopup
         title={infoPopup.title}
         description={infoPopup.description}
@@ -53,9 +53,9 @@ export function RequiredFormLabel({
   children: React.ReactNode;
 }) {
   return (
-    <FormLabel className={`gap-1 ${className}`}>
+    <Label className={`gap-1 ${className}`}>
       {children}
       <span className="gap-1 text-red-500">*</span>
-    </FormLabel>
+    </Label>
   );
 }

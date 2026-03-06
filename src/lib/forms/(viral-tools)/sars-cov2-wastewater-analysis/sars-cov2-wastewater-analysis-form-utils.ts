@@ -1,9 +1,9 @@
 import type { SarsCov2WastewaterAnalysisFormData } from "./sars-cov2-wastewater-analysis-form-schema";
-import type { BuildLibraryResult } from "@/lib/forms/shared-library-selection";
+import type { BuildLibraryResult } from "@/lib/forms/tanstack-library-selection";
 import {
   getPairedLibraryName,
   getSingleLibraryName,
-} from "@/lib/forms/shared-library-selection";
+} from "@/lib/forms/tanstack-library-selection";
 import type { Library } from "@/types/services";
 
 /** Toast-like interface for library error reporting (avoids coupling to sonner in utils) */
@@ -100,7 +100,7 @@ export function singleLibraryDuplicateMatcher(library: Library, read: string): b
   return library.id === read && library.type === "single";
 }
 
-export { findNewSraLibraries } from "@/lib/forms/shared-library-selection";
+export { findNewSraLibraries } from "@/lib/forms/tanstack-library-selection";
 
 /**
  * Resolve sample ID and optional sample date from current form state, with optional fallback path for default sample ID.

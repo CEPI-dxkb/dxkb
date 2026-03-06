@@ -1,15 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
+import { useForm, useStore } from "@tanstack/react-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
 import {
   Card,
@@ -75,12 +68,6 @@ export default function VariationAnalysisPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
-  const form = useForm<VariationAnalysisFormData>({
-    resolver: zodResolver(variationAnalysisFormSchema),
-    defaultValues: DEFAULT_VARIATION_ANALYSIS_FORM_VALUES,
-    mode: "onChange",
-  });
-
   // Setup service debugging and form submission
   const {
     handleSubmit,
@@ -140,6 +127,14 @@ export default function VariationAnalysisPage() {
     },
   });
 
+  const form = useForm({
+    defaultValues: DEFAULT_VARIATION_ANALYSIS_FORM_VALUES,
+    validators: { onChange: variationAnalysisFormSchema },
+    onSubmit: async ({ value }) => {
+      await handleSubmit(value as VariationAnalysisFormData);
+    },
+  });
+
   const handleReset = () => {
     form.reset(DEFAULT_VARIATION_ANALYSIS_FORM_VALUES);
     setSelectedLibraries([]);
@@ -182,13 +177,9 @@ export default function VariationAnalysisPage() {
       }
     });
 
-    form.setValue("paired_end_libs", pairedLibs, { shouldValidate: true });
-    form.setValue("single_end_libs", singleLibs, { shouldValidate: true });
-    form.setValue("srr_ids", srrIds, { shouldValidate: true });
-    // Trigger full form validation to check refine rules
-    setTimeout(() => {
-      form.trigger();
-    }, 0);
+    form.setFieldValue("paired_end_libs", pairedLibs);
+    form.setFieldValue("single_end_libs", singleLibs);
+    form.setFieldValue("srr_ids", srrIds);
   };
 
   const handlePairedLibraryAdd = () => {
@@ -245,6 +236,9 @@ export default function VariationAnalysisPage() {
     syncLibrariesToForm(newLibraries);
   };
 
+  const outputPath = useStore(form.store, (s) => s.values.output_path);
+  const canSubmit = useStore(form.store, (s) => s.canSubmit);
+
   return (
     <section>
       <ServiceHeader
@@ -256,287 +250,104 @@ export default function VariationAnalysisPage() {
         tutorial="https://www.bv-brc.org/docs/tutorial/variation_analysis/variation_analysis.html"
       />
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="grid grid-cols-1 gap-6 md:grid-cols-12"
-        >
-          {/* Left Column */}
-          <div className="space-y-6 md:col-span-7">
-            {/* Input Files Card */}
-            <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
-                  Input File
-                  <DialogInfoPopup
-                    title={readInputFileInfo.title}
-                    description={readInputFileInfo.description}
-                    sections={readInputFileInfo.sections}
-                  />
-                </RequiredFormCardTitle>
-              </CardHeader>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className="grid grid-cols-1 gap-6 md:grid-cols-12"
+      >
+        {/* Left Column */}
+        <div className="space-y-6 md:col-span-7">
+          {/* Input Files Card */}
+          <Card>
+            <CardHeader className="service-card-header">
+              <RequiredFormCardTitle className="service-card-title">
+                Input File
+                <DialogInfoPopup
+                  title={readInputFileInfo.title}
+                  description={readInputFileInfo.description}
+                  sections={readInputFileInfo.sections}
+                />
+              </RequiredFormCardTitle>
+            </CardHeader>
 
-              <CardContent className="service-card-content space-y-6">
-                {/* Paired Read Library */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="service-card-label">Paired Read Library</Label>
-                    <div className="bg-border mx-4 h-[1px] flex-1" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handlePairedLibraryAdd}
-                      disabled={!pairedRead1 || !pairedRead2}
-                    >
-                      <ChevronRight size={16} />
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    <div>
-                      <WorkspaceObjectSelector
-                        types={["reads"]}
-                        placeholder="Select READ FILE 1..."
-                        onObjectSelect={(object: WorkspaceObject) => {
-                          setPairedRead1(object.path);
-                        }}
-                      />
-                    </div>
+            <CardContent className="service-card-content space-y-6">
+              {/* Paired Read Library */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="service-card-label">Paired Read Library</Label>
+                  <div className="bg-border mx-4 h-[1px] flex-1" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePairedLibraryAdd}
+                    disabled={!pairedRead1 || !pairedRead2}
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  <div>
                     <WorkspaceObjectSelector
                       types={["reads"]}
-                      placeholder="Select READ FILE 2..."
+                      placeholder="Select READ FILE 1..."
                       onObjectSelect={(object: WorkspaceObject) => {
-                        setPairedRead2(object.path);
+                        setPairedRead1(object.path);
                       }}
                     />
                   </div>
-                </div>
-
-                {/* Single Read Library */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="service-card-label">Single Read Library</Label>
-                    <div className="bg-border mx-4 h-[1px] flex-1" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handleSingleLibraryAdd}
-                      disabled={!singleRead}
-                    >
-                      <ChevronRight size={16} />
-                    </Button>
-                  </div>
                   <WorkspaceObjectSelector
                     types={["reads"]}
-                    placeholder="Select READ FILE..."
+                    placeholder="Select READ FILE 2..."
                     onObjectSelect={(object: WorkspaceObject) => {
-                      setSingleRead(object.path);
+                      setPairedRead2(object.path);
                     }}
                   />
                 </div>
+              </div>
 
-                {/* SRA Run Accession */}
-                <SraRunAccessionWithValidation
-                  title="SRA Run Accession"
-                  placeholder="SRR..."
-                  selectedLibraries={selectedLibraries}
-                  setSelectedLibraries={(libs) => {
-                    setSelectedLibraries(libs);
-                    syncLibrariesToForm(libs);
-                  }}
-                  allowDuplicates={false}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Selected Libraries (mobile) */}
-            <div className="md:hidden">
-              <Card className="h-full">
-                <CardHeader className="service-card-header">
-                  <CardTitle className="service-card-title">
-                    Selected Libraries
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <HelpCircle className="service-card-tooltip-icon" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Files selected for analysis</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </CardTitle>
-                  <CardDescription>
-                    Place read files here using the arrow buttons.
-                  </CardDescription>
-                </CardHeader>
-
-                <CardContent className="service-card-content">
-                  <SelectedItemsTable
-                    items={selectedLibraries.map((library) => ({
-                      id: library.id,
-                      name: library.name,
-                      type: library.type,
-                    }))}
-                    onRemove={handleRemoveLibrary}
-                    className="max-h-84 overflow-y-auto"
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Parameters Card */}
-            <Card>
-              <CardHeader className="service-card-header">
-                <CardTitle className="service-card-title">
-                  Parameters
-                  <DialogInfoPopup
-                    title={variationAnalysisParameters.title}
-                    description={variationAnalysisParameters.description}
-                    sections={variationAnalysisParameters.sections}
-                  />
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="service-card-content">
-                <div className="space-y-6">
-                  {/* Target Genome */}
-                  <FormField
-                    control={form.control}
-                    name="reference_genome_id"
-                    render={({ field }) => (
-                      <FormItem>
-                        <RequiredFormLabel>Target Genome</RequiredFormLabel>
-                        <FormControl>
-                          <SingleGenomeSelector
-                            value={field.value ?? ""}
-                            onChange={(genomeId) => {
-                              field.onChange(genomeId);
-                              // Trigger validation after genome is selected
-                              setTimeout(() => {
-                                form.trigger("reference_genome_id");
-                                // Also trigger full form validation for refine rules
-                                form.trigger();
-                              }, 0);
-                            }}
-                            placeholder="e.g. Mycobacterium tuberculosis H37Rv"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Aligner */}
-                  <FormField
-                    control={form.control}
-                    name="mapper"
-                    render={({ field }) => (
-                      <FormItem>
-                        <RequiredFormLabel>Aligner</RequiredFormLabel>
-                        <FormControl>
-                          <Select
-                            items={variationAnalysisMappers}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger className="service-card-select-trigger">
-                              <SelectValue placeholder="Select aligner" />
-                            </SelectTrigger>
-                            <SelectContent className="service-card-select-content">
-                              <SelectGroup>
-                                {variationAnalysisMappers.map((mapper) => (
-                                  <SelectItem key={mapper.value} value={mapper.value}>
-                                    {mapper.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* SNP Caller */}
-                  <FormField
-                    control={form.control}
-                    name="caller"
-                    render={({ field }) => (
-                      <FormItem>
-                        <RequiredFormLabel>SNP Caller</RequiredFormLabel>
-                        <FormControl>
-                          <Select
-                            items={variationAnalysisCallers}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger className="service-card-select-trigger">
-                              <SelectValue placeholder="Select SNP caller" />
-                            </SelectTrigger>
-                            <SelectContent className="service-card-select-content">
-                              <SelectGroup>
-                                {variationAnalysisCallers.map((caller) => (
-                                  <SelectItem key={caller.value} value={caller.value}>
-                                    {caller.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Output Folder */}
-                  <FormField
-                    control={form.control}
-                    name="output_path"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <OutputFolder
-                            required={true}
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Output Name */}
-                  <FormField
-                    control={form.control}
-                    name="output_file"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <OutputFolder
-                            variant="name"
-                            required={true}
-                            value={field.value}
-                            onChange={field.onChange}
-                            outputFolderPath={form.watch("output_path")}
-                            onValidationChange={setIsOutputNameValid}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              {/* Single Read Library */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="service-card-label">Single Read Library</Label>
+                  <div className="bg-border mx-4 h-[1px] flex-1" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSingleLibraryAdd}
+                    disabled={!singleRead}
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+                <WorkspaceObjectSelector
+                  types={["reads"]}
+                  placeholder="Select READ FILE..."
+                  onObjectSelect={(object: WorkspaceObject) => {
+                    setSingleRead(object.path);
+                  }}
+                />
+              </div>
 
-          {/* Right Column - Selected Libraries (desktop) */}
-          <div className="hidden md:block md:col-span-5">
+              {/* SRA Run Accession */}
+              <SraRunAccessionWithValidation
+                title="SRA Run Accession"
+                placeholder="SRR..."
+                selectedLibraries={selectedLibraries}
+                setSelectedLibraries={(libs) => {
+                  setSelectedLibraries(libs);
+                  syncLibrariesToForm(libs);
+                }}
+                allowDuplicates={false}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Selected Libraries (mobile) */}
+          <div className="md:hidden">
             <Card className="h-full">
               <CardHeader className="service-card-header">
                 <CardTitle className="service-card-title">
@@ -571,25 +382,183 @@ export default function VariationAnalysisPage() {
             </Card>
           </div>
 
-          {/* Form Controls */}
-          <div className="service-form-controls md:col-span-12">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                className="service-form-controls-button"
-              >
-                Reset
-              </Button>
-              <Button type="submit" disabled={isSubmitting || !form.formState.isValid || !isOutputNameValid}>
-                {isSubmitting ? <Spinner /> : null}
-                Submit
-              </Button>
-            </div>
+          {/* Parameters Card */}
+          <Card>
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">
+                Parameters
+                <DialogInfoPopup
+                  title={variationAnalysisParameters.title}
+                  description={variationAnalysisParameters.description}
+                  sections={variationAnalysisParameters.sections}
+                />
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent className="service-card-content">
+              <div className="space-y-6">
+                {/* Target Genome */}
+                <form.Field name="reference_genome_id">
+                  {(field) => (
+                    <FieldItem>
+                      <RequiredFormLabel>Target Genome</RequiredFormLabel>
+                      <SingleGenomeSelector
+                        value={field.state.value ?? ""}
+                        onChange={(genomeId) => {
+                          field.handleChange(genomeId);
+                        }}
+                        placeholder="e.g. Mycobacterium tuberculosis H37Rv"
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+
+                {/* Aligner */}
+                <form.Field name="mapper">
+                  {(field) => (
+                    <FieldItem>
+                      <RequiredFormLabel>Aligner</RequiredFormLabel>
+                      <Select
+                        items={variationAnalysisMappers}
+                        value={field.state.value}
+                        onValueChange={(value) => value != null && field.handleChange(value)}
+                      >
+                        <SelectTrigger className="service-card-select-trigger">
+                          <SelectValue placeholder="Select aligner" />
+                        </SelectTrigger>
+                        <SelectContent className="service-card-select-content">
+                          <SelectGroup>
+                            {variationAnalysisMappers.map((mapper) => (
+                              <SelectItem key={mapper.value} value={mapper.value}>
+                                {mapper.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+
+                {/* SNP Caller */}
+                <form.Field name="caller">
+                  {(field) => (
+                    <FieldItem>
+                      <RequiredFormLabel>SNP Caller</RequiredFormLabel>
+                      <Select
+                        items={variationAnalysisCallers}
+                        value={field.state.value}
+                        onValueChange={(value) => value != null && field.handleChange(value)}
+                      >
+                        <SelectTrigger className="service-card-select-trigger">
+                          <SelectValue placeholder="Select SNP caller" />
+                        </SelectTrigger>
+                        <SelectContent className="service-card-select-content">
+                          <SelectGroup>
+                            {variationAnalysisCallers.map((caller) => (
+                              <SelectItem key={caller.value} value={caller.value}>
+                                {caller.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+
+                {/* Output Folder */}
+                <form.Field name="output_path">
+                  {(field) => (
+                    <FieldItem>
+                      <OutputFolder
+                        required={true}
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+
+                {/* Output Name */}
+                <form.Field name="output_file">
+                  {(field) => (
+                    <FieldItem>
+                      <OutputFolder
+                        variant="name"
+                        required={true}
+                        value={field.state.value}
+                        onChange={field.handleChange}
+                        outputFolderPath={outputPath}
+                        onValidationChange={setIsOutputNameValid}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Selected Libraries (desktop) */}
+        <div className="hidden md:block md:col-span-5">
+          <Card className="h-full">
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">
+                Selected Libraries
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="service-card-tooltip-icon" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Files selected for analysis</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </CardTitle>
+              <CardDescription>
+                Place read files here using the arrow buttons.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="service-card-content">
+              <SelectedItemsTable
+                items={selectedLibraries.map((library) => ({
+                  id: library.id,
+                  name: library.name,
+                  type: library.type,
+                }))}
+                onRemove={handleRemoveLibrary}
+                className="max-h-84 overflow-y-auto"
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Form Controls */}
+        <div className="service-form-controls md:col-span-12">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              className="service-form-controls-button"
+            >
+              Reset
+            </Button>
+            <Button type="submit" disabled={isSubmitting || !canSubmit || !isOutputNameValid}>
+              {isSubmitting ? <Spinner /> : null}
+              Submit
+            </Button>
           </div>
-        </form>
-      </Form>
+        </div>
+      </form>
 
       {/* Job Params Dialog */}
       <JobParamsDialog

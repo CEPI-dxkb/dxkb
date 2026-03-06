@@ -1,9 +1,9 @@
 import type { ViralAssemblyFormData } from "./viral-assembly-form-schema";
-import type { BuildLibraryResult } from "@/lib/forms/shared-library-selection";
+import type { BuildLibraryResult } from "@/lib/forms/tanstack-library-selection";
 import {
   getPairedLibraryName,
   getSingleLibraryName,
-} from "@/lib/forms/shared-library-selection";
+} from "@/lib/forms/tanstack-library-selection";
 import type { Library } from "@/types/services";
 
 /** Toast-like interface for library error reporting (avoids coupling to sonner in utils) */

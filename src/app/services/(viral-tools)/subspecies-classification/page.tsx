@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useCallback, Fragment } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
+import { useForm, useStore } from "@tanstack/react-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -72,43 +65,49 @@ const FASTA_WORKSPACE_TYPES: ValidWorkspaceObjectTypes[] = [
 const subspeciesSpeciesSeparatorBeforeIndex = new Set([5, 7, 17, 21, 23, 24]);
 
 export default function SubspeciesClassificationPage() {
-  const form = useForm<SubspeciesClassificationFormData>({
-    resolver: zodResolver(subspeciesClassificationFormSchema),
-    defaultValues: defaultSubspeciesClassificationFormValues,
-    mode: "onChange",
+  const form = useForm({
+    defaultValues:
+      defaultSubspeciesClassificationFormValues as SubspeciesClassificationFormData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validators: { onChange: subspeciesClassificationFormSchema as any },
+    onSubmit: async ({ value }) => {
+      await handleSubmit(value as SubspeciesClassificationFormData);
+    },
   });
 
-  const outputPath = useWatch({ control: form.control, name: "output_path" });
+  const outputPath = useStore(form.store, (s) => s.values.output_path);
+  const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
-  const inputSource = useWatch({ control: form.control, name: "input_source" });
+  const inputSource = useStore(form.store, (s) => s.values.input_source);
 
   const handleFastaBlur = useCallback(() => {
-    const value = form.getValues("input_fasta_data") ?? "";
+    const value = form.state.values.input_fasta_data ?? "";
     if (!value.trim()) return;
     const result = validateSubspeciesFasta(value);
     if (!result.valid) {
-      form.setError("input_fasta_data", {
-        type: "manual",
-        message: getSubspeciesFastaMessage(result),
-      });
+      form.setFieldMeta("input_fasta_data", (prev) => ({
+        ...prev,
+        errors: [getSubspeciesFastaMessage(result)],
+        errorMap: { ...prev.errorMap, onChange: getSubspeciesFastaMessage(result) },
+      }));
     } else {
-      form.clearErrors("input_fasta_data");
+      form.setFieldMeta("input_fasta_data", (prev) => ({
+        ...prev,
+        errors: [],
+        errorMap: { ...prev.errorMap, onChange: undefined },
+      }));
       if (result.trimFasta !== value) {
-        form.setValue("input_fasta_data", result.trimFasta, {
-          shouldValidate: true,
-        });
+        form.setFieldValue("input_fasta_data", result.trimFasta);
       }
     }
   }, [form]);
 
-  const handleReset = useCallback(() => {
-    form.reset(defaultSubspeciesClassificationFormValues, {
-      keepDefaultValues: false,
-    });
+  const handleReset = () => {
+    form.reset(defaultSubspeciesClassificationFormValues);
     setIsOutputNameValid(true);
-  }, [form]);
+  };
 
   const {
     handleSubmit,
@@ -161,233 +160,220 @@ export default function SubspeciesClassificationPage() {
         tutorial={tutorial}
       />
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="grid grid-cols-1 gap-6 md:grid-cols-12"
-        >
-          {/* Query Source */}
-          <div className="md:col-span-12">
-            <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
-                  Query Source
-                  <DialogInfoPopup
-                    title={subspeciesClassificationQuerySource.title}
-                    description={
-                      subspeciesClassificationQuerySource.description
-                    }
-                    sections={subspeciesClassificationQuerySource.sections}
-                  />
-                </RequiredFormCardTitle>
-              </CardHeader>
-              <CardContent className="service-card-content">
-                <FormField
-                  control={form.control}
-                  name="input_source"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <RadioGroup
-                          value={field.value}
-                          onValueChange={(v) => {
-                            field.onChange(v);
-                            if (v === "fasta_file") {
-                              form.clearErrors("input_fasta_data");
-                            }
-                          }}
-                          className="service-radio-group-horizontal"
-                        >
-                          <div className="service-radio-group-item flex items-center gap-2">
-                            <RadioGroupItem
-                              value="fasta_data"
-                              id="subspecies-fasta-data"
-                            />
-                            <Label htmlFor="subspecies-fasta-data">
-                              Enter sequence
-                            </Label>
-                          </div>
-                          <div className="service-radio-group-item flex items-center gap-2">
-                            <RadioGroupItem
-                              value="fasta_file"
-                              id="subspecies-fasta-file"
-                            />
-                            <Label htmlFor="subspecies-fasta-file">
-                              Select FASTA file
-                            </Label>
-                          </div>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className="grid grid-cols-1 gap-6 md:grid-cols-12"
+      >
+        {/* Query Source */}
+        <div className="md:col-span-12">
+          <Card>
+            <CardHeader className="service-card-header">
+              <RequiredFormCardTitle className="service-card-title">
+                Query Source
+                <DialogInfoPopup
+                  title={subspeciesClassificationQuerySource.title}
+                  description={
+                    subspeciesClassificationQuerySource.description
+                  }
+                  sections={subspeciesClassificationQuerySource.sections}
                 />
-
-                {inputSource === "fasta_data" && (
-                  <FormField
-                    control={form.control}
-                    name="input_fasta_data"
-                    render={({ field }) => (
-                      <FormItem className="mt-4">
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter one or more query nucleotide or protein sequences to search. Requires FASTA format."
-                            className="min-h-[175px] font-mono text-xs"
-                            {...field}
-                            value={field.value ?? ""}
-                            onBlur={() => {
-                              field.onBlur();
-                              handleFastaBlur();
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              </RequiredFormCardTitle>
+            </CardHeader>
+            <CardContent className="service-card-content">
+              <form.Field name="input_source">
+                {(field) => (
+                  <FieldItem>
+                    <RadioGroup
+                      value={field.state.value}
+                      onValueChange={(v) => {
+                        if (v == null) return;
+                        field.handleChange(v);
+                        if (v === "fasta_file") {
+                          form.setFieldMeta("input_fasta_data", (prev) => ({
+                            ...prev,
+                            errors: [],
+                            errorMap: {
+                              ...prev.errorMap,
+                              onChange: undefined,
+                            },
+                          }));
+                        }
+                      }}
+                      className="service-radio-group-horizontal"
+                    >
+                      <div className="service-radio-group-item flex items-center gap-2">
+                        <RadioGroupItem
+                          value="fasta_data"
+                          id="subspecies-fasta-data"
+                        />
+                        <Label htmlFor="subspecies-fasta-data">
+                          Enter sequence
+                        </Label>
+                      </div>
+                      <div className="service-radio-group-item flex items-center gap-2">
+                        <RadioGroupItem
+                          value="fasta_file"
+                          id="subspecies-fasta-file"
+                        />
+                        <Label htmlFor="subspecies-fasta-file">
+                          Select FASTA file
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <FieldErrors field={field} />
+                  </FieldItem>
                 )}
+              </form.Field>
 
-                {inputSource === "fasta_file" && (
-                  <FormField
-                    control={form.control}
-                    name="input_fasta_file"
-                    render={({ field }) => (
-                      <FormItem className="mt-4">
-                        <FormControl>
-                          <WorkspaceObjectSelector
-                            types={FASTA_WORKSPACE_TYPES}
-                            placeholder="Select or upload FASTA file to your workspace."
-                            value={field.value ?? ""}
-                            onObjectSelect={(object: WorkspaceObject) =>
-                              field.onChange(object.path)
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Species and Output */}
-          <div className="md:col-span-12">
-            <Card>
-              <CardHeader className="service-card-header">
-                <CardTitle className="service-card-title">
-                  Species
-                  <DialogInfoPopup
-                    title={subspeciesClassificationSpeciesInfo.title}
-                    description={
-                      subspeciesClassificationSpeciesInfo.description
-                    }
-                  />
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="service-card-content space-y-6">
-                <FormField
-                  control={form.control}
-                  name="virus_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label className="service-card-label">Species</Label>
-                      <Select
-                        items={subspeciesVirusTypeOptions}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger className="service-card-select-trigger">
-                            <SelectValue placeholder="Select species" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="max-h-[min(20rem,70vh)] overflow-y-auto">
-                          <SelectGroup>
-                            {subspeciesVirusTypeOptions.map((opt, index) => (
-                              <Fragment key={opt.value}>
-                                {subspeciesSpeciesSeparatorBeforeIndex.has(
-                                  index,
-                                ) && <SelectSeparator />}
-                                <SelectItem value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              </Fragment>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
+              {inputSource === "fasta_data" && (
+                <form.Field name="input_fasta_data">
+                  {(field) => (
+                    <FieldItem className="mt-4">
+                      <Textarea
+                        placeholder="Enter one or more query nucleotide or protein sequences to search. Requires FASTA format."
+                        className="min-h-[175px] font-mono text-xs"
+                        value={field.state.value ?? ""}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={() => {
+                          field.handleBlur();
+                          handleFastaBlur();
+                        }}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
                   )}
+                </form.Field>
+              )}
+
+              {inputSource === "fasta_file" && (
+                <form.Field name="input_fasta_file">
+                  {(field) => (
+                    <FieldItem className="mt-4">
+                      <WorkspaceObjectSelector
+                        types={FASTA_WORKSPACE_TYPES}
+                        placeholder="Select or upload FASTA file to your workspace."
+                        value={field.state.value ?? ""}
+                        onObjectSelect={(object: WorkspaceObject) =>
+                          field.handleChange(object.path)
+                        }
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Species and Output */}
+        <div className="md:col-span-12">
+          <Card>
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">
+                Species
+                <DialogInfoPopup
+                  title={subspeciesClassificationSpeciesInfo.title}
+                  description={
+                    subspeciesClassificationSpeciesInfo.description
+                  }
                 />
+              </CardTitle>
+            </CardHeader>
 
-                <div className="service-card-row">
-                  <div className="service-card-row-item">
-                    <FormField
-                      control={form.control}
-                      name="output_path"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <OutputFolder
-                              value={field.value}
-                              onChange={field.onChange}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+            <CardContent className="service-card-content space-y-6">
+              <form.Field name="virus_type">
+                {(field) => (
+                  <FieldItem>
+                    <Label className="service-card-label">Species</Label>
+                    <Select
+                      items={subspeciesVirusTypeOptions}
+                      value={field.state.value}
+                      onValueChange={(value) =>
+                        value != null && field.handleChange(value)
+                      }
+                    >
+                      <SelectTrigger className="service-card-select-trigger">
+                        <SelectValue placeholder="Select species" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[min(20rem,70vh)] overflow-y-auto">
+                        <SelectGroup>
+                          {subspeciesVirusTypeOptions.map((opt, index) => (
+                            <Fragment key={opt.value}>
+                              {subspeciesSpeciesSeparatorBeforeIndex.has(
+                                index,
+                              ) && <SelectSeparator />}
+                              <SelectItem value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            </Fragment>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldErrors field={field} />
+                  </FieldItem>
+                )}
+              </form.Field>
 
-                  <div className="service-card-row-item">
-                    <FormField
-                      control={form.control}
-                      name="output_file"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <OutputFolder
-                              variant="name"
-                              value={field.value}
-                              onChange={field.onChange}
-                              outputFolderPath={outputPath}
-                              onValidationChange={setIsOutputNameValid}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+              <div className="service-card-row">
+                <div className="service-card-row-item">
+                  <form.Field name="output_path">
+                    {(field) => (
+                      <FieldItem>
+                        <OutputFolder
+                          value={field.state.value}
+                          onChange={(value) => field.handleChange(value)}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Form controls */}
-          <div className="md:col-span-12">
-            <div className="service-form-controls">
-              <Button type="button" variant="outline" onClick={handleReset}>
-                Reset
-              </Button>
+                <div className="service-card-row-item">
+                  <form.Field name="output_file">
+                    {(field) => (
+                      <FieldItem>
+                        <OutputFolder
+                          variant="name"
+                          value={field.state.value}
+                          onChange={(value) => field.handleChange(value)}
+                          outputFolderPath={outputPath}
+                          onValidationChange={setIsOutputNameValid}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-              <Button
-                type="submit"
-                disabled={
-                  isSubmitting || !form.formState.isValid || !isOutputNameValid
-                }
-              >
-                {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                Submit
-              </Button>
-            </div>
+        {/* Form controls */}
+        <div className="md:col-span-12">
+          <div className="service-form-controls">
+            <Button type="button" variant="outline" onClick={handleReset}>
+              Reset
+            </Button>
+
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting || !canSubmit || !isOutputNameValid
+              }
+            >
+              {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+              Submit
+            </Button>
           </div>
-        </form>
-      </Form>
+        </div>
+      </form>
 
       <JobParamsDialog
         open={showParamsDialog}

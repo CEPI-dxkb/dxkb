@@ -30,7 +30,7 @@ function CopyButton({ text }: { text: string }) {
     <Button
       variant="ghost"
       size="sm"
-      className="h-6 w-6 p-0"
+      className="relative h-6 w-6 p-0"
       onClick={() => {
         void navigator.clipboard.writeText(text);
         setCopied(true);
@@ -38,11 +38,18 @@ function CopyButton({ text }: { text: string }) {
       }}
       title="Copy to clipboard"
     >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-green-500" />
-      ) : (
-        <Copy className="h-3.5 w-3.5" />
-      )}
+      <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center">
+        <Copy
+          className={`absolute h-3.5 w-3.5 transition-all duration-200 ${
+            copied ? "scale-0 opacity-0" : "scale-100 opacity-100"
+          }`}
+        />
+        <Check
+          className={`absolute h-3.5 w-3.5 text-green-500 transition-all duration-200 ${
+            copied ? "scale-100 opacity-100" : "scale-0 opacity-0"
+          }`}
+        />
+      </span>
     </Button>
   );
 }
@@ -79,7 +86,7 @@ function OutputSection({
           ) : error ? (
             <p className="text-destructive text-xs">Failed to load output</p>
           ) : data ? (
-            <pre className="scrollbar-themed max-h-64 overflow-auto whitespace-pre font-mono text-[10px] leading-relaxed">
+            <pre className="scrollbar-themed max-h-[32rem] overflow-auto whitespace-pre font-mono text-[10px] leading-relaxed">
               {data}
             </pre>
           ) : (

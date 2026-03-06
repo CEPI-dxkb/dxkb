@@ -39,16 +39,6 @@ const DEFAULT_COLUMN_ORDER = [
   "completed_time",
 ];
 
-const COLUMN_OPTIONS = [
-  { id: "status", label: "Status" },
-  { id: "id", label: "ID" },
-  { id: "app", label: "Service" },
-  { id: "output_name", label: "Output Name" },
-  { id: "submit_time", label: "Submit" },
-  { id: "start_time", label: "Start" },
-  { id: "completed_time", label: "Completed" },
-];
-
 interface JobDataRowProps {
   row: Row<JobListItem>;
   isSelected: boolean;
@@ -131,10 +121,6 @@ export function JobsBrowser() {
   const [searchQuery, setSearchQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [columnVisibility, setColumnVisibility] = useState<
-    Record<string, boolean>
-  >({});
-
   // Data fetching
   const {
     data: jobs = [],
@@ -235,11 +221,6 @@ export function JobsBrowser() {
   // Columns
   const { columns, handleSort } = useJobsColumns(sort, setSort);
 
-  const visibleColumns = useMemo(
-    () => columns.filter((col) => columnVisibility[col.id!] !== false),
-    [columns, columnVisibility],
-  );
-
   // Pagination
   const handlePrevious = useCallback(() => {
     setOffset((prev) => Math.max(0, prev - PAGE_SIZE));
@@ -269,13 +250,6 @@ export function JobsBrowser() {
     setOffset(0);
     setSelectedIds(new Set());
   }, []);
-
-  const handleColumnVisibilityToggle = useCallback(
-    (columnId: string, visible: boolean) => {
-      setColumnVisibility((prev) => ({ ...prev, [columnId]: visible }));
-    },
-    [],
-  );
 
   // Row rendering & keyboard
   const handleDoubleClick = useCallback(
@@ -420,9 +394,6 @@ export function JobsBrowser() {
             onRefresh={() => void refetch()}
             isRefreshing={isFetching}
             statusSummary={statusSummary}
-            columnOptions={COLUMN_OPTIONS}
-            columnVisibility={columnVisibility}
-            onColumnVisibilityChange={handleColumnVisibilityToggle}
           />
         </div>
 
@@ -430,7 +401,7 @@ export function JobsBrowser() {
         <div className="min-h-0 flex-1">
           <DataTable<JobListItem>
             data={filteredJobs}
-            columns={visibleColumns}
+            columns={columns}
             defaultColumnOrder={DEFAULT_COLUMN_ORDER}
             isLoading={isLoading}
             getRowId={(row) => row.id}

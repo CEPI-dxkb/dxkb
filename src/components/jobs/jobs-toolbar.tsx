@@ -1,6 +1,14 @@
 "use client";
 
-import { Search, RefreshCw, Archive, Columns3 } from "lucide-react";
+import {
+  Search,
+  RefreshCw,
+  Archive,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,22 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-
-interface ColumnOption {
-  id: string;
-  label: string;
-}
 
 interface JobsToolbarProps {
   searchQuery: string;
@@ -41,9 +35,6 @@ interface JobsToolbarProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   statusSummary?: Record<string, number>;
-  columnOptions?: ColumnOption[];
-  columnVisibility?: Record<string, boolean>;
-  onColumnVisibilityChange?: (columnId: string, visible: boolean) => void;
 }
 
 /** Format camelCase or PascalCase app names into readable labels. */
@@ -75,9 +66,6 @@ export function JobsToolbar({
   onRefresh,
   isRefreshing,
   statusSummary,
-  columnOptions,
-  columnVisibility,
-  onColumnVisibilityChange,
 }: JobsToolbarProps) {
   return (
     <div className="space-y-3">
@@ -162,32 +150,6 @@ export function JobsToolbar({
           </Label>
         </div>
 
-        {/* Column selector */}
-        {columnOptions && columnVisibility && onColumnVisibilityChange && (
-          <DropdownMenu>
-            <DropdownMenuTrigger className="border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium whitespace-nowrap">
-              <Columns3 className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Columns</DropdownMenuLabel>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              {columnOptions.map((col) => (
-                <DropdownMenuCheckboxItem
-                  key={col.id}
-                  checked={columnVisibility[col.id] !== false}
-                  onCheckedChange={(checked) =>
-                    onColumnVisibilityChange(col.id, checked)
-                  }
-                >
-                  {col.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
         {/* Refresh */}
         <Button
           variant="outline"
@@ -204,14 +166,16 @@ export function JobsToolbar({
       {/* Compact status bar */}
       {statusSummary && (
         <div className="text-muted-foreground flex items-center gap-1 text-xs">
-          <span>
+          <span className="flex items-center gap-1">
+            <Clock className="h-3 w-3 text-gray-500" />
             queued:{" "}
             <span className="text-foreground font-medium">
               {statusSummary.queued ?? 0}
             </span>
           </span>
           <span>&middot;</span>
-          <span>
+          <span className="flex items-center gap-1">
+            <Loader2 className="h-3 w-3 text-blue-500" />
             running:{" "}
             <span className="text-foreground font-medium">
               {(statusSummary.running ?? 0) +
@@ -219,14 +183,16 @@ export function JobsToolbar({
             </span>
           </span>
           <span>&middot;</span>
-          <span>
+          <span className="flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
             completed:{" "}
             <span className="text-foreground font-medium">
               {statusSummary.completed ?? 0}
             </span>
           </span>
           <span>&middot;</span>
-          <span>
+          <span className="flex items-center gap-1">
+            <XCircle className="h-3 w-3 text-red-500" />
             failed:{" "}
             <span className="text-foreground font-medium">
               {statusSummary.failed ?? 0}

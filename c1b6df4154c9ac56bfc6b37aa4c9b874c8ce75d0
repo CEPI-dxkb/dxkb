@@ -1,0 +1,23 @@
+src/components/jobs/jobs-browser.tsx
+  79bd2507208dcb86 9-19,131,261,424-442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "c1b6df4154c9ac56bfc6b37aa4c9b874c8ce75d0",
+  "prompts": {
+    "79bd2507208dcb86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b7add10-9cab-48cb-8cd0-66c2f077d404",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 34,
+      "total_deletions": 32,
+      "accepted_lines": 33,
+      "overriden_lines": 0
+    }
+  }
+}

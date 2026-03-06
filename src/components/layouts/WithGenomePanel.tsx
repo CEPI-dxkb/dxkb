@@ -33,7 +33,7 @@ export function WithGenomePanel({
           {children({ activeTab, setActiveTab })}
         </div>
         {hasSelection && (
-          <div className="w-[20%] min-h-0 flex-col overflow-hidden bg-background text-foreground shadow-md">
+          <div className="flex w-[20%] min-h-0 flex-col overflow-hidden bg-background text-foreground shadow-md">
             <InfoPanel rows={selectedRows} activeTab={activeTab} />
           </div>
         )}

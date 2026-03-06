@@ -2,6 +2,7 @@ import { createBvBrcClient } from "./jsonrpc-client";
 import {
   QueryJobDetailsResponse,
   KillJobResponse,
+  KillJobRawResponse,
   FetchJobOutputResponse,
   SubmitServiceResponse,
   QueryJobDetailsParams,
@@ -48,7 +49,16 @@ export class AppService {
   async killJob(params: KillJobParams): Promise<KillJobResponse> {
     const { job_id } = params;
 
-    return this.client.call("AppService.kill_task", [job_id]);
+    // The legacy API expects the job ID as a number
+    const raw = await this.client.call<KillJobRawResponse>(
+      "AppService.kill_task",
+      [Number(job_id)],
+    );
+
+    return {
+      success: raw[0] === 1,
+      message: raw[1],
+    };
   }
 
   /**

@@ -114,9 +114,11 @@ export interface SubmitServiceParams {
 
 // Response types for each API method
 export type QueryJobDetailsResponse = JobDetails;
+// Raw JSON-RPC result is [status_code, message], e.g. [1, "Canceled 18978105"]
+export type KillJobRawResponse = [number, string];
 export type KillJobResponse = {
   success: boolean;
-  message?: string;
+  message: string;
 };
 export type FetchJobOutputResponse = string;
 export type SubmitServiceResponse = {

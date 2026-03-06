@@ -6,7 +6,17 @@ import type { Row } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import clsx from "clsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, TriangleAlert } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { useKillJob } from "@/hooks/services/workspace/use-workspace";
 import { useJobsData } from "@/hooks/services/jobs/use-jobs-data";
@@ -118,6 +128,7 @@ export function JobsBrowser() {
   const [searchQuery, setSearchQuery] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showJobNotFound, setShowJobNotFound] = useState(false);
   // Data fetching
   const {
     data: jobs = [],
@@ -247,7 +258,7 @@ export function JobsBrowser() {
         const encoded = segments.map(encodeWorkspaceSegment).join("/");
         router.push(`/workspace/${encoded}`);
       } else {
-        router.push(`/jobs/${job.id}`);
+        setShowJobNotFound(true);
       }
     },
     [router],
@@ -410,6 +421,25 @@ export function JobsBrowser() {
           />
         </div>
       </div>
+      <AlertDialog open={showJobNotFound} onOpenChange={setShowJobNotFound}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogMedia>
+              <TriangleAlert className="text-muted-foreground" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Job not found</AlertDialogTitle>
+            <AlertDialogDescription>
+              The job output could not be located. It may still be processing or
+              the output path is unavailable.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowJobNotFound(false)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </JobsShell>
   );
 }

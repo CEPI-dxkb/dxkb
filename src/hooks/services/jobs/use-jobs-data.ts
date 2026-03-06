@@ -23,6 +23,8 @@ export function useJobsData(params: UseJobsDataParams) {
       sortField,
       sortOrder,
     ],
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await authenticatedFetch(
         "/api/services/app-service/jobs/filtered",

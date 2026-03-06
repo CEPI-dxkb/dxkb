@@ -18,6 +18,13 @@ export function useJobDetail(jobId: string | null) {
     },
     enabled: !!jobId,
     staleTime: 30_000,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      const activeStatuses = ["pending", "queued", "running", "in-progress"];
+      if (status && activeStatuses.includes(status)) return 3_000;
+      return false;
+    },
+    refetchIntervalInBackground: false,
   });
 }
 

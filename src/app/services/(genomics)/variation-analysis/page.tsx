@@ -37,7 +37,6 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import OutputFolder from "@/components/services/output-folder";
-import { Library } from "@/types/services";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { toast } from "sonner";
@@ -50,7 +49,6 @@ import {
   variationAnalysisMappers,
   variationAnalysisCallers,
 } from "@/lib/forms/(genomics)";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import {
   RequiredFormCardTitle,
   RequiredFormLabel,
@@ -59,27 +57,25 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  buildBaseLibraryItem,
+  getPairedLibraryName,
+  getSingleLibraryName,
+  useTanstackLibrarySelection,
+} from "@/lib/forms/tanstack-library-selection";
 
 export default function VariationAnalysisPage() {
-  const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [pairedRead1, setPairedRead1] = useState<string | null>(null);
   const [pairedRead2, setPairedRead2] = useState<string | null>(null);
   const [singleRead, setSingleRead] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
+  const [sraResetKey, setSraResetKey] = useState(0);
 
-  // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-  } = useServiceFormSubmission<VariationAnalysisFormData>({
-    serviceName: "Variation Analysis",
-    transformParams: transformVariationAnalysisParams,
-    onSubmit: async (data) => {
-      console.log("Submitting Variation Analysis job with data:", data);
+  const form = useForm({
+    defaultValues: DEFAULT_VARIATION_ANALYSIS_FORM_VALUES,
+    validators: { onChange: variationAnalysisFormSchema },
+    onSubmit: async ({ value }) => {
+      const data = value as VariationAnalysisFormData;
 
       // Validate that at least one library is provided
       const hasPaired = data.paired_end_libs && data.paired_end_libs.length > 0;
@@ -91,149 +87,86 @@ export default function VariationAnalysisPage() {
         return;
       }
 
-      try {
-        setIsSubmitting(true);
-        // Submit the Variation Analysis job using the utility function
-        const result = await submitServiceJob(
-          "Variation",
-          transformVariationAnalysisParams(data),
-        );
-
-        if (result.success) {
-          if (result.job?.[0]) {
-            console.log("Variation Analysis job submitted successfully:", result.job[0]);
-          }
-
-          // Show success message
-          toast.success("Variation Analysis job submitted successfully!", {
-            description: result.job?.[0] ? `Job ID: ${result.job[0].id}` : "Job submitted",
-          });
-
-          // Reset form after successful submission
-          handleReset();
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error("Failed to submit Variation Analysis job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit Variation Analysis job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
+      await handleSubmit(data);
     },
   });
 
-  const form = useForm({
-    defaultValues: DEFAULT_VARIATION_ANALYSIS_FORM_VALUES,
-    validators: { onChange: variationAnalysisFormSchema },
-    onSubmit: async ({ value }) => {
-      await handleSubmit(value as VariationAnalysisFormData);
+  const {
+    selectedLibraries,
+    addPairedLibrary,
+    addSingleLibrary,
+    removeLibrary,
+    setLibrariesAndSync,
+  } = useTanstackLibrarySelection<VariationLibraryItem>({
+    form,
+    mapLibraryToItem: buildBaseLibraryItem,
+    fields: {
+      paired: "paired_end_libs",
+      single: "single_end_libs",
+      srr: "srr_ids",
     },
   });
 
-  const handleReset = () => {
+  // Setup service debugging and form submission
+  const {
+    handleSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+    serviceName,
+    isSubmitting,
+  } = useServiceFormSubmission<VariationAnalysisFormData>({
+    serviceName: "Variation",
+    displayName: "Variation Analysis",
+    transformParams: transformVariationAnalysisParams,
+    onSuccess: handleReset,
+  });
+
+  function handleReset() {
     form.reset(DEFAULT_VARIATION_ANALYSIS_FORM_VALUES);
-    setSelectedLibraries([]);
+    setLibrariesAndSync([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
-  };
-
-  // Convert Library to VariationLibraryItem for form submission
-  const convertLibraryToLibraryItem = (library: Library): VariationLibraryItem => {
-    const baseLib: VariationLibraryItem = {
-      _id: library.id,
-      _type: library.type === "paired" ? "paired" : library.type === "single" ? "single" : "srr_accession",
-    };
-
-    // Add type-specific fields from library metadata
-    if (library.type === "paired" && library.files) {
-      baseLib.read1 = library.files[0];
-      baseLib.read2 = library.files[1];
-    } else if (library.type === "single" && library.files) {
-      baseLib.read = library.files[0];
-    }
-
-    return baseLib;
-  };
-
-  // Sync selectedLibraries with form data
-  const syncLibrariesToForm = (libraries: Library[]) => {
-    const pairedLibs: VariationLibraryItem[] = [];
-    const singleLibs: VariationLibraryItem[] = [];
-    const srrIds: string[] = [];
-
-    libraries.forEach((lib) => {
-      if (lib.type === "paired") {
-        pairedLibs.push(convertLibraryToLibraryItem(lib));
-      } else if (lib.type === "single") {
-        singleLibs.push(convertLibraryToLibraryItem(lib));
-      } else if (lib.type === "sra") {
-        srrIds.push(lib.id);
-      }
-    });
-
-    form.setFieldValue("paired_end_libs", pairedLibs);
-    form.setFieldValue("single_end_libs", singleLibs);
-    form.setFieldValue("srr_ids", srrIds);
-  };
+    setSraResetKey((k) => k + 1);
+  }
 
   const handlePairedLibraryAdd = () => {
-    if (!pairedRead1 || !pairedRead2) {
-      toast.error("Both read files must be selected for paired library");
-      return;
-    }
-
-    if (pairedRead1 === pairedRead2) {
-      toast.error("READ FILE 1 and READ FILE 2 cannot be the same");
-      return;
-    }
-
-    const newLibrary: Library = {
-      id: `${pairedRead1}${pairedRead2}`,
-      name: `P(${pairedRead1.split("/").pop()}, ${pairedRead2.split("/").pop()})`,
-      type: "paired",
-      files: [pairedRead1, pairedRead2],
-    };
-
-    const newLibraries = [...selectedLibraries, newLibrary];
-    setSelectedLibraries(newLibraries);
-    syncLibrariesToForm(newLibraries);
-
-    // Clear the inputs
-    setPairedRead1(null);
-    setPairedRead2(null);
+    addPairedLibrary({
+      read1: pairedRead1,
+      read2: pairedRead2,
+      buildLibrary: (read1, read2, id) => ({
+        library: {
+          id,
+          name: getPairedLibraryName(read1, read2),
+          type: "paired",
+          files: [read1, read2],
+        },
+      }),
+      onError: (message) => toast.error(message),
+      onAfterAdd: () => {
+        setPairedRead1(null);
+        setPairedRead2(null);
+      },
+    });
   };
 
   const handleSingleLibraryAdd = () => {
-    if (!singleRead) {
-      toast.error("Read file must be selected");
-      return;
-    }
-
-    const newLibrary: Library = {
-      id: singleRead,
-      name: `S(${singleRead.split("/").pop()})`,
-      type: "single",
-      files: [singleRead],
-    };
-
-    const newLibraries = [...selectedLibraries, newLibrary];
-    setSelectedLibraries(newLibraries);
-    syncLibrariesToForm(newLibraries);
-
-    // Clear the input
-    setSingleRead(null);
-  };
-
-  const handleRemoveLibrary = (id: string) => {
-    const newLibraries = selectedLibraries.filter((lib) => lib.id !== id);
-    setSelectedLibraries(newLibraries);
-    syncLibrariesToForm(newLibraries);
+    addSingleLibrary({
+      read: singleRead,
+      buildLibrary: (read) => ({
+        library: {
+          id: read,
+          name: getSingleLibraryName(read),
+          type: "single",
+          files: [read],
+        },
+      }),
+      onError: (message) => toast.error(message),
+      onAfterAdd: () => {
+        setSingleRead(null);
+      },
+    });
   };
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
@@ -334,13 +267,11 @@ export default function VariationAnalysisPage() {
 
               {/* SRA Run Accession */}
               <SraRunAccessionWithValidation
+                key={sraResetKey}
                 title="SRA Run Accession"
                 placeholder="SRR..."
                 selectedLibraries={selectedLibraries}
-                setSelectedLibraries={(libs) => {
-                  setSelectedLibraries(libs);
-                  syncLibrariesToForm(libs);
-                }}
+                setSelectedLibraries={setLibrariesAndSync}
                 allowDuplicates={false}
               />
             </CardContent>
@@ -375,7 +306,7 @@ export default function VariationAnalysisPage() {
                     name: library.name,
                     type: library.type,
                   }))}
-                  onRemove={handleRemoveLibrary}
+                  onRemove={removeLibrary}
                   className="max-h-84 overflow-y-auto"
                 />
               </CardContent>
@@ -534,7 +465,7 @@ export default function VariationAnalysisPage() {
                   name: library.name,
                   type: library.type,
                 }))}
-                onRemove={handleRemoveLibrary}
+                onRemove={removeLibrary}
                 className="max-h-84 overflow-y-auto"
               />
             </CardContent>

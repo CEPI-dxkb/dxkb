@@ -42,7 +42,6 @@ import {
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
 
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { fetchGenomeGroupMembers, validateViralGenomes } from "@/lib/services/genome";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
@@ -78,7 +77,6 @@ export default function ViralGenomeTreePage() {
   const [selectedMetadataField, setSelectedMetadataField] =
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
@@ -89,43 +87,12 @@ export default function ViralGenomeTreePage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<ViralGenomeTree.ViralGenomeTreeFormData>({
-    serviceName: "Viral Genome Tree",
+    serviceName: "GeneTree",
+    displayName: "Viral Genome Tree",
     transformParams: ViralGenomeTreeUtils.transformViralGenomeTreeParams,
-    onSubmit: async (data) => {
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob(
-          "GeneTree",
-          ViralGenomeTreeUtils.transformViralGenomeTreeParams(data),
-        );
-
-        if (result.success) {
-          console.log("Viral Genome Tree job submitted successfully:", result.job?.[0]);
-
-          toast.success("Viral Genome Tree job submitted successfully!", {
-            description: result.job?.[0]?.id
-              ? `Job ID: ${result.job[0].id}`
-              : "Job submitted successfully",
-            closeButton: true,
-          });
-
-          handleReset();
-        } else {
-          throw new Error(result.error || "Failed to submit job");
-        }
-      } catch (error) {
-        console.error("Failed to submit Viral Genome Tree job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit Viral Genome Tree job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-          closeButton: true,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSuccess: handleReset,
   });
 
   const form = useForm({

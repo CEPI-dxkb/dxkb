@@ -33,7 +33,6 @@ import { RequiredFormCardTitle } from "@/components/forms/required-form-componen
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { toast } from "sonner";
@@ -77,7 +76,6 @@ export default function ProteomeComparisonPage() {
   const [showAdvancedParams, setShowAdvancedParams] = useState(false);
 
   // State for submission
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Handle reset
@@ -98,48 +96,12 @@ export default function ProteomeComparisonPage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<ProteomeComparisonFormData>({
-    serviceName: "Proteome Comparison",
+    serviceName: "GenomeComparison",
+    displayName: "Proteome Comparison",
     transformParams: transformProteomeComparisonParams,
-    onSubmit: async (data) => {
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob(
-          "GenomeComparison",
-          transformProteomeComparisonParams(data)
-        );
-
-        if (result.success) {
-          console.log(
-            "Proteome Comparison job submitted successfully:",
-            result.job?.[0]
-          );
-
-          toast.success("Proteome Comparison job submitted successfully!", {
-            description: result.job?.[0]?.id
-              ? `Job ID: ${result.job[0].id}`
-              : "Job submitted successfully",
-            closeButton: true,
-          });
-
-          handleReset();
-        } else {
-          throw new Error(result.error || "Failed to submit job");
-        }
-      } catch (error) {
-        console.error("Failed to submit Proteome Comparison job:", error);
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Failed to submit Proteome Comparison job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-          closeButton: true,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSuccess: handleReset,
   });
 
   const form = useForm({

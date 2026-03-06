@@ -76,51 +76,65 @@ export default function SimilarGenomeFinderServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [results, setResults] = useState<SimilarGenomeFinderResultRow[]>([]);
 
-  const onSuccess = () => {
-    form.reset(DEFAULT_SIMILAR_GENOME_FINDER_FORM_VALUES);
-    setShowAdvanced(false);
-    setResults([]);
-  };
-
   const {
     handleSubmit,
     showParamsDialog,
     setShowParamsDialog,
     currentParams,
     serviceName,
-    isSubmitting,
+    isDebugMode,
+    isSubmitting: isJobSubmitting,
   } = useServiceFormSubmission<SimilarGenomeFinderFormData>({
     serviceName: "SimilarGenomeFinder",
     displayName: "Similar Genome Finder",
     transformParams: (data) =>
       buildMinhashServicePayload(data) as unknown as Record<string, unknown>,
-    onSuccess,
-    onSubmit: async (data) => {
-      const response = await submitSimilarGenomes(data);
-      if (response.success) {
-        setResults(response.rows);
-        toast.success("Similar Genome Finder completed successfully!", {
-          description:
-            response.rows.length > 0
-              ? `Results returned from Minhash service (${response.rows.length} genome${response.rows.length === 1 ? "" : "s"})`
-              : "Results returned from Minhash service",
-          closeButton: true,
-        });
-      } else {
-        toast.error("Submission failed", {
-          description: response.error,
-          closeButton: true,
-        });
-        throw new Error(response.error);
-      }
-    },
   });
+
+  const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
+  const isSubmitting = isJobSubmitting || isCustomSubmitting;
 
   const form = useForm({
     defaultValues: DEFAULT_SIMILAR_GENOME_FINDER_FORM_VALUES as SimilarGenomeFinderFormData,
     validators: { onChange: similarGenomeFinderFormSchema },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as SimilarGenomeFinderFormData);
+      const data = value as SimilarGenomeFinderFormData;
+
+      // In debug mode, use the hook to show the params dialog
+      if (isDebugMode) {
+        await handleSubmit(data);
+        return;
+      }
+
+      // Custom submission — calls server action instead of submitServiceJob
+      setIsCustomSubmitting(true);
+      try {
+        const response = await submitSimilarGenomes(data);
+        if (response.success) {
+          setResults(response.rows);
+          toast.success("Similar Genome Finder completed successfully!", {
+            description:
+              response.rows.length > 0
+                ? `Results returned from Minhash service (${response.rows.length} genome${response.rows.length === 1 ? "" : "s"})`
+                : "Results returned from Minhash service",
+            closeButton: true,
+          });
+        } else {
+          toast.error("Submission failed", {
+            description: response.error,
+            closeButton: true,
+          });
+        }
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to submit";
+        toast.error("Submission failed", {
+          description: errorMessage,
+          closeButton: true,
+        });
+      } finally {
+        setIsCustomSubmitting(false);
+      }
     },
   });
 

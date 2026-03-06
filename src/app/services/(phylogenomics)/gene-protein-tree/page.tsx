@@ -43,7 +43,6 @@ import {
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { toast } from "sonner";
@@ -78,7 +77,6 @@ export default function GeneProteinTreePage() {
   const [selectedMetadataField, setSelectedMetadataField] =
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
@@ -88,40 +86,12 @@ export default function GeneProteinTreePage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<GeneProteinTree.GeneProteinTreeFormData>({
-    serviceName: "Gene/Protein Tree",
+    serviceName: "GeneTree",
+    displayName: "Gene/Protein Tree",
     transformParams: GeneProteinTree.transformGeneProteinTreeParams,
-    onSubmit: async (data) => {
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob("GeneTree", GeneProteinTree.transformGeneProteinTreeParams(data));
-
-        if (result.success) {
-          console.log("Gene/Protein Tree job submitted successfully:", result.job?.[0]);
-
-          toast.success("Gene/Protein Tree job submitted successfully!", {
-            description: result.job?.[0]?.id
-              ? `Job ID: ${result.job[0].id}`
-              : "Job submitted successfully",
-            closeButton: true,
-          });
-
-          handleReset();
-        } else {
-          throw new Error(result.error || "Failed to submit job");
-        }
-      } catch (error) {
-        console.error("Failed to submit Gene/Protein Tree job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit Gene/Protein Tree job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-          closeButton: true,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSuccess: handleReset,
   });
 
   const form = useForm({
@@ -163,8 +133,11 @@ export default function GeneProteinTreePage() {
       toast.info("Switched alphabet. Cleared incompatible sequences.");
     }
 
-    setSelectedAlignedFastaObject(null);
-    setSelectedUnalignedFastaObject(null);
+
+    queueMicrotask(() => {
+      setSelectedAlignedFastaObject(null);
+      setSelectedUnalignedFastaObject(null);
+    });
   }, [alphabet, form, sequences]);
 
   // Update metadata fields in form when they change

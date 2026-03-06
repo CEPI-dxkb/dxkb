@@ -107,61 +107,47 @@ export function useTanstackLibrarySelection<
     configRef.current = config;
   }, [config]);
 
-  useEffect(() => {
-    if (!shouldSyncRef.current) {
-      shouldSyncRef.current = true;
-      return;
-    }
-
-    const currentConfig = configRef.current;
-    const pairedLibs: LibraryItem[] = [];
-    const singleLibs: LibraryItem[] = [];
-    const srrItems: SrrItem[] = [];
-
-    selectedLibraries.forEach((lib) => {
-      if (lib.type === "paired") {
-        pairedLibs.push(currentConfig.mapLibraryToItem(lib));
-      } else if (lib.type === "single") {
-        singleLibs.push(currentConfig.mapLibraryToItem(lib));
-      } else if (lib.type === "sra") {
-        if (currentConfig.mapSraLibraryToItem) {
-          srrItems.push(currentConfig.mapSraLibraryToItem(lib));
-        } else {
-          srrItems.push(lib.id as SrrItem);
-        }
-      }
-    });
-
-    currentConfig.form.setFieldValue(currentConfig.fields.paired, pairedLibs);
-    currentConfig.form.setFieldValue(currentConfig.fields.single, singleLibs);
-    currentConfig.form.setFieldValue(currentConfig.fields.srr, srrItems);
-  }, [selectedLibraries]);
-
-  const syncLibrariesToForm = useCallback(
-    (libraries: Library[]) => {
+  const applyLibrariesToForm = useCallback(
+    (libraries: Library[], cfg: UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem>) => {
       const pairedLibs: LibraryItem[] = [];
       const singleLibs: LibraryItem[] = [];
       const srrItems: SrrItem[] = [];
 
       libraries.forEach((lib) => {
         if (lib.type === "paired") {
-          pairedLibs.push(config.mapLibraryToItem(lib));
+          pairedLibs.push(cfg.mapLibraryToItem(lib));
         } else if (lib.type === "single") {
-          singleLibs.push(config.mapLibraryToItem(lib));
+          singleLibs.push(cfg.mapLibraryToItem(lib));
         } else if (lib.type === "sra") {
-          if (config.mapSraLibraryToItem) {
-            srrItems.push(config.mapSraLibraryToItem(lib));
+          if (cfg.mapSraLibraryToItem) {
+            srrItems.push(cfg.mapSraLibraryToItem(lib));
           } else {
             srrItems.push(lib.id as SrrItem);
           }
         }
       });
 
-      config.form.setFieldValue(config.fields.paired, pairedLibs);
-      config.form.setFieldValue(config.fields.single, singleLibs);
-      config.form.setFieldValue(config.fields.srr, srrItems);
+      cfg.form.setFieldValue(cfg.fields.paired, pairedLibs);
+      cfg.form.setFieldValue(cfg.fields.single, singleLibs);
+      cfg.form.setFieldValue(cfg.fields.srr, srrItems);
     },
-    [config]
+    []
+  );
+
+  useEffect(() => {
+    if (!shouldSyncRef.current) {
+      shouldSyncRef.current = true;
+      return;
+    }
+
+    applyLibrariesToForm(selectedLibraries, configRef.current);
+  }, [selectedLibraries, applyLibrariesToForm]);
+
+  const syncLibrariesToForm = useCallback(
+    (libraries: Library[]) => {
+      applyLibrariesToForm(libraries, config);
+    },
+    [config, applyLibrariesToForm]
   );
 
   const updateLibraries = useCallback(

@@ -40,7 +40,6 @@ import {
   validateMyLabel,
   genomeAnnotationRecipes,
 } from "@/lib/forms/(genomics)";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import {
   Tooltip,
@@ -54,7 +53,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Label } from "@/components/ui/label";
 
 const GenomeAnnotationContent = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
@@ -64,56 +62,24 @@ const GenomeAnnotationContent = () => {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<GenomeAnnotationFormData>({
-    serviceName: "Genome Annotation",
+    serviceName: "GenomeAnnotation",
+    displayName: "Genome Annotation",
     transformParams: transformGenomeAnnotationParams,
-    onSubmit: async (data) => {
-      // Validate my label for slashes
-      console.log("Submitting Genome Annotation job with data:", data);
-      const labelValidation = validateMyLabel(data.my_label);
-      if (!labelValidation.isValid) {
-        toast.error(labelValidation.message);
-        return;
-      }
-
-      try {
-        setIsSubmitting(true);
-        // Submit the Genome Annotation job using the utility function
-        const result = await submitServiceJob(
-          "GenomeAnnotation",
-          transformGenomeAnnotationParams(data),
-        );
-
-        if (result.success && result.job?.[0]) {
-          console.log("Genome Annotation job submitted successfully:", result.job[0]);
-
-          // Show success message
-          toast.success("Genome Annotation job submitted successfully!", {
-            description: `Job ID: ${result.job[0].id}`,
-          });
-
-          // Optionally redirect to jobs page
-          // router.push(`/jobs/${result.job.id}`);
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error("Failed to submit Genome Annotation job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit Genome Annotation job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
   });
 
   const form = useForm({
     defaultValues: DEFAULT_GENOME_ANNOTATION_FORM_VALUES as GenomeAnnotationFormData,
     validators: { onChange: completeGenomeAnnotationSchema },
     onSubmit: async ({ value }) => {
+      // Validate my label for slashes
+      const labelValidation = validateMyLabel(value.my_label);
+      if (!labelValidation.isValid) {
+        toast.error(labelValidation.message);
+        return;
+      }
+
       await handleSubmit(value);
     },
   });

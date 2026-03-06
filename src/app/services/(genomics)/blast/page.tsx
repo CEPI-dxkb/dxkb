@@ -39,7 +39,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { blastPrecomputedDatabases } from "@/types/services";
-import { transformBlastParams, submitServiceJob } from "@/lib/services/service-utils";
+import { transformBlastParams } from "@/lib/forms/(genomics)/blast/blast-form-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
@@ -63,7 +63,6 @@ import {
 
 export default function BlastServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
@@ -73,60 +72,30 @@ export default function BlastServicePage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<BlastFormData>({
-    serviceName: "BLAST",
+    serviceName: "Homology",
+    displayName: "BLAST",
     transformParams: transformBlastParams,
-    onSubmit: async (data) => {
-      // Validate FASTA data if using fasta_data input source
-      if (data.input_source === "fasta_data" && data.input_fasta_data) {
-        if (!isFastaValid) {
-          const errorMessage =
-            fastaValidationResult?.message || "Invalid FASTA data";
-          console.error("Invalid FASTA data:", errorMessage);
-          toast.error(errorMessage);
-          return;
-        }
-      }
-
-      try {
-        setIsSubmitting(true);
-        // Submit the BLAST job using the utility function
-        const result = await submitServiceJob(
-          "Homology",
-          transformBlastParams(data),
-        );
-
-        if (result.success && result.job?.[0]) {
-          console.log("BLAST job submitted successfully:", result.job[0]);
-
-          // Show success message
-          toast.success("BLAST job submitted successfully!", {
-            description: `Job ID: ${result.job[0].id}`,
-          });
-
-          // Optionally redirect to jobs page
-          // router.push(`/jobs/${result.job.id}`);
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (error) {
-        console.error("Failed to submit BLAST job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit BLAST job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
   });
 
   const form = useForm({
     defaultValues: DEFAULT_BLAST_FORM_VALUES as BlastFormData,
     validators: { onChange: completeFormSchema },
     onSubmit: async ({ value }) => {
-      await submitForm(value as BlastFormData);
+      const data = value as BlastFormData;
+
+      // Validate FASTA data if using fasta_data input source
+      if (data.input_source === "fasta_data" && data.input_fasta_data) {
+        if (!isFastaValid) {
+          const errorMessage =
+            fastaValidationResult?.message || "Invalid FASTA data";
+          toast.error(errorMessage);
+          return;
+        }
+      }
+
+      await submitForm(data);
     },
   });
 

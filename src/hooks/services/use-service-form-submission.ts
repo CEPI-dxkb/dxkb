@@ -16,18 +16,12 @@ interface UseServiceFormSubmissionOptions<T> {
   transformParams: (data: T) => Record<string, unknown>;
   /** Callback after successful job submission */
   onSuccess?: () => void;
-  /**
-   * @deprecated Use transformParams + onSuccess instead. This callback receives raw
-   * form data and is only called when not in debug mode, bypassing the hook's job
-   * submission handling.
-   */
-  onSubmit?: (data: T) => void | Promise<void>;
 }
 
 export function useServiceFormSubmission<T = Record<string, unknown>>(
   options: UseServiceFormSubmissionOptions<T>,
 ) {
-  const { serviceName, displayName, transformParams, onSuccess, onSubmit } = options;
+  const { serviceName, displayName, transformParams, onSuccess } = options;
   const router = useRouter();
   const { isDebugMode, containerBuildId } = useServiceDebugging();
   const [showParamsDialog, setShowParamsDialog] = useState(false);
@@ -72,13 +66,6 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
     },
   });
 
-  // Legacy mutation for deprecated onSubmit callback
-  const legacyMutation = useMutation({
-    mutationFn: async (data: T) => {
-      await onSubmit?.(data);
-    },
-  });
-
   const handleSubmit = async (data: T) => {
     // Transform the form data into submission params
     const params = transformParams(data);
@@ -98,12 +85,6 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
       return;
     }
 
-    // Legacy callback path - for backward compatibility during migration
-    if (onSubmit) {
-      legacyMutation.mutate(data);
-      return;
-    }
-
     // Standard job submission path
     submitMutation.mutate(finalParams);
   };
@@ -114,7 +95,7 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
     setShowParamsDialog,
     currentParams,
     isDebugMode,
-    isSubmitting: submitMutation.isPending || legacyMutation.isPending,
+    isSubmitting: submitMutation.isPending,
     serviceName,
   };
 }

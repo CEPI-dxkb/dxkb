@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,9 +39,7 @@ import {
   stripPrimerMarkers,
   transformPrimerDesignParams,
   validatePrimerDesignSequence,
-  type PrimerSequenceValidationResult,
 } from "@/lib/forms/(genomics)";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { WorkspaceObject } from "@/lib/workspace-client";
@@ -56,11 +54,7 @@ type MarkerType = keyof typeof MARKER_LABELS | "clear";
 
 export default function PrimerDesignServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-  const [sequenceValidation, setSequenceValidation] =
-    useState<PrimerSequenceValidationResult | null>(null);
-
   // Store values for each input type separately
   const [sequenceTextValue, setSequenceTextValue] = useState("");
   const [sequenceTextId, setSequenceTextId] = useState("");
@@ -79,13 +73,22 @@ export default function PrimerDesignServicePage() {
     showParamsDialog,
     setShowParamsDialog,
     currentParams,
+    isSubmitting,
   } = useServiceFormSubmission<PrimerDesignFormData>({
-    serviceName: "Primer Design",
+    serviceName: "PrimerDesign",
+    displayName: "Primer Design",
     transformParams: transformPrimerDesignParams,
-    onSubmit: async (data) => {
+  });
+
+  const form = useForm({
+    defaultValues: DEFAULT_PRIMER_DESIGN_FORM_VALUES as PrimerDesignFormData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validators: { onChange: primerDesignFormSchema as any },
+    onSubmit: async ({ value }) => {
+      const data = value as PrimerDesignFormData;
+
       if (data.input_type === "sequence_text") {
         const validation = validatePrimerDesignSequence(data.sequence_input);
-        setSequenceValidation(validation);
 
         if (!validation.isValid) {
           toast.error(validation.message);
@@ -97,39 +100,7 @@ export default function PrimerDesignServicePage() {
         }
       }
 
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob(
-          "PrimerDesign",
-          transformPrimerDesignParams(data),
-        );
-
-        if (result.success) {
-          const jobId = result.job?.[0]?.id;
-          toast.success("Primer Design job submitted", {
-            description: jobId ? `Job ID: ${jobId}` : undefined,
-          });
-        } else {
-          throw new Error(result.error || "Failed to submit Primer Design job");
-        }
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to submit Primer Design job";
-        toast.error("Submission failed", { description: message });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
-  });
-
-  const form = useForm({
-    defaultValues: DEFAULT_PRIMER_DESIGN_FORM_VALUES as PrimerDesignFormData,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validators: { onChange: primerDesignFormSchema as any },
-    onSubmit: async ({ value }) => {
-      await handleFormSubmit(value as PrimerDesignFormData);
+      await handleFormSubmit(data);
     },
   });
 
@@ -138,29 +109,13 @@ export default function PrimerDesignServicePage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
+  const sequenceValidation = useMemo(() => {
+    if (inputType === "workplace_fasta" || !sequenceInput) return null;
+    return validatePrimerDesignSequence(sequenceInput);
+  }, [inputType, sequenceInput]);
+
   useEffect(() => {
-    if (inputType === "workplace_fasta") {
-      setSequenceValidation(null);
-      form.setFieldMeta("sequence_input", (prev) => ({
-        ...prev,
-        errorMap: { ...prev.errorMap, onChange: undefined },
-      }));
-      return;
-    }
-
-    if (!sequenceInput) {
-      setSequenceValidation(null);
-      form.setFieldMeta("sequence_input", (prev) => ({
-        ...prev,
-        errorMap: { ...prev.errorMap, onChange: undefined },
-      }));
-      return;
-    }
-
-    const validation = validatePrimerDesignSequence(sequenceInput);
-    setSequenceValidation(validation);
-
-    if (validation.isValid) {
+    if (!sequenceValidation || sequenceValidation.isValid) {
       form.setFieldMeta("sequence_input", (prev) => ({
         ...prev,
         errorMap: { ...prev.errorMap, onChange: undefined },
@@ -168,10 +123,10 @@ export default function PrimerDesignServicePage() {
     } else {
       form.setFieldMeta("sequence_input", (prev) => ({
         ...prev,
-        errorMap: { ...prev.errorMap, onChange: validation.message },
+        errorMap: { ...prev.errorMap, onChange: sequenceValidation.message },
       }));
     }
-  }, [inputType, sequenceInput, form]);
+  }, [sequenceValidation, form]);
 
   const handleSequenceValueChange = useCallback(
     (value: string) => {
@@ -184,7 +139,6 @@ export default function PrimerDesignServicePage() {
       }
 
       const validation = validatePrimerDesignSequence(value);
-      setSequenceValidation(validation);
 
       if (validation.isValid) {
         form.setFieldMeta("sequence_input", (prev) => ({
@@ -310,7 +264,6 @@ export default function PrimerDesignServicePage() {
 
   const handleReset = () => {
     form.reset(DEFAULT_PRIMER_DESIGN_FORM_VALUES);
-    setSequenceValidation(null);
     setShowAdvanced(false);
   };
 
@@ -371,8 +324,7 @@ export default function PrimerDesignServicePage() {
                   restoreWorkspaceFasta();
                 }
 
-                // Clear validation state when switching
-                setSequenceValidation(null);
+
               }}
               className="w-full"
             >

@@ -66,9 +66,33 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  getPairedLibraryName,
+  getSingleLibraryName,
+  useTanstackLibrarySelection,
+} from "@/lib/forms/tanstack-library-selection";
+
+function mapAssemblyLibraryToItem(library: Library): LibraryItem {
+  const baseLib: LibraryItem = {
+    _id: library.id,
+    _type: library.type === "paired" ? "paired" : library.type === "single" ? "single" : "srr_accession",
+  };
+
+  if (library.type === "paired" && library.files) {
+    baseLib.read1 = library.files[0];
+    baseLib.read2 = library.files[1];
+    baseLib.platform = library.platform || "infer";
+    baseLib.interleaved = library.interleaved || false;
+    baseLib.read_orientation_outward = library.read_orientation_outward || false;
+  } else if (library.type === "single" && library.files) {
+    baseLib.read = library.files[0];
+    baseLib.platform = library.platform || "infer";
+  }
+
+  return baseLib;
+}
 
 export default function GenomeAssemblyPage() {
-  const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [genomeSizeUnit, setGenomeSizeUnit] = useState<"M" | "K">("M");
   const [expectedGenomeSize, setExpectedGenomeSize] = useState(5);
@@ -76,32 +100,7 @@ export default function GenomeAssemblyPage() {
   const [pairedRead2, setPairedRead2] = useState<string | null>(null);
   const [singleRead, setSingleRead] = useState<string | null>(null);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-
-  const handleReset = () => {
-    form.reset(DEFAULT_GENOME_ASSEMBLY_FORM_VALUES);
-    setSelectedLibraries([]);
-    setShowAdvanced(false);
-    setGenomeSizeUnit("M");
-    setExpectedGenomeSize(5);
-    setPairedRead1(null);
-    setPairedRead2(null);
-    setSingleRead(null);
-  };
-
-  // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<GenomeAssemblyFormData>({
-    serviceName: "GenomeAssembly2",
-    displayName: "Genome Assembly",
-    transformParams: transformGenomeAssemblyParams,
-    onSuccess: handleReset,
-  });
+  const [sraResetKey, setSraResetKey] = useState(0);
 
   const form = useForm({
     defaultValues: DEFAULT_GENOME_ASSEMBLY_FORM_VALUES as GenomeAssemblyFormData,
@@ -123,6 +122,49 @@ export default function GenomeAssemblyPage() {
     },
   });
 
+  const {
+    selectedLibraries,
+    addPairedLibrary,
+    addSingleLibrary,
+    removeLibrary,
+    setLibrariesAndSync,
+  } = useTanstackLibrarySelection<LibraryItem>({
+    form,
+    mapLibraryToItem: mapAssemblyLibraryToItem,
+    fields: {
+      paired: "paired_end_libs",
+      single: "single_end_libs",
+      srr: "srr_ids",
+    },
+  });
+
+  // Setup service debugging and form submission
+  const {
+    handleSubmit,
+    showParamsDialog,
+    setShowParamsDialog,
+    currentParams,
+    serviceName,
+    isSubmitting,
+  } = useServiceFormSubmission<GenomeAssemblyFormData>({
+    serviceName: "GenomeAssembly2",
+    displayName: "Genome Assembly",
+    transformParams: transformGenomeAssemblyParams,
+    onSuccess: handleReset,
+  });
+
+  function handleReset() {
+    form.reset(DEFAULT_GENOME_ASSEMBLY_FORM_VALUES);
+    setLibrariesAndSync([]);
+    setShowAdvanced(false);
+    setGenomeSizeUnit("M");
+    setExpectedGenomeSize(5);
+    setPairedRead1(null);
+    setPairedRead2(null);
+    setSingleRead(null);
+    setSraResetKey((k) => k + 1);
+  }
+
   // Watch recipe to show/hide genome size field
   const recipe = useStore(form.store, (s) => s.values.recipe);
   const showGenomeSizeField = recipe === "canu";
@@ -131,105 +173,46 @@ export default function GenomeAssemblyPage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  // Convert Library to LibraryItem for form submission
-  const convertLibraryToLibraryItem = (library: Library): LibraryItem => {
-    const baseLib: LibraryItem = {
-      _id: library.id,
-      _type: library.type === "paired" ? "paired" : library.type === "single" ? "single" : "srr_accession",
-    };
-
-    // Add type-specific fields from library metadata
-    if (library.type === "paired" && library.files) {
-      baseLib.read1 = library.files[0];
-      baseLib.read2 = library.files[1];
-      baseLib.platform = library.platform || "infer";
-      baseLib.interleaved = library.interleaved || false;
-      baseLib.read_orientation_outward = library.read_orientation_outward || false;
-    } else if (library.type === "single" && library.files) {
-      baseLib.read = library.files[0];
-      baseLib.platform = library.platform || "infer";
-    }
-
-    return baseLib;
-  };
-
-  // Sync selectedLibraries with form data
-  const syncLibrariesToForm = (libraries: Library[]) => {
-    const pairedLibs: LibraryItem[] = [];
-    const singleLibs: LibraryItem[] = [];
-    const srrIds: string[] = [];
-
-    libraries.forEach((lib) => {
-      if (lib.type === "paired") {
-        pairedLibs.push(convertLibraryToLibraryItem(lib));
-      } else if (lib.type === "single") {
-        singleLibs.push(convertLibraryToLibraryItem(lib));
-      } else if (lib.type === "sra") {
-        srrIds.push(lib.id);
-      }
-    });
-
-    form.setFieldValue("paired_end_libs", pairedLibs);
-    form.setFieldValue("single_end_libs", singleLibs);
-    form.setFieldValue("srr_ids", srrIds);
-  };
-
   const handlePairedLibraryAdd = () => {
-    if (!pairedRead1 || !pairedRead2) {
-      toast.error("Both read files must be selected for paired library");
-      return;
-    }
-
-    if (pairedRead1 === pairedRead2) {
-      toast.error("READ FILE 1 and READ FILE 2 cannot be the same");
-      return;
-    }
-
-    const newLibrary: Library = {
-      id: `${pairedRead1}${pairedRead2}`,
-      name: `P(${pairedRead1.split("/").pop()}, ${pairedRead2.split("/").pop()})`,
-      type: "paired",
-      files: [pairedRead1, pairedRead2],
-      platform: "infer",
-      interleaved: false,
-      read_orientation_outward: false,
-    };
-
-    const newLibraries = [...selectedLibraries, newLibrary];
-    setSelectedLibraries(newLibraries);
-    syncLibrariesToForm(newLibraries);
-
-    // Clear the inputs
-    setPairedRead1(null);
-    setPairedRead2(null);
+    addPairedLibrary({
+      read1: pairedRead1,
+      read2: pairedRead2,
+      buildLibrary: (read1, read2, id) => ({
+        library: {
+          id,
+          name: getPairedLibraryName(read1, read2),
+          type: "paired",
+          files: [read1, read2],
+          platform: "infer",
+          interleaved: false,
+          read_orientation_outward: false,
+        },
+      }),
+      onError: (message) => toast.error(message),
+      onAfterAdd: () => {
+        setPairedRead1(null);
+        setPairedRead2(null);
+      },
+    });
   };
 
   const handleSingleLibraryAdd = () => {
-    if (!singleRead) {
-      toast.error("Read file must be selected");
-      return;
-    }
-
-    const newLibrary: Library = {
-      id: singleRead,
-      name: `S(${singleRead.split("/").pop()})`,
-      type: "single",
-      files: [singleRead],
-      platform: "infer",
-    };
-
-    const newLibraries = [...selectedLibraries, newLibrary];
-    setSelectedLibraries(newLibraries);
-    syncLibrariesToForm(newLibraries);
-
-    // Clear the input
-    setSingleRead(null);
-  };
-
-  const handleRemoveLibrary = (id: string) => {
-    const newLibraries = selectedLibraries.filter((lib) => lib.id !== id);
-    setSelectedLibraries(newLibraries);
-    syncLibrariesToForm(newLibraries);
+    addSingleLibrary({
+      read: singleRead,
+      buildLibrary: (read) => ({
+        library: {
+          id: read,
+          name: getSingleLibraryName(read),
+          type: "single",
+          files: [read],
+          platform: "infer",
+        },
+      }),
+      onError: (message) => toast.error(message),
+      onAfterAdd: () => {
+        setSingleRead(null);
+      },
+    });
   };
 
   return (
@@ -328,13 +311,11 @@ export default function GenomeAssemblyPage() {
 
               {/* SRA Run Accession */}
               <SraRunAccessionWithValidation
+                key={sraResetKey}
                 title="SRA Run Accession"
                 placeholder="SRR..."
                 selectedLibraries={selectedLibraries}
-                setSelectedLibraries={(libs) => {
-                  setSelectedLibraries(libs);
-                  syncLibrariesToForm(libs);
-                }}
+                setSelectedLibraries={setLibrariesAndSync}
                 allowDuplicates={false}
               />
             </CardContent>
@@ -371,7 +352,7 @@ export default function GenomeAssemblyPage() {
                     name: library.name,
                     type: library.type,
                   }))}
-                  onRemove={handleRemoveLibrary}
+                  onRemove={removeLibrary}
                   className="max-h-84 overflow-y-auto"
                 />
               </CardContent>
@@ -718,7 +699,7 @@ export default function GenomeAssemblyPage() {
                   name: library.name,
                   type: library.type,
                 }))}
-                onRemove={handleRemoveLibrary}
+                onRemove={removeLibrary}
                 className="max-h-84 overflow-y-auto"
               />
             </CardContent>

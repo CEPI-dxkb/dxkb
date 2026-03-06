@@ -38,7 +38,6 @@ import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { toast } from "sonner";
@@ -92,7 +91,6 @@ export default function MetaCATSPage() {
     useState<WorkspaceObject | null>(null);
 
   // General state
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Handle reset
@@ -117,43 +115,11 @@ export default function MetaCATSPage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<MetaCatsFormData>({
     serviceName: "MetaCATS",
     transformParams: transformMetaCatsParams,
-    onSubmit: async (data) => {
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob(
-          "MetaCATS",
-          transformMetaCatsParams(data)
-        );
-
-        if (result.success) {
-          console.log("MetaCATS job submitted successfully:", result.job?.[0]);
-
-          toast.success("MetaCATS job submitted successfully!", {
-            description: result.job?.[0]?.id
-              ? `Job ID: ${result.job[0].id}`
-              : "Job submitted successfully",
-            closeButton: true,
-          });
-
-          handleReset();
-        } else {
-          throw new Error(result.error || "Failed to submit job");
-        }
-      } catch (error) {
-        console.error("Failed to submit MetaCATS job:", error);
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to submit MetaCATS job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-          closeButton: true,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSuccess: handleReset,
   });
 
   const form = useForm({

@@ -43,7 +43,6 @@ import {
   transformGenomeAlignmentParams,
 } from "@/lib/forms/(genomics)";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import {
   fetchGenomeGroupMembers,
@@ -56,7 +55,6 @@ const MAX_GENOMES = 20;
 export default function GenomeAlignmentServicePage() {
   const [selectedGenomes, setSelectedGenomes] = useState<GenomeSummary[]>([]);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isFetchingGroup, setIsFetchingGroup] = useState(false);
   const [lastSelectedGroup, setLastSelectedGroup] = useState<string | null>(null);
@@ -68,34 +66,11 @@ export default function GenomeAlignmentServicePage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<GenomeAlignmentFormData>({
-    serviceName: "Genome Alignment",
+    serviceName: "GenomeAlignment",
+    displayName: "Genome Alignment",
     transformParams: transformGenomeAlignmentParams,
-    onSubmit: async (data) => {
-      const params = transformGenomeAlignmentParams(data);
-
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob("GenomeAlignment", params);
-
-        if (result.success) {
-          const jobId = result.job?.[0]?.id;
-          toast.success("Genome Alignment job submitted", {
-            description: jobId ? `Job ID: ${jobId}` : undefined,
-          });
-        } else {
-          throw new Error(result.error || "Failed to submit Genome Alignment job");
-        }
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to submit Genome Alignment job";
-        toast.error("Submission failed", { description: message });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
   });
 
   const form = useForm({

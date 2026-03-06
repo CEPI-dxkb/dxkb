@@ -28,7 +28,6 @@ import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
-import { submitServiceJob } from "@/lib/services/service-utils";
 import {
   fetchGenomeGroupMembers,
   validateViralGenomes,
@@ -86,7 +85,6 @@ export default function MSAandSNPAnalysisPage() {
       numseq: number;
     } | null>(null);
   const [showStrategy, setShowStrategy] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
@@ -117,48 +115,12 @@ export default function MSAandSNPAnalysisPage() {
     setShowParamsDialog,
     currentParams,
     serviceName,
+    isSubmitting,
   } = useServiceFormSubmission<MsaSnpAnalysis.MsaSnpAnalysisFormData>({
-    serviceName: "MSA SNP Analysis",
+    serviceName: "MSA",
+    displayName: "MSA SNP Analysis",
     transformParams: MsaSnpAnalysisUtils.transformMsaSnpAnalysisParams,
-    onSubmit: async (data) => {
-      try {
-        setIsSubmitting(true);
-        const result = await submitServiceJob(
-          "MSA",
-          MsaSnpAnalysisUtils.transformMsaSnpAnalysisParams(data),
-        );
-
-        if (result.success) {
-          console.log(
-            "MSA SNP Analysis job submitted successfully:",
-            result.job?.[0],
-          );
-
-          toast.success("MSA SNP Analysis job submitted successfully!", {
-            description: result.job?.[0]?.id
-              ? `Job ID: ${result.job[0].id}`
-              : "Job submitted successfully",
-            closeButton: true,
-          });
-
-          handleReset();
-        } else {
-          throw new Error(result.error || "Failed to submit job");
-        }
-      } catch (error) {
-        console.error("Failed to submit MSA SNP Analysis job:", error);
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Failed to submit MSA SNP Analysis job";
-        toast.error("Submission failed", {
-          description: errorMessage,
-          closeButton: true,
-        });
-      } finally {
-        setIsSubmitting(false);
-      }
-    },
+    onSuccess: handleReset,
   });
 
   const form = useForm({

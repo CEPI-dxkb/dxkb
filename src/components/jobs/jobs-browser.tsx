@@ -53,7 +53,7 @@ interface JobDataRowProps {
   isSelected: boolean;
   onSelect: (
     job: JobListItem,
-    modifiers?: { ctrlOrMeta: boolean; shift: boolean },
+    modifiers?: { ctrlOrMeta: boolean },
   ) => void;
   onDoubleClick: (job: JobListItem) => void;
 }
@@ -75,7 +75,6 @@ const JobDataRow = React.memo(function JobDataRow({
       onClick={(e) =>
         onSelect(row.original, {
           ctrlOrMeta: e.ctrlKey || e.metaKey,
-          shift: e.shiftKey,
         })
       }
       onDoubleClick={() => onDoubleClick(row.original)}
@@ -194,7 +193,7 @@ export function JobsBrowser() {
   const handleSelect = useCallback(
     (
       job: JobListItem,
-      modifiers?: { ctrlOrMeta: boolean; shift: boolean },
+      modifiers?: { ctrlOrMeta: boolean },
     ) => {
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -276,8 +275,12 @@ export function JobsBrowser() {
         case "show":
           if (job.output_path) {
             // Navigate to workspace output folder
-            const wsPath = job.output_path.replace(/^\/+/, "");
-            router.push(`/workspace/${wsPath}`);
+            const segments = job.output_path
+              .replace(/^\/+/, "")
+              .split("/")
+              .filter(Boolean);
+            const encoded = segments.map(encodeWorkspaceSegment).join("/");
+            router.push(`/workspace/${encoded}`);
           }
           break;
         case "kill":
@@ -399,7 +402,6 @@ export function JobsBrowser() {
             isLoading={isLoading}
             getRowId={(row) => row.id}
             sort={sort}
-            onSortChange={setSort}
             onSort={handleSort}
             dndId="jobs-table-dnd"
             renderRows={renderRows}

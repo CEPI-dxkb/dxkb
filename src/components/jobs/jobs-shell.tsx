@@ -76,8 +76,8 @@ export function JobsShell({
     >
       <ResizablePanel
         id={JOBS_PANEL_IDS.main}
-        defaultSize={75}
-        minSize={50}
+        defaultSize="75%"
+        minSize="50%"
         className="flex h-full min-h-0 flex-row overflow-hidden"
       >
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -94,7 +94,7 @@ export function JobsShell({
       <ResizablePanel
         panelRef={detailsPanelRef}
         id={JOBS_PANEL_IDS.details}
-        defaultSize={20}
+        defaultSize="20%"
         minSize={110}
         maxSize={600}
         collapsible

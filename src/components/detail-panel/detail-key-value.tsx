@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { formatDate } from "@/lib/services/workspace/helpers";
 
 export interface DetailField {
   label: string;
@@ -11,17 +12,6 @@ export interface DetailField {
   render?: () => ReactNode;
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
 
 export function DetailKeyValueTable({ fields }: { fields: DetailField[] }) {
   const visibleFields = fields.filter(

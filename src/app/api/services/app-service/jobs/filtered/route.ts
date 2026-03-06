@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createAppService } from "@/lib/app-service";
 import { getBvbrcAuthToken } from "@/lib/auth";
+
+const requestSchema = z.object({
+  offset: z.number().int().nonnegative().default(0),
+  limit: z.number().int().positive().max(1000).default(200),
+  include_archived: z.boolean().default(false),
+  sort_field: z
+    .enum(["status", "app", "submit_time", "start_time", "completed_time"])
+    .optional(),
+  sort_order: z.enum(["asc", "desc"]).optional(),
+});
 
 /**
  * Enumerate jobs with server-side pagination and archived support
@@ -18,13 +29,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      offset = 0,
-      limit = 200,
-      include_archived = false,
-      sort_field,
-      sort_order,
-    } = body;
+    const parsed = requestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request parameters", details: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+    const { offset, limit, include_archived, sort_field, sort_order } =
+      parsed.data;
 
     const appService = createAppService(token);
 

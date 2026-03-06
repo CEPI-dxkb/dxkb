@@ -204,19 +204,8 @@ export const WorkspaceDataTable = forwardRef<
     memberCountByPath,
   );
 
-  const handleSortChange = useCallback(
-    (newSort: { field: string; direction: "asc" | "desc" }) => {
-      onSortChange({
-        field: newSort.field as WorkspaceBrowserSort["field"],
-        direction: newSort.direction,
-      });
-    },
-    [onSortChange],
-  );
-
   // Render workspace-specific leading rows
-  const renderLeadingRows = useCallback(() => {
-    // We need access to table columns for leading/parent rows — use column order for sizing
+  const renderLeadingRows = useCallback((columnOrder: string[]) => {
     return (
       <>
         {showLeadingRow && (
@@ -226,7 +215,7 @@ export const WorkspaceDataTable = forwardRef<
             isFocused={focusedSpecialRow === "leading"}
             onClick={() => router.push(sharedBase)}
             _useDataTable
-            columnOrder={DEFAULT_COLUMN_ORDER}
+            columnOrder={columnOrder}
           />
         )}
         {showParentRow && (
@@ -237,7 +226,7 @@ export const WorkspaceDataTable = forwardRef<
             onClick={handleParentClick}
             label={parentRowLabel}
             _useDataTable
-            columnOrder={DEFAULT_COLUMN_ORDER}
+            columnOrder={columnOrder}
           />
         )}
       </>
@@ -290,7 +279,6 @@ export const WorkspaceDataTable = forwardRef<
       isLoading={isLoading}
       getRowId={(row) => row.id}
       sort={{ field: sort.field, direction: sort.direction }}
-      onSortChange={handleSortChange}
       onSort={handleSort}
       dndId="workspace-table-dnd"
       renderLeadingRows={renderLeadingRows}

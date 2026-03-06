@@ -116,7 +116,7 @@ export function WorkspaceShell({
       <ResizablePanel
         id={WORKSPACE_PANEL_IDS.main}
         defaultSize={panelLayout[WORKSPACE_PANEL_IDS.main] ?? 75}
-        minSize={50}
+        minSize="50%"
         className="flex h-full min-h-0 flex-row overflow-hidden"
       >
         <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

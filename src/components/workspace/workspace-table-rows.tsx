@@ -8,16 +8,7 @@ import clsx from "clsx";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { isFolderType } from "@/lib/services/workspace/utils";
-
-/** Column metadata mapping for special rows (responsive hide classes). */
-const COLUMN_META: Record<string, string> = {
-  name: "",
-  size: "",
-  owner_id: "hidden md:table-cell",
-  creation_time: "hidden sm:table-cell",
-  members: "",
-  type: "hidden lg:table-cell",
-};
+import { COLUMN_CLASS_MAP } from "./workspace-table-columns";
 
 interface SpecialRowProps {
   columns: Column<WorkspaceBrowserItem, unknown>[];
@@ -45,7 +36,7 @@ function SpecialRow({
   const cells = _useDataTable && columnOrder
     ? columnOrder.map((id) => ({
         id,
-        metaClassName: COLUMN_META[id] ?? "",
+        metaClassName: COLUMN_CLASS_MAP[id] ?? "",
       }))
     : columns.map((column) => {
         const meta = column.columnDef.meta as

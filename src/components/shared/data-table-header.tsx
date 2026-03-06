@@ -38,7 +38,7 @@ export function DraggableTableHeader({
   onSort: (field: string) => void;
   sort: DataTableSort;
 }) {
-  const { attributes, isDragging, listeners, setNodeRef, transform } =
+  const { attributes, isDragging, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: header.column.id,
     });
@@ -48,7 +48,7 @@ export function DraggableTableHeader({
     opacity: isDragging ? 0.8 : 1,
     position: "relative" as const,
     transform: CSS.Translate.toString(transform),
-    transition: "transform 0.2s ease-in-out",
+    transition,
     whiteSpace: "nowrap",
     width: colWidth,
     minWidth: colWidth,

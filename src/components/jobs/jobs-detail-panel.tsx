@@ -10,19 +10,7 @@ import {
 } from "@/components/ui/collapsible";
 import { useJobOutput } from "@/hooks/services/jobs/use-job-detail";
 import type { JobListItem } from "@/types/workspace";
-
-function formatDate(value: string | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  return date.toLocaleString("en-US", {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
+import { formatDate } from "@/lib/services/workspace/helpers";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);

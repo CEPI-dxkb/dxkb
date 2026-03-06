@@ -54,7 +54,7 @@ function StatusCell({ status }: { status: JobStatus }) {
 }
 
 /** Format camelCase or PascalCase app names into readable labels. */
-function formatServiceName(app: string): string {
+export function formatServiceName(app: string): string {
   if (!app) return "";
   return app
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")

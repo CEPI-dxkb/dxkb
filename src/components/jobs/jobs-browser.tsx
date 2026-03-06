@@ -2,14 +2,13 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Row } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import clsx from "clsx";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { useAuthenticatedFetch } from "@/hooks/use-authenticated-fetch-client";
+import { useKillJob } from "@/hooks/services/workspace/use-workspace";
 import { useJobsData } from "@/hooks/services/jobs/use-jobs-data";
 import {
   useJobsStatusSummary,
@@ -107,8 +106,6 @@ const JobDataRow = React.memo(function JobDataRow({
 
 export function JobsBrowser() {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const authenticatedFetch = useAuthenticatedFetch();
 
   // State
   const [offset, setOffset] = useState(0);
@@ -140,22 +137,7 @@ export function JobsBrowser() {
   const { data: appSummary } = useJobsAppSummary(includeArchived);
 
   // Kill mutation
-  const killMutation = useMutation<unknown, Error, string>({
-    mutationFn: async (jobId) => {
-      const response = await authenticatedFetch(
-        `/api/services/app-service/jobs/${jobId}/kill`,
-        { method: "POST" },
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to kill job: ${response.statusText}`);
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["jobs-filtered"] });
-      void queryClient.invalidateQueries({ queryKey: ["jobs-task-summary"] });
-    },
-  });
+  const killMutation = useKillJob();
 
   // Derived data
   const availableServices = useMemo(() => {

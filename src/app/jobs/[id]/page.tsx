@@ -4,7 +4,6 @@ import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   useJobDetails,
-  useJobSummary,
   useKillJob,
 } from "@/hooks/services/workspace/use-workspace";
 import { Button } from "@/components/ui/button";
@@ -124,14 +123,12 @@ function JobDetailContent() {
   const [includeLogs, setIncludeLogs] = useState(false);
 
   const detailsQuery = useJobDetails(jobId, includeLogs);
-  const _summaryQuery = useJobSummary(jobId);
   const killJobMutation = useKillJob();
 
   const jobDetails = detailsQuery.data ?? null;
 
   const handleRefresh = () => {
     void detailsQuery.refetch();
-    void _summaryQuery.refetch();
   };
 
   const handleKillJob = async () => {

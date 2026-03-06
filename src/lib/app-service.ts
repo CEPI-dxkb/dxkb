@@ -1,15 +1,9 @@
 import { createBvBrcClient } from "./jsonrpc-client";
 import {
-  EnumerateJobsResponse,
-  QueryJobsResponse,
-  QueryJobSummaryResponse,
   QueryJobDetailsResponse,
   KillJobResponse,
   FetchJobOutputResponse,
   SubmitServiceResponse,
-  EnumerateJobsParams,
-  QueryJobsParams,
-  QueryJobSummaryParams,
   QueryJobDetailsParams,
   KillJobParams,
   FetchJobOutputParams,
@@ -32,37 +26,6 @@ export class AppService {
 
   constructor(token: string) {
     this.client = createBvBrcClient(token);
-  }
-
-  /**
-   * Enumerate jobs (maps to AppService.enumerate_tasks)
-   */
-  async enumerateJobs(
-    params?: EnumerateJobsParams,
-  ): Promise<EnumerateJobsResponse> {
-    const { offset = 0, limit = 30000 } = params || {};
-
-    return this.client.call("AppService.enumerate_tasks", [offset, limit]);
-  }
-
-  /**
-   * Query multiple jobs by IDs (maps to AppService.query_tasks)
-   */
-  async queryJobs(params: QueryJobsParams): Promise<QueryJobsResponse> {
-    const { job_ids } = params;
-
-    return this.client.call("AppService.query_tasks", [job_ids]);
-  }
-
-  /**
-   * Get job summary (maps to AppService.query_task_summary)
-   */
-  async queryJobSummary(
-    params: QueryJobSummaryParams,
-  ): Promise<QueryJobSummaryResponse> {
-    const { job_id } = params;
-
-    return this.client.call("AppService.query_task_summary", [job_id]);
   }
 
   /**

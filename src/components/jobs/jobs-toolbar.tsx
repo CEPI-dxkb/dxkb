@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { formatServiceName } from "./jobs-table-columns";
 
 interface JobsToolbarProps {
   searchQuery: string;
@@ -35,14 +36,6 @@ interface JobsToolbarProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   statusSummary?: Record<string, number>;
-}
-
-/** Format camelCase or PascalCase app names into readable labels. */
-function formatServiceLabel(app: string): string {
-  if (!app) return "";
-  return app
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
 }
 
 const STATUS_OPTIONS = [
@@ -109,7 +102,7 @@ export function JobsToolbar({
             { value: "all", label: "All Services" },
             ...availableServices.map((s) => ({
               value: s,
-              label: formatServiceLabel(s),
+              label: formatServiceName(s),
             })),
           ]}
           value={serviceFilter}
@@ -125,7 +118,7 @@ export function JobsToolbar({
               <SelectItem value="all">All Services</SelectItem>
               {availableServices.map((app) => (
                 <SelectItem key={app} value={app}>
-                  {formatServiceLabel(app)}
+                  {formatServiceName(app)}
                 </SelectItem>
               ))}
             </SelectGroup>

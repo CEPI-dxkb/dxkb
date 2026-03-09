@@ -38,9 +38,10 @@ export async function POST(request: NextRequest) {
 
     // Validate and clamp numeric inputs
     const sanitizedOffset = Math.max(0, Math.floor(Number(offset) || 0));
+    const parsedLimit = Number(limit);
     const sanitizedLimit = Math.min(
       MAX_LIMIT,
-      Math.max(1, Math.floor(Number(limit) || 200)),
+      Math.max(1, Math.floor(Number.isFinite(parsedLimit) ? parsedLimit : 200)),
     );
 
     // Validate sort_field against allowlist

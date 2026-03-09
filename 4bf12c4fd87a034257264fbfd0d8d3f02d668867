@@ -1,0 +1,25 @@
+src/hooks/services/use-service-form-submission.ts
+  a83b167f6593dc1d 88-91
+src/app/api/services/app-service/jobs/filtered/route.ts
+  a83b167f6593dc1d 5-14,39-50,52-57,61-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "4bf12c4fd87a034257264fbfd0d8d3f02d668867",
+  "prompts": {
+    "a83b167f6593dc1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a1a7134-39ae-4547-8278-b8124db338c1",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 39,
+      "total_deletions": 9,
+      "accepted_lines": 38,
+      "overriden_lines": 0
+    }
+  }
+}

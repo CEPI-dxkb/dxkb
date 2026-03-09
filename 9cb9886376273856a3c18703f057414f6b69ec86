@@ -1,0 +1,23 @@
+src/app/api/services/app-service/jobs/filtered/route.ts
+  e2d14bc6342ffa71 41,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "9cb9886376273856a3c18703f057414f6b69ec86",
+  "prompts": {
+    "e2d14bc6342ffa71": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44e8d7f0-0af4-45e9-b72d-8adb8ad99200",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

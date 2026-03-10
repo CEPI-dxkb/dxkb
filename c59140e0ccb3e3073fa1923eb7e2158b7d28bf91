@@ -1,0 +1,29 @@
+src/components/jobs/jobs-browser.tsx
+  cb3edb87b6896808 123,383
+src/components/shared/data-table-header.tsx
+  cb3edb87b6896808 121-143,146,148-159,162,164
+src/components/jobs/jobs-toolbar.tsx
+  cb3edb87b6896808 41,58,60-62,151-154,187-193,195-196,205
+src/components/shared/data-table.tsx
+  cb3edb87b6896808 41,149-155,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "c59140e0ccb3e3073fa1923eb7e2158b7d28bf91",
+  "prompts": {
+    "cb3edb87b6896808": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a434cbb-f694-4b81-a864-b79275236016",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 123,
+      "total_deletions": 92,
+      "accepted_lines": 72,
+      "overriden_lines": 0
+    }
+  }
+}

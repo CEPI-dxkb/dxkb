@@ -109,7 +109,7 @@ export function useJobsColumns(
             {String(getValue())}
           </span>
         ),
-        meta: { className: "hidden lg:table-cell" },
+        meta: { className: "" },
         size: 70,
         enableResizing: true,
       },
@@ -140,7 +140,7 @@ export function useJobsColumns(
             {getOutputName(row.original)}
           </span>
         ),
-        meta: { className: "hidden md:table-cell" },
+        meta: { className: "" },
         size: 180,
         enableResizing: true,
       },
@@ -153,7 +153,7 @@ export function useJobsColumns(
             {formatDate(String(getValue() ?? ""))}
           </span>
         ),
-        meta: { className: "hidden sm:table-cell", sortField: "submit_time" },
+        meta: { className: "", sortField: "submit_time" },
         size: 120,
         enableResizing: true,
       },
@@ -166,7 +166,7 @@ export function useJobsColumns(
             {getValue() ? formatDate(String(getValue())) : "\u2014"}
           </span>
         ),
-        meta: { className: "hidden lg:table-cell", sortField: "start_time" },
+        meta: { className: "", sortField: "start_time" },
         size: 120,
         enableResizing: true,
       },
@@ -180,7 +180,7 @@ export function useJobsColumns(
           </span>
         ),
         meta: {
-          className: "hidden xl:table-cell",
+          className: "",
           sortField: "completed_time",
         },
         size: 120,

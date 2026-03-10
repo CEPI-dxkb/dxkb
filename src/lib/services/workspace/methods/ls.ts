@@ -21,8 +21,8 @@ export class WorkspaceLsMethods {
   async getObjectsByType(
     user: string,
     type: string,
-    path: string = "/home/",
-    recursive: boolean = true,
+    path = "/home/",
+    recursive = true,
   ): Promise<WorkspaceObject[]> {
     const params: WorkspaceListParams = {
       paths: [`/${user}@bvbrc${path}`],
@@ -49,7 +49,7 @@ export class WorkspaceLsMethods {
   async searchObjects(
     user: string,
     query: string,
-    path: string = "/home/",
+    path = "/home/",
     types?: string[],
   ): Promise<WorkspaceObject[]> {
     const params: WorkspaceListParams = {
@@ -80,7 +80,7 @@ export class WorkspaceLsMethods {
    */
   async getFiles(
     user: string,
-    path: string = "/home/",
+    path = "/home/",
   ): Promise<WorkspaceObject[]> {
     return this.getObjectsByType(user, "file", path);
   }
@@ -90,7 +90,7 @@ export class WorkspaceLsMethods {
    */
   async getFolders(
     user: string,
-    path: string = "/home/",
+    path = "/home/",
   ): Promise<WorkspaceObject[]> {
     return this.getObjectsByType(user, "folder", path);
   }
@@ -100,7 +100,7 @@ export class WorkspaceLsMethods {
    */
   async getJobs(
     user: string,
-    path: string = "/home/",
+    path = "/home/",
   ): Promise<WorkspaceObject[]> {
     return this.getObjectsByType(user, "job", path);
   }

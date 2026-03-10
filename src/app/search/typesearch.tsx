@@ -13,13 +13,9 @@ export interface TypeSearchProps {
 }
 
 // ---- Type for search types ----
-interface SearchTypesMap {
-  [category: string]: {
-    [term: string]: string; // term label
-  };
-}
+type SearchTypesMap = Record<string, Record<string, string>>;
 
-type TabsRendererProps = {
+interface TabsRendererProps {
   activeTab: string;
   setActiveTab: (v: string) => void;
   urlType: string;
@@ -31,7 +27,7 @@ type TabsRendererProps = {
   pageIndex: number;
   setPageIndex: (page: number) => void;
   setSelectedRows: (rows: unknown[]) => void;
-};
+}
 
 // IMPORTANT: This must be defined at module scope (not inside TypeSearch),
 // otherwise it gets a new identity on every TypeSearch re-render, which

@@ -168,7 +168,7 @@ export default function TaxonomicClassificationPage() {
   // Extract sample ID (filename base without extension) from a file path
   function extractSampleIdFromPath(
     path: string,
-    fallback: string = "",
+    fallback = "",
   ): string {
     const filename = path.split("/").pop() || "";
     return filename.split(".")[0] || fallback;

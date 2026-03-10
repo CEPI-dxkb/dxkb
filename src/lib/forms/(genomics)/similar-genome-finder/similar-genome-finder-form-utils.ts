@@ -30,7 +30,7 @@ export interface MinhashServicePayload {
  */
 export function buildMinhashServicePayload(
   data: SimilarGenomeFinderFormData,
-  id: string = `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
+  id = `${Date.now()}${Math.random().toString(36).slice(2, 9)}`,
 ): MinhashServicePayload {
   const hasGenomeId = data.selectedGenomeId.trim().length > 0;
   const input = hasGenomeId

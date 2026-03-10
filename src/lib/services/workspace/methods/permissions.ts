@@ -35,7 +35,7 @@ export class WorkspacePermissionsMethods {
    * Get permissions for multiple objects
    */
   async getMultipleObjectPermissions(
-    objects: Array<{ workspace: string; id: string }>,
+    objects: { workspace: string; id: string }[],
   ): Promise<WorkspaceGetPermissionsResponse> {
     return this.getPermissions({ objects });
   }

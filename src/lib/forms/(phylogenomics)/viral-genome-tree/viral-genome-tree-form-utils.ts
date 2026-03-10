@@ -85,7 +85,7 @@ export function createMetadataField(fieldId: string): { id: string; name: string
  * Check if a metadata field is already selected
  */
 export function isMetadataFieldSelected(
-  metadataFields: Array<{ id: string; selected: boolean }>,
+  metadataFields: { id: string; selected: boolean }[],
   fieldId: string,
 ): boolean {
   return metadataFields.some((field) => field.id === fieldId && field.selected);

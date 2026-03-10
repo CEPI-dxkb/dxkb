@@ -405,7 +405,7 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
 
   const columnSizeVars = useMemo(() => {
     const headers = table.getFlatHeaders();
-    const colSizes: { [key: string]: string } = {};
+    const colSizes: Record<string, string> = {};
     for (const header of headers) {
       colSizes[`--col-${header.column.id}-size`] = `${header.column.getSize()}px`;
     }

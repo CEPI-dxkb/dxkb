@@ -69,7 +69,7 @@ export function createFastaFileItem(
  */
 export function validateSequenceFasta(
   fastaText: string,
-  hasReference: boolean = false,
+  hasReference = false,
 ): FastaValidationResult & { meetsMinSequenceRequirement: boolean } {
   const minSeqs = hasReference
     ? MsaSnpAnalysisSchema.MIN_SEQUENCES_WITH_REF

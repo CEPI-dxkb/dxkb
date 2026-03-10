@@ -76,13 +76,13 @@ export interface JobDetails extends JobSummary {
     script: string;
     label: string;
     description: string;
-    parameters: Array<{
+    parameters: {
       id: string;
       label: string;
       required: boolean;
       default?: unknown;
       type: string;
-    }>;
+    }[];
   };
   // Raw stdout/stderr content if available
   stdout?: string;
@@ -116,12 +116,12 @@ export interface SubmitServiceParams {
 export type QueryJobDetailsResponse = JobDetails;
 // Raw JSON-RPC result is [status_code, message], e.g. [1, "Canceled 18978105"]
 export type KillJobRawResponse = [number, string];
-export type KillJobResponse = {
+export interface KillJobResponse {
   success: boolean;
   message: string;
-};
+}
 export type FetchJobOutputResponse = string;
-export type SubmitServiceResponse = {
+export interface SubmitServiceResponse {
   success: boolean;
   job: [
     {
@@ -132,7 +132,7 @@ export type SubmitServiceResponse = {
       params: Record<string, unknown>;
     }
   ]
-};
+}
 
 // Filtered jobs API types (server-side pagination + archived support)
 export interface EnumerateTasksFilteredParams {

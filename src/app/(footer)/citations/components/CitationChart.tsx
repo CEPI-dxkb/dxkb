@@ -3,10 +3,10 @@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface CitationChartProps {
-  data: Array<{
+  data: {
     year: number;
     count: number;
-  }>;
+  }[];
 }
 
 export function CitationChart({ data }: CitationChartProps) {

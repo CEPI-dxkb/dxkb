@@ -9,7 +9,7 @@ export interface SearchType {
 }
 
 // These aren't really used in the current iteration, but are retained in case we want to use them later
-export const searchTerms: ReadonlyArray<SearchTerm> = [
+export const searchTerms: readonly SearchTerm[] = [
   {
     id: "option_and",
     termTitle: "All Terms",
@@ -28,7 +28,7 @@ export const searchTerms: ReadonlyArray<SearchTerm> = [
   },
 ];
 
-export const searchTypes: ReadonlyArray<SearchType> = [
+export const searchTypes: readonly SearchType[] = [
   {
     id: "everything",
     typeTitle: "All Data Types",

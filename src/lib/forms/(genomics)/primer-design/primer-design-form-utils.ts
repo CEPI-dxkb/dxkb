@@ -244,7 +244,7 @@ export function transformPrimerDesignParams(
     }
   }
 
-  const regionMappings: Array<[keyof PrimerDesignFormData, string]> = [
+  const regionMappings: [keyof PrimerDesignFormData, string][] = [
     ["SEQUENCE_EXCLUDED_REGION", "SEQUENCE_EXCLUDED_REGION"],
     ["SEQUENCE_TARGET", "SEQUENCE_TARGET"],
     ["SEQUENCE_INCLUDED_REGION", "SEQUENCE_INCLUDED_REGION"],

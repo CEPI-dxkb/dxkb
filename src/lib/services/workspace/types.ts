@@ -36,10 +36,10 @@ export interface WorkspaceListResponse {
 
 // Workspace.get_permissions parameters and response
 export interface WorkspaceGetPermissionsParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
 }
 
 export interface WorkspacePermissions {
@@ -56,21 +56,21 @@ export interface WorkspaceGetPermissionsResponse {
 
 // Workspace.create parameters and response
 export interface WorkspaceCreateParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
     type: "folder" | "file";
     meta?: Record<string, unknown>;
-  }>;
+  }[];
 }
 
 export interface WorkspaceCreateResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
     type: string;
     meta: Record<string, unknown>;
-  }>;
+  }[];
 }
 
 /**
@@ -100,27 +100,27 @@ export interface WorkspaceDeleteParams {
 }
 
 export interface WorkspaceDeleteResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
 }
 
 // Workspace.copy parameters and response
 export interface WorkspaceCopyParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
   new_workspace: string;
   new_id: string;
 }
 
 export interface WorkspaceCopyResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
 }
 
 /** Path-based copy params (BV-BRC API: objects as [sourcePath, destPath][]). */
@@ -135,58 +135,58 @@ export type WorkspaceCopyByPathsResponse = unknown[];
 
 // Workspace.move parameters and response
 export interface WorkspaceMoveParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
   new_workspace: string;
   new_id: string;
 }
 
 export interface WorkspaceMoveResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
 }
 
 // Workspace.rename parameters and response
 export interface WorkspaceRenameParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
   new_name: string;
 }
 
 export interface WorkspaceRenameResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
+  }[];
 }
 
 // Workspace.get parameters and response
 export interface WorkspaceGetParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
-  }>;
-  infos: Array<{
+  }[];
+  infos: {
     workspace: string;
     id: string;
     metadata_only: boolean;
-  }>;
+  }[];
 }
 
 export interface WorkspaceGetResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
     type: string;
     meta: Record<string, unknown>;
     data?: string; // Base64 encoded data for files
-  }>;
+  }[];
 }
 
 /** Raw Workspace.get result: result[0] = path results, result[0][i][0] = object tuple. */
@@ -234,22 +234,22 @@ export interface ResolvedPathObject {
 
 // Workspace.save parameters and response
 export interface WorkspaceSaveParams {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
     type: string;
     meta: Record<string, unknown>;
     data?: string; // Base64 encoded data for files
-  }>;
+  }[];
 }
 
 export interface WorkspaceSaveResponse {
-  objects: Array<{
+  objects: {
     workspace: string;
     id: string;
     type: string;
     meta: Record<string, unknown>;
-  }>;
+  }[];
 }
 
 // Generic JSON-RPC request/response types
@@ -275,7 +275,7 @@ export interface JsonRpcResponse<T = unknown> {
 // Workspace.update_metadata parameters: objects are [path, meta, type][] per object
 export interface WorkspaceUpdateMetadataParams {
   /** Array of [path, meta, type] tuples; meta is typically {} */
-  objects: Array<[string, Record<string, unknown>, string]>;
+  objects: [string, Record<string, unknown>, string][];
 }
 
 /** Params for Workspace.update_auto_meta (trigger inspection/metadata update for uploaded objects). */
@@ -526,7 +526,7 @@ export const knownUploadTypes = {
 // Type for the keys of knownUploadTypes
 export type ValidWorkspaceObjectTypes = keyof typeof knownUploadTypes | typeof otherWorkspaceObjectTypes[number] | typeof viewableTypes[number];
 
-export type changeableTypes = {
+export interface changeableTypes {
   aligned_dna_fasta: { label: "aligned_dna_fasta"; value: "aligned_dna_fasta" };
   aligned_protein_fasta: {
     label: "aligned_protein_fasta";
@@ -578,7 +578,7 @@ export type changeableTypes = {
   xls: { label: "xls"; value: "xls" };
   xlsx: { label: "xlsx"; value: "xlsx" };
   xml: { label: "xml"; value: "xml" };
-};
+}
 
 /** Sorted list of object type IDs for the "Change Object Type" dialog. */
 export const editTypeOptions: string[] = [

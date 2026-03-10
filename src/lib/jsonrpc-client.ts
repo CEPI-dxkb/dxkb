@@ -78,7 +78,7 @@ export class JsonRpcClient {
 
   // Batch requests (if needed in the future)
   async batch<T = unknown>(
-    requests: Array<{ method: string; params: unknown[] }>,
+    requests: { method: string; params: unknown[] }[],
   ): Promise<T[]> {
     const jsonRequests = requests.map((req) =>
       this.createRequest(req.method, req.params),

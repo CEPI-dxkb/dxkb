@@ -34,7 +34,7 @@ const searchTypes = [
   "genome_sequence",
 ] as const;
 
-const labelsByType: { [key: string]: string } = {
+const labelsByType: Record<string, string> = {
   taxonomy: "Taxa",
   genome: "Genomes",
   strain: "Strains",
@@ -63,9 +63,7 @@ interface BVBRCAPIResponse {
   };
 }
 
-interface SearchResults {
-  [key: string]: BVBRCAPIResponse;
-}
+type SearchResults = Record<string, BVBRCAPIResponse>;
 
 // ---- make this top-level (outside components) ----
 function processQuery(query: string) {

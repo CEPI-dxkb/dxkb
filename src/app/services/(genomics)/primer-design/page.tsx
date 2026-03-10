@@ -402,9 +402,7 @@ export default function PrimerDesignServicePage() {
                   </Label>
                   <div className="flex flex-wrap gap-2">
                     {(
-                      Object.keys(MARKER_LABELS) as Array<
-                        keyof typeof MARKER_LABELS
-                      >
+                      Object.keys(MARKER_LABELS) as (keyof typeof MARKER_LABELS)[]
                     ).map((markerKey) => (
                       <Button
                         key={markerKey}

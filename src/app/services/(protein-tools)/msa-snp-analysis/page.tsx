@@ -334,9 +334,7 @@ export default function MSAandSNPAnalysisPage() {
   }, [refType, selectGenomegroup]);
 
   // Determine which reference options are available
-  const availableRefTypes = useMemo((): Array<
-    MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"]
-  > => {
+  const availableRefTypes = useMemo((): MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"][] => {
     if (inputStatus === "aligned") {
       return ["none", "first"];
     }

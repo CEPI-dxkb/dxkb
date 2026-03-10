@@ -205,7 +205,7 @@ export function createBlastFormValues(
  */
 export function createInputSourceOverrides(
   newSource: BlastFormData["input_source"],
-  preservedFastaData: string = "",
+  preservedFastaData = "",
 ): Partial<BlastFormData> {
   const baseOverrides: Partial<BlastFormData> = {
     input_source: newSource,

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { InfoPanel } from "@/components/containers/InfoPanel";
 
-type WithGenomePanelProps = {
+interface WithGenomePanelProps {
   children: (props: {
     activeTab: string;
     setActiveTab: (tab: string) => void;
@@ -12,7 +12,7 @@ type WithGenomePanelProps = {
   activeTab?: string;
   selectedRows: Record<string, unknown>[];
   setSelectedRows: (rows: Record<string, unknown>[]) => void;
-};
+}
 
 export function WithGenomePanel({
   children,

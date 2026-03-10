@@ -74,7 +74,7 @@ export class WorkspaceApiClient {
       // Must include any method called via makeRequest that does not return
       // Workspace.ls-style path-keyed listing; otherwise they fall through to
       // the ls path and get incorrectly processed with metaListToObj.
-      const rawResultMethods: Set<WorkspaceMethod> = new Set([
+      const rawResultMethods = new Set<WorkspaceMethod>([
         "Workspace.get",
         "Workspace.get_download_url",
         "Workspace.get_archive_url",

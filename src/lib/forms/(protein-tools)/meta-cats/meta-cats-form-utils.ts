@@ -13,7 +13,7 @@ export interface MetaCatsGenomeLike extends Record<string, unknown> {
 /**
  * Get display name for a path (truncated if too long)
  */
-export function getMetaCatsDisplayName(name: string, maxLength: number = 36): string {
+export function getMetaCatsDisplayName(name: string, maxLength = 36): string {
   if (name.length <= maxLength) return name;
   const half = Math.floor(maxLength / 2) - 2;
   return `${name.slice(0, half)}...${name.slice(name.length - half)}`;

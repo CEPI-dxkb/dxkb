@@ -206,7 +206,7 @@ export function useTanstackLibrarySelection<
       }
 
       const isDuplicate = selectedLibraries.some((lib) =>
-        options.duplicateMatcher ? options.duplicateMatcher(lib, options.read!) : lib.id === options.read
+        options.duplicateMatcher ? options.duplicateMatcher(lib, options.read as string) : lib.id === options.read
       );
       if (isDuplicate) {
         options.onError?.(

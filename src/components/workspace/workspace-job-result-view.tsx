@@ -34,7 +34,7 @@ import {
 } from "@/lib/workspace/table-selection";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
 import type { WorkspaceBrowserItem, WorkspaceBrowserSort, WorkspaceViewMode } from "@/types/workspace-browser";
-import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
+import { encodeWorkspaceSegment, noop, sanitizePathSegment } from "@/lib/utils";
 import { formatElapsedSeconds, formatUnixTimestamp } from "@/lib/jobs/formatting";
 
 interface WorkspaceJobResultViewProps {
@@ -190,16 +190,16 @@ export function WorkspaceJobResultView({
           />
           <WorkspaceToolbar
             searchQuery=""
-            onSearchChange={() => {}}
+            onSearchChange={noop}
             typeFilter="all"
-            onTypeFilterChange={() => {}}
+            onTypeFilterChange={noop}
             onRefresh={() => {
               onRefetch?.();
               void listQuery.refetch();
             }}
             isRefreshing={listQuery.isFetching}
             showHiddenFiles={true}
-            onShowHiddenFilesChange={() => {}}
+            onShowHiddenFilesChange={noop}
           />
         </div>
 

@@ -32,7 +32,7 @@ async function fetchWorkspaceDu(path: string): Promise<WorkspaceDuResult> {
 export function useWorkspaceDu(path: string | null) {
   return useQuery<WorkspaceDuResult, Error>({
     queryKey: ["workspace-du", path],
-    queryFn: () => fetchWorkspaceDu(path!),
+    queryFn: () => fetchWorkspaceDu(path as string),
     enabled: !!path,
     staleTime: 2 * 60 * 1000,
   });

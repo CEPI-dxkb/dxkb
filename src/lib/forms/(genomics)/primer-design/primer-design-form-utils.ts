@@ -17,7 +17,7 @@ export interface PrimerSequenceValidationResult {
   errorCode?: PrimerSequenceValidationError;
 }
 
-const MARKER_REGEX = /[<>\[\]\{\}']+/g;
+const MARKER_REGEX = /[<>[\]{}']+/g;
 // Legacy validation only allows a, g, c, t, n (not extended IUPAC codes)
 const NUCLEOTIDE_REGEX = /[agctn]/gi;
 

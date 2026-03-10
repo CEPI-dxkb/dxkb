@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/containers/DataTable";
 import { SortingState, RowSelectionState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
+import { noop } from "@/lib/utils";
 
 interface ColumnInfo {
   id: string;
@@ -299,7 +300,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
             resource={resource}
             rowSelection={rowSelection}
             onRowSelectionChange={handleRowSelectionChange}
-            onSelectionChange={() => {}}
+            onSelectionChange={noop}
             pageIndex={pageIndex}
             pageSize={pageSize}
             totalItems={totalItems}

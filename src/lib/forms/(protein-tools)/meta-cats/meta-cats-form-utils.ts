@@ -99,8 +99,7 @@ export function getYearGroupForValue(
 ): string | null {
   if (ranges.length === 0 || yearGroups.length === 0) return null;
 
-  for (let i = 0; i < yearGroups.length; i++) {
-    const group = yearGroups[i];
+  for (const group of yearGroups) {
     if (group.includes("-")) {
       const [startYear, endYear] = group.split("-").map(Number);
       if (value >= startYear && value <= endYear) {

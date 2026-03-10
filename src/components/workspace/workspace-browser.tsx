@@ -29,7 +29,7 @@ import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort, type WorkspaceViewMode } from "@/types/workspace-browser";
-import { encodeWorkspaceSegment } from "@/lib/utils";
+import { encodeWorkspaceSegment, noop } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
@@ -267,7 +267,7 @@ export function WorkspaceBrowser({
             isLoading={true}
             path={path}
             sort={{ field: "name", direction: "asc" }}
-            onSortChange={() => {}}
+            onSortChange={noop}
             showViewSharedRow={false}
             viewMode={isHome ? "home" : "shared"}
             username={username}
@@ -307,7 +307,7 @@ export function WorkspaceBrowser({
               isLoading={true}
               path={path}
               sort={{ field: "name", direction: "asc" }}
-              onSortChange={() => {}}
+              onSortChange={noop}
               showViewSharedRow={false}
               viewMode="shared"
               username={username}

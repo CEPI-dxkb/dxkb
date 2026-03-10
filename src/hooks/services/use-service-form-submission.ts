@@ -88,7 +88,7 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
     // Standard job submission path — mutateAsync so TanStack Form's
     // isSubmitting tracks the real request. Errors are already handled
     // by the mutation's onError callback, so we swallow the re-throw.
-    await submitMutation.mutateAsync(finalParams).catch(() => {});
+    await submitMutation.mutateAsync(finalParams).catch(() => { /* handled by mutation onError */ });
   };
 
   return {

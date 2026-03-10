@@ -229,7 +229,7 @@ export function WorkspaceMiniBrowser({
 
   const handleParentClick = useCallback(() => {
     if (isInSharedFolder && pathSegments.length <= 2) {
-      setCurrentPath(workspaceRoot!);
+      setCurrentPath(workspaceRoot as string);
       return;
     }
     const parentSegments = pathSegments.slice(0, -1);

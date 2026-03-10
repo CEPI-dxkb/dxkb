@@ -37,7 +37,7 @@ export function CreateFolderDialog({
     if (!name || isCreating) return;
     onCreateFolder(name).then(
       () => onOpenChange(false),
-      () => {},
+      () => { /* error handled elsewhere */ },
     );
   }, [folderName, isCreating, onCreateFolder, onOpenChange]);
 

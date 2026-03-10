@@ -162,12 +162,12 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       if (value !== undefined) {
         if (value < min) {
           setValue(min);
-          (ref as React.RefObject<HTMLInputElement>).current!.value =
-            String(min);
+          const inputEl = (ref as React.RefObject<HTMLInputElement>).current;
+          if (inputEl) inputEl.value = String(min);
         } else if (value > max) {
           setValue(max);
-          (ref as React.RefObject<HTMLInputElement>).current!.value =
-            String(max);
+          const inputEl = (ref as React.RefObject<HTMLInputElement>).current;
+          if (inputEl) inputEl.value = String(max);
         }
       }
     };

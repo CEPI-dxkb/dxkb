@@ -14,7 +14,7 @@ import type {
   WorkspaceBrowserSort,
   WorkspaceViewMode,
 } from "@/types/workspace-browser";
-import { encodeWorkspaceSegment, sanitizePathSegment } from "@/lib/utils";
+import { encodeWorkspaceSegment, noop, sanitizePathSegment } from "@/lib/utils";
 import { normalizePath } from "@/lib/workspace/table-selection";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigation";
@@ -188,7 +188,7 @@ export const WorkspaceDataTable = forwardRef<
   const { focusedSpecialRow, handleKeyDown } = useTableKeyboardNavigation<WorkspaceBrowserItem>({
     items,
     getFocusedIndex,
-    onSelect: onSelect ?? (() => {}),
+    onSelect: onSelect ?? noop,
     onEnter: handleEnter,
     enabled: useSelectionMode,
     leadingOffset,

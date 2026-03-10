@@ -60,10 +60,10 @@ export function isDNA(sequenceText: string): boolean {
   let count = 0;
   let gaps = 0;
 
-  for (let i = 0; i < st.length; i++) {
-    if (st[i] === "-") {
+  for (const ch of st) {
+    if (ch === "-") {
       gaps += 1;
-    } else if (["a", "c", "t", "g", "n"].includes(st[i])) {
+    } else if (["a", "c", "t", "g", "n"].includes(ch)) {
       count += 1;
     }
   }

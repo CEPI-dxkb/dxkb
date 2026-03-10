@@ -63,7 +63,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       signal: controller.signal,
     })
       .then((paths) => dispatch({ type: "SET_DELETE_NON_EMPTY_PATHS", paths }))
-      .catch(() => {});
+      .catch(() => { /* abort errors ignored */ });
     return () => controller.abort();
   }, [deleteItems, workspaceClient, dispatch]);
 

@@ -23,7 +23,7 @@ function CopyButton({ text }: { text: string }) {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
-        }).catch(() => {});
+        }).catch(() => { /* clipboard error ignored */ });
       }}
       title="Copy to clipboard"
     >

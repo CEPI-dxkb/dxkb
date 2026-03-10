@@ -13,6 +13,7 @@ import {
 
 // The following imports are usual hooks used in React to do things on events. The only non-standard one is useMemo, which isused to cache data and checks on rerenders to see if the data has changed. This is relevant to when the columns are resized.
 import { useMemo, useRef, useState, useEffect } from "react";
+import { noop } from "@/lib/utils";
 
 // This helps with rendering rows more quickly in situations that have thousands of rows
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -198,7 +199,7 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
             <input
               type="checkbox"
               checked={row.getIsSelected()}
-              onChange={() => {}} // required to avoid React warning
+              onChange={noop}
               onClick={(e) => {
                 e.stopPropagation();
 
@@ -435,7 +436,9 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
     const colElement = event.currentTarget.closest('th') as HTMLElement;
     if (!colElement) return;
 
-    const tableRect = colElement.closest('table')!.getBoundingClientRect();
+    const table = colElement.closest('table');
+    if (!table) return;
+    const tableRect = table.getBoundingClientRect();
 
     if (resizeLineRef.current) { // Make the ghost line appear
       resizeLineRef.current.style.left = `${colElement.getBoundingClientRect().right - tableRect.left}px`;

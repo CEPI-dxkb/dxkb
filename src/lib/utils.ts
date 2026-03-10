@@ -5,13 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+export const noop = () => {};
+
+
 /** Remove control characters and null bytes from a path segment. */
 export function sanitizePathSegment(segment: string): string {
   if (typeof segment !== "string") return "";
   return segment
     .trim()
     .replace(/\0/g, "")
-    .replace(/[\x00-\x1F\x7F]/g, "");
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001F\u007F]/g, "");
 }
 
 /**

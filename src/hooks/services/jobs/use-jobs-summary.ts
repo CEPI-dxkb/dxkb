@@ -6,7 +6,7 @@ export function useJobsStatusSummary(includeArchived: boolean) {
 
   return useQuery<Record<string, number>, Error>({
     queryKey: ["jobs-task-summary", includeArchived],
-    refetchInterval: 5_000,
+    refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await authenticatedFetch(
@@ -34,7 +34,7 @@ export function useJobsAppSummary(includeArchived: boolean) {
 
   return useQuery<Record<string, number>, Error>({
     queryKey: ["jobs-app-summary", includeArchived],
-    refetchInterval: 5_000,
+    refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await authenticatedFetch(

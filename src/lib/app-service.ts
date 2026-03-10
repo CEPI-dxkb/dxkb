@@ -103,11 +103,13 @@ export class AppService {
   async enumerateTasksFiltered(
     params: EnumerateTasksFilteredParams,
   ): Promise<EnumerateTasksFilteredResponse> {
-    const { offset, limit, include_archived, sort_field, sort_order } = params;
+    const { offset, limit, include_archived, sort_field, sort_order, app } =
+      params;
     const opts: Record<string, unknown> = {};
     if (include_archived) opts.include_archived = 1;
     if (sort_field) opts.sort_field = sort_field;
     if (sort_order) opts.sort_order = sort_order;
+    if (app) opts.app = app;
     return this.client.call("AppService.enumerate_tasks_filtered", [
       offset,
       limit,

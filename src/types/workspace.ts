@@ -141,6 +141,7 @@ export interface EnumerateTasksFilteredParams {
   include_archived?: boolean;
   sort_field?: string;
   sort_order?: "asc" | "desc";
+  app?: string;
 }
 export type EnumerateTasksFilteredResponse = JobListItem[];
 

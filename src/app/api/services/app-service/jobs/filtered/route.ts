@@ -11,6 +11,7 @@ const requestSchema = z.object({
     .enum(["status", "app", "submit_time", "start_time", "completed_time"])
     .optional(),
   sort_order: z.enum(["asc", "desc"]).optional(),
+  app: z.string().optional(),
 });
 
 /**
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { offset, limit, include_archived, sort_field, sort_order } =
+    const { offset, limit, include_archived, sort_field, sort_order, app } =
       parsed.data;
 
     const appService = createAppService(token);
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       include_archived,
       sort_field,
       sort_order,
+      app,
     });
 
     return NextResponse.json({ jobs });

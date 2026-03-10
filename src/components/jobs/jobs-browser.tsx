@@ -51,10 +51,7 @@ const DEFAULT_COLUMN_ORDER = [
 interface JobDataRowProps {
   row: Row<JobListItem>;
   isSelected: boolean;
-  onSelect: (
-    job: JobListItem,
-    modifiers?: { ctrlOrMeta: boolean },
-  ) => void;
+  onSelect: (job: JobListItem, modifiers?: { ctrlOrMeta: boolean }) => void;
   onDoubleClick: (job: JobListItem) => void;
 }
 
@@ -67,10 +64,8 @@ const JobDataRow = React.memo(function JobDataRow({
   return (
     <TableRow
       className={clsx(
-        "border-l-2 cursor-pointer",
-        isSelected
-          ? "border-l-primary bg-muted"
-          : "border-l-transparent",
+        "cursor-pointer border-l-2",
+        isSelected ? "border-l-primary bg-muted" : "border-l-transparent",
       )}
       onClick={(e) =>
         onSelect(row.original, {
@@ -102,10 +97,7 @@ const JobDataRow = React.memo(function JobDataRow({
               maxWidth: `var(--col-${cell.column.id}-size)`,
             }}
           >
-            {flexRender(
-              cell.column.columnDef.cell,
-              cell.getContext(),
-            )}
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </TableCell>
         );
       })}
@@ -128,7 +120,8 @@ export function JobsBrowser() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showJobNotFound, setShowJobNotFound] = useState(false);
-  // Data fetching
+
+  // Data fetching — pass service filter to the server so pagination works correctly
   const {
     data: jobs = [],
     isLoading,
@@ -141,6 +134,7 @@ export function JobsBrowser() {
     includeArchived,
     sortField: sort.field,
     sortOrder: sort.direction,
+    app: serviceFilter !== "all" ? serviceFilter : undefined,
   });
 
   const { data: statusSummary } = useJobsStatusSummary(includeArchived);
@@ -191,10 +185,7 @@ export function JobsBrowser() {
   );
 
   const handleSelect = useCallback(
-    (
-      job: JobListItem,
-      modifiers?: { ctrlOrMeta: boolean },
-    ) => {
+    (job: JobListItem, modifiers?: { ctrlOrMeta: boolean }) => {
       setSelectedIds((prev) => {
         const next = new Set(prev);
         if (modifiers?.ctrlOrMeta) {
@@ -253,7 +244,10 @@ export function JobsBrowser() {
 
       if (outputPath && outputFile) {
         const fullPath = `${outputPath}/${outputFile}`;
-        const segments = fullPath.replace(/^\/+/, "").split("/").filter(Boolean);
+        const segments = fullPath
+          .replace(/^\/+/, "")
+          .split("/")
+          .filter(Boolean);
         const encoded = segments.map(encodeWorkspaceSegment).join("/");
         router.push(`/workspace/${encoded}`);
       } else {
@@ -345,7 +339,9 @@ export function JobsBrowser() {
     selectedJobs.length === 1 ? (
       <JobDetailsPanel job={selectedJobs[0]} />
     ) : selectedJobs.length > 1 ? (
-      <DetailPanel.EmptyState message={`${selectedJobs.length} jobs selected`} />
+      <DetailPanel.EmptyState
+        message={`${selectedJobs.length} jobs selected`}
+      />
     ) : (
       <DetailPanel.EmptyState message="Select a job to view details" />
     );

@@ -104,7 +104,7 @@ export function DraggableTableHeader({
             className={clsx(
               "border-border absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize border-r",
               "hover:bg-primary/15 hover:border-primary/50",
-              header.column.getIsResizing() && "bg-primary/25 border-primary",
+              header.column.getIsResizing() && "bg-primary/25 border-primary h-9",
             )}
             style={{
               transform: "translateX(50%)",
@@ -118,42 +118,50 @@ export function DraggableTableHeader({
 
 const skeletonRowHeight = "h-9";
 
-export function TableSkeleton() {
+export interface TableSkeletonColumn {
+  id: string;
+  isFirst?: boolean;
+}
+
+const SKELETON_ROW_COUNT = 30;
+
+export function TableSkeleton({ columns }: { columns?: TableSkeletonColumn[] }) {
+  if (!columns || columns.length === 0) {
+    // Fallback: single full-width skeleton cell
+    return (
+      <>
+        {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+          <TableRow key={i}>
+            <TableCell className={`pl-6 text-left ${skeletonRowHeight}`}>
+              <Skeleton className="h-4 w-full max-w-48" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </>
+    );
+  }
+
   return (
     <>
-      {Array.from({ length: 8 }).map((_, i) => (
-        <TableRow key={i} className="pl-6">
-          <TableCell className={`pl-6 text-left ${skeletonRowHeight}`}>
-            <div className="flex h-5 items-center gap-2">
-              <Skeleton className="h-4 w-4 shrink-0 rounded" />
-              <Skeleton className="h-4 w-40 shrink-0" />
-            </div>
-          </TableCell>
-          <TableCell
-            className={`text-muted-foreground pl-6 text-left ${skeletonRowHeight}`}
-          >
-            <Skeleton className="h-4 w-14" />
-          </TableCell>
-          <TableCell
-            className={`text-muted-foreground hidden pl-6 text-left md:table-cell ${skeletonRowHeight}`}
-          >
-            <Skeleton className="h-4 w-20" />
-          </TableCell>
-          <TableCell
-            className={`text-muted-foreground pl-6 text-left ${skeletonRowHeight}`}
-          >
-            <Skeleton className="h-4 w-16" />
-          </TableCell>
-          <TableCell
-            className={`text-muted-foreground hidden pl-6 text-left sm:table-cell ${skeletonRowHeight}`}
-          >
-            <Skeleton className="h-4 w-24" />
-          </TableCell>
-          <TableCell
-            className={`text-muted-foreground hidden pl-6 text-left lg:table-cell ${skeletonRowHeight}`}
-          >
-            <Skeleton className="h-4 w-16" />
-          </TableCell>
+      {Array.from({ length: SKELETON_ROW_COUNT }).map((_, i) => (
+        <TableRow key={i}>
+          {columns.map((col) => (
+            <TableCell
+              key={col.id}
+              className={clsx(
+                col.isFirst ? "pl-6" : "pl-2",
+                "overflow-hidden",
+                skeletonRowHeight,
+              )}
+              style={{
+                width: `var(--col-${col.id}-size)`,
+                minWidth: `var(--col-${col.id}-size)`,
+                maxWidth: `var(--col-${col.id}-size)`,
+              }}
+            >
+              <Skeleton className="h-4 w-full" />
+            </TableCell>
+          ))}
         </TableRow>
       ))}
     </>

@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DraggableTableHeader, TableSkeleton } from "./data-table-header";
+import { DraggableTableHeader, TableSkeleton, type TableSkeletonColumn } from "./data-table-header";
 
 export interface DataTableSort {
   field: string;
@@ -146,6 +146,13 @@ function DataTableInner<T>(
     useSensor(KeyboardSensor, {}),
   );
 
+  const skeletonColumns = useMemo<TableSkeletonColumn[]>(() => {
+    return columnOrder.map((id, index) => ({
+      id,
+      isFirst: index === 0,
+    }));
+  }, [columnOrder]);
+
   const wrappedKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       onKeyDown?.(e);
@@ -216,7 +223,7 @@ function DataTableInner<T>(
                 renderSkeleton ? (
                   renderSkeleton()
                 ) : (
-                  <TableSkeleton />
+                  <TableSkeleton columns={skeletonColumns} />
                 )
               ) : (
                 <>

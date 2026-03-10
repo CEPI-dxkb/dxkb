@@ -38,6 +38,7 @@ interface JobsToolbarProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   statusSummary?: Record<string, number>;
+  dataUpdatedAt?: number;
 }
 
 export function JobsToolbar({
@@ -54,7 +55,11 @@ export function JobsToolbar({
   onRefresh,
   isRefreshing,
   statusSummary,
+  dataUpdatedAt,
 }: JobsToolbarProps) {
+  const lastUpdatedText = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString()
+    : null;
   return (
     <div className="space-y-3">
       {/* Search */}
@@ -141,56 +146,65 @@ export function JobsToolbar({
           </Label>
         </div>
 
-        {/* Refresh */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-        >
-          <RefreshCw
-            className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-          />
-        </Button>
       </div>
 
-      {/* Compact status bar */}
-      {statusSummary && (
-        <div className="text-muted-foreground flex items-center gap-1 text-xs">
-          <span className="flex items-center gap-1">
-            <Clock className="h-3 w-3 text-gray-500" />
-            queued:{" "}
-            <span className="text-foreground font-medium">
-              {statusSummary.queued ?? 0}
+      {/* Status bar + refresh */}
+      <div className="text-muted-foreground flex items-center gap-1 text-xs">
+        {statusSummary && (
+          <>
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3 text-gray-500" />
+              queued:{" "}
+              <span className="text-foreground font-medium">
+                {statusSummary.queued ?? 0}
+              </span>
             </span>
-          </span>
-          <span>&middot;</span>
-          <span className="flex items-center gap-1">
-            <Loader2 className="h-3 w-3 text-blue-500" />
-            running:{" "}
-            <span className="text-foreground font-medium">
-              {(statusSummary.running ?? 0) +
-                (statusSummary["in-progress"] ?? 0)}
+            <span>&middot;</span>
+            <span className="flex items-center gap-1">
+              <Loader2 className="h-3 w-3 text-blue-500" />
+              running:{" "}
+              <span className="text-foreground font-medium">
+                {(statusSummary.running ?? 0) +
+                  (statusSummary["in-progress"] ?? 0)}
+              </span>
             </span>
-          </span>
-          <span>&middot;</span>
-          <span className="flex items-center gap-1">
-            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            completed:{" "}
-            <span className="text-foreground font-medium">
-              {statusSummary.completed ?? 0}
+            <span>&middot;</span>
+            <span className="flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+              completed:{" "}
+              <span className="text-foreground font-medium">
+                {statusSummary.completed ?? 0}
+              </span>
             </span>
-          </span>
-          <span>&middot;</span>
-          <span className="flex items-center gap-1">
-            <XCircle className="h-3 w-3 text-red-500" />
-            failed:{" "}
-            <span className="text-foreground font-medium">
-              {statusSummary.failed ?? 0}
+            <span>&middot;</span>
+            <span className="flex items-center gap-1">
+              <XCircle className="h-3 w-3 text-red-500" />
+              failed:{" "}
+              <span className="text-foreground font-medium">
+                {statusSummary.failed ?? 0}
+              </span>
             </span>
-          </span>
+          </>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {lastUpdatedText && (
+            <span className="text-muted-foreground text-xs">
+              Last updated: {lastUpdatedText}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+            />
+          </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

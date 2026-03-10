@@ -120,6 +120,7 @@ export function JobsBrowser() {
     isFetching,
     error,
     refetch,
+    dataUpdatedAt,
   } = useJobsData({
     offset,
     limit: JOBS_PAGE_SIZE,
@@ -379,6 +380,7 @@ export function JobsBrowser() {
             onRefresh={() => void refetch()}
             isRefreshing={isFetching}
             statusSummary={statusSummary}
+            dataUpdatedAt={dataUpdatedAt}
           />
         </div>
 

@@ -4,7 +4,14 @@ import type {
   PipelineAction,
 } from "./fastq-utilities-form-schema";
 import { PIPELINE_ACTION_OPTIONS } from "./fastq-utilities-form-schema";
-import { actionColors } from "@/lib/services/service-utils";
+
+export const actionColors = [
+  "bg-purple-500",
+  "bg-red-500",
+  "bg-blue-500",
+  "bg-green-500",
+  "bg-yellow-500",
+] as const;
 
 /**
  * Transform FASTQ utilities form data to API parameters

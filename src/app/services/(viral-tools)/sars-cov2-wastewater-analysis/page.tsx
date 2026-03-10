@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
+import { useForm, useStore } from "@tanstack/react-form";
+import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import {
   Card,
   CardContent,
@@ -79,8 +72,8 @@ import {
 } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-form-utils";
 import {
   buildBaseLibraryItem,
-  useLibrarySelection,
-} from "@/lib/forms/shared-library-selection";
+  useTanstackLibrarySelection,
+} from "@/lib/forms/tanstack-library-selection";
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
@@ -92,13 +85,18 @@ const tutorial =
   "https://www.bv-brc.org/docs/tutorial/sars_cov_2_wastewater/sars_cov_2_wastewater.html";
 
 export default function SarsCov2WastewaterAnalysisPage() {
-  const form = useForm<SarsCov2WastewaterAnalysisFormData>({
-    resolver: zodResolver(sarsCov2WastewaterAnalysisFormSchema),
-    defaultValues: defaultSarsCov2WastewaterAnalysisFormValues,
-    mode: "onChange",
+  const form = useForm({
+    defaultValues:
+      defaultSarsCov2WastewaterAnalysisFormValues as SarsCov2WastewaterAnalysisFormData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validators: { onChange: sarsCov2WastewaterAnalysisFormSchema as any },
+    onSubmit: async ({ value }) => {
+      await handleSubmit(value as SarsCov2WastewaterAnalysisFormData);
+    },
   });
 
-  const outputPath = useWatch({ control: form.control, name: "output_path" });
+  const outputPath = useStore(form.store, (s) => s.values.output_path);
+  const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
   const [pairedRead1, setPairedRead1] = useState<string | null>(null);
   const [pairedRead2, setPairedRead2] = useState<string | null>(null);
@@ -108,7 +106,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
   const [sraResetKey, setSraResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
-  const primers = useWatch({ control: form.control, name: "primers" });
+  const primers = useStore(form.store, (s) => s.values.primers);
   const primerVersionOpts =
     primerVersionOptions[primers] ?? primerVersionOptions.ARTIC;
 
@@ -118,8 +116,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
-  } = useLibrarySelection<
-    SarsCov2WastewaterAnalysisFormData,
+  } = useTanstackLibrarySelection<
     SarsCov2WastewaterLibraryItem,
     SrrLibItem
   >({
@@ -167,11 +164,9 @@ export default function SarsCov2WastewaterAnalysisPage() {
       const defaultVersion = defaultPrimerVersion[primers];
       if (
         defaultVersion &&
-        form.getValues("primer_version") !== defaultVersion
+        form.state.values.primer_version !== defaultVersion
       ) {
-        form.setValue("primer_version", defaultVersion, {
-          shouldValidate: true,
-        });
+        form.setFieldValue("primer_version", defaultVersion);
       }
     }
   }, [primers, form]);
@@ -239,10 +234,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
   };
 
   const handleReset = () => {
-    form.reset(
-      { ...defaultSarsCov2WastewaterAnalysisFormValues },
-      { keepDefaultValues: false },
-    );
+    form.reset(defaultSarsCov2WastewaterAnalysisFormValues);
     setLibrariesAndSync([]);
     setPairedRead1(null);
     setPairedRead2(null);
@@ -277,346 +269,338 @@ export default function SarsCov2WastewaterAnalysisPage() {
         tutorial={tutorial}
       />
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(handleSubmit)}
-          className="grid grid-cols-1 gap-6 md:grid-cols-12"
-        >
-          {/* Input Library */}
-          <div className="md:col-span-6">
-            <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
-                  Input Library Selection
-                  <DialogInfoPopup
-                    title={sarsCov2WastewaterAnalysisInputLib.title}
-                    description={sarsCov2WastewaterAnalysisInputLib.description}
-                    sections={sarsCov2WastewaterAnalysisInputLib.sections}
-                  />
-                </RequiredFormCardTitle>
-                <CardDescription className="text-xs">
-                  Send to selected libraries using the arrow buttons.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="service-card-content space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="service-card-label">
-                      Paired Read Library
-                    </Label>
-                    <div className="bg-border mx-4 h-px flex-1" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handlePairedLibraryAdd}
-                      disabled={!pairedRead1 || !pairedRead2}
-                    >
-                      <ChevronRight size={16} />
-                    </Button>
-                  </div>
-                  <div className="space-y-3">
-                    <WorkspaceObjectSelector
-                      types={["reads"]}
-                      placeholder="Select READ FILE 1..."
-                      value={pairedRead1 ?? ""}
-                      onObjectSelect={(object: WorkspaceObject) =>
-                        handlePairedRead1Select(object.path)
-                      }
-                    />
-                    <WorkspaceObjectSelector
-                      types={["reads"]}
-                      placeholder="Select READ FILE 2..."
-                      value={pairedRead2 ?? ""}
-                      onObjectSelect={(object: WorkspaceObject) =>
-                        setPairedRead2(object.path)
-                      }
-                    />
-                  </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          form.handleSubmit();
+        }}
+        className="grid grid-cols-1 gap-6 md:grid-cols-12"
+      >
+        {/* Input Library */}
+        <div className="md:col-span-6">
+          <Card>
+            <CardHeader className="service-card-header">
+              <RequiredFormCardTitle className="service-card-title">
+                Input Library Selection
+                <DialogInfoPopup
+                  title={sarsCov2WastewaterAnalysisInputLib.title}
+                  description={sarsCov2WastewaterAnalysisInputLib.description}
+                  sections={sarsCov2WastewaterAnalysisInputLib.sections}
+                />
+              </RequiredFormCardTitle>
+              <CardDescription className="text-xs">
+                Send to selected libraries using the arrow buttons.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="service-card-content space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="service-card-label">
+                    Paired Read Library
+                  </Label>
+                  <div className="bg-border mx-4 h-px flex-1" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handlePairedLibraryAdd}
+                    disabled={!pairedRead1 || !pairedRead2}
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="service-card-label">
-                      Single Read Library
-                    </Label>
-                    <div className="bg-border mx-4 h-px flex-1" />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handleSingleLibraryAdd}
-                      disabled={!singleRead}
-                    >
-                      <ChevronRight size={16} />
-                    </Button>
-                  </div>
+                <div className="space-y-3">
                   <WorkspaceObjectSelector
                     types={["reads"]}
-                    placeholder="Select READ FILE..."
-                    value={singleRead ?? ""}
+                    placeholder="Select READ FILE 1..."
+                    value={pairedRead1 ?? ""}
                     onObjectSelect={(object: WorkspaceObject) =>
-                      handleSingleReadSelect(object.path)
+                      handlePairedRead1Select(object.path)
+                    }
+                  />
+                  <WorkspaceObjectSelector
+                    types={["reads"]}
+                    placeholder="Select READ FILE 2..."
+                    value={pairedRead2 ?? ""}
+                    onObjectSelect={(object: WorkspaceObject) =>
+                      setPairedRead2(object.path)
                     }
                   />
                 </div>
+              </div>
 
-                <SraRunAccessionWithValidation
-                  key={sraResetKey}
-                  title="SRA Run Accession"
-                  placeholder="SRR..."
-                  selectedLibraries={selectedLibraries}
-                  setSelectedLibraries={handleSetSelectedLibraries}
-                  allowDuplicates={false}
-                  onChange={handleSraAccessionChange}
-                />
-
-                <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-                  <div className="flex-1 space-y-2">
-                    <Label className="service-card-label">Primers</Label>
-                    <FormField
-                      control={form.control}
-                      name="primers"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Select
-                            items={primerOptions}
-                            value={field.value}
-                            onValueChange={(v) => field.onChange(v as Primers)}
-                          >
-                            <SelectTrigger className="service-card-select-trigger">
-                              <SelectValue placeholder="Select primers" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {primerOptions.map((primer) => (
-                                  <SelectItem
-                                    key={primer.value}
-                                    value={primer.value}
-                                  >
-                                    {primer.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <div className="w-full space-y-2 sm:w-32">
-                    <Label className="service-card-label">Version</Label>
-                    <FormField
-                      control={form.control}
-                      name="primer_version"
-                      render={({ field }) => (
-                        <FormItem>
-                          <Select
-                            items={primerVersionOpts}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <SelectTrigger className="service-card-select-trigger">
-                              <SelectValue placeholder="Version" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {primerVersionOpts.map((version) => (
-                                  <SelectItem
-                                    key={version.value}
-                                    value={version.value}
-                                  >
-                                    {version.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
                   <Label className="service-card-label">
-                    Sample Identifier
+                    Single Read Library
                   </Label>
-                  <Input
-                    className="service-card-input"
-                    placeholder="SAMPLE ID"
-                    value={currentSampleId}
-                    onChange={(e) => setCurrentSampleId(e.target.value)}
-                  />
+                  <div className="bg-border mx-4 h-px flex-1" />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={handleSingleLibraryAdd}
+                    disabled={!singleRead}
+                  >
+                    <ChevronRight size={16} />
+                  </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="service-card-label">
-                    Sample Date (optional)
-                  </Label>
-                  <Input
-                    className="service-card-input"
-                    placeholder="MM/DD/YYYY"
-                    value={currentSampleDate}
-                    onChange={(e) => setCurrentSampleDate(e.target.value)}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="paired_end_libs"
-                  render={() => (
-                    <FormItem>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <WorkspaceObjectSelector
+                  types={["reads"]}
+                  placeholder="Select READ FILE..."
+                  value={singleRead ?? ""}
+                  onObjectSelect={(object: WorkspaceObject) =>
+                    handleSingleReadSelect(object.path)
+                  }
                 />
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Selected Libraries */}
-          <div className="md:col-span-6">
-            <Card className="h-full">
-              <CardHeader className="service-card-header">
-                <CardTitle className="service-card-title">
-                  Selected Libraries
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <HelpCircle className="service-card-tooltip-icon" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Place read files here using the arrow buttons</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Place read files here using the arrow buttons.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="service-card-content">
-                <SelectedItemsTable
-                  items={selectedLibraries.map((lib) => ({
-                    id: lib.id,
-                    name: lib.name,
-                    type: getLibraryTypeLabel(lib.type),
-                  }))}
-                  onRemove={removeLibrary}
-                  className="max-h-80 overflow-y-auto"
-                />
-              </CardContent>
-            </Card>
-          </div>
+              <SraRunAccessionWithValidation
+                key={sraResetKey}
+                title="SRA Run Accession"
+                placeholder="SRR..."
+                selectedLibraries={selectedLibraries}
+                setSelectedLibraries={handleSetSelectedLibraries}
+                allowDuplicates={false}
+                onChange={handleSraAccessionChange}
+              />
 
-          {/* Parameters */}
-          <div className="md:col-span-12">
-            <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
-                  Parameters
-                  <DialogInfoPopup
-                    title={sarsCov2WastewaterAnalysisParameters.title}
-                    sections={sarsCov2WastewaterAnalysisParameters.sections}
-                  />
-                </RequiredFormCardTitle>
-              </CardHeader>
-              <CardContent className="service-card-content space-y-4">
-                <div className="space-y-2">
-                  <Label className="service-card-label">Strategy</Label>
-                  <FormField
-                    control={form.control}
-                    name="recipe"
-                    render={({ field }) => (
-                      <FormItem>
+              <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                <div className="flex-1 space-y-2">
+                  <Label className="service-card-label">Primers</Label>
+                  <form.Field name="primers">
+                    {(field) => (
+                      <FieldItem>
                         <Select
-                          items={recipeOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
+                          items={primerOptions}
+                          value={field.state.value}
+                          onValueChange={(v) =>
+                            v != null &&
+                            field.handleChange(v as Primers)
+                          }
                         >
                           <SelectTrigger className="service-card-select-trigger">
-                            <SelectValue placeholder="Select strategy" />
+                            <SelectValue placeholder="Select primers" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              {recipeOptions.map((recipe) => (
+                              {primerOptions.map((primer) => (
                                 <SelectItem
-                                  key={recipe.value}
-                                  value={recipe.value}
+                                  key={primer.value}
+                                  value={primer.value}
                                 >
-                                  {recipe.label}
+                                  {primer.label}
                                 </SelectItem>
                               ))}
                             </SelectGroup>
                           </SelectContent>
                         </Select>
-                        <FormMessage />
-                      </FormItem>
+                        <FieldErrors field={field} />
+                      </FieldItem>
                     )}
-                  />
+                  </form.Field>
                 </div>
-
-                <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
-                  <FormField
-                    control={form.control}
-                    name="output_path"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <OutputFolder
-                            value={field.value}
-                            onChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                <div className="w-full space-y-2 sm:w-32">
+                  <Label className="service-card-label">Version</Label>
+                  <form.Field name="primer_version">
+                    {(field) => (
+                      <FieldItem>
+                        <Select
+                          items={primerVersionOpts}
+                          value={field.state.value}
+                          onValueChange={(value) =>
+                            value != null && field.handleChange(value)
+                          }
+                        >
+                          <SelectTrigger className="service-card-select-trigger">
+                            <SelectValue placeholder="Version" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {primerVersionOpts.map((version) => (
+                                <SelectItem
+                                  key={version.value}
+                                  value={version.value}
+                                >
+                                  {version.label}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <FieldErrors field={field} />
+                      </FieldItem>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="output_file"
-                    render={({ field }) => (
-                      <FormItem className="flex-1">
-                        <FormControl>
-                          <OutputFolder
-                            variant="name"
-                            value={field.value}
-                            onChange={field.onChange}
-                            outputFolderPath={outputPath}
-                            onValidationChange={setIsOutputNameValid}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  </form.Field>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Form controls */}
-          <div className="md:col-span-12">
-            <div className="service-form-controls">
-              <Button type="button" variant="outline" onClick={handleReset}>
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  isSubmitting || !form.formState.isValid || !isOutputNameValid
-                }
-              >
-                {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
-                Submit
-              </Button>
-            </div>
+              <div className="space-y-2">
+                <Label className="service-card-label">
+                  Sample Identifier
+                </Label>
+                <Input
+                  className="service-card-input"
+                  placeholder="SAMPLE ID"
+                  value={currentSampleId}
+                  onChange={(e) => setCurrentSampleId(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="service-card-label">
+                  Sample Date (optional)
+                </Label>
+                <Input
+                  className="service-card-input"
+                  placeholder="MM/DD/YYYY"
+                  value={currentSampleDate}
+                  onChange={(e) => setCurrentSampleDate(e.target.value)}
+                />
+              </div>
+
+              <form.Field name="paired_end_libs">
+                {(field) => (
+                  <FieldItem>
+                    <FieldErrors field={field} />
+                  </FieldItem>
+                )}
+              </form.Field>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Selected Libraries */}
+        <div className="md:col-span-6">
+          <Card className="h-full">
+            <CardHeader className="service-card-header">
+              <CardTitle className="service-card-title">
+                Selected Libraries
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <HelpCircle className="service-card-tooltip-icon" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Place read files here using the arrow buttons</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Place read files here using the arrow buttons.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="service-card-content">
+              <SelectedItemsTable
+                items={selectedLibraries.map((lib) => ({
+                  id: lib.id,
+                  name: lib.name,
+                  type: getLibraryTypeLabel(lib.type),
+                }))}
+                onRemove={removeLibrary}
+                className="max-h-80 overflow-y-auto"
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Parameters */}
+        <div className="md:col-span-12">
+          <Card>
+            <CardHeader className="service-card-header">
+              <RequiredFormCardTitle className="service-card-title">
+                Parameters
+                <DialogInfoPopup
+                  title={sarsCov2WastewaterAnalysisParameters.title}
+                  sections={sarsCov2WastewaterAnalysisParameters.sections}
+                />
+              </RequiredFormCardTitle>
+            </CardHeader>
+            <CardContent className="service-card-content space-y-4">
+              <div className="space-y-2">
+                <Label className="service-card-label">Strategy</Label>
+                <form.Field name="recipe">
+                  {(field) => (
+                    <FieldItem>
+                      <Select
+                        items={recipeOptions}
+                        value={field.state.value}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
+                      >
+                        <SelectTrigger className="service-card-select-trigger">
+                          <SelectValue placeholder="Select strategy" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {recipeOptions.map((recipe) => (
+                              <SelectItem
+                                key={recipe.value}
+                                value={recipe.value}
+                              >
+                                {recipe.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              </div>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+                <form.Field name="output_path">
+                  {(field) => (
+                    <FieldItem className="flex-1">
+                      <OutputFolder
+                        value={field.state.value}
+                        onChange={(value) => field.handleChange(value)}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+                <form.Field name="output_file">
+                  {(field) => (
+                    <FieldItem className="flex-1">
+                      <OutputFolder
+                        variant="name"
+                        value={field.state.value}
+                        onChange={(value) => field.handleChange(value)}
+                        outputFolderPath={outputPath}
+                        onValidationChange={setIsOutputNameValid}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Form controls */}
+        <div className="md:col-span-12">
+          <div className="service-form-controls">
+            <Button type="button" variant="outline" onClick={handleReset}>
+              Reset
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                isSubmitting || !canSubmit || !isOutputNameValid
+              }
+            >
+              {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
+              Submit
+            </Button>
           </div>
-        </form>
-      </Form>
+        </div>
+      </form>
 
       <JobParamsDialog
         open={showParamsDialog}

@@ -1,6 +1,97 @@
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useStore, type AnyFormApi } from "@tanstack/react-form";
+
 import type { BlastFormData } from "./blast-form-schema";
-import { blastPrecomputedDatabases } from "@/types/services";
-import { getDefaultBlastDatabaseType } from "@/lib/services/service-utils";
+import { blastPrecomputedDatabases, blastDatabaseTypes, blastDatabaseTypeMap } from "@/types/services";
+import { validateFastaForBlast, getBlastFastaErrorMessage } from "@/lib/fasta-validation";
+import type { FastaValidationResult } from "@/lib/fasta-validation";
+
+/**
+ * Get available database types for BLAST based on the selected program and database source
+ */
+export function getAvailableBlastDatabaseTypes(
+  inputType: string,
+  dbSource: string,
+) {
+  const availableTypes = blastDatabaseTypeMap[inputType]?.[dbSource] || [];
+  const filtered = blastDatabaseTypes.filter((dbType) =>
+    availableTypes.includes(dbType.value),
+  );
+
+  return filtered.length > 0 ? filtered : blastDatabaseTypes;
+}
+
+/**
+ * Get the default database type for a given BLAST program and database source
+ */
+export function getDefaultBlastDatabaseType(
+  inputType: string,
+  dbSource: string,
+): string {
+  const availableTypes =
+    blastDatabaseTypeMap[inputType]?.[dbSource] || blastDatabaseTypes.map((t) => t.value);
+  return availableTypes[0] || "fna";
+}
+
+/**
+ * Validates FASTA input for BLAST services
+ */
+export function validateBlastFastaInput(
+  fastaText: string,
+  inputType: "blastn" | "blastp" | "blastx" | "tblastn",
+): { isValid: boolean; message: string } {
+  if (!fastaText.trim()) {
+    return { isValid: false, message: "FASTA input is required" };
+  }
+
+  const result = validateFastaForBlast(fastaText, inputType);
+  const message = getBlastFastaErrorMessage(result, inputType);
+
+  return {
+    isValid: result.valid,
+    message: result.valid ? "" : message,
+  };
+}
+
+/**
+ * Transform BLAST form data to API parameters
+ */
+export function transformBlastParams(data: Record<string, unknown>): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    input_type: data.input_type,
+    input_source: data.input_source,
+    db_type: data.db_type,
+    db_source: data.db_source,
+    db_precomputed_database: data.db_precomputed_database,
+    blast_program: data.blast_program,
+    output_file: data.output_file,
+    output_path: data.output_path,
+    blast_max_hits: data.blast_max_hits,
+    blast_evalue_cutoff: String(data.blast_evalue_cutoff),
+  };
+
+  if (data.input_source === "fasta_data") {
+    params.input_fasta_data = data.input_fasta_data;
+  } else if (data.input_source === "fasta_file") {
+    params.input_fasta_file = data.input_fasta_file;
+  } else if (data.input_source === "feature_group") {
+    params.input_feature_group = data.input_feature_group;
+  }
+
+  if (data.db_precomputed_database === "selGenome") {
+    params.db_genome_list = data.db_genome_list;
+  } else if (data.db_precomputed_database === "selGroup") {
+    params.db_genome_group = data.db_genome_group;
+  } else if (data.db_precomputed_database === "selFeatureGroup") {
+    params.db_feature_group = data.db_feature_group;
+  } else if (data.db_precomputed_database === "selTaxon") {
+    params.db_taxon_list = data.db_taxon_list;
+  } else if (data.db_precomputed_database === "selFasta") {
+    params.db_fasta_file = data.db_fasta_file;
+  }
+
+  return params;
+}
 
 export const maxHitsOptionsBlast = [
   { value: 1, label: "1" },
@@ -186,5 +277,83 @@ export function extractInputFields(
     input_fasta_data: String((values as Record<string, unknown>).input_fasta_data ?? ""),
     input_fasta_file: String((values as Record<string, unknown>).input_fasta_file ?? ""),
     input_feature_group: String((values as Record<string, unknown>).input_feature_group ?? ""),
+  };
+}
+
+/**
+ * Custom hook to manage BLAST database type availability
+ */
+export function useBlastDatabaseTypes(form: AnyFormApi) {
+  const blastProgram = useStore(form.store, (s) => s.values.blast_program);
+  const dbPrecomputedDatabase = useStore(form.store, (s) => s.values.db_precomputed_database);
+  const dbType = useStore(form.store, (s) => s.values.db_type);
+
+  const availableDatabaseTypes = useMemo(() => {
+    if (blastProgram && dbPrecomputedDatabase) {
+      return getAvailableBlastDatabaseTypes(blastProgram, dbPrecomputedDatabase);
+    }
+    return getAvailableBlastDatabaseTypes("blastn", "bacteria-archaea");
+  }, [blastProgram, dbPrecomputedDatabase]);
+
+  useEffect(() => {
+    if (blastProgram && dbPrecomputedDatabase) {
+      const isCurrentTypeAvailable = availableDatabaseTypes.some(
+        (type) => type.value === dbType,
+      );
+
+      if (!isCurrentTypeAvailable && availableDatabaseTypes.length > 0) {
+        const defaultType = getDefaultBlastDatabaseType(
+          blastProgram,
+          dbPrecomputedDatabase,
+        );
+
+        if (defaultType) {
+          form.setFieldValue("db_type", defaultType as BlastFormData["db_type"]);
+        }
+      } else if (availableDatabaseTypes.length > 0 && !dbType) {
+        const firstType = availableDatabaseTypes[0].value;
+        form.setFieldValue("db_type", firstType as BlastFormData["db_type"]);
+      }
+    }
+  }, [blastProgram, dbPrecomputedDatabase, dbType, form, availableDatabaseTypes]);
+
+  return availableDatabaseTypes;
+}
+
+/**
+ * Custom hook to track BLAST program changes
+ */
+export function useBlastProgramTracking(form: AnyFormApi) {
+  const currentBlastProgram = useStore(form.store, (s) => s.values.blast_program);
+  return currentBlastProgram || "blastn";
+}
+
+/**
+ * Custom hook to manage FASTA validation
+ */
+export function useFastaValidation(form: AnyFormApi, currentBlastProgram: BlastFormData["blast_program"]) {
+  const [fastaValidationResult, setFastaValidationResult] = useState<FastaValidationResult | null>(null);
+  const [isFastaValid, setIsFastaValid] = useState(false);
+  const [prevProgram, setPrevProgram] = useState(currentBlastProgram);
+
+  const handleFastaValidationChange = useCallback((isValid: boolean, result: FastaValidationResult | null) => {
+    setIsFastaValid(isValid);
+    setFastaValidationResult(result);
+  }, []);
+
+  if (prevProgram !== currentBlastProgram) {
+    setPrevProgram(currentBlastProgram);
+    const currentFastaData = form.state.values.input_fasta_data;
+    if (currentFastaData && form.state.values.input_source === "fasta_data") {
+      const result = validateFastaForBlast(currentFastaData, currentBlastProgram);
+      setFastaValidationResult(result);
+      setIsFastaValid(result.valid);
+    }
+  }
+
+  return {
+    fastaValidationResult,
+    isFastaValid,
+    handleFastaValidationChange,
   };
 }

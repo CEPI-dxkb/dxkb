@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useServiceDebugging } from "@/contexts/service-debugging-context";
@@ -15,18 +16,13 @@ interface UseServiceFormSubmissionOptions<T> {
   transformParams: (data: T) => Record<string, unknown>;
   /** Callback after successful job submission */
   onSuccess?: () => void;
-  /**
-   * @deprecated Use transformParams + onSuccess instead. This callback receives raw
-   * form data and is only called when not in debug mode, bypassing the hook's job
-   * submission handling.
-   */
-  onSubmit?: (data: T) => void | Promise<void>;
 }
 
 export function useServiceFormSubmission<T = Record<string, unknown>>(
   options: UseServiceFormSubmissionOptions<T>,
 ) {
-  const { serviceName, displayName, transformParams, onSuccess, onSubmit } = options;
+  const { serviceName, displayName, transformParams, onSuccess } = options;
+  const router = useRouter();
   const { isDebugMode, containerBuildId } = useServiceDebugging();
   const [showParamsDialog, setShowParamsDialog] = useState(false);
   const [currentParams, setCurrentParams] = useState<Record<string, unknown>>({});
@@ -44,11 +40,18 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
       return result;
     },
     onSuccess: (result) => {
+      const jobId = result.job?.[0]?.id;
       toast.success(`${formattedDisplayName} job submitted successfully!`, {
-        description: result.job?.[0]?.id
-          ? `Job ID: ${result.job[0].id}`
+        description: jobId
+          ? `Job ID: ${jobId}`
           : "Job submitted successfully",
         closeButton: true,
+        ...(jobId && {
+          action: {
+            label: "View Job",
+            onClick: () => router.push(`/jobs`),
+          },
+        }),
       });
       onSuccess?.();
     },
@@ -60,13 +63,6 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
         description: errorMessage,
         closeButton: true,
       });
-    },
-  });
-
-  // Legacy mutation for deprecated onSubmit callback
-  const legacyMutation = useMutation({
-    mutationFn: async (data: T) => {
-      await onSubmit?.(data);
     },
   });
 
@@ -89,14 +85,10 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
       return;
     }
 
-    // Legacy callback path - for backward compatibility during migration
-    if (onSubmit) {
-      legacyMutation.mutate(data);
-      return;
-    }
-
-    // Standard job submission path
-    submitMutation.mutate(finalParams);
+    // Standard job submission path — mutateAsync so TanStack Form's
+    // isSubmitting tracks the real request. Errors are already handled
+    // by the mutation's onError callback, so we swallow the re-throw.
+    await submitMutation.mutateAsync(finalParams).catch(() => {});
   };
 
   return {
@@ -105,7 +97,7 @@ export function useServiceFormSubmission<T = Record<string, unknown>>(
     setShowParamsDialog,
     currentParams,
     isDebugMode,
-    isSubmitting: submitMutation.isPending || legacyMutation.isPending,
+    isSubmitting: submitMutation.isPending,
     serviceName,
   };
 }

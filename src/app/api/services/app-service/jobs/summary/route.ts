@@ -3,8 +3,8 @@ import { createAppService } from "@/lib/app-service";
 import { getBvbrcAuthToken } from "@/lib/auth";
 
 /**
- * Combined task + app summary endpoint
- * POST /api/services/app-service/jobs/summary
+ * Query task status summary
+ * POST /api/services/app-service/jobs/task-summary
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,14 +22,13 @@ export async function POST(request: NextRequest) {
 
     const appService = createAppService(token);
 
-    const [taskSummary, appSummary] = await Promise.all([
-      appService.queryTaskSummaryFiltered({ include_archived }),
-      appService.queryAppSummaryFiltered({ include_archived }),
-    ]);
+    const summary = await appService.queryTaskSummaryFiltered({
+      include_archived,
+    });
 
-    return NextResponse.json({ taskSummary, appSummary });
+    return NextResponse.json({ summary });
   } catch (error) {
-    console.error("Error querying job summaries:", error);
+    console.error("Error querying task summary:", error);
 
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

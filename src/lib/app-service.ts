@@ -107,7 +107,14 @@ export class AppService {
       params;
     const opts: Record<string, unknown> = {};
     if (include_archived) opts.include_archived = 1;
-    if (sort_field) opts.sort_field = sort_field;
+    if (sort_field) {
+      const fieldMap: Record<string, string> = {
+        status: "service_status",
+        app: "application_id",
+        completed_time: "finish_time",
+      };
+      opts.sort_field = fieldMap[sort_field] ?? sort_field;
+    }
     if (sort_order) opts.sort_order = sort_order;
     if (app) opts.app = app;
     return this.client.call("AppService.enumerate_tasks_filtered", [

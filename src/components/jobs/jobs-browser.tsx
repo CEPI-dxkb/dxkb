@@ -35,18 +35,10 @@ import { JobsShell } from "./jobs-shell";
 import { DetailPanel } from "@/components/detail-panel";
 import type { JobListItem } from "@/types/workspace";
 import { encodeWorkspaceSegment } from "@/lib/utils";
-
-const PAGE_SIZE = 200;
-
-const DEFAULT_COLUMN_ORDER = [
-  "status",
-  "id",
-  "app",
-  "output_name",
-  "submit_time",
-  "start_time",
-  "completed_time",
-];
+import {
+  JOBS_PAGE_SIZE,
+  DEFAULT_JOBS_COLUMN_ORDER,
+} from "@/lib/jobs/constants";
 
 interface JobDataRowProps {
   row: Row<JobListItem>;
@@ -130,7 +122,7 @@ export function JobsBrowser() {
     refetch,
   } = useJobsData({
     offset,
-    limit: PAGE_SIZE,
+    limit: JOBS_PAGE_SIZE,
     includeArchived,
     sortField: sort.field,
     sortOrder: sort.direction,
@@ -206,12 +198,12 @@ export function JobsBrowser() {
 
   // Pagination
   const handlePrevious = useCallback(() => {
-    setOffset((prev) => Math.max(0, prev - PAGE_SIZE));
+    setOffset((prev) => Math.max(0, prev - JOBS_PAGE_SIZE));
     setSelectedIds(new Set());
   }, []);
 
   const handleNext = useCallback(() => {
-    setOffset((prev) => prev + PAGE_SIZE);
+    setOffset((prev) => prev + JOBS_PAGE_SIZE);
     setSelectedIds(new Set());
   }, []);
 
@@ -381,6 +373,7 @@ export function JobsBrowser() {
             serviceFilter={serviceFilter}
             onServiceFilterChange={handleServiceFilterChange}
             availableServices={availableServices}
+            appSummary={appSummary}
             includeArchived={includeArchived}
             onIncludeArchivedChange={handleArchivedChange}
             onRefresh={() => void refetch()}
@@ -394,7 +387,7 @@ export function JobsBrowser() {
           <DataTable<JobListItem>
             data={filteredJobs}
             columns={columns}
-            defaultColumnOrder={DEFAULT_COLUMN_ORDER}
+            defaultColumnOrder={DEFAULT_JOBS_COLUMN_ORDER}
             isLoading={isLoading}
             getRowId={(row) => row.id}
             sort={sort}
@@ -412,7 +405,7 @@ export function JobsBrowser() {
         <div className="shrink-0 border-t">
           <JobsPagination
             offset={offset}
-            limit={PAGE_SIZE}
+            limit={JOBS_PAGE_SIZE}
             totalOnPage={filteredJobs.length}
             onPrevious={handlePrevious}
             onNext={handleNext}

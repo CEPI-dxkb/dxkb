@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { formatServiceName } from "./jobs-table-columns";
+import { formatServiceName } from "@/lib/jobs/formatting";
+import { STATUS_OPTIONS } from "@/lib/jobs/constants";
 
 interface JobsToolbarProps {
   searchQuery: string;
@@ -31,20 +32,13 @@ interface JobsToolbarProps {
   serviceFilter: string;
   onServiceFilterChange: (value: string) => void;
   availableServices: string[];
+  appSummary?: Record<string, number>;
   includeArchived: boolean;
   onIncludeArchivedChange: (value: boolean) => void;
   onRefresh: () => void;
   isRefreshing: boolean;
   statusSummary?: Record<string, number>;
 }
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "All Status" },
-  { value: "queued", label: "Queued" },
-  { value: "running", label: "Running" },
-  { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
-];
 
 export function JobsToolbar({
   searchQuery,
@@ -54,6 +48,7 @@ export function JobsToolbar({
   serviceFilter,
   onServiceFilterChange,
   availableServices,
+  appSummary,
   includeArchived,
   onIncludeArchivedChange,
   onRefresh,
@@ -102,7 +97,9 @@ export function JobsToolbar({
             { value: "all", label: "All Services" },
             ...availableServices.map((s) => ({
               value: s,
-              label: formatServiceName(s),
+              label: appSummary?.[s] != null
+                ? `${formatServiceName(s)} (${appSummary[s]})`
+                : formatServiceName(s),
             })),
           ]}
           value={serviceFilter}
@@ -110,7 +107,7 @@ export function JobsToolbar({
             value != null && onServiceFilterChange(value)
           }
         >
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-68">
             <SelectValue placeholder="Service" />
           </SelectTrigger>
           <SelectContent>
@@ -119,6 +116,7 @@ export function JobsToolbar({
               {availableServices.map((app) => (
                 <SelectItem key={app} value={app}>
                   {formatServiceName(app)}
+                  {appSummary?.[app] != null && ` (${appSummary[app]})`}
                 </SelectItem>
               ))}
             </SelectGroup>

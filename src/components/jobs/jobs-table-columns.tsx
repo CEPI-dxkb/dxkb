@@ -2,43 +2,11 @@
 
 import { useMemo, useCallback } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Loader2,
-  AlertCircle,
-  Ban,
-} from "lucide-react";
 import type { JobListItem, JobStatus } from "@/types/workspace";
 import { formatDate } from "@/lib/services/workspace/helpers";
+import { statusConfig } from "@/lib/jobs/constants";
+import { formatServiceName, getOutputName } from "@/lib/jobs/formatting";
 import type { DataTableSort } from "@/components/shared/data-table";
-
-const statusConfig: Record<
-  string,
-  { icon: React.ElementType; className: string; label: string }
-> = {
-  completed: {
-    icon: CheckCircle2,
-    className: "text-emerald-500",
-    label: "Completed",
-  },
-  failed: { icon: XCircle, className: "text-red-500", label: "Failed" },
-  error: { icon: AlertCircle, className: "text-red-600", label: "Error" },
-  running: {
-    icon: Loader2,
-    className: "text-blue-500 animate-spin",
-    label: "Running",
-  },
-  "in-progress": {
-    icon: Loader2,
-    className: "text-blue-500 animate-spin",
-    label: "Running",
-  },
-  queued: { icon: Clock, className: "text-gray-500", label: "Queued" },
-  pending: { icon: Clock, className: "text-gray-400", label: "Pending" },
-  cancelled: { icon: Ban, className: "text-orange-500", label: "Cancelled" },
-};
 
 function StatusCell({ status }: { status: JobStatus }) {
   const config = statusConfig[status] ?? statusConfig.pending;
@@ -53,20 +21,6 @@ function StatusCell({ status }: { status: JobStatus }) {
   );
 }
 
-/** Format camelCase or PascalCase app names into readable labels. */
-export function formatServiceName(app: string): string {
-  if (!app) return "";
-  return app
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
-}
-
-function getOutputName(job: JobListItem): string {
-  const outputFile =
-    job.output_file ?? String(job.parameters?.output_file ?? "");
-  if (outputFile) return outputFile;
-  return "\u2014";
-}
 
 export function useJobsColumns(
   sort: DataTableSort,
@@ -109,7 +63,7 @@ export function useJobsColumns(
             {String(getValue())}
           </span>
         ),
-        meta: { className: "" },
+        meta: { className: ""},
         size: 70,
         enableResizing: true,
       },
@@ -140,7 +94,7 @@ export function useJobsColumns(
             {getOutputName(row.original)}
           </span>
         ),
-        meta: { className: "" },
+        meta: { className: ""},
         size: 180,
         enableResizing: true,
       },

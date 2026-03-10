@@ -29,7 +29,7 @@ export function useJobsData(params: UseJobsDataParams) {
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const response = await authenticatedFetch(
-        "/api/services/app-service/jobs/filtered",
+        "/api/services/app-service/jobs/enumerate-tasks-filtered",
         {
           method: "POST",
           body: JSON.stringify({

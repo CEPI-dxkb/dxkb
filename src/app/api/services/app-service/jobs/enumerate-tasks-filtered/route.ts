@@ -16,7 +16,7 @@ const requestSchema = z.object({
 
 /**
  * Enumerate jobs with server-side pagination and archived support
- * POST /api/services/app-service/jobs/filtered
+ * POST /api/services/app-service/jobs/enumerate-tasks-filtered
  */
 export async function POST(request: NextRequest) {
   try {

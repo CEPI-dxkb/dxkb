@@ -30,6 +30,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { toast } from "sonner";
 import {
   completeGenomeAnnotationSchema,
@@ -112,6 +113,39 @@ const GenomeAnnotationContent = () => {
     // Update ref with current values
     previousValuesRef.current = currentValues;
   }, [watchedValues]);
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.contigs) form.setFieldValue("contigs", rerunData.contigs as never);
+    if (rerunData.recipe) form.setFieldValue("recipe", rerunData.recipe as never);
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+
+    if (rerunData.taxonomy_id) {
+      const taxonId = String(rerunData.taxonomy_id);
+      form.setFieldValue("taxonomy_id", taxonId);
+      const storedLabel = rerunData.my_label as string | undefined;
+      fetch(`/api/services/taxonomy?q=taxon_id:${taxonId}&fl=taxon_id,taxon_name`)
+        .then((r) => r.json())
+        .then((data) => {
+          const docs = Array.isArray(data) ? data : data?.response?.docs;
+          if (docs && docs.length > 0) {
+            form.setFieldValue("scientific_name", docs[0].taxon_name as never);
+          }
+          if (storedLabel) {
+            form.setFieldValue("my_label", storedLabel as never);
+          }
+        })
+        .catch(() => {});
+    } else {
+      if (rerunData.scientific_name) form.setFieldValue("scientific_name", rerunData.scientific_name as never);
+      if (rerunData.my_label) form.setFieldValue("my_label", rerunData.my_label as never);
+    }
+  }, [rerunData, markApplied, form]);
 
   const handleReset = () => {
     form.reset(DEFAULT_GENOME_ANNOTATION_FORM_VALUES);

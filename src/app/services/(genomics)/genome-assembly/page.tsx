@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
@@ -47,6 +47,8 @@ import { Library } from "@/types/services";
 import { NumberInput } from "@/components/ui/number-input";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
 import { toast } from "sonner";
 import {
   genomeAssemblyFormSchema,
@@ -130,6 +132,7 @@ export default function GenomeAssemblyPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: mapAssemblyLibraryToItem,
@@ -139,6 +142,27 @@ export default function GenomeAssemblyPage() {
       srr: "srr_ids",
     },
   });
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+    if (rerunData.recipe) form.setFieldValue("recipe", rerunData.recipe as never);
+
+    const libs: Library[] = [
+      ...buildPairedLibraries(rerunData, (lib) => ({ platform: lib.platform || "infer", interleaved: !!lib.interleaved, read_orientation_outward: !!lib.read_orientation_outward })),
+      ...buildSingleLibraries(rerunData, (lib) => ({ platform: lib.platform || "infer" })),
+      ...buildSraLibraries(rerunData),
+    ];
+    if (libs.length > 0) {
+      syncLibrariesToForm(libs);
+      setLibrariesAndSync(libs);
+    }
+  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
 
   // Setup service debugging and form submission
   const {

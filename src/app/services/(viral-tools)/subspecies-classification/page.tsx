@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Fragment } from "react";
+import { useState, useCallback, useEffect, Fragment } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   subspeciesClassificationInfo,
   subspeciesClassificationQuerySource,
@@ -74,6 +75,31 @@ export default function SubspeciesClassificationPage() {
       await handleSubmit(value as SubspeciesClassificationFormData);
     },
   });
+
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.input_source != null) {
+      form.setFieldValue("input_source", rerunData.input_source as never);
+    }
+    if (rerunData.input_fasta_data != null) {
+      form.setFieldValue("input_fasta_data", rerunData.input_fasta_data as never);
+    }
+    if (rerunData.input_fasta_file != null) {
+      form.setFieldValue("input_fasta_file", rerunData.input_fasta_file as never);
+    }
+    if (rerunData.virus_type != null) {
+      form.setFieldValue("virus_type", rerunData.virus_type as never);
+    }
+    if (rerunData.output_path != null) {
+      form.setFieldValue("output_path", rerunData.output_path as never);
+    }
+    if (rerunData.output_file != null) {
+      form.setFieldValue("output_file", rerunData.output_file as never);
+    }
+  }, [rerunData, markApplied, form]);
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);

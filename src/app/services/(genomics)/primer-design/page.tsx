@@ -38,21 +38,18 @@ import {
   type PrimerDesignFormData,
 } from "@/lib/forms/(genomics)/primer-design/primer-design-form-schema";
 import {
+  markerLabels,
+  primerArrayFields,
+  primerScalarFields,
   stripPrimerMarkers,
   transformPrimerDesignParams,
   validatePrimerDesignSequence,
+  type MarkerType,
 } from "@/lib/forms/(genomics)/primer-design/primer-design-form-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { WorkspaceObject } from "@/lib/workspace-client";
-
-const MARKER_LABELS = {
-  exclude: "< >",
-  target: "[ ]",
-  include: "{ }",
-} as const;
-
-type MarkerType = keyof typeof MARKER_LABELS | "clear";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
 
 export default function PrimerDesignServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -264,6 +261,61 @@ export default function PrimerDesignServicePage() {
     form.setFieldValue("SEQUENCE_ID", sequenceTextId);
   }, [sequenceTextValue, sequenceTextId, form]);
 
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    const d = rerunData;
+
+    // Output fields
+    if (typeof d.output_path === "string") form.setFieldValue("output_path", d.output_path);
+    if (typeof d.output_file === "string") form.setFieldValue("output_file", d.output_file);
+
+    // Input type
+    const inputTypeVal = d.input_type as PrimerDesignFormData["input_type"] | undefined;
+    if (inputTypeVal === "sequence_text" || inputTypeVal === "workplace_fasta") {
+      form.setFieldValue("input_type", inputTypeVal);
+    }
+
+    // Sequence input — handle per input type
+    if (inputTypeVal === "workplace_fasta") {
+      const path = typeof d.sequence_input === "string" ? d.sequence_input : "";
+      isRestoringValueRef.current = true;
+      form.setFieldValue("sequence_input", path);
+      setWorkspaceFastaValue(path); // eslint-disable-line react-hooks/set-state-in-effect
+      setTimeout(() => { isRestoringValueRef.current = false; }, 200);
+    } else {
+      // sequence_text (default)
+      const seq = typeof d.sequence_input === "string" ? d.sequence_input : "";
+      const seqId = typeof d.SEQUENCE_ID === "string" ? d.SEQUENCE_ID : "";
+      form.setFieldValue("sequence_input", seq);
+      form.setFieldValue("SEQUENCE_ID", seqId);
+      setSequenceTextValue(seq);
+      setSequenceTextId(seqId);
+    }
+
+    // Boolean fields
+    if (typeof d.PRIMER_PICK_INTERNAL_OLIGO === "boolean") {
+      form.setFieldValue("PRIMER_PICK_INTERNAL_OLIGO", d.PRIMER_PICK_INTERNAL_OLIGO);
+    }
+
+    // Array fields
+    for (const field of primerArrayFields) {
+      if (d[field] !== undefined) {
+        const val = Array.isArray(d[field]) ? (d[field] as string[]) : typeof d[field] === "string" ? (d[field] as string).trim().split(/\s+/).filter(Boolean) : undefined;
+        if (val !== undefined) form.setFieldValue(field, val);
+      }
+    }
+
+    // Scalar numeric/string fields
+    for (const field of primerScalarFields) {
+      if (d[field] !== undefined) {
+        form.setFieldValue(field, String(d[field]));
+      }
+    }
+  }, [rerunData, markApplied, form]);
+
   const handleReset = () => {
     form.reset(DEFAULT_PRIMER_DESIGN_FORM_VALUES);
     setShowAdvanced(false);
@@ -402,7 +454,7 @@ export default function PrimerDesignServicePage() {
                   </Label>
                   <div className="flex flex-wrap gap-2">
                     {(
-                      Object.keys(MARKER_LABELS) as (keyof typeof MARKER_LABELS)[]
+                      Object.keys(markerLabels) as (keyof typeof markerLabels)[]
                     ).map((markerKey) => (
                       <Button
                         key={markerKey}
@@ -411,7 +463,7 @@ export default function PrimerDesignServicePage() {
                         size="sm"
                         onClick={() => updateSequenceWithMarkers(markerKey)}
                       >
-                        {MARKER_LABELS[markerKey]}
+                        {markerLabels[markerKey]}
                       </Button>
                     ))}
                     <Button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { toast } from "sonner";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   similarGenomeFinderInfo,
   similarGenomeFinderSelectGenome,
@@ -139,6 +140,25 @@ export default function SimilarGenomeFinderServicePage() {
   });
 
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
+
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    const d = rerunData;
+
+    if (typeof d.selectedGenomeId === "string") form.setFieldValue("selectedGenomeId", d.selectedGenomeId);
+    if (typeof d.fasta_file === "string") form.setFieldValue("fasta_file", d.fasta_file);
+    if (typeof d.output_path === "string") form.setFieldValue("output_path", d.output_path);
+    if (typeof d.output_file === "string") form.setFieldValue("output_file", d.output_file);
+    if (typeof d.max_hits === "number") form.setFieldValue("max_hits", d.max_hits);
+    if (typeof d.max_pvalue === "number") form.setFieldValue("max_pvalue", d.max_pvalue);
+    if (typeof d.max_distance === "number") form.setFieldValue("max_distance", d.max_distance);
+    if (typeof d.include_bacterial === "boolean") form.setFieldValue("include_bacterial", d.include_bacterial);
+    if (typeof d.include_viral === "boolean") form.setFieldValue("include_viral", d.include_viral);
+    if (d.scope === "reference" || d.scope === "all") form.setFieldValue("scope", d.scope);
+  }, [rerunData, markApplied, form]);
 
   const handleReset = () => {
     form.reset(DEFAULT_SIMILAR_GENOME_FINDER_FORM_VALUES);

@@ -42,6 +42,8 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { normalizeToArray, buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
 import {
   taxonomyClassificationInfo,
   taxonomyClassificationInput,
@@ -188,6 +190,7 @@ export default function TaxonomicClassificationPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<
     LibraryItem,
     { srr_accession: string; sample_id: string; title?: string }
@@ -221,6 +224,38 @@ export default function TaxonomicClassificationPage() {
       });
     },
   });
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+    if (rerunData.sequence_type) form.setFieldValue("sequence_type", rerunData.sequence_type as TaxonomicClassificationFormData["sequence_type"]);
+    if (rerunData.analysis_type) form.setFieldValue("analysis_type", rerunData.analysis_type as TaxonomicClassificationFormData["analysis_type"]);
+    if (rerunData.database) form.setFieldValue("database", rerunData.database as TaxonomicClassificationFormData["database"]);
+    if (rerunData.host_genome) form.setFieldValue("host_genome", rerunData.host_genome as TaxonomicClassificationFormData["host_genome"]);
+    if (rerunData.confidence_interval) form.setFieldValue("confidence_interval", rerunData.confidence_interval as never);
+    if (rerunData.save_classified_sequences !== undefined) form.setFieldValue("save_classified_sequences", rerunData.save_classified_sequences as boolean);
+    if (rerunData.save_unclassified_sequences !== undefined) form.setFieldValue("save_unclassified_sequences", rerunData.save_unclassified_sequences as boolean);
+
+    const libs: Library[] = [
+      ...buildPairedLibraries(rerunData, (lib) => ({ sampleId: lib.sample_id || extractSampleIdFromPath(lib.read1, "sample") })),
+      ...buildSingleLibraries(rerunData, (lib) => ({ sampleId: lib.sample_id || extractSampleIdFromPath(lib.read, "sample") })),
+      ...normalizeToArray<Record<string, string>>(rerunData.srr_libs).map((lib) => ({
+        id: lib.srr_accession,
+        name: lib.srr_accession,
+        type: "sra" as const,
+        sampleId: lib.sample_id || "",
+      })),
+    ];
+    if (libs.length > 0) {
+      syncLibrariesToForm(libs);
+      setLibrariesAndSync(libs);
+    }
+  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
 
   // Handle adding paired library
   const handlePairedLibraryAdd = () => {

@@ -45,6 +45,8 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
@@ -170,6 +172,37 @@ export default function GeneProteinTreePage() {
       .map((field) => field.id);
     form.setFieldValue("metadata_fields", selectedFields);
   }, [metadataFields, form]);
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.alphabet) form.setFieldValue("alphabet", rerunData.alphabet as GeneProteinTreeFormData["alphabet"]);
+    if (rerunData.recipe) form.setFieldValue("recipe", rerunData.recipe as GeneProteinTreeFormData["recipe"]);
+    if (rerunData.substitution_model) form.setFieldValue("substitution_model", rerunData.substitution_model as never);
+    if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold));
+    if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold));
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+
+    const sequences = normalizeToArray<SequenceItem>(rerunData.sequences);
+    if (sequences.length > 0) {
+      form.setFieldValue("sequences", sequences);
+    }
+
+    // Restore metadata fields from feature_metadata_fields and genome_metadata_fields
+    const featureFields = normalizeToArray<string>(rerunData.feature_metadata_fields);
+    const genomeFields = normalizeToArray<string>(rerunData.genome_metadata_fields);
+    const allMetadataFieldIds = [...featureFields, ...genomeFields];
+    if (allMetadataFieldIds.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMetadataFields(
+        allMetadataFieldIds.map((id) => createMetadataField(id)),
+      );
+    }
+  }, [rerunData, markApplied, form]);
 
   const selectedMetadataIds = useMemo(
     () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),

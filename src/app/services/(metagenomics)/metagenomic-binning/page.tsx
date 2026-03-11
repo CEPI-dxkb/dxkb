@@ -41,6 +41,9 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
+import type { Library } from "@/types/services";
 import {
   metagenomicBinningInfo,
   metagenomicBinningInputFile,
@@ -125,6 +128,7 @@ export default function MetagenomicBinningPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: buildBaseLibraryItem,
@@ -134,6 +138,31 @@ export default function MetagenomicBinningPage() {
       srr: "srr_ids",
     },
   });
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+    if (rerunData.start_with) form.setFieldValue("start_with", rerunData.start_with as never);
+    if (rerunData.assembler) form.setFieldValue("assembler", rerunData.assembler as never);
+    if (rerunData.organism) form.setFieldValue("organism", rerunData.organism as never);
+    if (rerunData.contigs) form.setFieldValue("contigs", rerunData.contigs as never);
+    if (rerunData.genome_group) form.setFieldValue("genome_group", rerunData.genome_group as never);
+
+    const libs: Library[] = [
+      ...buildPairedLibraries(rerunData),
+      ...buildSingleLibraries(rerunData),
+      ...buildSraLibraries(rerunData),
+    ];
+    if (libs.length > 0) {
+      syncLibrariesToForm(libs);
+      setLibrariesAndSync(libs);
+    }
+  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
 
   // Determine if MetaSPAdes should be disabled based on selectedLibraries (source of truth)
   // MetaSPAdes only supports a single paired-end library

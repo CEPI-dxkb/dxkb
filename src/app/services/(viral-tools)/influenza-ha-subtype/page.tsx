@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -23,6 +23,8 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { normalizeToArray } from "@/lib/rerun-utility";
 import { validateFasta } from "@/lib/fasta-validation";
 import {
   haSubtypeNumberingInput,
@@ -52,6 +54,34 @@ export default function HASubtypeNumberingPage() {
       await handleSubmit(value as InfluenzaHaSubtypeFormData);
     },
   });
+
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.input_source != null) {
+      form.setFieldValue("input_source", rerunData.input_source as never);
+    }
+    if (rerunData.input_fasta_data != null) {
+      form.setFieldValue("input_fasta_data", rerunData.input_fasta_data as never);
+    }
+    if (rerunData.input_fasta_file != null) {
+      form.setFieldValue("input_fasta_file", rerunData.input_fasta_file as never);
+    }
+    if (rerunData.input_feature_group != null) {
+      form.setFieldValue("input_feature_group", rerunData.input_feature_group as never);
+    }
+    if (rerunData.types != null) {
+      form.setFieldValue("types", normalizeToArray(rerunData.types) as string[]);
+    }
+    if (rerunData.output_path != null) {
+      form.setFieldValue("output_path", rerunData.output_path as never);
+    }
+    if (rerunData.output_file != null) {
+      form.setFieldValue("output_file", rerunData.output_file as never);
+    }
+  }, [rerunData, markApplied, form]);
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const watchedTypes = useStore(form.store, (s) => s.values.types);

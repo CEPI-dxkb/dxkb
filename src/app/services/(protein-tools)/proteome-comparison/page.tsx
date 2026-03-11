@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { normalizeToArray } from "@/lib/rerun-utility";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
@@ -78,6 +80,16 @@ export default function ProteomeComparisonPage() {
   // State for submission
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
+  const form = useForm({
+    defaultValues: DEFAULT_PROTEOME_COMPARISON_FORM_VALUES as ProteomeComparisonFormData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validators: { onChange: proteomeComparisonFormSchema as any },
+    onSubmit: async ({ value }) => {
+      // handleSubmit captured by closure — initialized by useServiceFormSubmission below
+      await handleSubmit(value as ProteomeComparisonFormData);
+    },
+  });
+
   // Handle reset
   const handleReset = useCallback(() => {
     form.reset(DEFAULT_PROTEOME_COMPARISON_FORM_VALUES);
@@ -86,8 +98,7 @@ export default function ProteomeComparisonPage() {
     setSelectedCompFeatureGroup(null);
     setSelectedCompGenomeGroup(null);
     setShowAdvancedParams(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form]);
 
   // Setup service form submission
   const {
@@ -104,20 +115,92 @@ export default function ProteomeComparisonPage() {
     onSuccess: handleReset,
   });
 
-  const form = useForm({
-    defaultValues: DEFAULT_PROTEOME_COMPARISON_FORM_VALUES as ProteomeComparisonFormData,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validators: { onChange: proteomeComparisonFormSchema as any },
-    onSubmit: async ({ value }) => {
-      await handleSubmit(value as ProteomeComparisonFormData);
-    },
-  });
-
   // Watch form values
   const rawComparisonItems = useStore(form.store, (s) => s.values.comparison_items);
   const comparisonItems = useMemo(() => rawComparisonItems || [], [rawComparisonItems]);
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
+
+  // Rerun pre-fill
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    // output_path / output_file
+    if (typeof rerunData.output_path === "string") {
+      form.setFieldValue("output_path", rerunData.output_path);
+    }
+    if (typeof rerunData.output_file === "string") {
+      form.setFieldValue("output_file", rerunData.output_file);
+    }
+
+    // Advanced parameters (API stores as decimals, form uses percentages)
+    if (typeof rerunData.min_seq_cov === "number") {
+      form.setFieldValue("min_seq_cov", Math.round(rerunData.min_seq_cov * 100));
+    }
+    if (typeof rerunData.max_e_val === "string") {
+      form.setFieldValue("max_e_val", rerunData.max_e_val);
+    }
+    if (typeof rerunData.min_ident === "number") {
+      form.setFieldValue("min_ident", Math.round(rerunData.min_ident * 100));
+    }
+
+    // Reconstruct reference genome and comparison items from API params.
+    // API serializes: genome_ids (ref first if ref is genome), user_genomes (fasta),
+    // user_feature_groups (feature_group), reference_genome_index (1-based).
+    const genomeIds = normalizeToArray<string>(rerunData.genome_ids);
+    const userGenomes = normalizeToArray<string>(rerunData.user_genomes);
+    const userFeatureGroups = normalizeToArray<string>(rerunData.user_feature_groups);
+    const refIndex = typeof rerunData.reference_genome_index === "number"
+      ? rerunData.reference_genome_index
+      : 0;
+
+    // Determine reference source
+    // Combined order is [genome_ids, user_genomes, user_feature_groups] (1-based)
+    const refIsGenome = refIndex >= 1 && refIndex <= genomeIds.length;
+    const refIsFasta = refIndex > genomeIds.length && refIndex <= genomeIds.length + userGenomes.length;
+    const refIsFeatureGroup = refIndex > genomeIds.length + userGenomes.length;
+
+    if (refIsGenome && genomeIds.length > 0) {
+      const refGenomeId = genomeIds[refIndex - 1];
+      form.setFieldValue("ref_genome_id", refGenomeId);
+      form.setFieldValue("ref_source_type", "genome");
+    } else if (refIsFasta && userGenomes.length > 0) {
+      const refFastaIndex = refIndex - genomeIds.length - 1;
+      form.setFieldValue("ref_fasta_file", userGenomes[refFastaIndex]);
+      form.setFieldValue("ref_source_type", "fasta");
+    } else if (refIsFeatureGroup && userFeatureGroups.length > 0) {
+      const refFgIndex = refIndex - genomeIds.length - userGenomes.length - 1;
+      form.setFieldValue("ref_feature_group", userFeatureGroups[refFgIndex]);
+      form.setFieldValue("ref_source_type", "feature_group");
+    }
+
+    // Build comparison items from remaining entries
+    const compItems: ComparisonItem[] = [];
+
+    genomeIds.forEach((gid, idx) => {
+      // Skip the reference genome
+      if (refIsGenome && idx === refIndex - 1) return;
+      compItems.push(createGenomeComparisonItem(gid, gid));
+    });
+
+    userGenomes.forEach((path, idx) => {
+      // Skip the reference fasta
+      if (refIsFasta && idx === refIndex - genomeIds.length - 1) return;
+      compItems.push(createFastaComparisonItem(path));
+    });
+
+    userFeatureGroups.forEach((path, idx) => {
+      // Skip the reference feature group
+      if (refIsFeatureGroup && idx === refIndex - genomeIds.length - userGenomes.length - 1) return;
+      compItems.push(createFeatureGroupComparisonItem(path));
+    });
+
+    if (compItems.length > 0) {
+      form.setFieldValue("comparison_items", compItems);
+    }
+  }, [rerunData, markApplied, form]);
 
   // Calculate total genome count (accounting for genome groups)
   const totalGenomeCount = countTotalComparisonGenomes(comparisonItems);

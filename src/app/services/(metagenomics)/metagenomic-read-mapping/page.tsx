@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -41,6 +41,9 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
+import type { Library } from "@/types/services";
 import {
   metagenomicReadMappingInfo,
   metagenomicReadMappingParameters,
@@ -119,6 +122,7 @@ export default function MetagenomicReadMappingPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: buildBaseLibraryItem,
@@ -128,6 +132,30 @@ export default function MetagenomicReadMappingPage() {
       srr: "srr_ids",
     },
   });
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+    if (rerunData.gene_set_type) form.setFieldValue("gene_set_type", rerunData.gene_set_type as never);
+    if (rerunData.gene_set_name) form.setFieldValue("gene_set_name", rerunData.gene_set_name as never);
+    if (rerunData.gene_set_fasta) form.setFieldValue("gene_set_fasta", rerunData.gene_set_fasta as never);
+    if (rerunData.gene_set_feature_group) form.setFieldValue("gene_set_feature_group", rerunData.gene_set_feature_group as never);
+
+    const libs: Library[] = [
+      ...buildPairedLibraries(rerunData),
+      ...buildSingleLibraries(rerunData),
+      ...buildSraLibraries(rerunData),
+    ];
+    if (libs.length > 0) {
+      syncLibrariesToForm(libs);
+      setLibrariesAndSync(libs);
+    }
+  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
 
   // Handle adding paired library
   const handlePairedLibraryAdd = () => {

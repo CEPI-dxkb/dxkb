@@ -44,6 +44,8 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
 import {
   sarsCov2GenomeAnalysisInfo,
   sarsCov2GenomeAnalysisParameters,
@@ -66,6 +68,7 @@ import {
 import {
   transformSarsCov2GenomeAnalysisParams,
   computeOutputName,
+  sanitizeTaxonomyForOutputName,
   handleLibraryError as handleLibraryErrorUtil,
   getPairedLibraryBuildFn,
   getSingleLibraryBuildFn,
@@ -78,6 +81,7 @@ import {
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
+import type { Library } from "@/types/services";
 import {
   sarsCov2PairedPlatformOptions,
   sarsCov2SinglePlatformOptions,
@@ -89,6 +93,8 @@ const tutorial =
   "https://www.bv-brc.org/docs/tutorial/sars_cov_2_assembly_annotation/sars_cov_2_assembly_annotation.html";
 
 export default function SarsCov2GenomeAnalysisPage() {
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
   const form = useForm({
     defaultValues:
       defaultSarsCov2GenomeAnalysisFormValues as SarsCov2GenomeAnalysisFormData,
@@ -128,6 +134,7 @@ export default function SarsCov2GenomeAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<SarsCov2LibraryItem>({
     form,
     mapLibraryToItem: (library) => ({
@@ -163,6 +170,76 @@ export default function SarsCov2GenomeAnalysisPage() {
       }
     }
   }, [primers, showPrimersSection, form]);
+
+  // Rerun pre-fill
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    const inputType = (rerunData.input_type as string) || "reads";
+    form.setFieldValue("input_type", inputType as never);
+
+    if (rerunData.taxonomy_id) {
+      const taxonId = String(rerunData.taxonomy_id);
+      form.setFieldValue("taxonomy_id", taxonId);
+      const outputFile = rerunData.output_file as string | undefined;
+      fetch(`/api/services/taxonomy?q=taxon_id:${taxonId}&fl=taxon_id,taxon_name`)
+        .then((r) => r.json())
+        .then((data) => {
+          const docs = Array.isArray(data) ? data : data?.response?.docs;
+          if (docs && docs.length > 0) {
+            const taxonName: string = docs[0].taxon_name;
+            form.setFieldValue("scientific_name", taxonName as never);
+            if (outputFile) {
+              const sanitized = sanitizeTaxonomyForOutputName(taxonName);
+              const prefix = sanitized + " ";
+              const label = outputFile.startsWith(prefix)
+                ? outputFile.slice(prefix.length).trim()
+                : "";
+              if (label) {
+                form.setFieldValue("my_label", label as never);
+              }
+            }
+          }
+        })
+        .catch(() => {});
+    }
+    if (rerunData.my_label) {
+      form.setFieldValue("my_label", rerunData.my_label as never);
+    }
+    if (rerunData.output_path) {
+      form.setFieldValue("output_path", rerunData.output_path as never);
+    }
+    if (rerunData.output_file) {
+      form.setFieldValue("output_file", rerunData.output_file as never);
+    }
+
+    if (inputType === "reads") {
+      if (rerunData.recipe) {
+        form.setFieldValue("recipe", rerunData.recipe as never);
+      }
+      if (rerunData.primers) {
+        form.setFieldValue("primers", rerunData.primers as never);
+      }
+      if (rerunData.primer_version) {
+        form.setFieldValue("primer_version", rerunData.primer_version as never);
+      }
+
+      const libs: Library[] = [
+        ...buildPairedLibraries(rerunData, (lib) => ({ platform: lib.platform || "illumina" })),
+        ...buildSingleLibraries(rerunData, (lib) => ({ platform: lib.platform || "illumina" })),
+        ...buildSraLibraries(rerunData),
+      ];
+
+      if (libs.length > 0) {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      }
+    } else if (inputType === "contigs") {
+      if (rerunData.contigs) {
+        form.setFieldValue("contigs", rerunData.contigs as never);
+      }
+    }
+  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
 
   const handleLibraryError = (message: string) => {
     handleLibraryErrorUtil(message, toast);

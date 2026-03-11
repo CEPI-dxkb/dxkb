@@ -58,6 +58,7 @@ import {
 } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -164,6 +165,30 @@ export default function BlastServicePage() {
     // Update ref for next comparison
     previousProgramRef.current = currentBlastProgram;
   }, [currentBlastProgram, form]);
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.blast_program) form.setFieldValue("blast_program", rerunData.blast_program as never);
+    if (rerunData.input_source) form.setFieldValue("input_source", rerunData.input_source as never);
+    if (rerunData.input_fasta_data) form.setFieldValue("input_fasta_data", rerunData.input_fasta_data as never);
+    if (rerunData.input_fasta_file) form.setFieldValue("input_fasta_file", rerunData.input_fasta_file as never);
+    if (rerunData.input_feature_group) form.setFieldValue("input_feature_group", rerunData.input_feature_group as never);
+    if (rerunData.db_precomputed_database) form.setFieldValue("db_precomputed_database", rerunData.db_precomputed_database as never);
+    if (rerunData.db_type) form.setFieldValue("db_type", rerunData.db_type as never);
+    if (rerunData.db_genome_group) form.setFieldValue("db_genome_group", rerunData.db_genome_group as never);
+    if (rerunData.db_feature_group) form.setFieldValue("db_feature_group", rerunData.db_feature_group as never);
+    if (rerunData.db_taxon_list) form.setFieldValue("db_taxon_list", rerunData.db_taxon_list as string[]);
+    if (rerunData.db_genome_list) form.setFieldValue("db_genome_list", rerunData.db_genome_list as string[]);
+    if (rerunData.db_fasta_file) form.setFieldValue("db_fasta_file", rerunData.db_fasta_file as never);
+    if (rerunData.blast_max_hits != null) form.setFieldValue("blast_max_hits", rerunData.blast_max_hits as number);
+    if (rerunData.blast_evalue_cutoff != null) form.setFieldValue("blast_evalue_cutoff", rerunData.blast_evalue_cutoff as number);
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+  }, [rerunData, markApplied, form]);
 
   const handleReset = () => {
     form.reset(DEFAULT_BLAST_FORM_VALUES);

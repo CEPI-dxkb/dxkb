@@ -43,9 +43,11 @@ import {
 } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-schema";
 import { transformGenomeAlignmentParams } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import {
   fetchGenomeGroupMembers,
+  fetchGenomesByIds,
   type GenomeSummary,
 } from "@/lib/services/genome";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
@@ -177,6 +179,29 @@ export default function GenomeAlignmentServicePage() {
       setIsFetchingGroup(false);
     }
   };
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+    if (rerunData.manual_seed_weight != null) form.setFieldValue("manual_seed_weight", rerunData.manual_seed_weight as boolean);
+    if (rerunData.seed_weight != null) form.setFieldValue("seed_weight", rerunData.seed_weight as number);
+    if (rerunData.weight != null) form.setFieldValue("weight", rerunData.weight as number);
+
+    const genomeIds = Array.isArray(rerunData.genome_ids) ? (rerunData.genome_ids as string[]) : [];
+    if (genomeIds.length > 0) {
+      fetchGenomesByIds(genomeIds)
+        .then((genomes) => setSelectedGenomes(genomes))
+        .catch(() => {
+          // Fallback: set IDs directly so submission works even if fetch fails
+          form.setFieldValue("genome_ids", genomeIds);
+        });
+    }
+  }, [rerunData, markApplied, form]);
 
   const handleReset = () => {
     form.reset(DEFAULT_GENOME_ALIGNMENT_FORM_VALUES);

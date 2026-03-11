@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { normalizeToArray } from "@/lib/rerun-utility";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
@@ -93,6 +95,16 @@ export default function MetaCATSPage() {
   // General state
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
+  const form = useForm({
+    defaultValues: DEFAULT_META_CATS_FORM_VALUES as MetaCatsFormData,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validators: { onChange: metaCatsFormSchema as any },
+    onSubmit: async ({ value }) => {
+      // handleSubmit captured by closure — initialized by useServiceFormSubmission below
+      await handleSubmit(value as MetaCatsFormData);
+    },
+  });
+
   // Handle reset
   const handleReset = useCallback(() => {
     form.reset(DEFAULT_META_CATS_FORM_VALUES);
@@ -105,8 +117,7 @@ export default function MetaCATSPage() {
     setSelectedGroupName("");
     setYearRangesInput("");
     setYearRangesValidation(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form]);
 
   // Setup service form submission
   const {
@@ -122,15 +133,6 @@ export default function MetaCATSPage() {
     onSuccess: handleReset,
   });
 
-  const form = useForm({
-    defaultValues: DEFAULT_META_CATS_FORM_VALUES as MetaCatsFormData,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validators: { onChange: metaCatsFormSchema as any },
-    onSubmit: async ({ value }) => {
-      await handleSubmit(value as MetaCatsFormData);
-    },
-  });
-
   const inputType = useStore(form.store, (s) => s.values.input_type);
   const metadataGroup = useStore(form.store, (s) => s.values.metadata_group);
   const rawAutoGroups = useStore(form.store, (s) => s.values.auto_groups);
@@ -139,6 +141,70 @@ export default function MetaCATSPage() {
   const featureGroups = useMemo(() => rawFeatureGroups || [], [rawFeatureGroups]);
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
+
+  // Rerun pre-fill
+  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+
+  useEffect(() => {
+    if (!rerunData || !markApplied()) return;
+
+    // p_value
+    if (typeof rerunData.p_value === "number") {
+      form.setFieldValue("p_value", rerunData.p_value);
+    }
+
+    // output_path / output_file
+    if (typeof rerunData.output_path === "string") {
+      form.setFieldValue("output_path", rerunData.output_path);
+    }
+    if (typeof rerunData.output_file === "string") {
+      form.setFieldValue("output_file", rerunData.output_file);
+    }
+
+    // input_type
+    if (typeof rerunData.input_type === "string") {
+      form.setFieldValue("input_type", rerunData.input_type as MetaCatsFormData["input_type"]);
+    }
+
+    // Auto grouping fields
+    if (typeof rerunData.metadata_group === "string") {
+      form.setFieldValue("metadata_group", rerunData.metadata_group);
+    }
+    if (typeof rerunData.year_ranges === "string" && rerunData.year_ranges.trim() !== "") {
+      form.setFieldValue("year_ranges", rerunData.year_ranges);
+      setYearRangesInput(rerunData.year_ranges);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const autoGroupsRaw = normalizeToArray<any>(rerunData.auto_groups);
+    if (autoGroupsRaw.length > 0) {
+      form.setFieldValue("auto_groups", autoGroupsRaw as MetaCatsFormData["auto_groups"]);
+      const uniqueGroupNames = Array.from(new Set(autoGroupsRaw.map((item: { group?: string }) => item.group).filter(Boolean))) as string[];
+      setGroupNames(uniqueGroupNames);
+    }
+    if (typeof rerunData.auto_alphabet === "string") {
+      form.setFieldValue("auto_alphabet", rerunData.auto_alphabet as MetaCatsFormData["auto_alphabet"]);
+    }
+
+    // Feature groups fields
+    const groupsRaw = normalizeToArray<string>(rerunData.groups);
+    if (groupsRaw.length > 0) {
+      form.setFieldValue("groups", groupsRaw);
+    }
+    if (typeof rerunData.group_alphabet === "string") {
+      form.setFieldValue("group_alphabet", rerunData.group_alphabet as MetaCatsFormData["group_alphabet"]);
+    }
+
+    // Alignment file fields
+    if (typeof rerunData.alignment_file === "string" && rerunData.alignment_file.trim() !== "") {
+      form.setFieldValue("alignment_file", rerunData.alignment_file);
+    }
+    if (typeof rerunData.alignment_type === "string") {
+      form.setFieldValue("alignment_type", rerunData.alignment_type);
+    }
+    if (typeof rerunData.group_file === "string" && rerunData.group_file.trim() !== "") {
+      form.setFieldValue("group_file", rerunData.group_file);
+    }
+  }, [rerunData, markApplied, form]);
 
   // Calculate unique group count
   const uniqueGroupCount = useMemo(() => {
@@ -154,8 +220,7 @@ export default function MetaCATSPage() {
     const validation = validateYearRanges(value);
     setYearRangesValidation(validation);
     form.setFieldValue("year_ranges", value);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [form]);
 
   // Handle adding feature group to auto grouping grid
   const handleAddAutoFeatureGroup = useCallback(async () => {

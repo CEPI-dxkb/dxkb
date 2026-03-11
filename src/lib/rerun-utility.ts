@@ -1,3 +1,10 @@
+import type { Library } from "@/types/services";
+import {
+  getPairedLibraryId,
+  getPairedLibraryName,
+  getSingleLibraryName,
+} from "@/lib/forms/tanstack-library-selection";
+
 /**
  * Maps BV-BRC service IDs (job.app) to Next.js route paths.
  * Route groups (parentheses) are not part of the URL in Next.js App Router.
@@ -73,4 +80,59 @@ export function rerunJob(
   const key = generateKey();
   sessionStorage.setItem(key, JSON.stringify(parameters));
   window.open(`${route}?rerun_key=${key}`, "_blank");
+}
+
+/**
+ * Reconstruct paired-end Library objects from raw rerun params.
+ * Pass an optional `getExtra` callback to merge service-specific fields.
+ */
+export function buildPairedLibraries(
+  rerunData: Record<string, unknown>,
+  getExtra?: (lib: Record<string, string>) => Partial<Library>,
+): Library[] {
+  return normalizeToArray<Record<string, string>>(rerunData.paired_end_libs)
+    .filter((lib) => lib.read1 && lib.read2)
+    .map((lib) => ({
+      id: getPairedLibraryId(lib.read1, lib.read2),
+      name: getPairedLibraryName(lib.read1, lib.read2),
+      type: "paired" as const,
+      files: [lib.read1, lib.read2],
+      ...getExtra?.(lib),
+    }));
+}
+
+/**
+ * Reconstruct single-end Library objects from raw rerun params.
+ * Pass an optional `getExtra` callback to merge service-specific fields.
+ */
+export function buildSingleLibraries(
+  rerunData: Record<string, unknown>,
+  getExtra?: (lib: Record<string, string>) => Partial<Library>,
+): Library[] {
+  return normalizeToArray<Record<string, string>>(rerunData.single_end_libs)
+    .filter((lib) => !!lib.read)
+    .map((lib) => ({
+      id: lib.read,
+      name: getSingleLibraryName(lib.read),
+      type: "single" as const,
+      files: [lib.read],
+      ...getExtra?.(lib),
+    }));
+}
+
+/**
+ * Reconstruct SRA Library objects from raw rerun params.
+ * Tries `srr_libs` (array of { srr_accession }) first, then falls back to `srr_ids` (string[]).
+ */
+export function buildSraLibraries(rerunData: Record<string, unknown>): Library[] {
+  const srrLibs = normalizeToArray<Record<string, string>>(rerunData.srr_libs);
+  if (srrLibs.length > 0) {
+    return srrLibs
+      .filter((lib) => !!lib.srr_accession)
+      .map((lib) => ({ id: lib.srr_accession, name: lib.srr_accession, type: "sra" as const }));
+  }
+  if (Array.isArray(rerunData.srr_ids)) {
+    return (rerunData.srr_ids as string[]).map((id) => ({ id, name: id, type: "sra" as const }));
+  }
+  return [];
 }

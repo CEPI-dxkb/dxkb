@@ -17,6 +17,40 @@ export interface PrimerSequenceValidationResult {
   errorCode?: PrimerSequenceValidationError;
 }
 
+export const primerArrayFields = [
+  "PRIMER_PRODUCT_SIZE_RANGE",
+  "SEQUENCE_TARGET",
+  "SEQUENCE_INCLUDED_REGION",
+  "SEQUENCE_EXCLUDED_REGION",
+  "SEQUENCE_OVERLAP_JUNCTION_LIST",
+] as const;
+
+export const primerScalarFields = [
+  "PRIMER_NUM_RETURN",
+  "PRIMER_MIN_SIZE",
+  "PRIMER_OPT_SIZE",
+  "PRIMER_MAX_SIZE",
+  "PRIMER_MIN_TM",
+  "PRIMER_OPT_TM",
+  "PRIMER_MAX_TM",
+  "PRIMER_PAIR_MAX_DIFF_TM",
+  "PRIMER_MIN_GC",
+  "PRIMER_OPT_GC",
+  "PRIMER_MAX_GC",
+  "PRIMER_SALT_MONOVALENT",
+  "PRIMER_SALT_DIVALENT",
+  "PRIMER_DNA_CONC",
+  "PRIMER_DNTP_CONC",
+] as const;
+
+export const markerLabels = {
+  exclude: "< >",
+  target: "[ ]",
+  include: "{ }",
+} as const;
+
+export type MarkerType = keyof typeof markerLabels | "clear";
+
 const MARKER_REGEX = /[<>[\]{}']+/g;
 // Legacy validation only allows a, g, c, t, n (not extended IUPAC codes)
 const NUCLEOTIDE_REGEX = /[agctn]/gi;

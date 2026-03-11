@@ -72,7 +72,7 @@ export function singleLibraryDuplicateMatcher(library: Library, read: string): b
 /**
  * Sanitize taxonomy name for output name (legacy: replace / ( ) | : with empty string)
  */
-function sanitizeTaxonomyForOutputName(name: string): string {
+export function sanitizeTaxonomyForOutputName(name: string): string {
   return name.replace(/\(|\)|\||\/|:/g, "").trim();
 }
 

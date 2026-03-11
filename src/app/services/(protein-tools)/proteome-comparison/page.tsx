@@ -160,7 +160,7 @@ export default function ProteomeComparisonPage() {
     // Combined order is [genome_ids, user_genomes, user_feature_groups] (1-based)
     const refIsGenome = refIndex >= 1 && refIndex <= genomeIds.length;
     const refIsFasta = refIndex > genomeIds.length && refIndex <= genomeIds.length + userGenomes.length;
-    const refIsFeatureGroup = refIndex > genomeIds.length + userGenomes.length;
+    const refIsFeatureGroup = refIndex > genomeIds.length + userGenomes.length && refIndex <= genomeIds.length + userGenomes.length + userFeatureGroups.length;
 
     if (refIsGenome && genomeIds.length > 0) {
       const refGenomeId = genomeIds[refIndex - 1];

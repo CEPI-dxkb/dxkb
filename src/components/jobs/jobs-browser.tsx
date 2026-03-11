@@ -120,8 +120,6 @@ export function JobsBrowser() {
   const hasActiveJobs = ACTIVE_JOB_STATUSES.some(
     (s) => (statusSummary?.[s] ?? 0) > 0,
   );
-  console.log("hasActiveJobs", hasActiveJobs);
-
   const {
     data: jobs = [],
     isLoading,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -107,6 +107,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
   const [singleRead, setSingleRead] = useState<string | null>(null);
   const [currentSampleId, setCurrentSampleId] = useState("");
   const [currentSampleDate, setCurrentSampleDate] = useState("");
+  const skipSraNormalization = useRef(false);
   const [sraResetKey, setSraResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
@@ -120,7 +121,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<
     SarsCov2WastewaterLibraryItem,
     SrrLibItem
@@ -147,6 +147,11 @@ export default function SarsCov2WastewaterAnalysisPage() {
       srr: "srr_libs",
     },
     normalizeLibraries: (nextLibraries, previousLibraries) => {
+      // Skip normalization when called from the rerun effect — libs already have correct sampleId
+      if (skipSraNormalization.current) {
+        skipSraNormalization.current = false;
+        return nextLibraries;
+      }
       const newSraLibs = findNewSraLibraries(nextLibraries, previousLibraries);
       return nextLibraries.map((lib) => {
         if (lib.type === "sra" && newSraLibs.some((n) => n.id === lib.id)) {
@@ -215,10 +220,10 @@ export default function SarsCov2WastewaterAnalysisPage() {
     ];
 
     if (libs.length > 0) {
-      syncLibrariesToForm(libs);
+      skipSraNormalization.current = true;
       setLibrariesAndSync(libs);
     }
-  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
+  }, [rerunData, markApplied, form, setLibrariesAndSync]);
 
   const handlePairedRead1Select = (path: string) => {
     setPairedRead1(path);

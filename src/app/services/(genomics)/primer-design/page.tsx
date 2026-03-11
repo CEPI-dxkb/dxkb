@@ -39,6 +39,7 @@ import {
 } from "@/lib/forms/(genomics)/primer-design/primer-design-form-schema";
 import {
   markerLabels,
+  primerAdvancedFields,
   primerArrayFields,
   primerScalarFields,
   stripPrimerMarkers,
@@ -313,6 +314,12 @@ export default function PrimerDesignServicePage() {
       if (d[field] !== undefined) {
         form.setFieldValue(field, String(d[field]));
       }
+    }
+
+    // Expand advanced section if any advanced field is present in rerun data
+    const hasAdvancedField = primerAdvancedFields.some((f) => d[f] !== undefined);
+    if (hasAdvancedField) {
+      setShowAdvanced(true);
     }
   }, [rerunData, markApplied, form]);
 

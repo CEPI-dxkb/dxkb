@@ -198,8 +198,9 @@ export default function GenomeAlignmentServicePage() {
       fetchGenomesByIds(genomeIds)
         .then((genomes) => setSelectedGenomes(genomes))
         .catch(() => {
-          // Fallback: set IDs directly so submission works even if fetch fails
-          form.setFieldValue("genome_ids", genomeIds);
+          toast.error("Could not restore genomes from previous job", {
+            description: "Please re-add your genomes manually.",
+          });
         });
     }
   }, [rerunData, markApplied, form]);

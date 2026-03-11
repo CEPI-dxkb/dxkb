@@ -43,6 +43,21 @@ export const primerScalarFields = [
   "PRIMER_DNTP_CONC",
 ] as const;
 
+export const primerAdvancedFields = [
+  "PRIMER_NUM_RETURN",
+  "PRIMER_MIN_TM",
+  "PRIMER_OPT_TM",
+  "PRIMER_MAX_TM",
+  "PRIMER_PAIR_MAX_DIFF_TM",
+  "PRIMER_MIN_GC",
+  "PRIMER_OPT_GC",
+  "PRIMER_MAX_GC",
+  "PRIMER_SALT_MONOVALENT",
+  "PRIMER_SALT_DIVALENT",
+  "PRIMER_DNA_CONC",
+  "PRIMER_DNTP_CONC",
+] as const;
+
 export const markerLabels = {
   exclude: "< >",
   target: "[ ]",

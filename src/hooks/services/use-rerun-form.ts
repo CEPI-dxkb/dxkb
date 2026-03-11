@@ -25,10 +25,10 @@ export function useRerunForm<T extends Record<string, unknown>>(): {
     const stored = sessionStorage.getItem(key);
     if (!stored) return null;
 
-    sessionStorage.removeItem(key);
-
     try {
-      return JSON.parse(stored) as T;
+      const parsed = JSON.parse(stored) as T;
+      sessionStorage.removeItem(key);
+      return parsed;
     } catch {
       console.error("[useRerunForm] Failed to parse rerun data from sessionStorage");
       return null;

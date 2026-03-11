@@ -50,14 +50,14 @@ export function rerunBooleanValue(v: unknown): boolean {
 
 /**
  * Normalizes a value to an array. The backend sometimes serializes
- * single-element arrays as plain objects; this coerces both cases to T[].
+ * single-element arrays as a plain object or primitive; this coerces all cases to T[].
  */
 export function normalizeToArray<T>(v: unknown): T[] {
-  return Array.isArray(v) ? (v as T[]) : v && typeof v === "object" ? [v as T] : [];
+  return Array.isArray(v) ? (v as T[]) : v != null ? [v as T] : [];
 }
 
 function generateKey(length = 8): string {
-  return Math.random().toString(16).substring(2, 2 + length);
+  return crypto.randomUUID().replace(/-/g, "").substring(0, length);
 }
 
 /**

@@ -140,6 +140,9 @@ export default function BlastServicePage() {
   // Track previous program to detect changes
   const previousProgramRef = useRef<BlastFormData["blast_program"]>(currentBlastProgram);
 
+  // Prevents the program-change clear effect from wiping inputs set by a rerun
+  const isApplyingRerunRef = useRef(false);
+
   // Keep input_type aligned with the current program (legacy behavior)
   useEffect(() => {
     const derivedInputType =
@@ -153,12 +156,14 @@ export default function BlastServicePage() {
   useEffect(() => {
     const previousProgram = previousProgramRef.current;
 
-    // Only clear if program actually changed (not on initial mount)
-    if (previousProgram !== currentBlastProgram && previousProgram !== undefined) {
+    // Only clear if program actually changed (not on initial mount) and not during rerun application
+    if (previousProgram !== currentBlastProgram && previousProgram !== undefined && !isApplyingRerunRef.current) {
       // Clear file-based input fields
       form.setFieldValue("input_fasta_file", "");
     }
 
+    // Rerun application is complete once this effect has run after the program change
+    isApplyingRerunRef.current = false;
     // Update ref for next comparison
     previousProgramRef.current = currentBlastProgram;
   }, [currentBlastProgram, form]);
@@ -169,12 +174,17 @@ export default function BlastServicePage() {
   useEffect(() => {
     if (!rerunData || !markApplied()) return;
 
+    isApplyingRerunRef.current = true;
     if (rerunData.blast_program) form.setFieldValue("blast_program", rerunData.blast_program as never);
     if (rerunData.input_source) form.setFieldValue("input_source", rerunData.input_source as never);
     if (rerunData.input_fasta_data) form.setFieldValue("input_fasta_data", rerunData.input_fasta_data as never);
     if (rerunData.input_fasta_file) form.setFieldValue("input_fasta_file", rerunData.input_fasta_file as never);
     if (rerunData.input_feature_group) form.setFieldValue("input_feature_group", rerunData.input_feature_group as never);
-    if (rerunData.db_precomputed_database) form.setFieldValue("db_precomputed_database", rerunData.db_precomputed_database as never);
+    if (rerunData.db_precomputed_database) {
+      const dbPrecomp = rerunData.db_precomputed_database as BlastFormData["db_precomputed_database"];
+      form.setFieldValue("db_precomputed_database", dbPrecomp);
+      form.setFieldValue("db_source", resolveDbSource(dbPrecomp));
+    }
     if (rerunData.db_type) form.setFieldValue("db_type", rerunData.db_type as never);
     if (rerunData.db_genome_group) form.setFieldValue("db_genome_group", rerunData.db_genome_group as never);
     if (rerunData.db_feature_group) form.setFieldValue("db_feature_group", rerunData.db_feature_group as never);

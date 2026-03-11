@@ -2,7 +2,7 @@
 
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ServiceHeader } from "@/components/services/service-header";
 import {
   Card,
@@ -138,8 +138,16 @@ export default function GeneProteinTreePage() {
     [alphabet],
   );
 
+  const skipAlphabetEffect = useRef(false);
+
   // Reset model when alphabet changes
   useEffect(() => {
+    // Skip when a rerun just set alphabet — rerun effect will set substitution_model itself
+    if (skipAlphabetEffect.current) {
+      skipAlphabetEffect.current = false;
+      return;
+    }
+
     const resetModel = alphabet === "DNA" ? DNA_MODELS[0].value : PROTEIN_MODELS[0].value;
     form.setFieldValue("substitution_model", resetModel);
 
@@ -179,7 +187,10 @@ export default function GeneProteinTreePage() {
   useEffect(() => {
     if (!rerunData || !markApplied()) return;
 
-    if (rerunData.alphabet) form.setFieldValue("alphabet", rerunData.alphabet as GeneProteinTreeFormData["alphabet"]);
+    if (rerunData.alphabet) {
+      skipAlphabetEffect.current = true;
+      form.setFieldValue("alphabet", rerunData.alphabet as GeneProteinTreeFormData["alphabet"]);
+    }
     if (rerunData.recipe) form.setFieldValue("recipe", rerunData.recipe as GeneProteinTreeFormData["recipe"]);
     if (rerunData.substitution_model) form.setFieldValue("substitution_model", rerunData.substitution_model as never);
     if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold));

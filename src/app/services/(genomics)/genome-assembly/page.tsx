@@ -132,7 +132,6 @@ export default function GenomeAssemblyPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: mapAssemblyLibraryToItem,
@@ -159,10 +158,9 @@ export default function GenomeAssemblyPage() {
       ...buildSraLibraries(rerunData),
     ];
     if (libs.length > 0) {
-      syncLibrariesToForm(libs);
       setLibrariesAndSync(libs);
     }
-  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
+  }, [rerunData, markApplied, form, setLibrariesAndSync]);
 
   // Setup service debugging and form submission
   const {

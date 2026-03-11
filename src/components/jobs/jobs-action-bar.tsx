@@ -32,8 +32,6 @@ const actionConfig: ActionConfig[] = [
     label: "RERUN",
     icon: RotateCcw,
     isVisible: (jobs) => jobs.length === 1,
-    isDisabled: () => true,
-    tooltip: "Coming soon",
   },
   {
     id: "show",

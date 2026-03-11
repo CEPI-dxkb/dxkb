@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -41,6 +41,8 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { normalizeToArray } from "@/lib/rerun-utility";
 import {
   fastqUtilitiesInfo,
   fastqUtilitiesParameters,
@@ -69,6 +71,7 @@ import {
 } from "@/lib/forms/(utilities)/fastq-utilities/fastq-utilities-form-utils";
 import {
   buildBaseLibraryItem,
+  getPairedLibraryId,
   getPairedLibraryName,
   getSingleLibraryName,
   useTanstackLibrarySelection,
@@ -76,6 +79,7 @@ import {
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
+import type { Library } from "@/types/services";
 
 export default function FastqUtilitiesPage() {
   // Read input state
@@ -142,11 +146,12 @@ export default function FastqUtilitiesPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: (library) => ({
       ...buildBaseLibraryItem(library),
-      ...(library.type === "single" && { platform: library.platform as Platform }),
+      ...(library.type === "single" && { platform: (library.platform as Platform) ?? "illumina" }),
     }),
     fields: {
       paired: "paired_end_libs",
@@ -154,6 +159,77 @@ export default function FastqUtilitiesPage() {
       srr: "srr_ids",
     },
   });
+
+  // Rerun: pre-fill form from job parameters
+  const { rerunData } = useRerunForm<Record<string, unknown>>();
+  const rerunApplied = useRef(false);
+
+  useEffect(() => {
+    if (!rerunData || rerunApplied.current) return;
+    rerunApplied.current = true;
+
+    // Scalar fields
+    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as string);
+    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as string);
+    if (rerunData.reference_genome_id) form.setFieldValue("reference_genome_id", rerunData.reference_genome_id as string);
+
+    // Reconstruct Library[] from raw job parameters
+    // (backend may serialize single-element arrays as plain objects)
+    const libs: Library[] = [];
+
+    for (const lib of normalizeToArray<Record<string, string>>(rerunData.paired_end_libs)) {
+      libs.push({
+        id: getPairedLibraryId(lib.read1, lib.read2),
+        name: getPairedLibraryName(lib.read1, lib.read2),
+        type: "paired",
+        files: [lib.read1, lib.read2],
+      });
+    }
+
+    for (const lib of normalizeToArray<Record<string, string>>(rerunData.single_end_libs)) {
+      libs.push({
+        id: lib.read,
+        name: getSingleLibraryName(lib.read),
+        type: "single",
+        files: [lib.read],
+        platform: lib.platform,
+      });
+    }
+
+    // SRA accessions: job params use `srr_libs` (array of { srr_accession })
+    const srrLibs = normalizeToArray<Record<string, string>>(rerunData.srr_libs);
+    if (srrLibs.length > 0) {
+      for (const lib of srrLibs) {
+        libs.push({ id: lib.srr_accession, name: lib.srr_accession, type: "sra" });
+      }
+    } else if (Array.isArray(rerunData.srr_ids)) {
+      for (const srrId of rerunData.srr_ids as string[]) {
+        libs.push({ id: srrId, name: srrId, type: "sra" });
+      }
+    }
+
+    if (libs.length > 0) {
+      syncLibrariesToForm(libs); // sync form fields immediately for validation
+      setLibrariesAndSync(libs); // sync UI state (selected libraries display)
+    }
+
+    // Pipeline actions — backend may serialize a single-element array as a string,
+    // and may use Title Case (e.g. "Trim") instead of the lowercase enum values.
+    const rawRecipe = rerunData.recipe;
+    const recipeArray: PipelineAction[] = (
+      Array.isArray(rawRecipe)
+        ? (rawRecipe as string[])
+        : typeof rawRecipe === "string"
+          ? [rawRecipe]
+          : []
+    ).map((a) => a.toLowerCase() as PipelineAction);
+
+    if (recipeArray.length > 0) {
+      const actions = recipeArray.map((action, i) => createPipelineActionItem(action, i));
+      setPipelineActions(actions); // eslint-disable-line react-hooks/set-state-in-effect -- one-time initialization from rerun data
+      form.setFieldValue("recipe", actionItemsToRecipe(actions));
+    }
+  }, [rerunData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLibraryError = (message: string) => {
     if (

@@ -266,46 +266,43 @@ export function WorkspaceObjectSelector({
 
   // Track previous value to avoid unnecessary updates
   const previousValueRef = React.useRef<string | undefined>(value);
+  // Track which value we've already resolved (found or derived) so we don't
+  // re-run derivation on every objects-list refresh or displayName change.
+  const resolvedValueRef = React.useRef<string | undefined>(undefined);
 
   // Find object by path when value is provided to display its name and set selected object
   React.useEffect(() => {
     const valueChanged = previousValueRef.current !== value;
-    
-    // Update the ref if value changed
-    if (valueChanged) {
-      previousValueRef.current = value;
-    }
+    if (valueChanged) previousValueRef.current = value;
 
-    // If we have a value and objects are loaded, try to find and display the object
     if (value && objects && objects.length > 0) {
-      const foundObject = objects.find((obj) => obj.path === value);
-      if (foundObject) {
-        // Update display name and selected object if:
-        // 1. Value changed, OR
-        // 2. We don't have a display name yet, OR
-        // 3. The selected object doesn't match the found object
-        if (valueChanged || !displayName || selectedObject?.path !== foundObject.path) {
+      // Only update if value changed or this value hasn't been resolved yet
+      // (handles the case where objects load after the initial render)
+      if (valueChanged || resolvedValueRef.current !== value) {
+        resolvedValueRef.current = value;
+        const foundObject = objects.find((obj) => obj.path === value);
+        if (foundObject) {
           setDisplayName(foundObject.name || "");
           setSelectedObject(foundObject);
-        }
-      } else {
-        // If value doesn't match any object, clear display name and selected object
-        // Only clear if value changed to avoid clearing when objects are still loading
-        if (valueChanged) {
-          setDisplayName("");
+        } else {
+          // Object not in the loaded list (e.g. a subfolder not fetched at this level).
+          // Derive a display name from the last path segment.
+          const derivedName = value.split("/").filter(Boolean).pop() ?? value;
+          setDisplayName(derivedName);
           setSelectedObject(null);
           setSearchQuery("");
         }
       }
-    } else if (!value || value === "") {
+    } else if (!value) {
       // Clear display name and selected object when value is cleared
       if (valueChanged) {
+        resolvedValueRef.current = undefined;
         setDisplayName("");
         setSelectedObject(null);
         setSearchQuery("");
       }
     }
-  }, [value, objects, displayName, selectedObject, setSearchQuery]);
+  }, [value, objects, setSearchQuery]);
 
   return (
     <div className={className ? `relative ${className}` : "relative w-full"}>

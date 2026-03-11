@@ -1,0 +1,23 @@
+src/app/services/(phylogenomics)/gene-protein-tree/page.tsx
+  ad3d958f7c7558c2 142,144,146-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "a37245bba5c039cf6ca2f7f7e527d2cf5a60d1d6",
+  "prompts": {
+    "ad3d958f7c7558c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6e82164-388b-4169-b2f0-fd8872d8bfb3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 2,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

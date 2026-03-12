@@ -18,6 +18,7 @@
     "jsx": "react-jsx",
     "incremental": true,
     "noImplicitAny": false,
+    "types": ["vitest/globals"],
     "plugins": [
       {
         "name": "next"

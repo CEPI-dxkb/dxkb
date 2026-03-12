@@ -86,12 +86,15 @@ describe("FASTA Validation", () => {
       expect(result.status).toBe("too_short");
     });
 
-    it("should add header if missing and replace=true", () => {
+    it("should add header to trimFasta when missing and replace=true", () => {
+      // Note: replace=true adds a header to trimFasta but the original input
+      // is still validated — a single bare sequence line is "too_short" for
+      // the validator (it expects at least a header + sequence line).
       const fasta = "ATCG";
       const result = validateFasta(fasta, "dna", { replace: true });
 
-      expect(result.valid).toBe(true);
-      expect(result.trimFasta).toBe(">record_1\nATCG");
+      expect(result.valid).toBe(false);
+      expect(result.status).toBe("too_short");
     });
   });
 

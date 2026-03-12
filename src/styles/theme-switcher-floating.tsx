@@ -10,10 +10,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { LuSun, LuMoon, LuPalette } from "react-icons/lu";
 import { themeBases } from "@/styles/themes";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
+  const isMounted = useIsMounted();
+
+  if (!isMounted) return null;
 
   // Extract current theme base and mode
   const currentTheme = theme || "zinc-light";

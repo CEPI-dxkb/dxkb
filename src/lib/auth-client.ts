@@ -16,42 +16,19 @@ interface AuthResponse<T> {
   error: { message: string; status?: number } | null;
 }
 
-// Raw API response types (expiresAt is ISO string over the wire)
-interface SignInResponseRaw {
-  user: AuthUser;
-  session: { token: string; expiresAt: string };
-}
-
-interface SignUpResponseRaw {
-  user: AuthUser;
-  session: { token: string; expiresAt: string };
-}
-
-interface SessionResponseRaw {
-  user: AuthUser | null;
-  session: { expiresAt: string } | null;
-}
-
-// Public types (expiresAt parsed to Date for consumers)
 interface SignInResponse {
   user: AuthUser;
-  session: { token: string; expiresAt: Date };
+  session: { token: string; expiresAt: string };
 }
 
 interface SignUpResponse {
   user: AuthUser;
-  session: { token: string; expiresAt: Date };
+  session: { token: string; expiresAt: string };
 }
 
 interface SessionResponse {
   user: AuthUser | null;
-  session: { expiresAt: Date } | null;
-}
-
-
-export interface FetchOptions {
-  onSuccess?: (data: unknown) => void;
-  onError?: (error: { message: string; status?: number }) => void;
+  session: { expiresAt: string } | null;
 }
 
 async function authFetch<T>(
@@ -85,124 +62,56 @@ async function authFetch<T>(
 
 export async function signInEmail(
   credentials: SigninCredentials,
-  options?: FetchOptions,
 ): Promise<AuthResponse<SignInResponse>> {
-  const result = await authFetch<SignInResponseRaw>(
+  return authFetch<SignInResponse>(
     "/api/auth/sign-in/email",
     { method: "POST", body: JSON.stringify(credentials) },
     "Sign in failed",
   );
-  if (result.error) {
-    options?.onError?.(result.error);
-    return { data: null, error: result.error };
-  }
-  if (result.data) {
-    const data: SignInResponse = {
-      ...result.data,
-      session: {
-        ...result.data.session,
-        expiresAt: new Date(result.data.session.expiresAt),
-      },
-    };
-    options?.onSuccess?.(data);
-    return { data, error: null };
-  }
-  return { data: null, error: null };
 }
 
 export async function signUpEmail(
   credentials: SignupCredentials,
-  options?: FetchOptions,
 ): Promise<AuthResponse<SignUpResponse>> {
-  const result = await authFetch<SignUpResponseRaw>(
+  return authFetch<SignUpResponse>(
     "/api/auth/sign-up/email",
     { method: "POST", body: JSON.stringify(credentials) },
     "Sign up failed",
   );
-  if (result.error) {
-    options?.onError?.(result.error);
-    return { data: null, error: result.error };
-  }
-  if (result.data) {
-    const data: SignUpResponse = {
-      ...result.data,
-      session: {
-        ...result.data.session,
-        expiresAt: new Date(result.data.session.expiresAt),
-      },
-    };
-    options?.onSuccess?.(data);
-    return { data, error: null };
-  }
-  return { data: null, error: null };
 }
 
-export async function signOut(
-  options?: FetchOptions,
-): Promise<AuthResponse<{ success: boolean }>> {
-  const result = await authFetch<{ success: boolean }>(
+export async function signOut(): Promise<AuthResponse<{ success: boolean }>> {
+  return authFetch<{ success: boolean }>(
     "/api/auth/sign-out",
     { method: "POST" },
     "Sign out failed",
   );
-  if (result.error) options?.onError?.(result.error);
-  else if (result.data) options?.onSuccess?.(result.data);
-  return result;
 }
 
 export async function requestPasswordReset(
   data: PasswordResetRequest,
-  options?: FetchOptions,
 ): Promise<AuthResponse<{ success: boolean; message: string }>> {
-  const result = await authFetch<{ success: boolean; message: string }>(
+  return authFetch<{ success: boolean; message: string }>(
     "/api/auth/forget-password",
     { method: "POST", body: JSON.stringify(data) },
     "Password reset request failed",
   );
-  if (result.error) options?.onError?.(result.error);
-  else if (result.data) options?.onSuccess?.(result.data);
-  return result;
 }
 
-export async function sendVerificationEmail(
-  options?: FetchOptions,
-): Promise<AuthResponse<{ success: boolean; message: string }>> {
-  const result = await authFetch<{ success: boolean; message: string }>(
+export async function sendVerificationEmail(): Promise<AuthResponse<{ success: boolean; message: string }>> {
+  return authFetch<{ success: boolean; message: string }>(
     "/api/auth/send-verification-email",
     { method: "POST" },
     "Failed to send verification email",
   );
-  if (result.error) options?.onError?.(result.error);
-  else if (result.data) options?.onSuccess?.(result.data);
-  return result;
 }
 
-export async function getSessionWithUser(
-  options?: FetchOptions,
-): Promise<AuthResponse<SessionResponse>> {
-  const result = await authFetch<SessionResponseRaw>(
+export async function getSessionWithUser(): Promise<AuthResponse<SessionResponse>> {
+  return authFetch<SessionResponse>(
     "/api/auth/get-session",
     { method: "GET" },
     "Failed to get session",
   );
-  if (result.error) {
-    options?.onError?.(result.error);
-    return { data: null, error: result.error };
-  }
-  if (result.data) {
-    const data: SessionResponse = {
-      ...result.data,
-      session: result.data.session
-        ? {
-            ...result.data.session,
-            expiresAt: new Date(result.data.session.expiresAt),
-          }
-        : null,
-    };
-    options?.onSuccess?.(data);
-    return { data, error: null };
-  }
-  return { data: null, error: null };
 }
 
 // ============================================================================

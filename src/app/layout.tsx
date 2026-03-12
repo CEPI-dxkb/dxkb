@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { TailwindIndicator } from "@/components/ui/tailwind-indicator";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
 import { Providers } from "./providers"; // adjust the path as needed
@@ -80,20 +80,20 @@ export default async function RootLayout({
     >
       <body className="min-h-screen">
         <Providers>
-          <ThemeProvider defaultTheme="dxkb-light">
+          <ThemeProvider>
             <AuthProvider initialUser={initialUser}>
               <TooltipProvider>
                 {children}
               </TooltipProvider>
             </AuthProvider>
             <ThemeSwitcher />
+            <Toaster
+              richColors
+              position="top-right"
+              offset={{ top: "4rem" }}
+              duration={3000}
+            />
           </ThemeProvider>
-          <Toaster
-            richColors
-            position="top-right"
-            offset={{ top: "4rem" }}
-            duration={3000}
-          />
           <TailwindIndicator />
         </Providers>
       </body>

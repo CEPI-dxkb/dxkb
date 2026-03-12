@@ -9,9 +9,18 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AuthUser, SigninCredentials, SignupCredentials } from "@/app/api/auth/types";
 import { bvbrcAuth } from "@/lib/auth-client";
+
+function isProtectedPath(path: string): boolean {
+  return (
+    (path.startsWith("/services/") && path !== "/services") ||
+    path.startsWith("/workspace") ||
+    path.startsWith("/jobs")
+  );
+}
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -38,14 +47,11 @@ export function AuthProvider({
   initialUser = null,
 }: AuthProviderProps): React.ReactElement {
   const [user, setUser] = useState<AuthUser | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isVerified, setIsVerified] = useState(
-    initialUser?.email_verified ?? false,
-  );
+  const [isLoading, setIsLoading] = useState(!initialUser);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
-  /**
-   * Fetch current session from the server using better-auth style endpoint
-   */
   const fetchSession = useCallback(async (): Promise<AuthUser | null> => {
     const { data, error } = await bvbrcAuth.getSession();
     if (error || !data?.user) {
@@ -59,47 +65,66 @@ export function AuthProvider({
     const initAuth = async () => {
       try {
         const savedUser = await fetchSession();
-        if (savedUser) {
-          setUser(savedUser);
-          setIsVerified(savedUser.email_verified ?? false);
-        } else {
-          setUser(null);
-          setIsVerified(false);
-        }
+        setUser(savedUser);
       } catch (error) {
         console.error("Auth initialization failed:", error);
         setUser(null);
-        setIsVerified(false);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     initAuth();
   }, [fetchSession]);
 
-  // Auto-refresh auth status periodically to sync with server-side session
+  /**
+   * Sign out (better-auth style)
+   */
+  const signOutHandler = useCallback(async () => {
+    setUser(null);
+
+    try {
+      await bvbrcAuth.signOut();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
+  }, []);
+
+  /**
+   * Refresh auth status from server
+   */
+  const refreshAuth = useCallback(async () => {
+    try {
+      const userData = await fetchSession();
+      if (userData) {
+        setUser(userData);
+      } else {
+        await signOutHandler();
+      }
+    } catch (error) {
+      console.error("Auth refresh failed:", error);
+      await signOutHandler();
+    }
+  }, [fetchSession, signOutHandler]);
+
+  // Revalidate when tab becomes visible (replaces 5-min polling)
   useEffect(() => {
     if (!user) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshAuth();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [user, refreshAuth]);
 
-    const interval = setInterval(
-      async () => {
-        try {
-          const userData = await fetchSession();
-          if (userData) {
-            setUser(userData);
-            setIsVerified(userData.email_verified ?? false);
-          } else {
-            setUser(null);
-            setIsVerified(false);
-          }
-        } catch (error) {
-          console.error("Auth refresh failed:", error);
-        }
-      },
-      5 * 60 * 1000,
-    ); // Check every 5 minutes
-
-    return () => clearInterval(interval);
-  }, [user, fetchSession]);
+  // Redirect to sign-in when session is lost on a protected route
+  useEffect(() => {
+    if (!isLoading && !user && isProtectedPath(pathname)) {
+      const query = searchParams.toString();
+      const fullPath = query ? `${pathname}?${query}` : pathname;
+      router.replace(`/sign-in?redirect=${encodeURIComponent(fullPath)}`);
+    }
+  }, [isLoading, user, pathname, searchParams, router]);
 
   /**
    * Sign in with username and password (better-auth style)
@@ -115,12 +140,10 @@ export function AuthProvider({
 
       if (result.data?.user) {
         setUser(result.data.user);
-        setIsVerified(result.data.user.email_verified ?? false);
       } else {
         const userData = await fetchSession();
         if (userData) {
           setUser(userData);
-          setIsVerified(userData.email_verified ?? false);
         }
       }
     } finally {
@@ -144,26 +167,11 @@ export function AuthProvider({
       const userData = await fetchSession();
       if (userData) {
         setUser(userData);
-        setIsVerified(userData.email_verified ?? false);
       }
     } finally {
       setIsLoading(false);
     }
   }, [fetchSession]);
-
-  /**
-   * Sign out (better-auth style)
-   */
-  const signOutHandler = useCallback(async () => {
-    setUser(null);
-    setIsVerified(false);
-
-    try {
-      await bvbrcAuth.signOut();
-    } catch (error) {
-      console.error("Sign out failed:", error);
-    }
-  }, []);
 
   /**
    * Request password reset (better-auth style)
@@ -192,24 +200,6 @@ export function AuthProvider({
     }
   }, []);
 
-  /**
-   * Refresh auth status from server
-   */
-  const refreshAuth = useCallback(async () => {
-    try {
-      const userData = await fetchSession();
-      if (userData) {
-        setUser(userData);
-        setIsVerified(userData.email_verified ?? false);
-      } else {
-        await signOutHandler();
-      }
-    } catch (error) {
-      console.error("Auth refresh failed:", error);
-      await signOutHandler();
-    }
-  }, [fetchSession, signOutHandler]);
-
   const value = useMemo(() => ({
     user,
     signIn,
@@ -220,7 +210,7 @@ export function AuthProvider({
     sendVerificationEmail,
     isLoading,
     isAuthenticated: !!user,
-    isVerified,
+    isVerified: user?.email_verified ?? false,
   }), [
     user,
     signIn,
@@ -230,7 +220,6 @@ export function AuthProvider({
     requestPasswordReset,
     sendVerificationEmail,
     isLoading,
-    isVerified,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

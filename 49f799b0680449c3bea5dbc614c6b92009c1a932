@@ -1,0 +1,23 @@
+src/contexts/auth-context.tsx
+  8d3cb34bb8a42926 12,52,123-125,127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "49f799b0680449c3bea5dbc614c6b92009c1a932",
+  "prompts": {
+    "8d3cb34bb8a42926": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70e5e75f-e082-4c90-b062-d7992bb52523",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 3,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}

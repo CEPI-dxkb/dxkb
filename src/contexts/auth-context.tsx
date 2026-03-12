@@ -9,7 +9,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AuthUser, SigninCredentials, SignupCredentials } from "@/app/api/auth/types";
 import { bvbrcAuth } from "@/lib/auth-client";
@@ -49,6 +49,7 @@ export function AuthProvider({
   const [user, setUser] = useState<AuthUser | null>(initialUser);
   const [isLoading, setIsLoading] = useState(!initialUser);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   const fetchSession = useCallback(async (): Promise<AuthUser | null> => {
@@ -119,9 +120,11 @@ export function AuthProvider({
   // Redirect to sign-in when session is lost on a protected route
   useEffect(() => {
     if (!isLoading && !user && isProtectedPath(pathname)) {
-      router.replace(`/sign-in?redirect=${encodeURIComponent(pathname)}`);
+      const query = searchParams.toString();
+      const fullPath = query ? `${pathname}?${query}` : pathname;
+      router.replace(`/sign-in?redirect=${encodeURIComponent(fullPath)}`);
     }
-  }, [isLoading, user, pathname, router]);
+  }, [isLoading, user, pathname, searchParams, router]);
 
   /**
    * Sign in with username and password (better-auth style)

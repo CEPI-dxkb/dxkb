@@ -1,0 +1,111 @@
+src/app/api/services/minhash/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-155
+src/app/api/services/genome/website-query/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-207
+src/app/api/services/app-service/jobs/[id]/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-115
+src/app/api/auth/send-verification-email/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-118
+src/hooks/services/workspace/__tests__/use-workspace.test.tsx
+  abc9775bd4dbeb1a 1-149
+src/app/api/services/app-service/jobs/enumerate-tasks-filtered/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-168
+src/app/api/services/app-service/jobs/[id]/stdout/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-77
+src/lib/services/workspace/methods/__tests__/crud.test.ts
+  abc9775bd4dbeb1a 1-213
+src/lib/services/workspace/methods/__tests__/ls.test.ts
+  abc9775bd4dbeb1a 1-184
+src/app/api/services/taxonomy/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-96
+src/app/api/auth/sign-in/email/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-299
+src/app/api/services/feature/from-group/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-118
+src/app/api/services/workspace/upload/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-225
+src/app/api/services/app-service/jobs/task-summary/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-84
+src/app/api/auth/sign-up/email/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-283
+src/hooks/services/workspace/__tests__/use-workspace-action-dispatch.test.tsx
+  abc9775bd4dbeb1a 1-288
+src/app/api/services/genome/search/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-183
+src/hooks/services/workspace/__tests__/use-job-result-data.test.tsx
+  abc9775bd4dbeb1a 1-121
+src/hooks/services/workspace/__tests__/use-workspace-du.test.tsx
+  abc9775bd4dbeb1a 1-98
+src/app/api/services/sra-validation/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-152
+src/lib/services/workspace/methods/__tests__/download.test.ts
+  abc9775bd4dbeb1a 1-74
+src/app/api/auth/verify-email-token/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-152
+src/test-helpers/api-route-helpers.ts
+  abc9775bd4dbeb1a 1-77
+src/hooks/services/workspace/__tests__/use-workspace-path-resolve.test.tsx
+  abc9775bd4dbeb1a 1-90
+src/hooks/services/workspace/__tests__/use-workspace-browser.test.tsx
+  abc9775bd4dbeb1a 1-185
+src/app/api/auth/sign-out/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-42
+src/app/api/auth/forget-password/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-121
+src/lib/forms/(genomics)/similar-genome-finder/__tests__/similar-genome-finder-result-utils.test.ts
+  abc9775bd4dbeb1a 1-394
+src/lib/services/workspace/__tests__/index.test.ts
+  abc9775bd4dbeb1a 1-62
+src/app/api/services/app-service/jobs/app-summary/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-84
+src/lib/services/workspace/methods/__tests__/permissions.test.ts
+  abc9775bd4dbeb1a 1-63
+src/app/api/services/genome/by-ids/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-165
+src/app/api/services/genome/get-all-ids/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-101
+src/app/api/auth/get-session/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-213
+src/app/api/services/app-service/jobs/[id]/kill/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-83
+src/lib/services/workspace/__tests__/server.test.ts
+  abc9775bd4dbeb1a 1-275
+src/hooks/services/workspace/__tests__/use-workspace-objects.test.tsx
+  abc9775bd4dbeb1a 1-231
+src/hooks/services/workspace/__tests__/use-shared-with-user.test.tsx
+  abc9775bd4dbeb1a 1-203
+src/app/api/services/app-service/jobs/[id]/stderr/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-77
+src/hooks/services/workspace/__tests__/use-workspace-dialog-handlers.test.tsx
+  abc9775bd4dbeb1a 1-409
+src/app/api/services/app-service/submit/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-202
+src/hooks/services/workspace/__tests__/use-workspace-data.test.tsx
+  abc9775bd4dbeb1a 1-219
+src/app/api/services/workspace/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-211
+src/app/api/services/genome/validate-viral/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-143
+src/app/api/services/app-service/jobs/summary/__tests__/route.test.ts
+  abc9775bd4dbeb1a 1-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "7d1afa6e4757c61ec1466b8e3c7d384be611a961",
+  "prompts": {
+    "abc9775bd4dbeb1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34fecef1-aab4-45fe-beee-ce3503899d6f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1438,
+      "total_deletions": 16,
+      "accepted_lines": 7823,
+      "overriden_lines": 0
+    }
+  }
+}

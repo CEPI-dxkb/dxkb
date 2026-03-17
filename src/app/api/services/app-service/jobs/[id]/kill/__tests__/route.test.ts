@@ -1,4 +1,7 @@
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({
   getBvbrcAuthToken: vi.fn(),
@@ -19,13 +22,8 @@ const mockAppService = {
   killJob: vi.fn(),
 };
 
-function makeRouteContext(id: string) {
-  return { params: Promise.resolve({ id }) };
-}
-
 describe("POST /api/services/app-service/jobs/[id]/kill", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockCreateAppService.mockReturnValue(mockAppService as never);
   });
 
@@ -69,7 +67,6 @@ describe("POST /api/services/app-service/jobs/[id]/kill", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.killJob.mockRejectedValue(new Error("Kill failed"));
 

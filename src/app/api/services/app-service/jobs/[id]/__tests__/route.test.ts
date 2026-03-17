@@ -1,4 +1,7 @@
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({
   getBvbrcAuthToken: vi.fn(),
@@ -19,22 +22,15 @@ const mockAppService = {
   queryJobDetails: vi.fn(),
 };
 
-function makeRouteContext(id: string) {
-  return { params: Promise.resolve({ id }) };
-}
-
 describe("GET /api/services/app-service/jobs/[id]", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockCreateAppService.mockReturnValue(mockAppService as never);
   });
 
   it("returns 401 when no auth token is available", async () => {
     mockGetToken.mockResolvedValue(null);
 
-    const request = mockNextRequest({
-      url: "http://localhost:3019/api/services/app-service/jobs/job-1",
-    });
+    const request = mockNextRequest();
 
     const response = await GET(request, makeRouteContext("job-1"));
     const data = await response.json();
@@ -52,9 +48,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
     };
     mockAppService.queryJobDetails.mockResolvedValue(mockDetails);
 
-    const request = mockNextRequest({
-      url: "http://localhost:3019/api/services/app-service/jobs/job-1",
-    });
+    const request = mockNextRequest();
 
     const response = await GET(request, makeRouteContext("job-1"));
     const data = await response.json();
@@ -68,7 +62,6 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
     mockAppService.queryJobDetails.mockResolvedValue({ id: "job-2" });
 
     const request = mockNextRequest({
-      url: "http://localhost:3019/api/services/app-service/jobs/job-2",
       searchParams: { include_logs: "true" },
     });
 
@@ -84,9 +77,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.queryJobDetails.mockResolvedValue({ id: "job-3" });
 
-    const request = mockNextRequest({
-      url: "http://localhost:3019/api/services/app-service/jobs/job-3",
-    });
+    const request = mockNextRequest();
 
     await GET(request, makeRouteContext("job-3"));
 
@@ -97,15 +88,12 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.queryJobDetails.mockRejectedValue(
       new Error("Service unavailable"),
     );
 
-    const request = mockNextRequest({
-      url: "http://localhost:3019/api/services/app-service/jobs/job-err",
-    });
+    const request = mockNextRequest();
 
     const response = await GET(request, makeRouteContext("job-err"));
     const data = await response.json();

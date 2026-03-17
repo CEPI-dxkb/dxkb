@@ -28,7 +28,6 @@ const mockExtractRealmFromToken = vi.mocked(extractRealmFromToken);
 
 describe("POST /api/auth/sign-in/email", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
     mockGetProfileMetadata.mockResolvedValue(null);
   });
@@ -286,8 +285,6 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns 503 when an exception is thrown", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     server.use(
       http.post("http://mock-auth-url", () => HttpResponse.error()),
     );

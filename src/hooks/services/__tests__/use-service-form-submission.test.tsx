@@ -62,7 +62,6 @@ const defaultOptions = {
 
 describe("useServiceFormSubmission", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockDebugState.isDebugMode = false;
     mockDebugState.containerBuildId = "";
   });
@@ -142,7 +141,6 @@ describe("useServiceFormSubmission", () => {
   });
 
   it("shows an error toast on failed submission", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     mockSubmitServiceJob.mockResolvedValue({
       success: false,
       error: "Backend unavailable",

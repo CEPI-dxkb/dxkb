@@ -15,10 +15,6 @@ vi.mock("@/lib/workspace-client", () => ({
 }));
 
 describe("useWorkspaceObjects", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("fetches objects with @bvbrc path format", async () => {
     mockListObjects.mockResolvedValue([
       { name: "file1.txt", type: "file" },

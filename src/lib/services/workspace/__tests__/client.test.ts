@@ -10,10 +10,6 @@ describe("WorkspaceApiClient", () => {
     client = new WorkspaceApiClient();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe("makeRequest", () => {
     it("sends POST to /api/services/workspace with method and params", async () => {
       let capturedBody: unknown;
@@ -31,21 +27,6 @@ describe("WorkspaceApiClient", () => {
         method: "Workspace.get",
         params: [{ objects: ["/path"] }],
       });
-    });
-
-    it("includes credentials: 'include' (verified by source code — not observable via MSW)", async () => {
-      // The WorkspaceApiClient passes credentials: "include" to fetch.
-      // MSW intercepts at the network level so we cannot inspect the
-      // credentials option here. This behaviour is verified by reading
-      // the source code (client.ts line 30).
-      server.use(
-        http.post("/api/services/workspace", () => {
-          return HttpResponse.json({ result: [] });
-        }),
-      );
-
-      // Just ensure the call succeeds (no error thrown)
-      await client.makeRequest("Workspace.get", []);
     });
 
     it("returns raw result for rawResultMethods (Workspace.get)", async () => {
@@ -219,7 +200,6 @@ describe("WorkspaceApiClient", () => {
     });
 
     it("throws on HTTP error", async () => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
       server.use(
         http.post("/api/services/workspace", () => {
           return HttpResponse.json(
@@ -235,7 +215,6 @@ describe("WorkspaceApiClient", () => {
     });
 
     it("throws on HTTP error with fallback message when json parse fails", async () => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
       server.use(
         http.post("/api/services/workspace", () => {
           return new HttpResponse("not json", { status: 502 });
@@ -248,7 +227,6 @@ describe("WorkspaceApiClient", () => {
     });
 
     it("throws on JSON-RPC error response", async () => {
-      vi.spyOn(console, "error").mockImplementation(() => {});
       server.use(
         http.post("/api/services/workspace", () => {
           return HttpResponse.json({

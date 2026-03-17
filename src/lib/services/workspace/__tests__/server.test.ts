@@ -33,19 +33,13 @@ vi.mock("@/lib/services/workspace/helpers", () => ({
   })),
 }));
 
+import { getBvbrcAuthToken } from "@/lib/auth";
+const mockGetToken = vi.mocked(getBvbrcAuthToken);
+
 describe("server workspace functions", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  async function setupAuth(token: string | null) {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    (getBvbrcAuthToken as ReturnType<typeof vi.fn>).mockResolvedValue(token);
-  }
-
   describe("workspaceRequest (tested via exported functions)", () => {
     it("throws when unauthenticated", async () => {
-      await setupAuth(null);
+      mockGetToken.mockResolvedValue(null);
 
       let handlerCalled = false;
       server.use(
@@ -63,7 +57,7 @@ describe("server workspace functions", () => {
     });
 
     it("sends correct JSON-RPC envelope", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       let capturedBody: unknown;
       let capturedHeaders: Headers | undefined;
@@ -98,7 +92,7 @@ describe("server workspace functions", () => {
     });
 
     it("throws on non-ok response", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       server.use(
         http.post("https://workspace-api.example.com", () => {
@@ -115,7 +109,7 @@ describe("server workspace functions", () => {
     });
 
     it("throws on API error response", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       server.use(
         http.post("https://workspace-api.example.com", () => {
@@ -131,7 +125,7 @@ describe("server workspace functions", () => {
     });
 
     it("uses default error message when API error has no message", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       server.use(
         http.post("https://workspace-api.example.com", () => {
@@ -149,7 +143,7 @@ describe("server workspace functions", () => {
 
   describe("listSharedWithUserServer", () => {
     it("returns filtered shared items", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       // Build raw tuples that metaListToObj will transform
       // [name, type, parentPath, creation_time, id, owner_id, size, userMeta, autoMeta, user_perm, global_perm, link_ref]
@@ -192,7 +186,7 @@ describe("server workspace functions", () => {
     });
 
     it("returns empty when no result data", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       server.use(
         http.post("https://workspace-api.example.com", () => {
@@ -208,7 +202,7 @@ describe("server workspace functions", () => {
 
   describe("listByFullPathServer", () => {
     it("normalizes path by adding leading slash", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       let capturedBody: unknown;
 
@@ -238,7 +232,7 @@ describe("server workspace functions", () => {
     });
 
     it("returns empty array when no data in result", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       server.use(
         http.post("https://workspace-api.example.com", () => {
@@ -252,7 +246,7 @@ describe("server workspace functions", () => {
     });
 
     it("returns items from the response", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       const fileTuple = [
         "file.txt", "file", "/owner@bvbrc/folder/", "2024-01-01",
@@ -283,7 +277,7 @@ describe("server workspace functions", () => {
 
   describe("listPermissionsServer", () => {
     it("returns empty object for empty paths array", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       let handlerCalled = false;
       server.use(
@@ -300,7 +294,7 @@ describe("server workspace functions", () => {
     });
 
     it("returns permissions from the response", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       const permissionsData = {
         "/owner@bvbrc/folder": [
@@ -323,7 +317,7 @@ describe("server workspace functions", () => {
     });
 
     it("returns empty object when result has no data", async () => {
-      await setupAuth("auth-token-123");
+      mockGetToken.mockResolvedValue("auth-token-123");
 
       server.use(
         http.post("https://workspace-api.example.com", () => {

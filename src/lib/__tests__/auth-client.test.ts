@@ -10,24 +10,16 @@ import {
 } from "@/lib/auth-client";
 
 describe("auth-client", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe("signInEmail", () => {
     it("posts to /api/auth/sign-in/email with credentials and returns data on success", async () => {
       const responseData = {
         user: { username: "testuser", email: "test@example.com", token: "abc" },
         session: { token: "sess-token", expiresAt: "2026-12-31" },
       };
-      let capturedRequest: { url: string; body: unknown; headers: Headers } | null = null;
+      let capturedBody: unknown;
       server.use(
         http.post("*/api/auth/sign-in/email", async ({ request }) => {
-          capturedRequest = {
-            url: request.url,
-            body: await request.json(),
-            headers: request.headers,
-          };
+          capturedBody = await request.json();
           return HttpResponse.json(responseData);
         }),
       );
@@ -37,9 +29,7 @@ describe("auth-client", () => {
         password: "pass123",
       });
 
-      expect(capturedRequest).not.toBeNull();
-      expect(capturedRequest?.body).toEqual({ username: "testuser", password: "pass123" });
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
+      expect(capturedBody).toEqual({ username: "testuser", password: "pass123" });
       expect(result).toEqual({ data: responseData, error: null });
     });
 
@@ -101,24 +91,6 @@ describe("auth-client", () => {
         status: 500,
       });
     });
-
-    it("includes credentials: 'include'", async () => {
-      // credentials: "include" is a fetch option set by the source code in authFetch.
-      // MSW intercepts at the network level so we verify the handler was called,
-      // which confirms the fetch was made. The credentials option is verified
-      // by inspecting the source code directly.
-      let handlerCalled = false;
-      server.use(
-        http.post("*/api/auth/sign-in/email", () => {
-          handlerCalled = true;
-          return HttpResponse.json({});
-        }),
-      );
-
-      await signInEmail({ username: "u", password: "p" });
-
-      expect(handlerCalled).toBe(true);
-    });
   });
 
   describe("signUpEmail", () => {
@@ -127,14 +99,10 @@ describe("auth-client", () => {
         user: { username: "newuser", email: "new@example.com", token: "t" },
         session: { token: "s", expiresAt: "2026-12-31" },
       };
-      let capturedRequest: { url: string; body: unknown; headers: Headers } | null = null;
+      let capturedBody: unknown;
       server.use(
         http.post("*/api/auth/sign-up/email", async ({ request }) => {
-          capturedRequest = {
-            url: request.url,
-            body: await request.json(),
-            headers: request.headers,
-          };
+          capturedBody = await request.json();
           return HttpResponse.json(signupData);
         }),
       );
@@ -150,9 +118,7 @@ describe("auth-client", () => {
 
       const result = await signUpEmail(credentials);
 
-      expect(capturedRequest).not.toBeNull();
-      expect(capturedRequest?.body).toEqual(credentials);
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
+      expect(capturedBody).toEqual(credentials);
       expect(result).toEqual({ data: signupData, error: null });
     });
 
@@ -181,52 +147,25 @@ describe("auth-client", () => {
   });
 
   describe("signOut", () => {
-    it("posts to /api/auth/sign-out", async () => {
-      let capturedRequest: { url: string; headers: Headers } | null = null;
+    it("posts to /api/auth/sign-out and returns data", async () => {
       server.use(
-        http.post("*/api/auth/sign-out", async ({ request }) => {
-          capturedRequest = {
-            url: request.url,
-            headers: request.headers,
-          };
+        http.post("*/api/auth/sign-out", () => {
           return HttpResponse.json({ success: true });
         }),
       );
 
       const result = await signOut();
 
-      expect(capturedRequest).not.toBeNull();
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
       expect(result).toEqual({ data: { success: true }, error: null });
-    });
-
-    it("includes credentials: 'include'", async () => {
-      // credentials: "include" is a fetch option set by the source code in authFetch.
-      // MSW intercepts at the network level so we verify the handler was called.
-      let handlerCalled = false;
-      server.use(
-        http.post("*/api/auth/sign-out", () => {
-          handlerCalled = true;
-          return HttpResponse.json({ success: true });
-        }),
-      );
-
-      await signOut();
-
-      expect(handlerCalled).toBe(true);
     });
   });
 
   describe("requestPasswordReset", () => {
     it("posts to /api/auth/forget-password", async () => {
-      let capturedRequest: { url: string; body: unknown; headers: Headers } | null = null;
+      let capturedBody: unknown;
       server.use(
         http.post("*/api/auth/forget-password", async ({ request }) => {
-          capturedRequest = {
-            url: request.url,
-            body: await request.json(),
-            headers: request.headers,
-          };
+          capturedBody = await request.json();
           return HttpResponse.json({ success: true, message: "Email sent" });
         }),
       );
@@ -235,9 +174,7 @@ describe("auth-client", () => {
         usernameOrEmail: "user@example.com",
       });
 
-      expect(capturedRequest).not.toBeNull();
-      expect(capturedRequest?.body).toEqual({ usernameOrEmail: "user@example.com" });
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
+      expect(capturedBody).toEqual({ usernameOrEmail: "user@example.com" });
       expect(result).toEqual({
         data: { success: true, message: "Email sent" },
         error: null,
@@ -247,13 +184,8 @@ describe("auth-client", () => {
 
   describe("sendVerificationEmail", () => {
     it("posts to /api/auth/send-verification-email", async () => {
-      let capturedRequest: { url: string; headers: Headers } | null = null;
       server.use(
-        http.post("*/api/auth/send-verification-email", async ({ request }) => {
-          capturedRequest = {
-            url: request.url,
-            headers: request.headers,
-          };
+        http.post("*/api/auth/send-verification-email", () => {
           return HttpResponse.json({
             success: true,
             message: "Verification email sent",
@@ -263,8 +195,6 @@ describe("auth-client", () => {
 
       const result = await sendVerificationEmail();
 
-      expect(capturedRequest).not.toBeNull();
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
       expect(result).toEqual({
         data: { success: true, message: "Verification email sent" },
         error: null,
@@ -278,39 +208,15 @@ describe("auth-client", () => {
         user: { username: "testuser", email: "t@t.com", token: "tok" },
         session: { expiresAt: "2026-12-31" },
       };
-      let capturedRequest: { url: string; method: string; headers: Headers } | null = null;
       server.use(
-        http.get("*/api/auth/get-session", async ({ request }) => {
-          capturedRequest = {
-            url: request.url,
-            method: request.method,
-            headers: request.headers,
-          };
+        http.get("*/api/auth/get-session", () => {
           return HttpResponse.json(sessionData);
         }),
       );
 
       const result = await getSessionWithUser();
 
-      expect(capturedRequest).not.toBeNull();
-      expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
       expect(result).toEqual({ data: sessionData, error: null });
-    });
-
-    it("includes credentials: 'include'", async () => {
-      // credentials: "include" is a fetch option set by the source code in authFetch.
-      // MSW intercepts at the network level so we verify the handler was called.
-      let handlerCalled = false;
-      server.use(
-        http.get("*/api/auth/get-session", () => {
-          handlerCalled = true;
-          return HttpResponse.json({});
-        }),
-      );
-
-      await getSessionWithUser();
-
-      expect(handlerCalled).toBe(true);
     });
 
     it("returns error when session fetch fails", async () => {

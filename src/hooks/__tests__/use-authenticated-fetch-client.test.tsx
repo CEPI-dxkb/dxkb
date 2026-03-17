@@ -13,10 +13,6 @@ vi.mock("@/contexts/auth-context", () => ({
 }));
 
 describe("useAuthenticatedFetch", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("sends request with credentials: 'include' and Content-Type header", async () => {
     let capturedHeaders: Headers | null = null;
     server.use(

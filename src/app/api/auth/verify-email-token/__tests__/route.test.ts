@@ -8,10 +8,6 @@ import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { GET } from "../route";
 
 describe("GET /api/auth/verify-email-token", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns 400 when token is missing", async () => {
     const request = mockNextRequest({
       searchParams: { username: "testuser" },
@@ -114,7 +110,7 @@ describe("GET /api/auth/verify-email-token", () => {
   it("returns 504 on AbortError (timeout)", async () => {
     const abortError = new Error("The operation was aborted");
     abortError.name = "AbortError";
-    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
 
     const request = mockNextRequest({
       searchParams: { token: "slow-token", username: "testuser" },
@@ -126,7 +122,6 @@ describe("GET /api/auth/verify-email-token", () => {
     expect(response.status).toBe(504);
     expect(data.success).toBe(false);
     expect(data.message).toBe("Email verification request timed out");
-    spy.mockRestore();
   });
 
   it("returns 500 on other errors", async () => {

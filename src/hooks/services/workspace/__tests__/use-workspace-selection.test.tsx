@@ -27,10 +27,6 @@ describe("useWorkspaceSelection", () => {
     setPanelExpanded: vi.fn(),
   };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("initializes with empty selection", () => {
     const { result } = renderHook(() => useWorkspaceSelection(defaultProps));
 

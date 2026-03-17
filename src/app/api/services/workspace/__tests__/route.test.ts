@@ -1,25 +1,19 @@
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-workspace-api"),
 }));
 
-async function json(res: Response) {
-  return res.json();
-}
+import { getBvbrcAuthToken } from "@/lib/auth";
+const mockGetToken = vi.mocked(getBvbrcAuthToken);
 
 describe("POST /api/services/workspace", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns 401 when no auth token", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue(undefined);
+    mockGetToken.mockResolvedValue(undefined);
 
     const req = mockNextRequest({
       method: "POST",
@@ -34,8 +28,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns 400 when method is missing", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const req = mockNextRequest({
       method: "POST",
@@ -50,8 +43,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("wraps request in JSON-RPC 2.0 envelope", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const rpcResult = { id: 1, result: [[]], jsonrpc: "2.0" };
     let capturedBody: unknown;
@@ -79,8 +71,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("sends Authorization header with auth token", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("my-auth-token");
+    mockGetToken.mockResolvedValue("my-auth-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -100,8 +91,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns empty result array for preferences GET 404", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-workspace-api", () => {
@@ -127,9 +117,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns error for non-preferences 404", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-workspace-api", () => {
@@ -153,9 +141,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("includes sanitized error in response for upstream errors", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const upstreamError = {
       error: { code: -32600, message: "Invalid Request" },
@@ -183,8 +169,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns data on success", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const rpcResult = {
       id: 1,
@@ -212,9 +197,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-workspace-api", () => {

@@ -4,10 +4,6 @@ import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 
 describe("POST /api/auth/forget-password", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns 400 when no identifier is provided", async () => {
     const request = mockNextRequest({
       method: "POST",
@@ -107,8 +103,6 @@ describe("POST /api/auth/forget-password", () => {
   });
 
   it("returns 503 when an exception is thrown", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     server.use(
       http.post("https://user.bv-brc.org/reset", () => {
         return HttpResponse.error();

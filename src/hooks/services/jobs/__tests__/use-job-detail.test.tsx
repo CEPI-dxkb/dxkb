@@ -24,10 +24,6 @@ function createWrapper() {
 import { useJobDetail, useJobOutput } from "../use-job-detail";
 
 describe("useJobDetail", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns job detail on success", async () => {
     const jobDetail = {
       id: "abc-123",
@@ -65,10 +61,6 @@ describe("useJobDetail", () => {
 });
 
 describe("useJobOutput", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns text output on success", async () => {
     const outputText = "Assembly started\nContigs generated: 42\nDone.";
 

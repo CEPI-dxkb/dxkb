@@ -4,10 +4,6 @@ const mockClient = { makeRequest: vi.fn() };
 const crud = new WorkspaceCrudMethods(mockClient as never);
 
 describe("WorkspaceCrudMethods", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("create", () => {
     it("delegates to Workspace.create with given params", async () => {
       const params = { objects: [{ workspace: "ws1", id: "file.txt", type: "file" }] };

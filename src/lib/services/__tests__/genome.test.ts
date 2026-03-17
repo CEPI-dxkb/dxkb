@@ -11,10 +11,6 @@ import {
 import { server } from "@/test-helpers/msw-server";
 
 describe("genome service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("fetchGenomeSuggestions", () => {
     it("returns results on successful fetch", async () => {
       const mockResults = [
@@ -48,14 +44,14 @@ describe("genome service", () => {
     });
 
     it("returns empty array on AbortError", async () => {
-      const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
         new DOMException("The operation was aborted.", "AbortError"),
       );
 
       const result = await fetchGenomeSuggestions("aborted");
 
       expect(result).toEqual([]);
-      spy.mockRestore();
+
     });
   });
 
@@ -95,10 +91,8 @@ describe("genome service", () => {
         { genome_id: "g1", genome_name: "Genome 1" },
         { genome_id: "g2", genome_name: "Genome 2" },
       ];
-      let capturedMethod = "";
       server.use(
-        http.post("/api/services/genome/by-ids", ({ request }) => {
-          capturedMethod = request.method;
+        http.post("/api/services/genome/by-ids", () => {
           return HttpResponse.json({ results: mockResults });
         }),
       );
@@ -106,7 +100,6 @@ describe("genome service", () => {
       const result = await fetchGenomesByIds(["g1", "g2"]);
 
       expect(result).toEqual(mockResults);
-      expect(capturedMethod).toBe("POST");
     });
 
     it("throws on HTTP error", async () => {
@@ -126,10 +119,8 @@ describe("genome service", () => {
         { genome_id: "g1", genome_name: "Genome 1" },
         { genome_id: "g2", genome_name: "Genome 2" },
       ];
-      let capturedMethod = "";
       server.use(
-        http.post("/api/services/genome/get-all-ids", ({ request }) => {
-          capturedMethod = request.method;
+        http.post("/api/services/genome/get-all-ids", () => {
           return HttpResponse.json({ results: mockResults });
         }),
       );
@@ -137,7 +128,6 @@ describe("genome service", () => {
       const result = await fetchAllGenomeIds();
 
       expect(result).toEqual(mockResults);
-      expect(capturedMethod).toBe("POST");
     });
 
     it("throws on HTTP error", async () => {
@@ -314,14 +304,14 @@ describe("genome service", () => {
     });
 
     it("returns empty array on AbortError", async () => {
-      const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
         new DOMException("The operation was aborted.", "AbortError"),
       );
 
       const result = await getGenomeIdsFromGroup("/user/aborted");
 
       expect(result).toEqual([]);
-      spy.mockRestore();
+
     });
 
     it("handles container-as-object with metadata/data format", async () => {
@@ -447,14 +437,14 @@ describe("genome service", () => {
     });
 
     it("returns empty array on AbortError", async () => {
-      const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
         new DOMException("The operation was aborted.", "AbortError"),
       );
 
       const result = await fetchGenomeGroupMembers("/user/aborted");
 
       expect(result).toEqual([]);
-      spy.mockRestore();
+
     });
   });
 

@@ -4,10 +4,6 @@ const mockClient = { makeRequest: vi.fn() };
 const permissions = new WorkspacePermissionsMethods(mockClient as never);
 
 describe("WorkspacePermissionsMethods", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("getPermissions", () => {
     it("delegates to Workspace.get_permissions with given params", async () => {
       const params = { objects: [{ workspace: "ws1", id: "folder" }] };

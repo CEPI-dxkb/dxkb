@@ -44,7 +44,6 @@ const noUserWrapper = ({ children }: { children: React.ReactNode }) => (
 
 describe("AuthContext", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.mocked(usePathname).mockReturnValue("/");
     vi.mocked(bvbrcAuth.getSession).mockResolvedValue({ data: null, error: null } as never);
   });
@@ -221,7 +220,6 @@ describe("AuthContext", () => {
     });
 
     it("logs error but does not throw on failure", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
       vi.mocked(bvbrcAuth.sendVerificationEmail).mockResolvedValue({
         error: { message: "Send failed" },
       } as never);
@@ -232,11 +230,10 @@ describe("AuthContext", () => {
         await result.current.sendVerificationEmail();
       });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(console.error).toHaveBeenCalledWith(
         "Failed to send verification email:",
         "Send failed",
       );
-      consoleSpy.mockRestore();
     });
   });
 
@@ -258,7 +255,6 @@ describe("AuthContext", () => {
 
     it("calls signOut when session fetch throws", async () => {
       vi.mocked(bvbrcAuth.getSession).mockRejectedValue(new Error("Network error"));
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(vi.fn());
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -267,7 +263,6 @@ describe("AuthContext", () => {
       });
 
       expect(bvbrcAuth.signOut).toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
   });
 

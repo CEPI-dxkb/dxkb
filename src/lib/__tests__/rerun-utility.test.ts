@@ -203,17 +203,12 @@ describe("rerunJob", () => {
   let mockOpen: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockSetItem = vi.fn();
     mockOpen = vi.fn();
     vi.stubGlobal("sessionStorage", { setItem: mockSetItem, getItem: vi.fn() });
     vi.stubGlobal("window", { open: mockOpen });
     // Mock crypto.randomUUID for deterministic key generation
     vi.stubGlobal("crypto", { randomUUID: () => "12345678-abcd-efgh-ijkl-mnopqrstuvwx" });
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("stores params in sessionStorage and opens correct route", () => {

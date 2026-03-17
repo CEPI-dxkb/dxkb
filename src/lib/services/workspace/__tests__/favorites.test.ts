@@ -13,10 +13,6 @@ vi.mock("@/lib/services/workspace/client", () => ({
 const mockMakeRequest = workspaceApi.makeRequest as ReturnType<typeof vi.fn>;
 
 describe("favorites", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("getFavoritesFilePath", () => {
     it("returns correct path for userId without leading slash", () => {
       expect(getFavoritesFilePath("user@bvbrc")).toBe(

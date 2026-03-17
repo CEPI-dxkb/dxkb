@@ -96,7 +96,6 @@ describe("useWorkspaceDialogHandlers", () => {
   const wrapper = createQueryClientWrapper();
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockActiveDialog.value = null;
   });
 

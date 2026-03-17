@@ -24,10 +24,6 @@ import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
 import { WorkspaceApi, createWorkspaceApi, workspace } from "../index";
 
 describe("WorkspaceApi", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("creates ls, permissions, and crud instances in constructor", () => {
     const api = new WorkspaceApi();
     expect(WorkspaceApiClient).toHaveBeenCalledTimes(1);

@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
 import { NextRequest, NextResponse } from "next/server";
 import { server } from "@/test-helpers/msw-server";
+import { json } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
@@ -10,9 +11,8 @@ vi.mock("@/lib/env", () => ({
   }),
 }));
 
-async function json(res: Response) {
-  return res.json();
-}
+import { getBvbrcAuthToken } from "@/lib/auth";
+const mockGetToken = vi.mocked(getBvbrcAuthToken);
 
 function defaultGetRequiredEnv(key: string) {
   if (key === "SHOCK_ORIGINS") return "http://allowed-shock.example.com";
@@ -52,7 +52,6 @@ describe("POST /api/services/workspace/upload", () => {
   let POST: (req: NextRequest) => Promise<NextResponse>;
 
   beforeEach(async () => {
-    vi.clearAllMocks();
     const { getRequiredEnv } = await import("@/lib/env");
     vi.mocked(getRequiredEnv).mockImplementation(defaultGetRequiredEnv);
 
@@ -67,8 +66,7 @@ describe("POST /api/services/workspace/upload", () => {
       return "http://mock-api";
     });
 
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -86,8 +84,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 401 when no auth token", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue(undefined);
+    mockGetToken.mockResolvedValue(undefined);
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -103,8 +100,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 400 when url is missing", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({ file });
@@ -117,8 +113,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 400 when file is missing", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const req = makeUploadRequest({
       url: "http://allowed-shock.example.com/node/123",
@@ -132,8 +127,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 400 when URL is not in allowlist", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -151,8 +145,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("prepends OAuth prefix to auth token", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("my-raw-token");
+    mockGetToken.mockResolvedValue("my-raw-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -173,8 +166,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("does not double-prepend OAuth if already present", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("OAuth existing-token");
+    mockGetToken.mockResolvedValue("OAuth existing-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -195,8 +187,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns data on successful upload", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
     const responseData = { data: { id: "node-id" } };
 
     server.use(
@@ -217,8 +208,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.put("http://allowed-shock.example.com/node/123", () => {

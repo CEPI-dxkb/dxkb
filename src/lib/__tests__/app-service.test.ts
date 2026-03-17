@@ -15,14 +15,9 @@ describe("AppService", () => {
   let mockClient: { call: ReturnType<typeof vi.fn>; getAuthToken: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    vi.clearAllMocks();
     service = new AppService("test-token");
     mockClient = (createBvBrcClient as ReturnType<typeof vi.fn>).mock.results[0]
       .value;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe("constructor", () => {

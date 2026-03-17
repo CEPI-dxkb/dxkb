@@ -4,10 +4,6 @@ const mockClient = { makeRequest: vi.fn() };
 const download = new WorkspaceDownloadMethods(mockClient as never);
 
 describe("WorkspaceDownloadMethods", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("getDownloadUrls", () => {
     it("returns empty array for empty paths", async () => {
       const result = await download.getDownloadUrls([]);

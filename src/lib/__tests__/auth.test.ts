@@ -25,7 +25,7 @@ describe("safeDecodeURIComponent", () => {
   });
 
   it("returns original string on malformed input", () => {
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const malformed = "%E0%A4%A";
     expect(safeDecodeURIComponent(malformed)).toBe(malformed);
   });
@@ -36,10 +36,6 @@ describe("safeDecodeURIComponent", () => {
 });
 
 describe("getBvbrcAuthToken", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns decoded token when cookie exists", async () => {
     mockCookieStore.get.mockReturnValue({
       value: "un%3Duser%40bvbrc.org%7Csig%3Dabc",
@@ -62,14 +58,6 @@ describe("getBvbrcAuthToken", () => {
 });
 
 describe("serverAuthenticatedFetch", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it("adds Authorization header when authenticated", async () => {
     const testToken = "un=testuser@bvbrc.org|sig=abc123";
     mockCookieStore.get.mockReturnValue({ value: testToken });

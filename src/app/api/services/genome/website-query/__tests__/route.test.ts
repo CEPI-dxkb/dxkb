@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.hoisted(() => {
   process.env.BVBRC_WEBSITE_API_URL = "http://mock-website-api";
@@ -14,19 +14,16 @@ vi.mock("csv-parse/sync", () => ({
   parse: vi.fn(() => [{ genome_id: "1", genome_name: "test" }]),
 }));
 
-async function json(res: Response) {
-  return res.json();
-}
+import { getBvbrcAuthToken } from "@/lib/auth";
+const mockGetToken = vi.mocked(getBvbrcAuthToken);
 
 describe("POST /api/services/genome/website-query", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.stubEnv("BVBRC_WEBSITE_API_URL", "http://mock-website-api");
   });
 
   it("returns 401 when no auth token", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue(undefined);
+    mockGetToken.mockResolvedValue(undefined);
 
     const req = mockNextRequest({
       method: "POST",
@@ -41,8 +38,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns empty results when genome_ids is empty", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const req = mockNextRequest({ method: "POST", body: { genome_ids: [] } });
     const res = await POST(req);
@@ -52,8 +48,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("escapes Solr special characters in IDs", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     let capturedBody: string | undefined;
 
@@ -75,8 +70,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("caps rows to maxRows (25000)", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     let capturedBody: string | undefined;
 
@@ -100,8 +94,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns results from JSON content-type response", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const genomes = [{ genome_id: "1.1", genome_name: "G1" }];
 
@@ -122,8 +115,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns results from CSV content-type response", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-website-api/genome/", () => {
@@ -147,8 +139,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("handles empty CSV response", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const { parse } = await import("csv-parse/sync");
     vi.mocked(parse).mockReturnValue([]);
@@ -172,9 +163,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-website-api/genome/", () => {
@@ -195,9 +184,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-website-api/genome/", () => {

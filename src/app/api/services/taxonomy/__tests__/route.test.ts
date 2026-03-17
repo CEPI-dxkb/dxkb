@@ -2,21 +2,13 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { GET } from "../route";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
 
-async function json(res: Response) {
-  return res.json();
-}
-
 describe("GET /api/services/taxonomy", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("does not require auth", async () => {
     const taxData = { taxon_id: 1 };
 
@@ -77,7 +69,6 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     server.use(
       http.get("http://mock-api/taxonomy", () => {
         return new HttpResponse("err", { status: 502 });
@@ -99,7 +90,6 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     server.use(
       http.get("http://mock-api/taxonomy", () => {
         return HttpResponse.error();

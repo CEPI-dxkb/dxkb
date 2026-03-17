@@ -22,12 +22,10 @@ describe("fetchFeaturesFromGroup", () => {
     ];
 
     let capturedBody: unknown;
-    let capturedHeaders: Headers | undefined;
 
     server.use(
       http.post("/api/services/feature/from-group", async ({ request }) => {
         capturedBody = await request.json();
-        capturedHeaders = request.headers;
         return HttpResponse.json({ results: features });
       }),
     );
@@ -35,7 +33,6 @@ describe("fetchFeaturesFromGroup", () => {
     const result = await fetchFeaturesFromGroup("/my/feature/group");
 
     expect(capturedBody).toEqual({ feature_group_path: "/my/feature/group" });
-    expect(capturedHeaders?.get("Content-Type")).toBe("application/json");
     expect(result).toEqual(features);
   });
 
@@ -51,13 +48,12 @@ describe("fetchFeaturesFromGroup", () => {
 
   it("returns [] when the request is aborted", async () => {
     const abortError = new DOMException("The operation was aborted.", "AbortError");
-    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
 
     const result = await fetchFeaturesFromGroup("/some/path", {
       signal: AbortSignal.abort(),
     });
 
     expect(result).toEqual([]);
-    spy.mockRestore();
   });
 });

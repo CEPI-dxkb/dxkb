@@ -55,10 +55,6 @@ describe("extractRealmFromToken", () => {
 });
 
 describe("getProfileMetadata", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns profile on success", async () => {
     const profile = { id: "testuser", email: "test@example.com" };
     let capturedHeaders: Headers | null = null;
@@ -77,8 +73,6 @@ describe("getProfileMetadata", () => {
   });
 
   it("returns null on HTTP error", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     server.use(
       http.get("http://mock-url/nouser", () => {
         return new HttpResponse(null, { status: 404 });
@@ -91,8 +85,6 @@ describe("getProfileMetadata", () => {
   });
 
   it("returns null on network error", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     server.use(
       http.get("http://mock-url/testuser", () => {
         return HttpResponse.error();
@@ -106,10 +98,6 @@ describe("getProfileMetadata", () => {
 });
 
 describe("getUserEmailByUsername", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns email on success", async () => {
     let capturedHeaders: Headers | null = null;
 
@@ -139,8 +127,6 @@ describe("getUserEmailByUsername", () => {
   });
 
   it("returns null on error", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     server.use(
       http.get("http://mock-url/testuser", () => {
         return HttpResponse.error();
@@ -154,10 +140,6 @@ describe("getUserEmailByUsername", () => {
 });
 
 describe("setBvbrcAuthCookies", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("sets bvbrc_token and bvbrc_user_id cookies", async () => {
     await setBvbrcAuthCookies("mytoken", "testuser");
 
@@ -216,10 +198,6 @@ describe("setBvbrcAuthCookies", () => {
 });
 
 describe("clearBvbrcAuthCookies", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("calls set with maxAge: 0 for all cookie names", async () => {
     await clearBvbrcAuthCookies();
 
@@ -249,10 +227,6 @@ describe("clearBvbrcAuthCookies", () => {
 });
 
 describe("getBvbrcAuthData", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns token, userId, and realm from cookies", async () => {
     mockCookieStore.get.mockImplementation((name: string) => {
       const values: Record<string, string> = {

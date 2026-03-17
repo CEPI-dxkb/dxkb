@@ -16,10 +16,6 @@ vi.mock("@/types/workspace-browser", () => ({}));
 const mockMakeRequest = workspaceApi.makeRequest as ReturnType<typeof vi.fn>;
 
 describe("shared workspace functions", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("listSharedWithUser", () => {
     it("filters to items where global_permission is 'n' and user_permission is not 'o'", async () => {
       const items = [

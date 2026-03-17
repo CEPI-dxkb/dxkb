@@ -33,10 +33,6 @@ describe("useWorkspaceNavigation", () => {
     clearSelection: mockClearSelection,
   };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("navigateToItem in home mode builds correct URL with username and path segments", () => {
     const item = makeItem({ name: "my-folder", type: "folder" });
 

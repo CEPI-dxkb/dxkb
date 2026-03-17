@@ -36,10 +36,6 @@ const makeItem = (
   }) as WorkspaceBrowserItem;
 
 describe("useSharedWithUser", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns shared items on success", async () => {
     const wrapper = createQueryClientWrapper();
     const items = [makeItem({ name: "shared-folder", type: "folder" })];
@@ -68,10 +64,6 @@ describe("useSharedWithUser", () => {
 });
 
 describe("useUserWorkspaces", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns user workspaces on success", async () => {
     const wrapper = createQueryClientWrapper();
     const items = [makeItem({ name: "home", type: "folder" })];
@@ -100,10 +92,6 @@ describe("useUserWorkspaces", () => {
 });
 
 describe("useWorkspaceGet", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns metadata on success", async () => {
     const wrapper = createQueryClientWrapper();
     const rawResult = [[["file.txt", "txt", "/user/home/"]]];
@@ -135,10 +123,6 @@ describe("useWorkspaceGet", () => {
 });
 
 describe("useWorkspaceListByPath", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns directory listing on success", async () => {
     const wrapper = createQueryClientWrapper();
     const items = [makeItem({ name: "child.txt" })];
@@ -168,10 +152,6 @@ describe("useWorkspaceListByPath", () => {
 });
 
 describe("useWorkspacePermissions", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns permissions on success", async () => {
     const wrapper = createQueryClientWrapper();
     const permResult = {

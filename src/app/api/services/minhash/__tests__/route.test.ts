@@ -1,16 +1,15 @@
 import { http, HttpResponse } from "msw";
 import { NextRequest } from "next/server";
 import { server } from "@/test-helpers/msw-server";
+import { json } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 
-async function json(res: Response) {
-  return res.json();
-}
+import { getBvbrcAuthToken } from "@/lib/auth";
+const mockGetToken = vi.mocked(getBvbrcAuthToken);
 
 describe("POST /api/services/minhash", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     vi.resetModules();
   });
 
@@ -73,8 +72,7 @@ describe("POST /api/services/minhash", () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("my-token");
+    mockGetToken.mockResolvedValue("my-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -98,8 +96,7 @@ describe("POST /api/services/minhash", () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue(undefined);
+    mockGetToken.mockResolvedValue(undefined);
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -123,8 +120,7 @@ describe("POST /api/services/minhash", () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-minhash", () => {
@@ -149,8 +145,7 @@ describe("POST /api/services/minhash", () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const resultData = { result: [{ genome_id: "1.1", distance: 0.1 }] };
     server.use(

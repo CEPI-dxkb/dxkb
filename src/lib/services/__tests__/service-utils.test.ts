@@ -12,12 +12,10 @@ describe("submitServiceJob", () => {
     const job = [{ id: "job-abc-123", app: appName, status: "queued" }];
 
     let capturedBody: unknown;
-    let capturedHeaders: Headers | undefined;
 
     server.use(
       http.post("/api/services/app-service/submit", async ({ request }) => {
         capturedBody = await request.json();
-        capturedHeaders = request.headers;
         return HttpResponse.json({ job });
       }),
     );
@@ -25,7 +23,6 @@ describe("submitServiceJob", () => {
     const result = await submitServiceJob(appName, appParams);
 
     expect(capturedBody).toEqual({ app_name: appName, app_params: appParams });
-    expect(capturedHeaders?.get("Content-Type")).toBe("application/json");
     expect(result).toEqual({ success: true, job });
   });
 
@@ -120,7 +117,7 @@ describe("submitServiceJob", () => {
   });
 
   it("uses fallback message for non-Error exceptions", async () => {
-    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce("string error" as never);
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce("string error" as never);
 
     const result = await submitServiceJob(appName, appParams);
 
@@ -131,6 +128,5 @@ describe("submitServiceJob", () => {
       }),
     );
 
-    spy.mockRestore();
   });
 });

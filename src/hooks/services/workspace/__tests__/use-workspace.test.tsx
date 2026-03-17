@@ -16,10 +16,6 @@ vi.mock("sonner", () => ({
 }));
 
 describe("useKillJob", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("calls the correct URL with POST method", async () => {
     mockFetch.mockResolvedValue({
       ok: true,

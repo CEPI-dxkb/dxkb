@@ -4,10 +4,6 @@ const mockClient = { makeRequest: vi.fn() };
 const ls = new WorkspaceLsMethods(mockClient as never);
 
 describe("WorkspaceLsMethods", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   describe("listObjects", () => {
     it("delegates to Workspace.ls with given params", async () => {
       const params = {

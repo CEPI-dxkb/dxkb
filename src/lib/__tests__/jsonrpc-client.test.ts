@@ -21,10 +21,6 @@ describe("JsonRpcClient", () => {
     (JsonRpcClient as any).requestId = 1;
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   describe("constructor", () => {
     it("sets baseUrl and Content-Type header", () => {
       const client = new JsonRpcClient("https://api.example.com/rpc");

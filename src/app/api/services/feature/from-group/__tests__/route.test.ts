@@ -2,25 +2,19 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
 
-async function json(res: Response) {
-  return res.json();
-}
+import { getBvbrcAuthToken } from "@/lib/auth";
+const mockGetToken = vi.mocked(getBvbrcAuthToken);
 
 describe("POST /api/services/feature/from-group", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns 401 when no auth token", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue(undefined);
+    mockGetToken.mockResolvedValue(undefined);
 
     const req = mockNextRequest({
       method: "POST",
@@ -35,8 +29,7 @@ describe("POST /api/services/feature/from-group", () => {
   });
 
   it("returns empty results when feature_group_path is missing", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const req = mockNextRequest({ method: "POST", body: {} });
     const res = await POST(req);
@@ -46,8 +39,7 @@ describe("POST /api/services/feature/from-group", () => {
   });
 
   it("returns empty results when feature_group_path is empty string", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const req = mockNextRequest({
       method: "POST",
@@ -60,8 +52,7 @@ describe("POST /api/services/feature/from-group", () => {
   });
 
   it("URL encodes the feature group path", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     let capturedUrl: string | undefined;
 
@@ -84,8 +75,7 @@ describe("POST /api/services/feature/from-group", () => {
   });
 
   it("returns results on success", async () => {
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     const features = [
       { feature_id: "f1", patric_id: "p1" },
@@ -109,9 +99,7 @@ describe("POST /api/services/feature/from-group", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const { getBvbrcAuthToken } = await import("@/lib/auth");
-    vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
+    mockGetToken.mockResolvedValue("token");
 
     server.use(
       http.get("http://mock-api/genome_feature/", () => {

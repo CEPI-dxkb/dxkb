@@ -20,10 +20,6 @@ function createWrapper() {
 import { useJobsSummary } from "../use-jobs-summary";
 
 describe("useJobsSummary", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns summary data on success", async () => {
     const taskSummary = { completed: 10, failed: 2 };
     const appSummary = { GenomeAssembly2: 5, GenomeAnnotation: 7 };

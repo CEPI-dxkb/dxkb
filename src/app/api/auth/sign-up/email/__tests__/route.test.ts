@@ -37,7 +37,6 @@ describe("POST /api/auth/sign-up/email", () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
     mockGetProfileMetadata.mockResolvedValue(null);
   });
@@ -269,8 +268,6 @@ describe("POST /api/auth/sign-up/email", () => {
   });
 
   it("returns 503 when an exception is thrown", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     server.use(
       http.post("http://mock-register-url", () => HttpResponse.error()),
     );

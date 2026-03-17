@@ -16,10 +16,6 @@ vi.mock("@/lib/services/workspace/client", () => {
 import { useWorkspaceDu } from "../use-workspace-du";
 
 describe("useWorkspaceDu", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("maps the tuple response to { sizeBytes, files, folders }", async () => {
     const wrapper = createQueryClientWrapper();
     mockMakeRequest.mockResolvedValue([

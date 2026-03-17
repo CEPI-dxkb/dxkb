@@ -26,10 +26,6 @@ const mockSetBvbrcAuthCookies = vi.mocked(setBvbrcAuthCookies);
 const mockClearBvbrcAuthCookies = vi.mocked(clearBvbrcAuthCookies);
 
 describe("GET /api/auth/get-session", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns null user/session when no token", async () => {
     mockGetBvbrcAuthData.mockResolvedValue({
       token: undefined,
@@ -120,8 +116,6 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("clears cookies and returns null on network error", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     mockGetBvbrcAuthData.mockResolvedValue({
       token: "some-token",
       userId: "testuser",
@@ -207,8 +201,6 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("returns 500 with null user/session on outer exception", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     mockGetBvbrcAuthData.mockRejectedValue(new Error("Unexpected error"));
 
     const response = await GET();

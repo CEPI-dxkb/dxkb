@@ -57,3 +57,11 @@ export function createQueryClientWrapper() {
     return createElement(QueryClientProvider, { client: queryClient }, children);
   };
 }
+
+export function makeRouteContext(id: string) {
+  return { params: Promise.resolve({ id }) };
+}
+
+export async function json(res: Response) {
+  return res.json();
+}

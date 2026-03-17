@@ -2,21 +2,13 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { GET } from "../route";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-ncbi"),
 }));
 
-async function json(res: Response) {
-  return res.json();
-}
-
 describe("GET /api/services/sra-validation", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns 400 when accession is missing", async () => {
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -118,9 +110,7 @@ describe("GET /api/services/sra-validation", () => {
   it("returns success with timeout flag on AbortError", async () => {
     const abortError = new Error("The operation was aborted");
     abortError.name = "AbortError";
-    const spy = vi
-      .spyOn(globalThis, "fetch")
-      .mockRejectedValueOnce(abortError);
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -137,11 +127,9 @@ describe("GET /api/services/sra-validation", () => {
       }),
     );
 
-    spy.mockRestore();
   });
 
   it("returns 500 on other errors", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
     server.use(
       http.get("http://mock-ncbi", () => {
         return HttpResponse.error();

@@ -12,10 +12,6 @@ import { clearBvbrcAuthCookies } from "@/app/api/auth/utils";
 const mockClearBvbrcAuthCookies = vi.mocked(clearBvbrcAuthCookies);
 
 describe("POST /api/auth/sign-out", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("calls clearBvbrcAuthCookies", async () => {
     await POST();
 
@@ -31,8 +27,6 @@ describe("POST /api/auth/sign-out", () => {
   });
 
   it("returns 500 when clearBvbrcAuthCookies throws", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     mockClearBvbrcAuthCookies.mockRejectedValue(new Error("Cookie error"));
 
     const response = await POST();

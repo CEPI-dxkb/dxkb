@@ -67,17 +67,11 @@ describe("useRerunForm", () => {
       writable: true,
     });
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {
-      /* suppress */
-    });
-
     const { result } = renderHook(() => useRerunForm());
 
     expect(result.current.rerunData).toBeNull();
-    expect(consoleSpy).toHaveBeenCalledWith(
+    expect(console.error).toHaveBeenCalledWith(
       "[useRerunForm] Failed to parse rerun data from sessionStorage",
     );
-
-    consoleSpy.mockRestore();
   });
 });

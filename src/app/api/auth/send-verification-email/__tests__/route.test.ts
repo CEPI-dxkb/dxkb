@@ -18,10 +18,6 @@ import { getBvbrcAuthData } from "@/app/api/auth/utils";
 const mockGetBvbrcAuthData = vi.mocked(getBvbrcAuthData);
 
 describe("POST /api/auth/send-verification-email", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns 401 when no token is present", async () => {
     mockGetBvbrcAuthData.mockResolvedValue({
       token: undefined,
@@ -107,8 +103,6 @@ describe("POST /api/auth/send-verification-email", () => {
   });
 
   it("returns 500 when an exception is thrown", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
     mockGetBvbrcAuthData.mockRejectedValue(new Error("Unexpected error"));
 
     const response = await POST();

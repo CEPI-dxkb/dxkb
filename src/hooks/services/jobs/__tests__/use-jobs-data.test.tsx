@@ -28,10 +28,6 @@ const defaultParams = {
 };
 
 describe("useJobsData", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns jobs data on success", async () => {
     const jobs = [
       { id: "job-1", app: "GenomeAssembly2", status: "completed" },

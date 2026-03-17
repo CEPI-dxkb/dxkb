@@ -1,7 +1,5 @@
 import "@testing-library/jest-dom/vitest";
 
-// SVG imports are handled per-test if needed via vi.mock("path/to/file.svg")
-
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -19,6 +17,11 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => props,
 }));
+
+// Suppress console.error noise in tests (auto-restored by restoreMocks)
+beforeEach(() => {
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+});
 
 // MSW server lifecycle — strict mode rejects any unhandled fetch calls
 import { server } from "@/test-helpers/msw-server";

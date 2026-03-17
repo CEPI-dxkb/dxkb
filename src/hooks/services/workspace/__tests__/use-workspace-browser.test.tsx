@@ -17,10 +17,6 @@ vi.mock("@/lib/services/workspace/client", () => {
 import { useWorkspaceBrowser } from "../use-workspace-browser";
 
 describe("useWorkspaceBrowser", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("appends @bvbrc to username without @ symbol", async () => {
     const wrapper = createQueryClientWrapper();
     mockMakeRequest.mockResolvedValue([]);

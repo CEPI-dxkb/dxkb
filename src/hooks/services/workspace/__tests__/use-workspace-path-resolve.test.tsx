@@ -14,10 +14,6 @@ import { getWorkspaceMetadata } from "@/lib/services/workspace/shared";
 import { parseWorkspaceGetSingle } from "@/lib/services/workspace/helpers";
 
 describe("useWorkspacePathResolve", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("calls getWorkspaceMetadata and parses the result", async () => {
     const wrapper = createQueryClientWrapper();
     const rawResult = [[["myFile", "contigs", "/user/home/", "2024-01-01"]]];

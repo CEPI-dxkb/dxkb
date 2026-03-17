@@ -83,10 +83,6 @@ describe("useWorkspaceActionDispatch", () => {
     };
   }
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("dispatches OPEN_DELETE for delete action", async () => {
     const options = createDefaultOptions();
     const selection = [makeItem({ name: "toDelete.txt", path: "/user@bvbrc/home/toDelete.txt" })];

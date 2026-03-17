@@ -1,0 +1,69 @@
+src/app/api/services/app-service/jobs/[id]/kill/__tests__/route.test.ts
+  8cb71517a83321cf 2-3
+src/app/api/services/minhash/__tests__/route.test.ts
+  8cb71517a83321cf 4,8-9,75,99,123,148
+src/test-helpers/api-route-helpers.ts
+  8cb71517a83321cf 60-67
+src/app/api/services/app-service/jobs/[id]/stderr/__tests__/route.test.ts
+  8cb71517a83321cf 2-3
+src/lib/__tests__/auth-client.test.ts
+  8cb71517a83321cf 19,22,32,102,105,121,150,152,165,168,177,188,212
+src/app/api/services/app-service/jobs/[id]/__tests__/route.test.ts
+  8cb71517a83321cf 2-3,96
+src/contexts/__tests__/auth-context.test.tsx
+  8cb71517a83321cf 233
+src/app/api/services/sra-validation/__tests__/route.test.ts
+  8cb71517a83321cf 5
+src/app/api/services/taxonomy/__tests__/route.test.ts
+  8cb71517a83321cf 5
+src/lib/services/workspace/__tests__/server.test.ts
+  8cb71517a83321cf 36-37,39,42,60,95,112,128,146,189,205,235,249,280,297,320
+src/hooks/services/workspace/__tests__/use-job-result-data.test.tsx
+  8cb71517a83321cf 38
+src/app/api/services/genome/by-ids/__tests__/route.test.ts
+  8cb71517a83321cf 4,11-12,16,31,41,54,67,87,108,128,148
+src/hooks/services/__tests__/use-rerun-form.test.tsx
+  8cb71517a83321cf 73
+vitest.config.mts
+  8cb71517a83321cf 14
+src/app/api/services/genome/validate-viral/__tests__/route.test.ts
+  8cb71517a83321cf 4,11-12,16,31,41,54,74,94,114,136
+src/lib/services/__tests__/genome.test.ts
+  8cb71517a83321cf 54,314,447
+src/lib/__tests__/auth.test.ts
+  8cb71517a83321cf 28
+src/app/api/services/genome/search/__tests__/route.test.ts
+  8cb71517a83321cf 4,11-12,16,31,52,72,94,130,150,170,189
+src/app/api/services/feature/from-group/__tests__/route.test.ts
+  8cb71517a83321cf 5,12-13,17,32,42,55,78,102
+src/app/api/services/genome/website-query/__tests__/route.test.ts
+  8cb71517a83321cf 5,17-18,26,41,51,73,97,118,142,166,187
+vitest.setup.ts
+  8cb71517a83321cf 21-25
+src/app/api/services/genome/get-all-ids/__tests__/route.test.ts
+  8cb71517a83321cf 4,11-12,16,28,49,66,83,100
+src/app/api/services/workspace/__tests__/route.test.ts
+  8cb71517a83321cf 4,11-12,16,31,46,74,94,120,144,172,200
+src/app/api/services/workspace/upload/__tests__/route.test.ts
+  8cb71517a83321cf 4,14-15,69,87,103,116,130,148,169,190,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0c0c947c0d66646488350446039f64b0679e77e8",
+  "prompts": {
+    "8cb71517a83321cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df707955-cdd7-403f-867e-847a4be7ce1b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 215,
+      "total_deletions": 713,
+      "accepted_lines": 169,
+      "overriden_lines": 0
+    }
+  }
+}

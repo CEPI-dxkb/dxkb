@@ -19,3 +19,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/image", () => ({
   default: (props: Record<string, unknown>) => props,
 }));
+
+// MSW server lifecycle — strict mode rejects any unhandled fetch calls
+import { server } from "@/test-helpers/msw-server";
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());

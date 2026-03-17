@@ -1,5 +1,6 @@
+import { http, HttpResponse } from "msw";
 import { NextRequest, NextResponse } from "next/server";
-import { mockFetchResponse } from "@/test-helpers/api-route-helpers";
+import { server } from "@/test-helpers/msw-server";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
@@ -8,9 +9,6 @@ vi.mock("@/lib/env", () => ({
     return "http://mock-api";
   }),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -155,7 +153,14 @@ describe("POST /api/services/workspace/upload", () => {
   it("prepends OAuth prefix to auth token", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("my-raw-token");
-    mockFetch.mockResolvedValue(mockFetchResponse({ data: null }));
+
+    let capturedHeaders: Headers | undefined;
+    server.use(
+      http.put("http://allowed-shock.example.com/node/123", async ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ data: null });
+      }),
+    );
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -164,15 +169,20 @@ describe("POST /api/services/workspace/upload", () => {
     });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][1].headers).toEqual(
-      expect.objectContaining({ Authorization: "OAuth my-raw-token" }),
-    );
+    expect(capturedHeaders?.get("Authorization")).toBe("OAuth my-raw-token");
   });
 
   it("does not double-prepend OAuth if already present", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("OAuth existing-token");
-    mockFetch.mockResolvedValue(mockFetchResponse({ data: null }));
+
+    let capturedHeaders: Headers | undefined;
+    server.use(
+      http.put("http://allowed-shock.example.com/node/123", async ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ data: null });
+      }),
+    );
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -181,16 +191,19 @@ describe("POST /api/services/workspace/upload", () => {
     });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][1].headers).toEqual(
-      expect.objectContaining({ Authorization: "OAuth existing-token" }),
-    );
+    expect(capturedHeaders?.get("Authorization")).toBe("OAuth existing-token");
   });
 
   it("returns data on successful upload", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
     const responseData = { data: { id: "node-id" } };
-    mockFetch.mockResolvedValue(mockFetchResponse(responseData));
+
+    server.use(
+      http.put("http://allowed-shock.example.com/node/123", () => {
+        return HttpResponse.json(responseData);
+      }),
+    );
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -206,7 +219,12 @@ describe("POST /api/services/workspace/upload", () => {
   it("returns upstream error on non-ok response", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse("upload failed", false, 500));
+
+    server.use(
+      http.put("http://allowed-shock.example.com/node/123", () => {
+        return HttpResponse.text("upload failed", { status: 500 });
+      }),
+    );
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({

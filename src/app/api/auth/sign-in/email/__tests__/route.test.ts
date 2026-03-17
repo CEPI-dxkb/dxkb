@@ -12,6 +12,8 @@ vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-auth-url"),
 }));
 
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 import {
@@ -25,17 +27,10 @@ const mockGetProfileMetadata = vi.mocked(getProfileMetadata);
 const mockExtractRealmFromToken = vi.mocked(extractRealmFromToken);
 
 describe("POST /api/auth/sign-in/email", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", mockFetch);
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
     mockGetProfileMetadata.mockResolvedValue(null);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("returns 400 when username is missing", async () => {
@@ -65,7 +60,9 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns 401 when upstream returns 401", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+    server.use(
+      http.post("http://mock-auth-url", () => new HttpResponse(null, { status: 401 })),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -80,7 +77,9 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns 401 when upstream returns 403", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 403 });
+    server.use(
+      http.post("http://mock-auth-url", () => new HttpResponse(null, { status: 403 })),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -95,7 +94,9 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns 503 when upstream returns a non-auth error", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    server.use(
+      http.post("http://mock-auth-url", () => new HttpResponse(null, { status: 500 })),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -110,13 +111,15 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("uses token from Authorization header when available", async () => {
-    const headers = new Headers();
-    headers.set("Authorization", "auth-token-from-header");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("body-token"),
-      headers,
-    });
+    server.use(
+      http.post(
+        "http://mock-auth-url",
+        () =>
+          new HttpResponse("body-token", {
+            headers: { Authorization: "auth-token-from-header" },
+          }),
+      ),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -131,12 +134,9 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("falls back to body text when Authorization header is absent", async () => {
-    const headers = new Headers();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve("body-token-value"),
-      headers,
-    });
+    server.use(
+      http.post("http://mock-auth-url", () => new HttpResponse("body-token-value")),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -149,12 +149,9 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns 503 when token is empty", async () => {
-    const headers = new Headers();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve(""),
-      headers,
-    });
+    server.use(
+      http.post("http://mock-auth-url", () => new HttpResponse("")),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -179,13 +176,15 @@ describe("POST /api/auth/sign-in/email", () => {
     mockGetProfileMetadata.mockResolvedValue(profile);
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
 
-    const headers = new Headers();
-    headers.set("Authorization", "the-token");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve(""),
-      headers,
-    });
+    server.use(
+      http.post(
+        "http://mock-auth-url",
+        () =>
+          new HttpResponse("", {
+            headers: { Authorization: "the-token" },
+          }),
+      ),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -213,13 +212,15 @@ describe("POST /api/auth/sign-in/email", () => {
     mockGetProfileMetadata.mockResolvedValue(profile);
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
 
-    const headers = new Headers();
-    headers.set("Authorization", "the-token");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve(""),
-      headers,
-    });
+    server.use(
+      http.post(
+        "http://mock-auth-url",
+        () =>
+          new HttpResponse("", {
+            headers: { Authorization: "the-token" },
+          }),
+      ),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -253,13 +254,15 @@ describe("POST /api/auth/sign-in/email", () => {
     mockGetProfileMetadata.mockResolvedValue(null);
     mockExtractRealmFromToken.mockReturnValue(undefined);
 
-    const headers = new Headers();
-    headers.set("Authorization", "the-token");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      text: () => Promise.resolve(""),
-      headers,
-    });
+    server.use(
+      http.post(
+        "http://mock-auth-url",
+        () =>
+          new HttpResponse("", {
+            headers: { Authorization: "the-token" },
+          }),
+      ),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -283,7 +286,11 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns 503 when an exception is thrown", async () => {
-    mockFetch.mockRejectedValue(new Error("Network failure"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    server.use(
+      http.post("http://mock-auth-url", () => HttpResponse.error()),
+    );
 
     const request = mockNextRequest({
       method: "POST",

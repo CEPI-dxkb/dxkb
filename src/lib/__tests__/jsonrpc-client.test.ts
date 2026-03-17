@@ -1,3 +1,6 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
 import {
   JsonRpcClient,
   JsonRpcError,
@@ -11,21 +14,8 @@ vi.mock("@/lib/env", () => ({
   }),
 }));
 
-function _createMockFetch(response: unknown, ok = true, status = 200) {
-  return vi.fn().mockResolvedValue({
-    ok,
-    status,
-    json: vi.fn().mockResolvedValue(response),
-    text: vi.fn().mockResolvedValue(JSON.stringify(response)),
-  });
-}
-
 describe("JsonRpcClient", () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
-    mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
     // Reset the static requestId to get deterministic ids across tests.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (JsonRpcClient as any).requestId = 1;
@@ -58,41 +48,40 @@ describe("JsonRpcClient", () => {
 
   describe("call", () => {
     it("sends POST with correct JSON-RPC 2.0 format", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({
-          id: 1,
-          jsonrpc: "2.0",
-          result: "ok",
+      let capturedBody: unknown;
+
+      server.use(
+        http.post("https://api.example.com/rpc", async ({ request }) => {
+          capturedBody = await request.json();
+          return HttpResponse.json({
+            id: 1,
+            jsonrpc: "2.0",
+            result: "ok",
+          });
         }),
-      });
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
       await client.call("TestMethod", ["arg1", "arg2"]);
 
-      expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/rpc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: 1,
-          method: "TestMethod",
-          params: ["arg1", "arg2"],
-          jsonrpc: "2.0",
-        }),
+      expect(capturedBody).toEqual({
+        id: 1,
+        method: "TestMethod",
+        params: ["arg1", "arg2"],
+        jsonrpc: "2.0",
       });
     });
 
     it("returns result on success", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({
-          id: 1,
-          jsonrpc: "2.0",
-          result: { foo: "bar" },
+      server.use(
+        http.post("https://api.example.com/rpc", () => {
+          return HttpResponse.json({
+            id: 1,
+            jsonrpc: "2.0",
+            result: { foo: "bar" },
+          });
         }),
-      });
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
       const result = await client.call("TestMethod");
@@ -101,19 +90,19 @@ describe("JsonRpcClient", () => {
     });
 
     it("throws JsonRpcError on JSON-RPC error response", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({
-          id: 1,
-          jsonrpc: "2.0",
-          error: {
-            code: -32601,
-            message: "Method not found",
-            data: { detail: "unknown method" },
-          },
+      server.use(
+        http.post("https://api.example.com/rpc", () => {
+          return HttpResponse.json({
+            id: 1,
+            jsonrpc: "2.0",
+            error: {
+              code: -32601,
+              message: "Method not found",
+              data: { detail: "unknown method" },
+            },
+          });
         }),
-      });
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
 
@@ -126,11 +115,11 @@ describe("JsonRpcClient", () => {
     });
 
     it("throws Error on HTTP error (non-ok response)", async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        json: vi.fn(),
-      });
+      server.use(
+        http.post("https://api.example.com/rpc", () => {
+          return new HttpResponse(null, { status: 500 });
+        }),
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
 
@@ -140,14 +129,14 @@ describe("JsonRpcClient", () => {
     });
 
     it("throws Error when response has no result or error", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({
-          id: 1,
-          jsonrpc: "2.0",
+      server.use(
+        http.post("https://api.example.com/rpc", () => {
+          return HttpResponse.json({
+            id: 1,
+            jsonrpc: "2.0",
+          });
         }),
-      });
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
 
@@ -157,34 +146,39 @@ describe("JsonRpcClient", () => {
     });
 
     it("uses default empty params when none provided", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({
-          id: 1,
-          jsonrpc: "2.0",
-          result: "ok",
+      let capturedBody: unknown;
+
+      server.use(
+        http.post("https://api.example.com/rpc", async ({ request }) => {
+          capturedBody = await request.json();
+          return HttpResponse.json({
+            id: 1,
+            jsonrpc: "2.0",
+            result: "ok",
+          });
         }),
-      });
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
       await client.call("TestMethod");
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.params).toEqual([]);
+      expect((capturedBody as Record<string, unknown>).params).toEqual([]);
     });
   });
 
   describe("batch", () => {
     it("sends array of requests and returns array of results", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue([
-          { id: 1, jsonrpc: "2.0", result: "result1" },
-          { id: 2, jsonrpc: "2.0", result: "result2" },
-        ]),
-      });
+      let capturedBody: unknown;
+
+      server.use(
+        http.post("https://api.example.com/rpc", async ({ request }) => {
+          capturedBody = await request.json();
+          return HttpResponse.json([
+            { id: 1, jsonrpc: "2.0", result: "result1" },
+            { id: 2, jsonrpc: "2.0", result: "result2" },
+          ]);
+        }),
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
       const results = await client.batch([
@@ -194,7 +188,7 @@ describe("JsonRpcClient", () => {
 
       expect(results).toEqual(["result1", "result2"]);
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = capturedBody as Record<string, unknown>[];
       expect(body).toHaveLength(2);
       expect(body[0]).toMatchObject({
         method: "Method1",
@@ -209,18 +203,18 @@ describe("JsonRpcClient", () => {
     });
 
     it("throws JsonRpcError if any response has error", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue([
-          { id: 1, jsonrpc: "2.0", result: "ok" },
-          {
-            id: 2,
-            jsonrpc: "2.0",
-            error: { code: -32600, message: "Invalid request" },
-          },
-        ]),
-      });
+      server.use(
+        http.post("https://api.example.com/rpc", () => {
+          return HttpResponse.json([
+            { id: 1, jsonrpc: "2.0", result: "ok" },
+            {
+              id: 2,
+              jsonrpc: "2.0",
+              error: { code: -32600, message: "Invalid request" },
+            },
+          ]);
+        }),
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
 
@@ -233,11 +227,11 @@ describe("JsonRpcClient", () => {
     });
 
     it("throws Error on HTTP error", async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 502,
-        json: vi.fn(),
-      });
+      server.use(
+        http.post("https://api.example.com/rpc", () => {
+          return new HttpResponse(null, { status: 502 });
+        }),
+      );
 
       const client = new JsonRpcClient("https://api.example.com/rpc");
 

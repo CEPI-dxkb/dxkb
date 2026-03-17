@@ -1,16 +1,12 @@
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import {
-  mockNextRequest,
-  mockFetchResponse,
-} from "@/test-helpers/api-route-helpers";
+import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -79,7 +75,14 @@ describe("POST /api/services/genome/by-ids", () => {
   it("sanitizes IDs to only digits and dots", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -87,16 +90,20 @@ describe("POST /api/services/genome/by-ids", () => {
     });
     await POST(req);
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("in(genome_id,(123.45,67.89))"),
-      expect.any(Object),
-    );
+    expect(capturedUrl).toContain("in(genome_id,(123.45,67.89))");
   });
 
   it("sets limit to Math.min(ids.length, 100)", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     const ids = Array.from({ length: 3 }, (_, i) => `${i}.1`);
     const req = mockNextRequest({
@@ -105,10 +112,7 @@ describe("POST /api/services/genome/by-ids", () => {
     });
     await POST(req);
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("limit(3)"),
-      expect.any(Object),
-    );
+    expect(capturedUrl).toContain("limit(3)");
   });
 
   it("returns results from array response", async () => {
@@ -116,7 +120,11 @@ describe("POST /api/services/genome/by-ids", () => {
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const genomes = [{ genome_id: "1.1", genome_name: "Test" }];
-    mockFetch.mockResolvedValue(mockFetchResponse(genomes));
+    server.use(
+      http.get("http://mock-api/genome/", () => {
+        return HttpResponse.json(genomes);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -133,7 +141,11 @@ describe("POST /api/services/genome/by-ids", () => {
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const genomes = [{ genome_id: "2.2", genome_name: "Test2" }];
-    mockFetch.mockResolvedValue(mockFetchResponse({ items: genomes }));
+    server.use(
+      http.get("http://mock-api/genome/", () => {
+        return HttpResponse.json({ items: genomes });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -146,10 +158,15 @@ describe("POST /api/services/genome/by-ids", () => {
   });
 
   it("returns upstream error status on non-ok response", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
-    mockFetch.mockResolvedValue(mockFetchResponse("error", false, 502));
+    server.use(
+      http.get("http://mock-api/genome/", () => {
+        return new HttpResponse("error", { status: 502 });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",

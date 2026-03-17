@@ -12,6 +12,8 @@ vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-user-url"),
 }));
 
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { GET } from "../route";
 import {
   getBvbrcAuthData,
@@ -24,15 +26,8 @@ const mockSetBvbrcAuthCookies = vi.mocked(setBvbrcAuthCookies);
 const mockClearBvbrcAuthCookies = vi.mocked(clearBvbrcAuthCookies);
 
 describe("GET /api/auth/get-session", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", mockFetch);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("returns null user/session when no token", async () => {
@@ -76,34 +71,31 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("validates token by calling upstream user endpoint", async () => {
+    let capturedHeaders: Headers | undefined;
+
     mockGetBvbrcAuthData.mockResolvedValue({
       token: "valid-token",
       userId: "testuser",
       realm: "patricbrc.org",
     });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+
+    server.use(
+      http.get("http://mock-user-url/testuser", ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({
           id: "testuser",
           email: "test@example.com",
           first_name: "Test",
           last_name: "User",
           email_verified: true,
-        }),
-    });
+        });
+      }),
+    );
 
     await GET();
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://mock-user-url/testuser",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "valid-token",
-          Accept: "application/json",
-        }),
-      }),
-    );
+    expect(capturedHeaders?.get("Authorization")).toBe("valid-token");
+    expect(capturedHeaders?.get("Accept")).toBe("application/json");
   });
 
   it("clears cookies and returns null when upstream returns non-ok", async () => {
@@ -112,7 +104,13 @@ describe("GET /api/auth/get-session", () => {
       userId: "testuser",
       realm: undefined,
     });
-    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+
+    server.use(
+      http.get(
+        "http://mock-user-url/testuser",
+        () => new HttpResponse(null, { status: 401 }),
+      ),
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -122,12 +120,17 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("clears cookies and returns null on network error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     mockGetBvbrcAuthData.mockResolvedValue({
       token: "some-token",
       userId: "testuser",
       realm: undefined,
     });
-    mockFetch.mockRejectedValue(new Error("Network failure"));
+
+    server.use(
+      http.get("http://mock-user-url/testuser", () => HttpResponse.error()),
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -142,14 +145,15 @@ describe("GET /api/auth/get-session", () => {
       userId: "testuser",
       realm: "patricbrc.org",
     });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+
+    server.use(
+      http.get("http://mock-user-url/testuser", () =>
+        HttpResponse.json({
           id: "testuser",
           email: "test@example.com",
         }),
-    });
+      ),
+    );
 
     await GET();
 
@@ -166,17 +170,18 @@ describe("GET /api/auth/get-session", () => {
       userId: "testuser",
       realm: "patricbrc.org",
     });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
+
+    server.use(
+      http.get("http://mock-user-url/testuser", () =>
+        HttpResponse.json({
           id: "user123",
           email: "test@example.com",
           first_name: "Test",
           last_name: "User",
           email_verified: true,
         }),
-    });
+      ),
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -202,6 +207,8 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("returns 500 with null user/session on outer exception", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     mockGetBvbrcAuthData.mockRejectedValue(new Error("Unexpected error"));
 
     const response = await GET();

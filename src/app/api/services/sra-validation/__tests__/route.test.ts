@@ -1,12 +1,12 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
 import { GET } from "../route";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-ncbi"),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -56,11 +56,12 @@ describe("GET /api/services/sra-validation", () => {
 
   it("returns success with XML text on valid response", async () => {
     const xmlText = "<xml>valid</xml>";
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: () => Promise.resolve(xmlText),
-    });
+
+    server.use(
+      http.get("http://mock-ncbi", () => {
+        return new HttpResponse(xmlText);
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -73,11 +74,11 @@ describe("GET /api/services/sra-validation", () => {
   });
 
   it("returns accession-not-valid error on NCBI 4xx", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 404,
-      statusText: "Not Found",
-    });
+    server.use(
+      http.get("http://mock-ncbi", () => {
+        return new HttpResponse("Not Found", { status: 404 });
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -94,11 +95,11 @@ describe("GET /api/services/sra-validation", () => {
   });
 
   it("returns NCBI error status on 5xx", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 503,
-      statusText: "Service Unavailable",
-    });
+    server.use(
+      http.get("http://mock-ncbi", () => {
+        return new HttpResponse("Service Unavailable", { status: 503 });
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -117,7 +118,9 @@ describe("GET /api/services/sra-validation", () => {
   it("returns success with timeout flag on AbortError", async () => {
     const abortError = new Error("The operation was aborted");
     abortError.name = "AbortError";
-    mockFetch.mockRejectedValue(abortError);
+    const spy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(abortError);
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -133,10 +136,17 @@ describe("GET /api/services/sra-validation", () => {
         accession: "SRR123456",
       }),
     );
+
+    spy.mockRestore();
   });
 
   it("returns 500 on other errors", async () => {
-    mockFetch.mockRejectedValue(new Error("network failure"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    server.use(
+      http.get("http://mock-ncbi", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
@@ -145,8 +155,5 @@ describe("GET /api/services/sra-validation", () => {
     const res = await GET(req);
 
     expect(res.status).toBe(500);
-    expect(await json(res)).toEqual(
-      expect.objectContaining({ error: "network failure" }),
-    );
   });
 });

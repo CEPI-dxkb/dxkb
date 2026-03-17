@@ -1,16 +1,11 @@
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 
 describe("POST /api/auth/forget-password", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", mockFetch);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("returns 400 when no identifier is provided", async () => {
@@ -27,7 +22,13 @@ describe("POST /api/auth/forget-password", () => {
   });
 
   it("accepts usernameOrEmail field", async () => {
-    mockFetch.mockResolvedValue({ ok: true });
+    let handlerCalled = false;
+    server.use(
+      http.post("https://user.bv-brc.org/reset", () => {
+        handlerCalled = true;
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -40,16 +41,15 @@ describe("POST /api/auth/forget-password", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.message).toBe("Password reset email sent successfully");
-    expect(mockFetch).toHaveBeenCalledWith(
-      "https://user.bv-brc.org/reset",
-      expect.objectContaining({
-        method: "POST",
-      }),
-    );
+    expect(handlerCalled).toBe(true);
   });
 
   it("accepts email field as fallback", async () => {
-    mockFetch.mockResolvedValue({ ok: true });
+    server.use(
+      http.post("https://user.bv-brc.org/reset", () => {
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -64,11 +64,14 @@ describe("POST /api/auth/forget-password", () => {
   });
 
   it("returns upstream error with message from JSON response", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 404,
-      json: () => Promise.resolve({ message: "User not found" }),
-    });
+    server.use(
+      http.post("https://user.bv-brc.org/reset", () => {
+        return HttpResponse.json(
+          { message: "User not found" },
+          { status: 404 },
+        );
+      }),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -84,11 +87,11 @@ describe("POST /api/auth/forget-password", () => {
   });
 
   it("returns default error message when upstream JSON parse fails", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: () => Promise.reject(new Error("Invalid JSON")),
-    });
+    server.use(
+      http.post("https://user.bv-brc.org/reset", () => {
+        return new HttpResponse("not json", { status: 500 });
+      }),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -104,7 +107,13 @@ describe("POST /api/auth/forget-password", () => {
   });
 
   it("returns 503 when an exception is thrown", async () => {
-    mockFetch.mockRejectedValue(new Error("Network failure"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    server.use(
+      http.post("https://user.bv-brc.org/reset", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const request = mockNextRequest({
       method: "POST",

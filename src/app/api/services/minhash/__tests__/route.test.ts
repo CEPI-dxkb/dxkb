@@ -1,10 +1,8 @@
+import { http, HttpResponse } from "msw";
 import { NextRequest } from "next/server";
-import { mockFetchResponse } from "@/test-helpers/api-route-helpers";
+import { server } from "@/test-helpers/msw-server";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -77,7 +75,14 @@ describe("POST /api/services/minhash", () => {
     const { POST } = await import("../route");
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("my-token");
-    mockFetch.mockResolvedValue(mockFetchResponse({ result: "ok" }));
+
+    let capturedHeaders: Headers | undefined;
+    server.use(
+      http.post("http://mock-minhash", async ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ result: "ok" });
+      }),
+    );
 
     const req = new NextRequest("http://localhost:3019/api/services/minhash", {
       method: "POST",
@@ -86,9 +91,7 @@ describe("POST /api/services/minhash", () => {
     });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][1].headers).toEqual(
-      expect.objectContaining({ Authorization: "my-token" }),
-    );
+    expect(capturedHeaders?.get("Authorization")).toBe("my-token");
   });
 
   it("omits auth header when token is absent", async () => {
@@ -97,7 +100,14 @@ describe("POST /api/services/minhash", () => {
     const { POST } = await import("../route");
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue(undefined);
-    mockFetch.mockResolvedValue(mockFetchResponse({ result: "ok" }));
+
+    let capturedHeaders: Headers | undefined;
+    server.use(
+      http.post("http://mock-minhash", async ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ result: "ok" });
+      }),
+    );
 
     const req = new NextRequest("http://localhost:3019/api/services/minhash", {
       method: "POST",
@@ -106,9 +116,7 @@ describe("POST /api/services/minhash", () => {
     });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][1].headers).not.toHaveProperty(
-      "Authorization",
-    );
+    expect(capturedHeaders?.get("Authorization")).toBeNull();
   });
 
   it("returns upstream error on non-ok response", async () => {
@@ -117,7 +125,12 @@ describe("POST /api/services/minhash", () => {
     const { POST } = await import("../route");
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse({ error: "bad request" }, false, 400));
+
+    server.use(
+      http.post("http://mock-minhash", () => {
+        return HttpResponse.json({ error: "bad request" }, { status: 400 });
+      }),
+    );
 
     const req = new NextRequest("http://localhost:3019/api/services/minhash", {
       method: "POST",
@@ -140,7 +153,11 @@ describe("POST /api/services/minhash", () => {
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const resultData = { result: [{ genome_id: "1.1", distance: 0.1 }] };
-    mockFetch.mockResolvedValue(mockFetchResponse(resultData));
+    server.use(
+      http.post("http://mock-minhash", () => {
+        return HttpResponse.json(resultData);
+      }),
+    );
 
     const req = new NextRequest("http://localhost:3019/api/services/minhash", {
       method: "POST",

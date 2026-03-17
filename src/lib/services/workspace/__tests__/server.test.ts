@@ -1,3 +1,6 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
 import {
   listSharedWithUserServer,
   listByFullPathServer,
@@ -30,9 +33,6 @@ vi.mock("@/lib/services/workspace/helpers", () => ({
   })),
 }));
 
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
-
 describe("server workspace functions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,49 +43,52 @@ describe("server workspace functions", () => {
     (getBvbrcAuthToken as ReturnType<typeof vi.fn>).mockResolvedValue(token);
   }
 
-  function mockFetchResponse(data: unknown, ok = true, status = 200) {
-    mockFetch.mockResolvedValue({
-      ok,
-      status,
-      statusText: ok ? "OK" : "Internal Server Error",
-      json: () => Promise.resolve(data),
-    });
-  }
-
   describe("workspaceRequest (tested via exported functions)", () => {
     it("throws when unauthenticated", async () => {
       await setupAuth(null);
+
+      let handlerCalled = false;
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          handlerCalled = true;
+          return HttpResponse.json({});
+        }),
+      );
 
       await expect(listSharedWithUserServer()).rejects.toThrow(
         "Authentication required",
       );
 
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(handlerCalled).toBe(false);
     });
 
     it("sends correct JSON-RPC envelope", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({
-        result: [{ "/": [] }],
-      });
+
+      let capturedBody: unknown;
+      let capturedHeaders: Headers | undefined;
+
+      server.use(
+        http.post(
+          "https://workspace-api.example.com",
+          async ({ request }) => {
+            capturedBody = await request.json();
+            capturedHeaders = request.headers;
+            return HttpResponse.json({
+              result: [{ "/": [] }],
+            });
+          },
+        ),
+      );
 
       await listSharedWithUserServer();
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "https://workspace-api.example.com",
-        expect.objectContaining({
-          method: "POST",
-          headers: expect.objectContaining({
-            "Content-Type": "application/jsonrpc+json",
-            Authorization: "auth-token-123",
-          }),
-        }),
+      expect(capturedHeaders?.get("Content-Type")).toBe(
+        "application/jsonrpc+json",
       );
+      expect(capturedHeaders?.get("Authorization")).toBe("auth-token-123");
 
-      // Verify the body is valid JSON-RPC
-      const callArgs = mockFetch.mock.calls[0];
-      const body = JSON.parse(callArgs[1].body);
-      expect(body).toEqual(
+      expect(capturedBody).toEqual(
         expect.objectContaining({
           id: 1,
           method: "Workspace.ls",
@@ -96,12 +99,15 @@ describe("server workspace functions", () => {
 
     it("throws on non-ok response", async () => {
       await setupAuth("auth-token-123");
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 500,
-        statusText: "Internal Server Error",
-        json: () => Promise.resolve({}),
-      });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json(
+            {},
+            { status: 500, statusText: "Internal Server Error" },
+          );
+        }),
+      );
 
       await expect(listSharedWithUserServer()).rejects.toThrow(
         "Workspace API error: 500 Internal Server Error",
@@ -110,9 +116,14 @@ describe("server workspace functions", () => {
 
     it("throws on API error response", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({
-        error: { message: "Object not found" },
-      });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({
+            error: { message: "Object not found" },
+          });
+        }),
+      );
 
       await expect(listByFullPathServer("/some/path")).rejects.toThrow(
         "Object not found",
@@ -121,9 +132,14 @@ describe("server workspace functions", () => {
 
     it("uses default error message when API error has no message", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({
-        error: {},
-      });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({
+            error: {},
+          });
+        }),
+      );
 
       await expect(listByFullPathServer("/some/path")).rejects.toThrow(
         "Workspace API error",
@@ -150,11 +166,15 @@ describe("server workspace functions", () => {
         "id3", "pub", 0, {}, {}, "r", "r", null,
       ];
 
-      mockFetchResponse({
-        result: [
-          { "/": [sharedTuple, ownedTuple, publicTuple] },
-        ],
-      });
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({
+            result: [
+              { "/": [sharedTuple, ownedTuple, publicTuple] },
+            ],
+          });
+        }),
+      );
 
       const result = await listSharedWithUserServer();
 
@@ -173,7 +193,12 @@ describe("server workspace functions", () => {
 
     it("returns empty when no result data", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({ result: [] });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({ result: [] });
+        }),
+      );
 
       const result = await listSharedWithUserServer();
 
@@ -184,16 +209,28 @@ describe("server workspace functions", () => {
   describe("listByFullPathServer", () => {
     it("normalizes path by adding leading slash", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({
-        result: [
-          { "/owner@bvbrc/folder": [] },
-        ],
-      });
+
+      let capturedBody: unknown;
+
+      server.use(
+        http.post(
+          "https://workspace-api.example.com",
+          async ({ request }) => {
+            capturedBody = await request.json();
+            return HttpResponse.json({
+              result: [
+                { "/owner@bvbrc/folder": [] },
+              ],
+            });
+          },
+        ),
+      );
 
       await listByFullPathServer("owner@bvbrc/folder");
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-      expect(body.params).toEqual([
+      expect(
+        (capturedBody as Record<string, unknown>).params,
+      ).toEqual([
         expect.objectContaining({
           paths: ["/owner@bvbrc/folder"],
         }),
@@ -202,7 +239,12 @@ describe("server workspace functions", () => {
 
     it("returns empty array when no data in result", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({ result: [] });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({ result: [] });
+        }),
+      );
 
       const result = await listByFullPathServer("/owner@bvbrc/folder");
 
@@ -217,11 +259,15 @@ describe("server workspace functions", () => {
         "id1", "owner", 1024, {}, {}, "o", "n", null,
       ];
 
-      mockFetchResponse({
-        result: [
-          { "/owner@bvbrc/folder": [fileTuple] },
-        ],
-      });
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({
+            result: [
+              { "/owner@bvbrc/folder": [fileTuple] },
+            ],
+          });
+        }),
+      );
 
       const result = await listByFullPathServer("/owner@bvbrc/folder");
 
@@ -239,10 +285,18 @@ describe("server workspace functions", () => {
     it("returns empty object for empty paths array", async () => {
       await setupAuth("auth-token-123");
 
+      let handlerCalled = false;
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          handlerCalled = true;
+          return HttpResponse.json({});
+        }),
+      );
+
       const result = await listPermissionsServer([]);
 
       expect(result).toEqual({});
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(handlerCalled).toBe(false);
     });
 
     it("returns permissions from the response", async () => {
@@ -254,9 +308,14 @@ describe("server workspace functions", () => {
           ["user2", "w"],
         ],
       };
-      mockFetchResponse({
-        result: [permissionsData],
-      });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({
+            result: [permissionsData],
+          });
+        }),
+      );
 
       const result = await listPermissionsServer(["/owner@bvbrc/folder"]);
 
@@ -265,7 +324,12 @@ describe("server workspace functions", () => {
 
     it("returns empty object when result has no data", async () => {
       await setupAuth("auth-token-123");
-      mockFetchResponse({ result: [] });
+
+      server.use(
+        http.post("https://workspace-api.example.com", () => {
+          return HttpResponse.json({ result: [] });
+        }),
+      );
 
       const result = await listPermissionsServer(["/some/path"]);
 

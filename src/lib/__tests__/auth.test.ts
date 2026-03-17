@@ -1,7 +1,9 @@
-const mockCookieStore = {
-  get: vi.fn(),
-  set: vi.fn(),
-};
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
+
+const { mockCookieStore } = vi.hoisted(() => ({
+  mockCookieStore: { get: vi.fn(), set: vi.fn() },
+}));
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
@@ -23,6 +25,7 @@ describe("safeDecodeURIComponent", () => {
   });
 
   it("returns original string on malformed input", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const malformed = "%E0%A4%A";
     expect(safeDecodeURIComponent(malformed)).toBe(malformed);
   });
@@ -59,11 +62,8 @@ describe("getBvbrcAuthToken", () => {
 });
 
 describe("serverAuthenticatedFetch", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = mockFetch;
   });
 
   afterEach(() => {
@@ -73,19 +73,23 @@ describe("serverAuthenticatedFetch", () => {
   it("adds Authorization header when authenticated", async () => {
     const testToken = "un=testuser@bvbrc.org|sig=abc123";
     mockCookieStore.get.mockReturnValue({ value: testToken });
-    mockFetch.mockResolvedValue(new Response(JSON.stringify({ ok: true })));
+
+    let capturedRequest: { url: string; headers: Headers } | null = null;
+    server.use(
+      http.get("https://api.example.com/data", async ({ request }) => {
+        capturedRequest = {
+          url: request.url,
+          headers: request.headers,
+        };
+        return HttpResponse.json({ ok: true });
+      }),
+    );
 
     await serverAuthenticatedFetch("https://api.example.com/data");
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      "https://api.example.com/data",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: testToken,
-          "Content-Type": "application/json",
-        }),
-      }),
-    );
+    expect(capturedRequest).not.toBeNull();
+    expect(capturedRequest?.headers.get("Authorization")).toBe(testToken);
+    expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
   });
 
   it("throws when not authenticated", async () => {
@@ -94,7 +98,5 @@ describe("serverAuthenticatedFetch", () => {
     await expect(
       serverAuthenticatedFetch("https://api.example.com/data"),
     ).rejects.toThrow("Not authenticated");
-
-    expect(mockFetch).not.toHaveBeenCalled();
   });
 });

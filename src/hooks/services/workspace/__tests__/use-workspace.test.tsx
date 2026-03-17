@@ -2,7 +2,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { createQueryClientWrapper } from "@/test-helpers/api-route-helpers";
 import { useKillJob } from "@/hooks/services/workspace/use-workspace";
 
-const mockFetch = vi.fn();
+const { mockFetch } = vi.hoisted(() => ({ mockFetch: vi.fn() }));
 
 vi.mock("@/hooks/use-authenticated-fetch-client", () => ({
   useAuthenticatedFetch: () => mockFetch,

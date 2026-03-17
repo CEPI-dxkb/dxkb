@@ -69,6 +69,7 @@ describe("POST /api/services/app-service/jobs/[id]/kill", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.killJob.mockRejectedValue(new Error("Kill failed"));
 

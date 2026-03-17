@@ -1,15 +1,12 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
 import { GET } from "../route";
-import {
-  mockNextRequest,
-  mockFetchResponse,
-} from "@/test-helpers/api-route-helpers";
+import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -21,7 +18,13 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("does not require auth", async () => {
-    mockFetch.mockResolvedValue(mockFetchResponse({ taxon_id: 1 }));
+    const taxData = { taxon_id: 1 };
+
+    server.use(
+      http.get("http://mock-api/taxonomy", () => {
+        return HttpResponse.json(taxData);
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/taxonomy",
@@ -34,7 +37,14 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("forwards query params to upstream API", async () => {
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+    let capturedUrl: string | undefined;
+
+    server.use(
+      http.get("http://mock-api/taxonomy", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/taxonomy",
@@ -42,15 +52,19 @@ describe("GET /api/services/taxonomy", () => {
     });
     await GET(req);
 
-    const url = mockFetch.mock.calls[0][0] as string;
-    expect(url).toContain("/taxonomy?");
-    expect(url).toContain("q=escherichia");
-    expect(url).toContain("limit=10");
+    expect(capturedUrl).toContain("/taxonomy?");
+    expect(capturedUrl).toContain("q=escherichia");
+    expect(capturedUrl).toContain("limit=10");
   });
 
   it("returns data on success", async () => {
     const taxData = [{ taxon_id: 123, taxon_name: "E. coli" }];
-    mockFetch.mockResolvedValue(mockFetchResponse(taxData));
+
+    server.use(
+      http.get("http://mock-api/taxonomy", () => {
+        return HttpResponse.json(taxData);
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/taxonomy",
@@ -63,7 +77,12 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    mockFetch.mockResolvedValue(mockFetchResponse("err", false, 502));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    server.use(
+      http.get("http://mock-api/taxonomy", () => {
+        return new HttpResponse("err", { status: 502 });
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/taxonomy",
@@ -80,7 +99,12 @@ describe("GET /api/services/taxonomy", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
-    mockFetch.mockRejectedValue(new Error("fail"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    server.use(
+      http.get("http://mock-api/taxonomy", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/taxonomy",

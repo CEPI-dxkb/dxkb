@@ -97,6 +97,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.queryJobDetails.mockRejectedValue(
       new Error("Service unavailable"),

@@ -1,17 +1,18 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import {
-  mockNextRequest,
-  mockFetchResponse,
-} from "@/test-helpers/api-route-helpers";
+import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+
+vi.hoisted(() => {
+  process.env.BVBRC_WEBSITE_API_URL = "http://mock-website-api";
+});
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 
 vi.mock("csv-parse/sync", () => ({
   parse: vi.fn(() => [{ genome_id: "1", genome_name: "test" }]),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -54,13 +55,14 @@ describe("POST /api/services/genome/website-query", () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
-    const jsonHeaders = new Headers({ "content-type": "application/json" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: jsonHeaders,
-      text: () => Promise.resolve(JSON.stringify([])),
-    });
+    let capturedBody: string | undefined;
+
+    server.use(
+      http.post("http://mock-website-api/genome/", async ({ request }) => {
+        capturedBody = await request.text();
+        return HttpResponse.json([]);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -68,22 +70,22 @@ describe("POST /api/services/genome/website-query", () => {
     });
     await POST(req);
 
-    const fetchBody = mockFetch.mock.calls[0][1].body as string;
     // The + should be escaped
-    expect(fetchBody).toContain("test%5C%2Bid");
+    expect(capturedBody).toContain("test%5C%2Bid");
   });
 
   it("caps rows to maxRows (25000)", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
-    const jsonHeaders = new Headers({ "content-type": "application/json" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: jsonHeaders,
-      text: () => Promise.resolve(JSON.stringify([])),
-    });
+    let capturedBody: string | undefined;
+
+    server.use(
+      http.post("http://mock-website-api/genome/", async ({ request }) => {
+        capturedBody = await request.text();
+        return HttpResponse.json([]);
+      }),
+    );
 
     // Create more IDs than maxRows
     const manyIds = Array.from({ length: 30000 }, (_, i) => `${i}`);
@@ -93,8 +95,7 @@ describe("POST /api/services/genome/website-query", () => {
     });
     await POST(req);
 
-    const fetchBody = mockFetch.mock.calls[0][1].body as string;
-    const params = new URLSearchParams(fetchBody);
+    const params = new URLSearchParams(capturedBody ?? "");
     expect(params.get("rows")).toBe("25000");
   });
 
@@ -103,13 +104,12 @@ describe("POST /api/services/genome/website-query", () => {
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const genomes = [{ genome_id: "1.1", genome_name: "G1" }];
-    const jsonHeaders = new Headers({ "content-type": "application/json" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: jsonHeaders,
-      text: () => Promise.resolve(JSON.stringify(genomes)),
-    });
+
+    server.use(
+      http.post("http://mock-website-api/genome/", () => {
+        return HttpResponse.json(genomes);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -125,13 +125,13 @@ describe("POST /api/services/genome/website-query", () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
-    const csvHeaders = new Headers({ "content-type": "text/csv" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: csvHeaders,
-      text: () => Promise.resolve("genome_id,genome_name\n1,test"),
-    });
+    server.use(
+      http.post("http://mock-website-api/genome/", () => {
+        return new HttpResponse("genome_id,genome_name\n1,test", {
+          headers: { "content-type": "text/csv" },
+        });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -153,13 +153,13 @@ describe("POST /api/services/genome/website-query", () => {
     const { parse } = await import("csv-parse/sync");
     vi.mocked(parse).mockReturnValue([]);
 
-    const csvHeaders = new Headers({ "content-type": "text/csv" });
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: csvHeaders,
-      text: () => Promise.resolve(""),
-    });
+    server.use(
+      http.post("http://mock-website-api/genome/", () => {
+        return new HttpResponse("", {
+          headers: { "content-type": "text/csv" },
+        });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -172,9 +172,15 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse("err", false, 503));
+
+    server.use(
+      http.post("http://mock-website-api/genome/", () => {
+        return new HttpResponse("err", { status: 503 });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -189,9 +195,15 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockRejectedValue(new Error("network failure"));
+
+    server.use(
+      http.post("http://mock-website-api/genome/", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",

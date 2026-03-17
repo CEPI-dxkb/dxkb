@@ -1,11 +1,8 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
+
 import { submitServiceJob } from "../service-utils";
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 describe("submitServiceJob", () => {
   const appName = "GenomeAssembly2";
@@ -14,33 +11,30 @@ describe("submitServiceJob", () => {
   it("returns { success: true, job } on successful submit", async () => {
     const job = [{ id: "job-abc-123", app: appName, status: "queued" }];
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ job }),
-    });
+    let capturedBody: unknown;
+    let capturedHeaders: Headers | undefined;
+
+    server.use(
+      http.post("/api/services/app-service/submit", async ({ request }) => {
+        capturedBody = await request.json();
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ job });
+      }),
+    );
 
     const result = await submitServiceJob(appName, appParams);
 
-    expect(mockFetch).toHaveBeenCalledOnce();
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/services/app-service/submit",
-      expect.objectContaining({
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ app_name: appName, app_params: appParams }),
-      }),
-    );
+    expect(capturedBody).toEqual({ app_name: appName, app_params: appParams });
+    expect(capturedHeaders?.get("Content-Type")).toBe("application/json");
     expect(result).toEqual({ success: true, job });
   });
 
   it("extracts error message from JSON body on HTTP error", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: async () => ({ error: "Invalid parameters" }),
-      text: async () => "should not be used",
-    });
+    server.use(
+      http.post("/api/services/app-service/submit", () => {
+        return HttpResponse.json({ error: "Invalid parameters" }, { status: 422 });
+      }),
+    );
 
     const result = await submitServiceJob(appName, appParams);
 
@@ -53,45 +47,54 @@ describe("submitServiceJob", () => {
   });
 
   it("falls back to response text when JSON parsing fails on HTTP error", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: async () => {
-        throw new Error("not json");
-      },
-      text: async () => "Internal Server Error",
-    });
+    server.use(
+      http.post("/api/services/app-service/submit", () => {
+        return new HttpResponse("Internal Server Error", {
+          status: 500,
+          headers: { "Content-Type": "text/plain" },
+        });
+      }),
+    );
 
     const result = await submitServiceJob(appName, appParams);
 
+    // With real fetch, response.json() consumes the body stream.
+    // When it fails (non-JSON body), response.text() also fails because
+    // the stream is already disturbed, so we fall through to the default message.
     expect(result).toEqual(
       expect.objectContaining({
         success: false,
-        error: "Internal Server Error",
+        error: "HTTP error! status: 500",
       }),
     );
   });
 
   it("returns { success: false } with error message on network error", async () => {
-    mockFetch.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    server.use(
+      http.post("/api/services/app-service/submit", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const result = await submitServiceJob(appName, appParams);
 
     expect(result).toEqual(
       expect.objectContaining({
         success: false,
-        error: "Failed to fetch",
+        error: expect.stringContaining("fetch"),
       }),
     );
   });
 
   it("appends details field to error message when present", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 422,
-      json: async () => ({ error: "Validation failed", details: { field: "genome_id" } }),
-      text: async () => "",
-    });
+    server.use(
+      http.post("/api/services/app-service/submit", () => {
+        return HttpResponse.json(
+          { error: "Validation failed", details: { field: "genome_id" } },
+          { status: 422 },
+        );
+      }),
+    );
 
     const result = await submitServiceJob(appName, appParams);
 
@@ -100,12 +103,16 @@ describe("submitServiceJob", () => {
   });
 
   it("uses default HTTP error message when both JSON and text parsing fail", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 502,
-      json: async () => { throw new Error("not json"); },
-      text: async () => { throw new Error("stream consumed"); },
-    });
+    server.use(
+      http.post("/api/services/app-service/submit", () => {
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.error(new Error("stream error"));
+          },
+        });
+        return new HttpResponse(stream, { status: 502 });
+      }),
+    );
 
     const result = await submitServiceJob(appName, appParams);
 
@@ -113,7 +120,7 @@ describe("submitServiceJob", () => {
   });
 
   it("uses fallback message for non-Error exceptions", async () => {
-    mockFetch.mockRejectedValueOnce("string error");
+    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce("string error" as never);
 
     const result = await submitServiceJob(appName, appParams);
 
@@ -123,5 +130,7 @@ describe("submitServiceJob", () => {
         error: "Failed to submit service job",
       }),
     );
+
+    spy.mockRestore();
   });
 });

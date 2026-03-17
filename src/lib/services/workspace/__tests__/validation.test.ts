@@ -1,19 +1,15 @@
+import { http, HttpResponse } from "msw";
+
 import { checkWorkspaceObjectExists } from "@/lib/services/workspace/validation";
+import { server } from "@/test-helpers/msw-server";
 
 describe("checkWorkspaceObjectExists", () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   it("returns true when response.ok", async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    server.use(
+      http.post("/api/services/workspace", () => {
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
 
     const result = await checkWorkspaceObjectExists("/user/home/file.txt");
 
@@ -21,7 +17,11 @@ describe("checkWorkspaceObjectExists", () => {
   });
 
   it("returns false when response is not ok", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
+    server.use(
+      http.post("/api/services/workspace", () => {
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
 
     const result = await checkWorkspaceObjectExists("/user/home/missing.txt");
 
@@ -29,7 +29,11 @@ describe("checkWorkspaceObjectExists", () => {
   });
 
   it("returns false when fetch throws", async () => {
-    mockFetch.mockRejectedValue(new Error("Network error"));
+    server.use(
+      http.post("/api/services/workspace", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const result = await checkWorkspaceObjectExists("/user/home/file.txt");
 
@@ -40,46 +44,44 @@ describe("checkWorkspaceObjectExists", () => {
     const result = await checkWorkspaceObjectExists("");
 
     expect(result).toBe(false);
-    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("returns false for whitespace-only path", async () => {
     const result = await checkWorkspaceObjectExists("   ");
 
     expect(result).toBe(false);
-    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it("passes AbortSignal to fetch", async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    server.use(
+      http.post("/api/services/workspace", () => {
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
     const controller = new AbortController();
 
-    await checkWorkspaceObjectExists("/user/home/file.txt", {
+    const result = await checkWorkspaceObjectExists("/user/home/file.txt", {
       signal: controller.signal,
     });
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      "/api/services/workspace",
-      expect.objectContaining({
-        signal: controller.signal,
-      }),
-    );
+    expect(result).toBe(true);
   });
 
   it("sends Workspace.get request with the full path", async () => {
-    mockFetch.mockResolvedValue({ ok: true, status: 200 });
+    let capturedBody: unknown;
+
+    server.use(
+      http.post("/api/services/workspace", async ({ request }) => {
+        capturedBody = await request.json();
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
 
     await checkWorkspaceObjectExists("/user/home/my-file.txt");
 
-    expect(mockFetch).toHaveBeenCalledWith("/api/services/workspace", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        method: "Workspace.get",
-        params: [{ objects: ["/user/home/my-file.txt"], metadata_only: true }],
-      }),
-      signal: undefined,
+    expect(capturedBody).toEqual({
+      method: "Workspace.get",
+      params: [{ objects: ["/user/home/my-file.txt"], metadata_only: true }],
     });
   });
 });

@@ -143,6 +143,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 500 with details when a JsonRpcError is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
 
     const { JsonRpcError } = await import("@/lib/jsonrpc-client");
@@ -167,6 +168,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 500 with message when a generic Error is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.submitService.mockRejectedValue(
       new Error("Connection refused"),
@@ -185,6 +187,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 500 with generic message for unknown error types", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.submitService.mockRejectedValue("string error");
 

@@ -1,16 +1,12 @@
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import {
-  mockNextRequest,
-  mockFetchResponse,
-} from "@/test-helpers/api-route-helpers";
+import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-workspace-api"),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -58,7 +54,13 @@ describe("POST /api/services/workspace", () => {
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const rpcResult = { id: 1, result: [[]], jsonrpc: "2.0" };
-    mockFetch.mockResolvedValue(mockFetchResponse(rpcResult));
+    let capturedBody: unknown;
+    server.use(
+      http.post("http://mock-workspace-api", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(rpcResult);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -66,8 +68,7 @@ describe("POST /api/services/workspace", () => {
     });
     await POST(req);
 
-    const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(fetchBody).toEqual(
+    expect(capturedBody).toEqual(
       expect.objectContaining({
         id: 1,
         method: "Workspace.ls",
@@ -80,8 +81,13 @@ describe("POST /api/services/workspace", () => {
   it("sends Authorization header with auth token", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("my-auth-token");
-    mockFetch.mockResolvedValue(
-      mockFetchResponse({ id: 1, result: [], jsonrpc: "2.0" }),
+
+    let capturedHeaders: Headers | undefined;
+    server.use(
+      http.post("http://mock-workspace-api", async ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ id: 1, result: [], jsonrpc: "2.0" });
+      }),
     );
 
     const req = mockNextRequest({
@@ -90,16 +96,18 @@ describe("POST /api/services/workspace", () => {
     });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][1].headers).toEqual(
-      expect.objectContaining({ Authorization: "my-auth-token" }),
-    );
+    expect(capturedHeaders?.get("Authorization")).toBe("my-auth-token");
   });
 
   it("returns empty result array for preferences GET 404", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
-    mockFetch.mockResolvedValue(mockFetchResponse("not found", false, 404));
+    server.use(
+      http.post("http://mock-workspace-api", () => {
+        return HttpResponse.text("not found", { status: 404 });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -119,10 +127,15 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns error for non-preferences 404", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
-    mockFetch.mockResolvedValue(mockFetchResponse("not found", false, 404));
+    server.use(
+      http.post("http://mock-workspace-api", () => {
+        return HttpResponse.text("not found", { status: 404 });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -140,19 +153,21 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("includes sanitized error in response for upstream errors", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const upstreamError = {
       error: { code: -32600, message: "Invalid Request" },
     };
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      statusText: "Internal Server Error",
-      text: () => Promise.resolve(JSON.stringify(upstreamError)),
-      headers: new Headers(),
-    });
+    server.use(
+      http.post("http://mock-workspace-api", () => {
+        return HttpResponse.json(upstreamError, {
+          status: 500,
+          statusText: "Internal Server Error",
+        });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -180,7 +195,11 @@ describe("POST /api/services/workspace", () => {
       ],
       jsonrpc: "2.0",
     };
-    mockFetch.mockResolvedValue(mockFetchResponse(rpcResult));
+    server.use(
+      http.post("http://mock-workspace-api", () => {
+        return HttpResponse.json(rpcResult);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -193,9 +212,15 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockRejectedValue(new Error("connection refused"));
+
+    server.use(
+      http.post("http://mock-workspace-api", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",

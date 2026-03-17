@@ -1,16 +1,13 @@
+import { http, HttpResponse } from "msw";
+
+import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import {
-  mockNextRequest,
-  mockFetchResponse,
-} from "@/test-helpers/api-route-helpers";
+import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -65,7 +62,15 @@ describe("POST /api/services/feature/from-group", () => {
   it("URL encodes the feature group path", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+
+    let capturedUrl: string | undefined;
+
+    server.use(
+      http.get("http://mock-api/genome_feature/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -73,8 +78,7 @@ describe("POST /api/services/feature/from-group", () => {
     });
     await POST(req);
 
-    const url = mockFetch.mock.calls[0][0] as string;
-    expect(url).toContain(
+    expect(capturedUrl).toContain(
       "FeatureGroup(%2Fuser%40bvbrc%2Fhome%2Fmy%20group)",
     );
   });
@@ -87,7 +91,12 @@ describe("POST /api/services/feature/from-group", () => {
       { feature_id: "f1", patric_id: "p1" },
       { feature_id: "f2", patric_id: "p2" },
     ];
-    mockFetch.mockResolvedValue(mockFetchResponse(features));
+
+    server.use(
+      http.get("http://mock-api/genome_feature/", () => {
+        return HttpResponse.json(features);
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -100,9 +109,15 @@ describe("POST /api/services/feature/from-group", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse("err", false, 502));
+
+    server.use(
+      http.get("http://mock-api/genome_feature/", () => {
+        return new HttpResponse("err", { status: 502 });
+      }),
+    );
 
     const req = mockNextRequest({
       method: "POST",

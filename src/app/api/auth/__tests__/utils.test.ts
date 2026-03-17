@@ -1,7 +1,6 @@
-const mockCookieStore = {
-  get: vi.fn(),
-  set: vi.fn(),
-};
+const { mockCookieStore } = vi.hoisted(() => ({
+  mockCookieStore: { get: vi.fn(), set: vi.fn() },
+}));
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
@@ -15,6 +14,8 @@ vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-url"),
 }));
 
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import {
   extractRealmFromToken,
   getProfileMetadata,
@@ -54,39 +55,35 @@ describe("extractRealmFromToken", () => {
 });
 
 describe("getProfileMetadata", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = mockFetch;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("returns profile on success", async () => {
     const profile = { id: "testuser", email: "test@example.com" };
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(profile),
-    });
+    let capturedHeaders: Headers | null = null;
+
+    server.use(
+      http.get("http://mock-url/testuser", ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json(profile);
+      }),
+    );
 
     const result = await getProfileMetadata("token123", "testuser");
 
     expect(result).toEqual(profile);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://mock-url/testuser",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "token123",
-        }),
-      }),
-    );
+    expect(capturedHeaders?.get("Authorization")).toBe("token123");
   });
 
   it("returns null on HTTP error", async () => {
-    mockFetch.mockResolvedValue({ ok: false, status: 404 });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    server.use(
+      http.get("http://mock-url/nouser", () => {
+        return new HttpResponse(null, { status: 404 });
+      }),
+    );
 
     const result = await getProfileMetadata("token123", "nouser");
 
@@ -94,7 +91,13 @@ describe("getProfileMetadata", () => {
   });
 
   it("returns null on network error", async () => {
-    mockFetch.mockRejectedValue(new Error("Network failure"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    server.use(
+      http.get("http://mock-url/testuser", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const result = await getProfileMetadata("token123", "testuser");
 
@@ -103,41 +106,32 @@ describe("getProfileMetadata", () => {
 });
 
 describe("getUserEmailByUsername", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    global.fetch = mockFetch;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   it("returns email on success", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ email: "user@example.com" }),
-    });
+    let capturedHeaders: Headers | null = null;
+
+    server.use(
+      http.get("http://mock-url/testuser", ({ request }) => {
+        capturedHeaders = request.headers;
+        return HttpResponse.json({ email: "user@example.com" });
+      }),
+    );
 
     const result = await getUserEmailByUsername("testuser");
 
     expect(result).toBe("user@example.com");
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://mock-url/testuser",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Accept: "application/json",
-        }),
-      }),
-    );
+    expect(capturedHeaders?.get("Accept")).toBe("application/json");
   });
 
   it("returns null when no email in response", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ id: "testuser" }),
-    });
+    server.use(
+      http.get("http://mock-url/testuser", () => {
+        return HttpResponse.json({ id: "testuser" });
+      }),
+    );
 
     const result = await getUserEmailByUsername("testuser");
 
@@ -145,7 +139,13 @@ describe("getUserEmailByUsername", () => {
   });
 
   it("returns null on error", async () => {
-    mockFetch.mockRejectedValue(new Error("Network failure"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    server.use(
+      http.get("http://mock-url/testuser", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const result = await getUserEmailByUsername("testuser");
 

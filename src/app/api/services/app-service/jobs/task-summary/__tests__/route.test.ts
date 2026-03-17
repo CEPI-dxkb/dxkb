@@ -68,6 +68,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.queryTaskSummaryFiltered.mockRejectedValue(
       new Error("Service down"),

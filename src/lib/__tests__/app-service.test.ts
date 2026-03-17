@@ -1,3 +1,5 @@
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { AppService, createAppService } from "@/lib/app-service";
 import { createBvBrcClient } from "@/lib/jsonrpc-client";
 
@@ -11,12 +13,9 @@ vi.mock("@/lib/jsonrpc-client", () => ({
 describe("AppService", () => {
   let service: AppService;
   let mockClient: { call: ReturnType<typeof vi.fn>; getAuthToken: ReturnType<typeof vi.fn> };
-  let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFetch = vi.fn();
-    vi.stubGlobal("fetch", mockFetch);
     service = new AppService("test-token");
     mockClient = (createBvBrcClient as ReturnType<typeof vi.fn>).mock.results[0]
       .value;
@@ -101,26 +100,28 @@ describe("AppService", () => {
   describe("fetchJobOutput", () => {
     it("makes GET request with OAuth auth header", async () => {
       mockClient.getAuthToken.mockReturnValue("my-token");
-      mockFetch.mockResolvedValue({
-        ok: true,
-        status: 200,
-        text: vi.fn().mockResolvedValue("stdout content here"),
-      });
+
+      let capturedRequest: { url: string; headers: Headers } | null = null;
+      server.use(
+        http.get(
+          "https://p3.theseed.org/services/app_service/task_info/123/stdout",
+          async ({ request }) => {
+            capturedRequest = {
+              url: request.url,
+              headers: request.headers,
+            };
+            return new HttpResponse("stdout content here");
+          },
+        ),
+      );
 
       const result = await service.fetchJobOutput({
         job_id: "123",
         output_type: "stdout",
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "https://p3.theseed.org/services/app_service/task_info/123/stdout",
-        {
-          method: "GET",
-          headers: {
-            Authorization: "OAuth my-token",
-          },
-        },
-      );
+      expect(capturedRequest).not.toBeNull();
+      expect(capturedRequest?.headers.get("Authorization")).toBe("OAuth my-token");
       expect(result).toBe("stdout content here");
     });
 
@@ -134,10 +135,15 @@ describe("AppService", () => {
 
     it("throws on HTTP error", async () => {
       mockClient.getAuthToken.mockReturnValue("my-token");
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-      });
+
+      server.use(
+        http.get(
+          "https://p3.theseed.org/services/app_service/task_info/123/stdout",
+          () => {
+            return new HttpResponse(null, { status: 404 });
+          },
+        ),
+      );
 
       await expect(
         service.fetchJobOutput({ job_id: "123", output_type: "stdout" }),

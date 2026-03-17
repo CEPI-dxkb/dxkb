@@ -55,8 +55,10 @@ describe("AuthContext", () => {
     );
   });
 
-  it("provides initialUser when passed", () => {
+  it("provides initialUser when passed", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.user).toEqual(
       expect.objectContaining({
@@ -67,14 +69,23 @@ describe("AuthContext", () => {
     );
   });
 
-  it("isAuthenticated is true when user exists", () => {
+  it("isAuthenticated is true when user exists", async () => {
+    vi.mocked(bvbrcAuth.getSession).mockResolvedValue({
+      data: { user: testUser },
+      error: null,
+    } as never);
+
     const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.isAuthenticated).toBe(true);
   });
 
-  it("isAuthenticated is false when no user", () => {
+  it("isAuthenticated is false when no user", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper: noUserWrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.isAuthenticated).toBe(false);
   });

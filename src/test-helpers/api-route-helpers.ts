@@ -42,24 +42,6 @@ export function mockNextRequest(
 }
 
 /**
- * Factory for creating mock fetch responses for use with vi.stubGlobal("fetch", ...).
- */
-export function mockFetchResponse(
-  data: unknown,
-  ok = true,
-  status = ok ? 200 : 500,
-): Response {
-  return {
-    ok,
-    status,
-    json: () => Promise.resolve(data),
-    text: () =>
-      Promise.resolve(typeof data === "string" ? data : JSON.stringify(data)),
-    headers: new Headers(),
-  } as unknown as Response;
-}
-
-/**
  * Creates a QueryClientProvider wrapper for use with renderHook.
  * Configured with retry: false for test stability.
  */

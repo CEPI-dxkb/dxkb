@@ -10,21 +10,16 @@ vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-verification-url"),
 }));
 
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
 import { getBvbrcAuthData } from "@/app/api/auth/utils";
 
 const mockGetBvbrcAuthData = vi.mocked(getBvbrcAuthData);
 
 describe("POST /api/auth/send-verification-email", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", mockFetch);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("returns 401 when no token is present", async () => {
@@ -64,7 +59,18 @@ describe("POST /api/auth/send-verification-email", () => {
       userId: "testuser",
       realm: "patricbrc.org",
     });
-    mockFetch.mockResolvedValue({ ok: true });
+
+    let capturedBody: unknown;
+    let capturedHeaders: Record<string, string> = {};
+    server.use(
+      http.post("http://mock-verification-url", async ({ request }) => {
+        capturedBody = await request.json();
+        capturedHeaders = {
+          Authorization: request.headers.get("Authorization") ?? "",
+        };
+        return new HttpResponse(null, { status: 200 });
+      }),
+    );
 
     const response = await POST();
     const data = await response.json();
@@ -72,16 +78,8 @@ describe("POST /api/auth/send-verification-email", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.message).toBe("Verification email sent successfully");
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://mock-verification-url",
-      expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({
-          Authorization: "valid-token",
-        }),
-        body: JSON.stringify({ id: "testuser" }),
-      }),
-    );
+    expect(capturedBody).toEqual({ id: "testuser" });
+    expect(capturedHeaders.Authorization).toBe("valid-token");
   });
 
   it("returns upstream error on non-ok response", async () => {
@@ -90,12 +88,15 @@ describe("POST /api/auth/send-verification-email", () => {
       userId: "testuser",
       realm: undefined,
     });
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 429,
-      json: () =>
-        Promise.resolve({ message: "Too many verification requests" }),
-    });
+
+    server.use(
+      http.post("http://mock-verification-url", () => {
+        return HttpResponse.json(
+          { message: "Too many verification requests" },
+          { status: 429 },
+        );
+      }),
+    );
 
     const response = await POST();
     const data = await response.json();
@@ -106,6 +107,8 @@ describe("POST /api/auth/send-verification-email", () => {
   });
 
   it("returns 500 when an exception is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     mockGetBvbrcAuthData.mockRejectedValue(new Error("Unexpected error"));
 
     const response = await POST();

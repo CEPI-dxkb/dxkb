@@ -104,3 +104,6 @@ Requires **Node v24** (`nvm use 24`). Vitest 4 / rolldown needs Node >= 22.
 
 - Module-level constants and types that are used by a service page belong in that service's `*-form-utils.ts` file, not inline in the page component. Export them and import into the page.
 
+### Git
+
+- Do NOT automatically try to commit changes unless it was specified to do so. All changes need to be reviewed manually before blindly commiting them.

@@ -68,6 +68,7 @@ describe("POST /api/services/app-service/jobs/app-summary", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockGetToken.mockResolvedValue("test-token");
     mockAppService.queryAppSummaryFiltered.mockRejectedValue(
       new Error("Timeout"),

@@ -2,19 +2,14 @@ vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-verification-url"),
 }));
 
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { GET } from "../route";
 
 describe("GET /api/auth/verify-email-token", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal("fetch", mockFetch);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it("returns 400 when token is missing", async () => {
@@ -49,10 +44,13 @@ describe("GET /api/auth/verify-email-token", () => {
 
   it("returns success with data on successful verification", async () => {
     const resultPayload = { verified: true, userId: "user123" };
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(resultPayload),
-    });
+    let capturedBody: unknown;
+    server.use(
+      http.post("http://mock-verification-url", async ({ request }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json(resultPayload);
+      }),
+    );
 
     const request = mockNextRequest({
       searchParams: { token: "verify-token", username: "testuser" },
@@ -65,24 +63,21 @@ describe("GET /api/auth/verify-email-token", () => {
     expect(data.success).toBe(true);
     expect(data.message).toBe("Email verified successfully");
     expect(data.data).toEqual(resultPayload);
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://mock-verification-url",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          token: "verify-token",
-          username: "testuser",
-        }),
-      }),
-    );
+    expect(capturedBody).toEqual({
+      token: "verify-token",
+      username: "testuser",
+    });
   });
 
   it("returns upstream error with message", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 422,
-      json: () => Promise.resolve({ message: "Token expired" }),
-    });
+    server.use(
+      http.post("http://mock-verification-url", () => {
+        return HttpResponse.json(
+          { message: "Token expired" },
+          { status: 422 },
+        );
+      }),
+    );
 
     const request = mockNextRequest({
       searchParams: { token: "expired-token", username: "testuser" },
@@ -98,11 +93,11 @@ describe("GET /api/auth/verify-email-token", () => {
   });
 
   it("returns default error message when upstream JSON parse fails", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 500,
-      json: () => Promise.reject(new Error("Invalid JSON")),
-    });
+    server.use(
+      http.post("http://mock-verification-url", () => {
+        return new HttpResponse("not json", { status: 500 });
+      }),
+    );
 
     const request = mockNextRequest({
       searchParams: { token: "bad-token", username: "testuser" },
@@ -119,7 +114,7 @@ describe("GET /api/auth/verify-email-token", () => {
   it("returns 504 on AbortError (timeout)", async () => {
     const abortError = new Error("The operation was aborted");
     abortError.name = "AbortError";
-    mockFetch.mockRejectedValue(abortError);
+    const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(abortError);
 
     const request = mockNextRequest({
       searchParams: { token: "slow-token", username: "testuser" },
@@ -131,10 +126,15 @@ describe("GET /api/auth/verify-email-token", () => {
     expect(response.status).toBe(504);
     expect(data.success).toBe(false);
     expect(data.message).toBe("Email verification request timed out");
+    spy.mockRestore();
   });
 
   it("returns 500 on other errors", async () => {
-    mockFetch.mockRejectedValue(new Error("Unexpected failure"));
+    server.use(
+      http.post("http://mock-verification-url", () => {
+        return HttpResponse.error();
+      }),
+    );
 
     const request = mockNextRequest({
       searchParams: { token: "some-token", username: "testuser" },

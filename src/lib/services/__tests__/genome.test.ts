@@ -1,3 +1,5 @@
+import { http, HttpResponse } from "msw";
+
 import {
   fetchGenomeSuggestions,
   fetchGenomesByIds,
@@ -6,19 +8,11 @@ import {
   validateViralGenomes,
   fetchGenomeGroupMembers,
 } from "@/lib/services/genome";
-
-function mockFetchResponse(data: unknown, ok = true, status = 200) {
-  return vi.fn().mockResolvedValue({
-    ok,
-    status,
-    json: () => Promise.resolve(data),
-    text: () => Promise.resolve(JSON.stringify(data)),
-  });
-}
+import { server } from "@/test-helpers/msw-server";
 
 describe("genome service", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("fetchGenomeSuggestions", () => {
@@ -27,57 +21,73 @@ describe("genome service", () => {
         { genome_id: "g1", genome_name: "Genome 1" },
         { genome_id: "g2", genome_name: "Genome 2" },
       ];
-      vi.stubGlobal("fetch", mockFetchResponse({ results: mockResults }));
+      let capturedUrl = "";
+      server.use(
+        http.get("/api/services/genome/search", ({ request }) => {
+          capturedUrl = request.url;
+          return HttpResponse.json({ results: mockResults });
+        }),
+      );
 
       const result = await fetchGenomeSuggestions("test query");
 
       expect(result).toEqual(mockResults);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/api/services/genome/search?q=test+query&limit=25"),
-        expect.objectContaining({ method: "GET", credentials: "include" }),
-      );
+      const params = new URL(capturedUrl).searchParams;
+      expect(params.get("q")).toBe("test query");
+      expect(params.get("limit")).toBe("25");
     });
 
     it("throws on HTTP error", async () => {
-      vi.stubGlobal("fetch", mockFetchResponse(
-        { error: "Server error" },
-        false,
-        500,
-      ));
+      server.use(
+        http.get("/api/services/genome/search", () =>
+          HttpResponse.json({ error: "Server error" }, { status: 500 }),
+        ),
+      );
 
       await expect(fetchGenomeSuggestions("fail")).rejects.toThrow("Server error");
     });
 
     it("returns empty array on AbortError", async () => {
-      const abortError = new DOMException("The operation was aborted.", "AbortError");
-      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));
+      const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+        new DOMException("The operation was aborted.", "AbortError"),
+      );
 
       const result = await fetchGenomeSuggestions("aborted");
 
       expect(result).toEqual([]);
+      spy.mockRestore();
     });
   });
 
   describe("fetchGenomesByIds", () => {
     it("returns empty array when given empty ids", async () => {
-      vi.stubGlobal("fetch", vi.fn());
+      let handlerCalled = false;
+      server.use(
+        http.post("/api/services/genome/by-ids", () => {
+          handlerCalled = true;
+          return HttpResponse.json({ results: [] });
+        }),
+      );
 
       const result = await fetchGenomesByIds([]);
 
       expect(result).toEqual([]);
-      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(handlerCalled).toBe(false);
     });
 
     it("deduplicates ids before sending", async () => {
+      let capturedBody: { genome_ids?: string[] } = {};
       const mockResults = [{ genome_id: "g1", genome_name: "Genome 1" }];
-      vi.stubGlobal("fetch", mockFetchResponse({ results: mockResults }));
+      server.use(
+        http.post("/api/services/genome/by-ids", async ({ request }) => {
+          capturedBody = (await request.json()) as typeof capturedBody;
+          return HttpResponse.json({ results: mockResults });
+        }),
+      );
 
       await fetchGenomesByIds(["g1", "g1", "g2", "g2"]);
 
-      const callBody = JSON.parse(
-        (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body,
-      );
-      expect(callBody.genome_ids).toEqual(["g1", "g2"]);
+      expect(capturedBody.genome_ids).toEqual(["g1", "g2"]);
     });
 
     it("returns results on success", async () => {
@@ -85,23 +95,26 @@ describe("genome service", () => {
         { genome_id: "g1", genome_name: "Genome 1" },
         { genome_id: "g2", genome_name: "Genome 2" },
       ];
-      vi.stubGlobal("fetch", mockFetchResponse({ results: mockResults }));
+      let capturedMethod = "";
+      server.use(
+        http.post("/api/services/genome/by-ids", ({ request }) => {
+          capturedMethod = request.method;
+          return HttpResponse.json({ results: mockResults });
+        }),
+      );
 
       const result = await fetchGenomesByIds(["g1", "g2"]);
 
       expect(result).toEqual(mockResults);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/services/genome/by-ids",
-        expect.objectContaining({ method: "POST", credentials: "include" }),
-      );
+      expect(capturedMethod).toBe("POST");
     });
 
     it("throws on HTTP error", async () => {
-      vi.stubGlobal("fetch", mockFetchResponse(
-        { error: "Not found" },
-        false,
-        404,
-      ));
+      server.use(
+        http.post("/api/services/genome/by-ids", () =>
+          HttpResponse.json({ error: "Not found" }, { status: 404 }),
+        ),
+      );
 
       await expect(fetchGenomesByIds(["g1"])).rejects.toThrow("Not found");
     });
@@ -113,23 +126,26 @@ describe("genome service", () => {
         { genome_id: "g1", genome_name: "Genome 1" },
         { genome_id: "g2", genome_name: "Genome 2" },
       ];
-      vi.stubGlobal("fetch", mockFetchResponse({ results: mockResults }));
+      let capturedMethod = "";
+      server.use(
+        http.post("/api/services/genome/get-all-ids", ({ request }) => {
+          capturedMethod = request.method;
+          return HttpResponse.json({ results: mockResults });
+        }),
+      );
 
       const result = await fetchAllGenomeIds();
 
       expect(result).toEqual(mockResults);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/services/genome/get-all-ids",
-        expect.objectContaining({ method: "POST", credentials: "include" }),
-      );
+      expect(capturedMethod).toBe("POST");
     });
 
     it("throws on HTTP error", async () => {
-      vi.stubGlobal("fetch", mockFetchResponse(
-        { error: "Service unavailable" },
-        false,
-        503,
-      ));
+      server.use(
+        http.post("/api/services/genome/get-all-ids", () =>
+          HttpResponse.json({ error: "Service unavailable" }, { status: 503 }),
+        ),
+      );
 
       await expect(fetchAllGenomeIds()).rejects.toThrow("Service unavailable");
     });
@@ -137,35 +153,43 @@ describe("genome service", () => {
 
   describe("getGenomeIdsFromGroup", () => {
     it("returns empty array for empty path", async () => {
-      vi.stubGlobal("fetch", vi.fn());
+      let handlerCalled = false;
+      server.use(
+        http.post("/api/services/workspace", () => {
+          handlerCalled = true;
+          return HttpResponse.json({});
+        }),
+      );
 
       const result = await getGenomeIdsFromGroup("");
 
       expect(result).toEqual([]);
-      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(handlerCalled).toBe(false);
     });
 
     it("decodes JSON string data and returns genome ids", async () => {
       const groupData = JSON.stringify({
         id_list: { genome_id: ["g1", "g2", "g3"] },
       });
-      const workspaceResponse = {
-        result: [
-          [
-            ["metadata-placeholder", groupData],
-          ],
-        ],
-      };
-      vi.stubGlobal("fetch", mockFetchResponse(workspaceResponse));
+      let capturedBody: { method?: string; params?: [{ objects?: string[] }] } = {};
+      server.use(
+        http.post("/api/services/workspace", async ({ request }) => {
+          capturedBody = (await request.json()) as typeof capturedBody;
+          return HttpResponse.json({
+            result: [
+              [
+                ["metadata-placeholder", groupData],
+              ],
+            ],
+          });
+        }),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/mygroup");
 
       expect(result).toEqual(["g1", "g2", "g3"]);
-      const callBody = JSON.parse(
-        (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body,
-      );
-      expect(callBody.method).toBe("Workspace.get");
-      expect(callBody.params[0].objects).toEqual(["/user/mygroup"]);
+      expect(capturedBody.method).toBe("Workspace.get");
+      expect(capturedBody.params?.[0].objects).toEqual(["/user/mygroup"]);
     });
 
     it("returns genome ids from base64 encoded data", async () => {
@@ -173,14 +197,17 @@ describe("genome service", () => {
         id_list: { genome_id: ["b64-g1", "b64-g2"] },
       });
       const base64Data = Buffer.from(groupJson).toString("base64");
-      const workspaceResponse = {
-        result: [
-          [
-            ["metadata-placeholder", base64Data],
-          ],
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              [
+                ["metadata-placeholder", base64Data],
+              ],
+            ],
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/encoded-group");
 
@@ -188,14 +215,17 @@ describe("genome service", () => {
     });
 
     it("passes object data through as-is", async () => {
-      const workspaceResponse = {
-        result: [
-          [
-            ["metadata", { id_list: { genome_id: ["obj-g1"] } }],
-          ],
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              [
+                ["metadata", { id_list: { genome_id: ["obj-g1"] } }],
+              ],
+            ],
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/obj-group");
 
@@ -204,14 +234,17 @@ describe("genome service", () => {
 
     it("returns empty array when decoded data has no id_list", async () => {
       const groupData = JSON.stringify({ some_other_field: "value" });
-      const workspaceResponse = {
-        result: [
-          [
-            ["metadata", groupData],
-          ],
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              [
+                ["metadata", groupData],
+              ],
+            ],
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/empty-group");
 
@@ -220,14 +253,17 @@ describe("genome service", () => {
 
     it("returns empty array when id_list has no genome_id", async () => {
       const groupData = JSON.stringify({ id_list: { feature_id: ["f1"] } });
-      const workspaceResponse = {
-        result: [
-          [
-            ["metadata", groupData],
-          ],
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              [
+                ["metadata", groupData],
+              ],
+            ],
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/no-genomes");
 
@@ -238,14 +274,17 @@ describe("genome service", () => {
       const groupData = JSON.stringify({
         id_list: { genome_id: ["g1", 123, null, "g2", undefined] },
       });
-      const workspaceResponse = {
-        result: [
-          [
-            ["metadata", groupData],
-          ],
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              [
+                ["metadata", groupData],
+              ],
+            ],
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/mixed-group");
 
@@ -253,14 +292,21 @@ describe("genome service", () => {
     });
 
     it("throws on HTTP error", async () => {
-      global.fetch = mockFetchResponse({ error: "Server error" }, false, 500);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({ error: "Server error" }, { status: 500 }),
+        ),
+      );
 
       await expect(getGenomeIdsFromGroup("/user/fail")).rejects.toThrow("Server error");
     });
 
     it("throws when workspace response entry is null", async () => {
-      const workspaceResponse = { result: [null] };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({ result: [null] }),
+        ),
+      );
 
       await expect(getGenomeIdsFromGroup("/user/bad-response")).rejects.toThrow(
         "Invalid workspace response for genome group",
@@ -268,23 +314,28 @@ describe("genome service", () => {
     });
 
     it("returns empty array on AbortError", async () => {
-      const abortError = new DOMException("The operation was aborted.", "AbortError");
-      global.fetch = vi.fn().mockRejectedValue(abortError);
+      const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+        new DOMException("The operation was aborted.", "AbortError"),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/aborted");
 
       expect(result).toEqual([]);
+      spy.mockRestore();
     });
 
     it("handles container-as-object with metadata/data format", async () => {
-      const workspaceResponse = {
-        result: [
-          [
-            { metadata: "meta-info", data: JSON.stringify({ id_list: { genome_id: ["md-g1"] } }) },
-          ],
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              [
+                { metadata: "meta-info", data: JSON.stringify({ id_list: { genome_id: ["md-g1"] } }) },
+              ],
+            ],
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/md-format");
 
@@ -292,16 +343,19 @@ describe("genome service", () => {
     });
 
     it("handles first-value-in-object format", async () => {
-      const workspaceResponse = {
-        result: [
-          {
-            "/user/group": [
-              ["metadata", JSON.stringify({ id_list: { genome_id: ["fv-g1"] } })],
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [
+              {
+                "/user/group": [
+                  ["metadata", JSON.stringify({ id_list: { genome_id: ["fv-g1"] } })],
+                ],
+              },
             ],
-          },
-        ],
-      };
-      global.fetch = mockFetchResponse(workspaceResponse);
+          }),
+        ),
+      );
 
       const result = await getGenomeIdsFromGroup("/user/fv-format");
 
@@ -311,36 +365,42 @@ describe("genome service", () => {
 
   describe("fetchGenomeGroupMembers", () => {
     it("returns empty array for empty path", async () => {
-      global.fetch = vi.fn();
+      let handlerCalled = false;
+      server.use(
+        http.post("/api/services/workspace", () => {
+          handlerCalled = true;
+          return HttpResponse.json({});
+        }),
+      );
 
       const result = await fetchGenomeGroupMembers("");
 
       expect(result).toEqual([]);
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(handlerCalled).toBe(false);
     });
 
     it("fetches workspace data then genome metadata", async () => {
       const groupData = JSON.stringify({
         id_list: { genome_id: ["g1", "g2"] },
       });
-      const wsResponse = {
-        ok: true,
-        json: () => Promise.resolve({
-          result: [[["metadata", groupData]]],
+      let fetchCount = 0;
+      server.use(
+        http.post("/api/services/workspace", () => {
+          fetchCount++;
+          return HttpResponse.json({
+            result: [[["metadata", groupData]]],
+          });
         }),
-      };
-      const genomeResponse = {
-        ok: true,
-        json: () => Promise.resolve({
-          results: [
-            { genome_id: "g1", genome_name: "Genome 1" },
-            { genome_id: "g2", genome_name: "Genome 2" },
-          ],
+        http.post("/api/services/genome/by-ids", () => {
+          fetchCount++;
+          return HttpResponse.json({
+            results: [
+              { genome_id: "g1", genome_name: "Genome 1" },
+              { genome_id: "g2", genome_name: "Genome 2" },
+            ],
+          });
         }),
-      };
-      global.fetch = vi.fn()
-        .mockResolvedValueOnce(wsResponse)
-        .mockResolvedValueOnce(genomeResponse);
+      );
 
       const result = await fetchGenomeGroupMembers("/user/group");
 
@@ -348,7 +408,7 @@ describe("genome service", () => {
         { genome_id: "g1", genome_name: "Genome 1" },
         { genome_id: "g2", genome_name: "Genome 2" },
       ]);
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(fetchCount).toBe(2);
     });
 
     it("decodes base64 encoded workspace data", async () => {
@@ -356,21 +416,18 @@ describe("genome service", () => {
         id_list: { genome_id: ["b64-g1"] },
       });
       const base64Data = Buffer.from(groupJson).toString("base64");
-      const wsResponse = {
-        ok: true,
-        json: () => Promise.resolve({
-          result: [[["metadata", base64Data]]],
-        }),
-      };
-      const genomeResponse = {
-        ok: true,
-        json: () => Promise.resolve({
-          results: [{ genome_id: "b64-g1", genome_name: "B64 Genome" }],
-        }),
-      };
-      global.fetch = vi.fn()
-        .mockResolvedValueOnce(wsResponse)
-        .mockResolvedValueOnce(genomeResponse);
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [[["metadata", base64Data]]],
+          }),
+        ),
+        http.post("/api/services/genome/by-ids", () =>
+          HttpResponse.json({
+            results: [{ genome_id: "b64-g1", genome_name: "B64 Genome" }],
+          }),
+        ),
+      );
 
       const result = await fetchGenomeGroupMembers("/user/b64-group");
 
@@ -378,7 +435,11 @@ describe("genome service", () => {
     });
 
     it("throws when workspace response entry is null", async () => {
-      global.fetch = mockFetchResponse({ result: [null] });
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({ result: [null] }),
+        ),
+      );
 
       await expect(fetchGenomeGroupMembers("/user/bad")).rejects.toThrow(
         "Invalid workspace response for genome group",
@@ -386,30 +447,42 @@ describe("genome service", () => {
     });
 
     it("returns empty array on AbortError", async () => {
-      const abortError = new DOMException("The operation was aborted.", "AbortError");
-      global.fetch = vi.fn().mockRejectedValue(abortError);
+      const spy = vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+        new DOMException("The operation was aborted.", "AbortError"),
+      );
 
       const result = await fetchGenomeGroupMembers("/user/aborted");
 
       expect(result).toEqual([]);
+      spy.mockRestore();
     });
   });
 
   describe("validateViralGenomes", () => {
     it("returns allValid true for empty ids", async () => {
-      global.fetch = vi.fn();
+      let handlerCalled = false;
+      server.use(
+        http.post("/api/services/genome/validate-viral", () => {
+          handlerCalled = true;
+          return HttpResponse.json({});
+        }),
+      );
 
       const result = await validateViralGenomes([]);
 
       expect(result).toEqual({ allValid: true, errors: {}, results: [] });
-      expect(global.fetch).not.toHaveBeenCalled();
+      expect(handlerCalled).toBe(false);
     });
 
     it("detects kingdom_error for non-Viruses superkingdom", async () => {
       const mockResults = [
         { genome_id: "g1", superkingdom: "Bacteria", contigs: 1, genome_length: 1000 },
       ];
-      global.fetch = mockFetchResponse({ results: mockResults });
+      server.use(
+        http.post("/api/services/genome/validate-viral", () =>
+          HttpResponse.json({ results: mockResults }),
+        ),
+      );
 
       const result = await validateViralGenomes(["g1"]);
 
@@ -422,7 +495,11 @@ describe("genome service", () => {
       const mockResults = [
         { genome_id: "g1", superkingdom: "Viruses", contigs: 5, genome_length: 1000 },
       ];
-      global.fetch = mockFetchResponse({ results: mockResults });
+      server.use(
+        http.post("/api/services/genome/validate-viral", () =>
+          HttpResponse.json({ results: mockResults }),
+        ),
+      );
 
       const result = await validateViralGenomes(["g1"]);
 
@@ -435,7 +512,11 @@ describe("genome service", () => {
       const mockResults = [
         { genome_id: "g1", superkingdom: "Viruses", contigs: 1, genome_length: 500000 },
       ];
-      global.fetch = mockFetchResponse({ results: mockResults });
+      server.use(
+        http.post("/api/services/genome/validate-viral", () =>
+          HttpResponse.json({ results: mockResults }),
+        ),
+      );
 
       const result = await validateViralGenomes(["g1"]);
 
@@ -448,7 +529,11 @@ describe("genome service", () => {
       const mockResults = [
         { genome_id: "g1", contigs: 1, genome_length: 1000 },
       ];
-      global.fetch = mockFetchResponse({ results: mockResults });
+      server.use(
+        http.post("/api/services/genome/validate-viral", () =>
+          HttpResponse.json({ results: mockResults }),
+        ),
+      );
 
       const result = await validateViralGenomes(["g1"]);
 

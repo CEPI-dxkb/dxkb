@@ -39,6 +39,7 @@ describe("useJobResultData", () => {
   });
 
   it("computes dotPath from getJobResultDotPath", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     const wrapper = createQueryClientWrapper();
     const meta = makeResolvedMeta();
     vi.mocked(getJobResultDotPath).mockReturnValue("/user@bvbrc/home/.myJob");

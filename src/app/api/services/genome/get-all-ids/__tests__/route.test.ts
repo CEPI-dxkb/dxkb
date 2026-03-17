@@ -1,16 +1,12 @@
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import {
-  mockNextRequest,
-  mockFetchResponse,
-} from "@/test-helpers/api-route-helpers";
+import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
 vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
-
-const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
 async function json(res: Response) {
   return res.json();
@@ -37,7 +33,14 @@ describe("POST /api/services/genome/get-all-ids", () => {
   it("uses default limit of 10000 when no body", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     // Send request with no JSON body — route handles parse failure via .catch(() => ({}))
     const req = new (await import("next/server")).NextRequest(
@@ -46,29 +49,43 @@ describe("POST /api/services/genome/get-all-ids", () => {
     );
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][0]).toContain("limit(10000)");
+    expect(capturedUrl).toContain("limit(10000)");
   });
 
   it("clamps limit below 1 to 1", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     const req = mockNextRequest({ method: "POST", body: { limit: 0 } });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][0]).toContain("limit(1)");
+    expect(capturedUrl).toContain("limit(1)");
   });
 
   it("clamps limit above 10000 to 10000", async () => {
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse([]));
+
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
 
     const req = mockNextRequest({ method: "POST", body: { limit: 99999 } });
     await POST(req);
 
-    expect(mockFetch.mock.calls[0][0]).toContain("limit(10000)");
+    expect(capturedUrl).toContain("limit(10000)");
   });
 
   it("returns results on success", async () => {
@@ -76,7 +93,11 @@ describe("POST /api/services/genome/get-all-ids", () => {
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
 
     const genomes = [{ genome_id: "1.1" }, { genome_id: "2.2" }];
-    mockFetch.mockResolvedValue(mockFetchResponse(genomes));
+    server.use(
+      http.get("http://mock-api/genome/", () => {
+        return HttpResponse.json(genomes);
+      }),
+    );
 
     const req = mockNextRequest({ method: "POST", body: { limit: 10 } });
     const res = await POST(req);
@@ -86,9 +107,15 @@ describe("POST /api/services/genome/get-all-ids", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const { getBvbrcAuthToken } = await import("@/lib/auth");
     vi.mocked(getBvbrcAuthToken).mockResolvedValue("token");
-    mockFetch.mockResolvedValue(mockFetchResponse("err", false, 500));
+
+    server.use(
+      http.get("http://mock-api/genome/", () => {
+        return new HttpResponse("err", { status: 500 });
+      }),
+    );
 
     const req = mockNextRequest({ method: "POST", body: {} });
     const res = await POST(req);

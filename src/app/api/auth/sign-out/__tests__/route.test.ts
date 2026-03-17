@@ -31,6 +31,8 @@ describe("POST /api/auth/sign-out", () => {
   });
 
   it("returns 500 when clearBvbrcAuthCookies throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
     mockClearBvbrcAuthCookies.mockRejectedValue(new Error("Cookie error"));
 
     const response = await POST();

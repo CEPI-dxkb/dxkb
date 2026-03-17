@@ -1,4 +1,4 @@
-name: pnpm Build Verification
+name: Build Verification
 
 on:
   pull_request:

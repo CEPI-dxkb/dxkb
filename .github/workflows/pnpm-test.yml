@@ -1,4 +1,4 @@
-name: Lint Verification
+name: Test Verification
 
 on:
   pull_request:
@@ -11,7 +11,7 @@ on:
       - main
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -34,5 +34,5 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Lint project
-        run: pnpm lint
+      - name: Run tests
+        run: pnpm test

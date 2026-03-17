@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { LuMapPin, LuExternalLink } from "react-icons/lu";
+import { MapPin, ExternalLink } from "lucide-react";
 
 const Offices = () => {
   return (
@@ -11,10 +11,10 @@ const Offices = () => {
                 {/* This would be replaced with an actual map component */}
                 <div className="w-full h-full flex items-center justify-center bg-gray-300">
                   <div className="text-center">
-                    <LuMapPin className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-muted-foreground">Interactive Map Would Be Displayed Here</p>
                     <Button variant="outline" className="mt-4">
-                      <LuExternalLink className="h-4 w-4 mr-2" />
+                      <ExternalLink className="h-4 w-4 mr-2" />
                       View Full Map
                     </Button>
                   </div>

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { LuSearch } from "react-icons/lu";
+import { Search } from "lucide-react";
 
 const HelpHero = () => {
   return (
@@ -13,7 +13,7 @@ const HelpHero = () => {
       </p>
       <div className="max-w-xl mx-auto relative bg-white rounded-lg">
         <Input type="text" placeholder="Search for help topics..." className="pl-10 py-6 text-base bg-background" />
-        <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" size={18} />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" size={18} />
         <Button className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-secondary hover:bg-accent text-white hover:text-white">
           Search
         </Button>

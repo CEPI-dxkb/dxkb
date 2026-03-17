@@ -8,7 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { LuSun, LuMoon, LuPalette } from "react-icons/lu";
+import { Sun, Moon, Palette } from "lucide-react";
 import { themeBases } from "@/styles/themes";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 
@@ -45,7 +45,7 @@ export function ThemeSwitcher() {
               className="bg-primary hover:bg-foreground border border-accent h-12 w-12 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
               onClick={() => setIsOpen(!isOpen)}
             >
-              <LuPalette className="h-5 w-5" />
+              <Palette className="h-5 w-5" />
             </Button>
           }
         />
@@ -85,12 +85,12 @@ export function ThemeSwitcher() {
               >
                 {currentMode === "light" ? (
                   <>
-                    <LuSun className="mr-2 h-4 w-4" />
+                    <Sun className="mr-2 h-4 w-4" />
                     Light
                   </>
                 ) : (
                   <>
-                    <LuMoon className="mr-2 h-4 w-4" />
+                    <Moon className="mr-2 h-4 w-4" />
                     Dark
                   </>
                 )}

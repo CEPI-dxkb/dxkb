@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { LuEye, LuEyeOff, LuLock, LuUser } from "react-icons/lu";
+import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
 
 const formSchema = z.object({
@@ -103,7 +103,7 @@ function SigninForm() {
                 <FieldItem>
                   <RequiredFormLabel>Username or email</RequiredFormLabel>
                   <div className="relative">
-                    <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="Enter your username or email"
                       id={field.name}
@@ -134,7 +134,7 @@ function SigninForm() {
                     </p>
                   </div>
                   <div className="relative">
-                    <LuLock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <Lock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       id={field.name}
                       name={field.name}
@@ -154,9 +154,9 @@ function SigninForm() {
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <LuEyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <LuEye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       )}
                       <span className="sr-only">
                         {showPassword ? "Hide password" : "Show password"}

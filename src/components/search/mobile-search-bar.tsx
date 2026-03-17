@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-import { LuSearch, LuX } from "react-icons/lu";
+import { Search, X } from "lucide-react";
 
 interface MobileSearchBarProps {
   initialValue?: string;
@@ -153,7 +153,7 @@ function MobileSearchBarContent({
         {/* Input Field Container */}
         <div className="relative min-w-0 flex-1">
           {/* Search Icon */}
-          <LuSearch
+          <Search
             className="text-primary pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2"
             size={18}
           />
@@ -181,7 +181,7 @@ function MobileSearchBarContent({
               className="text-muted-foreground hover:bg-muted/80 hover:text-foreground absolute top-1/2 right-2 z-30 flex h-7 w-7 -translate-y-1/2 cursor-pointer touch-manipulation items-center justify-center rounded-full transition-colors"
               aria-label="Clear search"
             >
-              <LuX size={18} />
+              <X size={18} />
             </Button>
           )}
         </div>

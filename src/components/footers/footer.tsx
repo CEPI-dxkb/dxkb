@@ -1,12 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import {
-  FaGithub,
-  FaTwitter,
-  FaFacebook,
-  FaInstagram,
-  FaYoutube,
-} from "react-icons/fa";
+import { Github, Twitter, Facebook, Instagram, Youtube } from "lucide-react";
 import Logo from "@/components/ui/logo";
 import ThemeContent from "@/components/ui/theme-content";
 
@@ -95,7 +89,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <FaTwitter className="h-4 w-4" data-icon="inline-start" />
+                <Twitter className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">Twitter</span>
               </Link>
               <Link
@@ -104,7 +98,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <FaFacebook className="h-4 w-4" data-icon="inline-start" />
+                <Facebook className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">Facebook</span>
               </Link>
               <Link
@@ -113,7 +107,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <FaInstagram className="h-4 w-4" data-icon="inline-start" />
+                <Instagram className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">Instagram</span>
               </Link>
               <Link
@@ -122,7 +116,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <FaGithub className="h-4 w-4" data-icon="inline-start" />
+                <Github className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">GitHub</span>
               </Link>
               <Link
@@ -131,7 +125,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <FaYoutube className="h-4 w-4" data-icon="inline-start" />
+                <Youtube className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">YouTube</span>
               </Link>
             </div>

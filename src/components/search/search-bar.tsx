@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { searchTypes } from "@/constants/searchInfo";
 import { Input } from "@/components/ui/input";
 
-import { LuSearch } from "react-icons/lu";
+import { Search } from "lucide-react";
 
 interface SearchBarProps {
   initialValue?: string;
@@ -116,7 +116,7 @@ function SearchBarContent({
             onKeyDown={handleKeyDown}
           />
           {showIcon && (
-            <LuSearch
+            <Search
               className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary pointer-events-none"
               size={18}
             />

@@ -1,6 +1,6 @@
 "use client";
 import { ViewType } from "@/app/organisms/viruses/views";
-import { LuList, LuLayoutGrid, LuChevronLeft, LuChevronRight } from "react-icons/lu";
+import { List, LayoutGrid, ChevronLeft, ChevronRight } from "lucide-react";
 import { VerticalMenu } from "@/components/ui/vertical-menu";
 import { Button } from "@/components/ui/button";
 
@@ -20,60 +20,60 @@ export function NavigationMenu({
 
   const navItems = [
     {
-      icon: <LuList className="h-4 w-4" />,
+      icon: <List className="h-4 w-4" />,
       label: "Overview",
       isActive: activeView === "overview",
       onClick: () => handleViewChange("overview")
     },
     {
-      icon: <LuLayoutGrid className="h-4 w-4" />,
+      icon: <LayoutGrid className="h-4 w-4" />,
       label: "Taxonomy",
       isActive: activeView === "taxonomy",
       onClick: () => handleViewChange("taxonomy")
     },
     {
-      icon: <LuList className="h-4 w-4" />,
+      icon: <List className="h-4 w-4" />,
       label: "More Options...",
       isActive: activeView === "moreOptions",
       onClick: () => handleViewChange("moreOptions")
     }
     // {
-    //   icon: <LuList className="h-4 w-4" />,
+    //   icon: <List className="h-4 w-4" />,
     //   label: "Genomes",
     //   isActive: activeView === "genomes",
     //   onClick: () => setActiveView("genomes")
     // },
     // {
-    //   icon: <LuLayoutGrid className="h-4 w-4" />,
+    //   icon: <LayoutGrid className="h-4 w-4" />,
     //   label: "Features",
     //   isActive: activeView === "features",
     //   onClick: () => setActiveView("features")
     // }, {
-    //   icon: <LuList className="h-4 w-4" />,
+    //   icon: <List className="h-4 w-4" />,
     //   label: "Proteins",
     //   isActive: activeView === "proteins",
     //   onClick: () => setActiveView("proteins")
     // },
     // {
-    //   icon: <LuLayoutGrid className="h-4 w-4" />,
+    //   icon: <LayoutGrid className="h-4 w-4" />,
     //   label: "Protien Structures",
     //   isActive: activeView === "protein-structures",
     //   onClick: () => setActiveView("protein-structures")
     // },
     // {
-    //   icon: <LuList className="h-4 w-4" />,
+    //   icon: <List className="h-4 w-4" />,
     //   label: "Domains & Motifs",
     //   isActive: activeView === "domains-motifs",
     //   onClick: () => setActiveView("domains-motifs")
     // },
     // {
-    //   icon: <LuLayoutGrid className="h-4 w-4" />,
+    //   icon: <LayoutGrid className="h-4 w-4" />,
     //   label: "Epitopes",
     //   isActive: activeView === "epitopes",
     //   onClick: () => setActiveView("epitopes")
     // },
     // {
-    //   icon: <LuList className="h-4 w-4" />,
+    //   icon: <List className="h-4 w-4" />,
     //   label: "Experiments",
     //   isActive: activeView === "experiments",
     //   onClick: () => setActiveView("experiments")
@@ -102,9 +102,9 @@ export function NavigationMenu({
               aria-label={navCollapsed ? "Expand menu" : "Collapse menu"}
             >
               {navCollapsed ? (
-                <LuChevronRight className="shrink-0 w-4 h-4" />
+                <ChevronRight className="shrink-0 w-4 h-4" />
               ) : (
-                <LuChevronLeft className="shrink-0 w-4 h-4" />
+                <ChevronLeft className="shrink-0 w-4 h-4" />
               )}
             </Button>
           </div>

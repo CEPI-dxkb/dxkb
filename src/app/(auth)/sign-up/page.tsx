@@ -20,14 +20,7 @@ import {
   FieldErrors,
 } from "@/components/ui/tanstack-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  LuEye,
-  LuEyeOff,
-  LuMail,
-  LuLock,
-  LuMessageCircle,
-  LuUser,
-} from "react-icons/lu";
+import { Eye, EyeOff, Mail, Lock, MessageCircle, User } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -141,7 +134,7 @@ function SignupForm() {
                 <FieldItem>
                   <RequiredFormLabel>First name</RequiredFormLabel>
                   <div className="relative">
-                    <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="John"
                       id={field.name}
@@ -162,7 +155,7 @@ function SignupForm() {
                 <FieldItem>
                   <FieldLabel field={field}>Middle name</FieldLabel>
                   <div className="relative">
-                    <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="James"
                       id={field.name}
@@ -184,7 +177,7 @@ function SignupForm() {
                 <FieldItem>
                   <RequiredFormLabel>Last name</RequiredFormLabel>
                   <div className="relative">
-                    <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="Doe"
                       id={field.name}
@@ -206,7 +199,7 @@ function SignupForm() {
                 <FieldItem>
                   <RequiredFormLabel>Username</RequiredFormLabel>
                   <div className="relative">
-                    <LuMail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <Mail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="john.doe"
                       id={field.name}
@@ -227,7 +220,7 @@ function SignupForm() {
                 <FieldItem>
                   <RequiredFormLabel>Email</RequiredFormLabel>
                   <div className="relative">
-                    <LuMail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <Mail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="john.doe@example.com"
                       id={field.name}
@@ -248,7 +241,7 @@ function SignupForm() {
                 <FieldItem>
                   <FieldLabel field={field}>Organization</FieldLabel>
                   <div className="relative">
-                    <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="John Doe Inc."
                       id={field.name}
@@ -269,7 +262,7 @@ function SignupForm() {
                 <FieldItem>
                   <FieldLabel field={field}>Organisms</FieldLabel>
                   <div className="relative">
-                    <LuUser className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <User className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="Enter organisms"
                       id={field.name}
@@ -290,7 +283,7 @@ function SignupForm() {
                 <FieldItem>
                   <FieldLabel field={field}>Interests</FieldLabel>
                   <div className="relative">
-                    <LuMessageCircle className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <MessageCircle className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Textarea
                       placeholder="Enter interests"
                       id={field.name}
@@ -311,7 +304,7 @@ function SignupForm() {
                 <FieldItem>
                   <RequiredFormLabel>Password</RequiredFormLabel>
                   <div className="relative">
-                    <LuLock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <Lock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       id={field.name}
                       name={field.name}
@@ -331,9 +324,9 @@ function SignupForm() {
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? (
-                        <LuEyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <LuEye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       )}
                       <span className="sr-only">
                         {showPassword ? "Hide password" : "Show password"}
@@ -350,7 +343,7 @@ function SignupForm() {
                 <FieldItem>
                   <RequiredFormLabel>Confirm password</RequiredFormLabel>
                   <div className="relative">
-                    <LuLock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <Lock className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       id={field.name}
                       name={field.name}
@@ -372,9 +365,9 @@ function SignupForm() {
                       }
                     >
                       {showConfirmPassword ? (
-                        <LuEyeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <LuEye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" />
                       )}
                       <span className="sr-only">
                         {showConfirmPassword

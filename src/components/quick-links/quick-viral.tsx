@@ -7,7 +7,7 @@ import EnzymeIcon from "@public/icons/enzyme.svg";
 import SequenceIcon from "@public/icons/sequence.svg";
 import GenomeIcon from "@public/icons/genome.svg";
 import PartialSeqIcon from "@public/icons/pipeline.svg";
-import { TbCube3dSphere } from "react-icons/tb";
+import { Box } from "lucide-react";
 
 const QuickViralLinks = () => {
   return (
@@ -79,7 +79,7 @@ const QuickViralLinks = () => {
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
-                    <TbCube3dSphere className="justify-start" />
+                    <Box className="justify-start w-4 h-4" />
                     <span>3D Structures</span>
                   </div>
                   <Badge className="bg-accent text-foreground [data-theme='dxkb-dark']:text-black">5,891</Badge>

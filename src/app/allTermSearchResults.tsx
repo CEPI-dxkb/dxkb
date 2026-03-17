@@ -3,13 +3,7 @@
 import React, { useState, useEffect, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  LuDna,
-  LuBug,
-  LuMicroscope,
-  LuActivity,
-  LuDatabase,
-} from "react-icons/lu";
+import { Dna, Bug, Microscope, Activity, Database } from "lucide-react";
 import { SearchBar } from "@/components/search/search-bar";
 import { searchToQuery } from "@/app/search/search-to-query";
 import ResultsOverview from "@/components/search/results-overview";
@@ -112,15 +106,15 @@ function processQuery(query: string) {
 function getDataTypeIcon(dataType: string) {
   switch (dataType) {
     case "genome":
-      return <LuDna className="h-5 w-5" />;
+      return <Dna className="h-5 w-5" />;
     case "genome_feature":
-      return <LuBug className="h-5 w-5" />;
+      return <Bug className="h-5 w-5" />;
     case "surveillance":
-      return <LuActivity className="h-5 w-5" />;
+      return <Activity className="h-5 w-5" />;
     case "genome_sequence":
-      return <LuDatabase className="h-5 w-5" />;
+      return <Database className="h-5 w-5" />;
     default:
-      return <LuMicroscope className="h-5 w-5" />;
+      return <Microscope className="h-5 w-5" />;
   }
 }
 

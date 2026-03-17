@@ -1,5 +1,5 @@
 import { Separator } from "@/components/ui/separator";
-import { LuMail, LuMapPin, LuTwitter, LuLinkedin, LuGithub, LuClock, LuPhone } from "react-icons/lu";
+import { Mail, MapPin, Twitter, Linkedin, Github, Clock, Phone } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -21,7 +21,7 @@ const ContactForm = () => {
                   <div className="space-y-6">
                     <div className="flex items-start">
                       <div className="bg-secondary/20 p-3 rounded-full mr-4">
-                        <LuMail className="h-5 w-5 text-secondary" />
+                        <Mail className="h-5 w-5 text-secondary" />
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">Email</h3>
@@ -33,7 +33,7 @@ const ContactForm = () => {
 
                     <div className="flex items-start">
                       <div className="bg-secondary/20 p-3 rounded-full mr-4">
-                        <LuPhone className="h-5 w-5 text-secondary" />
+                        <Phone className="h-5 w-5 text-secondary" />
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">Phone</h3>
@@ -46,7 +46,7 @@ const ContactForm = () => {
 
                     <div className="flex items-start">
                       <div className="bg-secondary/20 p-3 rounded-full mr-4">
-                        <LuMapPin className="h-5 w-5 text-secondary" />
+                        <MapPin className="h-5 w-5 text-secondary" />
                       </div>
                       <div>
                         <h3 className="font-medium mb-1">Main Office</h3>
@@ -63,19 +63,19 @@ const ContactForm = () => {
                       href="#"
                       className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <LuTwitter className="h-5 w-5 text-accent" />
+                      <Twitter className="h-5 w-5 text-accent" />
                     </a>
                     <a
                       href="#"
                       className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <LuLinkedin className="h-5 w-5 text-accent" />
+                      <Linkedin className="h-5 w-5 text-accent" />
                     </a>
                     <a
                       href="#"
                       className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <LuGithub className="h-5 w-5 text-accent" />
+                      <Github className="h-5 w-5 text-accent" />
                     </a>
                   </div>
 
@@ -85,15 +85,15 @@ const ContactForm = () => {
                     <h3 className="font-medium mb-2">Support Hours</h3>
                     <div className="space-y-2">
                       <div className="flex items-center">
-                        <LuClock className="h-4 w-4 text-secondary mr-2" />
+                        <Clock className="h-4 w-4 text-secondary mr-2" />
                         <span className="text-sm">Monday - Friday: 9:00 AM - 5:00 PM (EST)</span>
                       </div>
                       <div className="flex items-center">
-                        <LuClock className="h-4 w-4 text-secondary mr-2" />
+                        <Clock className="h-4 w-4 text-secondary mr-2" />
                         <span className="text-sm">Saturday: 10:00 AM - 2:00 PM (EST)</span>
                       </div>
                       <div className="flex items-center">
-                        <LuClock className="h-4 w-4 text-secondary mr-2" />
+                        <Clock className="h-4 w-4 text-secondary mr-2" />
                         <span className="text-sm">Sunday: Closed</span>
                       </div>
                     </div>

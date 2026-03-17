@@ -7,7 +7,7 @@ import {
   ProgressValue,
 } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { LuSearch } from "react-icons/lu";
+import { Search } from "lucide-react";
 import { privacyPolicySections } from "@/app/(footer)/privacy-policy/data/privacy-policy-sections";
 
 const PrivacySidebar = () => {
@@ -16,7 +16,7 @@ const PrivacySidebar = () => {
     <div className="sticky top-24">
       <div className="relative mb-6">
         <Input type="text" placeholder="Search policy..." className="pl-9" />
-        <LuSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" size={16} />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-primary" size={16} />
       </div>
 
       <div className="mb-6">

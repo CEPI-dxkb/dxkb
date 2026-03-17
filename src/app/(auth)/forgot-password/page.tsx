@@ -16,7 +16,7 @@ import {
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
-import { LuMail, LuArrowLeft } from "react-icons/lu";
+import { Mail, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
                 className: "w-full",
               })}
             >
-              <LuArrowLeft className="h-4 w-4" data-icon="inline-start" />
+              <ArrowLeft className="h-4 w-4" data-icon="inline-start" />
               Back to sign in
             </Link>
           </CardContent>
@@ -130,7 +130,7 @@ export default function ForgotPasswordPage() {
                 <FieldItem>
                   <RequiredFormLabel>Username or email</RequiredFormLabel>
                   <div className="relative">
-                    <LuMail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
+                    <Mail className="text-muted-foreground absolute top-2.5 left-3 h-4 w-4" />
                     <Input
                       placeholder="Enter your username or email"
                       id={field.name}
@@ -166,7 +166,7 @@ export default function ForgotPasswordPage() {
                 href="/sign-in"
                 className="group text-primary hover:text-secondary font-medium transition-all duration-300 hover:font-medium"
               >
-                <LuArrowLeft className="mr-1 inline h-3 w-3" />
+                <ArrowLeft className="mr-1 inline h-3 w-3" />
                 Back to sign in
               </Link>
             </div>

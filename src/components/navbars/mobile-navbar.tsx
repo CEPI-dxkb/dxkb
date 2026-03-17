@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/contexts/auth-context";
 import Logo from "@/components/ui/logo";
 
-import { LuMenu, LuSearch, LuChevronUp } from "react-icons/lu";
+import { Menu, Search, ChevronUp } from "lucide-react";
 
 const MobileNavbar = () => {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -30,7 +30,7 @@ const MobileNavbar = () => {
           <SheetTrigger
             render={(triggerProps) => (
               <Button variant="ghost" className="group hover:bg-gray-300/50" {...triggerProps}>
-                <LuMenu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" data-icon="inline-start" />
+                <Menu className="scale-125 text-foreground transition-all duration-300 group-hover:scale-150 group-hover:text-white" data-icon="inline-start" />
               </Button>
             )}
           />
@@ -177,9 +177,9 @@ const MobileNavbar = () => {
             aria-label={isSearchOpen ? "Close search" : "Open search"}
           >
             {isSearchOpen ? (
-              <LuChevronUp size={18} />
+              <ChevronUp size={18} />
             ) : (
-              <LuSearch size={18} />
+              <Search size={18} />
             )}
           </Button>
         )}

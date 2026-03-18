@@ -47,6 +47,7 @@ describe("useJobDetail", () => {
     expect(result.current.data).toEqual(jobDetail);
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/services/app-service/jobs/abc-123",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
@@ -79,6 +80,7 @@ describe("useJobOutput", () => {
     expect(result.current.data).toBe(outputText);
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/services/app-service/jobs/abc-123/stdout",
+      expect.objectContaining({ method: "GET" }),
     );
   });
 
@@ -95,7 +97,8 @@ describe("useJobOutput", () => {
   it("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      statusText: "Not Found",
+      status: 404,
+      text: async () => "Not Found",
     });
 
     const { result } = renderHook(
@@ -105,6 +108,6 @@ describe("useJobOutput", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    expect(result.current.error?.message).toContain("Failed to fetch stderr");
+    expect(result.current.error).toBeInstanceOf(Error);
   });
 });

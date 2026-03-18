@@ -1,5 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { useAuthenticatedFetch } from "@/hooks/use-authenticated-fetch-client";
+import { useApiQuery } from "@/hooks/use-api-query";
 import type { JobListItem } from "@/types/workspace";
 
 interface UseJobsDataParams {
@@ -13,14 +12,23 @@ interface UseJobsDataParams {
 }
 
 export function useJobsData(params: UseJobsDataParams) {
-  const authenticatedFetch = useAuthenticatedFetch();
   const {
     offset, limit, includeArchived,
     sortField, sortOrder, app,
     refetchInterval = 10_000,
   } = params;
 
-  return useQuery<JobListItem[], Error>({
+  return useApiQuery<JobListItem[]>({
+    url: "/api/services/app-service/jobs/enumerate-tasks-filtered",
+    method: "POST",
+    body: {
+      offset,
+      limit,
+      include_archived: includeArchived,
+      sort_field: sortField,
+      sort_order: sortOrder,
+      app,
+    },
     queryKey: [
       "jobs-filtered",
       offset,
@@ -30,30 +38,14 @@ export function useJobsData(params: UseJobsDataParams) {
       sortOrder,
       app,
     ],
-    refetchInterval,
-    refetchIntervalInBackground: false,
-    queryFn: async () => {
-      const response = await authenticatedFetch(
-        "/api/services/app-service/jobs/enumerate-tasks-filtered",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            offset,
-            limit,
-            include_archived: includeArchived,
-            sort_field: sortField,
-            sort_order: sortOrder,
-            app,
-          }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch jobs: ${response.statusText}`);
-      }
-      const data = await response.json();
-      const raw = data.jobs ?? [];
+    select: (data) => {
+      const raw = (data as { jobs?: unknown }).jobs ?? [];
       // BV-BRC JSON-RPC wraps enumeration results in an extra array
-      return Array.isArray(raw[0]) ? raw[0] : raw;
+      return Array.isArray((raw as unknown[])[0]) ? (raw as unknown[][])[0] as JobListItem[] : raw as JobListItem[];
+    },
+    queryOptions: {
+      refetchInterval,
+      refetchIntervalInBackground: false,
     },
   });
 }

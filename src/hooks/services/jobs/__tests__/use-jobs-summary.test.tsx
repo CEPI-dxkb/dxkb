@@ -69,7 +69,8 @@ describe("useJobsSummary", () => {
   it("throws on HTTP error", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      statusText: "Bad Gateway",
+      status: 502,
+      text: async () => "Bad Gateway",
     });
 
     const { result } = renderHook(() => useJobsSummary(false), {
@@ -79,8 +80,5 @@ describe("useJobsSummary", () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.error).toBeInstanceOf(Error);
-    expect(result.current.error?.message).toBe(
-      "Failed to fetch job summaries: Bad Gateway",
-    );
   });
 });

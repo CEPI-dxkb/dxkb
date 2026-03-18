@@ -1,5 +1,5 @@
-import { getBvbrcAuthToken } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { protectedRoute } from "@/lib/api/protected-route";
 
 const minhashServiceUrl = process.env.MINHASH_SERVICE_URL;
 
@@ -8,8 +8,8 @@ const minhashServiceUrl = process.env.MINHASH_SERVICE_URL;
  * POST /api/services/minhash
  * Body: JSON-RPC payload { method, params, version, id }
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = protectedRoute(
+  async ({ token, request }) => {
     if (!minhashServiceUrl) {
       return NextResponse.json(
         { error: "Minhash service URL is not configured (MINHASH_SERVICE_URL)" },
@@ -31,12 +31,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authToken = await getBvbrcAuthToken();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (authToken) {
-      headers["Authorization"] = authToken;
+    if (token) {
+      headers["Authorization"] = token;
     }
 
     const response = await fetch(minhashServiceUrl, {
@@ -55,10 +54,6 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(data);
-  } catch (error) {
-    console.error("Minhash proxy error:", error);
-    const message =
-      error instanceof Error ? error.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+  },
+  { requireAuth: false },
+);

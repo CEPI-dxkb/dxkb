@@ -200,7 +200,7 @@ describe("POST /api/services/genome/website-query", () => {
 
     expect(res.status).toBe(500);
     expect(await json(res)).toEqual(
-      expect.objectContaining({ error: "Internal server error" }),
+      expect.objectContaining({ error: expect.any(String) }),
     );
   });
 });

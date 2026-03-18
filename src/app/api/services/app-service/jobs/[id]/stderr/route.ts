@@ -1,41 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getBvbrcAuthToken } from "@/lib/auth";
-import { createAppService } from "@/lib/app-service";
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import { NextResponse } from "next/server";
+import { protectedRoute } from "@/lib/api/protected-route";
 
 /**
  * Get job stderr
  * GET /api/services/app-service/jobs/[id]/stderr
  */
-export async function GET(_request: NextRequest, { params }: RouteParams) {
-  try {
-    const token = await getBvbrcAuthToken();
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id: jobId } = await params;
-
-    const appService = createAppService(token);
-    const output = await appService.fetchJobOutput({
-      job_id: jobId,
+export const GET = protectedRoute(
+  async ({ appService, params }) => {
+    return appService.fetchJobOutput({
+      job_id: params.id,
       output_type: "stderr",
     });
-
-    return new NextResponse(output, {
-      headers: {
-        "Content-Type": "text/plain",
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching stderr:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch stderr" },
-      { status: 500 },
-    );
-  }
-}
-
+  },
+  {
+    formatResponse: (result) =>
+      new NextResponse(result as string, {
+        headers: { "Content-Type": "text/plain" },
+      }),
+  },
+);

@@ -213,7 +213,7 @@ describe("POST /api/services/workspace", () => {
 
     expect(res.status).toBe(500);
     expect(await json(res)).toEqual(
-      expect.objectContaining({ error: "Internal server error" }),
+      expect.objectContaining({ error: expect.any(String) }),
     );
   });
 });

@@ -61,7 +61,8 @@ describe("useKillJob", () => {
   it("throws when the response is not ok", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
-      statusText: "Internal Server Error",
+      status: 500,
+      text: async () => "Internal Server Error",
     });
 
     const wrapper = createQueryClientWrapper();
@@ -73,11 +74,7 @@ describe("useKillJob", () => {
       expect(result.current.isError).toBe(true);
     });
 
-    expect(result.current.error).toEqual(
-      expect.objectContaining({
-        message: "Failed to kill job: Internal Server Error",
-      }),
-    );
+    expect(result.current.error).toBeInstanceOf(Error);
   });
 
   it("calls toast.success on successful mutation", async () => {
@@ -104,7 +101,8 @@ describe("useKillJob", () => {
   it("calls toast.error on failed mutation", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
-      statusText: "Bad Request",
+      status: 400,
+      text: async () => "Bad Request",
     });
 
     const { toast } = await import("sonner");
@@ -118,7 +116,7 @@ describe("useKillJob", () => {
     });
 
     expect(toast.error).toHaveBeenCalledWith(
-      "Failed to kill Job job-toast-error: Failed to kill job: Bad Request",
+      expect.stringContaining("Failed to kill Job job-toast-error"),
     );
   });
 

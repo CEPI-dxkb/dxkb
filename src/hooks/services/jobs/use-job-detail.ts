@@ -1,30 +1,21 @@
-import { useQuery } from "@tanstack/react-query";
-import { useAuthenticatedFetch } from "@/hooks/use-authenticated-fetch-client";
+import { useApiQuery } from "@/hooks/use-api-query";
 import type { JobDetails } from "@/types/workspace";
 import { activeJobStatuses } from "@/lib/jobs/constants";
 
 export function useJobDetail(jobId: string | null) {
-  const authenticatedFetch = useAuthenticatedFetch();
-
-  return useQuery<JobDetails, Error>({
+  return useApiQuery<JobDetails>({
+    url: `/api/services/app-service/jobs/${jobId}`,
     queryKey: ["job-detail", jobId],
-    queryFn: async () => {
-      const response = await authenticatedFetch(
-        `/api/services/app-service/jobs/${jobId}`,
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch job details: ${response.statusText}`);
-      }
-      return response.json();
+    queryOptions: {
+      enabled: !!jobId,
+      staleTime: 30_000,
+      refetchInterval: (query) => {
+        const status = query.state.data?.status;
+        if (status && activeJobStatuses.includes(status)) return 3_000;
+        return false;
+      },
+      refetchIntervalInBackground: false,
     },
-    enabled: !!jobId,
-    staleTime: 30_000,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status && activeJobStatuses.includes(status)) return 3_000;
-      return false;
-    },
-    refetchIntervalInBackground: false,
   });
 }
 
@@ -33,20 +24,13 @@ export function useJobOutput(
   outputType: "stdout" | "stderr",
   enabled: boolean,
 ) {
-  const authenticatedFetch = useAuthenticatedFetch();
-
-  return useQuery<string, Error>({
+  return useApiQuery<string>({
+    url: `/api/services/app-service/jobs/${jobId}/${outputType}`,
     queryKey: ["job-output", jobId, outputType],
-    queryFn: async () => {
-      const response = await authenticatedFetch(
-        `/api/services/app-service/jobs/${jobId}/${outputType}`,
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${outputType}: ${response.statusText}`);
-      }
-      return response.text();
+    responseType: "text",
+    queryOptions: {
+      enabled: !!jobId && enabled,
+      staleTime: 60_000,
     },
-    enabled: !!jobId && enabled,
-    staleTime: 60_000,
   });
 }

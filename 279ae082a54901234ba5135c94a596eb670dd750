@@ -1,0 +1,80 @@
+src/hooks/services/use-rerun-form.ts
+  36ced5e9ec375027 29-31
+src/lib/forms/(genomics)/primer-design/primer-design-form-utils.ts
+  ad3d958f7c7558c2 46-60
+src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/page.tsx
+  b524776441adfea5 3,110,150-154,223
+src/app/services/(genomics)/primer-design/page.tsx
+  ad3d958f7c7558c2 42,318-323
+src/app/services/(genomics)/genome-alignment/page.tsx
+  d62d38bdf0b4f4f4 201-203
+src/app/services/(phylogenomics)/gene-protein-tree/page.tsx
+  b524776441adfea5 5,141-142,145-150,190-191,193
+src/app/services/(genomics)/blast/page.tsx
+  ad3d958f7c7558c2 143-145,159-160,165-166,177
+  b524776441adfea5 183-187
+src/lib/rerun-utility.ts
+  36ced5e9ec375027 60
+  d62d38bdf0b4f4f4 53,56
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  36ced5e9ec375027 163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "279ae082a54901234ba5135c94a596eb670dd750",
+  "prompts": {
+    "36ced5e9ec375027": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "54dd1ed6-4354-4db6-8c5b-64aa1a1a2965",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 7,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "ad3d958f7c7558c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6e82164-388b-4169-b2f0-fd8872d8bfb3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 31,
+      "total_deletions": 5,
+      "accepted_lines": 31,
+      "overriden_lines": 0
+    },
+    "b524776441adfea5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6cdb3dc-c6b2-4e8e-9ccc-2a3bdaf7c94d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 7,
+      "accepted_lines": 25,
+      "overriden_lines": 0
+    },
+    "d62d38bdf0b4f4f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2f6af8f3-f78d-43f7-b175-e6981ff5d2eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 4,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}

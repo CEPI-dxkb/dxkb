@@ -1,0 +1,64 @@
+src/hooks/services/workspace/use-workspace-action-dispatch.ts
+  3765f8f2eef1ba8c 4,36-41,45-49,53-68,81-82,86-87,120,143,160,165-166
+src/hooks/services/workspace/use-workspace-data.ts
+  3765f8f2eef1ba8c 75-77
+src/app/jobs/[id]/page.tsx
+  3765f8f2eef1ba8c 3,6-8,126-130,133-134,140,187,198,248,254-255
+src/components/taxonomy/taxon-name-selector.tsx
+  3765f8f2eef1ba8c 4,58-80,88-90,101,106-109,114-145,152,156-159,178,183,185,188,191-199,205-210,245-249,254
+src/components/taxonomy/tax-id-selector.tsx
+  3765f8f2eef1ba8c 4,19-24,29-46,63,68-74,76-81,83
+src/hooks/services/workspace/use-job-result-data.ts
+  3765f8f2eef1ba8c 33
+src/components/workspace/workspace-browser.tsx
+  3765f8f2eef1ba8c 99
+src/components/services/ListData.tsx
+  3765f8f2eef1ba8c 120,157-160
+src/hooks/services/workspace/use-workspace-dialog-handlers.ts
+  3765f8f2eef1ba8c 3-4,30-34,46-47,70-71,81-85,88-90,94-95,98,100-103,106-108,110-113,115-117,119-120,122-123,125,136-137,168-169,171-172,174,176-177,184-187,190-191,194,196-197,201-202,205,207-208,213-217,220-221,224,226-227,231-235,237-246,248,251-359
+src/hooks/services/use-service-form-submission.ts
+  3765f8f2eef1ba8c 4,38-42,54-55,63-72,94,99,108
+src/hooks/services/workspace/use-shared-with-user.ts
+  3765f8f2eef1ba8c 32,53,71,92,113
+src/hooks/services/workspace/use-workspace.ts
+  3765f8f2eef1ba8c 1,13-14,17-22,24-32,34-35,37-38,40-41,43,46,50-51,60,62-63,65,69,72-74,79,81,83-84,89-91,94-105,107,109-110,113,116-119,122,125,127,129-132,137-140,143-147,149-151,154,156-157
+src/hooks/services/workspace/use-workspace-objects.ts
+  3765f8f2eef1ba8c 1-2,5-22,26-34,38-40,65,70,72,74-81,84-85,89-90,102,105,112-113,118
+src/app/jobs/page.tsx
+  3765f8f2eef1ba8c 3,5-7,146-156,160-162,168-171,175-177,183,189-191,198,201,217,225,230,240-244,246,248-249,262,266,273,276,424,543-546
+src/app/providers.tsx
+  3765f8f2eef1ba8c 9-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "3fae8d5a52d504dd67003e441927cc71e739ad89",
+  "prompts": {
+    "3765f8f2eef1ba8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88d4e2f3-d68d-469a-8774-ea6043b83614",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 845,
+      "total_deletions": 1157,
+      "accepted_lines": 634,
+      "overriden_lines": 0
+    },
+    "9e02d7786af91989": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0b37ed3-1934-4ce8-af1b-cb99b26bac65",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,122 @@
+src/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/__tests__/sars-cov2-wastewater-analysis-form-utils.test.ts
+  e23d59430f31c8fc 1-289
+src/lib/forms/(protein-tools)/proteome-comparison/__tests__/proteome-comparison-form-utils.test.ts
+  e23d59430f31c8fc 1-507
+src/lib/forms/(genomics)/genome-annotation/__tests__/genome-annotation-form-utils.test.ts
+  e23d59430f31c8fc 1-132
+src/hooks/__tests__/use-is-mounted.test.tsx
+  e23d59430f31c8fc 1-16
+src/lib/workspace/__tests__/table-selection.test.ts
+  e23d59430f31c8fc 1-119
+src/lib/forms/(genomics)/blast/__tests__/blast-form-utils.test.ts
+  e23d59430f31c8fc 1-401
+src/contexts/__tests__/service-debugging-context.test.tsx
+  e23d59430f31c8fc 1-52
+src/lib/services/workspace/__tests__/shared.test.ts
+  e23d59430f31c8fc 1-243
+src/hooks/services/workspace/__tests__/use-workspace-selection.test.tsx
+  e23d59430f31c8fc 1-83
+src/lib/forms/(viral-tools)/influenza-ha-subtype/__tests__/influenza-ha-subtype-form-utils.test.ts
+  e23d59430f31c8fc 1-96
+src/app/api/auth/__tests__/utils.test.ts
+  e23d59430f31c8fc 1-5,7,15-27,32-286
+src/lib/forms/(viral-tools)/subspecies-classification/__tests__/subspecies-classification-form-utils.test.ts
+  e23d59430f31c8fc 1-150
+src/contexts/__tests__/auth-context.test.tsx
+  e23d59430f31c8fc 1-81
+src/hooks/__tests__/use-auth-styles.test.tsx
+  e23d59430f31c8fc 1-80
+src/lib/services/__tests__/feature.test.ts
+  e23d59430f31c8fc 1-68
+src/lib/__tests__/auth.test.ts
+  e23d59430f31c8fc 1-100
+src/hooks/services/jobs/__tests__/use-jobs-data.test.tsx
+  e23d59430f31c8fc 1-104
+src/contexts/__tests__/workspace-dialog-context.test.tsx
+  e23d59430f31c8fc 1-129
+src/lib/forms/(genomics)/primer-design/__tests__/primer-design-form-utils.test.ts
+  e23d59430f31c8fc 1-250
+src/lib/forms/(viral-tools)/viral-assembly/__tests__/viral-assembly-form-utils.test.ts
+  e23d59430f31c8fc 1-171
+src/contexts/__tests__/workspace-panel-context.test.tsx
+  e23d59430f31c8fc 1-63
+src/lib/forms/(genomics)/variation-analysis/__tests__/variation-analysis-form-utils.test.ts
+  e23d59430f31c8fc 1-86
+src/lib/jobs/__tests__/formatting.test.ts
+  e23d59430f31c8fc 1-95
+src/lib/forms/(protein-tools)/msa-snp-analysis/__tests__/msa-snp-analysis-form-utils.test.ts
+  e23d59430f31c8fc 1-493
+src/lib/forms/(genomics)/genome-alignment/__tests__/genome-alignment-form-utils.test.ts
+  e23d59430f31c8fc 1-77
+src/hooks/services/workspace/__tests__/use-workspace-filtered-items.test.tsx
+  e23d59430f31c8fc 1-117
+src/hooks/services/jobs/__tests__/use-jobs-summary.test.tsx
+  e23d59430f31c8fc 1-90
+src/lib/services/__tests__/genome.test.ts
+  e23d59430f31c8fc 1-252
+src/lib/forms/(protein-tools)/meta-cats/__tests__/meta-cats-form-utils.test.ts
+  e23d59430f31c8fc 1-672
+src/lib/forms/(metagenomics)/metagenomic-read-mapping/__tests__/metagenomic-read-mapping-form-utils.test.ts
+  e23d59430f31c8fc 1-129
+src/lib/__tests__/env.test.ts
+  e23d59430f31c8fc 1-29
+src/hooks/services/workspace/__tests__/use-workspace-navigation.test.tsx
+  e23d59430f31c8fc 1-134
+src/hooks/services/__tests__/use-service-form-submission.test.tsx
+  e23d59430f31c8fc 1-231
+src/lib/forms/(phylogenomics)/viral-genome-tree/__tests__/viral-genome-tree-form-utils.test.ts
+  e23d59430f31c8fc 1-269
+src/lib/forms/(metagenomics)/taxonomic-classification/__tests__/taxonomic-classification-form-utils.test.ts
+  e23d59430f31c8fc 1-211
+src/lib/forms/(genomics)/similar-genome-finder/__tests__/similar-genome-finder-form-utils.test.ts
+  e23d59430f31c8fc 1-247
+src/lib/forms/(phylogenomics)/gene-protein-tree/__tests__/gene-protein-tree-form-utils.test.ts
+  e23d59430f31c8fc 1-292
+src/hooks/services/jobs/__tests__/use-job-detail.test.tsx
+  e23d59430f31c8fc 1-92
+src/lib/forms/(utilities)/fastq-utilities/__tests__/fastq-utilities-form-utils.test.ts
+  e23d59430f31c8fc 1-214
+src/lib/forms/(viral-tools)/sars-cov2-genome-analysis/__tests__/sars-cov2-genome-analysis-form-utils.test.ts
+  e23d59430f31c8fc 1-236
+src/lib/forms/(genomics)/genome-assembly/__tests__/genome-assembly-form-utils.test.ts
+  e23d59430f31c8fc 1-187
+src/lib/forms/(metagenomics)/metagenomic-binning/__tests__/metagenomic-binning-form-utils.test.ts
+  e23d59430f31c8fc 1-180
+src/hooks/services/__tests__/use-rerun-form.test.tsx
+  e23d59430f31c8fc 1-83
+src/lib/services/__tests__/service-utils.test.ts
+  e23d59430f31c8fc 1-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "7e5a0e09fd4276792d553817e4f5513072eef886",
+  "prompts": {
+    "abc9775bd4dbeb1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34fecef1-aab4-45fe-beee-ce3503899d6f",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 6591,
+      "total_deletions": 190,
+      "accepted_lines": 6401,
+      "overriden_lines": 0
+    },
+    "e23d59430f31c8fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8954401b-c291-48a2-a517-7c0856459634",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 7985,
+      "total_deletions": 62,
+      "accepted_lines": 7911,
+      "overriden_lines": 4
+    }
+  }
+}

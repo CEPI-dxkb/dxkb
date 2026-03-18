@@ -1,0 +1,27 @@
+tsconfig.json
+  da6d7ce94f5cde1e 21
+vitest.setup.ts
+  da6d7ce94f5cde1e 1,19-20
+src/contexts/__tests__/auth-context.test.tsx
+  da6d7ce94f5cde1e 119-123,128,134-135,157-161,166,172-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "c938a50e8b2bf22a716d13585ee511ed703e6614",
+  "prompts": {
+    "da6d7ce94f5cde1e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "547fe5d1-f30c-4dbf-9bf7-8d78c578f679",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 9,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}

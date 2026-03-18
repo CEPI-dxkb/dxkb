@@ -1,0 +1,29 @@
+src/app/(auth)/sign-in/page.tsx
+  49b490a041742c6d 59
+src/app/(auth)/forgot-password/page.tsx
+  49b490a041742c6d 52
+src/app/(auth)/sign-up/page.tsx
+  49b490a041742c6d 96
+src/app/jobs/layout.tsx
+  49b490a041742c6d 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "24b25e1c2f11092760e254c9d5f22b7d851748a5",
+  "prompts": {
+    "49b490a041742c6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "506a4adb-7fbe-49f2-b03b-c7503f4e6572",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 4,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}

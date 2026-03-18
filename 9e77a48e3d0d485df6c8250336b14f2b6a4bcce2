@@ -1,0 +1,142 @@
+src/hooks/services/workspace/use-workspace-dialog-handlers.ts
+  f7e17331c5578401 165,185,300-304,308-312
+src/hooks/services/use-service-form-submission.ts
+  7c752996aa92c576 40-41,44-46
+src/app/jobs/[id]/page.tsx
+  9755801b0156cc87 142
+src/hooks/services/workspace/use-workspace-action-dispatch.ts
+  c6389cd0afdc27fe 89-91,123,146,163
+src/hooks/services/workspace/use-workspace-objects.ts
+  bebf6eb0aadc88b6 112
+  c7678a2026f3a72b 90
+src/contexts/workspace-dialog-context.tsx
+  ed8b3f9e787e4d6e 50,55,57,59,61,63,65,67
+src/components/taxonomy/tax-id-selector.tsx
+  f74775a94477bcd7 79
+src/app/jobs/page.tsx
+  d3e6805fa12f6818 159,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "9e77a48e3d0d485df6c8250336b14f2b6a4bcce2",
+  "prompts": {
+    "7c752996aa92c576": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c82d002-88ea-4b58-91b6-0a4ef01e32e6",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    },
+    "9755801b0156cc87": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "56563f46-3b44-4757-8fd4-8b54d8d418fb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "bebf6eb0aadc88b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e9b56fd8-f860-4ae4-9572-cc8ef9815c5f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "c6389cd0afdc27fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44febf44-f239-42f3-8ef4-7b363501997d",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "c7678a2026f3a72b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d7e2659d-4dd2-4a97-a6f4-2c6b52277975",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "d3e6805fa12f6818": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "69871cb7-5bb3-41a4-a8e1-27f784a560e5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "ed8b3f9e787e4d6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9da97fe7-9ce4-4689-8715-890886181fdf",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 25,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "f74775a94477bcd7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bcc6c839-4550-441e-ae26-c40e6f01300c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "f7e17331c5578401": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e173207-3cec-4fec-90ec-744b28537dbb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 14,
+      "accepted_lines": 12,
+      "overriden_lines": 0
+    }
+  }
+}

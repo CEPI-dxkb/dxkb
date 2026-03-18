@@ -1,0 +1,50 @@
+src/components/workspace/workspace-data-table.tsx
+  52a95a229d90fc5d 90-91,294,451-453,455,503,868-869,874-879,893,904-906
+src/components/workspace/workspace-browser.tsx
+  04924db35366cb26 23-24,250-267,271,288,410-431,771-810
+  52a95a229d90fc5d 42-45,64-65,201-202,937-956,1012
+src/components/workspace/workspace-job-result-view.tsx
+  04924db35366cb26 1-12,19-42,53-174,177-236,259-285,287-291,296-304,307-309,311-314,316-324,326-348,350-472
+  52a95a229d90fc5d 13-18,43-52,175-176,237-258,349
+src/lib/services/workspace/helpers.ts
+  04924db35366cb26 5-11,54-82
+src/hooks/services/workspace/use-job-result-data.ts
+  04924db35366cb26 1-50
+src/lib/services/workspace/types.ts
+  04924db35366cb26 192-234
+src/hooks/services/workspace/use-workspace-path-resolve.ts
+  04924db35366cb26 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "72a5c89c18a5db3cc32685bd26a69dfb6dc8c1fa",
+  "prompts": {
+    "04924db35366cb26": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1b1049e6-94ce-40c3-b4e9-8531f05cf3e7",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 628,
+      "total_deletions": 25,
+      "accepted_lines": 740,
+      "overriden_lines": 6
+    },
+    "52a95a229d90fc5d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7db99219-4abb-45c4-adf7-c045537f8616",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 101,
+      "total_deletions": 9,
+      "accepted_lines": 90,
+      "overriden_lines": 0
+    }
+  }
+}

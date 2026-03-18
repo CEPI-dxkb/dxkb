@@ -1,0 +1,27 @@
+src/hooks/services/jobs/use-jobs-data.ts
+  9a0128d37dc41ca8 26-27
+src/hooks/services/jobs/use-job-detail.ts
+  9a0128d37dc41ca8 21-27
+src/hooks/services/jobs/use-jobs-summary.ts
+  9a0128d37dc41ca8 9-10,37-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "f0cae179faeaf8d32dc5f6c463634b41cd0589d0",
+  "prompts": {
+    "9a0128d37dc41ca8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "24364257-758b-41ff-ae34-b7007ab73dae",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}

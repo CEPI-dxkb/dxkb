@@ -1,0 +1,33 @@
+src/lib/services/workspace/__tests__/helpers.test.ts
+  86bdb6f279dfddd3 3,13-18,354-718
+src/lib/__tests__/fasta-validation.test.ts
+  86bdb6f279dfddd3 1,142-222
+.claude/CLAUDE.md
+  86bdb6f279dfddd3 11-13,16
+src/lib/__tests__/rerun-utility.test.ts
+  86bdb6f279dfddd3 7,200-281
+src/lib/__tests__/app-service.test.ts
+  86bdb6f279dfddd3 350-361
+.claude/rules/testing.md
+  86bdb6f279dfddd3 3-16,24,27-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "93422cbc139095b885e286f6fdd2f4cccb6ede7d",
+  "prompts": {
+    "86bdb6f279dfddd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afe11c82-355e-4bd9-9195-ef5073759a7a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 574,
+      "overriden_lines": 0
+    }
+  }
+}

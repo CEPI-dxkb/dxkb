@@ -1,0 +1,23 @@
+src/lib/forms/(phylogenomics)/gene-protein-tree/gene-protein-tree-form-schema.ts
+  97baabc0507f2498 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "b260090a4392822b61175fdf97e4802a5fc67934",
+  "prompts": {
+    "97baabc0507f2498": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d42dee7-efaa-4d71-b825-b25168537a79",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

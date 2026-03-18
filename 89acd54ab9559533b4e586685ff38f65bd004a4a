@@ -1,0 +1,35 @@
+src/hooks/use-authenticated-fetch-client.ts
+  65c85f327d166e50 29-32
+src/components/services/ListData.tsx
+  65c85f327d166e50 284
+src/lib/fetch-json.ts
+  65c85f327d166e50 1-5,7-26
+src/lib/queries/taxonomy.ts
+  65c85f327d166e50 95,136-137,147
+src/lib/queries/feature.ts
+  65c85f327d166e50 22
+src/lib/queries/genome.ts
+  65c85f327d166e50 7-9,42-46,56,79-80,97,99-101,125,145,177
+src/lib/query-keys.ts
+  65c85f327d166e50 14,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "89acd54ab9559533b4e586685ff38f65bd004a4a",
+  "prompts": {
+    "65c85f327d166e50": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "85dc4987-fc8d-4d3c-acd0-c39fc74ffcdd",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 113,
+      "total_deletions": 119,
+      "accepted_lines": 63,
+      "overriden_lines": 6
+    }
+  }
+}

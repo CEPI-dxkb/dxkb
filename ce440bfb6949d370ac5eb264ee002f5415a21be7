@@ -1,0 +1,42 @@
+src/components/jobs/jobs-detail-panel.tsx
+  4f54dc6e13aaa27c 33,41,43-45,47-52,89
+src/components/jobs/jobs-action-bar.tsx
+  3fb81c246def4a56 3,6-11,20,31-37,45-51,85-86,92-93,97,106,109-125,127-128
+src/components/jobs/jobs-browser.tsx
+  4f54dc6e13aaa27c 404
+src/components/jobs/jobs-toolbar.tsx
+  4f54dc6e13aaa27c 7-10,169-170,177-178,186-187,194-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "ce440bfb6949d370ac5eb264ee002f5415a21be7",
+  "prompts": {
+    "3fb81c246def4a56": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63e3d61e-4e3e-4843-86bd-b40256eb8698",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 72,
+      "total_deletions": 31,
+      "accepted_lines": 49,
+      "overriden_lines": 0
+    },
+    "4f54dc6e13aaa27c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5560ab42-f58a-4d03-8ab3-8e4bf46fca42",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 89,
+      "accepted_lines": 25,
+      "overriden_lines": 0
+    }
+  }
+}

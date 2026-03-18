@@ -1,0 +1,23 @@
+src/hooks/services/workspace/use-workspace-objects.ts
+  704a9101e0ffbef1 90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "7c3bfc91e97fc802e5a8d3e671da881c867b3728",
+  "prompts": {
+    "704a9101e0ffbef1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00e7df75-3694-4fe1-9072-ef60616d021c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

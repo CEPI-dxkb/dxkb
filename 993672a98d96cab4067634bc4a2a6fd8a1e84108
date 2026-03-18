@@ -1,0 +1,106 @@
+src/app/services/(protein-tools)/msa-snp-analysis/page.tsx
+  b0376f4e293757b9 290-293,295,313
+src/lib/rerun-utility.ts
+  39d53564e15cf194 44-50
+  58f50d118d563c91 1
+src/lib/forms/(protein-tools)/meta-cats/meta-cats-form-utils.ts
+  58f50d118d563c91 16-17
+src/app/services/(genomics)/genome-alignment/page.tsx
+  39d53564e15cf194 47
+src/components/services/sra-run-accession-with-validation.tsx
+  39d53564e15cf194 40-41,132,134
+src/lib/forms/(genomics)/blast/blast-form-utils.ts
+  fb6c4f440e5e2e58 140
+src/app/services/(genomics)/blast/page.tsx
+  2eaa07c6e7eaba45 199
+  6d320334b5b6961e 84
+  fb6c4f440e5e2e58 47,198,200-213,219-227
+src/app/services/(viral-tools)/viral-assembly/page.tsx
+  39d53564e15cf194 57,90-92,142-143,145,147,233,364
+  2eaa07c6e7eaba45 89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "993672a98d96cab4067634bc4a2a6fd8a1e84108",
+  "prompts": {
+    "2eaa07c6e7eaba45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a5e1ff5-8c6c-4225-a021-43f9146830bc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "39d53564e15cf194": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3040e709-0f84-438a-8945-1294d85786e2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    },
+    "58f50d118d563c91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c20e6de2-c4f2-440b-a17b-9d7e62fdece4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "6d320334b5b6961e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a03a9480-977c-4757-9ea7-383879ded52f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "b0376f4e293757b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8df158f-d57a-4957-ad9f-d768cab36815",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "fb6c4f440e5e2e58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23b63795-ea1a-4999-a623-85328adc647d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    }
+  }
+}

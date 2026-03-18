@@ -1,0 +1,236 @@
+src/components/workspace/workspace-shell.tsx
+  a978ca859cf37228 135
+  19daf35aa8ec8657 16,91-92
+src/components/workspace/workspace-table-rows.tsx
+  ee9444f104dc93e4 12-21,29-31,41-42,44-50,54-56,70,72-73,77,80-82,85,101
+src/app/api/services/app-service/jobs/task-summary/route.ts
+  ee9444f104dc93e4 1-42
+src/app/jobs/page.tsx
+  ee9444f104dc93e4 5,7,9-11,13,15-21,23,36
+  a978ca859cf37228 34-35,37-38
+src/hooks/services/jobs/use-jobs-summary.ts
+  ee9444f104dc93e4 1-22,26-48,52-54
+  4805e076e65657ee 23-25,49-51
+src/components/jobs/jobs-action-bar.tsx
+  ee9444f104dc93e4 1-89
+src/components/detail-panel/detail-header.tsx
+  19daf35aa8ec8657 1-18
+src/components/workspace/workspace-data-table.tsx
+  ce3044530e4baa42 20,170-188,190-193,196-197
+  ee9444f104dc93e4 8,11,25-28,33-41,92,96,207-212,214,217-220,222-230,232-243,245-254,256-276,279-281,285-298,300-301
+src/hooks/use-table-keyboard-navigation.ts
+  ce3044530e4baa42 1-158
+src/components/jobs/jobs-toolbar.tsx
+  451b3a80787b587c 3,14-22,26-30,44-46,78-80,165-190
+  ee9444f104dc93e4 1-2,4-13,23-25,31-43,47-77,81-164,191-239
+src/components/jobs/jobs-shell.tsx
+  17fe4a5a71ba0cab 3-4,13-14,26,28-36,47,59,78,91-92,95-96,100-102
+  909ea62280f458ee 1-2,5-12,15-25,27,37-46,48-58,60-77,79-90,93-94,103-109
+src/components/jobs/jobs-detail-panel.tsx
+  0ae8a4b199a60679 6-10,65,72,75,82,89-90
+  19daf35aa8ec8657 74,110
+  302a2518828d18ce 63,94-109,114,118,120-122,125-126,129-130,133-134,137-139,142-145,148-151,154-163
+  a978ca859cf37228 1-5,11-62,66-71,73,76-81,83-88,91-93,111-113,164-165
+src/components/layouts/WithGenomePanel.tsx
+  a978ca859cf37228 30-32,36
+src/app/jobs/layout.tsx
+  a978ca859cf37228 9,11
+src/hooks/services/jobs/use-job-detail.ts
+  a978ca859cf37228 1-45
+src/lib/app-service.ts
+  ee9444f104dc93e4 17-22,127-168
+src/hooks/services/jobs/use-jobs-data.ts
+  ee9444f104dc93e4 1-43,47-49
+  4805e076e65657ee 44-46
+src/components/containers/InfoPanel.tsx
+  19daf35aa8ec8657 18,170-171,180,187,197,203,259,321-322,324,329,331,333,336-337,340-344,351-353,355-359,362-366,368-372,374-375,377-378,380,382
+src/components/detail-panel/detail-panel.tsx
+  19daf35aa8ec8657 1-11
+src/app/api/services/app-service/jobs/app-summary/route.ts
+  ee9444f104dc93e4 1-42
+src/components/detail-panel/detail-collapsible.tsx
+  19daf35aa8ec8657 1-47
+src/components/workspace/workspace-table-columns.tsx
+  ee9444f104dc93e4 4,31-33,35,39
+src/components/shared/data-table-header.tsx
+  4af1766e68543456 46,51,53-55,77
+  ee9444f104dc93e4 1-45,47-50,52,56-76,78-161
+src/app/api/services/app-service/jobs/filtered/route.ts
+  ee9444f104dc93e4 1-52
+src/components/detail-panel/detail-empty-state.tsx
+  19daf35aa8ec8657 1-7
+src/app/search/layout.tsx
+  a978ca859cf37228 11,13
+src/components/detail-panel/index.ts
+  19daf35aa8ec8657 1-14
+src/components/detail-panel/detail-key-value.tsx
+  19daf35aa8ec8657 1-82
+src/components/jobs/jobs-browser.tsx
+  ee9444f104dc93e4 1-2,4-18,20-23,27-40,117-132,136-236,242-297,325-328,330,335-338,340-357,367,373-375,382,396-402,404-407,411,417,419,421-424,426,438-439,446-447
+  909ea62280f458ee 3,25,51-86,88-91,93-116,306-310,329,331-334,339,369-372,376-377,379-381,383-394,412-415,427,429,433-437,444-445
+  a978ca859cf37228 24,358-362,364,366,368,378,395,403,425,432,441-443
+  19daf35aa8ec8657 26,363,365
+  4af1766e68543456 87,92,237-241,418
+  451b3a80787b587c 41-50,133-135,298-304,408-410
+  ce3044530e4baa42 19,305,311-324,428
+src/components/jobs/jobs-pagination.tsx
+  ee9444f104dc93e4 1-29,31-54
+src/types/workspace.ts
+  ee9444f104dc93e4 153-172
+src/components/shared/data-table.tsx
+  ce3044530e4baa42 169-184,186-188,190-196,204
+  4af1766e68543456 144-145,149,214,219
+  ee9444f104dc93e4 1-143,146-148,150-168,197-203,205-213,215-218,220-264
+src/components/jobs/jobs-table-columns.tsx
+  ee9444f104dc93e4 1-112,114-128,130-156,158-169,171-185,187-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "07bef3261c9df64758bbec6a788a8e3bfcdbe953",
+  "prompts": {
+    "0ae8a4b199a60679": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dc956f23-d869-4dbe-ac66-1b0bddaeb854",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 10,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    },
+    "17fe4a5a71ba0cab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "574d1348-0339-4e25-83a4-ffa01061919e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 50,
+      "total_deletions": 42,
+      "accepted_lines": 24,
+      "overriden_lines": 0
+    },
+    "19daf35aa8ec8657": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c0402b4-a16a-4a11-8e90-d9a7758734e7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1180,
+      "total_deletions": 311,
+      "accepted_lines": 1063,
+      "overriden_lines": 1
+    },
+    "302a2518828d18ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa192bd4-611d-44a6-9c6b-c6c7b3467406",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 68,
+      "total_deletions": 19,
+      "accepted_lines": 49,
+      "overriden_lines": 16
+    },
+    "451b3a80787b587c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6be36de3-c4bb-4610-beaf-cce2a8018150",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 98,
+      "total_deletions": 24,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    },
+    "4805e076e65657ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2c9706-45f1-43ba-9457-c0a49795d524",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 9,
+      "total_deletions": 3,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    },
+    "4af1766e68543456": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e90b8bba-2e36-4196-b9e4-346251de381c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 39,
+      "total_deletions": 42,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    },
+    "909ea62280f458ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2771b08a-419b-4e2a-bc4b-73092069d9c5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 255,
+      "total_deletions": 200,
+      "accepted_lines": 193,
+      "overriden_lines": 2
+    },
+    "a978ca859cf37228": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9ee89db-f9de-49f3-81dd-7bc1090f3151",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 352,
+      "total_deletions": 81,
+      "accepted_lines": 159,
+      "overriden_lines": 2
+    },
+    "ce3044530e4baa42": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d07ba951-b7dc-4e38-8709-972bc92450a5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 314,
+      "total_deletions": 29,
+      "accepted_lines": 295,
+      "overriden_lines": 2
+    },
+    "ee9444f104dc93e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7777ed90-a74d-4688-89cf-07ab80b42f81",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1770,
+      "total_deletions": 938,
+      "accepted_lines": 1627,
+      "overriden_lines": 10
+    }
+  }
+}

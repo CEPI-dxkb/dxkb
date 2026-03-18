@@ -1,0 +1,31 @@
+src/components/jobs/jobs-browser.tsx
+  e1fc7121710cbaa8 123-124,137
+src/types/workspace.ts
+  e1fc7121710cbaa8 144
+src/app/api/services/app-service/jobs/filtered/route.ts
+  e1fc7121710cbaa8 14,40,51
+src/hooks/services/jobs/use-jobs-data.ts
+  e1fc7121710cbaa8 11,16,26,41
+src/lib/app-service.ts
+  e1fc7121710cbaa8 106,112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "b8c32e6cce6363904f2c6d8ed9a3f1bbe80137c1",
+  "prompts": {
+    "e1fc7121710cbaa8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bec930da-c6ea-44a8-9c31-187ccb0a2641",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}

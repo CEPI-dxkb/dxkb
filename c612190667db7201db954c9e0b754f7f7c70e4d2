@@ -1,0 +1,59 @@
+src/app/(footer)/updates/page.tsx
+  a112cbbfa12a676f 130
+src/components/containers/DataTable.tsx
+  a112cbbfa12a676f 16,202,439-441
+src/hooks/use-is-mounted.ts
+  a112cbbfa12a676f 2,4
+src/lib/fasta-validation.ts
+  a112cbbfa12a676f 63-64,66
+src/lib/forms/tanstack-library-selection.ts
+  a112cbbfa12a676f 209
+src/components/workspace/workspace-job-result-view.tsx
+  a112cbbfa12a676f 37,193,195,202
+src/components/workspace/create-folder-dialog.tsx
+  a112cbbfa12a676f 40
+src/components/workspace/workspace-data-table.tsx
+  a112cbbfa12a676f 17,191
+src/components/workspace/workspace-mini-browser.tsx
+  a112cbbfa12a676f 232
+src/hooks/services/workspace/use-workspace-du.ts
+  a112cbbfa12a676f 35
+src/lib/forms/(protein-tools)/meta-cats/meta-cats-form-utils.ts
+  a112cbbfa12a676f 102
+src/lib/utils.ts
+  a112cbbfa12a676f 8-11,18-19
+src/hooks/services/workspace/use-workspace-dialog-handlers.ts
+  a112cbbfa12a676f 66
+src/components/services/ListData.tsx
+  a112cbbfa12a676f 8,303
+src/components/ui/number-input.tsx
+  a112cbbfa12a676f 165-166,169-170
+src/hooks/services/use-service-form-submission.ts
+  a112cbbfa12a676f 91
+src/lib/forms/(genomics)/primer-design/primer-design-form-utils.ts
+  a112cbbfa12a676f 20
+src/components/jobs/jobs-detail-panel.tsx
+  a112cbbfa12a676f 26
+src/components/workspace/workspace-browser.tsx
+  a112cbbfa12a676f 32,270,310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "c612190667db7201db954c9e0b754f7f7c70e4d2",
+  "prompts": {
+    "a112cbbfa12a676f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f7992f9f-5f2a-4457-9c3f-0034a306fd9b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 51,
+      "total_deletions": 42,
+      "accepted_lines": 41,
+      "overriden_lines": 0
+    }
+  }
+}

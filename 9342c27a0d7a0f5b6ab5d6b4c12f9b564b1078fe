@@ -1,0 +1,36 @@
+src/types/workspace.ts
+  09b0f28545ae4bdf 20-126,207,211,215,220,224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "9342c27a0d7a0f5b6ab5d6b4c12f9b564b1078fe",
+  "prompts": {
+    "09b0f28545ae4bdf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6e1a1109-8835-4c5c-9e5b-b25662087cc0",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 143,
+      "overriden_lines": 0
+    },
+    "c80d40f2ab002576": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e6c455ce-6382-4961-b2fb-7a4b56d1e89b",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 759,
+      "overriden_lines": 0
+    }
+  }
+}

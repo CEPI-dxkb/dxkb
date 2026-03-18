@@ -1,0 +1,42 @@
+src/components/containers/InfoPanel.tsx
+  5d2a1806e5989380 2,55-65,78-79,114-115,118-138,140-143
+src/hooks/services/workspace/use-workspace-du.ts
+  5d2a1806e5989380 1-40
+src/lib/services/workspace/types.ts
+  5d2a1806e5989380 243-252,255
+src/lib/services/workspace/client.ts
+  5d2a1806e5989380 79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "71ab2decce9ae02362cb797f60a4705c2a470e3e",
+  "prompts": {
+    "04924db35366cb26": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1b1049e6-94ce-40c3-b4e9-8531f05cf3e7",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 55,
+      "total_deletions": 1,
+      "accepted_lines": 50,
+      "overriden_lines": 0
+    },
+    "5d2a1806e5989380": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "a1e48fd5-9b1d-43a7-a3d7-317aa15be8e9",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 143,
+      "total_deletions": 43,
+      "accepted_lines": 105,
+      "overriden_lines": 0
+    }
+  }
+}

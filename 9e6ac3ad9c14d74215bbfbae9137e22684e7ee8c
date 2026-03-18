@@ -1,0 +1,69 @@
+src/components/workspace/workspace-item-icon.tsx
+  649f0e87803809db 19,52,66-69,76-78,92
+src/components/workspace/workspace-browser.tsx
+  9418a7578b4e921f 764,905
+src/components/workspace/copy-to-dialog.tsx
+  b9484e14901b52d7 59,65,92,103
+  9418a7578b4e921f 88,124,133,146
+  ecd4eb73b83d9d4d 45-48,96,98,125-126
+  649f0e87803809db 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "9e6ac3ad9c14d74215bbfbae9137e22684e7ee8c",
+  "prompts": {
+    "649f0e87803809db": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "afdddb88-93d8-4ca0-ab3d-a5becc87089c",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 5,
+      "accepted_lines": 11,
+      "overriden_lines": 0
+    },
+    "9418a7578b4e921f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "41810ada-9e2e-4868-8b03-b46b6368eecc",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 91,
+      "total_deletions": 15,
+      "accepted_lines": 6,
+      "overriden_lines": 1
+    },
+    "b9484e14901b52d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0c810997-5fb8-4451-b3b1-a642351095e4",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 29,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    },
+    "ecd4eb73b83d9d4d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "64cf6feb-3f45-46ea-8d5f-ec2c24f33a1e",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 61,
+      "total_deletions": 47,
+      "accepted_lines": 9,
+      "overriden_lines": 0
+    }
+  }
+}

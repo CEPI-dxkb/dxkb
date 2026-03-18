@@ -1,0 +1,35 @@
+src/app/services/(genomics)/variation-analysis/page.tsx
+  d0c87eea9741fd17 48-49,53
+src/app/services/(genomics)/primer-design/page.tsx
+  d0c87eea9741fd17 39-40,44
+src/app/services/(genomics)/genome-annotation/page.tsx
+  d0c87eea9741fd17 38-39,44
+src/app/services/(genomics)/genome-alignment/page.tsx
+  d0c87eea9741fd17 43-44
+src/app/services/(phylogenomics)/gene-protein-tree/page.tsx
+  d0c87eea9741fd17 59-82,99,113,116,121,123,125,135,141,181,200,225,227,233,241,260,274,288,292,301-302,349,489,498,518,527,562
+src/app/services/(genomics)/blast/page.tsx
+  d0c87eea9741fd17 43,53-54,58
+src/app/services/(genomics)/genome-assembly/page.tsx
+  d0c87eea9741fd17 56-57,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.9",
+  "base_commit_sha": "e41fe8b932021f442fb77b8bd4d3f9b95dae5b37",
+  "prompts": {
+    "d0c87eea9741fd17": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a1ee05-d41c-4b24-a70c-bc7548e70483",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 81,
+      "total_deletions": 48,
+      "accepted_lines": 68,
+      "overriden_lines": 0
+    }
+  }
+}

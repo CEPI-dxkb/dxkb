@@ -1,0 +1,36 @@
+src/components/containers/InfoPanel.tsx
+  bcc73fdc2a528a13 70-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "786159493283b3126b92a11b6fbad4a81d7738d5",
+  "prompts": {
+    "bcc73fdc2a528a13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "17f9331d-4fe1-4e31-bb44-e01e3ae84503",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 1,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "daee6a093a7f4d3d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1f713161-b8fd-4bcd-917c-2a2bd2070136",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 6,
+      "accepted_lines": 0,
+      "overriden_lines": 0
+    }
+  }
+}

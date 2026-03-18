@@ -1,0 +1,25 @@
+src/components/containers/DataTable.tsx
+  affa636085cab2b9 439-441
+src/app/(footer)/updates/page.tsx
+  affa636085cab2b9 130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "c93b2c141511cc8c7f969d78233aa34ccbf878b4",
+  "prompts": {
+    "affa636085cab2b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7978f89-ce94-4546-8262-9027be1e5fcc",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 4,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}

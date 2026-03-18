@@ -1,0 +1,23 @@
+src/app/services/(protein-tools)/msa-snp-analysis/page.tsx
+  ad3d958f7c7558c2 63,774
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "2fd10ee3750aa6425f4c87bffe814a4c4018f3a1",
+  "prompts": {
+    "ad3d958f7c7558c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6e82164-388b-4169-b2f0-fd8872d8bfb3",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

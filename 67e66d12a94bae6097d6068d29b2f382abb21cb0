@@ -1,0 +1,25 @@
+src/components/layouts/WithGenomePanel.tsx
+  860a330b4d79c7e7 36
+src/components/jobs/jobs-detail-panel.tsx
+  860a330b4d79c7e7 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "67e66d12a94bae6097d6068d29b2f382abb21cb0",
+  "prompts": {
+    "860a330b4d79c7e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11f19e97-53c0-4116-bce6-ab2cb5d3d122",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

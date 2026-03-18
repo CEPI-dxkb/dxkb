@@ -1,0 +1,25 @@
+src/lib/jobs/formatting.ts
+  3178fd6f58b6c2e4 27-29
+src/components/shared/data-table-header.tsx
+  3178fd6f58b6c2e4 9,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "41129b2b920f21cab5c341cea49d7d2a7ab27c9e",
+  "prompts": {
+    "3178fd6f58b6c2e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90cadcae-3724-417d-a142-4d8e65705427",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 5,
+      "total_deletions": 3,
+      "accepted_lines": 5,
+      "overriden_lines": 0
+    }
+  }
+}

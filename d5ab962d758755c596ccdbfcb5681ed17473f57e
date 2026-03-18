@@ -1,0 +1,23 @@
+.claude/rules/testing.md
+  4cbad54a975625eb 17-28,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "d5ab962d758755c596ccdbfcb5681ed17473f57e",
+  "prompts": {
+    "4cbad54a975625eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c614e28f-b7c3-4cd0-90cb-e391a7c02f8e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 1,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}

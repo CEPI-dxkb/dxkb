@@ -1,0 +1,36 @@
+docs/superpowers/specs/2026-03-17-vitest-mock-audit-design.md
+  4378fdbf8a3832e6 1-453
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "ca66c620795afdae870ca50a022ce44e37865262",
+  "prompts": {
+    "4378fdbf8a3832e6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c8d130-aaed-45b8-b370-a15bd7d0c5a3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 490,
+      "total_deletions": 37,
+      "accepted_lines": 453,
+      "overriden_lines": 0
+    },
+    "e20751294b81c481": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b688af7b-7d80-4508-823e-f9e978c1c124",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1753,
+      "total_deletions": 31,
+      "accepted_lines": 1743,
+      "overriden_lines": 0
+    }
+  }
+}

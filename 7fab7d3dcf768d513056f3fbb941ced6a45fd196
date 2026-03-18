@@ -1,0 +1,23 @@
+eslint.config.mjs
+  33882908e9755f0f 2,5,7,9-17,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "7fab7d3dcf768d513056f3fbb941ced6a45fd196",
+  "prompts": {
+    "33882908e9755f0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ed3f15e-4c13-4bfa-ab5f-d917eea83868",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 12,
+      "accepted_lines": 13,
+      "overriden_lines": 12
+    }
+  }
+}

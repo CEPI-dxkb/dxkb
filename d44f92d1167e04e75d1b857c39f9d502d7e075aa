@@ -1,0 +1,39 @@
+src/hooks/services/workspace/use-workspace-browser-actions.ts
+  7ea30b8f670b99f8 3
+src/components/workspace/delete-confirm-dialog.tsx
+  4cfbc21438857acb 3,34-39,53
+  7ea30b8f670b99f8 13-14,40,48-51,59,66-72,75-78,80-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "d44f92d1167e04e75d1b857c39f9d502d7e075aa",
+  "prompts": {
+    "4cfbc21438857acb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e072f649-e8c0-414d-a169-170985285d8d",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 24,
+      "total_deletions": 23,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "7ea30b8f670b99f8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9ec02435-68ad-423c-831c-e0bbb5a5763e",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 48,
+      "total_deletions": 81,
+      "accepted_lines": 31,
+      "overriden_lines": 0
+    }
+  }
+}

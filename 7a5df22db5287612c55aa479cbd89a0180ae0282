@@ -1,0 +1,78 @@
+src/hooks/__tests__/use-authenticated-fetch-client.test.tsx
+  9a47a3676c138372 1-135
+package.json
+  9a47a3676c138372 9-12
+src/lib/__tests__/jsonrpc-client.test.ts
+  9a47a3676c138372 1-326
+src/lib/__tests__/url.test.ts
+  9a47a3676c138372 1-27
+src/lib/services/workspace/__tests__/utils.test.ts
+  9a47a3676c138372 1-79
+src/hooks/__tests__/use-fasta-validation.test.tsx
+  9a47a3676c138372 1-157
+src/lib/forms/__tests__/tanstack-library-selection.test.ts
+  9a47a3676c138372 1-153
+src/lib/services/workspace/__tests__/helpers.test.ts
+  9a47a3676c138372 1-346
+vitest.setup.ts
+  9a47a3676c138372 1-21
+vitest.config.mts
+  9a47a3676c138372 1-31
+src/lib/__tests__/app-service.test.ts
+  86bdb6f279dfddd3 1
+  9a47a3676c138372 2-349
+src/hooks/__tests__/use-table-keyboard-navigation.test.tsx
+  9a47a3676c138372 1-416
+src/lib/__tests__/auth-client.test.ts
+  9a47a3676c138372 1-301
+src/lib/__tests__/rerun-utility.test.ts
+  86bdb6f279dfddd3 9
+  9a47a3676c138372 1-8,10-198
+src/lib/services/workspace/__tests__/client.test.ts
+  9a47a3676c138372 1-260
+src/lib/forms/__tests__/shared-schemas.test.ts
+  9a47a3676c138372 1-93
+tsconfig.json
+  9a47a3676c138372 21
+src/lib/__tests__/utils.test.ts
+  9a47a3676c138372 1-116
+src/lib/services/workspace/__tests__/validation.test.ts
+  9a47a3676c138372 1-85
+src/lib/services/workspace/__tests__/favorites.test.ts
+  9a47a3676c138372 1-176
+src/lib/__tests__/fasta-validation.test.ts
+  9a47a3676c138372 89-91,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "7a5df22db5287612c55aa479cbd89a0180ae0282",
+  "prompts": {
+    "86bdb6f279dfddd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afe11c82-355e-4bd9-9195-ef5073759a7a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 597,
+      "total_deletions": 24,
+      "accepted_lines": 577,
+      "overriden_lines": 0
+    },
+    "9a47a3676c138372": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f794f1b-c7b4-465b-83ee-b5a32c7712be",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 3298,
+      "total_deletions": 22,
+      "accepted_lines": 3278,
+      "overriden_lines": 0
+    }
+  }
+}

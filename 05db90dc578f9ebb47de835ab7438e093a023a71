@@ -1,0 +1,23 @@
+src/components/workspace/workspace-action-bar.tsx
+  f7d5ef0aa875546d 20-21,34,96-97,100-101,108-110,112,115,131-140,142-146,149-150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "05db90dc578f9ebb47de835ab7438e093a023a71",
+  "prompts": {
+    "f7d5ef0aa875546d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d450ac0e-7439-45a3-a012-6a6c6dc2d26f",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 91,
+      "total_deletions": 54,
+      "accepted_lines": 29,
+      "overriden_lines": 4
+    }
+  }
+}

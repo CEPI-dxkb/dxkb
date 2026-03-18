@@ -1,0 +1,208 @@
+src/app/services/(phylogenomics)/gene-protein-tree/page.tsx
+  d25ee8efcce80586 177,180,205
+  2eaa07c6e7eaba45 48-49,176,178-179,181-183,185-186,189-204,206
+src/hooks/services/use-rerun-form.ts
+  2eaa07c6e7eaba45 9-10,19-20,22-23,26,28,31,34
+  d25ee8efcce80586 3,11-12,16,18,38-41,44
+src/app/services/(protein-tools)/msa-snp-analysis/page.tsx
+  d25ee8efcce80586 148,151
+  2eaa07c6e7eaba45 6-7,147,149-150,152-227,235-237,240-243
+  b0376f4e293757b9 228-234,238-239
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  2eaa07c6e7eaba45 3-5,88-92,101,124,126-127,129-202,204
+  d25ee8efcce80586 125,128,203
+src/app/services/(genomics)/similar-genome-finder/page.tsx
+  d25ee8efcce80586 144,147,161
+  2eaa07c6e7eaba45 3,37,145-146,148-160,162
+src/lib/forms/tanstack-library-selection.ts
+  2eaa07c6e7eaba45 148,150,156-157,161
+src/app/services/(genomics)/blast/page.tsx
+  6d320334b5b6961e 183
+  2eaa07c6e7eaba45 169-171,175-176,179-180,182,187-192
+  d25ee8efcce80586 186
+src/app/services/(metagenomics)/taxonomic-classification/page.tsx
+  2eaa07c6e7eaba45 45,193,228,230-231,233,240-242,246-247,251-252,254,257-259
+  d25ee8efcce80586 229,232,248-250,253,255-256
+  39d53564e15cf194 46,236-239,244-245
+src/app/services/(viral-tools)/viral-assembly/page.tsx
+  39d53564e15cf194 76-77,81-82,86-88,121-124,126,129-132,135-136,138
+  2eaa07c6e7eaba45 3,29,71,73-75,78-80,83-85,107-113,115,120,125,127-128,133-134,137,139,141,146,155,187,196
+  d25ee8efcce80586 30,72,114,140
+.claude/CLAUDE.md
+  d25ee8efcce80586 55,59-68,97-102
+src/app/services/(genomics)/primer-design/page.tsx
+  d25ee8efcce80586 41-43,47,264,267,304,312,317,457,466
+  2eaa07c6e7eaba45 52,265-266,268-303,305-311,313-316,318
+src/app/services/(protein-tools)/meta-cats/page.tsx
+  58f50d118d563c91 180-193,195
+  2eaa07c6e7eaba45 3-5,103-107,120,145,147-148,150-179,194,196-208,223
+  d25ee8efcce80586 146,149
+src/app/services/(utilities)/fastq-utilities/page.tsx
+  d25ee8efcce80586 45,163,166,176-178,202
+src/app/services/(genomics)/genome-alignment/page.tsx
+  2eaa07c6e7eaba45 46,50,183,185-186,188,192-203,205
+  d25ee8efcce80586 184,187,204
+  39d53564e15cf194 191
+src/app/services/(metagenomics)/metagenomic-binning/page.tsx
+  d25ee8efcce80586 45,143,146,157-160,165
+  2eaa07c6e7eaba45 44,46
+src/lib/forms/(genomics)/primer-design/primer-design-form-utils.ts
+  d25ee8efcce80586 20-51,53
+src/app/services/(viral-tools)/influenza-ha-subtype/page.tsx
+  d25ee8efcce80586 58,61,84
+  2eaa07c6e7eaba45 3,26-27,59-60,62-63,65-66,68-69,71-72,74-78,80-81,83,85
+src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/page.tsx
+  2eaa07c6e7eaba45 44,91,123,179-180,182-183,185-186,188-189,191-192,194-195,197-199,203-204,206-208,216-220,222
+  d25ee8efcce80586 45,90,181,200-202,205,209-215,221
+src/app/services/(genomics)/genome-assembly/page.tsx
+  d25ee8efcce80586 51,147,150,157-160,165
+  2eaa07c6e7eaba45 3,50,135,146,148-149,151,155-156,161-164,166
+src/app/services/(phylogenomics)/viral-genome-tree/page.tsx
+  2eaa07c6e7eaba45 48-49,121,123-124,126-127,129-130,133-145,147
+  d25ee8efcce80586 122,125,146
+src/lib/rerun-utility.ts
+  d25ee8efcce80586 1-7,84-138
+src/app/services/(viral-tools)/sars-cov2-genome-analysis/page.tsx
+  d25ee8efcce80586 48,96,176,228-230,242
+  7004ba0e9bf6f1d8 71,182-204
+  2eaa07c6e7eaba45 47,84,97,137,174-175,177-181,205-206,208-209,211-212,214-217,219-220,222-223,225-227,231-238,240-241,243
+src/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-utils.ts
+  7004ba0e9bf6f1d8 75
+src/app/services/(viral-tools)/subspecies-classification/page.tsx
+  d25ee8efcce80586 79,82,102
+  2eaa07c6e7eaba45 3,80-81,83-84,86-87,89-90,92-93,95-96,98-99,101,103
+src/app/services/(genomics)/variation-analysis/page.tsx
+  d25ee8efcce80586 43,117,120,129-132,137
+  2eaa07c6e7eaba45 3,42,44,105,116,118-119,121,127-128,133-136,138
+src/app/services/(metagenomics)/metagenomic-read-mapping/page.tsx
+  2eaa07c6e7eaba45 3,44,46,125,136,138-139,141,148-149,154-157
+  d25ee8efcce80586 45,137,140,150-153,158
+src/app/services/(genomics)/genome-annotation/page.tsx
+  7004ba0e9bf6f1d8 127-147
+  d25ee8efcce80586 118,121,148
+  2eaa07c6e7eaba45 33,117,119-120,122,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "688327086ac97c37d874610b3190e00e582842d5",
+  "prompts": {
+    "2eaa07c6e7eaba45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0a5e1ff5-8c6c-4225-a021-43f9146830bc",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1136,
+      "total_deletions": 112,
+      "accepted_lines": 679,
+      "overriden_lines": 65
+    },
+    "39d53564e15cf194": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3040e709-0f84-438a-8945-1294d85786e2",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 58,
+      "total_deletions": 32,
+      "accepted_lines": 50,
+      "overriden_lines": 0
+    },
+    "58f50d118d563c91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c20e6de2-c4f2-440b-a17b-9d7e62fdece4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 4,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    },
+    "6d320334b5b6961e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a03a9480-977c-4757-9ea7-383879ded52f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "7004ba0e9bf6f1d8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f466bb0-c655-4b84-b0c8-d8c130707036",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 56,
+      "total_deletions": 18,
+      "accepted_lines": 46,
+      "overriden_lines": 0
+    },
+    "b0376f4e293757b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8df158f-d57a-4957-ad9f-d768cab36815",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 8,
+      "accepted_lines": 15,
+      "overriden_lines": 0
+    },
+    "d25ee8efcce80586": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb639dbe-0adc-494d-9e1e-3dc246080c3c",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 294,
+      "total_deletions": 408,
+      "accepted_lines": 243,
+      "overriden_lines": 1
+    },
+    "e793d6d715d5c6b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64487552-cb64-406e-866d-19facbadb7d7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 30,
+      "total_deletions": 45,
+      "accepted_lines": 29,
+      "overriden_lines": 0
+    },
+    "fb6c4f440e5e2e58": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23b63795-ea1a-4999-a623-85328adc647d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 27,
+      "total_deletions": 25,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    }
+  }
+}

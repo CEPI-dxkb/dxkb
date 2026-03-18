@@ -1,0 +1,51 @@
+src/app/organisms/viruses/_components/navigation-menu.tsx
+  90362053549cded8 3,23,29,35,41,47,52,58,64,70,76,105,107
+src/app/allTermSearchResults.tsx
+  90362053549cded8 6,109,111,113,115,117
+src/app/(footer)/contact/components/offices.tsx
+  90362053549cded8 2,14,17
+src/components/footers/footer.tsx
+  90362053549cded8 3,92,101,110,119,128
+src/app/(auth)/sign-up/page.tsx
+  90362053549cded8 23,137,158,180,202,223,244,265,286,307,327,329,346,368,370
+src/components/quick-links/quick-viral.tsx
+  90362053549cded8 10,82
+src/app/(auth)/forgot-password/page.tsx
+  90362053549cded8 19,92,133,169
+src/components/search/search-bar.tsx
+  90362053549cded8 11,119
+src/app/(footer)/privacy-policy/components/privacy-sidebar.tsx
+  90362053549cded8 10,19
+src/components/search/mobile-search-bar.tsx
+  90362053549cded8 13,156,184
+src/app/(footer)/contact/components/contact-form.tsx
+  90362053549cded8 2,24,36,49,66,72,78,88,92,96
+src/components/heros/help-hero.tsx
+  90362053549cded8 4,16
+src/styles/theme-switcher-floating.tsx
+  90362053549cded8 11,48,88,93
+src/app/(auth)/sign-in/page.tsx
+  90362053549cded8 22,106,137,157,159
+src/components/navbars/mobile-navbar.tsx
+  90362053549cded8 17,33,180,182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "0a2488c7e639b5ac67d8920eec6e8decb7f0bad8",
+  "prompts": {
+    "90362053549cded8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "94fdfc1e-25d2-4e76-beca-3d1882e0a86b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 81,
+      "total_deletions": 100,
+      "accepted_lines": 81,
+      "overriden_lines": 0
+    }
+  }
+}

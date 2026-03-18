@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.5",
+  "base_commit_sha": "3f2c2ec5e4dceced079524dec20601b62f44f3c5",
+  "prompts": {
+    "e85493bb985418da": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4f1df797-2094-4af1-86f3-681cfd7a15f4",
+        "model": "default"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

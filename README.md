@@ -115,7 +115,6 @@ All backend calls use **JSON-RPC 2.0 over HTTP POST**, implemented in `src/lib/j
 - [TanStack Table](https://tanstack.com/table) for the workspace file listing (with virtual scrolling via TanStack Virtual).
 - [TanStack Form](https://tanstack.com/form) + [Zod](https://zod.dev/) for service submission forms.
 
-
 ---
 
 ## Testing

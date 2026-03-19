@@ -7,7 +7,7 @@ import {
   requestPasswordReset,
   sendVerificationEmail,
   getSessionWithUser,
-} from "@/lib/auth-client";
+} from "@/lib/auth/client";
 
 describe("auth-client", () => {
   describe("signInEmail", () => {

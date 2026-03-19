@@ -3,10 +3,10 @@ import { NextRequest } from "next/server";
 import { server } from "@/test-helpers/msw-server";
 import { json } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ getAuthToken: vi.fn() }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { getAuthToken } from "@/lib/auth/session";
+const mockGetToken = vi.mocked(getAuthToken);
 
 describe("POST /api/services/minhash", () => {
   beforeEach(() => {

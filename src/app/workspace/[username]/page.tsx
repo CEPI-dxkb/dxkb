@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 
@@ -19,7 +19,7 @@ export default async function WorkspaceUsernamePage({ params }: WorkspaceUsernam
     redirect("/workspace/home");
   }
 
-  const authToken = await getBvbrcAuthToken();
+  const authToken = await getAuthToken();
   if (!authToken) {
     redirect(`/sign-in?redirect=${encodeURIComponent(`/workspace/${encodeWorkspaceSegment(username)}`)}`);
   }

@@ -3,13 +3,13 @@ import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
 import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ getAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-api"),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { getAuthToken } from "@/lib/auth/session";
+const mockGetToken = vi.mocked(getAuthToken);
 
 describe("POST /api/services/genome/by-ids", () => {
   it("returns 401 when no auth token", async () => {

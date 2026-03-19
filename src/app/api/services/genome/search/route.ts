@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       ? Math.min(Math.max(limitParam, 1), 50)
       : 25;
 
-    const token = await getBvbrcAuthToken();
+    const token = await getAuthToken();
 
     if (!token) {
       return NextResponse.json(

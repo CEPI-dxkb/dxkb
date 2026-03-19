@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { server } from "@/test-helpers/msw-server";
 import { json } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ getAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn((key: string) => {
     if (key === "SHOCK_ORIGINS") return "http://allowed-shock.example.com";
@@ -11,8 +11,8 @@ vi.mock("@/lib/env", () => ({
   }),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { getAuthToken } from "@/lib/auth/session";
+const mockGetToken = vi.mocked(getAuthToken);
 
 function defaultGetRequiredEnv(key: string) {
   if (key === "SHOCK_ORIGINS") return "http://allowed-shock.example.com";

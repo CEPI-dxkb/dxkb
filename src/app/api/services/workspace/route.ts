@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 /** Safe shape we forward to the client; avoids leaking stack traces, paths, or config. */
@@ -36,7 +36,7 @@ function sanitizeUpstreamError(raw: unknown): SanitizedApiError | null {
 export async function POST(request: NextRequest) {
   try {
     // Get the BV-BRC auth token from cookies
-    const authToken = await getBvbrcAuthToken();
+    const authToken = await getAuthToken();
 
     if (!authToken) {
       return NextResponse.json(

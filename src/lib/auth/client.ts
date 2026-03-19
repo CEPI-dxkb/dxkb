@@ -5,7 +5,7 @@ import type {
   SigninCredentials,
   SignupCredentials,
   PasswordResetRequest,
-} from "@/app/api/auth/types";
+} from "@/lib/auth/types";
 
 // ============================================================================
 // BV-BRC Auth Client (better-auth style API)
@@ -118,13 +118,6 @@ export async function getSessionWithUser(): Promise<AuthResponse<SessionResponse
 // Combined Auth Client Export (better-auth style)
 // ============================================================================
 
-/**
- * Combined auth client following better-auth patterns
- * Usage:
- *   const { data, error } = await bvbrcAuth.signIn.email({ username, password })
- *   const { data, error } = await bvbrcAuth.signUp.email({ ... })
- *   const { data, error } = await bvbrcAuth.signOut()
- */
 export const bvbrcAuth = {
   signIn: {
     email: signInEmail,

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -13,7 +13,7 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     // Get BV-BRC authentication token from cookies
-    const token = await getBvbrcAuthToken();
+    const token = await getAuthToken();
 
     if (!token) {
       return NextResponse.json(

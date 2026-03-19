@@ -2,10 +2,13 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve({ get: vi.fn(), set: vi.fn() })),
 }));
 
-vi.mock("@/app/api/auth/utils", () => ({
-  setBvbrcAuthCookies: vi.fn(),
-  getProfileMetadata: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  createSession: vi.fn(),
   extractRealmFromToken: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/profile", () => ({
+  getProfileMetadata: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -17,12 +20,12 @@ import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 import {
-  setBvbrcAuthCookies,
-  getProfileMetadata,
+  createSession,
   extractRealmFromToken,
-} from "@/app/api/auth/utils";
+} from "@/lib/auth/session";
+import { getProfileMetadata } from "@/lib/auth/profile";
 
-const mockSetBvbrcAuthCookies = vi.mocked(setBvbrcAuthCookies);
+const mockCreateSession = vi.mocked(createSession);
 const mockGetProfileMetadata = vi.mocked(getProfileMetadata);
 const mockExtractRealmFromToken = vi.mocked(extractRealmFromToken);
 
@@ -164,7 +167,7 @@ describe("POST /api/auth/sign-in/email", () => {
     expect(data.message).toBe("Authentication service unavailable");
   });
 
-  it("calls setBvbrcAuthCookies with correct arguments", async () => {
+  it("calls createSession with correct arguments", async () => {
     const profile = {
       id: "user123",
       email: "test@example.com",
@@ -192,7 +195,7 @@ describe("POST /api/auth/sign-in/email", () => {
 
     await POST(request);
 
-    expect(mockSetBvbrcAuthCookies).toHaveBeenCalledWith(
+    expect(mockCreateSession).toHaveBeenCalledWith(
       "the-token",
       "testuser",
       "patricbrc.org",

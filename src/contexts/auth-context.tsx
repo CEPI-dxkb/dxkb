@@ -11,16 +11,9 @@ import React, {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { AuthUser, SigninCredentials, SignupCredentials } from "@/app/api/auth/types";
-import { bvbrcAuth } from "@/lib/auth-client";
-
-function isProtectedPath(path: string): boolean {
-  return (
-    (path.startsWith("/services/") && path !== "/services") ||
-    path.startsWith("/workspace") ||
-    path.startsWith("/jobs")
-  );
-}
+import { AuthUser, SigninCredentials, SignupCredentials } from "@/lib/auth/types";
+import { bvbrcAuth } from "@/lib/auth/client";
+import { isProtectedPagePath } from "@/lib/auth/routes";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -119,7 +112,7 @@ export function AuthProvider({
 
   // Redirect to sign-in when session is lost on a protected route
   useEffect(() => {
-    if (!isLoading && !user && isProtectedPath(pathname)) {
+    if (!isLoading && !user && isProtectedPagePath(pathname)) {
       const query = searchParams.toString();
       const fullPath = query ? `${pathname}?${query}` : pathname;
       router.replace(`/sign-in?redirect=${encodeURIComponent(fullPath)}`);
@@ -210,7 +203,7 @@ export function AuthProvider({
     sendVerificationEmail,
     isLoading,
     isAuthenticated: !!user,
-    isVerified: user?.email_verified ?? false,
+    isVerified: user?.email_verified !== false,
   }), [
     user,
     signIn,

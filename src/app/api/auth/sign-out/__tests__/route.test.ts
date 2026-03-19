@@ -2,20 +2,20 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve({ get: vi.fn(), set: vi.fn() })),
 }));
 
-vi.mock("@/app/api/auth/utils", () => ({
-  clearBvbrcAuthCookies: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  deleteSession: vi.fn(),
 }));
 
 import { POST } from "../route";
-import { clearBvbrcAuthCookies } from "@/app/api/auth/utils";
+import { deleteSession } from "@/lib/auth/session";
 
-const mockClearBvbrcAuthCookies = vi.mocked(clearBvbrcAuthCookies);
+const mockDeleteSession = vi.mocked(deleteSession);
 
 describe("POST /api/auth/sign-out", () => {
-  it("calls clearBvbrcAuthCookies", async () => {
+  it("calls deleteSession", async () => {
     await POST();
 
-    expect(mockClearBvbrcAuthCookies).toHaveBeenCalledTimes(1);
+    expect(mockDeleteSession).toHaveBeenCalledTimes(1);
   });
 
   it("returns success true on successful sign out", async () => {
@@ -26,8 +26,8 @@ describe("POST /api/auth/sign-out", () => {
     expect(data).toEqual({ success: true });
   });
 
-  it("returns 500 when clearBvbrcAuthCookies throws", async () => {
-    mockClearBvbrcAuthCookies.mockRejectedValue(new Error("Cookie error"));
+  it("returns 500 when deleteSession throws", async () => {
+    mockDeleteSession.mockRejectedValue(new Error("Cookie error"));
 
     const response = await POST();
     const data = await response.json();

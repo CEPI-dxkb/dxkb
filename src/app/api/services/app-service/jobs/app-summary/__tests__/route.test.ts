@@ -1,7 +1,7 @@
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({
-  getBvbrcAuthToken: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  getAuthToken: vi.fn(),
 }));
 
 vi.mock("@/lib/app-service", () => ({
@@ -9,10 +9,10 @@ vi.mock("@/lib/app-service", () => ({
 }));
 
 import { POST } from "../route";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 import { createAppService } from "@/lib/app-service";
 
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+const mockGetToken = vi.mocked(getAuthToken);
 const mockCreateAppService = vi.mocked(createAppService);
 
 const mockAppService = {

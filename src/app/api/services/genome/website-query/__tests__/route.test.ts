@@ -8,14 +8,14 @@ vi.hoisted(() => {
   process.env.BVBRC_WEBSITE_API_URL = "http://mock-website-api";
 });
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ getAuthToken: vi.fn() }));
 
 vi.mock("csv-parse/sync", () => ({
   parse: vi.fn(() => [{ genome_id: "1", genome_name: "test" }]),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { getAuthToken } from "@/lib/auth/session";
+const mockGetToken = vi.mocked(getAuthToken);
 
 describe("POST /api/services/genome/website-query", () => {
   beforeEach(() => {

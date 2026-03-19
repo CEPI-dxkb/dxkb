@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAppService } from "@/lib/app-service";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 
 const requestSchema = z.object({
   offset: z.number().int().nonnegative().default(0),
@@ -20,7 +20,7 @@ const requestSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = await getBvbrcAuthToken();
+    const token = await getAuthToken();
 
     if (!token) {
       return NextResponse.json(

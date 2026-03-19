@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBvbrcAuthData } from "@/app/api/auth/utils";
+import { getSession } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 /**
@@ -8,7 +8,7 @@ import { getRequiredEnv } from "@/lib/env";
  */
 export async function POST() {
   try {
-    const { token, userId } = await getBvbrcAuthData();
+    const { token, userId } = await getSession();
 
     if (!token || !userId) {
       return NextResponse.json(

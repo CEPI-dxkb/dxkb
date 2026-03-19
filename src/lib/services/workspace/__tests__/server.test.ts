@@ -7,8 +7,8 @@ import {
   listPermissionsServer,
 } from "@/lib/services/workspace/server";
 
-vi.mock("@/lib/auth", () => ({
-  getBvbrcAuthToken: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  getAuthToken: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -33,8 +33,8 @@ vi.mock("@/lib/services/workspace/helpers", () => ({
   })),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { getAuthToken } from "@/lib/auth/session";
+const mockGetToken = vi.mocked(getAuthToken);
 
 describe("server workspace functions", () => {
   describe("workspaceRequest (tested via exported functions)", () => {

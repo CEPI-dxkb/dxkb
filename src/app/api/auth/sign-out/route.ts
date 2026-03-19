@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clearBvbrcAuthCookies } from "@/app/api/auth/utils";
+import { deleteSession } from "@/lib/auth/session";
 
 /**
  * Sign out (better-auth style endpoint)
@@ -8,7 +8,7 @@ import { clearBvbrcAuthCookies } from "@/app/api/auth/utils";
 export async function POST() {
   try {
     // Clear all BV-BRC authentication cookies
-    await clearBvbrcAuthCookies();
+    await deleteSession();
 
     // Return better-auth style response
     return NextResponse.json({

@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "f9e1f227e3a716bf7244d3cfe76831f14a2901e3",
+  "prompts": {
+    "f7c96b65c3750a2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1f6cae8-6244-4af4-8e43-a80d83de4634",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1037,
+      "overriden_lines": 0
+    }
+  }
+}

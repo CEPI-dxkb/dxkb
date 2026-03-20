@@ -1,24 +1,43 @@
-vi.mock("@/lib/auth/session", () => ({
-  getSession: vi.fn(),
-  serverAuthenticatedFetch: vi.fn(),
+const { mockCookieStore } = vi.hoisted(() => ({
+  mockCookieStore: { get: vi.fn(), set: vi.fn() },
 }));
 
-vi.mock("@/lib/env", () => ({
-  getRequiredEnv: vi.fn(() => "http://mock-user-url"),
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }));
 
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { GET, POST } from "../route";
-import { getSession, serverAuthenticatedFetch } from "@/lib/auth/session";
 
-const mockGetSession = vi.mocked(getSession);
-const mockServerAuthenticatedFetch = vi.mocked(serverAuthenticatedFetch);
+const userUrl = "http://mock-user-url";
+
+beforeEach(() => {
+  process.env.USER_URL = userUrl;
+});
+
+afterEach(() => {
+  delete process.env.USER_URL;
+});
+
+/** Helper — configure mock cookies for an authenticated session */
+function setAuthCookies(token: string, userId: string) {
+  mockCookieStore.get.mockImplementation((name: string) => {
+    if (name === "bvbrc_token") return { value: token };
+    if (name === "bvbrc_user_id") return { value: userId };
+    return undefined;
+  });
+}
+
+/** Helper — configure mock cookies for an unauthenticated session */
+function clearAuthCookies() {
+  mockCookieStore.get.mockReturnValue(undefined);
+}
 
 describe("GET /api/auth/profile", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetSession.mockResolvedValue({ token: undefined, userId: undefined, realm: undefined });
+    clearAuthCookies();
 
     const response = await GET();
     const data = await response.json();
@@ -29,9 +48,10 @@ describe("GET /api/auth/profile", () => {
 
   it("returns profile data when authenticated", async () => {
     const profile = { id: "user1", email: "test@example.com", first_name: "Test" };
-    mockGetSession.mockResolvedValue({ token: "tok", userId: "user1", realm: undefined });
-    mockServerAuthenticatedFetch.mockResolvedValue(
-      new Response(JSON.stringify(profile), { status: 200 }),
+    setAuthCookies("tok", "user1");
+
+    server.use(
+      http.get(`${userUrl}/user1`, () => HttpResponse.json(profile)),
     );
 
     const response = await GET();
@@ -42,23 +62,28 @@ describe("GET /api/auth/profile", () => {
   });
 
   it("passes encoded userId in the URL", async () => {
-    mockGetSession.mockResolvedValue({ token: "tok", userId: "user@realm.org", realm: undefined });
-    mockServerAuthenticatedFetch.mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 200 }),
+    setAuthCookies("tok", "user@realm.org");
+
+    let capturedUrl: string | null = null;
+    server.use(
+      http.get(`${userUrl}/:userId`, ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json({});
+      }),
     );
 
     await GET();
 
-    expect(mockServerAuthenticatedFetch).toHaveBeenCalledWith(
-      "http://mock-user-url/user%40realm.org",
-      expect.objectContaining({ headers: { Accept: "application/json" } }),
-    );
+    expect(capturedUrl).toBe(`${userUrl}/user%40realm.org`);
   });
 
   it("returns upstream status when fetch fails", async () => {
-    mockGetSession.mockResolvedValue({ token: "tok", userId: "user1", realm: undefined });
-    mockServerAuthenticatedFetch.mockResolvedValue(
-      new Response(null, { status: 404 }),
+    setAuthCookies("tok", "user1");
+
+    server.use(
+      http.get(`${userUrl}/user1`, () =>
+        new HttpResponse(null, { status: 404 }),
+      ),
     );
 
     const response = await GET();
@@ -69,8 +94,11 @@ describe("GET /api/auth/profile", () => {
   });
 
   it("returns 500 when an exception is thrown", async () => {
-    mockGetSession.mockResolvedValue({ token: "tok", userId: "user1", realm: undefined });
-    mockServerAuthenticatedFetch.mockRejectedValue(new Error("network error"));
+    setAuthCookies("tok", "user1");
+
+    server.use(
+      http.get(`${userUrl}/user1`, () => HttpResponse.error()),
+    );
 
     const response = await GET();
     const data = await response.json();
@@ -82,7 +110,7 @@ describe("GET /api/auth/profile", () => {
 
 describe("POST /api/auth/profile", () => {
   it("returns 401 when not authenticated", async () => {
-    mockGetSession.mockResolvedValue({ token: undefined, userId: undefined, realm: undefined });
+    clearAuthCookies();
 
     const request = mockNextRequest({
       method: "POST",
@@ -97,7 +125,10 @@ describe("POST /api/auth/profile", () => {
   });
 
   it("returns 401 when token is missing", async () => {
-    mockGetSession.mockResolvedValue({ token: undefined, userId: "user1", realm: undefined });
+    mockCookieStore.get.mockImplementation((name: string) => {
+      if (name === "bvbrc_user_id") return { value: "user1" };
+      return undefined;
+    });
 
     const request = mockNextRequest({
       method: "POST",
@@ -109,7 +140,7 @@ describe("POST /api/auth/profile", () => {
   });
 
   it("forwards JSON Patch body to upstream", async () => {
-    mockGetSession.mockResolvedValue({ token: "the-token", userId: "user1", realm: undefined });
+    setAuthCookies("the-token", "user1");
 
     const patchOps = [{ op: "replace", path: "/email", value: "new@example.com" }];
     let capturedBody: string | null = null;
@@ -117,7 +148,7 @@ describe("POST /api/auth/profile", () => {
     let capturedAuthorization: string | null = null;
 
     server.use(
-      http.post("http://mock-user-url/user1", async ({ request }) => {
+      http.post(`${userUrl}/user1`, async ({ request }) => {
         capturedBody = await request.text();
         capturedContentType = request.headers.get("Content-Type");
         capturedAuthorization = request.headers.get("Authorization");
@@ -138,10 +169,10 @@ describe("POST /api/auth/profile", () => {
   });
 
   it("returns success when upstream succeeds", async () => {
-    mockGetSession.mockResolvedValue({ token: "the-token", userId: "user1", realm: undefined });
+    setAuthCookies("the-token", "user1");
 
     server.use(
-      http.post("http://mock-user-url/user1", () =>
+      http.post(`${userUrl}/user1`, () =>
         HttpResponse.json({ ok: true }),
       ),
     );
@@ -159,10 +190,10 @@ describe("POST /api/auth/profile", () => {
   });
 
   it("returns upstream status when upstream fails", async () => {
-    mockGetSession.mockResolvedValue({ token: "the-token", userId: "user1", realm: undefined });
+    setAuthCookies("the-token", "user1");
 
     server.use(
-      http.post("http://mock-user-url/user1", () =>
+      http.post(`${userUrl}/user1`, () =>
         new HttpResponse("Bad Request", { status: 400 }),
       ),
     );
@@ -180,10 +211,10 @@ describe("POST /api/auth/profile", () => {
   });
 
   it("returns fallback message when upstream error body is empty", async () => {
-    mockGetSession.mockResolvedValue({ token: "the-token", userId: "user1", realm: undefined });
+    setAuthCookies("the-token", "user1");
 
     server.use(
-      http.post("http://mock-user-url/user1", () =>
+      http.post(`${userUrl}/user1`, () =>
         new HttpResponse("", { status: 422 }),
       ),
     );
@@ -201,10 +232,10 @@ describe("POST /api/auth/profile", () => {
   });
 
   it("returns 500 when an exception is thrown", async () => {
-    mockGetSession.mockResolvedValue({ token: "the-token", userId: "user1", realm: undefined });
+    setAuthCookies("the-token", "user1");
 
     server.use(
-      http.post("http://mock-user-url/user1", () => HttpResponse.error()),
+      http.post(`${userUrl}/user1`, () => HttpResponse.error()),
     );
 
     const request = mockNextRequest({

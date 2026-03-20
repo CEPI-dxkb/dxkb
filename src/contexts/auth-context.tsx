@@ -53,8 +53,10 @@ export function AuthProvider({
     return data.user;
   }, []);
 
-  // Check for existing session on mount
+  // Check for existing session on mount (skip if server already provided a user)
   useEffect(() => {
+    if (initialUser) return;
+
     const initAuth = async () => {
       try {
         const savedUser = await fetchSession();
@@ -68,7 +70,7 @@ export function AuthProvider({
     };
 
     initAuth();
-  }, [fetchSession]);
+  }, [fetchSession, initialUser]);
 
   /**
    * Sign out (better-auth style)

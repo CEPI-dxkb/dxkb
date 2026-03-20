@@ -46,9 +46,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await getSession();
+    const { token, userId } = await getSession();
 
-    if (!userId) {
+    if (!token || !userId) {
       return NextResponse.json(
         { message: "Authentication required" },
         { status: 401 },

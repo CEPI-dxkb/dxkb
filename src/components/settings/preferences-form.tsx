@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { X } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,17 +42,16 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
 
     setIsSubmitting(true);
     try {
+      const hasExistingSettings = profile.settings !== undefined;
       const response = await authenticatedFetch("/api/auth/profile", {
         method: "POST",
-        body: JSON.stringify({
-          patches: [
-            {
-              op: "add",
-              path: "/settings",
-              value: { default_job_folder: defaultJobFolder },
-            },
-          ],
-        }),
+        body: JSON.stringify([
+          {
+            op: hasExistingSettings ? "replace" : "add",
+            path: "/settings",
+            value: { default_job_folder: defaultJobFolder },
+          },
+        ]),
       });
 
       if (!response.ok) {
@@ -76,14 +77,30 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
         <div className="grid gap-4">
           <FieldItem>
             <Label>Default Job Output Folder</Label>
-            <WorkspaceObjectSelector
-              types={["folder"]}
-              placeholder="Select a default output folder..."
-              value={defaultJobFolder}
-              onObjectSelect={(object) => {
-                setDefaultJobFolder(object.path || "");
-              }}
-            />
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <WorkspaceObjectSelector
+                  types={["folder"]}
+                  placeholder="Select a default output folder..."
+                  value={defaultJobFolder}
+                  onObjectSelect={(object) => {
+                    setDefaultJobFolder(object.path || "");
+                  }}
+                />
+              </div>
+              {defaultJobFolder && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  onClick={() => setDefaultJobFolder("")}
+                  aria-label="Clear default job output folder"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm">
               Set a default folder for job outputs. Leave empty to use home
               folder.

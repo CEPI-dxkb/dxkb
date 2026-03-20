@@ -47,7 +47,7 @@ export async function GET() {
 
 /**
  * POST /api/auth/profile — Update profile via JSON Patch.
- * Body: { patches: [{ op, path, value }] }
+ * Body: [{ op, path, value }]
  */
 export async function POST(request: NextRequest) {
   try {
@@ -60,17 +60,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { patches } = await request.json();
+    const body = await request.text();
+
+    const headers = new Headers();
+    headers.set("Authorization", token);
+    headers.set("Content-Type", "application/json-patch+json");
+    headers.set("Accept", "application/json");
 
     const response = await fetch(
       `${getRequiredEnv("USER_URL")}/${encodeURIComponent(userId)}`,
       {
         method: "POST",
-        headers: {
-          Authorization: token,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(patches),
+        headers,
+        body,
       },
     );
 

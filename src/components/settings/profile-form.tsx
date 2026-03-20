@@ -62,7 +62,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
       const response = await authenticatedFetch("/api/auth/profile", {
         method: "POST",
-        body: JSON.stringify({ patches }),
+        body: JSON.stringify(patches),
       });
 
       if (!response.ok) {

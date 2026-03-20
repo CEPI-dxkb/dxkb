@@ -311,7 +311,7 @@ const DesktopNavbar = () => {
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <UserRound className="text-foreground h-2 w-2" />
-                          <Link href="/">Profile</Link>
+                          <Link href="/settings">Profile</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
@@ -329,7 +329,7 @@ const DesktopNavbar = () => {
                       <DropdownMenuItem>
                         <span className="flex items-center gap-2">
                           <Settings className="text-foreground h-4 w-4" />
-                          <Link href="/">Settings</Link>
+                          <Link href="/settings">Settings</Link>
                         </span>
                       </DropdownMenuItem>
                       <DropdownMenuItem>

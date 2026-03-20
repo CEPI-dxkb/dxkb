@@ -35,6 +35,9 @@ export interface UserProfile {
   verification_date?: string;
   verification_error?: string;
   verification_send_date?: string;
+  settings?: {
+    default_job_folder?: string;
+  };
 }
 
 export interface SigninCredentials {

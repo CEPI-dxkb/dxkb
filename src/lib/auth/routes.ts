@@ -1,4 +1,4 @@
-const protectedPagePrefixes = ["/services/", "/workspace", "/jobs"] as const;
+const protectedPagePrefixes = ["/services/", "/workspace", "/jobs", "/settings"] as const;
 const protectedApiPrefixes = ["/api/protected/"] as const;
 
 export function isProtectedPagePath(path: string): boolean {

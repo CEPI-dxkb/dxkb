@@ -1,0 +1,36 @@
+src/components/settings/preferences-form.tsx
+  9270b2ee711f8fa7 7-8,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "264f282dedd0c3ab4ceb8f8e59f5adb2317d86a6",
+  "prompts": {
+    "9270b2ee711f8fa7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5f6212a-e186-4513-a7a9-5ef057c570a5",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 3,
+      "overriden_lines": 0
+    },
+    "b2206e4286713016": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c29bf408-2a6a-49d0-bfc7-1ca013a83688",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 218,
+      "overriden_lines": 0
+    }
+  }
+}

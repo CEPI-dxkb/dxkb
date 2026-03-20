@@ -1,0 +1,65 @@
+src/app/services/(viral-tools)/influenza-ha-subtype/page.tsx
+  86f4942bbb9c7254 27,60
+src/app/services/(viral-tools)/sars-cov2-genome-analysis/page.tsx
+  86f4942bbb9c7254 49,109
+src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/page.tsx
+  86f4942bbb9c7254 45,102
+src/app/services/(genomics)/primer-design/page.tsx
+  86f4942bbb9c7254 54,267
+src/app/services/(genomics)/similar-genome-finder/page.tsx
+  86f4942bbb9c7254 38,146
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  86f4942bbb9c7254 5,127
+src/app/services/(viral-tools)/viral-assembly/page.tsx
+  86f4942bbb9c7254 30,75
+src/app/services/(phylogenomics)/gene-protein-tree/page.tsx
+  86f4942bbb9c7254 49,193
+src/app/services/(phylogenomics)/viral-genome-tree/page.tsx
+  86f4942bbb9c7254 49,124
+src/app/services/(protein-tools)/meta-cats/page.tsx
+  86f4942bbb9c7254 5,148
+src/app/services/(utilities)/fastq-utilities/page.tsx
+  86f4942bbb9c7254 45,165
+src/app/services/(metagenomics)/taxonomic-classification/page.tsx
+  86f4942bbb9c7254 46,231
+src/app/services/(genomics)/genome-alignment/page.tsx
+  86f4942bbb9c7254 47,187
+src/app/services/(genomics)/variation-analysis/page.tsx
+  86f4942bbb9c7254 43,119
+src/app/services/(genomics)/genome-annotation/page.tsx
+  86f4942bbb9c7254 35,121
+src/app/services/(genomics)/genome-assembly/page.tsx
+  86f4942bbb9c7254 51,148
+src/app/services/(genomics)/blast/page.tsx
+  86f4942bbb9c7254 59,174
+src/app/services/(protein-tools)/msa-snp-analysis/page.tsx
+  86f4942bbb9c7254 7,150
+src/hooks/services/use-default-output-path.ts
+  86f4942bbb9c7254 1-50
+src/app/services/(metagenomics)/metagenomic-binning/page.tsx
+  86f4942bbb9c7254 45,145
+src/app/services/(metagenomics)/metagenomic-read-mapping/page.tsx
+  86f4942bbb9c7254 45,139
+src/app/services/(viral-tools)/subspecies-classification/page.tsx
+  86f4942bbb9c7254 31,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.15",
+  "base_commit_sha": "547dc4db1e6d768d8352929f313443baeaadd139",
+  "prompts": {
+    "86f4942bbb9c7254": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df4b168b-f7b7-4a5d-ab81-5aed1a7fbbd3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 100,
+      "total_deletions": 8,
+      "accepted_lines": 92,
+      "overriden_lines": 0
+    }
+  }
+}

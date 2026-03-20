@@ -18,6 +18,13 @@ function buildRequest(
   return request;
 }
 
+/** Parse the Location header into a URL, failing the test if missing */
+function getRedirectLocation(response: Response): URL {
+  const location = response.headers.get("location");
+  expect(location).toBeTruthy();
+  return new URL(location as string);
+}
+
 const validSession = {
   bvbrc_token: "tok123",
   bvbrc_user_id: "testuser",
@@ -67,7 +74,7 @@ describe("proxy", () => {
       const response = proxy(request);
 
       expect(response.status).toBe(307);
-      const location = new URL(response.headers.get("location")!);
+      const location = getRedirectLocation(response);
       expect(location.pathname).toBe("/sign-in");
       expect(location.searchParams.get("redirect")).toBe("/services/blast");
     });
@@ -77,7 +84,7 @@ describe("proxy", () => {
       const response = proxy(request);
 
       expect(response.status).toBe(307);
-      const location = new URL(response.headers.get("location")!);
+      const location = getRedirectLocation(response);
       expect(location.pathname).toBe("/sign-in");
       expect(location.searchParams.get("redirect")).toBe("/workspace/user1/home");
     });
@@ -87,7 +94,7 @@ describe("proxy", () => {
       const response = proxy(request);
 
       expect(response.status).toBe(307);
-      const location = new URL(response.headers.get("location")!);
+      const location = getRedirectLocation(response);
       expect(location.pathname).toBe("/sign-in");
     });
 
@@ -96,7 +103,7 @@ describe("proxy", () => {
       const response = proxy(request);
 
       expect(response.status).toBe(307);
-      const location = new URL(response.headers.get("location")!);
+      const location = getRedirectLocation(response);
       expect(location.pathname).toBe("/sign-in");
     });
 
@@ -105,7 +112,7 @@ describe("proxy", () => {
       const response = proxy(request);
 
       expect(response.status).toBe(307);
-      const location = new URL(response.headers.get("location")!);
+      const location = getRedirectLocation(response);
       expect(location.searchParams.get("redirect")).toBe("/services/blast?param=value");
     });
 

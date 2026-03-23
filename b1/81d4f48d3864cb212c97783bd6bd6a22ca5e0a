@@ -1,0 +1,131 @@
+src/app/api/services/genome/search/route.ts
+  52fa90c125b33aae 2,19-20
+src/app/api/services/app-service/jobs/app-summary/route.ts
+  52fa90c125b33aae 3,11-12
+src/app/api/services/app-service/jobs/summary/route.ts
+  52fa90c125b33aae 3,11-12
+src/app/api/services/app-service/jobs/task-summary/__tests__/route.test.ts
+  52fa90c125b33aae 1,5,13,16,29-31,43,57,73
+src/lib/auth/session.ts
+  52fa90c125b33aae 2,106-132
+src/components/workspace/workspace-browser.tsx
+  52fa90c125b33aae 26,35,66,378-383
+src/components/navbars/desktop-navbar.tsx
+  52fa90c125b33aae 105-138,140-143,168
+src/app/api/services/app-service/submit/route.ts
+  52fa90c125b33aae 3,12-13
+src/lib/auth/profile.ts
+  52fa90c125b33aae 3,5,7-9,11,13,16,18,21,26-31,34,38-39
+src/app/api/services/app-service/jobs/[id]/stdout/route.ts
+  52fa90c125b33aae 2,15-16
+src/app/api/services/workspace/route.ts
+  52fa90c125b33aae 2,38-39
+src/hooks/services/use-default-output-path.ts
+  52fa90c125b33aae 35
+src/app/api/services/app-service/jobs/app-summary/__tests__/route.test.ts
+  52fa90c125b33aae 1,5,13,16,29-31,43,57,73
+src/app/api/services/workspace/__tests__/route.test.ts
+  52fa90c125b33aae 1,7,12-13,17-19,34,49,77,97,123,147,175,203
+src/app/api/services/workspace/upload/__tests__/route.test.ts
+  52fa90c125b33aae 6,14-15,69,87-89,105,118,132,150,171,192,213
+src/app/api/services/genome/by-ids/__tests__/route.test.ts
+  52fa90c125b33aae 1,7,12-13,17-19,34,44,57,70,90,111,131,151
+src/app/api/services/feature/from-group/__tests__/route.test.ts
+  52fa90c125b33aae 1,8,13-14,18-20,35,45,58,81,105
+src/app/api/auth/profile/__tests__/route.test.ts
+  52fa90c125b33aae 9-17,22,24,36,47-49,60,75,92,109,126-128,143-145,157,187,209,231,253
+src/app/api/services/genome/website-query/__tests__/route.test.ts
+  52fa90c125b33aae 1,12,18-19,27-29,44,54,76,100,121,145,169,190
+src/app/api/services/app-service/jobs/enumerate-tasks-filtered/__tests__/route.test.ts
+  52fa90c125b33aae 1,5,13,16,29-31,43,60,77,94,112,140,157
+src/app/api/services/minhash/__tests__/route.test.ts
+  52fa90c125b33aae 2,6,8-9,75,95,99-100,108,110-113,120,145
+src/app/api/auth/profile/route.ts
+  52fa90c125b33aae 3,11-12,15,43-44,49
+src/app/api/services/genome/by-ids/route.ts
+  52fa90c125b33aae 2,16-17
+src/components/navbars/workspace-dropdown-content.tsx
+  52fa90c125b33aae 12,14,32
+src/app/api/auth/change-password/__tests__/route.test.ts
+  52fa90c125b33aae 2,9,14,16,20-22,37-39,51,77,98,119,144,165
+src/app/api/services/genome/validate-viral/__tests__/route.test.ts
+  52fa90c125b33aae 1,7,12-13,17-19,34,44,57,77,97,117,139
+src/app/api/services/minhash/route.ts
+  52fa90c125b33aae 1,34-36,39
+src/lib/utils.ts
+  52fa90c125b33aae 32-51
+src/app/api/services/app-service/jobs/task-summary/route.ts
+  52fa90c125b33aae 3,11-12
+src/app/api/services/app-service/jobs/[id]/kill/__tests__/route.test.ts
+  52fa90c125b33aae 1,8,16,19,32-34,46,60,73
+src/app/api/services/app-service/jobs/[id]/route.ts
+  52fa90c125b33aae 3,15-16
+src/app/api/services/app-service/jobs/[id]/stdout/__tests__/route.test.ts
+  52fa90c125b33aae 1,8,16,19,32-34,42,46,65
+src/app/api/services/genome/search/__tests__/route.test.ts
+  52fa90c125b33aae 1,7,12-13,17-19,34,55,75,97,133,153,173,192
+src/app/api/auth/send-verification-email/route.ts
+  52fa90c125b33aae 2,11-12,19,22
+src/app/api/services/app-service/jobs/[id]/stderr/route.ts
+  52fa90c125b33aae 2,15-16
+src/components/workspace/workspace-data-table.tsx
+  52fa90c125b33aae 17,121,124,131,140,147,153
+src/app/api/services/app-service/jobs/summary/__tests__/route.test.ts
+  52fa90c125b33aae 1,5,13,16,30-32,44,60,80,97
+src/app/api/services/app-service/jobs/[id]/__tests__/route.test.ts
+  52fa90c125b33aae 1,8,16,19,32-34,46,64,80,94
+src/app/api/services/app-service/jobs/[id]/stderr/__tests__/route.test.ts
+  52fa90c125b33aae 1,8,16,19,32-34,42,46,65
+src/app/api/services/workspace/upload/route.ts
+  52fa90c125b33aae 2,31-32
+src/app/api/auth/send-verification-email/__tests__/route.test.ts
+  52fa90c125b33aae 2,9,13,15,19-21,27,31-33,39,43,72,75,96
+src/app/api/auth/change-password/route.ts
+  52fa90c125b33aae 3,12-13,30,43
+src/components/navbars/mobile-navbar.tsx
+  52fa90c125b33aae 3,38-41
+src/app/api/services/genome/website-query/route.ts
+  52fa90c125b33aae 3,49-50
+src/components/workspace/workspace-breadcrumbs.tsx
+  52fa90c125b33aae 3,6,46-49,95,130
+src/components/workspace/workspace-action-bar.tsx
+  52fa90c125b33aae 12-13,15,75,77,82,100,102
+src/app/api/services/app-service/submit/__tests__/route.test.ts
+  52fa90c125b33aae 1,5,27,30,43-45,60,75,90,105,125,148,172,190
+src/lib/services/workspace/client.ts
+  52fa90c125b33aae 150-152
+src/app/api/services/app-service/jobs/[id]/kill/route.ts
+  52fa90c125b33aae 3,15-16
+src/app/api/services/genome/get-all-ids/route.ts
+  52fa90c125b33aae 2,8-9
+src/hooks/services/workspace/use-public-workspace-data.ts
+  52fa90c125b33aae 27-37,43,45-46,51-55
+src/app/api/services/genome/get-all-ids/__tests__/route.test.ts
+  52fa90c125b33aae 1,7,12-13,17-19,31,52,69,86,103
+src/app/api/services/feature/from-group/route.ts
+  52fa90c125b33aae 2,8-9
+src/app/api/services/genome/validate-viral/route.ts
+  52fa90c125b33aae 2,17-18
+src/app/api/services/app-service/jobs/enumerate-tasks-filtered/route.ts
+  52fa90c125b33aae 4,23-24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "b181d4f48d3864cb212c97783bd6bd6a22ca5e0a",
+  "prompts": {
+    "52fa90c125b33aae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f00af394-eafe-4b3f-b789-76a66d6fc9fb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 542,
+      "total_deletions": 658,
+      "accepted_lines": 536,
+      "overriden_lines": 0
+    }
+  }
+}

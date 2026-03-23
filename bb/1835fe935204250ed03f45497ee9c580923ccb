@@ -1,0 +1,29 @@
+src/hooks/services/workspace/__tests__/use-workspace-path-resolve.test.tsx
+  f93a5ebda8522924 42
+src/hooks/services/workspace/use-workspace-path-resolve.ts
+  f93a5ebda8522924 23
+src/lib/services/workspace/__tests__/shared.test.ts
+  f93a5ebda8522924 219,236
+src/lib/services/workspace/shared.ts
+  f93a5ebda8522924 97,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "bb1835fe935204250ed03f45497ee9c580923ccb",
+  "prompts": {
+    "f93a5ebda8522924": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c355965-8538-4cbf-b074-720e11997542",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 5,
+      "accepted_lines": 6,
+      "overriden_lines": 0
+    }
+  }
+}

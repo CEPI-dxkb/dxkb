@@ -36,9 +36,14 @@ function profileWith(defaultJobFolder?: string): Partial<UserProfile> {
 }
 
 function serveProfile(profile: Partial<UserProfile>) {
+  const fetched = vi.fn();
   server.use(
-    http.get("*/api/auth/profile", () => HttpResponse.json(profile)),
+    http.get("*/api/auth/profile", () => {
+      fetched();
+      return HttpResponse.json(profile);
+    }),
   );
+  return { fetched };
 }
 
 describe("useDefaultOutputPath", () => {
@@ -60,7 +65,7 @@ describe("useDefaultOutputPath", () => {
 
   it("skips when rerunData is present", async () => {
     const profile = profileWith("/testuser@bvbrc/my-jobs/");
-    serveProfile(profile);
+    const { fetched } = serveProfile(profile);
     const form = makeForm("");
     const wrapper = createQueryClientWrapper();
 
@@ -69,34 +74,37 @@ describe("useDefaultOutputPath", () => {
     });
 
     await waitFor(() => {
-      expect(form.setFieldValue).not.toHaveBeenCalled();
+      expect(fetched).toHaveBeenCalled();
     });
+    expect(form.setFieldValue).not.toHaveBeenCalled();
   });
 
   it("skips when output_path already has a value", async () => {
     const profile = profileWith("/testuser@bvbrc/my-jobs/");
-    serveProfile(profile);
+    const { fetched } = serveProfile(profile);
     const form = makeForm("/already-set/");
     const wrapper = createQueryClientWrapper();
 
     renderHook(() => useDefaultOutputPath(form, null), { wrapper });
 
     await waitFor(() => {
-      expect(form.setFieldValue).not.toHaveBeenCalled();
+      expect(fetched).toHaveBeenCalled();
     });
+    expect(form.setFieldValue).not.toHaveBeenCalled();
   });
 
   it("skips when profile has no default_job_folder setting", async () => {
     const profile = profileWith();
-    serveProfile(profile);
+    const { fetched } = serveProfile(profile);
     const form = makeForm("");
     const wrapper = createQueryClientWrapper();
 
     renderHook(() => useDefaultOutputPath(form, null), { wrapper });
 
     await waitFor(() => {
-      expect(form.setFieldValue).not.toHaveBeenCalled();
+      expect(fetched).toHaveBeenCalled();
     });
+    expect(form.setFieldValue).not.toHaveBeenCalled();
   });
 
   it("only applies once even if the effect re-runs", async () => {

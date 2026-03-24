@@ -467,7 +467,7 @@ const MobileNavbar = () => {
           className={`grid transition-[grid-template-rows] duration-150 ease-in-out ${
             isSearchOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
           }`}
-          aria-hidden={!isSearchOpen}
+          inert={!isSearchOpen ? true : undefined}
         >
           <div className="overflow-hidden">
             <div className="px-4 pb-4">

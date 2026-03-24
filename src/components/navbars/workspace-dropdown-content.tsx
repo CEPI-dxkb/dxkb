@@ -88,7 +88,7 @@ export function WorkspaceDropdownContent({
             {/* Favorite Folders */}
             <div>
               <SectionHeader>
-                Favorite Folders <Star className="inline h-4 w-4 text-amber-400" />
+                Favorite Folders <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
               </SectionHeader>
               {favoritesLoading ? (
                 <div className="space-y-1 p-2">
@@ -132,7 +132,7 @@ export function WorkspaceDropdownContent({
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
+    <h4 className="bg-primary my-0.5 flex items-center gap-1 rounded-md p-2 text-sm font-bold text-white">
       {children}
     </h4>
   );

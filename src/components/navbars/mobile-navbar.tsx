@@ -172,7 +172,7 @@ const MobileNavbar = () => {
                     {isAuthenticated && favoritePaths.length > 0 && (
                       <div>
                         <h3 className="mobile-nav-divider-title">
-                          Favorite Folders <Star className="inline h-3.5 w-3.5 text-amber-400" />
+                          Favorite Folders <Star className="h-3.5 w-3.5 text-amber-400" />
                         </h3>
                         <div className="grid grid-cols-2">
                           {favoritePaths.map((path) => (

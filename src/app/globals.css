@@ -320,7 +320,7 @@
 }
 
 .mobile-nav-divider-title {
-  @apply text-[13px] font-medium bg-primary text-foreground px-2 py-1 rounded mb-1;
+  @apply text-[13px] font-medium bg-primary text-foreground px-2 py-1 rounded mb-1 flex items-center gap-1;
 }
 
 .mobile-nav-link {

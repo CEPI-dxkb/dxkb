@@ -1,0 +1,25 @@
+src/components/navbars/mobile-navbar.tsx
+  1b5f63fddd9912b8 470
+src/hooks/services/__tests__/use-default-output-path.test.tsx
+  1b5f63fddd9912b8 39,41-44,46,68,77,79,84,91,93,98,105,107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.18",
+  "base_commit_sha": "56c9be5858d2c4505cdfb25d5f6a6e1d8a25f35e",
+  "prompts": {
+    "1b5f63fddd9912b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c6d723c-a5c7-4c8b-90f6-ccff9e4abf71",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 16,
+      "overriden_lines": 0
+    }
+  }
+}

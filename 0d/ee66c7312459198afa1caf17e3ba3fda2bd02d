@@ -1,0 +1,43 @@
+src/lib/__tests__/utils.test.ts
+  cd65829a544a8041 6-8,88-149
+src/app/api/auth/sign-up/email/route.ts
+  cd65829a544a8041 3,79
+src/app/api/auth/sign-in/email/__tests__/route.test.ts
+  cd65829a544a8041 11,26,29,35,178,214,256
+src/app/api/auth/sign-up/email/__tests__/route.test.ts
+  cd65829a544a8041 11,26,29,44,198,250
+src/lib/auth/__tests__/profile.test.ts
+  cd65829a544a8041 7,9,14,17,22-24,26-28,32,34,37-39,41-43,47,49,52-53,56-58,62,64,67,69-71,74,79,81,84
+src/app/api/auth/sign-in/email/route.ts
+  cd65829a544a8041 3,57
+src/__tests__/proxy.test.ts
+  cd65829a544a8041 155-189
+src/lib/services/workspace/__tests__/public-client.test.ts
+  cd65829a544a8041 1-186
+src/lib/auth/__tests__/session.test.ts
+  cd65829a544a8041 20-21,240-313
+src/lib/auth/__tests__/routes.test.ts
+  cd65829a544a8041 18-36
+src/app/api/workspace/public/__tests__/route.test.ts
+  cd65829a544a8041 1-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.17",
+  "base_commit_sha": "0dee66c7312459198afa1caf17e3ba3fda2bd02d",
+  "prompts": {
+    "cd65829a544a8041": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8cf02a72-9593-4298-969e-d0e99cebd78a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 691,
+      "total_deletions": 126,
+      "accepted_lines": 683,
+      "overriden_lines": 0
+    }
+  }
+}

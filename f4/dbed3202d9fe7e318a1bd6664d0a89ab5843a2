@@ -1,0 +1,61 @@
+src/components/workspace/workspace-shell.tsx
+  b9f28f73ce4501e8 17-19,83-98
+src/components/workspace/file-viewer/viewers/json-viewer.tsx
+  f051b1a5d6e1ef78 1-128
+src/components/workspace/file-viewer/viewers/fallback-viewer.tsx
+  f051b1a5d6e1ef78 1-38
+src/components/workspace/file-viewer/file-viewer-panel.tsx
+  b9f28f73ce4501e8 1-154
+src/components/workspace/workspace-table-rows.tsx
+  b9f28f73ce4501e8 144-145,157
+src/components/workspace/file-viewer/viewers/image-viewer.tsx
+  f051b1a5d6e1ef78 1-68
+src/components/workspace/file-viewer/file-viewer-registry.ts
+  f051b1a5d6e1ef78 1-188
+src/components/workspace/file-viewer/viewers/text-viewer.tsx
+  f051b1a5d6e1ef78 1-13,28-54,57-60,67-72,81,90,99-108,111-124,129-176,181-218,220-222,236-238
+  b9f28f73ce4501e8 14-27,55-56,61-66,73-80,82-89,91-98,109-110,125-128,177-180,219,223-235
+src/components/workspace/file-viewer/viewers/csv-viewer.tsx
+  f051b1a5d6e1ef78 1-162
+src/components/workspace/workspace-data-table.tsx
+  b9f28f73ce4501e8 181,250
+src/components/workspace/file-viewer/file-viewer-content.tsx
+  f051b1a5d6e1ef78 1-42
+src/components/workspace/file-viewer/viewers/iframe-viewer.tsx
+  f051b1a5d6e1ef78 1-20
+src/app/api/workspace/view/[...path]/route.ts
+  f051b1a5d6e1ef78 1-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.18",
+  "base_commit_sha": "f4dbed3202d9fe7e318a1bd6664d0a89ab5843a2",
+  "prompts": {
+    "b9f28f73ce4501e8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd0d3ca2-b8d3-434d-90cd-2be3e7c65b3a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 254,
+      "total_deletions": 63,
+      "accepted_lines": 250,
+      "overriden_lines": 0
+    },
+    "f051b1a5d6e1ef78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0bd77a5e-69b6-4eb8-95fb-cb5e623f0448",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 1424,
+      "total_deletions": 119,
+      "accepted_lines": 1296,
+      "overriden_lines": 0
+    }
+  }
+}

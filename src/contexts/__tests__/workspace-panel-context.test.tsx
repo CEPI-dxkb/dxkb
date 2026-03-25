@@ -23,10 +23,10 @@ describe("WorkspacePanelContext", () => {
     expect(result.current.panelManuallyHidden).toBe(false);
     expect(result.current.panelExpanded).toBe(false);
     expect(result.current.showHiddenFiles).toBe(false);
-    expect(result.current.panelLayout).toEqual(
+    expect(result.current.panelLayoutRef.current).toEqual(
       expect.objectContaining({
-        "workspace-main": 75,
-        "workspace-details": 25,
+        "workspace-main": 60,
+        "workspace-details": 40,
       }),
     );
   });

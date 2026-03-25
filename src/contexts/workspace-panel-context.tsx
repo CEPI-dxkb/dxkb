@@ -6,11 +6,15 @@ import {
   useMemo,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 
 /** Panel ids used by react-resizable-panels in the workspace layout. */
 export const workspacePanelIds = { main: "workspace-main", details: "workspace-details" } as const;
+
+/** Cookie name used to persist the panel layout for server rendering. */
+export const panelLayoutCookieName = "workspace-panel-layout";
 
 /** Layout from react-resizable-panels: panel id -> size (%). Persists across folder navigation. */
 const defaultPanelLayout: Record<string, number> = {
@@ -28,18 +32,24 @@ interface WorkspacePanelContextType {
   /** When true, show files/folders whose name starts with "." (persists across folder navigation). */
   showHiddenFiles: boolean;
   setShowHiddenFiles: (value: boolean) => void;
-  /** Resizable panel layout (panel id -> %). Persists when user resizes (e.g. across folder navigation). */
-  panelLayout: Record<string, number>;
+  /** Ref holding resizable panel layout (panel id -> %). Stored as a ref to avoid re-renders during resize drag. */
+  panelLayoutRef: React.RefObject<Record<string, number>>;
   setPanelLayout: (layout: Record<string, number>) => void;
 }
 
 const WorkspacePanelContext = createContext<WorkspacePanelContextType | undefined>(undefined);
 
-export function WorkspacePanelProvider({ children }: { children: ReactNode }) {
+export function WorkspacePanelProvider({
+  children,
+  initialLayout,
+}: {
+  children: ReactNode;
+  initialLayout?: Record<string, number>;
+}) {
   const [panelManuallyHidden, setPanelManuallyHiddenState] = useState(false);
   const [panelExpanded, setPanelExpandedState] = useState(false);
   const [showHiddenFiles, setShowHiddenFilesState] = useState(false);
-  const [panelLayout, setPanelLayoutState] = useState<Record<string, number>>(defaultPanelLayout);
+  const panelLayoutRef = useRef<Record<string, number>>(initialLayout ?? defaultPanelLayout);
   const setPanelManuallyHidden = useCallback((value: boolean) => {
     setPanelManuallyHiddenState(value);
   }, []);
@@ -50,7 +60,9 @@ export function WorkspacePanelProvider({ children }: { children: ReactNode }) {
     setShowHiddenFilesState(value);
   }, []);
   const setPanelLayout = useCallback((layout: Record<string, number>) => {
-    setPanelLayoutState(layout);
+    panelLayoutRef.current = layout;
+    // Persist to cookie so the server can render the correct layout on next page load
+    document.cookie = `${panelLayoutCookieName}=${JSON.stringify(layout)};path=/workspace;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
   }, []);
 
   const value = useMemo<WorkspacePanelContextType>(
@@ -61,7 +73,7 @@ export function WorkspacePanelProvider({ children }: { children: ReactNode }) {
       setPanelExpanded,
       showHiddenFiles,
       setShowHiddenFiles,
-      panelLayout,
+      panelLayoutRef,
       setPanelLayout,
     }),
     [
@@ -71,7 +83,7 @@ export function WorkspacePanelProvider({ children }: { children: ReactNode }) {
       setPanelExpanded,
       showHiddenFiles,
       setShowHiddenFiles,
-      panelLayout,
+      panelLayoutRef,
       setPanelLayout,
     ]
   );

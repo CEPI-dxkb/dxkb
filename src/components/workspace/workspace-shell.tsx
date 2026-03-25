@@ -14,6 +14,9 @@ import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/containers/InfoPanel";
 import { DetailPanel } from "@/components/detail-panel";
+import { isViewableType } from "@/components/workspace/file-viewer/file-viewer-registry";
+import { isFolderType } from "@/lib/services/workspace/utils";
+import { FileViewerPanel } from "@/components/workspace/file-viewer/file-viewer-panel";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
 interface WorkspaceShellProps {
@@ -77,7 +80,22 @@ export function WorkspaceShell({
     </div>
   );
 
-  const detailsPanelContent = selectedItems.length > 0 ? (
+  const singleItem = selectedItems.length === 1 ? selectedItems[0] : null;
+  const showFilePreview =
+    singleItem !== null &&
+    !isFolderType(singleItem.type) &&
+    isViewableType(singleItem.type, singleItem.name);
+
+  const detailsPanelContent = showFilePreview ? (
+    <FileViewerPanel
+      key={singleItem.path}
+      item={singleItem}
+      onClose={() => {
+        setPanelManuallyHidden(true);
+        setPanelExpanded(false);
+      }}
+    />
+  ) : selectedItems.length > 0 ? (
     <InfoPanel
       variant="workspace"
       selection={selectedItems}
@@ -131,7 +149,6 @@ export function WorkspaceShell({
         id={workspacePanelIds.details}
         defaultSize={panelLayout[workspacePanelIds.details] ?? 25}
         minSize={110}
-        maxSize={600}
         className="flex min-h-0 flex-col overflow-hidden"
       >
         {detailsPanelContent}

@@ -21,7 +21,6 @@ import {
 } from "./workspace-data-table";
 import { WorkspaceActionBar } from "./workspace-action-bar";
 import { WorkspaceShell } from "./workspace-shell";
-import { FileViewerConstructionDialog } from "./file-viewer-construction-dialog";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { sortItems } from "@/lib/services/workspace/helpers";
 import { Button } from "@/components/ui/button";
@@ -93,8 +92,6 @@ export function WorkspaceJobResultView({
     direction: "asc",
   });
   const [parametersOpen, setParametersOpen] = useState(false);
-  const [fileViewerConstructionOpen, setFileViewerConstructionOpen] =
-    useState(false);
 
   const tableRef = useRef<WorkspaceDataTableHandle>(null);
 
@@ -175,10 +172,6 @@ export function WorkspaceJobResultView({
       }
     >
       <div className="flex h-full flex-col overflow-hidden">
-        <FileViewerConstructionDialog
-          open={fileViewerConstructionOpen}
-          onOpenChange={setFileViewerConstructionOpen}
-        />
         <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
           <WorkspaceBreadcrumbs
             path={path}
@@ -269,7 +262,6 @@ export function WorkspaceJobResultView({
               selectedPaths={selectedItems.map((i) => normalizePath(i.path))}
               onSelect={handleSelectItem}
               onItemDoubleClick={handleItemDoubleClick}
-              onOpenFileRequested={() => setFileViewerConstructionOpen(true)}
               onClearSelection={() => {
                 setSelectedItems([]);
                 setAnchorPath(null);

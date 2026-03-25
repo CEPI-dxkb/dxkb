@@ -1,0 +1,188 @@
+/**
+ * Maps workspace file types and extensions to viewer categories.
+ * Pure utility — no React dependencies.
+ */
+
+export type ViewerCategory =
+  | "text"
+  | "json"
+  | "image"
+  | "csv"
+  | "iframe"
+  | "fallback";
+
+// ---------------------------------------------------------------------------
+// Workspace object type -> viewer
+// ---------------------------------------------------------------------------
+
+const typeToViewer: Record<string, ViewerCategory> = {
+  txt: "text",
+  gff: "text",
+  aligned_dna_fasta: "text",
+  aligned_protein_fasta: "text",
+  feature_dna_fasta: "text",
+  feature_protein_fasta: "text",
+  vcf: "text",
+  nwk: "text",
+  xml: "text",
+  json: "json",
+  svg: "image",
+  png: "image",
+  jpg: "image",
+  gif: "image",
+  csv: "csv",
+  tsv: "csv",
+  diffexp_input_data: "csv",
+  diffexp_input_metadata: "csv",
+  html: "iframe",
+  pdf: "iframe",
+  pdb: "iframe",
+  diffexp_experiment: "iframe",
+  diffexp_expression: "iframe",
+  diffexp_mapping: "iframe",
+  diffexp_sample: "iframe",
+};
+
+// ---------------------------------------------------------------------------
+// File extension -> viewer
+// ---------------------------------------------------------------------------
+
+const extensionToViewer: Record<string, ViewerCategory> = {
+  ".txt": "text",
+  ".log": "text",
+  ".fa": "text",
+  ".fasta": "text",
+  ".faa": "text",
+  ".fna": "text",
+  ".gff": "text",
+  ".xmfa": "text",
+  ".vcf": "text",
+  ".nwk": "text",
+  ".xml": "text",
+  ".afa": "text",
+  ".gfa": "text",
+  ".json": "json",
+  ".svg": "image",
+  ".png": "image",
+  ".jpg": "image",
+  ".jpeg": "image",
+  ".gif": "image",
+  ".csv": "csv",
+  ".tsv": "csv",
+  ".html": "iframe",
+  ".htm": "iframe",
+  ".pdf": "iframe",
+  ".pdb": "iframe",
+};
+
+// ---------------------------------------------------------------------------
+// Extension -> MIME type
+// ---------------------------------------------------------------------------
+
+const mimeMap: Record<string, string> = {
+  ".txt": "text/plain",
+  ".log": "text/plain",
+  ".fa": "text/plain",
+  ".fasta": "text/plain",
+  ".faa": "text/plain",
+  ".fna": "text/plain",
+  ".gff": "text/plain",
+  ".xmfa": "text/plain",
+  ".vcf": "text/plain",
+  ".nwk": "text/plain",
+  ".afa": "text/plain",
+  ".gfa": "text/plain",
+  ".json": "application/json",
+  ".csv": "text/csv",
+  ".tsv": "text/tab-separated-values",
+  ".html": "text/html",
+  ".htm": "text/html",
+  ".pdf": "application/pdf",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".xml": "text/xml",
+  ".pdb": "chemical/x-pdb",
+};
+
+// ---------------------------------------------------------------------------
+// Size threshold
+// ---------------------------------------------------------------------------
+
+export const largeSizeThreshold = 50 * 1024 * 1024; // 50 MB
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getExtension(fileName: string): string {
+  const dot = fileName.lastIndexOf(".");
+  if (dot === -1) return "";
+  return fileName.slice(dot).toLowerCase();
+}
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Determine which viewer category should handle a given workspace item.
+ *
+ * Resolution order:
+ *  1. Workspace object type (`typeToViewer`)
+ *  2. File extension (`extensionToViewer`)
+ *  3. Legacy CSV/TSV filename pattern
+ *  4. "fallback"
+ */
+export function resolveViewer(
+  workspaceType: string,
+  fileName: string,
+): ViewerCategory {
+  const byType = typeToViewer[workspaceType];
+  if (byType) return byType;
+
+  const ext = getExtension(fileName);
+
+  const byExt = extensionToViewer[ext];
+  if (byExt) return byExt;
+
+  if (ext === ".csv" || ext === ".tsv") return "csv";
+
+  return "fallback";
+}
+
+/**
+ * Returns `true` when the file can be rendered by any viewer other than the
+ * fallback placeholder.
+ */
+export function isViewableType(
+  workspaceType: string,
+  fileName: string,
+): boolean {
+  return resolveViewer(workspaceType, fileName) !== "fallback";
+}
+
+/**
+ * Best-guess MIME type for a file name. Falls back to
+ * `application/octet-stream` for unknown extensions.
+ */
+export function getMimeType(fileName: string): string {
+  const ext = getExtension(fileName);
+  return mimeMap[ext] ?? "application/octet-stream";
+}
+
+/**
+ * Build an API proxy URL for streaming a workspace file, encoding each path
+ * segment individually so slashes are preserved.
+ */
+export function getProxyUrl(filePath: string): string {
+  const encoded = filePath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `/api/workspace/view/${encoded}`;
+}
+

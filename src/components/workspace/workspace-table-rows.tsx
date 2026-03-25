@@ -110,7 +110,6 @@ interface DataRowProps {
   ) => void;
   onItemClick: (item: WorkspaceBrowserItem) => void;
   onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
-  onOpenFileRequested?: (item: WorkspaceBrowserItem) => void;
 }
 
 export function DataRow({
@@ -120,7 +119,6 @@ export function DataRow({
   onSelect,
   onItemClick,
   onItemDoubleClick,
-  onOpenFileRequested,
 }: DataRowProps) {
   const item = row.original;
   const isNavigable = isFolderType(item.type);
@@ -139,18 +137,12 @@ export function DataRow({
       });
     } else if (isNavigable) {
       onItemClick(item);
-    } else {
-      onOpenFileRequested?.(item);
     }
   }
 
   function handleRowDoubleClick() {
-    if (useSelectionMode) {
-      if (isNavigable) {
-        onItemDoubleClick?.(item);
-      } else {
-        onOpenFileRequested?.(item);
-      }
+    if (useSelectionMode && isNavigable) {
+      onItemDoubleClick?.(item);
     }
   }
 
@@ -162,7 +154,7 @@ export function DataRow({
           ? "border-l-2 " +
             (isSelected ? "border-l-primary" : "border-l-transparent")
           : "") +
-        (useSelectionMode || isNavigable || onOpenFileRequested
+        (useSelectionMode || isNavigable
           ? " cursor-pointer pl-6"
           : " pl-6") +
         (isSelected ? " bg-muted" : "")

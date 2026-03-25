@@ -463,7 +463,6 @@ export function WorkspaceBrowser({
           selectedPaths={selectedPaths}
           onSelect={handleSelectItem}
           onItemDoubleClick={handleItemDoubleClick}
-          onOpenFileRequested={() => dialogDispatch({ type: "OPEN_FILE_VIEWER_CONSTRUCTION" })}
           onClearSelection={clearSelection}
         />
       </div>

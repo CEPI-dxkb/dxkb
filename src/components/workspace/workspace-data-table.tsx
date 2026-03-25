@@ -55,7 +55,6 @@ interface WorkspaceDataTableProps {
     modifiers?: { ctrlOrMeta: boolean; shift: boolean },
   ) => void;
   onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
-  onOpenFileRequested?: (item: WorkspaceBrowserItem) => void;
   onClearSelection?: () => void;
 }
 
@@ -80,7 +79,6 @@ export const WorkspaceDataTable = forwardRef<
     selectedPaths = [],
     onSelect,
     onItemDoubleClick,
-    onOpenFileRequested,
     onClearSelection,
   },
   ref,
@@ -180,13 +178,11 @@ export const WorkspaceDataTable = forwardRef<
 
   const handleEnter = useCallback(
     (item: WorkspaceBrowserItem) => {
-      if (!isFolderType(item.type)) {
-        onOpenFileRequested?.(item);
-      } else {
+      if (isFolderType(item.type)) {
         onItemDoubleClick?.(item);
       }
     },
-    [onOpenFileRequested, onItemDoubleClick],
+    [onItemDoubleClick],
   );
 
   const { focusedSpecialRow, handleKeyDown } = useTableKeyboardNavigation<WorkspaceBrowserItem>({
@@ -246,13 +242,12 @@ export const WorkspaceDataTable = forwardRef<
             onSelect={onSelect}
             onItemClick={handleItemClick}
             onItemDoubleClick={onItemDoubleClick}
-            onOpenFileRequested={onOpenFileRequested}
           />
         ))}
       </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- handleItemClick changes every render (uses path)
-    [useSelectionMode, selectedPathSet, onSelect, onItemDoubleClick, onOpenFileRequested, path, viewMode, homeBase],
+    [useSelectionMode, selectedPathSet, onSelect, onItemDoubleClick, path, viewMode, homeBase],
   );
 
   const renderEmptyState = useCallback(

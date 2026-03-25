@@ -4,6 +4,7 @@ import React from "react";
 import {
   WorkspacePanelProvider,
   useWorkspacePanel,
+  panelLayoutCookieName,
 } from "../workspace-panel-context";
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -59,5 +60,35 @@ describe("WorkspacePanelContext", () => {
     });
 
     expect(result.current.panelManuallyHidden).toBe(true);
+  });
+
+  it("accepts initialLayout prop", () => {
+    const customLayout = { "workspace-main": 50, "workspace-details": 50 };
+    const customWrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspacePanelProvider initialLayout={customLayout}>
+        {children}
+      </WorkspacePanelProvider>
+    );
+
+    const { result } = renderHook(() => useWorkspacePanel(), {
+      wrapper: customWrapper,
+    });
+
+    expect(result.current.panelLayoutRef.current).toEqual(customLayout);
+  });
+
+  it("setPanelLayout updates the ref", () => {
+    const { result } = renderHook(() => useWorkspacePanel(), { wrapper });
+
+    const newLayout = { "workspace-main": 70, "workspace-details": 30 };
+    act(() => {
+      result.current.setPanelLayout(newLayout);
+    });
+
+    expect(result.current.panelLayoutRef.current).toEqual(newLayout);
+  });
+
+  it("exports panelLayoutCookieName constant", () => {
+    expect(panelLayoutCookieName).toBe("workspace-panel-layout");
   });
 });

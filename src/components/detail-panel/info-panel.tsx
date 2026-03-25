@@ -37,7 +37,7 @@ export type InfoPanelProps =
 
 
 /** Build the full path to a workspace item (parent + name) for API calls like Workspace.du. */
-function getItemFullPath(item: WorkspaceBrowserItem): string {
+export function getItemFullPath(item: WorkspaceBrowserItem): string {
   const rawPath = (item.path ?? "").replace(/\/+$/, "").replace(/\/+/g, "/");
   const name = (item.name ?? "").trim();
   const segmentSuffix = `/${name}`;

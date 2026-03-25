@@ -1,0 +1,29 @@
+src/components/workspace/workspace-shell.tsx
+  0439685ede82bbd8 39,130,135,150
+src/hooks/services/workspace/use-workspace-selection.ts
+  0439685ede82bbd8 3,26-36
+src/components/workspace/file-viewer/viewers/csv-viewer.tsx
+  0439685ede82bbd8 32,97
+src/contexts/workspace-panel-context.tsx
+  0439685ede82bbd8 35-36,54-55,70,81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.18",
+  "base_commit_sha": "f76140b8a2acf22ce4b0727459aa7639d1d57e36",
+  "prompts": {
+    "0439685ede82bbd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a4d3998-9cad-4140-a590-6566ab214198",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 24,
+      "total_deletions": 19,
+      "accepted_lines": 24,
+      "overriden_lines": 0
+    }
+  }
+}

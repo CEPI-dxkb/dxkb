@@ -112,7 +112,7 @@ const mimeMap: Record<string, string> = {
 // Preview constants
 // ---------------------------------------------------------------------------
 
-export const previewMaxBytes = 10 * 1024 * 1024; // 1 MB — default byte limit for preview endpoint
+export const previewMaxBytes = 10 * 1024 * 1024; // 10 MB — default byte limit for preview endpoint
 export const interactiveViewerSizeLimit = 10 * 1024 * 1024; // 10 MB — above this, CSV/JSON switch to text preview
 
 // ---------------------------------------------------------------------------
@@ -136,8 +136,7 @@ function getExtension(fileName: string): string {
  *  1. File extension (`extensionToViewer`) — checked first because workspace
  *     types are often generic (e.g. an SVG stored as type "txt")
  *  2. Workspace object type (`typeToViewer`)
- *  3. Legacy CSV/TSV filename pattern
- *  4. "fallback"
+ *  3. "fallback"
  */
 export function resolveViewer(
   workspaceType: string,
@@ -150,8 +149,6 @@ export function resolveViewer(
 
   const byType = typeToViewer[workspaceType];
   if (byType) return byType;
-
-  if (ext === ".csv" || ext === ".tsv") return "csv";
 
   return "fallback";
 }

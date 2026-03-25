@@ -16,7 +16,7 @@ import { surveillanceFields } from "@/constants/datafields/surveillance";
 import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import { Button } from "@/components/ui/button";
 import { DetailPanel, type DetailField } from "@/components/detail-panel";
-import { formatOwner } from "@/lib/services/workspace/helpers";
+import { formatOwner, formatFileSize } from "@/lib/services/workspace/helpers";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { WorkspaceItemHeader } from "@/components/workspace/workspace-item-header";
 import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-details";
@@ -35,16 +35,6 @@ export type InfoPanelProps =
       activeTab: string;
     };
 
-function formatDiskUsage(bytes: number): string {
-  if (!bytes || bytes === 0) return "0 B";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  if (bytes < 1024 * 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-  return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2)} TB`;
-}
 
 /** Build the full path to a workspace item (parent + name) for API calls like Workspace.du. */
 function getItemFullPath(item: WorkspaceBrowserItem): string {
@@ -89,7 +79,7 @@ function WorkspaceItemDetailContent({
               : diskUsageError
                 ? "—"
                 : diskUsage !== undefined
-                  ? formatDiskUsage(diskUsage.sizeBytes)
+                  ? formatFileSize(diskUsage.sizeBytes, { showZero: true })
                   : "—"}
           </dd>
         </div>

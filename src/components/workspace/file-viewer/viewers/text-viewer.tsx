@@ -205,7 +205,7 @@ export function TextViewer({ filePath, fileName, fileSize }: TextViewerProps) {
           error: err instanceof Error ? err.message : "An unknown error occurred",
         });
       });
-  }, [filePath]);
+  }, [filePath, maxLines]);
 
   if (state.isLoading) {
     return (

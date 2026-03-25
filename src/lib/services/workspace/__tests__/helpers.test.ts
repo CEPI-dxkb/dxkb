@@ -164,8 +164,16 @@ describe("formatFileSize", () => {
     expect(formatFileSize(2 * 1024 * 1024 * 1024)).toBe("2.0 GB");
   });
 
+  it("formats terabytes", () => {
+    expect(formatFileSize(2 * 1024 * 1024 * 1024 * 1024)).toBe("2.00 TB");
+  });
+
   it("returns empty string for 0", () => {
     expect(formatFileSize(0)).toBe("");
+  });
+
+  it("returns '0 B' for 0 when showZero is true", () => {
+    expect(formatFileSize(0, { showZero: true })).toBe("0 B");
   });
 });
 

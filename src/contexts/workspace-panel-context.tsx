@@ -46,19 +46,10 @@ export function WorkspacePanelProvider({
   children: ReactNode;
   initialLayout?: Record<string, number>;
 }) {
-  const [panelManuallyHidden, setPanelManuallyHiddenState] = useState(false);
-  const [panelExpanded, setPanelExpandedState] = useState(false);
-  const [showHiddenFiles, setShowHiddenFilesState] = useState(false);
+  const [panelManuallyHidden, setPanelManuallyHidden] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(false);
+  const [showHiddenFiles, setShowHiddenFiles] = useState(false);
   const panelLayoutRef = useRef<Record<string, number>>(initialLayout ?? defaultPanelLayout);
-  const setPanelManuallyHidden = useCallback((value: boolean) => {
-    setPanelManuallyHiddenState(value);
-  }, []);
-  const setPanelExpanded = useCallback((value: boolean) => {
-    setPanelExpandedState(value);
-  }, []);
-  const setShowHiddenFiles = useCallback((value: boolean) => {
-    setShowHiddenFilesState(value);
-  }, []);
   const setPanelLayout = useCallback((layout: Record<string, number>) => {
     panelLayoutRef.current = layout;
     // Persist to cookie so the server can render the correct layout on next page load

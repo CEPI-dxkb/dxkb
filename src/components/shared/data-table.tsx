@@ -1,6 +1,5 @@
 'use client';
 
-// The following imports are relatively self-explanatory as to what they're used for. They're used to help set up the columns, pagination, sorting, etc on the table
 import {
   ColumnDef,
   getCoreRowModel,
@@ -11,14 +10,11 @@ import {
   Header,
 } from "@tanstack/react-table";
 
-// The following imports are usual hooks used in React to do things on events. The only non-standard one is useMemo, which isused to cache data and checks on rerenders to see if the data has changed. This is relevant to when the columns are resized.
 import { useMemo, useRef, useState, useEffect } from "react";
 import { noop } from "@/lib/utils";
 
-// This helps with rendering rows more quickly in situations that have thousands of rows
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-// These imports are used to actually build the table structure
 import {
   Table,
   TableHeader,
@@ -28,18 +24,15 @@ import {
   TableCell,
 } from "@/components/ui/table";
 
-// This allows for using shorthand to conditionally apply CSS classes
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 
-// This sets the structure of the columns that are sent in as JSON
 interface ColumnInfo {
-  id: string; // The key in the JSON for this column
-  label: string; // The readable string that gets displayed as the column header
-  visible?: boolean; // Whether or not we see this column. There is a default that it comes in with from the parent, but it can be changed dynamically, as we'll see later
+  id: string;
+  label: string;
+  visible?: boolean;
 }
 
-// This sets the structure of the data that is sent in as JSON
 interface DataTableProps {
   id: string;
   data: Record<string, unknown>[];
@@ -76,7 +69,6 @@ interface DataTableProps {
   isLoading?: boolean;
 }
 
-// This is the actual function...
 export function DataTable({ id: _id, data, columns, totalItems, resource, onSelectionChange, onGenomeSelect, pageIndex, pageSize, onPageChange, sorting:controlledSorting, onSortingChange, columnOrder, onColumnOrderChange, columnVisibility: controlledVisibility, onColumnVisibilityChange: onColumnVisibilityChangeProp, rowSelection: controlledRowSelection, onRowSelectionChange, onDownloadAll, isLoading = false }: DataTableProps) {
 
   // These next consts are used and activated when something about the columm changes
@@ -89,7 +81,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
   // Drag and drop state for column reordering
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
 
-  // This handles the event of someone selecting a row - use controlled if provided
   const [internalRowSelection, setInternalRowSelection] = useState({});
   const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
 
@@ -149,34 +140,10 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
     };
   }, [showColumnMenu]);
 
-  // This makes sure the sizing all works right as per the height of the table within the page. This manages the height of the table, the pagination section, etc to make sure everything appears to the user as it should.
-  useEffect(() => {
-    const measure = () => {
-      const _controlsHeight = controlsRef.current?.offsetHeight || 0;
-      const _footerHeight = footerRef.current?.offsetHeight || 0;
-      const _viewportHeight = window.innerHeight;
-    };
   
-    // Delay measurement slightly to allow layout to settle
-    const handle = requestAnimationFrame(measure);
-  
-    const resizeObserver = new ResizeObserver(() => requestAnimationFrame(measure));
-    if (controlsRef.current) resizeObserver.observe(controlsRef.current);
-    if (footerRef.current) resizeObserver.observe(footerRef.current);
-    window.addEventListener('resize', measure);
-  
-    return () => {
-      cancelAnimationFrame(handle);
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-  
-  // This defines how the columns are laid out and react to various actions like being resized or reordered. You can see that the first column - the checkbox - is handled slightly differently in that the actions really cannot be applied to it.
   const columnDefs = useMemo<ColumnDef<Record<string, unknown>, unknown>[]>(() => {
     const checkboxColumn: ColumnDef<Record<string, unknown>> = {
       id: '__select__',
-      // This is specifically the "check all" checkbox in the header. Its value and action affect ALL rows.
       header: ({ table }) => (
         <div className="flex justify-center items-center w-full h-full">
           <input
@@ -190,7 +157,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
           />
         </div>
       ),
-      // This is the code for each row's checkbox. Its value and action only affect its row.
       cell: ({ row }) => {
         const _allRows = table.getRowModel().rows;
 
@@ -274,7 +240,7 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
         size: 200,
         enableResizing: true,
         enableSorting: true,
-        sortingFn: (rowA, rowB, columnId) => { // This defines the sorting function on each column
+        sortingFn: (rowA, rowB, columnId) => {
           const a = rowA.getValue(columnId);
           const b = rowB.getValue(columnId);
       
@@ -294,11 +260,10 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
 
-  // This defines all the features, actions, and hooks for the table.
   const table = useReactTable({
     data,
     columns: columnDefs,
-    state: { // These are the various states that are relevant in the table. These were defined up above.
+    state: {
       sorting: controlledSorting ?? [],
       // use the internal pagination state (which is kept in sync with
       // controlled props when provided). This prevents ephemeral UI
@@ -320,7 +285,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
         setInternalRowSelection(newSelection);
       }
 
-      // Always call onSelectionChange for backwards compatibility
       if (onSelectionChange) {
         const selectedRows = Object.keys(newSelection)
           .filter((key) => newSelection[key])
@@ -330,14 +294,11 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
       }
     },
 
-    // These are the definitions of what happens when any of the above states change. Most of them are pretty self-explanatory
     onSortingChange: (updater) => {
       const newSorting =
         typeof updater === 'function'
           ? updater(controlledSorting ?? [])
           : updater;
-
-      console.log('🟡 DataTable onSortingChange called. Current sorting:', controlledSorting, 'New sorting:', newSorting);
 
       // Reset to first page
       table.setPageIndex(0);
@@ -352,7 +313,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
 
       setColumnVisibility(newVis);
 
-      // call parent callback
       if (onColumnVisibilityChangeProp) {
         onColumnVisibilityChangeProp(newVis);
       }
@@ -392,7 +352,7 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
     pageCount: Math.ceil(totalItems / (pagination.pageSize ?? 200)),
     columnResizeMode: 'onEnd', // This waits to implement the new column size until the mouse is released. This makes the transition smoother as it doesn't have to keep rerendering the column/table in realtime as the user moves the mouse.
     enableColumnResizing: true,
-    getCoreRowModel: getCoreRowModel(), // This is what lets react build out the table from the raw data
+    getCoreRowModel: getCoreRowModel(),
     enableRowSelection: true,
     enableSortingRemoval: false,
     enableMultiRowSelection: true,
@@ -426,7 +386,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
-  // This is what happens when the user clicks the "resize region" in a column header
   const handleResizeStart = (event: React.MouseEvent, header: Header<Record<string, unknown>, unknown>) => {
     event.preventDefault();
 
@@ -543,7 +502,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
     setDraggedColumn(null);
   };
 
-  // This is the section that handles downloading the data. By default, it grabs all the data. However, there is an option to only download the selected rows
   const handleDownload = (format: 'csv' | 'txt', onlySelected = false) => {
     // If downloading all data and onDownloadAll is provided, use it
     if (!onlySelected && onDownloadAll) {
@@ -585,7 +543,7 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
   // Now that all the setup is done, let's render the table!
   return (
     <div className="flex flex-col h-full w-full text-xs relative items-center border-0">{/* This is the main container. Full width and content centered. */}
-      <div className="w-[100%] flex justify-end mb-2 z-50 px-5" ref={controlsRef}> {/* This is the area above the table for the various buttons. */}
+      <div className="w-[100%] flex justify-end mb-2 z-50 px-5" ref={controlsRef}>
           <div className="relative inline-block text-left" ref={columnMenuRef}> {/* This is the button for changing the visibility of columns in the table */}
             <Button
               className="flex justify-end w-full rounded border border-gray-400 shadow-sm px-2 py-1 bg-white text-xs font-medium text-gray-700 hover:bg-gray-50 mr-2"
@@ -715,12 +673,9 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
                             }
 
                             e.stopPropagation();
-                            console.log('🟢 Column header clicked:', column.id, 'canSort:', column.getCanSort(), 'isSorted:', column.getIsSorted());
                             const handler = column.getToggleSortingHandler();
                             if (handler) {
                               handler(e);
-                            } else {
-                              console.log('❌ No toggle handler for column:', column.id);
                             }
                           } : undefined}
                         >
@@ -933,7 +888,6 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
   );
 }
 
-// This is the function that allows the user to download the data
 function downloadFile(filename: string, content: string) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const link = document.createElement('a');

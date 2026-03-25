@@ -101,7 +101,7 @@ export function WorkspaceToolbar({
 
   if (isAtRoot) {
     return (
-      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+      <div className="grid min-w-0 grid-cols-1 gap-3 @3xl:grid-cols-[1fr_auto] @3xl:items-center">
         {filterSearchSection}
 
         <div className="flex flex-wrap items-center gap-2">
@@ -133,7 +133,7 @@ export function WorkspaceToolbar({
   }
 
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+    <div className="grid min-w-0 grid-cols-1 gap-3 @3xl:grid-cols-[1fr_auto] @3xl:items-center">
       {filterSearchSection}
 
       <div className="flex flex-wrap items-center gap-2">

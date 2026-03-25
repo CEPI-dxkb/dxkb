@@ -56,8 +56,8 @@ function InteractiveCsvViewer({ filePath, fileName }: { filePath: string; fileNa
     return () => controller.abort();
   }, [filePath]);
 
-  const { records, columnNames } = useMemo(() => {
-    if (!content) return { records: [], columnNames: [] };
+  const { records, columnNames, parseError } = useMemo(() => {
+    if (!content) return { records: [], columnNames: [], parseError: null };
 
     try {
       const delimiter = fileName.endsWith(".tsv") ? "\t" : ",";
@@ -71,14 +71,19 @@ function InteractiveCsvViewer({ filePath, fileName }: { filePath: string; fileNa
       const names =
         parsed.length > 0 ? Object.keys(parsed[0] as Record<string, string>) : [];
 
-      return { records: parsed, columnNames: names };
+      return { records: parsed, columnNames: names, parseError: null };
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to parse CSV/TSV",
-      );
-      return { records: [], columnNames: [] };
+      return {
+        records: [],
+        columnNames: [],
+        parseError: err instanceof Error ? err.message : "Failed to parse CSV/TSV",
+      };
     }
   }, [content, fileName]);
+
+  useEffect(() => {
+    if (parseError) setError(parseError);
+  }, [parseError]);
 
   const columns = useMemo<ColumnDef<Record<string, string>>[]>(() => {
     return columnNames.map((col) => ({

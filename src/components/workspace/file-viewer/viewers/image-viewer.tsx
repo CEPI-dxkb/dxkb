@@ -1,11 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
-import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { getProxyUrl } from "../file-viewer-registry";
+import { ZoomableImage } from "./zoomable-image";
 
 interface ImageViewerProps {
   filePath: string;
@@ -13,56 +9,5 @@ interface ImageViewerProps {
 }
 
 export function ImageViewer({ filePath, fileName }: ImageViewerProps) {
-  return (
-    <div className="flex h-full w-full flex-col">
-      <TransformWrapper>
-        {({ zoomIn, zoomOut, resetTransform }) => (
-          <>
-            <div className="flex items-center gap-1 border-b border-border px-2 py-1">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => zoomIn()}
-                title="Zoom in"
-              >
-                <ZoomIn />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => zoomOut()}
-                title="Zoom out"
-              >
-                <ZoomOut />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => resetTransform()}
-                title="Reset"
-              >
-                <RotateCcw />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <TransformComponent
-                wrapperClass="!w-full !h-full"
-                contentClass="!w-full !h-full flex items-center justify-center"
-              >
-                <Image
-                  src={getProxyUrl(filePath)}
-                  alt={fileName}
-                  width={0}
-                  height={0}
-                  sizes="100vw"
-                  className="h-auto w-auto max-h-full max-w-full object-contain"
-                  unoptimized
-                />
-              </TransformComponent>
-            </div>
-          </>
-        )}
-      </TransformWrapper>
-    </div>
-  );
+  return <ZoomableImage src={getProxyUrl(filePath)} alt={fileName} />;
 }

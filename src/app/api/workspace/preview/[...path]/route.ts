@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuthToken } from "@/lib/auth/session";
-import { getRequiredEnv } from "@/lib/env";
-import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
+import { resolveWorkspaceDownload } from "../../resolve-download";
 
-const defaultMaxBytes = 10 * 1024 * 1024; // 1 MB
-const maxBytesCap = 2 * 1024 * 1024; // 2 MB server-enforced cap
+const defaultMaxBytes = 2 * 1024 * 1024; // 2 MB default
+const maxBytesCap = 10 * 1024 * 1024; // 10 MB server-enforced cap (matches client previewMaxBytes)
 
 /**
  * Workspace file preview proxy route.
@@ -12,7 +10,7 @@ const maxBytesCap = 2 * 1024 * 1024; // 2 MB server-enforced cap
  * last newline) so that large files never blow up the client.
  *
  * Query params:
- *   ?maxBytes=N  — requested byte limit (default 1 MB, capped at 2 MB)
+ *   ?maxBytes=N  — requested byte limit (default 2 MB, capped at 10 MB)
  *
  * Response headers:
  *   X-Truncated: true  — set when the response was truncated
@@ -22,85 +20,24 @@ export async function GET(
   { params }: { params: Promise<{ path?: string[] }> },
 ) {
   try {
-    const authToken = await requireAuthToken();
-    if (authToken instanceof NextResponse) return authToken;
-
     const resolved = await params;
     const segments = resolved.path ?? [];
-    const workspacePath =
-      "/" + segments.map((s) => decodeURIComponent(s)).join("/");
 
     const maxBytesParam = request.nextUrl.searchParams.get("maxBytes");
     const maxBytes = maxBytesParam
       ? Math.min(Math.max(Number(maxBytesParam) || defaultMaxBytes, 1), maxBytesCap)
       : defaultMaxBytes;
 
-    // Get the download URL from the Workspace API
-    const wsResponse = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/jsonrpc+json",
-        Authorization: authToken,
-      },
-      body: JSON.stringify({
-        id: 1,
-        method: "Workspace.get_download_url",
-        params: [{ objects: [workspacePath] }],
-        jsonrpc: "2.0",
-      }),
-    });
+    const result = await resolveWorkspaceDownload(segments);
+    if (result instanceof NextResponse) return result;
 
-    if (!wsResponse.ok) {
-      const responseText = await wsResponse.text();
-      console.error(
-        "BV-BRC API error:",
-        wsResponse.status,
-        wsResponse.statusText,
-        responseText,
-      );
-      return NextResponse.json(
-        {
-          error: `BV-BRC API error: ${wsResponse.status} ${wsResponse.statusText}`,
-        },
-        { status: wsResponse.status },
-      );
-    }
-
-    const data = await wsResponse.json();
-    const downloadUrl = data?.result?.[0]?.[0];
-
-    if (!downloadUrl) {
-      return NextResponse.json(
-        { error: "Download URL not found for the requested path" },
-        { status: 404 },
-      );
-    }
-
-    // Fetch the actual file content from Shock
-    const shockResponse = await fetch(downloadUrl);
-
-    if (!shockResponse.ok) {
-      console.error(
-        "Shock download error:",
-        shockResponse.status,
-        shockResponse.statusText,
-      );
-      return NextResponse.json(
-        { error: "Failed to fetch file content from storage" },
-        { status: 502 },
-      );
-    }
-
-    const lastSegment = segments[segments.length - 1] ?? "download";
-    const filename = decodeURIComponent(lastSegment);
-    const contentType = getMimeType(filename);
+    const { shockResponse, filename, contentType } = result;
 
     // Check if the file is small enough to return in full
     const contentLength = shockResponse.headers.get("Content-Length");
     const fileSize = contentLength ? Number(contentLength) : null;
 
     if (fileSize !== null && fileSize <= maxBytes) {
-      // File fits within the limit — stream it in full (no truncation)
       const headers: Record<string, string> = {
         "Content-Type": contentType,
         "Content-Disposition": `inline; filename="${filename}"`,
@@ -144,7 +81,6 @@ export async function GET(
         truncated = true;
       }
     } finally {
-      // Cancel the remaining stream to free the connection
       reader.cancel().catch(() => { /* connection already closed */ });
     }
 
@@ -170,7 +106,6 @@ export async function GET(
       if (lastNewline > 0) {
         finalBytes = combined.slice(0, lastNewline + 1);
       }
-      // If no newline found, return the full buffer (single very long line)
     }
 
     const headers: Record<string, string> = {

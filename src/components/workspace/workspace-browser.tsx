@@ -427,7 +427,7 @@ export function WorkspaceBrowser({
           onRefetch={refetch}
         />
       )}
-      <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
+      <div className="@container min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
         <WorkspaceBreadcrumbs
           path={path}
           username={username}

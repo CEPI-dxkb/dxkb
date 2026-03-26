@@ -1,0 +1,23 @@
+src/components/workspace/file-viewer/file-viewer-content.tsx
+  8009f24b3eb711f8 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "c5b2db93c684621bc5689f473831b613eae3d118",
+  "prompts": {
+    "8009f24b3eb711f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b804eca3-9273-407d-8fb8-86ff73b7c7a8",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

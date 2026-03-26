@@ -88,24 +88,26 @@ function InteractiveJsonViewer({ filePath, fileName }: { filePath: string; fileN
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex items-center gap-1 border-b border-border px-2 py-1">
-        <Button
-          variant={viewMode === "tree" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setViewMode("tree")}
-        >
-          <Braces className="mr-1 h-4 w-4" />
-          Tree
-        </Button>
-        <Button
-          variant={viewMode === "raw" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => setViewMode("raw")}
-        >
-          <Code className="mr-1 h-4 w-4" />
-          Raw
-        </Button>
-      </div>
+      {parseSuccess && (
+        <div className="flex items-center gap-1 border-b border-border px-2 py-1">
+          <Button
+            variant={viewMode === "tree" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("tree")}
+          >
+            <Braces className="mr-1 h-4 w-4" />
+            Tree
+          </Button>
+          <Button
+            variant={viewMode === "raw" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("raw")}
+          >
+            <Code className="mr-1 h-4 w-4" />
+            Raw
+          </Button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-auto p-4">
         {isLoading && (

@@ -1,0 +1,33 @@
+src/components/workspace/file-viewer/viewers/codemirror-viewer.tsx
+  45d31e7213837fc1 296-298,300
+src/components/workspace/file-viewer/file-viewer-registry.ts
+  45d31e7213837fc1 182-189
+src/components/workspace/file-viewer/__tests__/file-viewer-content.test.ts
+  45d31e7213837fc1 1,49-51,54-55,58-59,62-63
+src/components/workspace/file-viewer/file-viewer-content.tsx
+  45d31e7213837fc1 4,49-50
+src/components/workspace/file-viewer/viewers/__tests__/codemirror-languages.test.ts
+  45d31e7213837fc1 29,32-36
+src/components/workspace/file-viewer/viewers/__tests__/iframe-viewer.test.tsx
+  45d31e7213837fc1 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "6389cf088564383e084cfce5aaa4b15807ba9790",
+  "prompts": {
+    "45d31e7213837fc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e69521b1-b1da-44b7-b5f6-14fa0fc12c86",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 33,
+      "total_deletions": 29,
+      "accepted_lines": 33,
+      "overriden_lines": 0
+    }
+  }
+}

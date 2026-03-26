@@ -9,7 +9,7 @@ vi.mock("@/lib/services/workspace/helpers", () => ({
 }));
 
 vi.mock("@/lib/services/workspace/client", () => ({
-  WorkspaceApiClient: function WorkspaceApiClient() {},
+  WorkspaceApiClient: function WorkspaceApiClient() { return; },
 }));
 
 vi.mock("@/lib/services/workspace/methods/crud", () => ({

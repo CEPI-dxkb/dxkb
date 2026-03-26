@@ -40,6 +40,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
 
+const emptyItems: WorkspaceBrowserItem[] = [];
+
 interface WorkspaceBrowserProps {
   /** "home" = current user's home; "shared" = shared-with-me / shared folder view; "public" = public browsing */
   mode: WorkspaceViewMode;
@@ -187,7 +189,7 @@ export function WorkspaceBrowser({
         }
       : isJobResultView
         ? {
-            items: jobListQuery.data ?? [],
+            items: jobListQuery.data ?? emptyItems,
             isLoading: jobListQuery.isLoading,
             isFetching: jobListQuery.isFetching,
             error: jobListQuery.error,

@@ -35,8 +35,7 @@ describe("IframeViewer", () => {
 
   it("uses full path as fallback title when no segments", () => {
     render(<IframeViewer filePath="" />);
-    // Empty path fallback
     const iframe = document.querySelector("iframe");
-    expect(iframe).toBeInTheDocument();
+    expect(iframe).toHaveAttribute("title", "");
   });
 });

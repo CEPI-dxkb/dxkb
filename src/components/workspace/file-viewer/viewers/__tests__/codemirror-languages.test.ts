@@ -26,11 +26,14 @@ describe("getLanguageExtension", () => {
     expect(ext).not.toBeNull();
   });
 
-  it("returns a LanguageSupport for .xml and .gff (both map to xml)", async () => {
+  it("returns a LanguageSupport for .xml", async () => {
     const xml = await getLanguageExtension("config.xml");
-    const gff = await getLanguageExtension("data.gff");
     expect(xml).not.toBeNull();
-    expect(gff).not.toBeNull();
+  });
+
+  it("returns null for .gff and .vcf (tab-delimited, not XML)", async () => {
+    expect(await getLanguageExtension("data.gff")).toBeNull();
+    expect(await getLanguageExtension("variants.vcf")).toBeNull();
   });
 
   it("returns null for unknown extensions", async () => {

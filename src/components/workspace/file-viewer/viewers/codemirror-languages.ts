@@ -10,8 +10,6 @@ type LanguageLoader = () => Promise<LanguageSupport>;
 const extensionToLanguage: Record<string, LanguageLoader> = {
   ".json": () => import("@codemirror/lang-json").then((m) => m.json()),
   ".xml": () => import("@codemirror/lang-xml").then((m) => m.xml()),
-  ".gff": () => import("@codemirror/lang-xml").then((m) => m.xml()),
-  ".vcf": () => import("@codemirror/lang-xml").then((m) => m.xml()),
   ".py": () => import("@codemirror/lang-python").then((m) => m.python()),
   ".js": () =>
     import("@codemirror/lang-javascript").then((m) => m.javascript()),

@@ -179,6 +179,15 @@ function encodePath(filePath: string): string {
 }
 
 /**
+ * Returns `true` when an iframe-rendered file needs `allow-scripts` in its
+ * sandbox (e.g. PDF viewer plugin, HTML with embedded JS).
+ */
+export function iframeNeedsScripts(fileName: string): boolean {
+  const ext = getExtension(fileName);
+  return ext === ".pdf" || ext === ".html" || ext === ".htm";
+}
+
+/**
  * Build an API proxy URL for streaming a workspace file, encoding each path
  * segment individually so slashes are preserved.
  */

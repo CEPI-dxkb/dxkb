@@ -1,4 +1,4 @@
-import { resolveViewer } from "../file-viewer-registry";
+import { resolveViewer, iframeNeedsScripts } from "../file-viewer-registry";
 
 // Test the viewer routing logic that FileViewerContent depends on.
 // The component itself is a thin switch over resolveViewer, so we test
@@ -46,25 +46,21 @@ describe("FileViewerContent routing logic", () => {
     expect(resolveViewer("genome_group", "unknown.xyz")).toBe("fallback");
   });
 
-  describe("iframe script detection (used by FileViewerContent)", () => {
-    it("detects PDF as needing scripts", () => {
-      const ext = "document.pdf".split(".").pop()?.toLowerCase();
-      expect(ext === "pdf" || ext === "html" || ext === "htm").toBe(true);
+  describe("iframeNeedsScripts", () => {
+    it("returns true for PDF files", () => {
+      expect(iframeNeedsScripts("document.pdf")).toBe(true);
     });
 
-    it("detects HTML as needing scripts", () => {
-      const ext = "page.html".split(".").pop()?.toLowerCase();
-      expect(ext === "pdf" || ext === "html" || ext === "htm").toBe(true);
+    it("returns true for HTML files", () => {
+      expect(iframeNeedsScripts("page.html")).toBe(true);
     });
 
-    it("detects HTM as needing scripts", () => {
-      const ext = "page.htm".split(".").pop()?.toLowerCase();
-      expect(ext === "pdf" || ext === "html" || ext === "htm").toBe(true);
+    it("returns true for HTM files", () => {
+      expect(iframeNeedsScripts("page.htm")).toBe(true);
     });
 
-    it("does not detect PDB as needing scripts", () => {
-      const ext = "model.pdb".split(".").pop()?.toLowerCase();
-      expect(ext === "pdf" || ext === "html" || ext === "htm").toBe(false);
+    it("returns false for PDB files", () => {
+      expect(iframeNeedsScripts("model.pdb")).toBe(false);
     });
   });
 });

@@ -293,9 +293,11 @@ export function CodeMirrorViewer({
       if (wrapper.parentNode === container) {
         container.removeChild(wrapper);
       }
-      // If still loading (no view created yet), clean up fully
-      if (!entry.view) {
+      // Completed entries stay in cache for instant re-display.
+      // Anything else (loading, streaming) must be aborted and removed.
+      if (entry.status !== "done") {
         controller.abort();
+        if (entry.view) entry.view.destroy();
         viewCache.delete(filePath);
       }
     };

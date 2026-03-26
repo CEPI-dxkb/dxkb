@@ -1,7 +1,7 @@
 "use client";
 
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
-import { resolveViewer } from "./file-viewer-registry";
+import { resolveViewer, iframeNeedsScripts } from "./file-viewer-registry";
 import { TextViewer } from "./viewers/text-viewer";
 import { JsonViewer } from "./viewers/json-viewer";
 import { ImageViewer } from "./viewers/image-viewer";
@@ -46,11 +46,8 @@ export function FileViewerContent({ item }: FileViewerContentProps) {
           fileSize={item.size}
         />
       );
-    case "iframe": {
-      const ext = item.name.split(".").pop()?.toLowerCase();
-      const needsScripts = ext === "pdf" || ext === "html" || ext === "htm";
-      return <IframeViewer filePath={item.path} allowScripts={needsScripts} />;
-    }
+    case "iframe":
+      return <IframeViewer filePath={item.path} allowScripts={iframeNeedsScripts(item.name)} />;
     case "fallback":
       return (
         <FallbackViewer

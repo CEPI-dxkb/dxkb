@@ -48,7 +48,8 @@ export function FileViewerContent({ item }: FileViewerContentProps) {
       );
     case "iframe": {
       const ext = item.name.split(".").pop()?.toLowerCase();
-      return <IframeViewer filePath={item.path} allowScripts={ext === "pdf"} />;
+      const needsScripts = ext === "pdf" || ext === "html" || ext === "htm";
+      return <IframeViewer filePath={item.path} allowScripts={needsScripts} />;
     }
     case "fallback":
       return (

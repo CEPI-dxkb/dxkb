@@ -1,0 +1,23 @@
+src/components/workspace/file-viewer/viewers/codemirror-viewer.tsx
+  b4557d1823cbd031 15-16,19,24-25,138-144,309-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "0adad71a93a982c3d55870c8425820b97191b632",
+  "prompts": {
+    "b4557d1823cbd031": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f63990c7-9b21-490a-a8a2-6c98874688a7",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 28,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -62,6 +62,9 @@ importers:
       '@icons-pack/react-simple-icons':
         specifier: ^13.13.0
         version: 13.13.0(react@19.2.4)
+      '@lezer/highlight':
+        specifier: ^1.2.3
+        version: 1.2.3
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.14)(react@19.2.4)

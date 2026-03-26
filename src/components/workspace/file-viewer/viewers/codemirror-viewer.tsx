@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { EditorState, type Extension } from "@codemirror/state";
+import { Compartment, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
   syntaxHighlighting,
-  defaultHighlightStyle,
+  HighlightStyle,
   foldGutter,
   foldAll,
   foldKeymap,
 } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 import { keymap } from "@codemirror/view";
-
-import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -74,12 +73,63 @@ const baseTheme = EditorView.theme({
   },
 });
 
+// GitHub syntax highlight colors — keyed [dark, light] per tag group
+const githubColors = {
+  keyword:    ["#ff7b72", "#cf222e"],
+  name:       ["#c9d1d9", "#24292f"],
+  function:   ["#d2a8ff", "#8250df"],
+  constant:   ["#79c0ff", "#0550ae"],
+  type:       ["#ffa657", "#953800"],
+  number:     ["#79c0ff", "#0550ae"],
+  string:     ["#a5d6ff", "#0a3069"],
+  comment:    ["#8b949e", "#6e7781"],
+  property:   ["#7ee787", "#116329"],
+  punctuation:["#8b949e", "#6e7781"],
+} as const;
+
+function buildHighlightStyle(mode: 0 | 1) {
+  const c = (key: keyof typeof githubColors) => githubColors[key][mode];
+  return HighlightStyle.define([
+    { tag: tags.keyword, color: c("keyword") },
+    { tag: [tags.name, tags.deleted, tags.character, tags.macroName], color: c("name") },
+    { tag: [tags.function(tags.variableName), tags.labelName], color: c("function") },
+    { tag: [tags.color, tags.constant(tags.name), tags.standard(tags.name)], color: c("constant") },
+    { tag: [tags.definition(tags.name), tags.separator], color: c("name") },
+    { tag: [tags.typeName, tags.className, tags.changed, tags.annotation, tags.modifier, tags.self, tags.namespace], color: c("type") },
+    { tag: [tags.number, tags.bool], color: c("number") },
+    { tag: [tags.string, tags.special(tags.brace)], color: c("string") },
+    { tag: tags.operator, color: c("keyword") },
+    { tag: tags.comment, color: c("comment"), fontStyle: "italic" },
+    { tag: tags.meta, color: c("constant") },
+    { tag: tags.strong, fontWeight: "bold" },
+    { tag: tags.emphasis, fontStyle: "italic" },
+    { tag: tags.link, color: c("string"), textDecoration: "underline" },
+    { tag: tags.propertyName, color: c("property") },
+    { tag: tags.atom, color: c("constant") },
+    { tag: tags.punctuation, color: c("punctuation") },
+  ]);
+}
+
+const githubDarkStyle = buildHighlightStyle(0);
+const githubLightStyle = buildHighlightStyle(1);
+
+function isDarkTheme() {
+  if (typeof document === "undefined") return true;
+  return (document.documentElement.getAttribute("data-theme") ?? "").endsWith("-dark");
+}
+
+const highlightCompartment = new Compartment();
+
+function highlightExtFor(dark: boolean) {
+  return syntaxHighlighting(dark ? githubDarkStyle : githubLightStyle, { fallback: true });
+}
+
 const readOnlyExtensions: Extension[] = [
   EditorView.editable.of(false),
   EditorState.readOnly.of(true),
-  EditorView.lineWrapping,
+  // EditorView.lineWrapping,
   baseTheme,
-  syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+  highlightCompartment.of(highlightExtFor(isDarkTheme())),
 ];
 
 const foldExtensions: Extension[] = [
@@ -89,6 +139,27 @@ const foldExtensions: Extension[] = [
   }),
   keymap.of(foldKeymap),
 ];
+
+// Watches data-theme on <html> and reconfigures all cached editor views.
+let lastDark: boolean | null = null;
+
+function startThemeObserver() {
+  if (lastDark !== null || typeof document === "undefined") return;
+  lastDark = isDarkTheme();
+
+  new MutationObserver(() => {
+    const dark = isDarkTheme();
+    if (dark === lastDark) return;
+    lastDark = dark;
+    const ext = highlightExtFor(dark);
+    for (const entry of viewCache.values()) {
+      entry.view?.dispatch({ effects: highlightCompartment.reconfigure(ext) });
+    }
+  }).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
+  });
+}
 
 // ---------------------------------------------------------------------------
 // EditorView cache — keeps recently viewed files alive so switching back is
@@ -100,6 +171,7 @@ interface CachedEntry {
   wrapper: HTMLDivElement;
   status: "loading" | "streaming" | "done" | "error";
   abort: AbortController;
+  truncated: boolean;
 }
 
 const viewCache = new Map<string, CachedEntry>();
@@ -146,23 +218,18 @@ export function CodeMirrorViewer({
     "loading" | "streaming" | "done" | "error"
   >("loading");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  // Large file confirmation gate
-  const [confirmedPath, setConfirmedPath] = useState<string | null>(null);
-  const isLargeFile =
-    fileSize !== undefined && fileSize >= largeFileThreshold;
-  const needsConfirmation =
-    isLargeFile && confirmedPath !== filePath && !viewCache.has(filePath);
+  const [truncated, setTruncated] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || needsConfirmation) return;
+    if (!container) return;
 
     // Check cache for an existing EditorView for this file
     const cached = viewCache.get(filePath);
     if (cached) {
       container.appendChild(cached.wrapper);
       setStatus(cached.status);
+      setTruncated(cached.truncated);
       setProgress({ bytesLoaded: 0, totalBytes: null });
       setErrorMsg(null);
       return () => {
@@ -186,6 +253,7 @@ export function CodeMirrorViewer({
       wrapper,
       status: "loading",
       abort: controller,
+      truncated: false,
     };
 
     async function init() {
@@ -203,6 +271,7 @@ export function CodeMirrorViewer({
       // Store in cache early so it's available even during streaming
       viewCache.set(filePath, entry);
       evictOldest();
+      startThemeObserver();
 
       try {
         const response = await fetch(getProxyUrl(filePath), {
@@ -249,6 +318,8 @@ export function CodeMirrorViewer({
           setProgress({ bytesLoaded: loaded, totalBytes: total });
         }
 
+        let wasTruncated = false;
+
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -261,13 +332,27 @@ export function CodeMirrorViewer({
             rafScheduled = true;
             requestAnimationFrame(flushToEditor);
           }
+
+          if (loaded >= largeFileThreshold) {
+            wasTruncated = true;
+            reader.cancel();
+            break;
+          }
         }
 
         pendingText += decoder.decode();
         flushToEditor();
 
         if (!destroyed) {
+          if (wasTruncated) {
+            const divider = "─".repeat(60);
+            const sizeLabel = fileSize ? formatFileSize(fileSize) : "full file";
+            const marker = `\n${divider}\n  Preview truncated at ${formatFileSize(largeFileThreshold)} of ${sizeLabel}. Download for complete content.\n${divider}`;
+            view.dispatch({ changes: { from: view.state.doc.length, insert: marker } });
+          }
           if (startFolded) foldAll(view);
+          entry.truncated = wasTruncated;
+          setTruncated(wasTruncated);
           entry.status = "done";
           setStatus("done");
         }
@@ -301,35 +386,7 @@ export function CodeMirrorViewer({
         viewCache.delete(filePath);
       }
     };
-  }, [fileName, filePath, foldable, startFolded, needsConfirmation]);
-
-  if (needsConfirmation) {
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6 text-center">
-        <AlertTriangle className="h-10 w-10 text-accent" />
-        <div className="space-y-1">
-          <p className="text-sm font-medium">
-            Large File ({fileSize ? formatFileSize(fileSize) : "50+ MB"})
-          </p>
-          <p className="text-xs text-muted-foreground">
-            This file is large and may take a while to download and render.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="lg" variant="default" onClick={() => setConfirmedPath(filePath)}>
-            Preview
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => triggerDownload(getProxyUrl(filePath))}
-          >
-            Download
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  }, [fileName, filePath, fileSize, foldable, startFolded]);
 
   if (status === "error") {
     return (
@@ -349,6 +406,22 @@ export function CodeMirrorViewer({
           bytesLoaded={progress.bytesLoaded}
           totalBytes={progress.totalBytes ?? fileSize ?? null}
         />
+      )}
+      {truncated && (
+        <div className="flex items-center justify-between gap-2 border-b bg-primary/90 px-3 py-1.5 text-xs font-medium text-white">
+          <span>
+            Preview truncated to {formatFileSize(largeFileThreshold)} of{" "}
+            {fileSize ? formatFileSize(fileSize) : "full file"}.
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto px-2 py-0.5 text-xs font-bold hover:bg-accent/90 hover:text-white"
+            onClick={() => triggerDownload(getProxyUrl(filePath))}
+          >
+            Download full file
+          </Button>
+        </div>
       )}
       <div ref={containerRef} className="min-h-0 flex-1 overflow-hidden" />
       {status === "loading" && (

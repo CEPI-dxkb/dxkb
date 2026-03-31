@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 interface ExpandableViewerWrapperProps {
   children: ReactNode;
   title?: string;
+  /** Fires after expand/collapse so consumers can react (e.g. resize a canvas). */
+  onExpandChange?: (expanded: boolean) => void;
 }
 
 /**
@@ -26,28 +28,49 @@ interface ExpandableViewerWrapperProps {
 export function ExpandableViewerWrapper({
   children,
   title,
+  onExpandChange,
 }: ExpandableViewerWrapperProps) {
   const [expanded, setExpanded] = useState(false);
-  // Two-phase animation: `entering` starts opacity-0, next frame flips to
-  // opacity-100 to trigger the CSS transition.
+  // Two-phase animation: `entering`/`leaving` start opacity-0, next frame
+  // flips to opacity-100 (or vice-versa) to trigger the CSS transition.
   const [entering, setEntering] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const rafRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const expand = useCallback(() => {
+    clearTimeout(timerRef.current);
+    setLeaving(false);
     setExpanded(true);
     setEntering(true);
     // Wait one frame so the browser paints with opacity-0, then transition in.
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = requestAnimationFrame(() => {
         setEntering(false);
+        onExpandChange?.(true);
       });
     });
-  }, []);
+  }, [onExpandChange]);
 
-  const collapse = useCallback(() => setExpanded(false), []);
+  const collapse = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    setEntering(false);
+    setLeaving(true);
+    // Fade out first, then switch to inline layout after the transition ends.
+    timerRef.current = setTimeout(() => {
+      setLeaving(false);
+      setExpanded(false);
+      rafRef.current = requestAnimationFrame(() => {
+        onExpandChange?.(false);
+      });
+    }, 200);
+  }, [onExpandChange]);
 
   useEffect(() => {
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      clearTimeout(timerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -66,13 +89,13 @@ export function ExpandableViewerWrapper({
     <div
       className={
         expanded
-          ? `bg-background fixed inset-0 z-50 flex flex-col transition-opacity duration-200 ease-out ${entering ? "opacity-0" : "opacity-100"}`
+          ? `bg-background fixed inset-0 z-50 flex flex-col transition-opacity duration-200 ease-out ${entering || leaving ? "opacity-0" : "opacity-100"}`
           : "relative h-full w-full"
       }
     >
       {expanded && (
         <div
-          className={`border-border flex shrink-0 items-center gap-2 border-b px-3 py-2 transition-transform duration-200 ease-out ${entering ? "-translate-y-2" : "translate-y-0"}`}
+          className={`border-border flex shrink-0 items-center gap-2 border-b px-3 py-2 transition-transform duration-200 ease-out ${entering || leaving ? "-translate-y-2" : "translate-y-0"}`}
         >
           {title && (
             <span className="truncate text-sm font-medium">{title}</span>

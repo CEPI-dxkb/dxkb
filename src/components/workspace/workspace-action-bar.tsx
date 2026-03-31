@@ -3,13 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {TooltipProvider, Tooltip, TooltipTrigger, TooltipContent} from "@/components/ui/tooltip";
-import { Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, type LucideIcon } from "lucide-react";
+import { Box, Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, type LucideIcon } from "lucide-react";
 
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
 const writePermissions = new Set(["o", "a", "w"]);
 
-export type WorkspaceActionId = "guide" | "download" | "delete" | "rename" | "copy" | "move" | "editType" | "favorite";
+export type WorkspaceActionId = "guide" | "download" | "delete" | "rename" | "copy" | "move" | "editType" | "viewer3d" | "favorite";
 
 interface ActionConfig {
   id: WorkspaceActionId;
@@ -39,6 +39,7 @@ const actionConfig: ActionConfig[] = [
   { id: "copy", label: "COPY", icon: Copy, validTypes: "*" },
   { id: "move", label: "MOVE", icon: Move, validTypes: "*", requireWrite: true },
   { id: "editType", label: "EDIT TYPE", icon: Type, validTypes: "*", requireWrite: true },
+  { id: "viewer3d", label: "3D VIEWER", icon: Box, validTypes: ["pdb"] },
   { id: "favorite", label: "FAVORITE", icon: Star, validTypes: ["folder"] },
 ];
 

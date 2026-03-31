@@ -1,35 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { getProxyUrl } from "../file-viewer-registry";
-import { ExpandableViewerWrapper } from "./expandable-viewer-wrapper";
+import { getProxyUrl } from "@/components/workspace/file-viewer/file-viewer-registry";
 
 type ViewerStatus = "loading" | "initializing" | "ready" | "error";
 
-interface StructureViewerProps {
-  filePath: string;
-  fileName: string;
+interface StructurePageProps {
+  params: Promise<{ path?: string[] }>;
 }
 
-export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
+export default function StructureViewerPage({ params }: StructurePageProps) {
+  const { path } = use(params);
+  const filePath = path ? `/${path.map(decodeURIComponent).join("/")}` : "";
+
   const containerRef = useRef<HTMLDivElement>(null);
   const pluginRef = useRef<{ dispose: (opts?: object) => void } | null>(null);
   const [status, setStatus] = useState<ViewerStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string>();
 
   useEffect(() => {
+    if (!filePath) return;
+
     let disposed = false;
 
     async function init() {
       if (!containerRef.current) return;
 
       try {
-        // Dynamically import Mol* modules — keeps the ~5MB bundle out of the
-        // main chunk and avoids SSR issues (WebGL requires a DOM).
         const [{ createPluginUI }, { renderReact18 }, { DefaultPluginUISpec }] =
           await Promise.all([
             import("molstar/lib/mol-plugin-ui"),
@@ -37,13 +38,12 @@ export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
             import("molstar/lib/mol-plugin-ui/spec"),
           ]);
 
-        // Import Mol* skin CSS — processed by sass at build time, tree-shaken
-        // by Next.js when the component isn't rendered.
         await import("molstar/lib/mol-plugin-ui/skin/light.scss");
 
         if (disposed) return;
         setStatus("initializing");
 
+        // Full Molstar viewer with all panels and controls enabled.
         const spec = {
           ...DefaultPluginUISpec(),
           layout: {
@@ -52,15 +52,12 @@ export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
               showControls: true,
               controlsDisplay: "reactive" as const,
               regionState: {
-                left: "hidden" as const,
+                left: "full" as const,
                 top: "full" as const,
-                right: "hidden" as const,
-                bottom: "hidden" as const,
+                right: "full" as const,
+                bottom: "full" as const,
               },
             },
-          },
-          components: {
-            remoteState: "none" as const,
           },
         };
 
@@ -77,7 +74,6 @@ export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
 
         pluginRef.current = plugin;
 
-        // Load the PDB file from the authenticated proxy URL.
         const url = getProxyUrl(filePath);
         const data = await plugin.builders.data.download(
           { url, isBinary: false },
@@ -112,11 +108,7 @@ export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
     };
   }, [filePath]);
 
-  // Sync canvas buffer to display size using the pattern from
-  // webglfundamentals.org/webgl/lessons/webgl-resizing-the-canvas.html:
-  // the ResizeObserver only *records* the target device-pixel size;
-  // the rAF loop *applies* it so resize + Mol* render are atomic.
-  // No CSS overrides on the canvas — Molstar manages its own sizing.
+  // Keep the WebGL canvas in sync with viewport size changes.
   useEffect(() => {
     const container = containerRef.current;
     if (!container || status !== "ready") return;
@@ -136,16 +128,7 @@ export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
     const observer = new ResizeObserver(() => {
       resizePending = true;
     });
-
-    try {
-      // device-pixel-content-box gives exact device-pixel dimensions,
-      // avoiding rounding errors from clientWidth * devicePixelRatio.
-      observer.observe(container, {
-        box: "device-pixel-content-box" as ResizeObserverBoxOptions,
-      });
-    } catch {
-      observer.observe(container);
-    }
+    observer.observe(container);
 
     rafId = requestAnimationFrame(syncSize);
 
@@ -155,41 +138,43 @@ export function StructureViewer({ filePath, fileName }: StructureViewerProps) {
     };
   }, [status]);
 
-  return (
-    <ExpandableViewerWrapper title={fileName}>
-      <div className="relative flex h-full w-full flex-col">
-        <div
-          ref={containerRef}
-          className="isolate relative min-h-0 flex-1 overflow-hidden"
-          data-testid="molstar-container"
-        />
-        {(status === "loading" || status === "initializing") && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-background/80 text-muted-foreground">
-            <Spinner className="h-5 w-5" />
-            <span className="text-sm">
-              {status === "loading"
-                ? "Loading viewer\u2026"
-                : "Initializing structure\u2026"}
-            </span>
-          </div>
-        )}
-        {status === "error" && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-            <p className="text-sm">{errorMessage}</p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setStatus("loading");
-                setErrorMessage(undefined);
-              }}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
+  if (!filePath) {
+    return (
+      <div className="flex h-full items-center justify-center text-muted-foreground">
+        No file path provided.
       </div>
-    </ExpandableViewerWrapper>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      {(status === "loading" || status === "initializing") && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-background/80 text-muted-foreground">
+          <Spinner className="h-5 w-5" />
+          <span className="text-sm">
+            {status === "loading"
+              ? "Loading viewer\u2026"
+              : "Initializing structure\u2026"}
+          </span>
+        </div>
+      )}
+      {status === "error" && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background text-muted-foreground">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-sm">{errorMessage}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setStatus("loading");
+              setErrorMessage(undefined);
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

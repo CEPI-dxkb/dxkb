@@ -15,6 +15,7 @@ import { isFolderType } from "@/lib/services/workspace/utils";
 import { toggleFavorite } from "@/lib/services/workspace/favorites";
 import { forbiddenDownloadTypes } from "@/lib/services/workspace/types";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
+import { getStructureViewerUrl } from "@/components/workspace/file-viewer/file-viewer-registry";
 
 export interface UseWorkspaceActionDispatchOptions {
   currentUser: string;
@@ -100,6 +101,13 @@ export function useWorkspaceActionDispatch({
         const single = selection[0] ?? null;
         if (single?.path) {
           dispatch({ type: "OPEN_EDIT_TYPE", item: single });
+        }
+        return;
+      }
+      if (actionId === "viewer3d") {
+        const single = selection[0] ?? null;
+        if (single?.path) {
+          window.open(getStructureViewerUrl(single.path), "_blank");
         }
         return;
       }

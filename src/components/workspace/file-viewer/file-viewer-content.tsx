@@ -1,8 +1,6 @@
 "use client";
 
-import { lazy, Suspense } from "react";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
-import { Spinner } from "@/components/ui/spinner";
 import { resolveViewer, iframeNeedsScripts } from "./file-viewer-registry";
 import { TextViewer } from "./viewers/text-viewer";
 import { JsonViewer } from "./viewers/json-viewer";
@@ -11,12 +9,6 @@ import { SvgViewer } from "./viewers/svg-viewer";
 import { CsvViewer } from "./viewers/csv-viewer";
 import { IframeViewer } from "./viewers/iframe-viewer";
 import { FallbackViewer } from "./viewers/fallback-viewer";
-
-const StructureViewer = lazy(() =>
-  import("./viewers/structure-viewer").then((m) => ({
-    default: m.StructureViewer,
-  })),
-);
 
 interface FileViewerContentProps {
   item: WorkspaceBrowserItem;
@@ -53,19 +45,6 @@ export function FileViewerContent({ item }: FileViewerContentProps) {
           fileName={item.name}
           fileSize={item.size}
         />
-      );
-    case "structure":
-      return (
-        <Suspense
-          fallback={
-            <div className="flex h-full w-full items-center justify-center gap-2 text-muted-foreground">
-              <Spinner className="h-5 w-5" />
-              <span className="text-sm">Loading viewer&hellip;</span>
-            </div>
-          }
-        >
-          <StructureViewer filePath={item.path} fileName={item.name} />
-        </Suspense>
       );
     case "iframe":
       return <IframeViewer filePath={item.path} allowScripts={iframeNeedsScripts(item.name)} />;

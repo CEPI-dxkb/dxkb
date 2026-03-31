@@ -1,7 +1,14 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { ExpandableViewerWrapper } from "../expandable-viewer-wrapper";
 
 describe("ExpandableViewerWrapper", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   it("renders children inline by default", () => {
     render(
       <ExpandableViewerWrapper>
@@ -59,6 +66,9 @@ describe("ExpandableViewerWrapper", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "Collapse" }));
 
+    // Advance past the 200ms fade-out animation
+    act(() => vi.advanceTimersByTime(200));
+
     // Back to inline: expand button visible, no title header
     expect(
       screen.getByRole("button", { name: "Expand to full screen" }),
@@ -78,6 +88,9 @@ describe("ExpandableViewerWrapper", () => {
       screen.getByRole("button", { name: "Expand to full screen" }),
     );
     fireEvent.keyDown(document, { key: "Escape" });
+
+    // Advance past the 200ms fade-out animation
+    act(() => vi.advanceTimersByTime(200));
 
     expect(
       screen.getByRole("button", { name: "Expand to full screen" }),

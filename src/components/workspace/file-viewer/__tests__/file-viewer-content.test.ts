@@ -42,6 +42,14 @@ describe("FileViewerContent routing logic", () => {
     expect(resolveViewer("html", "report.htm")).toBe("iframe");
   });
 
+  it("routes .pdb files to structure viewer", () => {
+    expect(resolveViewer("pdb", "model.pdb")).toBe("structure");
+  });
+
+  it("routes pdb workspace type to structure", () => {
+    expect(resolveViewer("pdb", "noext")).toBe("structure");
+  });
+
   it("routes unknown types to fallback", () => {
     expect(resolveViewer("genome_group", "unknown.xyz")).toBe("fallback");
   });

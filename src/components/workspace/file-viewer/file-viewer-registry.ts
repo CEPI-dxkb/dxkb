@@ -12,6 +12,7 @@ export type ViewerCategory =
   | "svg"
   | "csv"
   | "iframe"
+  | "structure"
   | "fallback";
 
 // ---------------------------------------------------------------------------
@@ -39,7 +40,7 @@ const typeToViewer: Record<string, ViewerCategory> = {
   diffexp_input_metadata: "csv",
   html: "iframe",
   pdf: "iframe",
-  pdb: "iframe",
+  pdb: "structure",
   diffexp_experiment: "iframe",
   diffexp_expression: "iframe",
   diffexp_mapping: "iframe",
@@ -75,7 +76,7 @@ const extensionToViewer: Record<string, ViewerCategory> = {
   ".html": "iframe",
   ".htm": "iframe",
   ".pdf": "iframe",
-  ".pdb": "iframe",
+  ".pdb": "structure",
 };
 
 // ---------------------------------------------------------------------------

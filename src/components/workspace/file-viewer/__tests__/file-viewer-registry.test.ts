@@ -32,6 +32,14 @@ describe("resolveViewer", () => {
     expect(resolveViewer("unknown", "document.pdf")).toBe("iframe");
   });
 
+  it("resolves .pdb to structure via extension", () => {
+    expect(resolveViewer("unknown", "model.pdb")).toBe("structure");
+  });
+
+  it("resolves pdb workspace type to structure", () => {
+    expect(resolveViewer("pdb", "noext")).toBe("structure");
+  });
+
   it("falls back to workspace type when no extension match", () => {
     expect(resolveViewer("aligned_dna_fasta", "noext")).toBe("text");
   });

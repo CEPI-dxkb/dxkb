@@ -42,6 +42,16 @@ const actionConfig: ActionConfig[] = [
   { id: "favorite", label: "FAVORITE", icon: Star, validTypes: ["folder"] },
 ];
 
+function getSelectionDisabledTooltip(
+  action: ActionConfig,
+  selection: WorkspaceBrowserItem[],
+): string | undefined {
+  if (action.id === "editType" && selection.some((s) => s.type === "job_result")) {
+    return 'Cannot change "job_result" type';
+  }
+  return undefined;
+}
+
 function isActionValidForSelection(
   action: ActionConfig,
   selection: WorkspaceBrowserItem[],
@@ -113,8 +123,10 @@ export function WorkspaceActionBar({
           const isFavoriteAction = action.id === "favorite";
           const showFilledStar =
             isFavoriteAction && isCurrentSelectionFavorite && !showSpinner;
+          const dynamicTooltip = getSelectionDisabledTooltip(action, selection);
+          const tooltipText = action.disabledWithTooltip ?? dynamicTooltip;
           const disabled =
-            isDisabled(action.id) || isPermanentlyDisabled(action);
+            isDisabled(action.id) || isPermanentlyDisabled(action) || !!dynamicTooltip;
           const buttonEl = (
             <Button
               key={action.id}
@@ -137,7 +149,7 @@ export function WorkspaceActionBar({
               <span className="text-[11px] font-medium leading-tight">{action.label}</span>
             </Button>
           );
-          return action.disabledWithTooltip && disabled ? (
+          return tooltipText && disabled ? (
             <Tooltip key={action.id}>
               <TooltipTrigger
                 render={
@@ -147,7 +159,7 @@ export function WorkspaceActionBar({
                 }
               />
               <TooltipContent side="left">
-                <p>{action.disabledWithTooltip}</p>
+                <p>{tooltipText}</p>
               </TooltipContent>
             </Tooltip>
           ) : (

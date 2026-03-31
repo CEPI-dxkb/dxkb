@@ -12,6 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DetailPanel } from "@/components/detail-panel";
 import { WorkspaceItemIcon } from "@/components/workspace/workspace-item-icon";
 import { formatDate, formatOwner } from "@/lib/services/workspace/helpers";
@@ -63,33 +69,50 @@ export function WorkspaceItemDetails({
     },
   });
 
+  const isJobResult = item.type === "job_result";
+
+  const selectEl = (
+    <Select
+      value={(editTypeMutation.isPending ? editTypeMutation.variables : item.type) ?? ""}
+      onValueChange={(value) => {
+        if (value && value !== item.type) {
+          editTypeMutation.mutate(value);
+        }
+      }}
+      disabled={isJobResult || editTypeMutation.isPending}
+    >
+      <SelectTrigger size="sm" className="h-6 min-w-0 gap-1 text-xs">
+        <SelectValue placeholder="Unspecified" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          {typeOptions.map((typeId) => (
+            <SelectItem key={typeId} value={typeId}>
+              {typeId}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+
   return (
     <DetailPanel.CollapsibleSection label="Details" defaultExpanded={defaultExpanded}>
       <div className="space-y-3 px-3 py-3 text-xs border-b">
         <div className="flex items-center gap-2">
           <WorkspaceItemIcon type={item.type} className="h-5 w-5 shrink-0" />
-          <Select
-            value={(editTypeMutation.isPending ? editTypeMutation.variables : item.type) ?? ""}
-            onValueChange={(value) => {
-              if (value && value !== item.type) {
-                editTypeMutation.mutate(value);
-              }
-            }}
-            disabled={editTypeMutation.isPending}
-          >
-            <SelectTrigger size="sm" className="h-6 min-w-0 gap-1 text-xs">
-              <SelectValue placeholder="Unspecified" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {typeOptions.map((typeId) => (
-                  <SelectItem key={typeId} value={typeId}>
-                    {typeId}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          {isJobResult ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger render={<span className="min-w-0 cursor-not-allowed">{selectEl}</span>} />
+                <TooltipContent side="right">
+                  <p>Cannot change &quot;job_result&quot; type</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            selectEl
+          )}
         </div>
 
         <dl className="grid gap-1.5">

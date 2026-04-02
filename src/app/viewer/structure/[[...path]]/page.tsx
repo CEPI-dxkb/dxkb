@@ -59,6 +59,9 @@ export default function StructureViewerPage({ params }: StructurePageProps) {
               },
             },
           },
+          components: {
+            remoteState: "none" as const,
+          },
         };
 
         const plugin = await createPluginUI({

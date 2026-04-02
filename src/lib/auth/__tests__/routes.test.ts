@@ -44,6 +44,12 @@ describe("isProtectedPagePath", () => {
     expect(isProtectedPagePath("/settings/profile")).toBe(true);
   });
 
+  it("returns true for /viewer paths", () => {
+    expect(isProtectedPagePath("/viewer")).toBe(true);
+    expect(isProtectedPagePath("/viewer/structure")).toBe(true);
+    expect(isProtectedPagePath("/viewer/structure/some/file.pdb")).toBe(true);
+  });
+
   it("returns false for public paths", () => {
     expect(isProtectedPagePath("/")).toBe(false);
     expect(isProtectedPagePath("/search")).toBe(false);

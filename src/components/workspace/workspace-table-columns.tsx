@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { WorkspaceItemIcon } from "./workspace-item-icon";
+import { WorkspaceItemIcon, type FolderIconVariant } from "./workspace-item-icon";
 import type {
   WorkspaceBrowserItem,
   SortField,
@@ -31,6 +31,7 @@ export function useWorkspaceColumns(
   sort: WorkspaceBrowserSort,
   onSortChange: (sort: WorkspaceBrowserSort) => void,
   memberCountByPath: Record<string, number> | undefined,
+  favoritePaths: string[] = [],
 ) {
   const handleSort = useCallback(
     (field: string) => {
@@ -56,9 +57,15 @@ export function useWorkspaceColumns(
         cell: ({ row }) => {
           const item = row.original;
           const isNavigable = isFolderType(item.type);
+          let variant: FolderIconVariant = "default";
+          if (isFolderType(item.type)) {
+            if (item.global_permission === "r") variant = "public";
+            else if (favoritePaths.includes(item.path)) variant = "favorite";
+            else if ((memberCountByPath?.[item.path] ?? 0) > 1) variant = "shared";
+          }
           return (
             <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-              <WorkspaceItemIcon type={item.type} className="shrink-0" />
+              <WorkspaceItemIcon type={item.type} variant={variant} className="shrink-0" />
               <span
                 className={`truncate ${isNavigable ? "font-medium hover:underline" : ""}`}
                 title={item.name}
@@ -140,7 +147,7 @@ export function useWorkspaceColumns(
         enableResizing: true,
       },
     ];
-  }, [memberCountByPath]);
+  }, [memberCountByPath, favoritePaths]);
 
   return { columns, handleSort };
 }

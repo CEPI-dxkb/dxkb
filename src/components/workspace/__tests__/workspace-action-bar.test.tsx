@@ -54,6 +54,7 @@ vi.mock("lucide-react", () => {
     Star: icon,
     BookOpen: icon,
     Type: icon,
+    Share2: icon,
   };
 });
 

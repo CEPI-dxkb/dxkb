@@ -485,6 +485,7 @@ export function WorkspaceBrowser({
             username={username}
             sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
             memberCountByPath={memberCountByPath}
+            favoritePaths={isHome ? favoritePaths : undefined}
             selectedPaths={selectedPaths}
             onSelect={handleSelectItem}
             onItemDoubleClick={handleItemDoubleClick}

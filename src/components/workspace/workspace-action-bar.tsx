@@ -3,13 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {TooltipProvider, Tooltip, TooltipTrigger, TooltipContent} from "@/components/ui/tooltip";
-import { Box, Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, type LucideIcon } from "lucide-react";
+import { Box, Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, Share2, type LucideIcon } from "lucide-react";
 
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
 const writePermissions = new Set(["o", "a", "w"]);
 
-export type WorkspaceActionId = "guide" | "download" | "delete" | "rename" | "copy" | "move" | "editType" | "viewer3d" | "favorite";
+export type WorkspaceActionId = "guide" | "download" | "delete" | "rename" | "copy" | "move" | "editType" | "viewer3d" | "favorite" | "share";
 
 interface ActionConfig {
   id: WorkspaceActionId;
@@ -41,6 +41,14 @@ const actionConfig: ActionConfig[] = [
   { id: "editType", label: "EDIT TYPE", icon: Type, validTypes: "*", requireWrite: true },
   { id: "viewer3d", label: "3D VIEWER", icon: Box, validTypes: ["pdb"] },
   { id: "favorite", label: "FAVORITE", icon: Star, validTypes: ["folder"] },
+  {
+    id: "share",
+    label: "SHARE",
+    icon: Share2,
+    validTypes: ["folder"],
+    requireWrite: true,
+    disabledWithTooltip: "Feature to be implemented later",
+  },
 ];
 
 function getSelectionDisabledTooltip(

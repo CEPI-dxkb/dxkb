@@ -76,9 +76,9 @@ function SpecialRow({
 }
 
 export function LeadingRow(
-  props: Omit<SpecialRowProps, "icon" | "label">,
+  props: Omit<SpecialRowProps, "icon"> & { label?: string },
 ) {
-  return <SpecialRow {...props} icon={Users} label="View Shared Folders" />;
+  return <SpecialRow {...props} icon={Users} label={props.label ?? "View Shared Folders"} />;
 }
 
 export function ParentRow(

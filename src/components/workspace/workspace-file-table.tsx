@@ -21,7 +21,7 @@ import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigatio
 import {
   useWorkspaceColumns,
 } from "./workspace-table-columns";
-import { ParentRow, DataRow, EmptyRow } from "./workspace-table-rows";
+import { LeadingRow, ParentRow, DataRow, EmptyRow } from "./workspace-table-rows";
 import {
   DataTable,
   type DataTableHandle,
@@ -49,6 +49,7 @@ interface WorkspaceDataTableProps {
   memberCountByPath?: Record<string, number>;
   username?: string;
   sharedRootUsername?: string;
+  favoritePaths?: string[];
   selectedPaths?: string[];
   onSelect?: (
     item: WorkspaceBrowserItem,
@@ -74,6 +75,7 @@ export const WorkspaceDataTable = forwardRef<
     memberCountByPath,
     username = "",
     sharedRootUsername,
+    favoritePaths = [],
     selectedPaths = [],
     onSelect,
     onItemDoubleClick,
@@ -151,6 +153,11 @@ export const WorkspaceDataTable = forwardRef<
     }
   }, [viewMode, pathSegments, path, sharedRootHref, homeBase, router]);
 
+  const showLeadingRow = viewMode === "home" && isAtRoot;
+  const handleLeadingClick = useCallback(() => {
+    router.push(sharedBase);
+  }, [sharedBase, router]);
+
   const showParentRow =
     viewMode === "shared" || viewMode === "public"
       ? pathSegments.length >= 1
@@ -199,12 +206,22 @@ export const WorkspaceDataTable = forwardRef<
     sort,
     onSortChange,
     memberCountByPath,
+    favoritePaths,
   );
 
   // Render workspace-specific leading rows
   const renderLeadingRows = useCallback((columnOrder: string[]) => {
     return (
       <>
+        {showLeadingRow && (
+          <LeadingRow
+            useSelectionMode={useSelectionMode}
+            isFocused={false}
+            onClick={handleLeadingClick}
+            label="View All Workspaces"
+            columnOrder={columnOrder}
+          />
+        )}
         {showParentRow && (
           <ParentRow
             useSelectionMode={useSelectionMode}
@@ -217,6 +234,8 @@ export const WorkspaceDataTable = forwardRef<
       </>
     );
   }, [
+    showLeadingRow,
+    handleLeadingClick,
     showParentRow,
     useSelectionMode,
     focusedSpecialRow,

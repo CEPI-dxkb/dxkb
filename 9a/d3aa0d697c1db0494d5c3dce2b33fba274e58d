@@ -1,0 +1,41 @@
+src/proxy.ts
+  0bc0fcf242de8d91 43
+src/components/workspace/workspace-table-columns.tsx
+  0bc0fcf242de8d91 5,34,60-65,68,150
+src/components/workspace/workspace-table-rows.tsx
+  0bc0fcf242de8d91 79,81
+src/components/workspace/workspace-item-icon.tsx
+  0bc0fcf242de8d91 13-15,54-55,59-60,63-68,70,73-75
+src/components/workspace/workspace-file-table.tsx
+  0bc0fcf242de8d91 24,52,78,156-160,209,216-224,237-238
+src/components/workspace/workspace-action-bar.tsx
+  0bc0fcf242de8d91 6,12,44-51
+src/components/workspace/workspace-browser.tsx
+  0bc0fcf242de8d91 488
+src/components/workspace/__tests__/workspace-action-bar.test.tsx
+  0bc0fcf242de8d91 57
+src/lib/auth/__tests__/routes.test.ts
+  0bc0fcf242de8d91 47-52
+src/lib/auth/routes.ts
+  0bc0fcf242de8d91 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "9ad3aa0d697c1db0494d5c3dce2b33fba274e58d",
+  "prompts": {
+    "0bc0fcf242de8d91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3a5c5024-ea76-47d4-8d13-c69dfed8d0af",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 78,
+      "total_deletions": 20,
+      "accepted_lines": 70,
+      "overriden_lines": 0
+    }
+  }
+}

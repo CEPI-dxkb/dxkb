@@ -27,11 +27,13 @@ export function formatMemberCount(count: number): string {
   return `${count} members`;
 }
 
+const emptyFavorites: string[] = [];
+
 export function useWorkspaceColumns(
   sort: WorkspaceBrowserSort,
   onSortChange: (sort: WorkspaceBrowserSort) => void,
   memberCountByPath: Record<string, number> | undefined,
-  favoritePaths: string[] = [],
+  favoritePaths: string[] = emptyFavorites,
 ) {
   const handleSort = useCallback(
     (field: string) => {
@@ -49,6 +51,7 @@ export function useWorkspaceColumns(
   );
 
   const columns = useMemo<ColumnDef<WorkspaceBrowserItem>[]>(() => {
+    const favoriteSet = new Set(favoritePaths);
     return [
       {
         id: "name",
@@ -58,9 +61,9 @@ export function useWorkspaceColumns(
           const item = row.original;
           const isNavigable = isFolderType(item.type);
           let variant: FolderIconVariant = "default";
-          if (isFolderType(item.type)) {
+          if (isNavigable) {
             if (item.global_permission === "r") variant = "public";
-            else if (favoritePaths.includes(item.path)) variant = "favorite";
+            else if (favoriteSet.has(item.path)) variant = "favorite";
             else if ((memberCountByPath?.[item.path] ?? 0) > 1) variant = "shared";
           }
           return (

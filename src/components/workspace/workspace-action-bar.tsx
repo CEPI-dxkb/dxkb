@@ -23,7 +23,7 @@ interface ActionConfig {
   disabledWithTooltip?: string;
 }
 
-// TODO: Add "View" buttons to FASTA/PDB files once the viewer/datagrid is implemented fully.
+// TODO: Add "View" button for FASTA files once the viewer/datagrid is implemented fully.
 const actionConfig: ActionConfig[] = [
   { id: "guide", label: "GUIDE", icon: BookOpen, validTypes: "*" },
   { id: "download", label: "DWNLD", icon: Download, validTypes: "*" },

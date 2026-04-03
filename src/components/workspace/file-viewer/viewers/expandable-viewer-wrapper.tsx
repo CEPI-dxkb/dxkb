@@ -46,10 +46,8 @@ export function ExpandableViewerWrapper({
     setEntering(true);
     // Wait one frame so the browser paints with opacity-0, then transition in.
     rafRef.current = requestAnimationFrame(() => {
-      rafRef.current = requestAnimationFrame(() => {
-        setEntering(false);
-        onExpandChange?.(true);
-      });
+      setEntering(false);
+      onExpandChange?.(true);
     });
   }, [onExpandChange]);
 

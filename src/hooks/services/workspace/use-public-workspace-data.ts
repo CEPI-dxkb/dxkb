@@ -24,6 +24,8 @@ export interface UsePublicWorkspaceDataReturn {
   refetch: () => void;
 }
 
+const emptyItems: WorkspaceBrowserItem[] = [];
+
 function buildQueryConfig(level: PublicWorkspaceLevel, username?: string, fullPath?: string) {
   switch (level) {
     case "root":
@@ -48,7 +50,7 @@ export function usePublicWorkspaceData({
   });
 
   return {
-    items: query.data ?? [],
+    items: query.data ?? emptyItems,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,

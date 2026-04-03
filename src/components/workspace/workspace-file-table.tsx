@@ -75,7 +75,7 @@ export const WorkspaceDataTable = forwardRef<
     memberCountByPath,
     username = "",
     sharedRootUsername,
-    favoritePaths = [],
+    favoritePaths,
     selectedPaths = [],
     onSelect,
     onItemDoubleClick,

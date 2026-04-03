@@ -107,7 +107,7 @@ export function useWorkspaceActionDispatch({
       if (actionId === "viewer3d") {
         const single = selection[0] ?? null;
         if (single?.path) {
-          window.open(getStructureViewerUrl(single.path), "_blank");
+          window.open(getStructureViewerUrl(single.path), "_blank", "noopener,noreferrer");
         }
         return;
       }

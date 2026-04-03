@@ -1,0 +1,31 @@
+src/hooks/services/workspace/__tests__/use-public-workspace-data.test.tsx
+  7950587007138c18 140-157
+src/components/workspace/file-viewer/viewers/__tests__/structure-viewer.test.tsx
+  7950587007138c18 121-146
+src/hooks/services/workspace/__tests__/use-workspace-action-dispatch.test.tsx
+  7950587007138c18 268-307
+src/components/workspace/file-viewer/__tests__/file-viewer-registry.test.ts
+  7950587007138c18 4-5,72-101
+src/components/workspace/file-viewer/viewers/__tests__/expandable-viewer-wrapper.test.tsx
+  7950587007138c18 101-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "9f9b3e438b5e5f239a7ea8ee962a19fd88b778d9",
+  "prompts": {
+    "7950587007138c18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09801ba0-9e03-47a8-80cb-83f2292113ab",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 154,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -19,6 +19,8 @@ interface ActionConfig {
   validTypes: string[] | "*";
   /** If true, hide when user has only read permission */
   requireWrite?: boolean;
+  /** If true, action only applies when exactly one item is selected */
+  singleOnly?: boolean;
   /** If set, button is always disabled and this string is shown as hover title */
   disabledWithTooltip?: string;
 }
@@ -39,7 +41,7 @@ const actionConfig: ActionConfig[] = [
   { id: "copy", label: "COPY", icon: Copy, validTypes: "*" },
   { id: "move", label: "MOVE", icon: Move, validTypes: "*", requireWrite: true },
   { id: "editType", label: "EDIT TYPE", icon: Type, validTypes: "*", requireWrite: true },
-  { id: "viewer3d", label: "3D VIEWER", icon: Box, validTypes: ["pdb"] },
+  { id: "viewer3d", label: "3D VIEWER", icon: Box, validTypes: ["pdb"], singleOnly: true },
   { id: "favorite", label: "FAVORITE", icon: Star, validTypes: ["folder"] },
   {
     id: "share",
@@ -74,6 +76,8 @@ function isActionValidForSelection(
       (action.validTypes as string[]).includes(s.type ?? ""),
     );
   if (!typesMatch) return false;
+
+  if (action.singleOnly && selection.length > 1) return false;
 
   if (action.requireWrite) {
     const hasWrite = selection.every((s) =>

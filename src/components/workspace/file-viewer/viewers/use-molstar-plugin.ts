@@ -32,6 +32,7 @@ export function useMolstarPlugin(
   const pluginRef = useRef<{ dispose: (opts?: object) => void } | null>(null);
   const [status, setStatus] = useState<ViewerStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [retryCount, setRetryCount] = useState(0);
 
   // --- Mol* init & teardown ---
   useEffect(() => {
@@ -120,7 +121,7 @@ export function useMolstarPlugin(
       pluginRef.current?.dispose();
       pluginRef.current = null;
     };
-  }, [filePath, layout.showControls, layout.regionState]);
+  }, [filePath, layout.showControls, layout.regionState, retryCount]);
 
   // --- Resize sync ---
   // ResizeObserver records that a resize happened; a single rAF applies it
@@ -160,6 +161,7 @@ export function useMolstarPlugin(
   const resetError = () => {
     setStatus("loading");
     setErrorMessage(undefined);
+    setRetryCount((c) => c + 1);
   };
 
   return { containerRef, status, errorMessage, resetError };

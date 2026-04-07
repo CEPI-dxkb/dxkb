@@ -101,11 +101,6 @@ const serviceItems = {
     title: "Phylogenomics",
     items: [
       {
-        title: "Gene/Protein Tree",
-        href: "/services/gene-protein-tree",
-        target: "_self",
-      },
-      {
         title: "Viral Genome Tree",
         href: "/services/viral-genome-tree",
         target: "_self",
@@ -115,6 +110,11 @@ const serviceItems = {
   proteinTools: {
     title: "Protein Tools",
     items: [
+      {
+        title: "Gene/Protein Tree",
+        href: "/services/gene-protein-tree",
+        target: "_self",
+      },
       {
         title: "MSA and SNP Analysis",
         href: "/services/msa-snp-analysis",

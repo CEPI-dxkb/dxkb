@@ -70,7 +70,7 @@ import {
   thresholdOptions,
   getMetadataSelectOptions,
   isMetadataLabel,
-} from "@/lib/forms/(phylogenomics)/gene-protein-tree/gene-protein-tree-form-schema";
+} from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
 import {
   transformGeneProteinTreeParams,
   formatMetadataLabel,
@@ -82,7 +82,7 @@ import {
   removeSequenceAtIndex,
   createMetadataField,
   getDisplayName,
-} from "@/lib/forms/(phylogenomics)/gene-protein-tree/gene-protein-tree-form-utils";
+} from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-utils";
 
 interface MetadataField {
   id: string;

@@ -16,41 +16,25 @@ class ResizeObserverStub {
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
 // ---------------------------------------------------------------------------
-// Mol* mocks — jsdom has no WebGL, so we mock the entire plugin lifecycle.
+// Mol* mocks — the hook now loads the pre-built bundle via <script> tag and
+// uses the global `molstar.Viewer.create()` API. We mock the global and the
+// DOM helpers instead of individual ESM imports.
 // ---------------------------------------------------------------------------
 
 const mockDispose = vi.fn();
-const mockDownload = vi.fn();
-const mockParseTrajectory = vi.fn();
-const mockApplyPreset = vi.fn();
 const mockHandleResize = vi.fn();
+const mockLoadAllModels = vi.fn().mockResolvedValue(undefined);
 
-const mockPlugin = {
+const mockViewer = {
   dispose: mockDispose,
-  canvas3d: { handleResize: mockHandleResize },
-  builders: {
-    data: { download: mockDownload },
-    structure: {
-      parseTrajectory: mockParseTrajectory,
-      hierarchy: { applyPreset: mockApplyPreset },
-    },
-  },
+  plugin: { canvas3d: { handleResize: mockHandleResize } },
+  loadAllModelsOrAssemblyFromUrl: mockLoadAllModels,
 };
 
-vi.mock("molstar/lib/mol-plugin-ui", () => ({
-  createPluginUI: vi.fn(() => Promise.resolve(mockPlugin)),
-}));
+const mockViewerCreate = vi.fn(() => Promise.resolve(mockViewer));
 
-vi.mock("molstar/lib/mol-plugin-ui/react18", () => ({
-  renderReact18: vi.fn(),
-}));
-
-vi.mock("molstar/lib/mol-plugin-ui/spec", () => ({
-  DefaultPluginUISpec: vi.fn(() => ({})),
-}));
-
-// CSS import is a no-op in vitest (css: false in config)
-vi.mock("molstar/lib/mol-plugin-ui/skin/light.scss", () => ({}));
+// Pre-populate window.molstar so the hook skips <script> injection
+vi.stubGlobal("molstar", { Viewer: { create: mockViewerCreate } });
 
 vi.mock("../../file-viewer-registry", () => ({
   getProxyUrl: vi.fn(
@@ -67,9 +51,7 @@ import { StructureViewer } from "../structure-viewer";
 describe("StructureViewer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDownload.mockResolvedValue("mock-data");
-    mockParseTrajectory.mockResolvedValue("mock-trajectory");
-    mockApplyPreset.mockResolvedValue(undefined);
+    mockLoadAllModels.mockResolvedValue(undefined);
   });
 
   it("shows loading state initially", () => {
@@ -100,58 +82,37 @@ describe("StructureViewer", () => {
     });
 
     await waitFor(() => {
-      expect(mockDownload).toHaveBeenCalledWith(
-        expect.objectContaining({ url: expect.stringContaining("model.pdb") }),
-        expect.anything(),
-      );
-    });
-
-    await waitFor(() => {
-      expect(mockParseTrajectory).toHaveBeenCalledWith("mock-data", "pdb");
-    });
-
-    await waitFor(() => {
-      expect(mockApplyPreset).toHaveBeenCalledWith(
-        "mock-trajectory",
-        "default",
+      expect(mockLoadAllModels).toHaveBeenCalledWith(
+        expect.stringContaining("model.pdb"),
+        "pdb",
+        false,
       );
     });
   });
 
   it("uses embedded layout spec (controls hidden)", async () => {
-    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
-
     render(
       <StructureViewer filePath="/user@bvbrc/home/model.pdb" fileName="model.pdb" />,
     );
 
     await waitFor(() => {
-      expect(createPluginUI).toHaveBeenCalledWith(
+      expect(mockViewerCreate).toHaveBeenCalledWith(
+        expect.any(HTMLElement),
         expect.objectContaining({
-          spec: expect.objectContaining({
-            layout: expect.objectContaining({
-              initial: expect.objectContaining({
-                showControls: false,
-                regionState: expect.objectContaining({
-                  left: "hidden",
-                  right: "hidden",
-                }),
-              }),
-            }),
-          }),
+          layoutShowControls: false,
+          collapseRightPanel: true,
         }),
       );
     });
   });
 
-  it("disposes the plugin on unmount", async () => {
+  it("disposes the viewer on unmount", async () => {
     const { unmount } = render(
       <StructureViewer filePath="/user@bvbrc/home/model.pdb" fileName="model.pdb" />,
     );
 
-    // Wait for plugin to be created
     await waitFor(() => {
-      expect(mockApplyPreset).toHaveBeenCalled();
+      expect(mockLoadAllModels).toHaveBeenCalled();
     });
 
     unmount();
@@ -160,8 +121,7 @@ describe("StructureViewer", () => {
   });
 
   it("shows error state when initialization fails", async () => {
-    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
-    vi.mocked(createPluginUI).mockRejectedValueOnce(
+    mockViewerCreate.mockRejectedValueOnce(
       new Error("WebGL not supported"),
     );
 
@@ -181,7 +141,6 @@ describe("StructureViewer", () => {
       <StructureViewer filePath="/user@bvbrc/home/model.pdb" fileName="model.pdb" />,
     );
 
-    // The expand button from ExpandableViewerWrapper should be present
     expect(
       screen.getByRole("button", { name: "Expand to full screen" }),
     ).toBeInTheDocument();

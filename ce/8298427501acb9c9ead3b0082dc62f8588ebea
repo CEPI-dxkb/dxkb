@@ -1,0 +1,38 @@
+src/components/workspace/workspace-action-bar.tsx
+  0117ef536a56ffc5 22-23,44,80-81
+src/components/workspace/file-viewer/viewers/use-molstar-plugin.ts
+  0117ef536a56ffc5 35,124,164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "ce8298427501acb9c9ead3b0082dc62f8588ebea",
+  "prompts": {
+    "0117ef536a56ffc5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7709b1c4-743a-46dc-9f86-7b1014b1ce02",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 2,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    },
+    "04d2bb1ae7fe4fca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e4471fa-7fa0-444f-a22b-ef3bd0cb6485",
+        "model": "<synthetic>"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

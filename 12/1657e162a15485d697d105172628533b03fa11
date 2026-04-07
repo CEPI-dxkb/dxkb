@@ -1,0 +1,25 @@
+src/app/services/(protein-tools)/gene-protein-tree/page.tsx
+  04d2bb1ae7fe4fca 73,85
+src/components/navbars/navbar-links.ts
+  04d2bb1ae7fe4fca 114-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "121657e162a15485d697d105172628533b03fa11",
+  "prompts": {
+    "04d2bb1ae7fe4fca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3e4471fa-7fa0-444f-a22b-ef3bd0cb6485",
+        "model": "<synthetic>"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 7,
+      "accepted_lines": 7,
+      "overriden_lines": 0
+    }
+  }
+}

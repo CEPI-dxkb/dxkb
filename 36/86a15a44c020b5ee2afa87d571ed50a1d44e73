@@ -1,0 +1,25 @@
+eslint.config.mjs
+  3434402dac053cd3 15
+src/components/workspace/file-viewer/viewers/use-molstar-plugin.ts
+  3434402dac053cd3 37-38,40-41,45,47,52-56,59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.5",
+  "base_commit_sha": "3686a15a44c020b5ee2afa87d571ed50a1d44e73",
+  "prompts": {
+    "3434402dac053cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f3fb3d2-eeea-4b92-b8c8-8083c286c592",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 14,
+      "total_deletions": 9,
+      "accepted_lines": 22,
+      "overriden_lines": 0
+    }
+  }
+}

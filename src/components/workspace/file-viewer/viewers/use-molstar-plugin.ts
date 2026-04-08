@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { getProxyUrl } from "../file-viewer-registry";
 
 export type ViewerStatus = "loading" | "initializing" | "ready" | "error";
@@ -34,7 +35,6 @@ export function useMolstarPlugin(
   const [errorMessage, setErrorMessage] = useState<string>();
   const [retryCount, setRetryCount] = useState(0);
 
-  // --- Mol* init & teardown ---
   useEffect(() => {
     if (!filePath) return;
 
@@ -50,8 +50,6 @@ export function useMolstarPlugin(
             import("molstar/lib/mol-plugin-ui/react18"),
             import("molstar/lib/mol-plugin-ui/spec"),
           ]);
-
-        await import("molstar/lib/mol-plugin-ui/skin/light.scss");
 
         if (disposed) return;
         setStatus("initializing");
@@ -123,10 +121,6 @@ export function useMolstarPlugin(
     };
   }, [filePath, layout.showControls, layout.regionState, retryCount]);
 
-  // --- Resize sync ---
-  // ResizeObserver records that a resize happened; a single rAF applies it
-  // so resize + Mol* render are atomic. No perpetual loop — we only schedule
-  // a frame when the observer fires.
   const isReady = status === "ready";
   useEffect(() => {
     const container = containerRef.current;
@@ -159,7 +153,6 @@ export function useMolstarPlugin(
   }, [isReady]);
 
   const resetError = () => {
-    setStatus("loading");
     setErrorMessage(undefined);
     setRetryCount((c) => c + 1);
   };

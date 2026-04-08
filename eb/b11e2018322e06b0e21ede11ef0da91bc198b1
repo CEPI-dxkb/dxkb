@@ -1,0 +1,23 @@
+src/components/workspace/file-viewer/viewers/use-molstar-plugin.ts
+  6284d8a314de5e3f 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "ebb11e2018322e06b0e21ede11ef0da91bc198b1",
+  "prompts": {
+    "6284d8a314de5e3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "504a2d51-3ddf-4643-a28c-897d3cbfa814",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

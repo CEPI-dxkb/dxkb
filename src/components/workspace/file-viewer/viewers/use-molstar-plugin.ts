@@ -60,7 +60,7 @@ export function useMolstarPlugin(
             initial: {
               isExpanded: false,
               showControls: layout.showControls,
-              controlsDisplay: "reactive",
+              controlsDisplay: "reactive" as const,
               regionState: {
                 left: layout.regionState,
                 top: layout.regionState,
@@ -70,7 +70,7 @@ export function useMolstarPlugin(
             },
           },
           components: {
-            remoteState: "none",
+            remoteState: "none" as const,
           },
         };
 

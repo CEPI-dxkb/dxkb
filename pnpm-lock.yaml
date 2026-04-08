@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  molstar:
+    hash: a80c534bab8094a7ca7103c40d6638c0f7127db69d2ac212a1ce6a951f3bc3da
+    path: patches/molstar.patch
+
 importers:
 
   .:
@@ -115,7 +120,7 @@ importers:
         version: 1.0.1(react@19.2.4)
       molstar:
         specifier: ^5.8.0
-        version: 5.8.0(@types/react@19.2.14)(fp-ts@2.16.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        version: 5.8.0(patch_hash=a80c534bab8094a7ca7103c40d6638c0f7127db69d2ac212a1ce6a951f3bc3da)(@types/react@19.2.14)(fp-ts@2.16.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       next:
         specifier: ^16.2.1
         version: 16.2.1(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sass@1.98.0)
@@ -10492,7 +10497,7 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  molstar@5.8.0(@types/react@19.2.14)(fp-ts@2.16.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+  molstar@5.8.0(patch_hash=a80c534bab8094a7ca7103c40d6638c0f7127db69d2ac212a1ce6a951f3bc3da)(@types/react@19.2.14)(fp-ts@2.16.11)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
       '@types/argparse': 2.0.17
       '@types/benchmark': 2.1.5

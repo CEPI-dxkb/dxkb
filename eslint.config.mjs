@@ -12,7 +12,6 @@ export default defineConfig(
       "out/**",
       "build/**",
       "next-env.d.ts",
-      "public/molstar/**",
     ],
   },
   eslint.configs.recommended,

@@ -1,0 +1,25 @@
+src/components/workspace/file-viewer/viewers/__tests__/structure-viewer.test.tsx
+  3434402dac053cd3 19,23-25,28,30-37,40-46,48-50,52-53,70-72,103-106,110-116,122-123,129,131-141,147,152,154,163-164,184
+src/components/workspace/file-viewer/viewers/use-molstar-plugin.ts
+  3434402dac053cd3 21-22,24-25,32,47-51,59-69,71-72,75-80,82,86,90,93-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.6",
+  "base_commit_sha": "835a7a26b3ff977df5eafb6221555c74285354d4",
+  "prompts": {
+    "3434402dac053cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f3fb3d2-eeea-4b92-b8c8-8083c286c592",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 201,
+      "total_deletions": 161,
+      "accepted_lines": 193,
+      "overriden_lines": 0
+    }
+  }
+}

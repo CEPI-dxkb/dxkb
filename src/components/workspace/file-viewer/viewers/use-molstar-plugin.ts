@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import "molstar/lib/mol-plugin-ui/skin/light.scss";
 import { getProxyUrl } from "../file-viewer-registry";
 
 export type ViewerStatus = "loading" | "initializing" | "ready" | "error";
@@ -48,7 +49,6 @@ export function useMolstarPlugin(
             import("molstar/lib/mol-plugin-ui"),
             import("molstar/lib/mol-plugin-ui/react18"),
             import("molstar/lib/mol-plugin-ui/spec"),
-            import("molstar/lib/mol-plugin-ui/skin/light.scss"),
           ]);
 
         if (disposed) return;

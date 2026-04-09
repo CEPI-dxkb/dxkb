@@ -73,6 +73,10 @@ describe("formatElapsedSeconds", () => {
   it('returns "\u2014" for Infinity', () => {
     expect(formatElapsedSeconds(Infinity)).toBe("\u2014");
   });
+
+  it('returns "\u2014" for undefined', () => {
+    expect(formatElapsedSeconds(undefined)).toBe("\u2014");
+  });
 });
 
 // ── formatUnixTimestamp ────────────────────────────────────────────

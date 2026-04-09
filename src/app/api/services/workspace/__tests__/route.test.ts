@@ -1,19 +1,22 @@
+import { NextResponse } from "next/server";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
 import { json, mockNextRequest } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-workspace-api"),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { requireAuthToken } from "@/lib/auth/session";
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 
 describe("POST /api/services/workspace", () => {
   it("returns 401 when no auth token", async () => {
-    mockGetToken.mockResolvedValue(undefined);
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -28,7 +31,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns 400 when method is missing", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const req = mockNextRequest({
       method: "POST",
@@ -43,7 +46,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("wraps request in JSON-RPC 2.0 envelope", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const rpcResult = { id: 1, result: [[]], jsonrpc: "2.0" };
     let capturedBody: unknown;
@@ -71,7 +74,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("sends Authorization header with auth token", async () => {
-    mockGetToken.mockResolvedValue("my-auth-token");
+    mockRequireAuthToken.mockResolvedValue("my-auth-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -91,7 +94,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns empty result array for preferences GET 404", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-workspace-api", () => {
@@ -117,7 +120,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns error for non-preferences 404", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-workspace-api", () => {
@@ -141,7 +144,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("includes sanitized error in response for upstream errors", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const upstreamError = {
       error: { code: -32600, message: "Invalid Request" },
@@ -169,7 +172,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns data on success", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const rpcResult = {
       id: 1,
@@ -197,7 +200,7 @@ describe("POST /api/services/workspace", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-workspace-api", () => {

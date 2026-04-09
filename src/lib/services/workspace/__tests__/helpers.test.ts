@@ -4,6 +4,8 @@ import {
   normalizeWsPath,
   formatDate,
   formatFileSize,
+  formatOwner,
+  getDotPathRelative,
   hasWriteAccess,
   sortItems,
   dedupeKeepOrder,
@@ -66,6 +68,30 @@ describe("metaListToObj", () => {
     expect(obj.user_permission).toBe("o");
     expect(obj.global_permission).toBe("r");
     expect(obj.link_reference).toBeNull();
+  });
+
+  it("coerces null size to 0", () => {
+    const list = [
+      "file.txt", "txt", "/user/home/", "", "", "", null, {}, {}, "", "", null,
+    ];
+    const obj = metaListToObj(list);
+    expect(obj.size).toBe(0);
+  });
+
+  it("coerces undefined size to 0", () => {
+    const list = [
+      "file.txt", "txt", "/user/home/", "", "", "", undefined, {}, {}, "", "", null,
+    ];
+    const obj = metaListToObj(list);
+    expect(obj.size).toBe(0);
+  });
+
+  it("coerces string size to number", () => {
+    const list = [
+      "file.txt", "txt", "/user/home/", "", "", "", "339000000", {}, {}, "", "", null,
+    ];
+    const obj = metaListToObj(list);
+    expect(obj.size).toBe(339000000);
   });
 
   it("builds path from parent + name", () => {
@@ -140,8 +166,16 @@ describe("formatFileSize", () => {
     expect(formatFileSize(2 * 1024 * 1024 * 1024)).toBe("2.0 GB");
   });
 
+  it("formats terabytes", () => {
+    expect(formatFileSize(2 * 1024 * 1024 * 1024 * 1024)).toBe("2.00 TB");
+  });
+
   it("returns empty string for 0", () => {
     expect(formatFileSize(0)).toBe("");
+  });
+
+  it("returns '0 B' for 0 when showZero is true", () => {
+    expect(formatFileSize(0, { showZero: true })).toBe("0 B");
   });
 });
 
@@ -662,6 +696,47 @@ describe("getNonEmptyFolderPaths", () => {
     const result = await getNonEmptyFolderPaths([], listFolder);
     expect(result).toEqual([]);
     expect(listFolder).not.toHaveBeenCalled();
+  });
+});
+
+describe("formatOwner", () => {
+  it("strips @bvbrc suffix", () => {
+    expect(formatOwner("alice@bvbrc")).toBe("alice");
+  });
+
+  it("returns owner unchanged when no @bvbrc suffix", () => {
+    expect(formatOwner("bob@other.com")).toBe("bob@other.com");
+  });
+
+  it("returns em-dash for empty string", () => {
+    expect(formatOwner("")).toBe("—");
+  });
+
+  it("handles owner with no domain", () => {
+    expect(formatOwner("charlie")).toBe("charlie");
+  });
+});
+
+describe("getDotPathRelative", () => {
+  it("builds dot path from path and job name", () => {
+    expect(
+      getDotPathRelative("/user@bvbrc/home/folder/myjob", "myjob"),
+    ).toBe("user@bvbrc/home/folder/.myjob");
+  });
+
+  it("handles root-level job (no parent segments)", () => {
+    expect(getDotPathRelative("/myjob", "myjob")).toBe(".myjob");
+  });
+
+  it("handles path with multiple segments", () => {
+    expect(
+      getDotPathRelative("/user@bvbrc/home/sub/deep/job", "job"),
+    ).toBe("user@bvbrc/home/sub/deep/.job");
+  });
+
+  it("strips leading slash from segments", () => {
+    const result = getDotPathRelative("/a/b/c", "c");
+    expect(result.startsWith("/")).toBe(false);
   });
 });
 

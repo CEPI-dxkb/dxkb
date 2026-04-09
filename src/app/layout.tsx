@@ -8,7 +8,7 @@ import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
 import { Providers } from "./providers"; // adjust the path as needed
 import { AuthProvider } from "@/contexts/auth-context";
 import { cookies } from "next/headers";
-import type { AuthUser } from "@/app/api/auth/types";
+import type { AuthUser } from "@/lib/auth/types";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
@@ -28,49 +28,18 @@ export const metadata: Metadata = {
   description: "Next-generation Disease X Knowledge Base",
 };
 
-function parseUserProfileCookie(rawCookie?: string): {
-  first_name?: string;
-  last_name?: string;
-  email?: string;
-  email_verified?: boolean;
-  id?: string;
-} | null {
-  if (!rawCookie) return null;
-
-  try {
-    return JSON.parse(rawCookie);
-  } catch {
-    try {
-      return JSON.parse(decodeURIComponent(rawCookie));
-    } catch {
-      return null;
-    }
-  }
-}
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const cookieStore = await cookies();
-  const rawProfile = cookieStore.get("user_profile")?.value;
-  const username = cookieStore.get("user_id")?.value;
-  const realm = cookieStore.get("realm")?.value;
-  const profile = parseUserProfileCookie(rawProfile);
-  const initialUser: AuthUser | null =
-    profile && username
-      ? {
-          username,
-          email: profile.email ?? "",
-          token: "",
-          realm,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          email_verified: profile.email_verified,
-          id: profile.id,
-        }
-      : null;
+  const userId = cookieStore.get("bvbrc_user_id")?.value;
+  const realm = cookieStore.get("bvbrc_realm")?.value;
+
+  const initialUser: AuthUser | null = userId
+    ? { username: userId, email: "", token: "", realm }
+    : null;
 
   return (
     <html

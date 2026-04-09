@@ -107,3 +107,7 @@ Requires **Node v24** (`nvm use 24`). Vitest 4 / rolldown needs Node >= 22.
 ### Git
 
 - Do NOT automatically try to commit changes unless it was specified to do so. All changes need to be reviewed manually before blindly commiting them.
+
+### Plans
+
+- When creating plans, ensure that a .md file is also created in /plans to ensure proper documentation.

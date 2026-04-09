@@ -101,11 +101,6 @@ const serviceItems = {
     title: "Phylogenomics",
     items: [
       {
-        title: "Gene/Protein Tree",
-        href: "/services/gene-protein-tree",
-        target: "_self",
-      },
-      {
         title: "Viral Genome Tree",
         href: "/services/viral-genome-tree",
         target: "_self",
@@ -115,6 +110,11 @@ const serviceItems = {
   proteinTools: {
     title: "Protein Tools",
     items: [
+      {
+        title: "Gene/Protein Tree",
+        href: "/services/gene-protein-tree",
+        target: "_self",
+      },
       {
         title: "MSA and SNP Analysis",
         href: "/services/msa-snp-analysis",
@@ -128,6 +128,16 @@ const serviceItems = {
       {
         title: "Proteome Comparison",
         href: "/services/proteome-comparison",
+        target: "_self",
+      },
+    ],
+  },
+  utilities: {
+    title: "Utilities",
+    items: [
+      {
+        title: "FastQ Utilities",
+        href: "/services/fastq-utilities",
         target: "_self",
       },
     ],
@@ -152,16 +162,7 @@ const serviceItems = {
       },
     ],
   },
-  utilities: {
-    title: "Utilities",
-    items: [
-      {
-        title: "FastQ Utilities",
-        href: "/services/fastq-utilities",
-        target: "_self",
-      },
-    ],
-  },
+  
   viralTools: {
     title: "Viral Tools",
     items: [
@@ -219,4 +220,41 @@ const serviceItems = {
   },
 } as const;
 
-export { gettingStartedItems, organismItems, serviceItems };
+interface WorkspaceNavItem {
+  title: string;
+  /** Static href or function that receives the encoded workspace username. */
+  href: string | ((encodedUsername: string) => string);
+  /** Whether the item requires authentication. Unauthenticated users get a sign-in redirect. */
+  requiresAuth: boolean;
+  /** Fallback href for unauthenticated users. Defaults to `/sign-in?redirect=/workspace`. */
+  signInRedirect?: string;
+}
+
+interface WorkspaceNavSection {
+  title: string;
+  items: WorkspaceNavItem[];
+}
+
+const workspaceNavItems: Record<string, WorkspaceNavSection> = {
+  workspaces: {
+    title: "Workspaces",
+    items: [
+      { title: "Home", href: (u) => `/workspace/${u}/home`, requiresAuth: true },
+      { title: "My Workspaces", href: (u) => `/workspace/${u}`, requiresAuth: true },
+      { title: "Public Workspaces", href: "/workspace/public", requiresAuth: false },
+      { title: "BV-BRC Workshop", href: "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop", requiresAuth: false },
+    ],
+  },
+  data: {
+    title: "Data",
+    items: [
+      { title: "My Jobs", href: "/jobs", requiresAuth: true, signInRedirect: "/sign-in?redirect=/jobs" },
+      { title: "My Genomes", href: (u) => `/workspace/${u}/home/.genomes`, requiresAuth: true },
+      { title: "My Genome Groups", href: (u) => `/workspace/${u}/home/Genome%20Groups`, requiresAuth: true },
+      { title: "My Feature Groups", href: (u) => `/workspace/${u}/home/Feature%20Groups`, requiresAuth: true },
+    ],
+  },
+};
+
+export type { WorkspaceNavItem, WorkspaceNavSection };
+export { gettingStartedItems, organismItems, serviceItems, workspaceNavItems };

@@ -18,7 +18,6 @@ export type ActiveDialog =
   | { type: "createWorkspace" }
   | { type: "upload" }
   | { type: "downloadOptions"; paths: string[]; defaultName: string }
-  | { type: "fileViewerConstruction" }
   | null;
 
 export interface WorkspaceDialogState {
@@ -34,7 +33,6 @@ export type WorkspaceDialogAction =
   | { type: "OPEN_CREATE_WORKSPACE" }
   | { type: "OPEN_UPLOAD" }
   | { type: "OPEN_DOWNLOAD_OPTIONS"; paths: string[]; defaultName: string }
-  | { type: "OPEN_FILE_VIEWER_CONSTRUCTION" }
   | { type: "CLOSE" };
 
 const initialState: WorkspaceDialogState = {
@@ -63,8 +61,6 @@ function dialogReducer(
       return { activeDialog: { type: "upload" } };
     case "OPEN_DOWNLOAD_OPTIONS":
       return { activeDialog: { type: "downloadOptions", paths: action.paths, defaultName: action.defaultName } };
-    case "OPEN_FILE_VIEWER_CONSTRUCTION":
-      return { activeDialog: { type: "fileViewerConstruction" } };
     case "CLOSE":
       return initialState;
     default:

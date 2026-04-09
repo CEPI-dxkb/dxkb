@@ -5,7 +5,7 @@ import { metaListToObj } from "./helpers";
  * Base client for making JSON-RPC requests to the Workspace API
  */
 export class WorkspaceApiClient {
-  private baseUrl: string;
+  protected baseUrl: string;
 
   constructor(_authToken?: string) {
     // Use our internal API endpoint that handles authentication via cookies
@@ -32,8 +32,10 @@ export class WorkspaceApiClient {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          id: 1,
           method,
           params,
+          jsonrpc: "2.0",
         }),
       });
 
@@ -145,25 +147,9 @@ export class WorkspaceApiClient {
     }
   }
 
-  /**
-   * Update authentication token (not needed when using cookies)
-   */
-  updateAuthToken(_token: string): void {
-    // No-op: authentication is handled via cookies
-    console.warn(
-      "updateAuthToken called but authentication is handled via cookies",
-    );
-  }
-
-  /**
-   * Remove authentication token (not needed when using cookies)
-   */
-  removeAuthToken(): void {
-    // No-op: authentication is handled via cookies
-    console.warn(
-      "removeAuthToken called but authentication is handled via cookies",
-    );
-  }
+  // No-op overrides: WorkspaceApiClient authenticates via cookies, not header tokens.
+  updateAuthToken(_token: string): void { return; }
+  removeAuthToken(): void { return; }
 }
 
 // Factory function for creating workspace API client

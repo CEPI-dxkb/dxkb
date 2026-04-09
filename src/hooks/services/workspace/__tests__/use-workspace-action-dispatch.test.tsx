@@ -265,6 +265,46 @@ describe("useWorkspaceActionDispatch", () => {
     });
   });
 
+  it("opens 3D viewer in new tab for viewer3d action", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const options = createDefaultOptions();
+    const pdbItem = makeItem({ name: "model.pdb", path: "/user@bvbrc/home/model.pdb", type: "pdb" });
+
+    const { result } = renderHook(
+      () => useWorkspaceActionDispatch(options as never),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await act(async () => {
+      await result.current.handleAction("viewer3d", [pdbItem]);
+    });
+
+    expect(openSpy).toHaveBeenCalledWith(
+      expect.stringContaining("/viewer/structure/"),
+      "_blank",
+      "noopener,noreferrer",
+    );
+    openSpy.mockRestore();
+  });
+
+  it("does not open viewer3d when selection has no path", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    const options = createDefaultOptions();
+    const item = makeItem({ name: "model.pdb", path: "", type: "pdb" });
+
+    const { result } = renderHook(
+      () => useWorkspaceActionDispatch(options as never),
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await act(async () => {
+      await result.current.handleAction("viewer3d", [item]);
+    });
+
+    expect(openSpy).not.toHaveBeenCalled();
+    openSpy.mockRestore();
+  });
+
   it("ignores unknown action ids", async () => {
     const options = createDefaultOptions();
     const selection = [makeItem({})];

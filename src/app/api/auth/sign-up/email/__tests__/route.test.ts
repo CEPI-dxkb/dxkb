@@ -2,10 +2,13 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve({ get: vi.fn(), set: vi.fn() })),
 }));
 
-vi.mock("@/app/api/auth/utils", () => ({
-  setBvbrcAuthCookies: vi.fn(),
-  getProfileMetadata: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  createSession: vi.fn(),
   extractRealmFromToken: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/profile", () => ({
+  fetchUserProfile: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -17,13 +20,13 @@ import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 import {
-  setBvbrcAuthCookies,
-  getProfileMetadata,
+  createSession,
   extractRealmFromToken,
-} from "@/app/api/auth/utils";
+} from "@/lib/auth/session";
+import { fetchUserProfile } from "@/lib/auth/profile";
 
-const mockSetBvbrcAuthCookies = vi.mocked(setBvbrcAuthCookies);
-const mockGetProfileMetadata = vi.mocked(getProfileMetadata);
+const mockCreateSession = vi.mocked(createSession);
+const mockFetchUserProfile = vi.mocked(fetchUserProfile);
 const mockExtractRealmFromToken = vi.mocked(extractRealmFromToken);
 
 describe("POST /api/auth/sign-up/email", () => {
@@ -38,7 +41,7 @@ describe("POST /api/auth/sign-up/email", () => {
 
   beforeEach(() => {
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
-    mockGetProfileMetadata.mockResolvedValue(null);
+    mockFetchUserProfile.mockResolvedValue(null);
   });
 
   it("returns 400 when username is missing", async () => {
@@ -192,7 +195,7 @@ describe("POST /api/auth/sign-up/email", () => {
       first_name: "New",
       last_name: "User",
     };
-    mockGetProfileMetadata.mockResolvedValue(profile);
+    mockFetchUserProfile.mockResolvedValue(profile);
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
 
     server.use(
@@ -231,7 +234,7 @@ describe("POST /api/auth/sign-up/email", () => {
         expiresAt: expect.any(String),
       }),
     );
-    expect(mockSetBvbrcAuthCookies).toHaveBeenCalledWith(
+    expect(mockCreateSession).toHaveBeenCalledWith(
       "new-token",
       "newuser",
       "patricbrc.org",
@@ -244,7 +247,7 @@ describe("POST /api/auth/sign-up/email", () => {
       id: "user123",
       email_verified: true,
     };
-    mockGetProfileMetadata.mockResolvedValue(profile);
+    mockFetchUserProfile.mockResolvedValue(profile);
 
     server.use(
       http.post(

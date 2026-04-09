@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 
 /**
  * Query task status summary
@@ -8,14 +8,8 @@ import { getBvbrcAuthToken } from "@/lib/auth";
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = await getBvbrcAuthToken();
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      );
-    }
+    const token = await requireAuthToken();
+    if (token instanceof NextResponse) return token;
 
     const body = await request.json();
     const { include_archived = false } = body;

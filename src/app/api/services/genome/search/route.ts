@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 
@@ -16,14 +16,8 @@ export async function GET(request: NextRequest) {
       ? Math.min(Math.max(limitParam, 1), 50)
       : 25;
 
-    const token = await getBvbrcAuthToken();
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      );
-    }
+    const token = await requireAuthToken();
+    if (token instanceof NextResponse) return token;
 
     const trimmedQuery = rawQuery.trim();
     let queryString: string;

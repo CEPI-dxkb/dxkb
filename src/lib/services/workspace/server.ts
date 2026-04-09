@@ -1,8 +1,8 @@
 /**
  * Server-only workspace API. Use from RSC or route handlers only.
- * Calls WORKSPACE_API_URL with getBvbrcAuthToken(); do not import in client code.
+ * Calls WORKSPACE_API_URL with getAuthToken(); do not import in client code.
  */
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { getAuthToken } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 import { metaListToObj } from "./helpers";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
@@ -12,7 +12,7 @@ async function workspaceRequest<T>(
   method: string,
   params: unknown[],
 ): Promise<T> {
-  const authToken = await getBvbrcAuthToken();
+  const authToken = await getAuthToken();
   if (!authToken) {
     throw new Error("Authentication required");
   }

@@ -1,10 +1,11 @@
+import { NextResponse } from "next/server";
 import {
   makeRouteContext,
   mockNextRequest,
 } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({
-  getBvbrcAuthToken: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAuthToken: vi.fn(),
 }));
 
 vi.mock("@/lib/app-service", () => ({
@@ -12,10 +13,10 @@ vi.mock("@/lib/app-service", () => ({
 }));
 
 import { GET } from "../route";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { createAppService } from "@/lib/app-service";
 
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 const mockCreateAppService = vi.mocked(createAppService);
 
 const mockAppService = {
@@ -28,7 +29,9 @@ describe("GET /api/services/app-service/jobs/[id]/stdout", () => {
   });
 
   it("returns 401 when no auth token is available", async () => {
-    mockGetToken.mockResolvedValue(null);
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    );
 
     const request = mockNextRequest();
 
@@ -36,11 +39,11 @@ describe("GET /api/services/app-service/jobs/[id]/stdout", () => {
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data).toEqual({ error: "Unauthorized" });
+    expect(data).toEqual({ error: "Authentication required" });
   });
 
   it("returns plain text stdout output on success", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     const stdoutText = "Build started...\nAssembly complete.";
     mockAppService.fetchJobOutput.mockResolvedValue(stdoutText);
 
@@ -59,7 +62,7 @@ describe("GET /api/services/app-service/jobs/[id]/stdout", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     mockAppService.fetchJobOutput.mockRejectedValue(
       new Error("Fetch failed"),
     );

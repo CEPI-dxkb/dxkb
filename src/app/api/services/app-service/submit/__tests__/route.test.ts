@@ -1,7 +1,8 @@
+import { NextResponse } from "next/server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({
-  getBvbrcAuthToken: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAuthToken: vi.fn(),
 }));
 
 vi.mock("@/lib/app-service", () => ({
@@ -23,10 +24,10 @@ vi.mock("@/lib/jsonrpc-client", () => {
 });
 
 import { POST } from "../route";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { createAppService } from "@/lib/app-service";
 
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 const mockCreateAppService = vi.mocked(createAppService);
 
 const mockAppService = {
@@ -39,7 +40,9 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 401 when no auth token is available", async () => {
-    mockGetToken.mockResolvedValue(null);
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -54,7 +57,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 400 when app_name is missing", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
 
     const request = mockNextRequest({
       method: "POST",
@@ -69,7 +72,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 400 when app_params is missing", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
 
     const request = mockNextRequest({
       method: "POST",
@@ -84,7 +87,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 400 when app_params is not an object", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
 
     const request = mockNextRequest({
       method: "POST",
@@ -99,7 +102,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns success with job result on valid submission", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     const mockResult = { id: "job-123", status: "queued" };
     mockAppService.submitService.mockResolvedValue(mockResult);
 
@@ -119,7 +122,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("passes context to submitService when provided", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     mockAppService.submitService.mockResolvedValue({ id: "job-456" });
 
     const context = { workspace: "/user@bvbrc/home" };
@@ -142,7 +145,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 500 with details when a JsonRpcError is thrown", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
 
     const { JsonRpcError } = await import("@/lib/jsonrpc-client");
     mockAppService.submitService.mockRejectedValue(
@@ -166,7 +169,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 500 with message when a generic Error is thrown", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     mockAppService.submitService.mockRejectedValue(
       new Error("Connection refused"),
     );
@@ -184,7 +187,7 @@ describe("POST /api/services/app-service/submit", () => {
   });
 
   it("returns 500 with generic message for unknown error types", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     mockAppService.submitService.mockRejectedValue("string error");
 
     const request = mockNextRequest({

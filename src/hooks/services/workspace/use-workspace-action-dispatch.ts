@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import type { WorkspaceApiClient } from "@/lib/services/workspace/client";
 import type { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
+import { triggerDownload } from "@/lib/utils";
 import {
   expandDownloadPaths,
   getSiblingJobResultPathForDotFolder,
@@ -14,6 +15,7 @@ import { isFolderType } from "@/lib/services/workspace/utils";
 import { toggleFavorite } from "@/lib/services/workspace/favorites";
 import { forbiddenDownloadTypes } from "@/lib/services/workspace/types";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
+import { getStructureViewerUrl } from "@/components/workspace/file-viewer/file-viewer-registry";
 
 export interface UseWorkspaceActionDispatchOptions {
   currentUser: string;
@@ -68,15 +70,7 @@ export function useWorkspaceActionDispatch({
       for (let i = 0; i < urlArrays.length; i++) {
         const url = urlArrays[i]?.[0];
         if (!url) continue;
-        const name = downloadable[i]?.name ?? "download";
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        a.rel = "noopener noreferrer";
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        triggerDownload(url, downloadable[i]?.name ?? "download");
       }
     },
     onError: (err) => {
@@ -107,6 +101,13 @@ export function useWorkspaceActionDispatch({
         const single = selection[0] ?? null;
         if (single?.path) {
           dispatch({ type: "OPEN_EDIT_TYPE", item: single });
+        }
+        return;
+      }
+      if (actionId === "viewer3d") {
+        const single = selection[0] ?? null;
+        if (single?.path) {
+          window.open(getStructureViewerUrl(single.path), "_blank", "noopener,noreferrer");
         }
         return;
       }

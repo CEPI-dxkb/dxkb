@@ -1,0 +1,16 @@
+import Navbar from "@/components/navbars/navbar";
+
+export default function StructureViewerLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-background">
+      <Navbar />
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {children}
+      </main>
+    </div>
+  );
+}

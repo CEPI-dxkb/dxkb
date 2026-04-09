@@ -1,5 +1,4 @@
-import React from "react";
-import SearchBar from "@/components/search-bars/search-bar";
+import { SearchBar } from "@/components/search/search-bar";
 import ThemeContent from "@/components/ui/theme-content";
 
 const WelcomeHero = () => {

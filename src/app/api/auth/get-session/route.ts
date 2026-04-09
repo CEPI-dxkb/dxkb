@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBvbrcAuthData, setBvbrcAuthCookies, clearBvbrcAuthCookies } from "@/app/api/auth/utils";
+import { getSession, createSession, deleteSession } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 /** BV-BRC user shape from profile cookie or /user API */
@@ -17,10 +17,10 @@ interface SessionUserInfo {
  */
 export async function GET() {
   try {
-    const { token, userId, realm } = await getBvbrcAuthData();
+    const { token, userId, realm } = await getSession();
 
     if (!token || !userId) {
-      await clearBvbrcAuthCookies();
+      await deleteSession();
       return NextResponse.json({
         user: null,
         session: null,
@@ -48,16 +48,16 @@ export async function GET() {
 
         // Refresh auth cookies (ID only; profile is not stored in cookies)
         if (userId) {
-          await setBvbrcAuthCookies(token, userId, realm);
+          await createSession(token, userId, realm);
         }
       } else {
         isValid = false;
-        await clearBvbrcAuthCookies();
+        await deleteSession();
       }
     } catch (error) {
       console.error("Session validation failed:", error);
       isValid = false;
-      await clearBvbrcAuthCookies();
+      await deleteSession();
     }
 
     if (!isValid) {

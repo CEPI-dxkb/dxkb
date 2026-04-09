@@ -3,6 +3,9 @@ import {
   noop,
   sanitizePathSegment,
   encodeWorkspaceSegment,
+  parsePathSegments,
+  buildEncodedSegmentPath,
+  workspaceUsername,
   getFirstDefined,
 } from "@/lib/utils";
 
@@ -79,6 +82,68 @@ describe("encodeWorkspaceSegment", () => {
 
   it("encodes slashes", () => {
     expect(encodeWorkspaceSegment("a/b")).toBe("a%2Fb");
+  });
+});
+
+describe("parsePathSegments", () => {
+  it("splits a path into segments", () => {
+    expect(parsePathSegments("/user@bvbrc/home/folder")).toEqual([
+      "user@bvbrc",
+      "home",
+      "folder",
+    ]);
+  });
+
+  it("strips leading slash", () => {
+    expect(parsePathSegments("/a/b")).toEqual(["a", "b"]);
+  });
+
+  it("filters out empty segments from double slashes", () => {
+    expect(parsePathSegments("/a//b")).toEqual(["a", "b"]);
+  });
+
+  it("sanitizes each segment", () => {
+    expect(parsePathSegments("/ok/ba\0d")).toEqual(["ok", "bad"]);
+  });
+
+  it("handles path without leading slash", () => {
+    expect(parsePathSegments("a/b/c")).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("buildEncodedSegmentPath", () => {
+  it("encodes and joins segments", () => {
+    expect(buildEncodedSegmentPath(["user@bvbrc", "home", "my folder"])).toBe(
+      "user@bvbrc/home/my%20folder",
+    );
+  });
+
+  it("returns empty string for empty array", () => {
+    expect(buildEncodedSegmentPath([])).toBe("");
+  });
+
+  it("handles single segment", () => {
+    expect(buildEncodedSegmentPath(["user@bvbrc"])).toBe("user@bvbrc");
+  });
+});
+
+describe("workspaceUsername", () => {
+  it("returns empty string for null user", () => {
+    expect(workspaceUsername(null)).toBe("");
+  });
+
+  it("returns empty string when username is missing", () => {
+    expect(workspaceUsername({ username: undefined })).toBe("");
+  });
+
+  it("returns username when no realm", () => {
+    expect(workspaceUsername({ username: "testuser" })).toBe("testuser");
+  });
+
+  it("appends realm with @", () => {
+    expect(workspaceUsername({ username: "testuser", realm: "bvbrc" })).toBe(
+      "testuser@bvbrc",
+    );
   });
 });
 

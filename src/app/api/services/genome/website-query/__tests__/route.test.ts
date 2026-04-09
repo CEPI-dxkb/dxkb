@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
@@ -8,14 +9,14 @@ vi.hoisted(() => {
   process.env.BVBRC_WEBSITE_API_URL = "http://mock-website-api";
 });
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireAuthToken: vi.fn() }));
 
 vi.mock("csv-parse/sync", () => ({
   parse: vi.fn(() => [{ genome_id: "1", genome_name: "test" }]),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { requireAuthToken } from "@/lib/auth/session";
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 
 describe("POST /api/services/genome/website-query", () => {
   beforeEach(() => {
@@ -23,7 +24,9 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns 401 when no auth token", async () => {
-    mockGetToken.mockResolvedValue(undefined);
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    );
 
     const req = mockNextRequest({
       method: "POST",
@@ -38,7 +41,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns empty results when genome_ids is empty", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const req = mockNextRequest({ method: "POST", body: { genome_ids: [] } });
     const res = await POST(req);
@@ -48,7 +51,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("escapes Solr special characters in IDs", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     let capturedBody: string | undefined;
 
@@ -70,7 +73,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("caps rows to maxRows (25000)", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     let capturedBody: string | undefined;
 
@@ -94,7 +97,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns results from JSON content-type response", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const genomes = [{ genome_id: "1.1", genome_name: "G1" }];
 
@@ -115,7 +118,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns results from CSV content-type response", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-website-api/genome/", () => {
@@ -139,7 +142,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("handles empty CSV response", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const { parse } = await import("csv-parse/sync");
     vi.mocked(parse).mockReturnValue([]);
@@ -163,7 +166,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-website-api/genome/", () => {
@@ -184,7 +187,7 @@ describe("POST /api/services/genome/website-query", () => {
   });
 
   it("returns 500 on unexpected exception", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-website-api/genome/", () => {

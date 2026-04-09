@@ -1,3 +1,4 @@
+import { sanitizePathSegment } from "@/lib/utils";
 import {
   ValidWorkspaceObjectTypes,
   knownUploadTypes,
@@ -25,7 +26,7 @@ export function metaListToObj(list: unknown[]) {
     creation_time: list[3],
     link_reference: list[11],
     owner_id: list[5],
-    size: list[6],
+    size: Number(list[6]) || 0,
     userMeta: list[7],
     autoMeta: list[8],
     user_permission: list[9],
@@ -106,13 +107,11 @@ export function getJobResultDotPath(
   return parent ? `${parent}/.${dotName}` : `.${dotName}`;
 }
 
-// Validator function to check if a type is a valid knownUploadType
 export function isValidWorkspaceObjectType(type: string): type is ValidWorkspaceObjectTypes {
   const validTypes = getValidWorkspaceObjectTypes();
   return validTypes.includes(type as ValidWorkspaceObjectTypes);
 }
 
-// Get all valid upload type keys
 export function getValidWorkspaceObjectTypes(): ValidWorkspaceObjectTypes[] {
   return [
     ...Object.keys(knownUploadTypes),
@@ -121,7 +120,6 @@ export function getValidWorkspaceObjectTypes(): ValidWorkspaceObjectTypes[] {
   ] as ValidWorkspaceObjectTypes[];
 }
 
-// Validate multiple types at once
 export function validateWorkspaceObjectTypes(types: string[]): {
   valid: ValidWorkspaceObjectTypes[];
   invalid: string[];
@@ -198,6 +196,11 @@ export function sortItems(
   });
 }
 
+export function formatOwner(ownerId: string): string {
+  if (!ownerId) return "—";
+  return ownerId.replace(/@bvbrc$/, "");
+}
+
 export function formatDate(dateString: string): string {
   if (!dateString) return "";
   const date = new Date(dateString);
@@ -211,13 +214,15 @@ export function formatDate(dateString: string): string {
   });
 }
 
-export function formatFileSize(bytes: number): string {
-  if (!bytes || bytes === 0) return "";
+export function formatFileSize(bytes: number, { showZero = false }: { showZero?: boolean } = {}): string {
+  if (!bytes || bytes === 0) return showZero ? "0 B" : "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   if (bytes < 1024 * 1024 * 1024)
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  if (bytes < 1024 * 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  return `${(bytes / (1024 * 1024 * 1024 * 1024)).toFixed(2)} TB`;
 }
 
 export function normalizeWsPath(p: string): string {
@@ -265,23 +270,27 @@ export async function getNonEmptyFolderPaths(
   listFolder: (path: string) => Promise<WorkspaceBrowserItem[]>,
   options?: { signal?: AbortSignal },
 ): Promise<string[]> {
-  const nonEmpty: string[] = [];
-  for (const folderPath of folderPaths) {
-    if (options?.signal?.aborted) {
-      throw new DOMException("Aborted", "AbortError");
-    }
-    try {
-      const listing = await listFolder(folderPath);
-      if (options?.signal?.aborted) {
-        throw new DOMException("Aborted", "AbortError");
-      }
-      if (listing.length > 0) nonEmpty.push(folderPath);
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
-      // Treat fetch failure as empty so the dialog is not blocked
-    }
+  if (options?.signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
   }
-  return nonEmpty;
+
+  const results = await Promise.all(
+    folderPaths.map(async (folderPath) => {
+      try {
+        const listing = await listFolder(folderPath);
+        if (options?.signal?.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        return listing.length > 0 ? folderPath : null;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") throw err;
+        // Treat fetch failure as empty so the dialog is not blocked
+        return null;
+      }
+    }),
+  );
+
+  return results.filter((p): p is string => p !== null);
 }
 
 /**
@@ -401,4 +410,13 @@ export async function ensureDestinationWriteAccess(
       errorMessage: `Access denied, you do not have write access to ${normalized || "/"}`,
     };
   }
+}
+
+/** Dot path relative to workspace for URL (e.g. "ProteinMPNN_tests/.1e08_dwnld_d10010111"). */
+export function getDotPathRelative(path: string, jobName: string): string {
+  const segments = path.split("/").map(sanitizePathSegment).filter(Boolean);
+  const withoutLast = segments.slice(0, -1);
+  const base = withoutLast.length > 0 ? withoutLast.join("/") : "";
+  const safeJobName = sanitizePathSegment(jobName);
+  return base ? `${base}/.${safeJobName}` : `.${safeJobName}`;
 }

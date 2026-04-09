@@ -51,6 +51,7 @@ import { useServiceFormSubmission } from "@/hooks/services/use-service-form-subm
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 
 export default function PrimerDesignServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -263,6 +264,7 @@ export default function PrimerDesignServicePage() {
   }, [sequenceTextValue, sequenceTextId, form]);
 
   const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+  useDefaultOutputPath(form, rerunData);
 
   useEffect(() => {
     if (!rerunData || !markApplied()) return;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { createAppService } from "@/lib/app-service";
 
 interface RouteParams {
@@ -12,10 +12,8 @@ interface RouteParams {
  */
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
-    const token = await getBvbrcAuthToken();
-    if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const token = await requireAuthToken();
+    if (token instanceof NextResponse) return token;
 
     const { id: jobId } = await params;
 

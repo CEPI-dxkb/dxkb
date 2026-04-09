@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dna, Bug, Microscope, Activity, Database } from "lucide-react";
-import { SearchBar } from "@/components/search/search-bar";
 import { searchToQuery } from "@/app/search/search-to-query";
 import ResultsOverview from "@/components/search/results-overview";
 
@@ -412,7 +411,6 @@ function SearchResultsContent({ query }: { query: string }) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <SearchBar initialValue={query} className="mb-8" />
       {isLoading ? (
         <div className="py-20 text-center">
           <p className="text-muted-foreground">Loading results...</p>

@@ -1,12 +1,12 @@
 import { http, HttpResponse } from "msw";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { server } from "@/test-helpers/msw-server";
 import { json } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireAuthToken: vi.fn() }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { requireAuthToken } from "@/lib/auth/session";
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 
 describe("POST /api/services/minhash", () => {
   beforeEach(() => {
@@ -72,7 +72,7 @@ describe("POST /api/services/minhash", () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    mockGetToken.mockResolvedValue("my-token");
+    mockRequireAuthToken.mockResolvedValue("my-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -92,18 +92,12 @@ describe("POST /api/services/minhash", () => {
     expect(capturedHeaders?.get("Authorization")).toBe("my-token");
   });
 
-  it("omits auth header when token is absent", async () => {
+  it("returns 401 when no auth token", async () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    mockGetToken.mockResolvedValue(undefined);
-
-    let capturedHeaders: Headers | undefined;
-    server.use(
-      http.post("http://mock-minhash", async ({ request }) => {
-        capturedHeaders = request.headers;
-        return HttpResponse.json({ result: "ok" });
-      }),
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
     );
 
     const req = new NextRequest("http://localhost:3019/api/services/minhash", {
@@ -111,16 +105,19 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ method: "test" }),
     });
-    await POST(req);
+    const res = await POST(req);
 
-    expect(capturedHeaders?.get("Authorization")).toBeNull();
+    expect(res.status).toBe(401);
+    expect(await json(res)).toEqual(
+      expect.objectContaining({ error: "Authentication required" }),
+    );
   });
 
   it("returns upstream error on non-ok response", async () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.post("http://mock-minhash", () => {
@@ -145,7 +142,7 @@ describe("POST /api/services/minhash", () => {
     vi.stubEnv("MINHASH_SERVICE_URL", "http://mock-minhash");
 
     const { POST } = await import("../route");
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const resultData = { result: [{ genome_id: "1.1", distance: 0.1 }] };
     server.use(

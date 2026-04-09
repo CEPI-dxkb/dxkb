@@ -44,6 +44,7 @@ import {
 import { transformGenomeAlignmentParams } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import {
@@ -183,6 +184,7 @@ export default function GenomeAlignmentServicePage() {
 
   // Rerun: pre-fill form from job parameters
   const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+  useDefaultOutputPath(form, rerunData);
 
   useEffect(() => {
     if (!rerunData || !markApplied()) return;

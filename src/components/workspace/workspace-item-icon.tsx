@@ -10,6 +10,9 @@ import {
   BriefcaseMedical,
   FileArchive,
   FileSpreadsheet,
+  Globe,
+  FolderOpenDot,
+  FolderHeart,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,15 +51,28 @@ const typeIconMap: Record<string, LucideIcon> = {
   tar_gz: FileArchive,
 };
 
+export type FolderIconVariant = "default" | "public" | "shared" | "favorite";
+
 interface WorkspaceItemIconProps {
   type: string;
   className?: string;
+  /** Override folder icon based on context (public, shared, or favorite). */
+  variant?: FolderIconVariant;
 }
 
-export function WorkspaceItemIcon({ type, className }: WorkspaceItemIconProps) {
+const folderVariantIcon: Record<FolderIconVariant, LucideIcon> = {
+  default: Folder,
+  public: Globe,
+  shared: FolderOpenDot,
+  favorite: FolderHeart,
+};
+
+export function WorkspaceItemIcon({ type, className, variant = "default" }: WorkspaceItemIconProps) {
   const key = normalizeWorkspaceObjectType(type);
-  const Icon = typeIconMap[key] ?? typeIconMap[type] ?? File;
   const isFolderLike = isFolderType(type);
+  const Icon = isFolderLike
+    ? folderVariantIcon[variant]
+    : (typeIconMap[key] ?? typeIconMap[type] ?? File);
 
   return (
     <Icon

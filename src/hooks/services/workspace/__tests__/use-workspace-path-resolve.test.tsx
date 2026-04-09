@@ -39,7 +39,7 @@ describe("useWorkspacePathResolve", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(getWorkspaceMetadata).toHaveBeenCalledWith(["/user/home/myFile"]);
+    expect(getWorkspaceMetadata).toHaveBeenCalledWith(["/user/home/myFile"], { silent: true });
     expect(parseWorkspaceGetSingle).toHaveBeenCalledWith(rawResult, 0);
     expect(result.current.data).toEqual(parsed);
   });

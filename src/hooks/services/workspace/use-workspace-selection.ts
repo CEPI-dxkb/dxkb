@@ -22,6 +22,19 @@ export function useWorkspaceSelection({
   const [selectedItems, setSelectedItems] = useState<WorkspaceBrowserItem[]>([]);
   const [anchorPath, setAnchorPath] = useState<string | null>(null);
 
+  // Keep selected items in sync with latest processedItems data (e.g. after type change refetch)
+  const [prevProcessedItems, setPrevProcessedItems] = useState(processedItems);
+  if (prevProcessedItems !== processedItems) {
+    setPrevProcessedItems(processedItems);
+    if (selectedItems.length > 0) {
+      const itemByPath = new Map(processedItems.map((i) => [normalizePath(i.path), i]));
+      const updated = selectedItems.map((old) => itemByPath.get(normalizePath(old.path)) ?? old);
+      if (!updated.every((item, idx) => item === selectedItems[idx])) {
+        setSelectedItems(updated);
+      }
+    }
+  }
+
   const selectedPaths = useMemo(
     () => selectedItems.map((i) => normalizePath(i.path)),
     [selectedItems],

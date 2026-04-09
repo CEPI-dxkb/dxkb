@@ -27,6 +27,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
 import {
   viralAssemblyInfo,
@@ -71,6 +72,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
 
   // Read rerun data before other state so lazy initializers can use it
   const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+  useDefaultOutputPath(form, rerunData);
 
   const [pairedRead1, setPairedRead1] = useState<string | null>(() => {
     if (!rerunData) return null;

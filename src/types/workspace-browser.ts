@@ -14,7 +14,7 @@ export interface WorkspaceBrowserItem {
   timestamp: number;
 }
 
-export type WorkspaceViewMode = "home" | "shared";
+export type WorkspaceViewMode = "home" | "shared" | "public";
 
 export type SortField = "name" | "type" | "size" | "owner_id" | "creation_time";
 export type SortDirection = "asc" | "desc";

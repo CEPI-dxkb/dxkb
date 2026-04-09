@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { Row, Column } from "@tanstack/react-table";
+import type { Row } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import { FolderUp, Users } from "lucide-react";
 import clsx from "clsx";
@@ -11,39 +11,26 @@ import { isFolderType } from "@/lib/services/workspace/utils";
 import { columnClassMap } from "./workspace-table-columns";
 
 interface SpecialRowProps {
-  columns: Column<WorkspaceBrowserItem, unknown>[];
   useSelectionMode: boolean;
   isFocused: boolean;
   onClick: () => void;
   icon: React.ElementType;
   label: string;
-  /** When true, use columnOrder instead of Column objects (for DataTable integration). */
-  _useDataTable?: boolean;
-  columnOrder?: string[];
+  columnOrder: string[];
 }
 
 function SpecialRow({
-  columns,
   useSelectionMode,
   isFocused,
   onClick,
   icon: Icon,
   label,
-  _useDataTable,
   columnOrder,
 }: SpecialRowProps) {
-  // Build cell list from either Column objects or column IDs
-  const cells = _useDataTable && columnOrder
-    ? columnOrder.map((id) => ({
-        id,
-        metaClassName: columnClassMap[id] ?? "",
-      }))
-    : columns.map((column) => {
-        const meta = column.columnDef.meta as
-          | { className?: string }
-          | undefined;
-        return { id: column.id, metaClassName: meta?.className ?? "" };
-      });
+  const cells = columnOrder.map((id) => ({
+    id,
+    metaClassName: columnClassMap[id] ?? "",
+  }));
 
   return (
     <TableRow
@@ -89,13 +76,13 @@ function SpecialRow({
 }
 
 export function LeadingRow(
-  props: Omit<SpecialRowProps, "icon" | "label">,
+  props: Omit<SpecialRowProps, "icon"> & { label?: string },
 ) {
-  return <SpecialRow {...props} icon={Users} label="View Shared Folders" />;
+  return <SpecialRow {...props} icon={Users} label={props.label ?? "View Shared Folders"} />;
 }
 
 export function ParentRow(
-  props: Omit<SpecialRowProps, "icon"> & { label: string },
+  props: Omit<SpecialRowProps, "icon">,
 ) {
   return <SpecialRow {...props} icon={FolderUp} />;
 }
@@ -110,7 +97,6 @@ interface DataRowProps {
   ) => void;
   onItemClick: (item: WorkspaceBrowserItem) => void;
   onItemDoubleClick?: (item: WorkspaceBrowserItem) => void;
-  onOpenFileRequested?: (item: WorkspaceBrowserItem) => void;
 }
 
 export function DataRow({
@@ -120,7 +106,6 @@ export function DataRow({
   onSelect,
   onItemClick,
   onItemDoubleClick,
-  onOpenFileRequested,
 }: DataRowProps) {
   const item = row.original;
   const isNavigable = isFolderType(item.type);
@@ -139,18 +124,12 @@ export function DataRow({
       });
     } else if (isNavigable) {
       onItemClick(item);
-    } else {
-      onOpenFileRequested?.(item);
     }
   }
 
   function handleRowDoubleClick() {
-    if (useSelectionMode) {
-      if (isNavigable) {
-        onItemDoubleClick?.(item);
-      } else {
-        onOpenFileRequested?.(item);
-      }
+    if (useSelectionMode && isNavigable) {
+      onItemDoubleClick?.(item);
     }
   }
 
@@ -162,7 +141,7 @@ export function DataRow({
           ? "border-l-2 " +
             (isSelected ? "border-l-primary" : "border-l-transparent")
           : "") +
-        (useSelectionMode || isNavigable || onOpenFileRequested
+        (useSelectionMode || isNavigable
           ? " cursor-pointer pl-6"
           : " pl-6") +
         (isSelected ? " bg-muted" : "")

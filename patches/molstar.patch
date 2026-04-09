@@ -1,0 +1,21 @@
+diff --git a/lib/mol-model/structure/structure/element.js b/lib/mol-model/structure/structure/element.js
+index a862eda76a2b3498fbb5400cf882597ecc081ec9..45ea0fc46263c7c26af8883d9c96f864c0b8f83e 100644
+--- a/lib/mol-model/structure/structure/element.js
++++ b/lib/mol-model/structure/structure/element.js
+@@ -4,5 +4,14 @@
+  * @author David Sehnal <david.sehnal@gmail.com>
+  * @author Alexander Rose <alexander.rose@weirdbyte.de>
+  */
+-import * as StructureElement from './element/element.js';
+-export { StructureElement };
++// Workaround for Turbopack bug: `import * as X; export { X }` creates a
++// self-referential module namespace binding in production builds, so
++// X.Bundle (and other sub-exports) resolve to undefined.
++// Using explicit named imports into a concrete object avoids the issue.
++import { Location } from './element/location.js';
++import { Loci } from './element/loci.js';
++import { Bundle } from './element/bundle.js';
++import { Schema } from './element/schema.js';
++import { Stats } from './element/stats.js';
++import { property, atomicProperty, coarseProperty, residueIndex, chainIndex, entityIndex } from './element/util.js';
++export const StructureElement = { Location, Loci, Bundle, Schema, Stats, property, atomicProperty, coarseProperty, residueIndex, chainIndex, entityIndex };

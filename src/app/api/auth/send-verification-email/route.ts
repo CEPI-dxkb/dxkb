@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBvbrcAuthData } from "@/app/api/auth/utils";
+import { requireAuth } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 /**
@@ -8,28 +8,18 @@ import { getRequiredEnv } from "@/lib/env";
  */
 export async function POST() {
   try {
-    const { token, userId } = await getBvbrcAuthData();
+    const auth = await requireAuth();
+    if (auth instanceof NextResponse) return auth;
 
-    if (!token || !userId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "Authentication required. Please sign in first.",
-        },
-        { status: 401 },
-      );
-    }
-
-    // Call BV-BRC email verification endpoint
     const response = await fetch(getRequiredEnv("USER_VERIFICATION_URL"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        Authorization: token,
+        Authorization: auth.token,
       },
       body: JSON.stringify({
-        id: userId,
+        id: auth.userId,
       }),
     });
 

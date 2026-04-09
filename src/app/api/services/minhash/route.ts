@@ -1,4 +1,4 @@
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { NextRequest, NextResponse } from "next/server";
 
 const minhashServiceUrl = process.env.MINHASH_SERVICE_URL;
@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authToken = await getBvbrcAuthToken();
+    const authToken = await requireAuthToken();
+    if (authToken instanceof NextResponse) return authToken;
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      "Authorization": authToken,
     };
-    if (authToken) {
-      headers["Authorization"] = authToken;
-    }
 
     const response = await fetch(minhashServiceUrl, {
       method: "POST",

@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: vi.fn(() => ({ toString: () => "" })),
 }));
 
-vi.mock("@/lib/auth-client", () => ({
+vi.mock("@/lib/auth/client", () => ({
   bvbrcAuth: {
     getSession: vi.fn(() => Promise.resolve({ data: null, error: null })),
     signOut: vi.fn(() => Promise.resolve()),
@@ -25,7 +25,7 @@ vi.mock("@/lib/auth-client", () => ({
 }));
 
 import { usePathname } from "next/navigation";
-import { bvbrcAuth } from "@/lib/auth-client";
+import { bvbrcAuth } from "@/lib/auth/client";
 import { AuthProvider, useAuth } from "../auth-context";
 
 const testUser = {

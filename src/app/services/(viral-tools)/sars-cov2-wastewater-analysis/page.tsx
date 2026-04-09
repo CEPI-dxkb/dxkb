@@ -42,6 +42,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { normalizeToArray, buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
 import {
   sarsCov2WastewaterAnalysisInfo,
@@ -98,6 +99,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
       await handleSubmit(value as SarsCov2WastewaterAnalysisFormData);
     },
   });
+  useDefaultOutputPath(form, rerunData);
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);

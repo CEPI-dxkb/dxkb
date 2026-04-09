@@ -7,32 +7,15 @@ import { usePathname } from "next/navigation";
 import { gettingStartedItems, organismItems, serviceItems } from "@/components/navbars/navbar-links";
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger } from "@/components/ui/navigation-menu";
 import { SearchBar } from "@/components/search/search-bar";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Logo from "@/components/ui/logo";
 import { useAuth } from "@/contexts/auth-context";
-import { SignoutButton } from "@/components/auth/signout-button";
-import {DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import { UserRound, Settings, NotebookPen, BriefcaseBusiness, Mail } from "lucide-react";
-import { encodeWorkspaceSegment } from "@/lib/utils";
-
-/** Full username with @domain for workspace URLs (session stores short form in user.username). */
-function workspaceUsername(user: { username?: string; realm?: string } | null): string {
-  if (!user?.username) return "";
-  return user.realm ? `${user.username}@${user.realm}` : user.username;
-}
+import { UserAvatarDropdown } from "@/components/navbars/user-avatar-dropdown";
+import { WorkspaceDropdownContent, workspaceUsername } from "@/components/navbars/workspace-dropdown-content";
 
 const DesktopNavbar = () => {
-  const { isAuthenticated, user, isLoading, sendVerificationEmail } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const wsUsername = workspaceUsername(user);
 
   const pathname = usePathname();
@@ -118,126 +101,59 @@ const DesktopNavbar = () => {
                 Services
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="grid grid-cols-2 gap-2 p-2 md:w-[550px] lg:w-[650px]">
-                  <div className="space-y-0">
-                    {/* Left Column */}
-                    {Object.entries(serviceItems)
-                      .slice(0, Math.ceil(Object.keys(serviceItems).length / 2))
-                      .map(([key, section]) => (
-                        <div key={key}>
-                          <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
-                            {section.title}
-                          </h4>
-                          <div className="space-y-0">
-                            {section.items.map((item) => (
-                              <NavigationMenuLink
-                                key={item.href}
-                                render={
-                                  item.target === "_blank" ? (
-                                    <a
-                                      href={item.href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
-                                    />
-                                  ) : (
-                                    <Link
-                                      href={item.href}
-                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
-                                    />
-                                  )
-                                }
-                              >
-                                {item.title}
-                              </NavigationMenuLink>
-                            ))}
+                <div className="grid grid-cols-2 gap-2 p-2 lg:w-[550px]">
+                  {(() => {
+                    const entries = Object.entries(serviceItems);
+                    const mid = Math.ceil(entries.length / 2);
+                    return [entries.slice(0, mid), entries.slice(mid)].map((column, colIdx) => (
+                      <div key={colIdx} className="space-y-0">
+                        {column.map(([key, section]) => (
+                          <div key={key}>
+                            <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
+                              {section.title}
+                            </h4>
+                            <div className="space-y-0">
+                              {section.items.map((item) => (
+                                <NavigationMenuLink
+                                  key={item.href}
+                                  render={
+                                    item.target === "_blank" ? (
+                                      <a
+                                        href={item.href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                      />
+                                    ) : (
+                                      <Link
+                                        href={item.href}
+                                        className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
+                                      />
+                                    )
+                                  }
+                                >
+                                  {item.title}
+                                </NavigationMenuLink>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                  </div>
-                  <div className="space-y-0">
-                    {/* Right Column */}
-                    {Object.entries(serviceItems)
-                      .slice(Math.ceil(Object.keys(serviceItems).length / 2))
-                      .map(([key, section]) => (
-                        <div key={key}>
-                          <h4 className="bg-primary my-0.5 rounded-md p-2 text-sm font-bold text-white">
-                            {section.title}
-                          </h4>
-                          <div className="space-y-0">
-                            {section.items.map((item) => (
-                              <NavigationMenuLink
-                                key={item.href}
-                                render={
-                                  item.target === "_blank" ? (
-                                    <a
-                                      href={item.href}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
-                                    />
-                                  ) : (
-                                    <Link
-                                      href={item.href}
-                                      className="hover:bg-secondary/20 my-0.5 block p-2 font-medium"
-                                    />
-                                  )
-                                }
-                              >
-                                {item.title}
-                              </NavigationMenuLink>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
+                        ))}
+                      </div>
+                    ));
+                  })()}
                 </div>
               </NavigationMenuContent>
             </NavigationMenuItem>
 
-            {/* Workspace - always visible; when not signed in, prompt to Sign In */}
             <NavigationMenuItem id="workspace-nav">
               <NavigationMenuTrigger className="bg-primary">
                 Workspace
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                {isAuthenticated ? (
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    <ListItem
-                      key="workspace-nav"
-                      title="My Workspace"
-                      href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/home` : "/workspace"}
-                    >
-                      View your workspace.
-                    </ListItem>
-                    <ListItem
-                      key="workspace-jobs-nav"
-                      title="Jobs"
-                      href="/jobs"
-                    >
-                      View all jobs in your workspace.
-                    </ListItem>
-                  </ul>
-                ) : (
-                  <ul className="grid w-[300px] gap-3 p-4 md:w-[400px] md:grid-cols-2 lg:w-[500px]">
-                    <ListItem
-                      key="workspace-sign-in"
-                      title="My Workspace"
-                      href="/sign-in?redirect=/workspace"
-                      className="w-full"
-                    >
-                      Sign in required
-                    </ListItem>
-                    <ListItem
-                      key="jobs-sign-in"
-                      title="My Jobs"
-                      href="/sign-in?redirect=/jobs"
-                      className="w-full"
-                    >
-                      Sign in required
-                    </ListItem>
-                  </ul>
-                )}
+                <WorkspaceDropdownContent
+                  isAuthenticated={isAuthenticated}
+                  wsUsername={wsUsername}
+                />
               </NavigationMenuContent>
             </NavigationMenuItem>
           </NavigationMenuList>
@@ -246,13 +162,12 @@ const DesktopNavbar = () => {
 
         {!isHome && (
           <div className="hidden lg:flex flex-1 items-center justify-end px-2">
-            <SearchBar className="w-full" />
+            <SearchBar className="max-w-[1000px]" />
           </div>
         )}
-                      
+
       <div className="flex items-center space-x-2">
         <div className="flex items-center space-x-2">
-          {/* Show skeleton while loading */}
           {isLoading && (
             <div className="flex items-center space-x-2">
               <Skeleton className="h-8 w-16 bg-white/20" />
@@ -260,7 +175,6 @@ const DesktopNavbar = () => {
             </div>
           )}
 
-          {/* Show sign in/sign up when NOT authenticated and not loading */}
           {!isLoading && !isAuthenticated && (
             <>
               <Link
@@ -286,74 +200,7 @@ const DesktopNavbar = () => {
             </>
           )}
 
-          {/* Show user info and signout when authenticated and not loading */}
-          {!isLoading && isAuthenticated && (
-            <>
-              <div className="hover:bg-foreground/10 flex items-center space-x-2 rounded-md px-1 py-1">
-                <div className="size-8 shrink-0 overflow-hidden rounded-full **:data-[slot=dropdown-menu-trigger]:size-full **:data-[slot=dropdown-menu-trigger]:min-w-0">
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger
-                      nativeButton={false}
-                      render={<div className="flex size-full items-center justify-center" />}
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-white/10 text-white">
-                          {user?.username?.charAt(0).toUpperCase() || "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                    </DropdownMenuTrigger>
-                  <DropdownMenuContent side="bottom" sideOffset={8} align="end" className="w-[200px]">
-                    <DropdownMenuGroup>
-                      <DropdownMenuLabel>User Actions</DropdownMenuLabel>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem>
-                        <span className="flex items-center gap-2">
-                          <UserRound className="text-foreground h-2 w-2" />
-                          <Link href="/">Profile</Link>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <span className="flex items-center gap-2">
-                          <NotebookPen className="text-foreground h-4 w-4" />
-                          <Link href={wsUsername ? `/workspace/${encodeWorkspaceSegment(wsUsername)}/home` : "/workspace"}>My Workspace</Link>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <span className="flex items-center gap-2">
-                          <BriefcaseBusiness className="text-foreground h-4 w-4" />
-                          <Link href="/jobs">My Jobs</Link>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <span className="flex items-center gap-2">
-                          <Settings className="text-foreground h-4 w-4" />
-                          <Link href="/">Settings</Link>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <span className="flex items-center gap-2">
-                          <Mail className="text-foreground h-4 w-4" />
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => sendVerificationEmail()}
-                            className="text-foreground font-inherit h-5 cursor-pointer p-0"
-                          >
-                            Resend Verification Email
-                          </Button>
-                        </span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <SignoutButton className="bg-popover group-hover:bg-accent m-0 w-full justify-start border-none p-0 shadow-none" />
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                </div>
-              </div>
-            </>
-          )}
+          {!isLoading && isAuthenticated && <UserAvatarDropdown />}
         </div>
       </div>
     </header>

@@ -9,6 +9,7 @@ export interface UseWorkspaceNavigationOptions {
   mode: WorkspaceViewMode;
   username: string;
   path: string;
+  basePath?: string;
   router: { push: (url: string) => void };
   clearSelection: () => void;
 }
@@ -17,21 +18,32 @@ export function useWorkspaceNavigation({
   mode,
   username,
   path,
+  basePath,
   router,
   clearSelection,
 }: UseWorkspaceNavigationOptions) {
   const isHome = mode === "home";
+  const isPublic = mode === "public";
 
   const navigateToItem = useCallback(
     (item: WorkspaceBrowserItem) => {
       if (isHome) {
-        const segments = path
-          ? path.split("/").map(sanitizePathSegment).filter(Boolean)
+        const base = basePath ?? path;
+        const segments = base
+          ? base.split("/").map(sanitizePathSegment).filter(Boolean)
           : [];
         segments.push(sanitizePathSegment(item.name));
         const encoded = segments.map(encodeWorkspaceSegment).join("/");
         const homeBase = `/workspace/${encodeWorkspaceSegment(username)}/home`;
         router.push(`${homeBase}/${encoded}`);
+      } else if (isPublic) {
+        const segments = item.path
+          .replace(/^\//, "")
+          .split("/")
+          .map(sanitizePathSegment)
+          .filter(Boolean);
+        const encoded = segments.map(encodeWorkspaceSegment).join("/");
+        router.push(`/workspace/public/${encoded}`);
       } else {
         const segments = item.path
           .replace(/^\//, "")
@@ -43,7 +55,7 @@ export function useWorkspaceNavigation({
       }
       clearSelection();
     },
-    [isHome, path, username, router, clearSelection],
+    [isHome, isPublic, path, basePath, username, router, clearSelection],
   );
 
   const handleItemDoubleClick = useCallback(

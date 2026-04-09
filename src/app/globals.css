@@ -3,6 +3,7 @@
 @import "../styles/themes/orange-theme.css";
 @import "../styles/themes/violet-theme.css";
 @import "../styles/themes/bvbrc-theme.css";
+@import "../styles/molstar-theme.css";
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is([data-theme$="-dark"] *));
 
@@ -320,7 +321,7 @@
 }
 
 .mobile-nav-divider-title {
-  @apply text-[13px] font-medium bg-primary text-foreground px-2 py-1 rounded mb-1;
+  @apply text-[13px] font-medium bg-primary text-foreground px-2 py-1 rounded mb-1 flex items-center gap-1;
 }
 
 .mobile-nav-link {

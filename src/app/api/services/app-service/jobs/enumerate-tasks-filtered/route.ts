@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAppService } from "@/lib/app-service";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 
 const requestSchema = z.object({
   offset: z.number().int().nonnegative().default(0),
@@ -20,14 +20,8 @@ const requestSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = await getBvbrcAuthToken();
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      );
-    }
+    const token = await requireAuthToken();
+    if (token instanceof NextResponse) return token;
 
     const body = await request.json();
     const parsed = requestSchema.safeParse(body);

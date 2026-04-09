@@ -6,7 +6,7 @@ import type { JobListItem, JobStatus } from "@/types/workspace";
 import { formatDate } from "@/lib/services/workspace/helpers";
 import { statusConfig } from "@/lib/jobs/constants";
 import { formatServiceName, getOutputName } from "@/lib/jobs/formatting";
-import type { DataTableSort } from "@/components/shared/data-table";
+import type { DataTableSort } from "@/components/shared/file-table";
 
 function StatusCell({ status }: { status: JobStatus }) {
   const config = statusConfig[status] ?? statusConfig.pending;

@@ -3,25 +3,29 @@
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {TooltipProvider, Tooltip, TooltipTrigger, TooltipContent} from "@/components/ui/tooltip";
-import { Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, type LucideIcon } from "lucide-react";
+import { Box, Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, Share2, type LucideIcon } from "lucide-react";
 
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
 const writePermissions = new Set(["o", "a", "w"]);
 
+export type WorkspaceActionId = "guide" | "download" | "delete" | "rename" | "copy" | "move" | "editType" | "viewer3d" | "favorite" | "share";
+
 interface ActionConfig {
-  id: string;
+  id: WorkspaceActionId;
   label: string;
   icon: LucideIcon;
   /** "*" or list of item types this action applies to */
   validTypes: string[] | "*";
   /** If true, hide when user has only read permission */
   requireWrite?: boolean;
+  /** If true, action only applies when exactly one item is selected */
+  singleOnly?: boolean;
   /** If set, button is always disabled and this string is shown as hover title */
   disabledWithTooltip?: string;
 }
 
-// TODO: Add "View" buttons to FASTA/PDB files once the viewer/datagrid is implemented fully.
+// TODO: Add "View" button for FASTA files once the viewer/datagrid is implemented fully.
 const actionConfig: ActionConfig[] = [
   { id: "guide", label: "GUIDE", icon: BookOpen, validTypes: "*" },
   { id: "download", label: "DWNLD", icon: Download, validTypes: "*" },
@@ -37,8 +41,27 @@ const actionConfig: ActionConfig[] = [
   { id: "copy", label: "COPY", icon: Copy, validTypes: "*" },
   { id: "move", label: "MOVE", icon: Move, validTypes: "*", requireWrite: true },
   { id: "editType", label: "EDIT TYPE", icon: Type, validTypes: "*", requireWrite: true },
+  { id: "viewer3d", label: "3D VIEWER", icon: Box, validTypes: ["pdb"], singleOnly: true },
   { id: "favorite", label: "FAVORITE", icon: Star, validTypes: ["folder"] },
+  {
+    id: "share",
+    label: "SHARE",
+    icon: Share2,
+    validTypes: ["folder"],
+    requireWrite: true,
+    disabledWithTooltip: "Feature to be implemented later",
+  },
 ];
+
+function getSelectionDisabledTooltip(
+  action: ActionConfig,
+  selection: WorkspaceBrowserItem[],
+): string | undefined {
+  if (action.id === "editType" && selection.some((s) => s.type === "job_result")) {
+    return 'Cannot change "job_result" type';
+  }
+  return undefined;
+}
 
 function isActionValidForSelection(
   action: ActionConfig,
@@ -53,6 +76,8 @@ function isActionValidForSelection(
       (action.validTypes as string[]).includes(s.type ?? ""),
     );
   if (!typesMatch) return false;
+
+  if (action.singleOnly && selection.length > 1) return false;
 
   if (action.requireWrite) {
     const hasWrite = selection.every((s) =>
@@ -70,13 +95,17 @@ export interface WorkspaceActionBarProps {
   workspaceGuideUrl: string;
   currentPath?: string;
   /** Action IDs to disable (e.g. "download" while fetching URL). */
-  disabledActionIds?: string[];
+  disabledActionIds?: WorkspaceActionId[];
   /** Action IDs currently loading (show spinner instead of icon). */
-  loadingActionIds?: string[];
+  loadingActionIds?: WorkspaceActionId[];
   /** When true, the Favorite action shows a filled star (selected folder is favorited). */
   isCurrentSelectionFavorite?: boolean;
-  onAction?: (actionId: string, selection: WorkspaceBrowserItem[]) => void;
+  /** When true, only show read-only actions (guide + download). Used for public workspace browsing. */
+  readOnly?: boolean;
+  onAction?: (actionId: WorkspaceActionId, selection: WorkspaceBrowserItem[]) => void;
 }
+
+const readOnlyAllowedActions = new Set(["guide", "download"]);
 
 export function WorkspaceActionBar({
   selection,
@@ -84,14 +113,16 @@ export function WorkspaceActionBar({
   disabledActionIds,
   loadingActionIds,
   isCurrentSelectionFavorite = false,
+  readOnly = false,
   onAction,
 }: WorkspaceActionBarProps) {
-  const visibleActions = actionConfig.filter((action) =>
-    isActionValidForSelection(action, selection),
-  );
-  const isDisabled = (actionId: string) =>
+  const visibleActions = actionConfig.filter((action) => {
+    if (readOnly && !readOnlyAllowedActions.has(action.id)) return false;
+    return isActionValidForSelection(action, selection);
+  });
+  const isDisabled = (actionId: WorkspaceActionId) =>
     disabledActionIds?.includes(actionId) ?? false;
-  const isLoading = (actionId: string) =>
+  const isLoading = (actionId: WorkspaceActionId) =>
     loadingActionIds?.includes(actionId) ?? false;
   const isPermanentlyDisabled = (action: ActionConfig) =>
     !!action.disabledWithTooltip;
@@ -105,8 +136,10 @@ export function WorkspaceActionBar({
           const isFavoriteAction = action.id === "favorite";
           const showFilledStar =
             isFavoriteAction && isCurrentSelectionFavorite && !showSpinner;
+          const dynamicTooltip = getSelectionDisabledTooltip(action, selection);
+          const tooltipText = action.disabledWithTooltip ?? dynamicTooltip;
           const disabled =
-            isDisabled(action.id) || isPermanentlyDisabled(action);
+            isDisabled(action.id) || isPermanentlyDisabled(action) || !!dynamicTooltip;
           const buttonEl = (
             <Button
               key={action.id}
@@ -129,7 +162,7 @@ export function WorkspaceActionBar({
               <span className="text-[11px] font-medium leading-tight">{action.label}</span>
             </Button>
           );
-          return action.disabledWithTooltip && disabled ? (
+          return tooltipText && disabled ? (
             <Tooltip key={action.id}>
               <TooltipTrigger
                 render={
@@ -139,7 +172,7 @@ export function WorkspaceActionBar({
                 }
               />
               <TooltipContent side="left">
-                <p>{action.disabledWithTooltip}</p>
+                <p>{tooltipText}</p>
               </TooltipContent>
             </Tooltip>
           ) : (

@@ -32,6 +32,7 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { toast } from "sonner";
 import {
   completeGenomeAnnotationSchema,
@@ -117,6 +118,7 @@ const GenomeAnnotationContent = () => {
 
   // Rerun: pre-fill form from job parameters
   const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+  useDefaultOutputPath(form, rerunData);
 
   useEffect(() => {
     if (!rerunData || !markApplied()) return;

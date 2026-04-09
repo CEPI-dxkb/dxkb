@@ -1,7 +1,11 @@
 packages:
   - .
 onlyBuiltDependencies:
+  - '@prisma/engines'
   - esbuild
+  - msw
+  - prisma
   - sharp
   - unrs-resolver
-
+patchedDependencies:
+  molstar: patches/molstar.patch

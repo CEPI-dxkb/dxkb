@@ -1,5 +1,7 @@
 import { Separator } from "@/components/ui/separator";
-import { Mail, MapPin, Twitter, Linkedin, Github, Clock, Phone } from "lucide-react";
+import { Mail, MapPin, Clock, Phone } from "lucide-react";
+import { SiX, SiGithub } from "@icons-pack/react-simple-icons";
+import LinkedInIcon from "@/components/icons/linkedin-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -61,21 +63,21 @@ const ContactForm = () => {
                   <div className="flex space-x-4">
                     <a
                       href="#"
-                      className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
+                      className="flex items-center justify-center size-11 rounded-full bg-accent/20 hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <Twitter className="h-5 w-5 text-accent" />
+                      <SiX className="h-5 w-5 text-accent" />
                     </a>
                     <a
                       href="#"
-                      className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
+                      className="flex items-center justify-center size-11 rounded-full bg-accent/20 hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <Linkedin className="h-5 w-5 text-accent" />
+                      <LinkedInIcon className="h-5 w-5 text-accent" />
                     </a>
                     <a
                       href="#"
-                      className="bg-accent/20 p-3 rounded-full hover:bg-accent/40 transition-colors duration-200"
+                      className="flex items-center justify-center size-11 rounded-full bg-accent/20 hover:bg-accent/40 transition-colors duration-200"
                     >
-                      <Github className="h-5 w-5 text-accent" />
+                      <SiGithub className="h-5 w-5 text-accent" />
                     </a>
                   </div>
 

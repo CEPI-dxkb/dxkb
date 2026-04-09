@@ -1,7 +1,8 @@
+import { NextResponse } from "next/server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({
-  getBvbrcAuthToken: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAuthToken: vi.fn(),
 }));
 
 vi.mock("@/lib/app-service", () => ({
@@ -9,10 +10,10 @@ vi.mock("@/lib/app-service", () => ({
 }));
 
 import { POST } from "../route";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { createAppService } from "@/lib/app-service";
 
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 const mockCreateAppService = vi.mocked(createAppService);
 
 const mockAppService = {
@@ -25,7 +26,9 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
   });
 
   it("returns 401 when no auth token is available", async () => {
-    mockGetToken.mockResolvedValue(null);
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    );
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
@@ -37,7 +40,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
   });
 
   it("returns summary on success", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     const summaryData = { queued: 5, running: 2, completed: 20, failed: 1 };
     mockAppService.queryTaskSummaryFiltered.mockResolvedValue(summaryData);
 
@@ -51,7 +54,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
   });
 
   it("passes include_archived through to the service", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     mockAppService.queryTaskSummaryFiltered.mockResolvedValue({});
 
     const request = mockNextRequest({
@@ -67,7 +70,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
   });
 
   it("returns 500 when an error is thrown", async () => {
-    mockGetToken.mockResolvedValue("test-token");
+    mockRequireAuthToken.mockResolvedValue("test-token");
     mockAppService.queryTaskSummaryFiltered.mockRejectedValue(
       new Error("Service down"),
     );

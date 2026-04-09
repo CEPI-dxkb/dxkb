@@ -2,13 +2,13 @@
 
 import { useMemo, useCallback } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { WorkspaceItemIcon } from "./workspace-item-icon";
+import { WorkspaceItemIcon, type FolderIconVariant } from "./workspace-item-icon";
 import type {
   WorkspaceBrowserItem,
   SortField,
   WorkspaceBrowserSort,
 } from "@/types/workspace-browser";
-import { formatFileSize, formatDate } from "@/lib/services/workspace/helpers";
+import { formatFileSize, formatDate, formatOwner } from "@/lib/services/workspace/helpers";
 import { isFolderType } from "@/lib/services/workspace/utils";
 
 /** Responsive hide classes for each column — shared with special rows (LeadingRow, ParentRow). */
@@ -21,21 +21,19 @@ export const columnClassMap: Record<string, string> = {
   type: "hidden lg:table-cell",
 };
 
-export function formatOwner(ownerId: string): string {
-  if (!ownerId) return "";
-  return ownerId.replace(/@bvbrc$/, "");
-}
-
 export function formatMemberCount(count: number): string {
   if (count <= 0) return "\u2014";
   if (count === 1) return "Only me";
   return `${count} members`;
 }
 
+const emptyFavorites: string[] = [];
+
 export function useWorkspaceColumns(
   sort: WorkspaceBrowserSort,
   onSortChange: (sort: WorkspaceBrowserSort) => void,
   memberCountByPath: Record<string, number> | undefined,
+  favoritePaths: string[] = emptyFavorites,
 ) {
   const handleSort = useCallback(
     (field: string) => {
@@ -53,6 +51,7 @@ export function useWorkspaceColumns(
   );
 
   const columns = useMemo<ColumnDef<WorkspaceBrowserItem>[]>(() => {
+    const favoriteSet = new Set(favoritePaths);
     return [
       {
         id: "name",
@@ -61,9 +60,15 @@ export function useWorkspaceColumns(
         cell: ({ row }) => {
           const item = row.original;
           const isNavigable = isFolderType(item.type);
+          let variant: FolderIconVariant = "default";
+          if (isNavigable) {
+            if (item.global_permission === "r") variant = "public";
+            else if (favoriteSet.has(item.path)) variant = "favorite";
+            else if ((memberCountByPath?.[item.path] ?? 0) > 1) variant = "shared";
+          }
           return (
             <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-              <WorkspaceItemIcon type={item.type} className="shrink-0" />
+              <WorkspaceItemIcon type={item.type} variant={variant} className="shrink-0" />
               <span
                 className={`truncate ${isNavigable ? "font-medium hover:underline" : ""}`}
                 title={item.name}
@@ -145,7 +150,7 @@ export function useWorkspaceColumns(
         enableResizing: true,
       },
     ];
-  }, [memberCountByPath]);
+  }, [memberCountByPath, favoritePaths]);
 
   return { columns, handleSort };
 }

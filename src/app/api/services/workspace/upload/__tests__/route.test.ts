@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { server } from "@/test-helpers/msw-server";
 import { json } from "@/test-helpers/api-route-helpers";
 
-vi.mock("@/lib/auth", () => ({ getBvbrcAuthToken: vi.fn() }));
+vi.mock("@/lib/auth/session", () => ({ requireAuthToken: vi.fn() }));
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn((key: string) => {
     if (key === "SHOCK_ORIGINS") return "http://allowed-shock.example.com";
@@ -11,8 +11,8 @@ vi.mock("@/lib/env", () => ({
   }),
 }));
 
-import { getBvbrcAuthToken } from "@/lib/auth";
-const mockGetToken = vi.mocked(getBvbrcAuthToken);
+import { requireAuthToken } from "@/lib/auth/session";
+const mockRequireAuthToken = vi.mocked(requireAuthToken);
 
 function defaultGetRequiredEnv(key: string) {
   if (key === "SHOCK_ORIGINS") return "http://allowed-shock.example.com";
@@ -66,7 +66,7 @@ describe("POST /api/services/workspace/upload", () => {
       return "http://mock-api";
     });
 
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -84,7 +84,9 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 401 when no auth token", async () => {
-    mockGetToken.mockResolvedValue(undefined);
+    mockRequireAuthToken.mockResolvedValue(
+      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
+    );
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -100,7 +102,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 400 when url is missing", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({ file });
@@ -113,7 +115,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 400 when file is missing", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const req = makeUploadRequest({
       url: "http://allowed-shock.example.com/node/123",
@@ -127,7 +129,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns 400 when URL is not in allowlist", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     const file = new File(["content"], "test.fasta", { type: "text/plain" });
     const req = makeUploadRequest({
@@ -145,7 +147,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("prepends OAuth prefix to auth token", async () => {
-    mockGetToken.mockResolvedValue("my-raw-token");
+    mockRequireAuthToken.mockResolvedValue("my-raw-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -166,7 +168,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("does not double-prepend OAuth if already present", async () => {
-    mockGetToken.mockResolvedValue("OAuth existing-token");
+    mockRequireAuthToken.mockResolvedValue("OAuth existing-token");
 
     let capturedHeaders: Headers | undefined;
     server.use(
@@ -187,7 +189,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns data on successful upload", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
     const responseData = { data: { id: "node-id" } };
 
     server.use(
@@ -208,7 +210,7 @@ describe("POST /api/services/workspace/upload", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    mockGetToken.mockResolvedValue("token");
+    mockRequireAuthToken.mockResolvedValue("token");
 
     server.use(
       http.put("http://allowed-shock.example.com/node/123", () => {

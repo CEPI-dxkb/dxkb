@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setBvbrcAuthCookies, getProfileMetadata, extractRealmFromToken } from "@/app/api/auth/utils";
+import { createSession, extractRealmFromToken } from "@/lib/auth/session";
+import { fetchUserProfile } from "@/lib/auth/profile";
 import { getRequiredEnv } from "@/lib/env";
 
 /**
@@ -53,10 +54,10 @@ export async function POST(request: NextRequest) {
     const realm = extractRealmFromToken(token);
 
     // Fetch user profile from BV-BRC
-    const userProfile = await getProfileMetadata(token, credentials.username);
+    const userProfile = await fetchUserProfile(credentials.username, token);
 
     // Set BV-BRC authentication cookies
-    await setBvbrcAuthCookies(token, credentials.username, realm, userProfile ?? undefined);
+    await createSession(token, credentials.username, realm, userProfile ?? undefined);
 
     // Return better-auth style response
     return NextResponse.json({

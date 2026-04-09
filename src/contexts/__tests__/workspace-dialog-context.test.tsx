@@ -145,16 +145,6 @@ describe("WorkspaceDialogContext", () => {
     });
   });
 
-  it("OPEN_FILE_VIEWER_CONSTRUCTION sets fileViewerConstruction type", () => {
-    const { result } = renderHook(() => useWorkspaceDialog(), { wrapper });
-
-    act(() => {
-      result.current.dispatch({ type: "OPEN_FILE_VIEWER_CONSTRUCTION" });
-    });
-
-    expect(result.current.state.activeDialog).toEqual({ type: "fileViewerConstruction" });
-  });
-
   it("OPEN_CREATE_WORKSPACE sets createWorkspace type", () => {
     const { result } = renderHook(() => useWorkspaceDialog(), { wrapper });
 

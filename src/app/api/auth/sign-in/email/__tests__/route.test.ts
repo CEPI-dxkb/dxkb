@@ -2,10 +2,13 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve({ get: vi.fn(), set: vi.fn() })),
 }));
 
-vi.mock("@/app/api/auth/utils", () => ({
-  setBvbrcAuthCookies: vi.fn(),
-  getProfileMetadata: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  createSession: vi.fn(),
   extractRealmFromToken: vi.fn(),
+}));
+
+vi.mock("@/lib/auth/profile", () => ({
+  fetchUserProfile: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -17,19 +20,19 @@ import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 import {
-  setBvbrcAuthCookies,
-  getProfileMetadata,
+  createSession,
   extractRealmFromToken,
-} from "@/app/api/auth/utils";
+} from "@/lib/auth/session";
+import { fetchUserProfile } from "@/lib/auth/profile";
 
-const mockSetBvbrcAuthCookies = vi.mocked(setBvbrcAuthCookies);
-const mockGetProfileMetadata = vi.mocked(getProfileMetadata);
+const mockCreateSession = vi.mocked(createSession);
+const mockFetchUserProfile = vi.mocked(fetchUserProfile);
 const mockExtractRealmFromToken = vi.mocked(extractRealmFromToken);
 
 describe("POST /api/auth/sign-in/email", () => {
   beforeEach(() => {
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
-    mockGetProfileMetadata.mockResolvedValue(null);
+    mockFetchUserProfile.mockResolvedValue(null);
   });
 
   it("returns 400 when username is missing", async () => {
@@ -164,7 +167,7 @@ describe("POST /api/auth/sign-in/email", () => {
     expect(data.message).toBe("Authentication service unavailable");
   });
 
-  it("calls setBvbrcAuthCookies with correct arguments", async () => {
+  it("calls createSession with correct arguments", async () => {
     const profile = {
       id: "user123",
       email: "test@example.com",
@@ -172,7 +175,7 @@ describe("POST /api/auth/sign-in/email", () => {
       last_name: "User",
       email_verified: true,
     };
-    mockGetProfileMetadata.mockResolvedValue(profile);
+    mockFetchUserProfile.mockResolvedValue(profile);
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
 
     server.use(
@@ -192,7 +195,7 @@ describe("POST /api/auth/sign-in/email", () => {
 
     await POST(request);
 
-    expect(mockSetBvbrcAuthCookies).toHaveBeenCalledWith(
+    expect(mockCreateSession).toHaveBeenCalledWith(
       "the-token",
       "testuser",
       "patricbrc.org",
@@ -208,7 +211,7 @@ describe("POST /api/auth/sign-in/email", () => {
       last_name: "User",
       email_verified: true,
     };
-    mockGetProfileMetadata.mockResolvedValue(profile);
+    mockFetchUserProfile.mockResolvedValue(profile);
     mockExtractRealmFromToken.mockReturnValue("patricbrc.org");
 
     server.use(
@@ -250,7 +253,7 @@ describe("POST /api/auth/sign-in/email", () => {
   });
 
   it("returns user with fallback values when no profile is available", async () => {
-    mockGetProfileMetadata.mockResolvedValue(null);
+    mockFetchUserProfile.mockResolvedValue(null);
     mockExtractRealmFromToken.mockReturnValue(undefined);
 
     server.use(

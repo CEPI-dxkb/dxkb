@@ -1,56 +1,46 @@
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(() => Promise.resolve({ get: vi.fn(), set: vi.fn() })),
-}));
-
-vi.mock("@/app/api/auth/utils", () => ({
-  getBvbrcAuthData: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAuth: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
   getRequiredEnv: vi.fn(() => "http://mock-verification-url"),
 }));
 
+import { NextResponse } from "next/server";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { POST } from "../route";
-import { getBvbrcAuthData } from "@/app/api/auth/utils";
+import { requireAuth } from "@/lib/auth/session";
 
-const mockGetBvbrcAuthData = vi.mocked(getBvbrcAuthData);
+const mockRequireAuth = vi.mocked(requireAuth);
 
 describe("POST /api/auth/send-verification-email", () => {
   it("returns 401 when no token is present", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
-      token: undefined,
-      userId: "testuser",
-      realm: undefined,
-    });
+    mockRequireAuth.mockResolvedValue(
+      NextResponse.json({ message: "Authentication required" }, { status: 401 }),
+    );
 
     const response = await POST();
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data.success).toBe(false);
-    expect(data.message).toBe(
-      "Authentication required. Please sign in first.",
-    );
+    expect(data.message).toBe("Authentication required");
   });
 
   it("returns 401 when no userId is present", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
-      token: "some-token",
-      userId: undefined,
-      realm: undefined,
-    });
+    mockRequireAuth.mockResolvedValue(
+      NextResponse.json({ message: "Authentication required" }, { status: 401 }),
+    );
 
     const response = await POST();
     const data = await response.json();
 
     expect(response.status).toBe(401);
-    expect(data.success).toBe(false);
+    expect(data.message).toBe("Authentication required");
   });
 
   it("returns success when verification email is sent", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockRequireAuth.mockResolvedValue({
       token: "valid-token",
       userId: "testuser",
       realm: "patricbrc.org",
@@ -79,10 +69,10 @@ describe("POST /api/auth/send-verification-email", () => {
   });
 
   it("returns upstream error on non-ok response", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockRequireAuth.mockResolvedValue({
       token: "valid-token",
       userId: "testuser",
-      realm: undefined,
+      realm: "bvbrc",
     });
 
     server.use(
@@ -103,7 +93,7 @@ describe("POST /api/auth/send-verification-email", () => {
   });
 
   it("returns 500 when an exception is thrown", async () => {
-    mockGetBvbrcAuthData.mockRejectedValue(new Error("Unexpected error"));
+    mockRequireAuth.mockRejectedValue(new Error("Unexpected error"));
 
     const response = await POST();
     const data = await response.json();

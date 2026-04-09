@@ -42,6 +42,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
 import type { Library } from "@/types/services";
 import {
@@ -135,6 +136,7 @@ export default function MetagenomicReadMappingPage() {
 
   // Rerun: pre-fill form from job parameters
   const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
+  useDefaultOutputPath(form, rerunData);
 
   useEffect(() => {
     if (!rerunData || !markApplied()) return;

@@ -20,10 +20,11 @@ export function useWorkspacePathResolve({
   return useQuery<ResolvedPathObject | null, Error>({
     queryKey: ["workspace-path-resolve", fullPath],
     queryFn: async () => {
-      const raw = await getWorkspaceMetadata([fullPath]);
+      const raw = await getWorkspaceMetadata([fullPath], { silent: true });
       return parseWorkspaceGetSingle(raw as unknown[], 0);
     },
     enabled: enabled && !!fullPath,
+    retry: false,
     staleTime: 2 * 60 * 1000,
   });
 }

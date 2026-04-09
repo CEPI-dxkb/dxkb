@@ -1,6 +1,5 @@
-import React from "react";
 import Link from "next/link";
-import { Github, Twitter, Facebook, Instagram, Youtube } from "lucide-react";
+import { SiGithub, SiFacebook, SiInstagram, SiYoutube, SiX } from "@icons-pack/react-simple-icons";
 import Logo from "@/components/ui/logo";
 import ThemeContent from "@/components/ui/theme-content";
 
@@ -89,8 +88,8 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <Twitter className="h-4 w-4" data-icon="inline-start" />
-                <span className="sr-only">Twitter</span>
+                <SiX className="h-4 w-4" data-icon="inline-start" />
+                <span className="sr-only">X</span>
               </Link>
               <Link
                 href="https://facebook.com"
@@ -98,7 +97,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <Facebook className="h-4 w-4" data-icon="inline-start" />
+                <SiFacebook className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">Facebook</span>
               </Link>
               <Link
@@ -107,7 +106,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <Instagram className="h-4 w-4" data-icon="inline-start" />
+                <SiInstagram className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">Instagram</span>
               </Link>
               <Link
@@ -116,7 +115,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <Github className="h-4 w-4" data-icon="inline-start" />
+                <SiGithub className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">GitHub</span>
               </Link>
               <Link
@@ -125,7 +124,7 @@ const Footer = () => {
                 rel="noopener noreferrer"
                 className={socialLinkClassName}
               >
-                <Youtube className="h-4 w-4" data-icon="inline-start" />
+                <SiYoutube className="h-4 w-4" data-icon="inline-start" />
                 <span className="sr-only">YouTube</span>
               </Link>
             </div>

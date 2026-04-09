@@ -216,7 +216,7 @@ describe("shared workspace functions", () => {
 
       expect(mockMakeRequest).toHaveBeenCalledWith("Workspace.get", [
         { objects: ["/owner@bvbrc/file.txt"], metadata_only: true },
-      ]);
+      ], undefined);
       expect(result).toEqual(metadata);
     });
 
@@ -233,7 +233,7 @@ describe("shared workspace functions", () => {
           objects: ["/user@bvbrc/file1", "/user@bvbrc/file2"],
           metadata_only: true,
         },
-      ]);
+      ], undefined);
     });
   });
 });

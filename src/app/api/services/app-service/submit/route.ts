@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { JsonRpcError } from "@/lib/jsonrpc-client";
 
 /**
@@ -9,15 +9,8 @@ import { JsonRpcError } from "@/lib/jsonrpc-client";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get BV-BRC authentication token from cookies
-    const token = await getBvbrcAuthToken();
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      );
-    }
+    const token = await requireAuthToken();
+    if (token instanceof NextResponse) return token;
 
     // Parse request body
     const body = await request.json();

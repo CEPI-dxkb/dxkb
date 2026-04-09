@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, FormEvent, useEffect, useCallback, Suspense } from "react";
+import { useState, FormEvent, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -20,26 +20,30 @@ interface SearchBarProps {
 
 function extractKeywordQuery(raw: string): string {
   const matches = [...raw.matchAll(/keyword\(([^)]+)\)/g)];
-  const keywords = matches.map((match) => match[1]);
-  return keywords.join(" ");
+  if (matches.length === 0) return raw;
+  return matches.map((match) => match[1]).join(" ");
 }
 
 function SearchParamsSync({
   onQueryChange,
+  onSearchTypeChange,
 }: {
   onQueryChange: (value: string) => void;
+  onSearchTypeChange: (value: string) => void;
 }) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const raw = searchParams.get("q") || "";
     onQueryChange(extractKeywordQuery(raw));
-  }, [searchParams, onQueryChange]);
+    const type = searchParams.get("searchtype") || "";
+    if (type && searchTypes.some((st) => st.id === type)) onSearchTypeChange(type);
+  }, [searchParams, onQueryChange, onSearchTypeChange]);
 
   return null;
 }
 
-function SearchBarContent({
+export function SearchBar({
   initialValue = "",
   className = "",
   placeholder = "Search by virus name, protein, gene, or taxonomy...",
@@ -56,8 +60,12 @@ function SearchBarContent({
     setInputValue(value);
   }, []);
 
-  const handleSearch = (e?: FormEvent) => {
-    if (e) e.preventDefault();
+  const handleSearchTypeChange = useCallback((value: string) => {
+    setSelected(value);
+  }, []);
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
     if (!inputValue.trim()) return;
 
     router.push(
@@ -74,14 +82,10 @@ function SearchBarContent({
     });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
-  };
-
   return (
-    <form onSubmit={handleSearch} className={`flex w-full max-w-[880px] ${className}`}>
+    <form onSubmit={handleSearch} className={`flex w-full ${className}`}>
       <Suspense fallback={null}>
-        <SearchParamsSync onQueryChange={handleQueryChange} />
+        <SearchParamsSync onQueryChange={handleQueryChange} onSearchTypeChange={handleSearchTypeChange} />
       </Suspense>
       <div className="relative flex w-full h-full items-stretch rounded-md border border-input bg-background overflow-hidden">
         <Select
@@ -113,7 +117,6 @@ function SearchBarContent({
             className={`${size === "lg" ? "py-6" : ""} ${showIcon ? "pl-10" : ""} rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0 w-full`}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
           />
           {showIcon && (
             <Search
@@ -122,13 +125,8 @@ function SearchBarContent({
             />
           )}
         </div>
+        <button type="submit" className="sr-only">Search</button>
       </div>
     </form>
-  );
-}
-
-export function SearchBar(props: SearchBarProps) {
-  return (
-    <SearchBarContent {...props} />
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getBvbrcAuthToken } from "@/lib/auth";
+import { requireAuthToken } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
 
 function isAllowedShockUrl(urlString: string, allowedOrigins: string): boolean {
@@ -28,13 +28,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authToken = await getBvbrcAuthToken();
-    if (!authToken) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 },
-      );
-    }
+    const authToken = await requireAuthToken();
+    if (authToken instanceof NextResponse) return authToken;
 
     const formData = await request.formData();
     const urlRaw = formData.get("url");

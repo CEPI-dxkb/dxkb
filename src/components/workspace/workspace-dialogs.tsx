@@ -8,7 +8,6 @@ import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 import { DeleteConfirmDialog } from "./delete-confirm-dialog";
 import { DownloadOptionsDialog } from "./download-options-dialog";
 import { EditTypeDialog } from "./edit-type-dialog";
-import { FileViewerConstructionDialog } from "./file-viewer-construction-dialog";
 import { UploadDialog } from "./upload-dialog";
 
 interface WorkspaceDialogsProps {
@@ -95,10 +94,6 @@ export function WorkspaceDialogs({
         pendingDeleteSelection={activeDialog?.type === "delete" ? activeDialog.items : []}
         nonEmptyFolderPathsInDelete={activeDialog?.type === "delete" ? activeDialog.nonEmptyPaths : []}
         onConfirmDelete={onConfirmDelete}
-      />
-      <FileViewerConstructionDialog
-        open={activeDialog?.type === "fileViewerConstruction"}
-        onOpenChange={closeDialog}
       />
     </>
   );

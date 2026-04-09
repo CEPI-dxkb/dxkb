@@ -20,6 +20,8 @@ export interface UseWorkspaceDataOptions {
   currentUser: string;
   isJobResultView: boolean;
   isAtSharedRoot: boolean;
+  /** When true, the path resolve already failed — skip all data fetches. */
+  pathResolveFailed?: boolean;
   initialSharedItems?: WorkspaceBrowserItem[];
   initialPathItems?: WorkspaceBrowserItem[];
   initialPermissions?: ListPermissionsResult;
@@ -43,32 +45,34 @@ export function useWorkspaceData({
   currentUser,
   isJobResultView,
   isAtSharedRoot,
+  pathResolveFailed = false,
   initialSharedItems,
   initialPathItems,
   initialPermissions,
 }: UseWorkspaceDataOptions): UseWorkspaceDataReturn {
   const isHome = mode === "home";
+  const canFetch = !pathResolveFailed;
 
   const homeQuery = useWorkspaceBrowser({
     username,
     path,
-    enabled: isHome && !!currentUser && !isJobResultView,
+    enabled: canFetch && isHome && !!currentUser && !isJobResultView,
   });
 
   const sharedQuery = useSharedWithUser({
     username: currentUser,
-    enabled: !isHome && isAtSharedRoot && !!currentUser,
+    enabled: canFetch && !isHome && isAtSharedRoot && !!currentUser,
     initialData: !isHome && isAtSharedRoot ? initialSharedItems : undefined,
   });
 
   const userWorkspacesQuery = useUserWorkspaces({
     username: currentUser,
-    enabled: !isHome && isAtSharedRoot && !!currentUser,
+    enabled: canFetch && !isHome && isAtSharedRoot && !!currentUser,
   });
 
   const pathQuery = useWorkspaceListByPath({
     fullPath,
-    enabled: !isHome && !isAtSharedRoot && !!fullPath && !isJobResultView,
+    enabled: canFetch && !isHome && !isAtSharedRoot && !!fullPath && !isJobResultView,
     initialData: !isHome && !isAtSharedRoot ? initialPathItems : undefined,
   });
 
@@ -77,12 +81,12 @@ export function useWorkspaceData({
   // separate fetch when they mount shortly after.
   useWorkspaceGet({
     objectPaths: !isHome && !isAtSharedRoot && fullPath ? [fullPath] : [],
-    enabled: !isHome && !isAtSharedRoot && !!fullPath,
+    enabled: canFetch && !isHome && !isAtSharedRoot && !!fullPath,
   });
 
   const currentDirPermsQuery = useWorkspacePermissions({
     paths: !isHome && !isAtSharedRoot && fullPath ? [fullPath] : [],
-    enabled: !isHome && !isAtSharedRoot && !!fullPath,
+    enabled: canFetch && !isHome && !isAtSharedRoot && !!fullPath,
   });
 
   const rootItems = useMemo(() => {

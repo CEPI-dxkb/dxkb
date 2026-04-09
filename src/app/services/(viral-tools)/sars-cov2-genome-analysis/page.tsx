@@ -46,6 +46,7 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
 import {
   sarsCov2GenomeAnalysisInfo,
@@ -105,6 +106,7 @@ export default function SarsCov2GenomeAnalysisPage() {
       await handleSubmit(value as SarsCov2GenomeAnalysisFormData);
     },
   });
+  useDefaultOutputPath(form, rerunData);
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);

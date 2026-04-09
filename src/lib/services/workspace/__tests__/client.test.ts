@@ -23,10 +23,12 @@ describe("WorkspaceApiClient", () => {
 
       await client.makeRequest("Workspace.get", [{ objects: ["/path"] }]);
 
-      expect(capturedBody).toEqual({
-        method: "Workspace.get",
-        params: [{ objects: ["/path"] }],
-      });
+      expect(capturedBody).toEqual(
+        expect.objectContaining({
+          method: "Workspace.get",
+          params: [{ objects: ["/path"] }],
+        }),
+      );
     });
 
     it("returns raw result for rawResultMethods (Workspace.get)", async () => {

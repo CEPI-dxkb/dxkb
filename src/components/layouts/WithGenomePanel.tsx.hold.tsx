@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { InfoPanel } from "@/components/containers/InfoPanel";
+import { InfoPanel } from "@/components/detail-panel/info-panel";
 
 interface WithGenomePanelProps {
   children: (props: {

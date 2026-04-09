@@ -110,6 +110,66 @@ describe("useWorkspaceNavigation", () => {
     expect(mockRouter.push).toHaveBeenCalled();
   });
 
+  it("navigateToItem in home mode uses basePath instead of path when provided", () => {
+    const item = makeItem({ name: "child-folder", type: "folder" });
+
+    const { result } = renderHook(() =>
+      useWorkspaceNavigation({
+        ...defaultProps,
+        path: "original/path",
+        basePath: "override/base",
+      }),
+    );
+
+    act(() => {
+      result.current.navigateToItem(item);
+    });
+
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      "/workspace/testuser/home/override/base/child-folder",
+    );
+  });
+
+  it("navigateToItem in home mode falls back to path when basePath is undefined", () => {
+    const item = makeItem({ name: "sub", type: "folder" });
+
+    const { result } = renderHook(() =>
+      useWorkspaceNavigation({
+        ...defaultProps,
+        path: "fallback/path",
+        basePath: undefined,
+      }),
+    );
+
+    act(() => {
+      result.current.navigateToItem(item);
+    });
+
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      "/workspace/testuser/home/fallback/path/sub",
+    );
+  });
+
+  it("navigateToItem in public mode builds URL from item.path", () => {
+    const item = makeItem({
+      name: "public-doc",
+      path: "/shared/public-doc",
+      type: "folder",
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceNavigation({ ...defaultProps, mode: "public" }),
+    );
+
+    act(() => {
+      result.current.navigateToItem(item);
+    });
+
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      "/workspace/public/shared/public-doc",
+    );
+  });
+
   it("handleItemDoubleClick ignores non-folder/non-job types", () => {
     const regularFile = makeItem({
       name: "data.csv",

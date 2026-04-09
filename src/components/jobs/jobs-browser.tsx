@@ -21,7 +21,7 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { useKillJob } from "@/hooks/services/workspace/use-workspace";
 import { useJobsData } from "@/hooks/services/jobs/use-jobs-data";
 import { useJobsSummary } from "@/hooks/services/jobs/use-jobs-summary";
-import { DataTable, type DataTableSort } from "@/components/shared/data-table";
+import { DataTable, type DataTableSort } from "@/components/shared/file-table";
 import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigation";
 import { useJobsColumns } from "./jobs-table-columns";
 import { JobsToolbar } from "./jobs-toolbar";

@@ -2,10 +2,10 @@ vi.mock("next/headers", () => ({
   cookies: vi.fn(() => Promise.resolve({ get: vi.fn(), set: vi.fn() })),
 }));
 
-vi.mock("@/app/api/auth/utils", () => ({
-  getBvbrcAuthData: vi.fn(),
-  setBvbrcAuthCookies: vi.fn(),
-  clearBvbrcAuthCookies: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  getSession: vi.fn(),
+  createSession: vi.fn(),
+  deleteSession: vi.fn(),
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -16,18 +16,18 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { GET } from "../route";
 import {
-  getBvbrcAuthData,
-  setBvbrcAuthCookies,
-  clearBvbrcAuthCookies,
-} from "@/app/api/auth/utils";
+  getSession,
+  createSession,
+  deleteSession,
+} from "@/lib/auth/session";
 
-const mockGetBvbrcAuthData = vi.mocked(getBvbrcAuthData);
-const mockSetBvbrcAuthCookies = vi.mocked(setBvbrcAuthCookies);
-const mockClearBvbrcAuthCookies = vi.mocked(clearBvbrcAuthCookies);
+const mockGetSession = vi.mocked(getSession);
+const mockCreateSession = vi.mocked(createSession);
+const mockDeleteSession = vi.mocked(deleteSession);
 
 describe("GET /api/auth/get-session", () => {
   it("returns null user/session when no token", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: undefined,
       userId: "testuser",
       realm: undefined,
@@ -37,11 +37,11 @@ describe("GET /api/auth/get-session", () => {
     const data = await response.json();
 
     expect(data).toEqual({ user: null, session: null });
-    expect(mockClearBvbrcAuthCookies).toHaveBeenCalled();
+    expect(mockDeleteSession).toHaveBeenCalled();
   });
 
   it("returns null user/session when no userId", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: "some-token",
       userId: undefined,
       realm: undefined,
@@ -51,11 +51,11 @@ describe("GET /api/auth/get-session", () => {
     const data = await response.json();
 
     expect(data).toEqual({ user: null, session: null });
-    expect(mockClearBvbrcAuthCookies).toHaveBeenCalled();
+    expect(mockDeleteSession).toHaveBeenCalled();
   });
 
   it("clears cookies when no auth data is present", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: undefined,
       userId: undefined,
       realm: undefined,
@@ -63,13 +63,13 @@ describe("GET /api/auth/get-session", () => {
 
     await GET();
 
-    expect(mockClearBvbrcAuthCookies).toHaveBeenCalledTimes(1);
+    expect(mockDeleteSession).toHaveBeenCalledTimes(1);
   });
 
   it("validates token by calling upstream user endpoint", async () => {
     let capturedHeaders: Headers | undefined;
 
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: "valid-token",
       userId: "testuser",
       realm: "patricbrc.org",
@@ -95,7 +95,7 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("clears cookies and returns null when upstream returns non-ok", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: "expired-token",
       userId: "testuser",
       realm: undefined,
@@ -112,11 +112,11 @@ describe("GET /api/auth/get-session", () => {
     const data = await response.json();
 
     expect(data).toEqual({ user: null, session: null });
-    expect(mockClearBvbrcAuthCookies).toHaveBeenCalled();
+    expect(mockDeleteSession).toHaveBeenCalled();
   });
 
   it("clears cookies and returns null on network error", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: "some-token",
       userId: "testuser",
       realm: undefined,
@@ -130,11 +130,11 @@ describe("GET /api/auth/get-session", () => {
     const data = await response.json();
 
     expect(data).toEqual({ user: null, session: null });
-    expect(mockClearBvbrcAuthCookies).toHaveBeenCalled();
+    expect(mockDeleteSession).toHaveBeenCalled();
   });
 
   it("refreshes cookies on valid session", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: "valid-token",
       userId: "testuser",
       realm: "patricbrc.org",
@@ -151,7 +151,7 @@ describe("GET /api/auth/get-session", () => {
 
     await GET();
 
-    expect(mockSetBvbrcAuthCookies).toHaveBeenCalledWith(
+    expect(mockCreateSession).toHaveBeenCalledWith(
       "valid-token",
       "testuser",
       "patricbrc.org",
@@ -159,7 +159,7 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("returns user data on valid session", async () => {
-    mockGetBvbrcAuthData.mockResolvedValue({
+    mockGetSession.mockResolvedValue({
       token: "valid-token",
       userId: "testuser",
       realm: "patricbrc.org",
@@ -201,7 +201,7 @@ describe("GET /api/auth/get-session", () => {
   });
 
   it("returns 500 with null user/session on outer exception", async () => {
-    mockGetBvbrcAuthData.mockRejectedValue(new Error("Unexpected error"));
+    mockGetSession.mockRejectedValue(new Error("Unexpected error"));
 
     const response = await GET();
     const data = await response.json();

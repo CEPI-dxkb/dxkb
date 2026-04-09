@@ -1,0 +1,23 @@
+src/app/api/workspace/preview/[...path]/route.ts
+  ce30c765b21ece29 27-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.7",
+  "base_commit_sha": "2b1ea62111ebf5805f989d6629bf841a7e675928",
+  "prompts": {
+    "ce30c765b21ece29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a6862d-e800-4b2c-b947-6a3ebe7e80fb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 4,
+      "total_deletions": 3,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  }
+}

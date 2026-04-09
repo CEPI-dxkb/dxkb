@@ -24,9 +24,10 @@ export async function GET(
     const segments = resolved.path ?? [];
 
     const maxBytesParam = request.nextUrl.searchParams.get("maxBytes");
-    const maxBytes = maxBytesParam
-      ? Math.min(Math.max(Number(maxBytesParam) || defaultMaxBytes, 1), maxBytesCap)
-      : defaultMaxBytes;
+    const parsed = maxBytesParam !== null ? Number(maxBytesParam) : NaN;
+    const maxBytes = Number.isNaN(parsed)
+      ? defaultMaxBytes
+      : Math.min(Math.max(parsed, 1), maxBytesCap);
 
     const result = await resolveWorkspaceDownload(segments);
     if (result instanceof NextResponse) return result;

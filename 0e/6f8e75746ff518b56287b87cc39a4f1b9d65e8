@@ -1,0 +1,45 @@
+src/contexts/auth-context.tsx
+  ce30c765b21ece29 56-57,72
+src/contexts/__tests__/auth-context.test.tsx
+  ce30c765b21ece29 57-62
+src/lib/auth/__tests__/session.test.ts
+  ce30c765b21ece29 252,281,290
+src/app/api/workspace/__tests__/resolve-download.test.ts
+  ce30c765b21ece29 47
+src/app/api/auth/change-password/route.ts
+  ce30c765b21ece29 15
+src/components/workspace/workspace-breadcrumbs.tsx
+  ce30c765b21ece29 7,26
+src/lib/auth/session.ts
+  ce30c765b21ece29 3,84,94,107,118
+src/app/api/auth/profile/__tests__/route.test.ts
+  ce30c765b21ece29 48,55,127,139
+src/app/api/auth/change-password/__tests__/route.test.ts
+  ce30c765b21ece29 21,33,38
+src/app/api/auth/send-verification-email/__tests__/route.test.ts
+  ce30c765b21ece29 20,27,32,39
+src/app/api/workspace/resolve-download.ts
+  ce30c765b21ece29 5,42,114
+src/components/workspace/workspace-browser.tsx
+  ce30c765b21ece29 23,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.7",
+  "base_commit_sha": "0e6f8e75746ff518b56287b87cc39a4f1b9d65e8",
+  "prompts": {
+    "ce30c765b21ece29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1a6862d-e800-4b2c-b947-6a3ebe7e80fb",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 45,
+      "total_deletions": 78,
+      "accepted_lines": 37,
+      "overriden_lines": 0
+    }
+  }
+}

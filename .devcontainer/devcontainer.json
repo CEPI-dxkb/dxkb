@@ -1,0 +1,55 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+    "name": "DXKB Dev Env",
+    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie",
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/stu-bell/devcontainer-features/claude-code:0": {},
+        "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {},
+        "ghcr.io/devcontainers-extra/features/pnpm:2": {}
+    },
+    "portsAttributes": {
+        "3019": {
+            "label": "Dev Server",
+            "onAutoForward": "openBrowser",
+            "requireLocalPort": true
+        },
+        "3010": {
+            "label": "Production Server",
+            "onAutoForward": "openBrowser",
+            "requireLocalPort": true
+        }
+    },
+    "postCreateCommand": "bash .devcontainer/setup-zsh.sh && sudo chsh -s $(which zsh) $(whoami) && sudo corepack enable && pnpm install",
+    "forwardPorts": [
+        3019,
+        3010
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "bradlc.vscode-tailwindcss",
+                "vitest.explorer",
+                "GitHub.vscode-github-actions"
+            ],
+            "settings": {
+                "editor.defaultFormatter": "esbenp.prettier-vscode",
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.fixAll.eslint": "explicit"
+                },
+                "typescript.tsdk": "node_modules/typescript/lib",
+                "terminal.integrated.defaultProfile.linux": "zsh",
+                "terminal.integrated.profiles.linux": {
+                    "zsh": {
+                        "path": "/bin/zsh"
+                    }
+                }
+            }
+        }
+    }
+}

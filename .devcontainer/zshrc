@@ -1,0 +1,19 @@
+# Path to Oh My Zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+export ZSH_COMPDUMP=$ZSH/cache/.zcompdump-$HOST
+
+# Theme
+ZSH_THEME="gozilla"
+
+# Plugins
+plugins=(git virtualenv fzf-tab zsh-autosuggestions fast-syntax-highlighting zsh-shift-select)
+source $ZSH/oh-my-zsh.sh
+
+# Autocomplete settings
+zstyle -e ':autocomplete:*:*' list-lines 'reply=( $(( 3 )) )'
+zstyle ':autocomplete:recent-paths:*' list-lines 3
+zstyle ':autocomplete:history-incremental-search-backward:*' list-lines 4
+zstyle ':autocomplete:history-search-backward:*' list-lines 20
+
+# Aliases
+alias python='python3'

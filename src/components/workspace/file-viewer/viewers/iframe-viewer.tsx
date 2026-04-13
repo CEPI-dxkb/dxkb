@@ -12,7 +12,7 @@ interface IframeViewerProps {
 // served from our own same-origin proxy — PDF binary content carries no JS risk.
 function getSandbox(fileName: string, allowScripts: boolean): string | undefined {
   if (fileName.toLowerCase().endsWith(".pdf")) return undefined;
-  return allowScripts ? "allow-scripts allow-same-origin" : "allow-same-origin";
+  return allowScripts ? "allow-scripts" : "allow-same-origin";
 }
 
 export function IframeViewer({ filePath, allowScripts = false }: IframeViewerProps) {

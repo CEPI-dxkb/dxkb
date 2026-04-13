@@ -1,7 +1,9 @@
 packages:
   - .
 onlyBuiltDependencies:
+  - '@parcel/watcher'
   - '@prisma/engines'
+  - '@scarf/scarf'
   - esbuild
   - msw
   - prisma

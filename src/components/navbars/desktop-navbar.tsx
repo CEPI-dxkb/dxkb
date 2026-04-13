@@ -33,6 +33,9 @@ const DesktopNavbar = () => {
             priority
           />
         </Link>
+        <span className="self-start mt-1 text-[10px] font-semibold text-white/70">
+          v{process.env.NEXT_PUBLIC_APP_VERSION}
+        </span>
 
         <NavigationMenu className="bg-primary hidden w-full items-center justify-between font-bold lg:flex">
           <NavigationMenuList>

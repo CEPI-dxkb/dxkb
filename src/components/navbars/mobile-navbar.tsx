@@ -222,6 +222,7 @@ const MobileNavbar = () => {
               </SheetTitle>
 
               <div className="relative bg-primary p-4 pb-5">
+                <div className="flex items-start gap-1">
                 <Logo
                   variant="logo-white"
                   width={100}
@@ -229,6 +230,10 @@ const MobileNavbar = () => {
                   className="h-8 w-auto"
                   priority
                 />
+                <span className="mt-0.5 text-[10px] font-semibold text-white/70">
+                  v{process.env.NEXT_PUBLIC_APP_VERSION}
+                </span>
+                </div>
                 <div className="absolute inset-x-0 bottom-0 h-3 bg-linear-to-b from-primary to-transparent" />
               </div>
 
@@ -410,6 +415,9 @@ const MobileNavbar = () => {
               priority
             />
           </Link>
+          <span className="self-start mt-1 text-[10px] font-semibold text-white/70">
+            v{process.env.NEXT_PUBLIC_APP_VERSION}
+          </span>
         </div>
 
         <div className="flex items-center space-x-2">

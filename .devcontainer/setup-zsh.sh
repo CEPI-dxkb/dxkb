@@ -46,6 +46,10 @@ if ! command -v fzf &>/dev/null; then
   sudo apt-get update && sudo apt-get install -y fzf
 fi
 
+echo "==> Setting up gh aliases..."
+gh alias set --shell grsync 'repo_path=$(git config --get remote.origin.url | sed -E "s/.*[/:](.*\/.*)(\.git)?$/\1/" | sed "s/\.git$//"); current_branch=$(git rev-parse --abbrev-ref HEAD); if [ -z "$repo_path" ]; then echo "Error: Not in a git repository"; exit 1; fi; echo "Syncing $repo_path to GitHub w/ branch $current_branch"; gh repo sync "$repo_path" -b "$current_branch"'
+gh alias set gsf grsync
+
 echo "==> Copying .zshrc..."
 cp "$SCRIPT_DIR/zshrc" "$HOME/.zshrc"
 

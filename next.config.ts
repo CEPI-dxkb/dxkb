@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import pkg from "./package.json" with { type: "json" };
 
 // Minimal type for webpack rule (avoids depending on full webpack types)
 interface WebpackRuleLike {
@@ -9,6 +10,9 @@ interface WebpackRuleLike {
 }
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_APP_VERSION: pkg.version,
+  },
 
   webpack(config) {
     // Grab the existing rule that handles SVG imports

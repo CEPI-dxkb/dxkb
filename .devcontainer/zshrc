@@ -17,3 +17,6 @@ zstyle ':autocomplete:history-search-backward:*' list-lines 20
 
 # Aliases
 alias python='python3'
+alias grsync='gh grsync'
+alias gsf='grsync'
+alias gpl='git pull'

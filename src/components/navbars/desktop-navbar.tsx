@@ -33,7 +33,7 @@ const DesktopNavbar = () => {
             priority
           />
         </Link>
-        <span className="self-start mt-1 text-[10px] font-semibold text-white/70">
+        <span className="self-start mt-0 text-[11px] font-semibold italic text-white/90">
           v{process.env.NEXT_PUBLIC_APP_VERSION}
         </span>
 

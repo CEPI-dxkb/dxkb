@@ -12,6 +12,8 @@ const requestSchema = z.object({
     .optional(),
   sort_order: z.enum(["asc", "desc"]).optional(),
   app: z.string().optional(),
+  start_time: z.string().optional(),
+  end_time: z.string().optional(),
 });
 
 /**
@@ -31,21 +33,28 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { offset, limit, include_archived, sort_field, sort_order, app } =
-      parsed.data;
+    const {
+      offset, limit, include_archived, sort_field, sort_order, app,
+      start_time, end_time,
+    } = parsed.data;
 
     const appService = createAppService(token);
 
-    const jobs = await appService.enumerateTasksFiltered({
+    const result = await appService.enumerateTasksFiltered({
       offset,
       limit,
       include_archived,
       sort_field,
       sort_order,
       app,
+      start_time,
+      end_time,
     });
 
-    return NextResponse.json({ jobs });
+    return NextResponse.json({
+      jobs: result.jobs,
+      totalTasks: result.totalTasks,
+    });
   } catch (error) {
     console.error("Error enumerating filtered jobs:", error);
 

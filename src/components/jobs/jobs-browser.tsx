@@ -34,7 +34,7 @@ import type { JobListItem } from "@/types/workspace";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 import { rerunJob } from "@/lib/rerun-utility";
 import {
-  jobsPageSize,
+  defaultPageSize,
   defaultJobsColumnOrder,
   activeJobStatuses,
 } from "@/lib/jobs/constants";
@@ -111,6 +111,23 @@ export function JobsBrowser() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showJobNotFound, setShowJobNotFound] = useState(false);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [pageSize, setPageSize] = useState(defaultPageSize);
+
+  const dateParams = useMemo(() => {
+    const toLocalDate = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+    const startTime = dateFrom ? toLocalDate(dateFrom) : undefined;
+    let endTime: string | undefined;
+    if (dateTo) {
+      const inclusive = new Date(dateTo);
+      inclusive.setDate(inclusive.getDate() + 1);
+      endTime = toLocalDate(inclusive);
+    }
+    return { startTime, endTime };
+  }, [dateFrom, dateTo]);
 
   // Data fetching
   const { data: summaryData } = useJobsSummary(includeArchived);
@@ -121,7 +138,7 @@ export function JobsBrowser() {
     (s) => (statusSummary?.[s] ?? 0) > 0,
   );
   const {
-    data: jobs = [],
+    data: jobsResult,
     isLoading,
     isFetching,
     error,
@@ -129,13 +146,18 @@ export function JobsBrowser() {
     dataUpdatedAt,
   } = useJobsData({
     offset,
-    limit: jobsPageSize,
+    limit: pageSize,
     includeArchived,
     sortField: sort.field,
     sortOrder: sort.direction,
     app: serviceFilter !== "all" ? serviceFilter : undefined,
+    startTime: dateParams.startTime,
+    endTime: dateParams.endTime,
     refetchInterval: hasActiveJobs ? 10_000 : 30_000,
   });
+
+  const jobs = useMemo(() => jobsResult?.jobs ?? [], [jobsResult]);
+  const totalTasks = jobsResult?.totalTasks ?? 0;
 
   // Kill mutation
   const killMutation = useKillJob();
@@ -146,7 +168,8 @@ export function JobsBrowser() {
     return Object.keys(appSummary).sort();
   }, [appSummary]);
 
-  // Client-side filters (status, service, search) applied to the current page
+  // Client-side filters (status, search) applied to the current page
+  // Note: serviceFilter is handled server-side via the `app` param in useJobsData
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
       if (!job?.id || !job?.app) return false;
@@ -157,8 +180,6 @@ export function JobsBrowser() {
           (job.status === "running" || job.status === "in-progress");
         if (!isRunning && job.status !== statusFilter) return false;
       }
-
-      if (serviceFilter !== "all" && job.app !== serviceFilter) return false;
 
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -173,7 +194,7 @@ export function JobsBrowser() {
 
       return true;
     });
-  }, [jobs, statusFilter, serviceFilter, searchQuery]);
+  }, [jobs, statusFilter, searchQuery]);
 
   // Selection
   const selectedJobs = useMemo(
@@ -203,14 +224,22 @@ export function JobsBrowser() {
 
   // Pagination
   const handlePrevious = useCallback(() => {
-    setOffset((prev) => Math.max(0, prev - jobsPageSize));
+    setOffset((prev) => Math.max(0, prev - pageSize));
     setSelectedIds(new Set());
-  }, []);
+  }, [pageSize]);
 
   const handleNext = useCallback(() => {
-    setOffset((prev) => prev + jobsPageSize);
+    setOffset((prev) => prev + pageSize);
     setSelectedIds(new Set());
-  }, []);
+  }, [pageSize]);
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      setOffset((page - 1) * pageSize);
+      setSelectedIds(new Set());
+    },
+    [pageSize],
+  );
 
   // Reset offset when filters change
   const handleStatusFilterChange = useCallback((value: string) => {
@@ -230,6 +259,22 @@ export function JobsBrowser() {
     setOffset(0);
     setSelectedIds(new Set());
   }, []);
+
+  const handlePageSizeChange = useCallback((size: number) => {
+    setPageSize(size);
+    setOffset(0);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleDateFilterChange = useCallback(
+    (from: Date | undefined, to: Date | undefined) => {
+      setDateFrom(from);
+      setDateTo(to);
+      setOffset(0);
+      setSelectedIds(new Set());
+    },
+    [],
+  );
 
   // Row rendering & keyboard
   const handleDoubleClick = useCallback(
@@ -391,6 +436,9 @@ export function JobsBrowser() {
             isRefreshing={isFetching}
             statusSummary={statusSummary}
             dataUpdatedAt={dataUpdatedAt}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateFilterChange={handleDateFilterChange}
           />
         </div>
 
@@ -417,10 +465,13 @@ export function JobsBrowser() {
         <div className="shrink-0 border-t">
           <JobsPagination
             offset={offset}
-            limit={jobsPageSize}
+            limit={pageSize}
             totalOnPage={filteredJobs.length}
+            totalTasks={totalTasks}
             onPrevious={handlePrevious}
             onNext={handleNext}
+            onPageSizeChange={handlePageSizeChange}
+            onPageChange={handlePageChange}
           />
         </div>
       </div>

@@ -51,8 +51,11 @@ export const activeJobStatuses = [
   "in-progress",
 ];
 
+/** Available page size options for the jobs list. */
+export const pageSizeOptions = [25, 50, 100, 200, 500, 1000] as const;
+
 /** Default page size for the jobs list. */
-export const jobsPageSize = 200;
+export const defaultPageSize = 200;
 
 /** Default column display order for the jobs table. */
 export const defaultJobsColumnOrder = [

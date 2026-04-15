@@ -1,5 +1,7 @@
 "use client";
 
+
+
 import {
   Search,
   RefreshCw,
@@ -23,6 +25,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatServiceName } from "@/lib/jobs/formatting";
 import { statusOptions } from "@/lib/jobs/constants";
+import { JobsDateFilter } from "./jobs-date-filter";
+
+function formatTimestamp(ts: number | undefined): string | null {
+  if (!ts) return null;
+  return new Date(ts).toLocaleTimeString();
+}
 
 interface JobsToolbarProps {
   searchQuery: string;
@@ -39,6 +47,9 @@ interface JobsToolbarProps {
   isRefreshing: boolean;
   statusSummary?: Record<string, number>;
   dataUpdatedAt?: number;
+  dateFrom: Date | undefined;
+  dateTo: Date | undefined;
+  onDateFilterChange: (from: Date | undefined, to: Date | undefined) => void;
 }
 
 export function JobsToolbar({
@@ -56,10 +67,12 @@ export function JobsToolbar({
   isRefreshing,
   statusSummary,
   dataUpdatedAt,
+  dateFrom,
+  dateTo,
+  onDateFilterChange,
 }: JobsToolbarProps) {
-  const lastUpdatedText = dataUpdatedAt
-    ? new Date(dataUpdatedAt).toLocaleTimeString()
-    : null;
+
+  const lastUpdatedText = formatTimestamp(dataUpdatedAt);
   return (
     <div className="space-y-3">
       {/* Search */}
@@ -74,28 +87,6 @@ export function JobsToolbar({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* Status filter */}
-        <Select
-          items={statusOptions}
-          value={statusFilter}
-          onValueChange={(value) =>
-            value != null && onStatusFilterChange(value)
-          }
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {statusOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-
         {/* Service filter */}
         <Select
           items={[
@@ -128,6 +119,35 @@ export function JobsToolbar({
           </SelectContent>
         </Select>
 
+        {/* Status filter */}
+        <Select
+          items={statusOptions}
+          value={statusFilter}
+          onValueChange={(value) =>
+            value != null && onStatusFilterChange(value)
+          }
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {statusOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        {/* Date filter */}
+        <JobsDateFilter
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          onFilterChange={onDateFilterChange}
+        />
+
         {/* Archived toggle */}
         <div className="flex items-center gap-2">
           <Checkbox
@@ -139,7 +159,7 @@ export function JobsToolbar({
           />
           <Label
             htmlFor="include-archived"
-            className="text-muted-foreground flex cursor-pointer items-center gap-1 text-sm"
+            className="flex cursor-pointer items-center gap-1 text-sm font-normal"
           >
             <Archive className="h-3.5 w-3.5" />
             Archived
@@ -149,7 +169,7 @@ export function JobsToolbar({
       </div>
 
       {/* Status bar + refresh */}
-      <div className="text-muted-foreground flex items-center gap-1 text-xs">
+      <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-1 text-xs">
         {statusSummary && (
           <>
             <span className="flex items-center gap-1">

@@ -41,17 +41,40 @@ const formatMap = {
 interface DatePickerInputProps {
   className?: string;
   format?: keyof typeof formatMap;
+  value?: Date;
+  onDateChange?: (date: Date | undefined) => void;
+  placeholder?: string;
 }
 
 export function DatePickerInput({
   className,
   format = "MM/DD/YYYY",
+  value,
+  onDateChange,
+  placeholder,
 }: DatePickerInputProps) {
   const fmt = formatMap[format] || formatMap["MM/DD/YYYY"];
-  const [date, setDate] = React.useState<Date>();
-  const [inputValue, setInputValue] = React.useState<string>("");
-  const [calendarMonth, setCalendarMonth] = React.useState<Date>(new Date());
+  const [date, setDate] = React.useState<Date | undefined>(value);
+  const [inputValue, setInputValue] = React.useState<string>(
+    value ? formatDateFns(value, fmt.dateFns) : "",
+  );
+  const [calendarMonth, setCalendarMonth] = React.useState<Date>(
+    value ?? new Date(),
+  );
   const [error, setError] = React.useState<string>("");
+
+  // Sync from external value prop or format change
+  React.useEffect(() => {
+    if (value === undefined) {
+      setDate(undefined);
+      setInputValue("");
+    } else if (value) {
+      setDate(value);
+      setInputValue(formatDateFns(value, fmt.dateFns));
+      setCalendarMonth(value);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, fmt.dateFns]);
 
   // Format input as selected format
   function formatInputValue(value: string) {
@@ -94,6 +117,7 @@ export function DatePickerInput({
         setDate(parsed);
         setCalendarMonth(parsed);
         setError("");
+        onDateChange?.(parsed);
       } else {
         setError(
           `Invalid date. Please enter a valid date in ${fmt.placeholder} format.`,
@@ -101,6 +125,10 @@ export function DatePickerInput({
       }
     } else {
       setError("");
+      if (formattedValue === "") {
+        setDate(undefined);
+        onDateChange?.(undefined);
+      }
     }
   }
 
@@ -114,6 +142,7 @@ export function DatePickerInput({
     } else {
       setInputValue("");
     }
+    onDateChange?.(selectedDate);
   }
 
   // When inputValue changes (from outside, e.g. reset), update calendarMonth
@@ -167,7 +196,7 @@ export function DatePickerInput({
         <Input
           value={inputValue}
           onChange={handleInputChange}
-          placeholder={fmt.placeholder}
+          placeholder={placeholder ?? fmt.placeholder}
           maxLength={fmt.mask.reduce((a, b) => a + b) + (fmt.mask.length - 1)}
           className={cn(
             "w-full pl-10 bg-muted",

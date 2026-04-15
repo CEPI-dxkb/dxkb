@@ -142,8 +142,14 @@ export interface EnumerateTasksFilteredParams {
   sort_field?: string;
   sort_order?: "asc" | "desc";
   app?: string;
+  start_time?: string;
+  end_time?: string;
 }
-export type EnumerateTasksFilteredResponse = JobListItem[];
+
+export interface EnumerateTasksFilteredResponse {
+  jobs: JobListItem[];
+  totalTasks: number;
+}
 
 export interface QueryTaskSummaryFilteredParams {
   include_archived?: boolean;

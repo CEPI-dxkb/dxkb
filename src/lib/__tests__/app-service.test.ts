@@ -148,7 +148,7 @@ describe("AppService", () => {
 
   describe("enumerateTasksFiltered", () => {
     it("maps sort_field 'status' to 'service_status'", async () => {
-      mockClient.call.mockResolvedValue([]);
+      mockClient.call.mockResolvedValue([[], 0]);
 
       await service.enumerateTasksFiltered({
         offset: 0,
@@ -163,7 +163,7 @@ describe("AppService", () => {
     });
 
     it("maps sort_field 'app' to 'application_id'", async () => {
-      mockClient.call.mockResolvedValue([]);
+      mockClient.call.mockResolvedValue([[], 0]);
 
       await service.enumerateTasksFiltered({
         offset: 0,
@@ -178,7 +178,7 @@ describe("AppService", () => {
     });
 
     it("maps sort_field 'completed_time' to 'finish_time'", async () => {
-      mockClient.call.mockResolvedValue([]);
+      mockClient.call.mockResolvedValue([[], 0]);
 
       await service.enumerateTasksFiltered({
         offset: 0,
@@ -193,7 +193,7 @@ describe("AppService", () => {
     });
 
     it("passes through unmapped sort_field values as-is", async () => {
-      mockClient.call.mockResolvedValue([]);
+      mockClient.call.mockResolvedValue([[], 0]);
 
       await service.enumerateTasksFiltered({
         offset: 0,
@@ -208,7 +208,7 @@ describe("AppService", () => {
     });
 
     it("includes include_archived, sort_order, and app in opts", async () => {
-      mockClient.call.mockResolvedValue([]);
+      mockClient.call.mockResolvedValue([[], 0]);
 
       await service.enumerateTasksFiltered({
         offset: 5,
@@ -235,7 +235,7 @@ describe("AppService", () => {
     });
 
     it("sends empty opts when no optional params provided", async () => {
-      mockClient.call.mockResolvedValue([]);
+      mockClient.call.mockResolvedValue([[], 0]);
 
       await service.enumerateTasksFiltered({
         offset: 0,
@@ -246,6 +246,34 @@ describe("AppService", () => {
         "AppService.enumerate_tasks_filtered",
         [0, 25, {}],
       );
+    });
+
+    it("passes start_time and end_time in opts", async () => {
+      mockClient.call.mockResolvedValue([[], 0]);
+
+      await service.enumerateTasksFiltered({
+        offset: 0,
+        limit: 25,
+        start_time: "2026-01-01",
+        end_time: "2026-02-01",
+      });
+
+      expect(mockClient.call).toHaveBeenCalledWith(
+        "AppService.enumerate_tasks_filtered",
+        [0, 25, { start_time: "2026-01-01", end_time: "2026-02-01" }],
+      );
+    });
+
+    it("parses [[...jobs], totalTasks] response format", async () => {
+      const jobs = [{ id: "job-1" }, { id: "job-2" }];
+      mockClient.call.mockResolvedValue([jobs, 42]);
+
+      const result = await service.enumerateTasksFiltered({
+        offset: 0,
+        limit: 25,
+      });
+
+      expect(result).toEqual({ jobs, totalTasks: 42 });
     });
   });
 

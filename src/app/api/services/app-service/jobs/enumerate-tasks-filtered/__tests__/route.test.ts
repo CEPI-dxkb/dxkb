@@ -92,7 +92,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
 
   it("applies defaults when body is empty", async () => {
     mockRequireAuthToken.mockResolvedValue("test-token");
-    mockAppService.enumerateTasksFiltered.mockResolvedValue([]);
+    mockAppService.enumerateTasksFiltered.mockResolvedValue({ jobs: [], totalTasks: 0 });
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
@@ -105,12 +105,14 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       sort_field: undefined,
       sort_order: undefined,
       app: undefined,
+      start_time: undefined,
+      end_time: undefined,
     });
   });
 
   it("passes all filter params through to the service", async () => {
     mockRequireAuthToken.mockResolvedValue("test-token");
-    mockAppService.enumerateTasksFiltered.mockResolvedValue([]);
+    mockAppService.enumerateTasksFiltered.mockResolvedValue({ jobs: [], totalTasks: 0 });
 
     const request = mockNextRequest({
       method: "POST",
@@ -133,6 +135,8 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       sort_field: "submit_time",
       sort_order: "desc",
       app: "GenomeAssembly2",
+      start_time: undefined,
+      end_time: undefined,
     });
   });
 
@@ -142,7 +146,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       { id: "job-1", status: "completed" },
       { id: "job-2", status: "queued" },
     ];
-    mockAppService.enumerateTasksFiltered.mockResolvedValue(jobsList);
+    mockAppService.enumerateTasksFiltered.mockResolvedValue({ jobs: jobsList, totalTasks: 42 });
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
@@ -150,7 +154,29 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toEqual({ jobs: jobsList });
+    expect(data).toEqual({ jobs: jobsList, totalTasks: 42 });
+  });
+
+  it("passes date filter params through to the service", async () => {
+    mockRequireAuthToken.mockResolvedValue("test-token");
+    mockAppService.enumerateTasksFiltered.mockResolvedValue({ jobs: [], totalTasks: 0 });
+
+    const request = mockNextRequest({
+      method: "POST",
+      body: {
+        start_time: "2026-01-01",
+        end_time: "2026-01-31",
+      },
+    });
+
+    await POST(request);
+
+    expect(mockAppService.enumerateTasksFiltered).toHaveBeenCalledWith(
+      expect.objectContaining({
+        start_time: "2026-01-01",
+        end_time: "2026-01-31",
+      }),
+    );
   });
 
   it("returns 500 when an error is thrown", async () => {

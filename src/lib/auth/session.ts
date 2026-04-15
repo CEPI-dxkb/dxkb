@@ -50,6 +50,8 @@ export async function createSession(
       ...cookieOptions,
       maxAge: sessionMaxAge,
     });
+  } else {
+    cookieStore.set("bvbrc_realm", "", { ...cookieOptions, maxAge: 0 });
   }
 
   const userId = String(userProfile?.id ?? username.split("@")[0]);
@@ -158,7 +160,7 @@ export async function serverAuthenticatedFetch(
 // SU (Super User) backup cookie helpers
 // ============================================================================
 
-export const suSessionMaxAge = 3600 * 4; // Separate const for SU backup cookie expiry
+export const suSessionMaxAge = sessionMaxAge;
 
 const suBackupCookieNames = [
   "bvbrc_su_original_token",
@@ -187,6 +189,11 @@ export async function createSuBackup(
     cookieStore.set("bvbrc_su_original_realm", realm, {
       ...cookieOptions,
       maxAge: suSessionMaxAge,
+    });
+  } else {
+    cookieStore.set("bvbrc_su_original_realm", "", {
+      ...cookieOptions,
+      maxAge: 0,
     });
   }
 }

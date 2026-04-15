@@ -39,8 +39,8 @@ export function SuLoginDialog({ open, onOpenChange }: SuLoginDialogProps) {
       onOpenChange(false);
       setTargetUser("");
       setPassword("");
-    } catch {
-      toast.error("Invalid credentials");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "SU login failed");
     } finally {
       setIsSubmitting(false);
     }

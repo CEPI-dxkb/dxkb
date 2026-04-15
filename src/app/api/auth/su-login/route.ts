@@ -11,9 +11,19 @@ import { fetchUserProfile } from "@/lib/auth/profile";
 import { allowAdminToAdminImpersonation } from "@/lib/auth/su";
 
 export async function POST(request: NextRequest) {
-  try {
-    const { targetUser, password } = await request.json();
+  let targetUser: string;
+  let password: string;
 
+  try {
+    ({ targetUser, password } = await request.json());
+  } catch {
+    return NextResponse.json(
+      { message: "Invalid JSON body" },
+      { status: 400 },
+    );
+  }
+
+  try {
     if (!targetUser || !password) {
       return NextResponse.json(
         { message: "Target user and password are required" },

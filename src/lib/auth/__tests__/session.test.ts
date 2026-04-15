@@ -133,13 +133,14 @@ describe("createSession", () => {
     );
   });
 
-  it("does not set bvbrc_realm when not provided", async () => {
+  it("clears bvbrc_realm when not provided", async () => {
     await createSession("mytoken", "testuser");
 
-    const realmCalls = mockCookieStore.set.mock.calls.filter(
-      (call: unknown[]) => call[0] === "bvbrc_realm",
+    expect(mockCookieStore.set).toHaveBeenCalledWith(
+      "bvbrc_realm",
+      "",
+      expect.objectContaining({ maxAge: 0 }),
     );
-    expect(realmCalls).toHaveLength(0);
   });
 
   it("extracts userId from profile when available", async () => {
@@ -323,13 +324,14 @@ describe("createSuBackup", () => {
     );
   });
 
-  it("handles missing realm gracefully", async () => {
+  it("clears realm cookie when realm is not provided", async () => {
     await createSuBackup("admin-token", "admin");
 
-    const realmCalls = mockCookieStore.set.mock.calls.filter(
-      (call: unknown[]) => call[0] === "bvbrc_su_original_realm",
+    expect(mockCookieStore.set).toHaveBeenCalledWith(
+      "bvbrc_su_original_realm",
+      "",
+      expect.objectContaining({ maxAge: 0 }),
     );
-    expect(realmCalls).toHaveLength(0);
   });
 });
 

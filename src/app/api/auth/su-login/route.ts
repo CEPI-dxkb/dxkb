@@ -4,8 +4,10 @@ import {
   createSession,
   createSuBackup,
   extractRealmFromToken,
+  sessionMaxAge,
 } from "@/lib/auth/session";
 import { getRequiredEnv } from "@/lib/env";
+import { fetchUserProfile } from "@/lib/auth/profile";
 import { allowAdminToAdminImpersonation } from "@/lib/auth/su";
 
 export async function POST(request: NextRequest) {
@@ -29,23 +31,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Re-verify admin role from upstream
-    const userUrl = getRequiredEnv("USER_URL");
-    const adminProfileResponse = await fetch(`${userUrl}/${userId}`, {
-      headers: { Authorization: token, Accept: "application/json" },
-    });
+    const adminProfile = await fetchUserProfile(userId, token);
 
-    if (!adminProfileResponse.ok) {
-      return NextResponse.json(
-        { message: "Failed to verify admin status" },
-        { status: 403 },
-      );
-    }
-
-    const adminProfile = (await adminProfileResponse.json()) as {
-      roles?: string[];
-    };
-
-    if (!adminProfile.roles?.includes("admin")) {
+    if (!(adminProfile?.roles as string[] | undefined)?.includes("admin")) {
       return NextResponse.json(
         { message: "Admin role required" },
         { status: 403 },
@@ -79,43 +67,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Optionally block admin-to-admin impersonation
-    if (!allowAdminToAdminImpersonation) {
-      const targetCheckResponse = await fetch(
-        `${userUrl}/${targetUser}`,
-        {
-          headers: { Authorization: targetToken, Accept: "application/json" },
-        },
-      );
+    // Fetch target user profile (used for response and optional admin-check)
+    const targetRealm = extractRealmFromToken(targetToken);
+    const targetProfile = await fetchUserProfile(targetUser, targetToken);
 
-      if (targetCheckResponse.ok) {
-        const targetCheck = (await targetCheckResponse.json()) as {
-          roles?: string[];
-        };
-        if (targetCheck.roles?.includes("admin")) {
-          return NextResponse.json(
-            { message: "Cannot impersonate another admin" },
-            { status: 403 },
-          );
-        }
-      }
+    // Optionally block admin-to-admin impersonation
+    if (
+      !allowAdminToAdminImpersonation &&
+      (targetProfile?.roles as string[] | undefined)?.includes("admin")
+    ) {
+      return NextResponse.json(
+        { message: "Cannot impersonate another admin" },
+        { status: 403 },
+      );
     }
 
     // Backup current admin session
     await createSuBackup(token, userId, realm);
 
     // Set target user's session
-    const targetRealm = extractRealmFromToken(targetToken);
     await createSession(targetToken, targetUser, targetRealm);
-
-    // Fetch target user profile
-    const targetProfileResponse = await fetch(`${userUrl}/${targetUser}`, {
-      headers: { Authorization: targetToken, Accept: "application/json" },
-    });
-
-    const targetProfile = targetProfileResponse.ok
-      ? ((await targetProfileResponse.json()) as Record<string, unknown>)
-      : null;
 
     return NextResponse.json({
       user: {
@@ -132,14 +103,14 @@ export async function POST(request: NextRequest) {
       },
       session: {
         token: "",
-        expiresAt: new Date(Date.now() + 3600 * 4 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + sessionMaxAge * 1000).toISOString(),
       },
     });
   } catch (error) {
     console.error("SU login error:", error);
     return NextResponse.json(
-      { message: "Invalid credentials" },
-      { status: 401 },
+      { message: "Authentication service unavailable" },
+      { status: 503 },
     );
   }
 }

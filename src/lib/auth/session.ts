@@ -10,7 +10,7 @@ const cookieOptions = {
   path: "/",
 };
 
-const sessionMaxAge = 3600 * 4; // 4 hours
+export const sessionMaxAge = 3600 * 4; // 4 hours
 
 // ============================================================================
 // Token utilities
@@ -214,9 +214,8 @@ export async function restoreSuBackup() {
 
   if (backup.token && backup.userId) {
     await createSession(backup.token, backup.userId, backup.realm);
+    await deleteSuBackup();
   }
-
-  await deleteSuBackup();
 
   return backup;
 }

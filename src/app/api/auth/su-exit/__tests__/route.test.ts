@@ -1,5 +1,6 @@
 vi.mock("@/lib/auth/session", () => ({
   restoreSuBackup: vi.fn(),
+  sessionMaxAge: 3600 * 4,
 }));
 
 vi.mock("@/lib/env", () => ({

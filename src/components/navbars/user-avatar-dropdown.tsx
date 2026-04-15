@@ -16,7 +16,7 @@ import {
 import { SignoutButton } from "@/components/auth/signout-button";
 import { SuLoginDialog } from "@/components/auth/su-login-dialog";
 import { useAuth } from "@/contexts/auth-context";
-import { encodeWorkspaceSegment } from "@/lib/utils";
+import { encodeWorkspaceSegment, workspaceUsername } from "@/lib/utils";
 
 import {
   NotebookPen,
@@ -27,12 +27,6 @@ import {
   LogIn,
   LogOut,
 } from "lucide-react";
-
-/** Full username with @domain for workspace URLs. */
-function workspaceUsername(user: { username?: string; realm?: string } | null): string {
-  if (!user?.username) return "";
-  return user.realm ? `${user.username}@${user.realm}` : user.username;
-}
 
 export function UserAvatarDropdown() {
   const {

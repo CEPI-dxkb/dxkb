@@ -3,6 +3,7 @@ vi.mock("@/lib/auth/session", () => ({
   createSession: vi.fn(),
   createSuBackup: vi.fn(),
   extractRealmFromToken: vi.fn(),
+  sessionMaxAge: 3600 * 4,
 }));
 
 vi.mock("@/lib/env", () => ({

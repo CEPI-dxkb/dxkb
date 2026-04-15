@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { restoreSuBackup } from "@/lib/auth/session";
-import { getRequiredEnv } from "@/lib/env";
+import { restoreSuBackup, sessionMaxAge } from "@/lib/auth/session";
+import { fetchUserProfile } from "@/lib/auth/profile";
 
 export async function POST() {
   try {
@@ -13,21 +13,7 @@ export async function POST() {
       );
     }
 
-    // Fetch the restored admin's profile
-    const userUrl = getRequiredEnv("USER_URL");
-    const profileResponse = await fetch(
-      `${userUrl}/${backup.userId}`,
-      {
-        headers: {
-          Authorization: backup.token,
-          Accept: "application/json",
-        },
-      },
-    );
-
-    const profile = profileResponse.ok
-      ? ((await profileResponse.json()) as Record<string, unknown>)
-      : null;
+    const profile = await fetchUserProfile(backup.userId, backup.token);
 
     return NextResponse.json({
       user: {
@@ -42,7 +28,7 @@ export async function POST() {
       },
       session: {
         token: "",
-        expiresAt: new Date(Date.now() + 3600 * 4 * 1000).toISOString(),
+        expiresAt: new Date(Date.now() + sessionMaxAge * 1000).toISOString(),
       },
     });
   } catch (error) {

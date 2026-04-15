@@ -73,7 +73,6 @@ export function DatePickerInput({
       setInputValue(formatDateFns(value, fmt.dateFns));
       setCalendarMonth(value);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, fmt.dateFns]);
 
   // Format input as selected format

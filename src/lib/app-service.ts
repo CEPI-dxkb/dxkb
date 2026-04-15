@@ -103,8 +103,16 @@ export class AppService {
   async enumerateTasksFiltered(
     params: EnumerateTasksFilteredParams,
   ): Promise<EnumerateTasksFilteredResponse> {
-    const { offset, limit, include_archived, sort_field, sort_order, app } =
-      params;
+    const {
+      offset,
+      limit,
+      include_archived,
+      sort_field,
+      sort_order,
+      app,
+      start_time,
+      end_time,
+    } = params;
     const opts: Record<string, unknown> = {};
     if (include_archived) opts.include_archived = 1;
     if (sort_field) {
@@ -117,11 +125,17 @@ export class AppService {
     }
     if (sort_order) opts.sort_order = sort_order;
     if (app) opts.app = app;
-    return this.client.call("AppService.enumerate_tasks_filtered", [
-      offset,
-      limit,
-      opts,
-    ]);
+    if (start_time) opts.start_time = start_time;
+    if (end_time) opts.end_time = end_time;
+
+    const raw = (await this.client.call(
+      "AppService.enumerate_tasks_filtered",
+      [offset, limit, opts],
+    )) as unknown[];
+    // Backend returns [[...jobs], totalTasks]
+    const jobs = Array.isArray(raw[0]) ? raw[0] : raw;
+    const totalTasks = typeof raw[1] === "number" ? raw[1] : 0;
+    return { jobs, totalTasks };
   }
 
   /**

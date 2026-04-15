@@ -36,7 +36,7 @@ describe("useJobsData", () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ jobs }),
+      json: async () => ({ jobs, totalTasks: 42 }),
     });
 
     const { result } = renderHook(() => useJobsData(defaultParams), {
@@ -45,7 +45,7 @@ describe("useJobsData", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual(jobs);
+    expect(result.current.data).toEqual({ jobs, totalTasks: 42 });
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/services/app-service/jobs/enumerate-tasks-filtered",
       expect.objectContaining({
@@ -56,6 +56,9 @@ describe("useJobsData", () => {
           include_archived: false,
           sort_field: "submit_time",
           sort_order: "desc",
+          app: undefined,
+          start_time: undefined,
+          end_time: undefined,
         }),
       }),
     );
@@ -68,7 +71,7 @@ describe("useJobsData", () => {
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ jobs: [jobs] }),
+      json: async () => ({ jobs: [jobs], totalTasks: 10 }),
     });
 
     const { result } = renderHook(() => useJobsData(defaultParams), {
@@ -77,7 +80,7 @@ describe("useJobsData", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data).toEqual(jobs);
+    expect(result.current.data).toEqual({ jobs, totalTasks: 10 });
   });
 
   it("throws on HTTP error", async () => {

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useAuthenticatedFetch } from "@/hooks/use-authenticated-fetch-client";
 import type { JobListItem } from "@/types/workspace";
 
@@ -9,7 +9,14 @@ interface UseJobsDataParams {
   sortField: string;
   sortOrder: "asc" | "desc";
   app?: string;
+  startTime?: string;
+  endTime?: string;
   refetchInterval?: number;
+}
+
+interface UseJobsDataResult {
+  jobs: JobListItem[];
+  totalTasks: number;
 }
 
 export function useJobsData(params: UseJobsDataParams) {
@@ -17,10 +24,11 @@ export function useJobsData(params: UseJobsDataParams) {
   const {
     offset, limit, includeArchived,
     sortField, sortOrder, app,
+    startTime, endTime,
     refetchInterval = 10_000,
   } = params;
 
-  return useQuery<JobListItem[], Error>({
+  return useQuery<UseJobsDataResult, Error>({
     queryKey: [
       "jobs-filtered",
       offset,
@@ -29,7 +37,10 @@ export function useJobsData(params: UseJobsDataParams) {
       sortField,
       sortOrder,
       app,
+      startTime,
+      endTime,
     ],
+    placeholderData: keepPreviousData,
     refetchInterval,
     refetchIntervalInBackground: false,
     queryFn: async () => {
@@ -44,6 +55,8 @@ export function useJobsData(params: UseJobsDataParams) {
             sort_field: sortField,
             sort_order: sortOrder,
             app,
+            start_time: startTime,
+            end_time: endTime,
           }),
         },
       );
@@ -52,8 +65,9 @@ export function useJobsData(params: UseJobsDataParams) {
       }
       const data = await response.json();
       const raw = data.jobs ?? [];
-      // BV-BRC JSON-RPC wraps enumeration results in an extra array
-      return Array.isArray(raw[0]) ? raw[0] : raw;
+      const jobs = Array.isArray(raw[0]) ? raw[0] : raw;
+      const totalTasks = typeof data.totalTasks === "number" ? data.totalTasks : 0;
+      return { jobs, totalTasks };
     },
   });
 }

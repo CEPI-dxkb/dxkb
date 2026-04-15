@@ -1,0 +1,51 @@
+src/components/jobs/jobs-pagination.tsx
+  46fd55c91b8bbebd 5-13,19,22-23,26-50,57,60-61,64,66-67,72,75-84,86-87,89-97,100,106-124,127
+src/lib/jobs/constants.ts
+  46fd55c91b8bbebd 54-56,58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "a7b4826f1377b9489b249236a2f9ee65d86dfebc",
+  "prompts": {
+    "419a5305e23edd86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1121456-7439-418d-8199-1af302a01764",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "46fd55c91b8bbebd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ea85684-864b-494c-a8cb-daaf115dfd7b",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 95,
+      "overriden_lines": 0
+    },
+    "b186c38203232bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2477c54-328c-477b-9f1e-c2ec999db01a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 13,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -6,6 +6,8 @@ import { DataTable } from "@/components/shared/data-table";
 import { SortingState, RowSelectionState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { noop } from "@/lib/utils";
+import { FilterBar } from "@/components/filterbar/FilterBar";
+import { FacetPanel } from "@/components/filterbar/FacetPanel";
 
 interface ColumnInfo {
   id: string;
@@ -30,7 +32,8 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
   const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
   const setRowSelection = onRowSelectionChange || setInternalRowSelection;
-  
+  const [filter, setFilter] = useState('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -128,11 +131,18 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       : 'none';
   }, [sorting]);
 
+  const combinedQuery = useMemo(() => {
+    if (!filter || filter === 'false') return cleanQ;
+    if (!cleanQ) return filter;
+
+    return `and(${cleanQ},${filter})`;
+  }, [cleanQ, filter]);
+
   // Fetch metadata (numFound)
   const { data: metaData, isLoading: metaLoading, error: metaError } = useQuery({
-    queryKey: ['genome-meta', resource, cleanQ, searchtype],
+    queryKey: ['genome-meta', resource, combinedQuery, searchtype],
     queryFn: async () => {
-      const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
+      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const res = await fetch(`${baseURL}&limit(1)`, {
         headers: { 'Accept': 'application/solr+json' }
       });
@@ -151,7 +161,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     queryKey: [
       'genome-full',
       resource,
-      cleanQ,
+      combinedQuery,
       pageIndex,
       sortingKey,
       searchtype,
@@ -167,7 +177,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       const start = pageIndex * pageSize;
       const end = start + pageSize;
 
-      const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
+      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const url = sortParam ? `${baseURL}&sort(${sortParam})` : baseURL;
 
       const res = await fetch(url, {
@@ -217,13 +227,31 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     setPageIndex(newPage);
   };
 
+  const handleFacetSelect = (field: string, value: string) => {
+    // optionally clear page / selection if needed
+    setPageIndex(0);
+    setRowSelection({});
+    onSelectionChange?.([]);
+
+    // convert facet click into RQL filter
+    setFilter((prev) => {
+      const newFilter = `${field}=${value}`;
+
+      // If no existing filter, just return it
+      if (!prev) return newFilter;
+
+      // otherwise AND it (simple version)
+      return `and(${prev},eq(${field},${encodeURIComponent(value)}))`;
+    });
+  };
+
   async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[] | null) {
     if (!totalItems) {
       console.warn('No totalItems available for download');
       return;
     }
     try {
-      const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
+      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const res = await fetch(baseURL, {
         headers: {
           'Content-type': 'application/rqlquery+x-www-form-urlencoded',
@@ -294,6 +322,26 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      <FilterBar
+        fields={fields}
+        resource={resource}
+        query={combinedQuery}
+        onFilterChange={(rql) => {
+          setFilter(rql);
+          setPageIndex(0);          // ✅ reset pagination
+          setRowSelection({});      // ✅ clear selection
+          onSelectionChange?.([]);  // ✅ clear parent selection
+        }}
+        className="my-3"
+      />
+
+      <FacetPanel
+        fields={fields}
+        resource={resource}
+        query={combinedQuery}
+        onSelect={handleFacetSelect}
+      />
+
       <div className="flex-1 overflow-hidden">
         {!columnVisibility || !fields.length ? (
           <div>Loading...</div>

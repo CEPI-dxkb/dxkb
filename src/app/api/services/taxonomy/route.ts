@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredEnv } from "@/lib/env";
 import { withErrorHandling } from "@/lib/api/server";
+import { statusToErrorCode } from "@/lib/api/types";
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
@@ -18,7 +19,10 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   if (!response.ok) {
     console.error("BV-BRC Taxonomy API error:", response.status, response.statusText);
     return NextResponse.json(
-      { error: `BV-BRC Taxonomy API error: ${response.status} ${response.statusText}` },
+      {
+        error: `BV-BRC Taxonomy API error: ${response.status} ${response.statusText}`,
+        code: statusToErrorCode(response.status),
+      },
       { status: response.status },
     );
   }

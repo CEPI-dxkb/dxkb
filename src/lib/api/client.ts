@@ -1,9 +1,19 @@
 import { ApiCallError, statusToErrorCode } from "./types";
 
 let authRefreshCallback: (() => Promise<void>) | null = null;
+let inflightRefresh: Promise<void> | null = null;
 
 export function setAuthRefreshCallback(cb: (() => Promise<void>) | null): void {
   authRefreshCallback = cb;
+}
+
+function coalesceRefresh(): Promise<void> {
+  if (!authRefreshCallback) return Promise.reject(new Error("No auth refresh callback"));
+  if (inflightRefresh) return inflightRefresh;
+  inflightRefresh = authRefreshCallback().finally(() => {
+    inflightRefresh = null;
+  });
+  return inflightRefresh;
 }
 
 async function parseErrorBody(response: Response): Promise<{
@@ -60,7 +70,7 @@ async function fetchWithRetry<T>(
 
   if (response.status === 401 && authRefreshCallback) {
     try {
-      await authRefreshCallback();
+      await coalesceRefresh();
     } catch {
       // If refresh fails, fall through to handle the original 401
       return handleResponse<T>(response);
@@ -92,7 +102,7 @@ export async function apiCall<T>(
 export async function apiGet<T>(
   url: string,
   params?: Record<string, string | number | boolean | undefined>,
-  init?: Omit<RequestInit, "method" | "credentials">,
+  init?: Omit<RequestInit, "method" | "body" | "credentials">,
 ): Promise<T> {
   let fullUrl = url;
   if (params) {

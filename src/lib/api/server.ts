@@ -49,6 +49,15 @@ export function errorResponse(
   );
 }
 
+async function safeHandle(fn: () => Promise<NextResponse>): Promise<NextResponse> {
+  try {
+    return await fn();
+  } catch (error) {
+    console.error("Route handler error:", error);
+    return errorResponse(error);
+  }
+}
+
 type AuthedHandler<TContext> = (
   request: NextRequest,
   context: TContext & { token: string },
@@ -57,8 +66,8 @@ type AuthedHandler<TContext> = (
 export function withAuth<TContext = object>(
   handler: AuthedHandler<TContext>,
 ): (request: NextRequest, context: TContext) => Promise<NextResponse> {
-  return async (request: NextRequest, context: TContext) => {
-    try {
+  return (request: NextRequest, context: TContext) =>
+    safeHandle(async () => {
       const token = await getAuthToken();
       if (!token) {
         return NextResponse.json(
@@ -66,12 +75,8 @@ export function withAuth<TContext = object>(
           { status: 401 },
         );
       }
-      return await handler(request, { ...context, token });
-    } catch (error) {
-      console.error("Route handler error:", error);
-      return errorResponse(error);
-    }
-  };
+      return handler(request, { ...context, token });
+    });
 }
 
 type OptionalAuthHandler<TContext> = (
@@ -82,15 +87,11 @@ type OptionalAuthHandler<TContext> = (
 export function withOptionalAuth<TContext = object>(
   handler: OptionalAuthHandler<TContext>,
 ): (request: NextRequest, context: TContext) => Promise<NextResponse> {
-  return async (request: NextRequest, context: TContext) => {
-    try {
+  return (request: NextRequest, context: TContext) =>
+    safeHandle(async () => {
       const token = await getAuthToken();
-      return await handler(request, { ...context, token });
-    } catch (error) {
-      console.error("Route handler error:", error);
-      return errorResponse(error);
-    }
-  };
+      return handler(request, { ...context, token });
+    });
 }
 
 type PlainHandler<TContext> = (
@@ -101,12 +102,6 @@ type PlainHandler<TContext> = (
 export function withErrorHandling<TContext = object>(
   handler: PlainHandler<TContext>,
 ): (request: NextRequest, context: TContext) => Promise<NextResponse> {
-  return async (request: NextRequest, context: TContext) => {
-    try {
-      return await handler(request, context);
-    } catch (error) {
-      console.error("Route handler error:", error);
-      return errorResponse(error);
-    }
-  };
+  return (request: NextRequest, context: TContext) =>
+    safeHandle(() => handler(request, context));
 }

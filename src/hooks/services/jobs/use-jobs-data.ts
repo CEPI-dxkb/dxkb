@@ -49,8 +49,8 @@ export function useJobsData(params: UseJobsDataParams) {
           end_time: endTime,
         },
       );
-      const raw = data.jobs ?? [];
-      const jobs = (Array.isArray(raw) && Array.isArray(raw[0]) ? raw[0] : raw) as JobListItem[];
+      const raw = Array.isArray(data.jobs) ? data.jobs : [];
+      const jobs = (Array.isArray(raw[0]) ? raw[0] : raw) as JobListItem[];
       const totalTasks = typeof data.totalTasks === "number" ? data.totalTasks : 0;
       return { jobs, totalTasks };
     },

@@ -98,6 +98,35 @@ describe("apiCall", () => {
     setAuthRefreshCallback(null);
   });
 
+  it("coalesces concurrent 401 refreshes into a single call", async () => {
+    let callCount = 0;
+    server.use(
+      http.post("/api/test", () => {
+        callCount++;
+        // First two calls return 401, retries succeed
+        if (callCount <= 2) {
+          return HttpResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        return HttpResponse.json({ ok: true, call: callCount });
+      }),
+    );
+
+    const mockRefresh = vi.fn().mockResolvedValue(undefined);
+    setAuthRefreshCallback(mockRefresh);
+
+    const [r1, r2] = await Promise.all([
+      apiCall<{ ok: boolean }>("/api/test", { id: 1 }),
+      apiCall<{ ok: boolean }>("/api/test", { id: 2 }),
+    ]);
+
+    expect(r1).toEqual({ ok: true, call: 3 });
+    expect(r2).toEqual({ ok: true, call: 4 });
+    // The key assertion: refresh was called only once despite two concurrent 401s
+    expect(mockRefresh).toHaveBeenCalledOnce();
+
+    setAuthRefreshCallback(null);
+  });
+
   it("throws on 401 without retry if no refreshAuth registered", async () => {
     server.use(
       http.post("/api/test", () => {

@@ -42,6 +42,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import {
@@ -116,25 +117,21 @@ export default function TaxonomicClassificationPage() {
   };
 
   // Setup service form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<TaxonomicClassificationFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "TaxonomicClassification",
     displayName: "Taxonomic Classification",
-    transformParams: transformTaxonomicClassificationParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "TaxonomicClassification",
   });
 
   const form = useForm({
     defaultValues: defaultTaxonomicClassificationFormValues as TaxonomicClassificationFormData,
     validators: { onChange: taxonomicClassificationFormSchema },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as TaxonomicClassificationFormData);
+      const data = value as TaxonomicClassificationFormData;
+      await previewOrPassthrough(transformTaxonomicClassificationParams(data), submit);
     },
   });
 
@@ -972,12 +969,7 @@ export default function TaxonomicClassificationPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

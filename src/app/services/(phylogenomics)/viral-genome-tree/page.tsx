@@ -45,6 +45,7 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 import { fetchGenomeGroupMembers, validateViralGenomes } from "@/lib/services/genome";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
@@ -83,18 +84,13 @@ export default function ViralGenomeTreePage() {
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
   // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<ViralGenomeTree.ViralGenomeTreeFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "GeneTree",
     displayName: "Viral Genome Tree",
-    transformParams: ViralGenomeTreeUtils.transformViralGenomeTreeParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "GeneTree",
   });
 
   const form = useForm({
@@ -102,7 +98,11 @@ export default function ViralGenomeTreePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: ViralGenomeTree.viralGenomeTreeFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as ViralGenomeTree.ViralGenomeTreeFormData);
+      const data = value as ViralGenomeTree.ViralGenomeTreeFormData;
+      await previewOrPassthrough(
+        ViralGenomeTreeUtils.transformViralGenomeTreeParams(data),
+        submit,
+      );
     },
   });
 
@@ -789,12 +789,7 @@ export default function ViralGenomeTreePage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

@@ -41,6 +41,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   fastqUtilitiesInfo,
@@ -107,18 +108,13 @@ export default function FastqUtilitiesPage() {
   };
 
   // Setup service form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<FastqUtilitiesFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "FastqUtils",
     displayName: "FASTQ Utilities",
-    transformParams: transformFastqUtilitiesParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "FastqUtils",
   });
 
   const form = useForm({
@@ -126,7 +122,8 @@ export default function FastqUtilitiesPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: fastqUtilitiesFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as FastqUtilitiesFormData);
+      const data = value as FastqUtilitiesFormData;
+      await previewOrPassthrough(transformFastqUtilitiesParams(data), submit);
     },
   });
 
@@ -632,12 +629,7 @@ export default function FastqUtilitiesPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

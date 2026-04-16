@@ -47,6 +47,7 @@ import { Library } from "@/types/services";
 import { NumberInput } from "@/components/ui/number-input";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { toast } from "sonner";
 import {
@@ -121,7 +122,7 @@ export default function GenomeAssemblyPage() {
         return;
       }
 
-      await handleSubmit(data);
+      await previewOrPassthrough(transformGenomeAssemblyParams(data), submit);
     },
   });
 
@@ -161,18 +162,13 @@ export default function GenomeAssemblyPage() {
   });
 
   // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<GenomeAssemblyFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "GenomeAssembly2",
     displayName: "Genome Assembly",
-    transformParams: transformGenomeAssemblyParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "GenomeAssembly2",
   });
 
   function handleReset() {
@@ -751,12 +747,7 @@ export default function GenomeAssemblyPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

@@ -27,6 +27,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   subspeciesClassificationInfo,
@@ -72,7 +73,11 @@ export default function SubspeciesClassificationPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: subspeciesClassificationFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as SubspeciesClassificationFormData);
+      const data = value as SubspeciesClassificationFormData;
+      await previewOrPassthrough(
+        transformSubspeciesClassificationParams(data),
+        submit,
+      );
     },
   });
 
@@ -122,18 +127,13 @@ export default function SubspeciesClassificationPage() {
     setIsOutputNameValid(true);
   };
 
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<SubspeciesClassificationFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "SubspeciesClassification",
     displayName: "Subspecies Classification",
-    transformParams: transformSubspeciesClassificationParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "SubspeciesClassification",
   });
 
   return (
@@ -388,12 +388,7 @@ export default function SubspeciesClassificationPage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

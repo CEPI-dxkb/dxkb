@@ -41,6 +41,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   metagenomicReadMappingInfo,
@@ -88,25 +89,21 @@ export default function MetagenomicReadMappingPage() {
   };
 
   // Setup service form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<MetagenomicReadMappingFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "MetagenomicReadMapping",
     displayName: "Metagenomic Read Mapping",
-    transformParams: transformMetagenomicReadMappingParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "MetagenomicReadMapping",
   });
 
   const form = useForm({
     defaultValues: defaultMetagenomicReadMappingFormValues as MetagenomicReadMappingFormData,
     validators: { onChange: metagenomicReadMappingFormSchema },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as MetagenomicReadMappingFormData);
+      const data = value as MetagenomicReadMappingFormData;
+      await previewOrPassthrough(transformMetagenomicReadMappingParams(data), submit);
     },
   });
 
@@ -542,12 +539,7 @@ export default function MetagenomicReadMappingPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

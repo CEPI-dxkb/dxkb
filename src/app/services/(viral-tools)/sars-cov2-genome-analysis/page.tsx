@@ -45,6 +45,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   sarsCov2GenomeAnalysisInfo,
@@ -98,7 +99,11 @@ export default function SarsCov2GenomeAnalysisPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: sarsCov2GenomeAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as SarsCov2GenomeAnalysisFormData);
+      const data = value as SarsCov2GenomeAnalysisFormData;
+      await previewOrPassthrough(
+        transformSarsCov2GenomeAnalysisParams(data),
+        submit,
+      );
     },
   });
 
@@ -262,18 +267,13 @@ export default function SarsCov2GenomeAnalysisPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<SarsCov2GenomeAnalysisFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "ComprehensiveSARS2Analysis",
     displayName: "SARS-CoV-2 Genome Analysis",
-    transformParams: transformSarsCov2GenomeAnalysisParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "ComprehensiveSARS2Analysis",
   });
 
   return (
@@ -861,12 +861,7 @@ export default function SarsCov2GenomeAnalysisPage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

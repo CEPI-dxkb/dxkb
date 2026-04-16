@@ -23,6 +23,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { validateFasta } from "@/lib/fasta-validation";
@@ -51,7 +52,8 @@ export default function HASubtypeNumberingPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: influenzaHaSubtypeFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as InfluenzaHaSubtypeFormData);
+      const data = value as InfluenzaHaSubtypeFormData;
+      await previewOrPassthrough(transformHaSubtypeParams(data), submit);
     },
   });
 
@@ -112,18 +114,13 @@ export default function HASubtypeNumberingPage() {
     setIsFastaValid(false);
   };
 
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<InfluenzaHaSubtypeFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "HASubtypeNumberingConversion",
     displayName: "HA Subtype Numbering Conversion",
-    transformParams: transformHaSubtypeParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "HASubtypeNumberingConversion",
   });
 
   const isFastaDataInvalid =
@@ -392,12 +389,7 @@ export default function HASubtypeNumberingPage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

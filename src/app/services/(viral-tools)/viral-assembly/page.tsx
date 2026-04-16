@@ -26,6 +26,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
 import {
@@ -65,7 +66,8 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: viralAssemblyFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as ViralAssemblyFormData);
+      const data = value as ViralAssemblyFormData;
+      await previewOrPassthrough(transformViralAssemblyParams(data), submit);
     },
   });
 
@@ -219,18 +221,13 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
     setIsOutputNameValid(true);
   };
 
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<ViralAssemblyFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "ViralAssembly",
     displayName: "Viral Assembly",
-    transformParams: transformViralAssemblyParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "ViralAssembly",
   });
 
   return (
@@ -499,12 +496,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 };

@@ -34,6 +34,8 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { toast } from "sonner";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
+import { useServiceDebugging } from "@/contexts/service-debugging-context";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   similarGenomeFinderInfo,
@@ -77,19 +79,13 @@ export default function SimilarGenomeFinderServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [results, setResults] = useState<SimilarGenomeFinderResultRow[]>([]);
 
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isDebugMode,
-    isSubmitting: isJobSubmitting,
-  } = useServiceFormSubmission<SimilarGenomeFinderFormData>({
+  const { isDebugMode } = useServiceDebugging();
+  const { submit, isSubmitting: isJobSubmitting } = useServiceFormSubmission({
     serviceName: "SimilarGenomeFinder",
     displayName: "Similar Genome Finder",
-    transformParams: (data) =>
-      buildMinhashServicePayload(data) as unknown as Record<string, unknown>,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "SimilarGenomeFinder",
   });
 
   const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
@@ -103,7 +99,10 @@ export default function SimilarGenomeFinderServicePage() {
 
       // In debug mode, use the hook to show the params dialog
       if (isDebugMode) {
-        await handleSubmit(data);
+        await previewOrPassthrough(
+          buildMinhashServicePayload(data) as unknown as Record<string, unknown>,
+          submit,
+        );
         return;
       }
 
@@ -501,12 +500,7 @@ export default function SimilarGenomeFinderServicePage() {
         </Card>
       </div>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

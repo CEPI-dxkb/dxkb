@@ -37,6 +37,7 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
@@ -85,8 +86,9 @@ export default function ProteomeComparisonPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: proteomeComparisonFormSchema as any },
     onSubmit: async ({ value }) => {
-      // handleSubmit captured by closure — initialized by useServiceFormSubmission below
-      await handleSubmit(value as ProteomeComparisonFormData);
+      // submit / previewOrPassthrough captured by closure — initialized by hooks below
+      const data = value as ProteomeComparisonFormData;
+      await previewOrPassthrough(transformProteomeComparisonParams(data), submit);
     },
   });
 
@@ -101,18 +103,13 @@ export default function ProteomeComparisonPage() {
   }, [form]);
 
   // Setup service form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<ProteomeComparisonFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "GenomeComparison",
     displayName: "Proteome Comparison",
-    transformParams: transformProteomeComparisonParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "GenomeComparison",
   });
 
   // Watch form values
@@ -865,12 +862,7 @@ export default function ProteomeComparisonPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

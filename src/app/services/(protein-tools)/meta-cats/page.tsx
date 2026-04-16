@@ -42,6 +42,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -100,8 +101,9 @@ export default function MetaCATSPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: metaCatsFormSchema as any },
     onSubmit: async ({ value }) => {
-      // handleSubmit captured by closure — initialized by useServiceFormSubmission below
-      await handleSubmit(value as MetaCatsFormData);
+      // submit / previewOrPassthrough captured by closure — initialized by hooks below
+      const data = value as MetaCatsFormData;
+      await previewOrPassthrough(transformMetaCatsParams(data), submit);
     },
   });
 
@@ -120,17 +122,12 @@ export default function MetaCATSPage() {
   }, [form]);
 
   // Setup service form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<MetaCatsFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "MetaCATS",
-    transformParams: transformMetaCatsParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "MetaCATS",
   });
 
   const inputType = useStore(form.store, (s) => s.values.input_type);
@@ -956,12 +953,7 @@ export default function MetaCATSPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

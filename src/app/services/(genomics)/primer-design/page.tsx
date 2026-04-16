@@ -48,6 +48,7 @@ import {
   type MarkerType,
 } from "@/lib/forms/(genomics)/primer-design/primer-design-form-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
@@ -68,16 +69,12 @@ export default function PrimerDesignServicePage() {
     end: 0,
   });
 
-  const {
-    handleSubmit: handleFormSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    isSubmitting,
-  } = useServiceFormSubmission<PrimerDesignFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "PrimerDesign",
     displayName: "Primer Design",
-    transformParams: transformPrimerDesignParams,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "PrimerDesign",
   });
 
   const form = useForm({
@@ -100,7 +97,7 @@ export default function PrimerDesignServicePage() {
         }
       }
 
-      await handleFormSubmit(data);
+      await previewOrPassthrough(transformPrimerDesignParams(data), submit);
     },
   });
 
@@ -950,12 +947,7 @@ export default function PrimerDesignServicePage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName="Primer Design"
-      />
+      <JobParamsDialog {...dialogProps} serviceName="Primer Design" />
     </section>
   );
 }

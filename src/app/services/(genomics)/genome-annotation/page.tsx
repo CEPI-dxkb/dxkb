@@ -31,6 +31,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { toast } from "sonner";
 import {
@@ -60,17 +61,12 @@ const GenomeAnnotationContent = () => {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<GenomeAnnotationFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "GenomeAnnotation",
     displayName: "Genome Annotation",
-    transformParams: transformGenomeAnnotationParams,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "GenomeAnnotation",
   });
 
   const form = useForm({
@@ -84,7 +80,7 @@ const GenomeAnnotationContent = () => {
         return;
       }
 
-      await handleSubmit(value);
+      await previewOrPassthrough(transformGenomeAnnotationParams(value), submit);
     },
   });
 
@@ -405,12 +401,7 @@ const GenomeAnnotationContent = () => {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 };

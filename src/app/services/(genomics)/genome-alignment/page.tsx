@@ -43,6 +43,7 @@ import {
 } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-schema";
 import { transformGenomeAlignmentParams } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
@@ -63,24 +64,20 @@ export default function GenomeAlignmentServicePage() {
   const [lastSelectedGroup, setLastSelectedGroup] = useState<string | null>(null);
   const [selectedGenomeGroup, setSelectedGenomeGroup] = useState<WorkspaceObject | null>(null);
 
-  const {
-    handleSubmit: submitForm,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<GenomeAlignmentFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "GenomeAlignment",
     displayName: "Genome Alignment",
-    transformParams: transformGenomeAlignmentParams,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "GenomeAlignment",
   });
 
   const form = useForm({
     defaultValues: defaultGenomeAlignmentFormValues,
     validators: { onChange: genomeAlignmentFormSchema },
     onSubmit: async ({ value }) => {
-      await submitForm(value as GenomeAlignmentFormData);
+      const data = value as GenomeAlignmentFormData;
+      await previewOrPassthrough(transformGenomeAlignmentParams(data), submit);
     },
   });
 
@@ -500,12 +497,7 @@ export default function GenomeAlignmentServicePage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

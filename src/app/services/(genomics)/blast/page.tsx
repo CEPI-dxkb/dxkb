@@ -55,6 +55,7 @@ import {
 } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { toast } from "sonner";
@@ -66,17 +67,12 @@ export default function BlastServicePage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
-  const {
-    handleSubmit: submitForm,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<BlastFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "Homology",
     displayName: "BLAST",
-    transformParams: transformBlastParams,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "Homology",
   });
 
   const form = useForm({
@@ -95,7 +91,7 @@ export default function BlastServicePage() {
         }
       }
 
-      await submitForm(data);
+      await previewOrPassthrough(transformBlastParams(data), submit);
     },
   });
 
@@ -832,12 +828,7 @@ export default function BlastServicePage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

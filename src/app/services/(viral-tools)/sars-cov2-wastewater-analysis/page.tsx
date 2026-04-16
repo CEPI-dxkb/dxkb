@@ -41,6 +41,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   sarsCov2WastewaterAnalysisInfo,
@@ -92,7 +93,8 @@ export default function SarsCov2WastewaterAnalysisPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: sarsCov2WastewaterAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as SarsCov2WastewaterAnalysisFormData);
+      const data = value as SarsCov2WastewaterAnalysisFormData;
+      await previewOrPassthrough(transformSarsCov2WastewaterParams(data), submit);
     },
   });
 
@@ -280,18 +282,13 @@ export default function SarsCov2WastewaterAnalysisPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<SarsCov2WastewaterAnalysisFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "SARS2Wastewater",
     displayName: "SARS-CoV-2 Wastewater Analysis",
-    transformParams: transformSarsCov2WastewaterParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "SARS2Wastewater",
   });
 
   return (
@@ -638,12 +635,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
         </div>
       </form>
 
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

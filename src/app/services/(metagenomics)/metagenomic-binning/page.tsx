@@ -41,6 +41,7 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   metagenomicBinningInfo,
@@ -93,25 +94,21 @@ export default function MetagenomicBinningPage() {
   };
 
   // Setup service form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<MetagenomicBinningFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "MetagenomeBinning",
     displayName: "Metagenomic Binning",
-    transformParams: transformMetagenomicBinningParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "MetagenomeBinning",
   });
 
   const form = useForm({
     defaultValues: defaultMetagenomicBinningFormValues as MetagenomicBinningFormData,
     validators: { onChange: metagenomicBinningFormSchema },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as MetagenomicBinningFormData);
+      const data = value as MetagenomicBinningFormData;
+      await previewOrPassthrough(transformMetagenomicBinningParams(data), submit);
     },
   });
 
@@ -714,12 +711,7 @@ export default function MetagenomicBinningPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

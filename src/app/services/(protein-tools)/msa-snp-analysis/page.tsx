@@ -43,6 +43,7 @@ import {
 } from "@/lib/services/feature";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -111,18 +112,13 @@ export default function MSAandSNPAnalysisPage() {
   }
 
   // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<MsaSnpAnalysis.MsaSnpAnalysisFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "MSA",
     displayName: "MSA SNP Analysis",
-    transformParams: MsaSnpAnalysisUtils.transformMsaSnpAnalysisParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "MSA",
   });
 
   const form = useForm({
@@ -130,7 +126,11 @@ export default function MSAandSNPAnalysisPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: MsaSnpAnalysis.msaSnpAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as MsaSnpAnalysis.MsaSnpAnalysisFormData);
+      const data = value as MsaSnpAnalysis.MsaSnpAnalysisFormData;
+      await previewOrPassthrough(
+        MsaSnpAnalysisUtils.transformMsaSnpAnalysisParams(data),
+        submit,
+      );
     },
   });
 
@@ -1344,12 +1344,7 @@ export default function MSAandSNPAnalysisPage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

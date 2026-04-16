@@ -45,6 +45,7 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
+import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
@@ -105,18 +106,13 @@ export default function GeneProteinTreePage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   // Setup service debugging and form submission
-  const {
-    handleSubmit,
-    showParamsDialog,
-    setShowParamsDialog,
-    currentParams,
-    serviceName,
-    isSubmitting,
-  } = useServiceFormSubmission<GeneProteinTreeFormData>({
+  const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: "GeneTree",
     displayName: "Gene/Protein Tree",
-    transformParams: transformGeneProteinTreeParams,
     onSuccess: handleReset,
+  });
+  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
+    serviceName: "GeneTree",
   });
 
   const form = useForm({
@@ -124,7 +120,8 @@ export default function GeneProteinTreePage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: geneProteinTreeFormSchema as any },
     onSubmit: async ({ value }) => {
-      await handleSubmit(value as GeneProteinTreeFormData);
+      const data = value as GeneProteinTreeFormData;
+      await previewOrPassthrough(transformGeneProteinTreeParams(data), submit);
     },
   });
 
@@ -808,12 +805,7 @@ export default function GeneProteinTreePage() {
       </form>
 
       {/* Job Params Dialog */}
-      <JobParamsDialog
-        open={showParamsDialog}
-        onOpenChange={setShowParamsDialog}
-        params={currentParams}
-        serviceName={serviceName}
-      />
+      <JobParamsDialog {...dialogProps} />
     </section>
   );
 }

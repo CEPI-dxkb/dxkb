@@ -1,0 +1,91 @@
+src/app/api/services/genome/utils.ts
+  08681d98a983724e 3,8
+src/lib/api/__tests__/client.test.ts
+  2597794397763c7b 101-129
+src/app/api/services/taxonomy/route.ts
+  afe8ac74dacc90d6 4,22-25
+src/lib/api/server.ts
+  afe8ac74dacc90d6 52-60,69-70,78-79,90-91,93-94,105-106
+src/hooks/services/jobs/use-jobs-data.ts
+  afe8ac74dacc90d6 52-53
+src/lib/api/client.ts
+  2597794397763c7b 4,10-18,73
+  h_e893c4a39fbc49 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "2c053ae067fa951b51db7339f2dd92bbd1957029",
+  "prompts": {
+    "08681d98a983724e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "033bd17a-2a39-43e3-8524-29ef72928c9c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "2597794397763c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "13e3db14-578d-45c8-b979-ea357e0c7441",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 40,
+      "total_deletions": 1,
+      "accepted_lines": 40,
+      "overriden_lines": 0
+    },
+    "419a5305e23edd86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1121456-7439-418d-8199-1af302a01764",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    },
+    "afe8ac74dacc90d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6591a19-7922-410e-bcba-9f2e1bc3b735",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 26,
+      "total_deletions": 27,
+      "accepted_lines": 26,
+      "overriden_lines": 0
+    },
+    "b186c38203232bc3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d2477c54-328c-477b-9f1e-c2ec999db01a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Chris Escobar",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 4,
+      "overriden_lines": 0
+    }
+  },
+  "humans": {
+    "h_e893c4a39fbc49": {
+      "author": "Chris Escobar"
+    }
+  }
+}

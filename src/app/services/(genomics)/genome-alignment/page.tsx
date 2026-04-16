@@ -44,7 +44,6 @@ import {
 import { transformGenomeAlignmentParams } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-utils";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import {
@@ -183,29 +182,28 @@ export default function GenomeAlignmentServicePage() {
   };
 
   // Rerun: pre-fill form from job parameters
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: ["output_path", "output_file"] as const,
+    onApply: (rerunData, form) => {
+      if (rerunData.manual_seed_weight != null) {
+        form.setFieldValue("manual_seed_weight", rerunBooleanValue(rerunData.manual_seed_weight) as never);
+      }
+      if (rerunData.seed_weight != null) form.setFieldValue("seed_weight", rerunData.seed_weight as never);
+      if (rerunData.weight != null) form.setFieldValue("weight", rerunData.weight as never);
 
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
-    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
-    if (rerunData.manual_seed_weight != null) form.setFieldValue("manual_seed_weight", rerunBooleanValue(rerunData.manual_seed_weight));
-    if (rerunData.seed_weight != null) form.setFieldValue("seed_weight", rerunData.seed_weight as number);
-    if (rerunData.weight != null) form.setFieldValue("weight", rerunData.weight as number);
-
-    const genomeIds = Array.isArray(rerunData.genome_ids) ? (rerunData.genome_ids as string[]) : [];
-    if (genomeIds.length > 0) {
-      fetchGenomesByIds(genomeIds)
-        .then((genomes) => setSelectedGenomes(genomes))
-        .catch(() => {
-          toast.error("Could not restore genomes from previous job", {
-            description: "Please re-add your genomes manually.",
+      const genomeIds = Array.isArray(rerunData.genome_ids) ? (rerunData.genome_ids as string[]) : [];
+      if (genomeIds.length > 0) {
+        fetchGenomesByIds(genomeIds)
+          .then((genomes) => setSelectedGenomes(genomes))
+          .catch(() => {
+            toast.error("Could not restore genomes from previous job", {
+              description: "Please re-add your genomes manually.",
+            });
           });
-        });
-    }
-  }, [rerunData, markApplied, form]);
+      }
+    },
+  });
 
   const handleReset = () => {
     form.reset(defaultGenomeAlignmentFormValues);

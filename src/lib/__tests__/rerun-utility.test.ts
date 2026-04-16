@@ -196,6 +196,33 @@ describe("buildSraLibraries", () => {
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe("SRR111");
   });
+
+  it("merges extra fields from getExtra callback on srr_libs path", () => {
+    const rerunData = {
+      srr_libs: [
+        { srr_accession: "SRR111", sample_id: "S1" },
+        { srr_accession: "SRR222", sample_id: "S2" },
+      ],
+    };
+    const result = buildSraLibraries(rerunData, (lib) => ({ sampleId: lib.sample_id }));
+    expect(result).toEqual([
+      { id: "SRR111", name: "SRR111", type: "sra", sampleId: "S1" },
+      { id: "SRR222", name: "SRR222", type: "sra", sampleId: "S2" },
+    ]);
+  });
+
+  it("invokes getExtra with empty record on srr_ids fallback path", () => {
+    const rerunData = { srr_ids: ["SRR999"] };
+    const seenLibs: Record<string, string>[] = [];
+    const result = buildSraLibraries(rerunData, (lib) => {
+      seenLibs.push(lib);
+      return { sampleId: "default" };
+    });
+    expect(seenLibs).toEqual([{}]);
+    expect(result).toEqual([
+      { id: "SRR999", name: "SRR999", type: "sra", sampleId: "default" },
+    ]);
+  });
 });
 
 describe("rerunJob", () => {

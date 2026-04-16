@@ -46,7 +46,6 @@ import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -189,41 +188,35 @@ export default function GeneProteinTreePage() {
   }, [metadataFields, form]);
 
   // Rerun: pre-fill form from job parameters
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
-
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    if (rerunData.alphabet) {
-      if (rerunData.alphabet !== form.state.values.alphabet) {
-        skipAlphabetEffect.current = true;
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: ["recipe", "substitution_model", "output_path", "output_file"] as const,
+    onApply: (rerunData) => {
+      if (rerunData.alphabet) {
+        if (rerunData.alphabet !== form.state.values.alphabet) {
+          skipAlphabetEffect.current = true;
+        }
+        form.setFieldValue("alphabet", rerunData.alphabet as GeneProteinTreeFormData["alphabet"]);
       }
-      form.setFieldValue("alphabet", rerunData.alphabet as GeneProteinTreeFormData["alphabet"]);
-    }
-    if (rerunData.recipe) form.setFieldValue("recipe", rerunData.recipe as GeneProteinTreeFormData["recipe"]);
-    if (rerunData.substitution_model) form.setFieldValue("substitution_model", rerunData.substitution_model as never);
-    if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold));
-    if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold));
-    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
-    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
+      if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold));
+      if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold));
 
-    const sequences = normalizeToArray<SequenceItem>(rerunData.sequences);
-    if (sequences.length > 0) {
-      form.setFieldValue("sequences", sequences);
-    }
+      const sequences = normalizeToArray<SequenceItem>(rerunData.sequences);
+      if (sequences.length > 0) {
+        form.setFieldValue("sequences", sequences);
+      }
 
-    // Restore metadata fields from feature_metadata_fields and genome_metadata_fields
-    const featureFields = normalizeToArray<string>(rerunData.feature_metadata_fields);
-    const genomeFields = normalizeToArray<string>(rerunData.genome_metadata_fields);
-    const allMetadataFieldIds = [...featureFields, ...genomeFields];
-    if (allMetadataFieldIds.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMetadataFields(
-        allMetadataFieldIds.map((id) => createMetadataField(id)),
-      );
-    }
-  }, [rerunData, markApplied, form]);
+      // Restore metadata fields from feature_metadata_fields and genome_metadata_fields
+      const featureFields = normalizeToArray<string>(rerunData.feature_metadata_fields);
+      const genomeFields = normalizeToArray<string>(rerunData.genome_metadata_fields);
+      const allMetadataFieldIds = [...featureFields, ...genomeFields];
+      if (allMetadataFieldIds.length > 0) {
+        setMetadataFields(
+          allMetadataFieldIds.map((id) => createMetadataField(id)),
+        );
+      }
+    },
+  });
 
   const selectedMetadataIds = useMemo(
     () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),

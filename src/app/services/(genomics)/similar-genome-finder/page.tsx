@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import {
   similarGenomeFinderInfo,
   similarGenomeFinderSelectGenome,
@@ -142,25 +141,24 @@ export default function SimilarGenomeFinderServicePage() {
 
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
-
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    const d = rerunData;
-
-    if (typeof d.selectedGenomeId === "string") form.setFieldValue("selectedGenomeId", d.selectedGenomeId);
-    if (typeof d.fasta_file === "string") form.setFieldValue("fasta_file", d.fasta_file);
-    if (typeof d.output_path === "string") form.setFieldValue("output_path", d.output_path);
-    if (typeof d.output_file === "string") form.setFieldValue("output_file", d.output_file);
-    if (typeof d.max_hits === "number") form.setFieldValue("max_hits", d.max_hits);
-    if (typeof d.max_pvalue === "number") form.setFieldValue("max_pvalue", d.max_pvalue);
-    if (typeof d.max_distance === "number") form.setFieldValue("max_distance", d.max_distance);
-    if (typeof d.include_bacterial === "boolean") form.setFieldValue("include_bacterial", d.include_bacterial);
-    if (typeof d.include_viral === "boolean") form.setFieldValue("include_viral", d.include_viral);
-    if (d.scope === "reference" || d.scope === "all") form.setFieldValue("scope", d.scope);
-  }, [rerunData, markApplied, form]);
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: [
+      "selectedGenomeId",
+      "fasta_file",
+      "output_path",
+      "output_file",
+    ] as const,
+    onApply: (rerunData, form) => {
+      const d = rerunData;
+      if (typeof d.max_hits === "number") form.setFieldValue("max_hits", d.max_hits as never);
+      if (typeof d.max_pvalue === "number") form.setFieldValue("max_pvalue", d.max_pvalue as never);
+      if (typeof d.max_distance === "number") form.setFieldValue("max_distance", d.max_distance as never);
+      if (typeof d.include_bacterial === "boolean") form.setFieldValue("include_bacterial", d.include_bacterial as never);
+      if (typeof d.include_viral === "boolean") form.setFieldValue("include_viral", d.include_viral as never);
+      if (d.scope === "reference" || d.scope === "all") form.setFieldValue("scope", d.scope as never);
+    },
+  });
 
   const handleReset = () => {
     form.reset(defaultSimilarGenomeFinderFormValues);

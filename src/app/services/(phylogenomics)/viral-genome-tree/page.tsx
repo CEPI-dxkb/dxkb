@@ -46,7 +46,6 @@ import { fetchGenomeGroupMembers, validateViralGenomes } from "@/lib/services/ge
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -120,32 +119,27 @@ export default function ViralGenomeTreePage() {
   }, [metadataFields, form]);
 
   // Rerun: pre-fill form from job parameters
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: ["recipe", "substitution_model", "output_path", "output_file"] as const,
+    onApply: (rerunData, form) => {
+      if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold) as never);
+      if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold) as never);
 
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
+      const sequences = normalizeToArray<ViralGenomeTree.ViralGenomeSequenceItem>(rerunData.sequences);
+      if (sequences.length > 0) {
+        form.setFieldValue("sequences", sequences as never);
+      }
 
-    if (rerunData.recipe) form.setFieldValue("recipe", rerunData.recipe as ViralGenomeTree.ViralGenomeTreeFormData["recipe"]);
-    if (rerunData.substitution_model) form.setFieldValue("substitution_model", rerunData.substitution_model as never);
-    if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold));
-    if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold));
-    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
-    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
-
-    const sequences = normalizeToArray<ViralGenomeTree.ViralGenomeSequenceItem>(rerunData.sequences);
-    if (sequences.length > 0) {
-      form.setFieldValue("sequences", sequences);
-    }
-
-    // Restore metadata fields from genome_metadata_fields
-    const genomeMetadataFieldIds = normalizeToArray<string>(rerunData.genome_metadata_fields);
-    if (genomeMetadataFieldIds.length > 0) {
-      setMetadataFields(
-        genomeMetadataFieldIds.map((id) => ViralGenomeTreeUtils.createMetadataField(id)),
-      );
-    }
-  }, [rerunData, markApplied, form]);
+      // Restore metadata fields from genome_metadata_fields
+      const genomeMetadataFieldIds = normalizeToArray<string>(rerunData.genome_metadata_fields);
+      if (genomeMetadataFieldIds.length > 0) {
+        setMetadataFields(
+          genomeMetadataFieldIds.map((id) => ViralGenomeTreeUtils.createMetadataField(id)),
+        );
+      }
+    },
+  });
 
   const selectedMetadataIds = useMemo(
     () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),

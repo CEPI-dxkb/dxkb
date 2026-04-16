@@ -42,8 +42,6 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
-import { normalizeToArray, buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
 import {
   sarsCov2WastewaterAnalysisInfo,
   sarsCov2WastewaterAnalysisInputLib,
@@ -88,8 +86,6 @@ const tutorial =
   "https://www.bv-brc.org/docs/tutorial/sars_cov_2_wastewater/sars_cov_2_wastewater.html";
 
 export default function SarsCov2WastewaterAnalysisPage() {
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-
   const form = useForm({
     defaultValues:
       defaultSarsCov2WastewaterAnalysisFormValues as SarsCov2WastewaterAnalysisFormData,
@@ -99,7 +95,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
       await handleSubmit(value as SarsCov2WastewaterAnalysisFormData);
     },
   });
-  useDefaultOutputPath(form, rerunData);
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
@@ -123,6 +118,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibrariesAndSync,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<
     SarsCov2WastewaterLibraryItem,
     SrrLibItem
@@ -184,48 +180,32 @@ export default function SarsCov2WastewaterAnalysisPage() {
   }, [primers, form]);
 
   // Rerun pre-fill
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    if (rerunData.recipe) {
-      form.setFieldValue("recipe", rerunData.recipe as never);
-    }
-    if (rerunData.primers) {
-      form.setFieldValue("primers", rerunData.primers as never);
-    }
-    if (rerunData.primer_version) {
-      form.setFieldValue("primer_version", rerunData.primer_version as never);
-    }
-    if (rerunData.output_path) {
-      form.setFieldValue("output_path", rerunData.output_path as never);
-    }
-    if (rerunData.output_file) {
-      form.setFieldValue("output_file", rerunData.output_file as never);
-    }
-
-    const srrLibs = normalizeToArray<Record<string, string>>(rerunData.srr_libs);
-    const sraLibs: Library[] = srrLibs
-      .filter((lib) => !!lib.srr_accession)
-      .map((lib) => ({
-        id: lib.srr_accession,
-        name: lib.srr_accession,
-        type: "sra" as const,
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: [
+      "recipe",
+      "primers",
+      "primer_version",
+      "output_path",
+      "output_file",
+    ] as const,
+    libraries: ["paired", "single", "sra"],
+    getLibraryExtra: (lib, kind) => {
+      const base = {
         sampleId: lib.sample_id || "",
         ...(lib.sample_level_date ? { sampleLevelDate: lib.sample_level_date } : {}),
-        ...(lib.title ? { title: lib.title } : {}),
-      }));
-
-    const libs: Library[] = [
-      ...buildPairedLibraries(rerunData, (lib) => ({ sampleId: lib.sample_id || "", ...(lib.sample_level_date ? { sampleLevelDate: lib.sample_level_date } : {}) })),
-      ...buildSingleLibraries(rerunData, (lib) => ({ sampleId: lib.sample_id || "", ...(lib.sample_level_date ? { sampleLevelDate: lib.sample_level_date } : {}) })),
-      ...sraLibs,
-    ];
-
-    if (libs.length > 0) {
+      };
+      if (kind === "sra") {
+        return { ...base, ...(lib.title ? { title: lib.title } : {}) };
+      }
+      return base;
+    },
+    syncLibraries: (libs) => {
       skipSraNormalization.current = true;
+      syncLibrariesToForm(libs);
       setLibrariesAndSync(libs);
-    }
-  }, [rerunData, markApplied, form, setLibrariesAndSync]);
+    },
+  });
 
   const handlePairedRead1Select = (path: string) => {
     setPairedRead1(path);

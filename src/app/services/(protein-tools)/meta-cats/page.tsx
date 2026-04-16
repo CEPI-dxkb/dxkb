@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
@@ -144,84 +143,66 @@ export default function MetaCATSPage() {
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
   // Rerun pre-fill
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: [
+      "output_path",
+      "output_file",
+      "input_type",
+      "metadata_group",
+      "auto_alphabet",
+      "group_alphabet",
+      "alignment_type",
+    ] as const,
+    onApply: (rerunData, form) => {
+      // p_value (number, handle zero correctly via typeof guard)
+      if (typeof rerunData.p_value === "number") {
+        form.setFieldValue("p_value", rerunData.p_value as never);
+      }
 
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
+      if (typeof rerunData.year_ranges === "string" && rerunData.year_ranges.trim() !== "") {
+        form.setFieldValue("year_ranges", rerunData.year_ranges as never);
+        setYearRangesInput(rerunData.year_ranges);
+      }
 
-    // p_value
-    if (typeof rerunData.p_value === "number") {
-      form.setFieldValue("p_value", rerunData.p_value);
-    }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const autoGroupsRaw = normalizeToArray<any>(rerunData.auto_groups);
+      if (autoGroupsRaw.length > 0) {
+        // API format uses { id, metadata, grp, g_id } — map back to internal form format
+        const mappedAutoGroups: MetaCatsFormData["auto_groups"] = autoGroupsRaw.map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (item: any) => ({
+            id: crypto.randomUUID(),
+            patric_id: item.patric_id ?? item.id ?? "",
+            metadata: item.metadata ?? "",
+            group: item.group ?? item.grp ?? "",
+            genome_id: item.genome_id ?? item.g_id ?? "",
+            strain: item.strain ?? "",
+            genbank_accessions: item.genbank_accessions ?? "",
+          })
+        );
+        form.setFieldValue("auto_groups", mappedAutoGroups as never);
+        const uniqueGroupNames = Array.from(
+          new Set(mappedAutoGroups.map((item) => item.group).filter(Boolean))
+        ) as string[];
+        setGroupNames(uniqueGroupNames);
+      }
 
-    // output_path / output_file
-    if (typeof rerunData.output_path === "string") {
-      form.setFieldValue("output_path", rerunData.output_path);
-    }
-    if (typeof rerunData.output_file === "string") {
-      form.setFieldValue("output_file", rerunData.output_file);
-    }
+      // Feature groups fields
+      const groupsRaw = normalizeToArray<string>(rerunData.groups);
+      if (groupsRaw.length > 0) {
+        form.setFieldValue("groups", groupsRaw as never);
+      }
 
-    // input_type
-    if (typeof rerunData.input_type === "string") {
-      form.setFieldValue("input_type", rerunData.input_type as MetaCatsFormData["input_type"]);
-    }
-
-    // Auto grouping fields
-    if (typeof rerunData.metadata_group === "string") {
-      form.setFieldValue("metadata_group", rerunData.metadata_group);
-    }
-    if (typeof rerunData.year_ranges === "string" && rerunData.year_ranges.trim() !== "") {
-      form.setFieldValue("year_ranges", rerunData.year_ranges);
-      setYearRangesInput(rerunData.year_ranges);
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const autoGroupsRaw = normalizeToArray<any>(rerunData.auto_groups);
-    if (autoGroupsRaw.length > 0) {
-      // API format uses { id, metadata, grp, g_id } — map back to internal form format
-      const mappedAutoGroups: MetaCatsFormData["auto_groups"] = autoGroupsRaw.map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (item: any) => ({
-          id: crypto.randomUUID(),
-          patric_id: item.patric_id ?? item.id ?? "",
-          metadata: item.metadata ?? "",
-          group: item.group ?? item.grp ?? "",
-          genome_id: item.genome_id ?? item.g_id ?? "",
-          strain: item.strain ?? "",
-          genbank_accessions: item.genbank_accessions ?? "",
-        })
-      );
-      form.setFieldValue("auto_groups", mappedAutoGroups);
-      const uniqueGroupNames = Array.from(
-        new Set(mappedAutoGroups.map((item) => item.group).filter(Boolean))
-      ) as string[];
-      setGroupNames(uniqueGroupNames);
-    }
-    if (typeof rerunData.auto_alphabet === "string") {
-      form.setFieldValue("auto_alphabet", rerunData.auto_alphabet as MetaCatsFormData["auto_alphabet"]);
-    }
-
-    // Feature groups fields
-    const groupsRaw = normalizeToArray<string>(rerunData.groups);
-    if (groupsRaw.length > 0) {
-      form.setFieldValue("groups", groupsRaw);
-    }
-    if (typeof rerunData.group_alphabet === "string") {
-      form.setFieldValue("group_alphabet", rerunData.group_alphabet as MetaCatsFormData["group_alphabet"]);
-    }
-
-    // Alignment file fields
-    if (typeof rerunData.alignment_file === "string" && rerunData.alignment_file.trim() !== "") {
-      form.setFieldValue("alignment_file", rerunData.alignment_file);
-    }
-    if (typeof rerunData.alignment_type === "string") {
-      form.setFieldValue("alignment_type", rerunData.alignment_type);
-    }
-    if (typeof rerunData.group_file === "string" && rerunData.group_file.trim() !== "") {
-      form.setFieldValue("group_file", rerunData.group_file);
-    }
-  }, [rerunData, markApplied, form]);
+      // Alignment file fields
+      if (typeof rerunData.alignment_file === "string" && rerunData.alignment_file.trim() !== "") {
+        form.setFieldValue("alignment_file", rerunData.alignment_file as never);
+      }
+      if (typeof rerunData.group_file === "string" && rerunData.group_file.trim() !== "") {
+        form.setFieldValue("group_file", rerunData.group_file as never);
+      }
+    },
+  });
 
   // Calculate unique group count
   const uniqueGroupCount = useMemo(() => {

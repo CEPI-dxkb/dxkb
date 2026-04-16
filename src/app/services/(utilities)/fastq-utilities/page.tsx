@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -42,8 +42,6 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
-import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
 import {
   fastqUtilitiesInfo,
   fastqUtilitiesParameters,
@@ -79,7 +77,6 @@ import {
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
-import type { Library } from "@/types/services";
 
 export default function FastqUtilitiesPage() {
   // Read input state
@@ -161,47 +158,37 @@ export default function FastqUtilitiesPage() {
   });
 
   // Rerun: pre-fill form from job parameters
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: ["output_path", "output_file", "reference_genome_id"] as const,
+    libraries: ["paired", "single", "sra"],
+    getLibraryExtra: (lib, kind) => {
+      if (kind === "single") return { platform: lib.platform };
+      return {};
+    },
+    syncLibraries: (libs) => {
+      syncLibrariesToForm(libs);
+      setLibrariesAndSync(libs);
+    },
+    onApply: (rerunData, form) => {
+      // Pipeline actions — backend may serialize a single-element array as a string,
+      // and may use Title Case (e.g. "Trim") instead of the lowercase enum values.
+      const rawRecipe = rerunData.recipe;
+      const recipeArray: PipelineAction[] = (
+        Array.isArray(rawRecipe)
+          ? (rawRecipe as string[])
+          : typeof rawRecipe === "string"
+            ? [rawRecipe]
+            : []
+      ).map((a) => a.toLowerCase() as PipelineAction);
 
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    // Scalar fields
-    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
-    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
-    if (rerunData.reference_genome_id) form.setFieldValue("reference_genome_id", rerunData.reference_genome_id as never);
-
-    // Reconstruct Library[] from raw job parameters
-    // (backend may serialize single-element arrays as plain objects)
-    const libs: Library[] = [
-      ...buildPairedLibraries(rerunData),
-      ...buildSingleLibraries(rerunData, (lib) => ({ platform: lib.platform })),
-      ...buildSraLibraries(rerunData),
-    ];
-
-    if (libs.length > 0) {
-      syncLibrariesToForm(libs); // sync form fields immediately for validation
-      setLibrariesAndSync(libs); // sync UI state (selected libraries display)
-    }
-
-    // Pipeline actions — backend may serialize a single-element array as a string,
-    // and may use Title Case (e.g. "Trim") instead of the lowercase enum values.
-    const rawRecipe = rerunData.recipe;
-    const recipeArray: PipelineAction[] = (
-      Array.isArray(rawRecipe)
-        ? (rawRecipe as string[])
-        : typeof rawRecipe === "string"
-          ? [rawRecipe]
-          : []
-    ).map((a) => a.toLowerCase() as PipelineAction);
-
-    if (recipeArray.length > 0) {
-      const actions = recipeArray.map((action, i) => createPipelineActionItem(action, i));
-      setPipelineActions(actions); // eslint-disable-line react-hooks/set-state-in-effect -- one-time initialization from rerun data
-      form.setFieldValue("recipe", actionItemsToRecipe(actions));
-    }
-  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
+      if (recipeArray.length > 0) {
+        const actions = recipeArray.map((action, i) => createPipelineActionItem(action, i));
+        setPipelineActions(actions);
+        form.setFieldValue("recipe", actionItemsToRecipe(actions) as never);
+      }
+    },
+  });
 
   const handleLibraryError = (message: string) => {
     if (

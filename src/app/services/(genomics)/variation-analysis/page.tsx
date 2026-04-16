@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
@@ -40,9 +40,6 @@ import OutputFolder from "@/components/services/output-folder";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
-import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
-import type { Library } from "@/types/services";
 import { toast } from "sonner";
 import {
   variationAnalysisFormSchema,
@@ -115,28 +112,15 @@ export default function VariationAnalysisPage() {
   });
 
   // Rerun: pre-fill form from job parameters
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
-
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
-    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
-    if (rerunData.reference_genome_id) form.setFieldValue("reference_genome_id", rerunData.reference_genome_id as never);
-    if (rerunData.mapper) form.setFieldValue("mapper", rerunData.mapper as never);
-    if (rerunData.caller) form.setFieldValue("caller", rerunData.caller as never);
-
-    const libs: Library[] = [
-      ...buildPairedLibraries(rerunData),
-      ...buildSingleLibraries(rerunData),
-      ...buildSraLibraries(rerunData),
-    ];
-    if (libs.length > 0) {
+  useRerunForm({
+    form,
+    fields: ["output_path", "output_file", "reference_genome_id", "mapper", "caller"] as const,
+    libraries: ["paired", "single", "sra"],
+    syncLibraries: (libs) => {
       syncLibrariesToForm(libs);
       setLibrariesAndSync(libs);
-    }
-  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
+    },
+  });
 
   // Setup service debugging and form submission
   const {

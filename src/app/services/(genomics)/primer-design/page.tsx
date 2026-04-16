@@ -51,7 +51,6 @@ import { useServiceFormSubmission } from "@/hooks/services/use-service-form-subm
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
 
 export default function PrimerDesignServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -263,67 +262,62 @@ export default function PrimerDesignServicePage() {
     form.setFieldValue("SEQUENCE_ID", sequenceTextId);
   }, [sequenceTextValue, sequenceTextId, form]);
 
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
+  useRerunForm<Record<string, unknown>>({
+    form,
+    fields: ["output_path", "output_file"] as const,
+    onApply: (rerunData, form) => {
+      const d = rerunData;
 
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    const d = rerunData;
-
-    // Output fields
-    if (typeof d.output_path === "string") form.setFieldValue("output_path", d.output_path);
-    if (typeof d.output_file === "string") form.setFieldValue("output_file", d.output_file);
-
-    // Input type
-    const inputTypeVal = d.input_type as PrimerDesignFormData["input_type"] | undefined;
-    if (inputTypeVal === "sequence_text" || inputTypeVal === "workplace_fasta") {
-      form.setFieldValue("input_type", inputTypeVal);
-    }
-
-    // Sequence input — handle per input type
-    if (inputTypeVal === "workplace_fasta") {
-      const path = typeof d.sequence_input === "string" ? d.sequence_input : "";
-      isRestoringValueRef.current = true;
-      form.setFieldValue("sequence_input", path);
-      setWorkspaceFastaValue(path); // eslint-disable-line react-hooks/set-state-in-effect
-      setTimeout(() => { isRestoringValueRef.current = false; }, 200);
-    } else {
-      // sequence_text (default)
-      const seq = typeof d.sequence_input === "string" ? d.sequence_input : "";
-      const seqId = typeof d.SEQUENCE_ID === "string" ? d.SEQUENCE_ID : "";
-      form.setFieldValue("sequence_input", seq);
-      form.setFieldValue("SEQUENCE_ID", seqId);
-      setSequenceTextValue(seq);
-      setSequenceTextId(seqId);
-    }
-
-    // Boolean fields
-    if (typeof d.PRIMER_PICK_INTERNAL_OLIGO === "boolean") {
-      form.setFieldValue("PRIMER_PICK_INTERNAL_OLIGO", d.PRIMER_PICK_INTERNAL_OLIGO);
-    }
-
-    // Array fields
-    for (const field of primerArrayFields) {
-      if (d[field] !== undefined) {
-        const val = Array.isArray(d[field]) ? (d[field] as string[]) : typeof d[field] === "string" ? (d[field] as string).trim().split(/\s+/).filter(Boolean) : undefined;
-        if (val !== undefined) form.setFieldValue(field, val);
+      // Input type
+      const inputTypeVal = d.input_type as PrimerDesignFormData["input_type"] | undefined;
+      if (inputTypeVal === "sequence_text" || inputTypeVal === "workplace_fasta") {
+        form.setFieldValue("input_type", inputTypeVal as never);
       }
-    }
 
-    // Scalar numeric/string fields
-    for (const field of primerScalarFields) {
-      if (d[field] !== undefined) {
-        form.setFieldValue(field, String(d[field]));
+      // Sequence input — handle per input type
+      if (inputTypeVal === "workplace_fasta") {
+        const path = typeof d.sequence_input === "string" ? d.sequence_input : "";
+        isRestoringValueRef.current = true;
+        form.setFieldValue("sequence_input", path as never);
+        setWorkspaceFastaValue(path);
+        setTimeout(() => { isRestoringValueRef.current = false; }, 200);
+      } else {
+        // sequence_text (default)
+        const seq = typeof d.sequence_input === "string" ? d.sequence_input : "";
+        const seqId = typeof d.SEQUENCE_ID === "string" ? d.SEQUENCE_ID : "";
+        form.setFieldValue("sequence_input", seq as never);
+        form.setFieldValue("SEQUENCE_ID", seqId as never);
+        setSequenceTextValue(seq);
+        setSequenceTextId(seqId);
       }
-    }
 
-    // Expand advanced section if any advanced field is present in rerun data
-    const hasAdvancedField = primerAdvancedFields.some((f) => d[f] !== undefined);
-    if (hasAdvancedField) {
-      setShowAdvanced(true);
-    }
-  }, [rerunData, markApplied, form]);
+      // Boolean fields
+      if (typeof d.PRIMER_PICK_INTERNAL_OLIGO === "boolean") {
+        form.setFieldValue("PRIMER_PICK_INTERNAL_OLIGO", d.PRIMER_PICK_INTERNAL_OLIGO as never);
+      }
+
+      // Array fields
+      for (const field of primerArrayFields) {
+        if (d[field] !== undefined) {
+          const val = Array.isArray(d[field]) ? (d[field] as string[]) : typeof d[field] === "string" ? (d[field] as string).trim().split(/\s+/).filter(Boolean) : undefined;
+          if (val !== undefined) form.setFieldValue(field, val as never);
+        }
+      }
+
+      // Scalar numeric/string fields
+      for (const field of primerScalarFields) {
+        if (d[field] !== undefined) {
+          form.setFieldValue(field, String(d[field]) as never);
+        }
+      }
+
+      // Expand advanced section if any advanced field is present in rerun data
+      const hasAdvancedField = primerAdvancedFields.some((f) => d[f] !== undefined);
+      if (hasAdvancedField) {
+        setShowAdvanced(true);
+      }
+    },
+  });
 
   const handleReset = () => {
     form.reset(defaultPrimerDesignFormValues);

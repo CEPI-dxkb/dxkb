@@ -131,17 +131,31 @@ export function buildSingleLibraries(
 
 /**
  * Reconstruct SRA Library objects from raw rerun params.
- * Tries `srr_libs` (array of { srr_accession }) first, then falls back to `srr_ids` (string[]).
+ * Tries `srr_libs` (array of { srr_accession, ... }) first, then falls back to `srr_ids` (string[]).
+ * Optional `getExtra` is invoked per library with the source record (empty object on the srr_ids fallback path).
  */
-export function buildSraLibraries(rerunData: Record<string, unknown>): Library[] {
+export function buildSraLibraries(
+  rerunData: Record<string, unknown>,
+  getExtra?: (lib: Record<string, string>) => Partial<Library>,
+): Library[] {
   const srrLibs = normalizeToArray<Record<string, string>>(rerunData.srr_libs);
   if (srrLibs.length > 0) {
     return srrLibs
       .filter((lib) => !!lib.srr_accession)
-      .map((lib) => ({ id: lib.srr_accession, name: lib.srr_accession, type: "sra" as const }));
+      .map((lib) => ({
+        id: lib.srr_accession,
+        name: lib.srr_accession,
+        type: "sra" as const,
+        ...getExtra?.(lib),
+      }));
   }
   if (Array.isArray(rerunData.srr_ids)) {
-    return (rerunData.srr_ids as string[]).map((id) => ({ id, name: id, type: "sra" as const }));
+    return (rerunData.srr_ids as string[]).map((id) => ({
+      id,
+      name: id,
+      type: "sra" as const,
+      ...getExtra?.({}),
+    }));
   }
   return [];
 }

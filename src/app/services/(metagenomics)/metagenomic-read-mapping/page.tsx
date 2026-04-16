@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -42,9 +42,6 @@ import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { useDefaultOutputPath } from "@/hooks/services/use-default-output-path";
-import { buildPairedLibraries, buildSingleLibraries, buildSraLibraries } from "@/lib/rerun-utility";
-import type { Library } from "@/types/services";
 import {
   metagenomicReadMappingInfo,
   metagenomicReadMappingParameters,
@@ -135,29 +132,15 @@ export default function MetagenomicReadMappingPage() {
   });
 
   // Rerun: pre-fill form from job parameters
-  const { rerunData, markApplied } = useRerunForm<Record<string, unknown>>();
-  useDefaultOutputPath(form, rerunData);
-
-  useEffect(() => {
-    if (!rerunData || !markApplied()) return;
-
-    if (rerunData.output_path) form.setFieldValue("output_path", rerunData.output_path as never);
-    if (rerunData.output_file) form.setFieldValue("output_file", rerunData.output_file as never);
-    if (rerunData.gene_set_type) form.setFieldValue("gene_set_type", rerunData.gene_set_type as never);
-    if (rerunData.gene_set_name) form.setFieldValue("gene_set_name", rerunData.gene_set_name as never);
-    if (rerunData.gene_set_fasta) form.setFieldValue("gene_set_fasta", rerunData.gene_set_fasta as never);
-    if (rerunData.gene_set_feature_group) form.setFieldValue("gene_set_feature_group", rerunData.gene_set_feature_group as never);
-
-    const libs: Library[] = [
-      ...buildPairedLibraries(rerunData),
-      ...buildSingleLibraries(rerunData),
-      ...buildSraLibraries(rerunData),
-    ];
-    if (libs.length > 0) {
+  useRerunForm({
+    form,
+    fields: ["output_path", "output_file", "gene_set_type", "gene_set_name", "gene_set_fasta", "gene_set_feature_group"] as const,
+    libraries: ["paired", "single", "sra"],
+    syncLibraries: (libs) => {
       syncLibrariesToForm(libs);
       setLibrariesAndSync(libs);
-    }
-  }, [rerunData, markApplied, form, syncLibrariesToForm, setLibrariesAndSync]);
+    },
+  });
 
   // Handle adding paired library
   const handlePairedLibraryAdd = () => {

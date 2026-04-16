@@ -3,7 +3,6 @@ import { apiFetch } from "@/lib/auth";
 import { toast } from "sonner";
 import type { KillJobResponse } from "@/types/workspace";
 
-// Hook for killing jobs — invalidates jobs list on success
 export function useKillJob() {
   const queryClient = useQueryClient();
 

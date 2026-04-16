@@ -32,8 +32,8 @@ export function useAuth(): UseAuthResult {
   return {
     user,
     status,
-    isAuthenticated: status === "authed" && !!user,
-    isVerified: user?.email_verified !== false,
+    isAuthenticated: status === "authed",
+    isVerified: !!user && user.email_verified !== false,
     isAdmin: user?.roles?.includes("admin") ?? false,
     isImpersonating: user?.isImpersonating ?? false,
     originalUsername: user?.originalUsername ?? null,

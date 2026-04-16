@@ -54,10 +54,15 @@ export function createAuthStore(options: CreateAuthStoreOptions): AuthStore {
   const listeners = new Set<() => void>();
   let inflightRefresh: Promise<void> | null = null;
 
+  function userKey(user: AuthUser | null): string | null {
+    if (!user) return null;
+    return `${user.id ?? user.username}|${user.token}|${user.expires_at ?? ""}|${user.isImpersonating ?? false}`;
+  }
+
   function setSnapshot(next: AuthSnapshot): void {
     if (
-      next.user === snapshot.user &&
-      next.status === snapshot.status
+      next.status === snapshot.status &&
+      userKey(next.user) === userKey(snapshot.user)
     ) {
       return;
     }
@@ -158,7 +163,7 @@ export function createAuthStore(options: CreateAuthStoreOptions): AuthStore {
       const result = await port.impersonate(targetUser, password);
       if (result.data) {
         setSnapshot({ user: result.data, status: "authed" });
-        events.emit("session:acquired", { user: result.data, via: "restore" });
+        events.emit("session:acquired", { user: result.data, via: "impersonate" });
       }
       return result;
     },
@@ -167,7 +172,7 @@ export function createAuthStore(options: CreateAuthStoreOptions): AuthStore {
       const result = await port.exitImpersonation();
       if (result.data) {
         setSnapshot({ user: result.data, status: "authed" });
-        events.emit("session:acquired", { user: result.data, via: "restore" });
+        events.emit("session:acquired", { user: result.data, via: "exit-impersonate" });
       }
       return result;
     },

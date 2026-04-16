@@ -1,7 +1,10 @@
 import type { AuthUser } from "@/lib/auth/types";
 
 export interface AuthEventMap {
-  "session:acquired": { user: AuthUser; via: "signIn" | "signUp" | "restore" };
+  "session:acquired": {
+    user: AuthUser;
+    via: "signIn" | "signUp" | "impersonate" | "exit-impersonate";
+  };
   "session:refreshed": { user: AuthUser };
   "session:lost": { reason: SessionLostReason };
 }

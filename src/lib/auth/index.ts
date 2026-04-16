@@ -25,7 +25,7 @@ export type { AuthStore, AuthSnapshot, AuthStatus } from "@/lib/auth/store";
 
 export { AuthBoundary } from "@/lib/auth/provider";
 export { useAuth, useSignIn } from "@/lib/auth/hooks";
-export { apiFetch, apiJson, apiGetJson } from "@/lib/auth/fetch";
+export { apiFetch } from "@/lib/auth/fetch";
 export { authAdmin, authAccount } from "@/lib/auth/advanced";
 
 export { httpAuthAdapter } from "@/lib/auth/adapters/http";

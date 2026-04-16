@@ -14,6 +14,7 @@ import { httpAuthAdapter } from "@/lib/auth/adapters/http";
 import type { AuthPort } from "@/lib/auth/port";
 import {
   createAuthStore,
+  getActiveAuthStore,
   setActiveAuthStore,
   type AuthStore,
 } from "@/lib/auth/store";
@@ -54,7 +55,9 @@ export function AuthBoundary({
 
   useEffect(() => {
     setActiveAuthStore(store);
-    return () => setActiveAuthStore(null);
+    return () => {
+      if (getActiveAuthStore() === store) setActiveAuthStore(null);
+    };
   }, [store]);
 
   useEffect(() => {
@@ -105,5 +108,5 @@ function ProtectedRouteGuard({
     return store.subscribe(check);
   }, [store, router, pathname, searchParams]);
 
-  return <>{children}</>;
+  return children;
 }

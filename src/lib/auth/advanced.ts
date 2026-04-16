@@ -1,7 +1,7 @@
 "use client";
 
 import type { AuthError, Result } from "@/lib/auth/port";
-import { getActiveAuthStore } from "@/lib/auth/store";
+import { getActiveAuthStore, type AuthStore } from "@/lib/auth/store";
 import type {
   AuthEventHandler,
   AuthEventName,
@@ -11,37 +11,26 @@ import type {
   SignupCredentials,
 } from "@/lib/auth/types";
 
-function requireStore() {
-  const store = getActiveAuthStore();
-  if (!store) {
-    throw new Error(
-      "Advanced auth API called before <AuthBoundary> mounted. Wrap your app with <AuthBoundary> before using authAdmin or authAccount.",
-    );
-  }
-  return store;
-}
+const notMountedError: AuthError = {
+  message: "Auth is not ready",
+  code: "unknown",
+};
 
-function notMountedError(): AuthError {
-  return {
-    message: "Auth is not ready",
-    code: "unknown",
-  };
+async function withStore<T>(
+  fn: (store: AuthStore) => Promise<Result<T>>,
+): Promise<Result<T>> {
+  const store = getActiveAuthStore();
+  if (!store) return { data: null, error: notMountedError };
+  return fn(store);
 }
 
 export const authAdmin = {
   impersonate: {
-    async start(
-      targetUser: string,
-      password: string,
-    ): Promise<Result<AuthUser>> {
-      const store = getActiveAuthStore();
-      if (!store) return { data: null, error: notMountedError() };
-      return store.impersonate(targetUser, password);
+    start(targetUser: string, password: string): Promise<Result<AuthUser>> {
+      return withStore((s) => s.impersonate(targetUser, password));
     },
-    async exit(): Promise<Result<AuthUser>> {
-      const store = getActiveAuthStore();
-      if (!store) return { data: null, error: notMountedError() };
-      return store.exitImpersonation();
+    exit(): Promise<Result<AuthUser>> {
+      return withStore((s) => s.exitImpersonation());
     },
     state(): { isImpersonating: boolean; originalUsername: string | null } {
       const snapshot = getActiveAuthStore()?.snapshot();
@@ -55,31 +44,27 @@ export const authAdmin = {
     event: E,
     handler: AuthEventHandler<E>,
   ): () => void {
-    return requireStore().events.on(event, handler);
+    const store = getActiveAuthStore();
+    if (!store) {
+      throw new Error(
+        "authAdmin.on called before <AuthBoundary> mounted. Wrap your app with <AuthBoundary> first.",
+      );
+    }
+    return store.events.on(event, handler);
   },
 };
 
 export const authAccount = {
-  async signUp(input: SignupCredentials): Promise<Result<AuthUser>> {
-    const store = getActiveAuthStore();
-    if (!store) return { data: null, error: notMountedError() };
-    return store.signUp(input);
+  signUp(input: SignupCredentials): Promise<Result<AuthUser>> {
+    return withStore((s) => s.signUp(input));
   },
-  async requestPasswordReset(
-    usernameOrEmail: string,
-  ): Promise<Result<void>> {
-    const store = getActiveAuthStore();
-    if (!store) return { data: null, error: notMountedError() };
-    return store.requestPasswordReset(usernameOrEmail);
+  requestPasswordReset(usernameOrEmail: string): Promise<Result<void>> {
+    return withStore((s) => s.requestPasswordReset(usernameOrEmail));
   },
-  async sendVerificationEmail(): Promise<Result<void>> {
-    const store = getActiveAuthStore();
-    if (!store) return { data: null, error: notMountedError() };
-    return store.sendVerificationEmail();
+  sendVerificationEmail(): Promise<Result<void>> {
+    return withStore((s) => s.sendVerificationEmail());
   },
   async refresh(): Promise<void> {
-    const store = getActiveAuthStore();
-    if (!store) return;
-    return store.refresh();
+    await getActiveAuthStore()?.refresh();
   },
 };

@@ -89,6 +89,17 @@ async function getJson<T>(url: string, fallback: string): Promise<Result<T>> {
   }
 }
 
+function unwrapUser(
+  result: Result<SessionEnvelope>,
+  fallback: string,
+): Result<AuthUser> {
+  if (result.error) return result;
+  if (!result.data.user) {
+    return { data: null, error: { message: fallback, code: "unknown" } };
+  }
+  return { data: result.data.user, error: null };
+}
+
 export function httpAuthAdapter(): AuthPort {
   return {
     async getSession() {
@@ -101,35 +112,25 @@ export function httpAuthAdapter(): AuthPort {
     },
 
     async signIn(credentials: SigninCredentials) {
-      const result = await postJson<SessionEnvelope>(
-        "/api/auth/sign-in/email",
-        credentials,
+      return unwrapUser(
+        await postJson<SessionEnvelope>(
+          "/api/auth/sign-in/email",
+          credentials,
+          "Sign in failed",
+        ),
         "Sign in failed",
       );
-      if (result.error) return result;
-      if (!result.data.user) {
-        return {
-          data: null,
-          error: { message: "Sign in failed", code: "unknown" },
-        };
-      }
-      return { data: result.data.user, error: null };
     },
 
     async signUp(input: SignupCredentials) {
-      const result = await postJson<SessionEnvelope>(
-        "/api/auth/sign-up/email",
-        input,
+      return unwrapUser(
+        await postJson<SessionEnvelope>(
+          "/api/auth/sign-up/email",
+          input,
+          "Sign up failed",
+        ),
         "Sign up failed",
       );
-      if (result.error) return result;
-      if (!result.data.user) {
-        return {
-          data: null,
-          error: { message: "Sign up failed", code: "unknown" },
-        };
-      }
-      return { data: result.data.user, error: null };
     },
 
     async signOut() {
@@ -143,35 +144,25 @@ export function httpAuthAdapter(): AuthPort {
     },
 
     async impersonate(targetUser: string, password: string) {
-      const result = await postJson<SessionEnvelope>(
-        "/api/auth/su-login",
-        { targetUser, password },
+      return unwrapUser(
+        await postJson<SessionEnvelope>(
+          "/api/auth/su-login",
+          { targetUser, password },
+          "Impersonation failed",
+        ),
         "Impersonation failed",
       );
-      if (result.error) return result;
-      if (!result.data.user) {
-        return {
-          data: null,
-          error: { message: "Impersonation failed", code: "unknown" },
-        };
-      }
-      return { data: result.data.user, error: null };
     },
 
     async exitImpersonation() {
-      const result = await postJson<SessionEnvelope>(
-        "/api/auth/su-exit",
-        undefined,
+      return unwrapUser(
+        await postJson<SessionEnvelope>(
+          "/api/auth/su-exit",
+          undefined,
+          "Failed to exit impersonation",
+        ),
         "Failed to exit impersonation",
       );
-      if (result.error) return result;
-      if (!result.data.user) {
-        return {
-          data: null,
-          error: { message: "Failed to exit impersonation", code: "unknown" },
-        };
-      }
-      return { data: result.data.user, error: null };
     },
 
     async requestPasswordReset(usernameOrEmail: string) {

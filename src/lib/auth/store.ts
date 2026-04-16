@@ -7,8 +7,11 @@ import type {
 import {
   createAuthEventBus,
   type AuthEventBus,
+  type AuthEventMap,
   type SessionLostReason,
 } from "@/lib/auth/events";
+
+type SessionAcquiredVia = AuthEventMap["session:acquired"]["via"];
 
 export type AuthStatus = "loading" | "authed" | "guest";
 
@@ -98,7 +101,7 @@ export function createAuthStore(options: CreateAuthStoreOptions): AuthStore {
 
   async function acquireSession<A extends unknown[]>(
     portCall: (...args: A) => Promise<Result<AuthUser>>,
-    via: string,
+    via: SessionAcquiredVia,
     ...args: A
   ): Promise<Result<AuthUser>> {
     const result = await portCall(...args);

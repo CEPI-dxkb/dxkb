@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  Suspense,
   useContext,
   useEffect,
   useRef,
@@ -78,7 +79,9 @@ export function AuthBoundary({
 
   return (
     <AuthStoreContext.Provider value={store}>
-      <ProtectedRouteGuard store={store}>{children}</ProtectedRouteGuard>
+      <Suspense fallback={children}>
+        <ProtectedRouteGuard store={store}>{children}</ProtectedRouteGuard>
+      </Suspense>
     </AuthStoreContext.Provider>
   );
 }

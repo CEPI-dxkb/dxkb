@@ -94,7 +94,7 @@ function unwrapUser(
   fallback: string,
 ): Result<AuthUser> {
   if (result.error) return result;
-  if (!result.data.user) {
+  if (!result.data?.user) {
     return { data: null, error: { message: fallback, code: "unknown" } };
   }
   return { data: result.data.user, error: null };

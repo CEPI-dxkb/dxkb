@@ -77,6 +77,7 @@ export function memoryAuthAdapter(
 
     async signOut() {
       session = null;
+      impersonationBackup = null;
       return { data: undefined, error: null };
     },
 

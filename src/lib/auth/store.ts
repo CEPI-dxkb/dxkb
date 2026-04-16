@@ -96,6 +96,19 @@ export function createAuthStore(options: CreateAuthStoreOptions): AuthStore {
     return inflightRefresh;
   }
 
+  async function acquireSession<A extends unknown[]>(
+    portCall: (...args: A) => Promise<Result<AuthUser>>,
+    via: string,
+    ...args: A
+  ): Promise<Result<AuthUser>> {
+    const result = await portCall(...args);
+    if (result.data) {
+      setSnapshot({ user: result.data, status: "authed" });
+      events.emit("session:acquired", { user: result.data, via });
+    }
+    return result;
+  }
+
   async function signOut(reason: SessionLostReason = "user"): Promise<void> {
     const previousUser = snapshot.user;
     setSnapshot({ user: null, status: "guest" });
@@ -140,41 +153,29 @@ export function createAuthStore(options: CreateAuthStoreOptions): AuthStore {
     refresh,
 
     async signIn(credentials) {
-      const result = await port.signIn(credentials);
-      if (result.data) {
-        setSnapshot({ user: result.data, status: "authed" });
-        events.emit("session:acquired", { user: result.data, via: "signIn" });
-      }
-      return result;
+      return acquireSession(port.signIn.bind(port), "signIn", credentials);
     },
 
     async signUp(input) {
-      const result = await port.signUp(input);
-      if (result.data) {
-        setSnapshot({ user: result.data, status: "authed" });
-        events.emit("session:acquired", { user: result.data, via: "signUp" });
-      }
-      return result;
+      return acquireSession(port.signUp.bind(port), "signUp", input);
     },
 
     signOut,
 
     async impersonate(targetUser, password) {
-      const result = await port.impersonate(targetUser, password);
-      if (result.data) {
-        setSnapshot({ user: result.data, status: "authed" });
-        events.emit("session:acquired", { user: result.data, via: "impersonate" });
-      }
-      return result;
+      return acquireSession(
+        port.impersonate.bind(port),
+        "impersonate",
+        targetUser,
+        password,
+      );
     },
 
     async exitImpersonation() {
-      const result = await port.exitImpersonation();
-      if (result.data) {
-        setSnapshot({ user: result.data, status: "authed" });
-        events.emit("session:acquired", { user: result.data, via: "exit-impersonate" });
-      }
-      return result;
+      return acquireSession(
+        port.exitImpersonation.bind(port),
+        "exit-impersonate",
+      );
     },
 
     async requestPasswordReset(usernameOrEmail) {

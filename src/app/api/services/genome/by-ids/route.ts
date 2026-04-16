@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/api/server";
 import { getRequiredEnv } from "@/lib/env";
-
-
-function buildInClause(ids: string[]): string {
-  const sanitizedIds = ids
-    .map((id) => id.trim())
-    .filter((id) => /^[0-9.]+$/.test(id));
-
-  return sanitizedIds.join(",");
-}
+import { buildGenomeInClause } from "../utils";
 
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   const body = await request.json();
@@ -21,7 +13,7 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     return NextResponse.json({ results: [] });
   }
 
-  const inClause = buildInClause(genomeIds);
+  const inClause = buildGenomeInClause(genomeIds);
 
   if (!inClause) {
     return NextResponse.json({ results: [] });

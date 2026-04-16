@@ -63,7 +63,7 @@ export function withOptionalAuth<TContext = object>(
   return async (request: NextRequest, context: TContext) => {
     try {
       const token = await getAuthToken();
-      return await handler(request, { ...context, token: token ?? undefined });
+      return await handler(request, { ...context, token });
     } catch (error) {
       console.error("Route handler error:", error);
       return errorResponse(error);

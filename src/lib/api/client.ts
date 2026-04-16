@@ -59,7 +59,12 @@ async function fetchWithRetry<T>(
   const response = await fetch(url, init);
 
   if (response.status === 401 && authRefreshCallback) {
-    await authRefreshCallback();
+    try {
+      await authRefreshCallback();
+    } catch {
+      // If refresh fails, fall through to handle the original 401
+      return handleResponse<T>(response);
+    }
     const retryResponse = await fetch(url, init);
     return handleResponse<T>(retryResponse);
   }

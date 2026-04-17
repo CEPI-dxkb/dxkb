@@ -40,15 +40,13 @@ import { SingleGenomeSelector } from "@/components/services/single-genome-select
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   fastqUtilitiesInfo,
   fastqUtilitiesParameters,
   fastqUtilitiesPipeline,
   readInputFileInfo,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/fastq-utilities";
 
 import {
   fastqUtilitiesFormSchema,
@@ -63,12 +61,12 @@ import {
   type Platform,
 } from "@/lib/forms/(utilities)/fastq-utilities/fastq-utilities-form-schema";
 import {
-  transformFastqUtilitiesParams,
   isAlignSelected,
   createPipelineActionItem,
   removePipelineActionItem,
   actionItemsToRecipe,
 } from "@/lib/forms/(utilities)/fastq-utilities/fastq-utilities-form-utils";
+import { fastqUtilitiesService } from "@/lib/forms/(utilities)/fastq-utilities/fastq-utilities-service";
 import {
   buildBaseLibraryItem,
   getPairedLibraryName,
@@ -106,22 +104,12 @@ export default function FastqUtilitiesPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "FastqUtils",
-    displayName: "FASTQ Utilities",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "FastqUtils",
-  });
-
   const form = useForm({
     defaultValues: defaultFastqUtilitiesFormValues as FastqUtilitiesFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: fastqUtilitiesFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as FastqUtilitiesFormData;
-      await previewOrPassthrough(transformFastqUtilitiesParams(data), submit);
+      await runtime.submitFormData(value as FastqUtilitiesFormData);
     },
   });
 
@@ -152,37 +140,37 @@ export default function FastqUtilitiesPage() {
     },
   });
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: fastqUtilitiesService,
     form,
-    fields: ["output_path", "output_file", "reference_genome_id"] as const,
-    libraries: ["paired", "single", "sra"],
-    getLibraryExtra: (lib, kind) => {
-      if (kind === "single") return { platform: lib.platform };
-      return {};
-    },
-    syncLibraries: (libs) => {
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
-    },
-    onApply: (rerunData, form) => {
-      // Pipeline actions — backend may serialize a single-element array as a string,
-      // and may use Title Case (e.g. "Trim") instead of the lowercase enum values.
-      const rawRecipe = rerunData.recipe;
-      const recipeArray: PipelineAction[] = (
-        Array.isArray(rawRecipe)
-          ? (rawRecipe as string[])
-          : typeof rawRecipe === "string"
-            ? [rawRecipe]
-            : []
-      ).map((a) => a.toLowerCase() as PipelineAction);
+    onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
+      onApply: (rerunData, form) => {
+        // Backend rerun params may serialize a single action as a string and use Title Case.
+        const rawRecipe = rerunData.recipe;
+        const recipeArray: PipelineAction[] = (
+          Array.isArray(rawRecipe)
+            ? (rawRecipe as string[])
+            : typeof rawRecipe === "string"
+              ? [rawRecipe]
+              : []
+        ).map((a) => a.toLowerCase() as PipelineAction);
 
-      if (recipeArray.length > 0) {
-        const actions = recipeArray.map((action, i) => createPipelineActionItem(action, i));
-        setPipelineActions(actions);
-        form.setFieldValue("recipe", actionItemsToRecipe(actions) as never);
-      }
+        if (recipeArray.length > 0) {
+          const actions = recipeArray.map((action, i) =>
+            createPipelineActionItem(action, i),
+          );
+          setPipelineActions(actions);
+          form.setFieldValue("recipe", actionItemsToRecipe(actions) as never);
+        }
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const handleLibraryError = (message: string) => {
     if (
@@ -623,7 +611,7 @@ export default function FastqUtilitiesPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

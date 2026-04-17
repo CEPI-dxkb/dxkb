@@ -40,14 +40,12 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   sarsCov2WastewaterAnalysisInfo,
   sarsCov2WastewaterAnalysisInputLib,
   sarsCov2WastewaterAnalysisParameters,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/sars-cov2-wastewater-analysis";
 
 import {
   sarsCov2WastewaterAnalysisFormSchema,
@@ -62,7 +60,6 @@ import {
   type SrrLibItem,
 } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-form-schema";
 import {
-  transformSarsCov2WastewaterParams,
   handleLibraryError as handleLibraryErrorUtil,
   getPairedLibraryBuildFn,
   getSingleLibraryBuildFn,
@@ -72,6 +69,7 @@ import {
   getDefaultSampleIdFromPath,
   getDefaultSampleIdFromSrr,
 } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-form-utils";
+import { sarsCov2WastewaterAnalysisService } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-service";
 import {
   buildBaseLibraryItem,
   useTanstackLibrarySelection,
@@ -93,8 +91,9 @@ export default function SarsCov2WastewaterAnalysisPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: sarsCov2WastewaterAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as SarsCov2WastewaterAnalysisFormData;
-      await previewOrPassthrough(transformSarsCov2WastewaterParams(data), submit);
+      await runtime.submitFormData(
+        value as SarsCov2WastewaterAnalysisFormData,
+      );
     },
   });
 
@@ -181,33 +180,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
     }
   }, [primers, form]);
 
-  useRerunForm<Record<string, unknown>>({
-    form,
-    fields: [
-      "recipe",
-      "primers",
-      "primer_version",
-      "output_path",
-      "output_file",
-    ] as const,
-    libraries: ["paired", "single", "sra"],
-    getLibraryExtra: (lib, kind) => {
-      const base = {
-        sampleId: lib.sample_id || "",
-        ...(lib.sample_level_date ? { sampleLevelDate: lib.sample_level_date } : {}),
-      };
-      if (kind === "sra") {
-        return { ...base, ...(lib.title ? { title: lib.title } : {}) };
-      }
-      return base;
-    },
-    syncLibraries: (libs) => {
-      skipSraNormalization.current = true;
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
-    },
-  });
-
   const handlePairedRead1Select = (path: string) => {
     setPairedRead1(path);
     setCurrentSampleId(getDefaultSampleIdFromPath(path));
@@ -281,14 +253,19 @@ export default function SarsCov2WastewaterAnalysisPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "SARS2Wastewater",
-    displayName: "SARS-CoV-2 Wastewater Analysis",
+  const runtime = useServiceRuntime({
+    definition: sarsCov2WastewaterAnalysisService,
+    form,
     onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        skipSraNormalization.current = true;
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
+    },
   });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "SARS2Wastewater",
-  });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   return (
     <section>
@@ -634,7 +611,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

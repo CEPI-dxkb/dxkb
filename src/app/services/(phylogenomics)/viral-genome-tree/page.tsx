@@ -34,7 +34,7 @@ import {
   phylogeneticTreeInput,
   phylogeneticTreeAlignmentParameters,
   phylogeneticTreeTreeParameters,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/phylogenetic-tree";
 import OutputFolder from "@/components/services/output-folder";
 import {
   RequiredFormCardTitle,
@@ -44,9 +44,7 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 
 import { fetchGenomeGroupMembers, validateViralGenomes } from "@/lib/services/genome";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -61,6 +59,7 @@ import {
 } from "@/components/ui/table";
 import * as ViralGenomeTree from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-form-schema";
 import * as ViralGenomeTreeUtils from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-form-utils";
+import { viralGenomeTreeService } from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-service";
 
 interface MetadataField {
   id: string;
@@ -83,25 +82,12 @@ export default function ViralGenomeTreePage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "GeneTree",
-    displayName: "Viral Genome Tree",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "GeneTree",
-  });
-
   const form = useForm({
     defaultValues: ViralGenomeTree.defaultViralGenomeTreeFormValues as ViralGenomeTree.ViralGenomeTreeFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: ViralGenomeTree.viralGenomeTreeFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as ViralGenomeTree.ViralGenomeTreeFormData;
-      await previewOrPassthrough(
-        ViralGenomeTreeUtils.transformViralGenomeTreeParams(data),
-        submit,
-      );
+      await runtime.submitFormData(value as ViralGenomeTree.ViralGenomeTreeFormData);
     },
   });
 
@@ -117,27 +103,47 @@ export default function ViralGenomeTreePage() {
     form.setFieldValue("metadata_fields", selectedFields);
   }, [metadataFields, form]);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: viralGenomeTreeService,
     form,
-    fields: ["recipe", "substitution_model", "output_path", "output_file"] as const,
-    onApply: (rerunData, form) => {
-      if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold) as never);
-      if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold) as never);
+    onSuccess: handleReset,
+    rerun: {
+      onApply: (rerunData, form) => {
+        if (rerunData.trim_threshold != null) {
+          form.setFieldValue(
+            "trim_threshold",
+            String(rerunData.trim_threshold) as never,
+          );
+        }
+        if (rerunData.gap_threshold != null) {
+          form.setFieldValue(
+            "gap_threshold",
+            String(rerunData.gap_threshold) as never,
+          );
+        }
 
-      const sequences = normalizeToArray<ViralGenomeTree.ViralGenomeSequenceItem>(rerunData.sequences);
-      if (sequences.length > 0) {
-        form.setFieldValue("sequences", sequences as never);
-      }
+        const sequences =
+          normalizeToArray<ViralGenomeTree.ViralGenomeSequenceItem>(
+            rerunData.sequences,
+          );
+        if (sequences.length > 0) {
+          form.setFieldValue("sequences", sequences as never);
+        }
 
-      // Restore metadata fields from genome_metadata_fields
-      const genomeMetadataFieldIds = normalizeToArray<string>(rerunData.genome_metadata_fields);
-      if (genomeMetadataFieldIds.length > 0) {
-        setMetadataFields(
-          genomeMetadataFieldIds.map((id) => ViralGenomeTreeUtils.createMetadataField(id)),
+        const genomeMetadataFieldIds = normalizeToArray<string>(
+          rerunData.genome_metadata_fields,
         );
-      }
+        if (genomeMetadataFieldIds.length > 0) {
+          setMetadataFields(
+            genomeMetadataFieldIds.map((id) =>
+              ViralGenomeTreeUtils.createMetadataField(id),
+            ),
+          );
+        }
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const selectedMetadataIds = useMemo(
     () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),
@@ -786,7 +792,7 @@ export default function ViralGenomeTreePage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

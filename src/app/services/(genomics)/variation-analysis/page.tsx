@@ -32,15 +32,13 @@ import {
   variationAnalysisInfo,
   variationAnalysisParameters,
   readInputFileInfo,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/variation-analysis";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import OutputFolder from "@/components/services/output-folder";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { toast } from "sonner";
 import {
   variationAnalysisFormSchema,
@@ -49,10 +47,10 @@ import {
   type VariationLibraryItem,
 } from "@/lib/forms/(genomics)/variation-analysis/variation-analysis-form-schema";
 import {
-  transformVariationAnalysisParams,
   variationAnalysisMappers,
   variationAnalysisCallers,
 } from "@/lib/forms/(genomics)/variation-analysis/variation-analysis-form-utils";
+import { variationAnalysisService } from "@/lib/forms/(genomics)/variation-analysis/variation-analysis-service";
 import {
   RequiredFormCardTitle,
   RequiredFormLabel,
@@ -90,7 +88,7 @@ export default function VariationAnalysisPage() {
         return;
       }
 
-      await previewOrPassthrough(transformVariationAnalysisParams(data), submit);
+      await runtime.submitFormData(data);
     },
   });
 
@@ -111,24 +109,18 @@ export default function VariationAnalysisPage() {
     },
   });
 
-  useRerunForm({
+  const runtime = useServiceRuntime({
+    definition: variationAnalysisService,
     form,
-    fields: ["output_path", "output_file", "reference_genome_id", "mapper", "caller"] as const,
-    libraries: ["paired", "single", "sra"],
-    syncLibraries: (libs) => {
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
+    onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
     },
   });
-
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "Variation",
-    displayName: "Variation Analysis",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "Variation",
-  });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   function handleReset() {
     form.reset(defaultVariationAnalysisFormValues);
@@ -499,7 +491,7 @@ export default function VariationAnalysisPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

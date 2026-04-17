@@ -28,7 +28,7 @@ import {
   blastServiceInputSource,
   blastServiceDatabaseSource,
   blastServiceDatabaseType,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/blast";
 import OutputFolder from "@/components/services/output-folder";
 import {
   RequiredFormLabel,
@@ -40,7 +40,6 @@ import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { blastPrecomputedDatabases } from "@/types/services";
 import {
-  transformBlastParams,
   useBlastDatabaseTypes,
   useBlastProgramTracking,
   useFastaValidation,
@@ -48,15 +47,14 @@ import {
   maxHitsOptionsBlast,
   evalueOptionsBlast,
 } from "@/lib/forms/(genomics)/blast/blast-form-utils";
+import { blastService } from "@/lib/forms/(genomics)/blast/blast-service";
 import {
   completeFormSchema,
   defaultBlastFormValues,
   type BlastFormData,
 } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -65,14 +63,6 @@ import { Label } from "@/components/ui/label";
 export default function BlastServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "Homology",
-    displayName: "BLAST",
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "Homology",
-  });
 
   const form = useForm({
     defaultValues: defaultBlastFormValues as BlastFormData,
@@ -89,7 +79,7 @@ export default function BlastServicePage() {
         }
       }
 
-      await previewOrPassthrough(transformBlastParams(data), submit);
+      await runtime.submitFormData(data);
     },
   });
 
@@ -158,40 +148,42 @@ export default function BlastServicePage() {
     previousProgramRef.current = currentBlastProgram;
   }, [currentBlastProgram, form]);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: blastService,
     form,
-    fields: [
-      "input_source",
-      "input_fasta_data",
-      "input_fasta_file",
-      "input_feature_group",
-      "db_type",
-      "db_genome_group",
-      "db_feature_group",
-      "db_taxon_list",
-      "db_genome_list",
-      "db_fasta_file",
-      "output_path",
-      "output_file",
-    ] as const,
-    onApply: (rerunData) => {
-      if (rerunData.blast_program) {
-        // Guard the program-change clear effect only when we're actually changing the program
-        if (rerunData.blast_program !== form.state.values.blast_program) {
-          isApplyingRerunRef.current = true;
+    rerun: {
+      onApply: (rerunData) => {
+        if (rerunData.blast_program) {
+          // Guard the program-change clear effect only when we're actually changing the program
+          if (rerunData.blast_program !== form.state.values.blast_program) {
+            isApplyingRerunRef.current = true;
+          }
+          form.setFieldValue("blast_program", rerunData.blast_program as never);
         }
-        form.setFieldValue("blast_program", rerunData.blast_program as never);
-      }
-      if (rerunData.db_precomputed_database) {
-        // The backend may store precomputed database IDs with underscores (e.g. "bacteria_archaea")
-        // but the schema expects hyphens (e.g. "bacteria-archaea").
-        const rawDb = String(rerunData.db_precomputed_database).replace(/_/g, "-");
-        const dbPrecomp = rawDb as BlastFormData["db_precomputed_database"];
-        form.setFieldValue("db_precomputed_database", dbPrecomp);
-        form.setFieldValue("db_source", resolveDbSource(dbPrecomp));
-      }
-      if (rerunData.blast_max_hits != null) form.setFieldValue("blast_max_hits", rerunData.blast_max_hits as number);
-      if (rerunData.blast_evalue_cutoff != null) form.setFieldValue("blast_evalue_cutoff", Number(rerunData.blast_evalue_cutoff));
+        if (rerunData.db_precomputed_database) {
+          // The backend may store precomputed database IDs with underscores (e.g. "bacteria_archaea")
+          // but the schema expects hyphens (e.g. "bacteria-archaea").
+          const rawDb = String(rerunData.db_precomputed_database).replace(
+            /_/g,
+            "-",
+          );
+          const dbPrecomp = rawDb as BlastFormData["db_precomputed_database"];
+          form.setFieldValue("db_precomputed_database", dbPrecomp);
+          form.setFieldValue("db_source", resolveDbSource(dbPrecomp));
+        }
+        if (rerunData.blast_max_hits != null) {
+          form.setFieldValue(
+            "blast_max_hits",
+            rerunData.blast_max_hits as number,
+          );
+        }
+        if (rerunData.blast_evalue_cutoff != null) {
+          form.setFieldValue(
+            "blast_evalue_cutoff",
+            Number(rerunData.blast_evalue_cutoff),
+          );
+        }
+      },
     },
   });
 
@@ -807,16 +799,16 @@ export default function BlastServicePage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
+              disabled={runtime.isSubmitting || !canSubmit || !isOutputNameValid}
             >
-              {isSubmitting ? <Spinner /> : null}
+              {runtime.isSubmitting ? <Spinner /> : null}
               Submit
             </Button>
           </div>
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...runtime.jobParamsDialogProps} />
     </section>
   );
 }

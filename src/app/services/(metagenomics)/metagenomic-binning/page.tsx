@@ -40,15 +40,13 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   metagenomicBinningInfo,
   metagenomicBinningInputFile,
   metagenomicBinningParameters,
   metagenomicBinningStartWith,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/metagenomic-binning";
 
 import {
   metagenomicBinningFormSchema,
@@ -60,7 +58,7 @@ import {
   type MetagenomicBinningFormData,
   type LibraryItem,
 } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-schema";
-import { transformMetagenomicBinningParams } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-utils";
+import { metagenomicBinningService } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-service";
 import {
   buildBaseLibraryItem,
   getPairedLibraryName,
@@ -92,21 +90,11 @@ export default function MetagenomicBinningPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "MetagenomeBinning",
-    displayName: "Metagenomic Binning",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "MetagenomeBinning",
-  });
-
   const form = useForm({
     defaultValues: defaultMetagenomicBinningFormValues as MetagenomicBinningFormData,
     validators: { onChange: metagenomicBinningFormSchema },
     onSubmit: async ({ value }) => {
-      const data = value as MetagenomicBinningFormData;
-      await previewOrPassthrough(transformMetagenomicBinningParams(data), submit);
+      await runtime.submitFormData(value as MetagenomicBinningFormData);
     },
   });
 
@@ -132,15 +120,18 @@ export default function MetagenomicBinningPage() {
     },
   });
 
-  useRerunForm({
+  const runtime = useServiceRuntime({
+    definition: metagenomicBinningService,
     form,
-    fields: ["output_path", "output_file", "start_with", "assembler", "organism", "contigs", "genome_group"] as const,
-    libraries: ["paired", "single", "sra"],
-    syncLibraries: (libs) => {
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
+    onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   // Determine if MetaSPAdes should be disabled based on selectedLibraries (source of truth)
   // MetaSPAdes only supports a single paired-end library
@@ -705,7 +696,7 @@ export default function MetagenomicBinningPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

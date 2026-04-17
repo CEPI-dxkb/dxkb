@@ -26,14 +26,12 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   subspeciesClassificationInfo,
   subspeciesClassificationQuerySource,
   subspeciesClassificationSpeciesInfo,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/subspecies-classification";
 
 import {
   subspeciesClassificationFormSchema,
@@ -42,10 +40,10 @@ import {
   type SubspeciesClassificationFormData,
 } from "@/lib/forms/(viral-tools)/subspecies-classification/subspecies-classification-form-schema";
 import {
-  transformSubspeciesClassificationParams,
   validateSubspeciesFasta,
   getSubspeciesFastaMessage,
 } from "@/lib/forms/(viral-tools)/subspecies-classification/subspecies-classification-form-utils";
+import { subspeciesClassificationService } from "@/lib/forms/(viral-tools)/subspecies-classification/subspecies-classification-service";
 
 import type { WorkspaceObject } from "@/lib/workspace-client";
 import type { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
@@ -73,24 +71,8 @@ export default function SubspeciesClassificationPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: subspeciesClassificationFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as SubspeciesClassificationFormData;
-      await previewOrPassthrough(
-        transformSubspeciesClassificationParams(data),
-        submit,
-      );
+      await runtime.submitFormData(value as SubspeciesClassificationFormData);
     },
-  });
-
-  useRerunForm<Record<string, unknown>>({
-    form,
-    fields: [
-      "input_source",
-      "input_fasta_data",
-      "input_fasta_file",
-      "virus_type",
-      "output_path",
-      "output_file",
-    ] as const,
   });
 
   const outputPath = useStore(form.store, (s) => s.values.output_path);
@@ -127,14 +109,12 @@ export default function SubspeciesClassificationPage() {
     setIsOutputNameValid(true);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "SubspeciesClassification",
-    displayName: "Subspecies Classification",
+  const runtime = useServiceRuntime({
+    definition: subspeciesClassificationService,
+    form,
     onSuccess: handleReset,
   });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "SubspeciesClassification",
-  });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   return (
     <section>
@@ -388,7 +368,7 @@ export default function SubspeciesClassificationPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

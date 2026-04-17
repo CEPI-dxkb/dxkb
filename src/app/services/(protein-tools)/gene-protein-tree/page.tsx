@@ -34,7 +34,7 @@ import {
   phylogeneticTreeInput,
   phylogeneticTreeAlignmentParameters,
   phylogeneticTreeTreeParameters,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/phylogenetic-tree";
 import OutputFolder from "@/components/services/output-folder";
 import {
   RequiredFormCardTitle,
@@ -44,9 +44,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -72,7 +70,6 @@ import {
   isMetadataLabel,
 } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
 import {
-  transformGeneProteinTreeParams,
   formatMetadataLabel,
   getSequenceTypeLabel,
   type Alphabet,
@@ -83,6 +80,7 @@ import {
   createMetadataField,
   getDisplayName,
 } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-utils";
+import { geneProteinTreeService } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-service";
 
 interface MetadataField {
   id: string;
@@ -105,22 +103,12 @@ export default function GeneProteinTreePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "GeneTree",
-    displayName: "Gene/Protein Tree",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "GeneTree",
-  });
-
   const form = useForm({
     defaultValues: defaultGeneProteinTreeFormValues as GeneProteinTreeFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: geneProteinTreeFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as GeneProteinTreeFormData;
-      await previewOrPassthrough(transformGeneProteinTreeParams(data), submit);
+      await runtime.submitFormData(value as GeneProteinTreeFormData);
     },
   });
 
@@ -183,35 +171,52 @@ export default function GeneProteinTreePage() {
     form.setFieldValue("metadata_fields", selectedFields);
   }, [metadataFields, form]);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: geneProteinTreeService,
     form,
-    fields: ["recipe", "substitution_model", "output_path", "output_file"] as const,
-    onApply: (rerunData) => {
-      if (rerunData.alphabet) {
-        if (rerunData.alphabet !== form.state.values.alphabet) {
-          skipAlphabetEffect.current = true;
+    onSuccess: handleReset,
+    rerun: {
+      onApply: (rerunData) => {
+        if (rerunData.alphabet) {
+          if (rerunData.alphabet !== form.state.values.alphabet) {
+            skipAlphabetEffect.current = true;
+          }
+          form.setFieldValue(
+            "alphabet",
+            rerunData.alphabet as GeneProteinTreeFormData["alphabet"],
+          );
         }
-        form.setFieldValue("alphabet", rerunData.alphabet as GeneProteinTreeFormData["alphabet"]);
-      }
-      if (rerunData.trim_threshold != null) form.setFieldValue("trim_threshold", String(rerunData.trim_threshold));
-      if (rerunData.gap_threshold != null) form.setFieldValue("gap_threshold", String(rerunData.gap_threshold));
+        if (rerunData.trim_threshold != null) {
+          form.setFieldValue(
+            "trim_threshold",
+            String(rerunData.trim_threshold),
+          );
+        }
+        if (rerunData.gap_threshold != null) {
+          form.setFieldValue("gap_threshold", String(rerunData.gap_threshold));
+        }
 
-      const sequences = normalizeToArray<SequenceItem>(rerunData.sequences);
-      if (sequences.length > 0) {
-        form.setFieldValue("sequences", sequences);
-      }
+        const sequences = normalizeToArray<SequenceItem>(rerunData.sequences);
+        if (sequences.length > 0) {
+          form.setFieldValue("sequences", sequences);
+        }
 
-      // Restore metadata fields from feature_metadata_fields and genome_metadata_fields
-      const featureFields = normalizeToArray<string>(rerunData.feature_metadata_fields);
-      const genomeFields = normalizeToArray<string>(rerunData.genome_metadata_fields);
-      const allMetadataFieldIds = [...featureFields, ...genomeFields];
-      if (allMetadataFieldIds.length > 0) {
-        setMetadataFields(
-          allMetadataFieldIds.map((id) => createMetadataField(id)),
+        const featureFields = normalizeToArray<string>(
+          rerunData.feature_metadata_fields,
         );
-      }
+        const genomeFields = normalizeToArray<string>(
+          rerunData.genome_metadata_fields,
+        );
+        const allMetadataFieldIds = [...featureFields, ...genomeFields];
+        if (allMetadataFieldIds.length > 0) {
+          setMetadataFields(
+            allMetadataFieldIds.map((id) => createMetadataField(id)),
+          );
+        }
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const selectedMetadataIds = useMemo(
     () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),
@@ -802,7 +807,7 @@ export default function GeneProteinTreePage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

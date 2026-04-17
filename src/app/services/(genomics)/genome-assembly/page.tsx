@@ -38,7 +38,7 @@ import {
   genomeAssemblyInfo,
   genomeAssemblyParameters,
   readInputFileInfo,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/genome-assembly";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import SelectedItemsTable from "@/components/services/selected-items-table";
@@ -46,9 +46,7 @@ import OutputFolder from "@/components/services/output-folder";
 import { Library } from "@/types/services";
 import { NumberInput } from "@/components/ui/number-input";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { toast } from "sonner";
 import {
   genomeAssemblyFormSchema,
@@ -57,11 +55,11 @@ import {
   type LibraryItem,
 } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-form-schema";
 import {
-  transformGenomeAssemblyParams,
   calculateGenomeSize,
   genomeAssemblyRecipes,
   genomeSizeUnitOptions,
 } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-form-utils";
+import { genomeAssemblyService } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-service";
 import {
   RequiredFormCardTitle,
   RequiredFormLabel,
@@ -120,7 +118,7 @@ export default function GenomeAssemblyPage() {
         return;
       }
 
-      await previewOrPassthrough(transformGenomeAssemblyParams(data), submit);
+      await runtime.submitFormData(data);
     },
   });
 
@@ -140,31 +138,13 @@ export default function GenomeAssemblyPage() {
     },
   });
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: genomeAssemblyService,
     form,
-    fields: ["output_path", "output_file", "recipe"] as const,
-    libraries: ["paired", "single", "sra"],
-    getLibraryExtra: (lib, kind) => {
-      if (kind === "paired") {
-        return {
-          platform: lib.platform || "infer",
-          interleaved: !!lib.interleaved,
-          read_orientation_outward: !!lib.read_orientation_outward,
-        };
-      }
-      if (kind === "single") return { platform: lib.platform || "infer" };
-      return {};
-    },
-    syncLibraries: setLibrariesAndSync,
-  });
-
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "GenomeAssembly2",
-    displayName: "Genome Assembly",
     onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "GenomeAssembly2",
+    rerun: {
+      syncLibraries: setLibrariesAndSync,
+    },
   });
 
   function handleReset() {
@@ -731,16 +711,16 @@ export default function GenomeAssemblyPage() {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
+              disabled={runtime.isSubmitting || !canSubmit || !isOutputNameValid}
             >
-              {isSubmitting ? <Spinner /> : null}
+              {runtime.isSubmitting ? <Spinner /> : null}
               Assemble
             </Button>
           </div>
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...runtime.jobParamsDialogProps} />
     </section>
   );
 }

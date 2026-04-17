@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
@@ -34,15 +34,13 @@ import {
   metaCATSInfo,
   metaCATSParameters,
   metaCATSInput,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/meta-cats";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -56,7 +54,6 @@ import {
   type MetaCatsFormData,
 } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-form-schema";
 import {
-  transformMetaCatsParams,
   getMetaCatsDisplayName,
   countUniqueGroups,
   getUniqueGroupNames,
@@ -66,6 +63,7 @@ import {
   removeAutoGroupsByRowIds,
   updateAutoGroupsGroupByRowIds,
 } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-form-utils";
+import { metaCatsService } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-service";
 import { fetchFeaturesFromGroup } from "@/lib/services/feature";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
 
@@ -101,8 +99,7 @@ export default function MetaCATSPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: metaCatsFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as MetaCatsFormData;
-      await previewOrPassthrough(transformMetaCatsParams(data), submit);
+      await runtime.submitFormData(value as MetaCatsFormData);
     },
   });
 
@@ -119,15 +116,6 @@ export default function MetaCATSPage() {
     setYearRangesValidation(null);
   }, [form]);
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "MetaCATS",
-    displayName: "Meta-CATS",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "MetaCATS",
-  });
-
   const inputType = useStore(form.store, (s) => s.values.input_type);
   const metadataGroup = useStore(form.store, (s) => s.values.metadata_group);
   const rawAutoGroups = useStore(form.store, (s) => s.values.auto_groups);
@@ -137,66 +125,71 @@ export default function MetaCATSPage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: metaCatsService,
     form,
-    fields: [
-      "output_path",
-      "output_file",
-      "input_type",
-      "metadata_group",
-      "auto_alphabet",
-      "group_alphabet",
-      "alignment_type",
-    ] as const,
-    onApply: (rerunData, form) => {
-      // p_value (number, handle zero correctly via typeof guard)
-      if (typeof rerunData.p_value === "number") {
-        form.setFieldValue("p_value", rerunData.p_value as never);
-      }
+    onSuccess: handleReset,
+    rerun: {
+      onApply: (rerunData, form) => {
+        if (typeof rerunData.p_value === "number") {
+          form.setFieldValue("p_value", rerunData.p_value as never);
+        }
 
-      if (typeof rerunData.year_ranges === "string" && rerunData.year_ranges.trim() !== "") {
-        form.setFieldValue("year_ranges", rerunData.year_ranges as never);
-        setYearRangesInput(rerunData.year_ranges);
-      }
+        if (
+          typeof rerunData.year_ranges === "string" &&
+          rerunData.year_ranges.trim() !== ""
+        ) {
+          form.setFieldValue("year_ranges", rerunData.year_ranges as never);
+          setYearRangesInput(rerunData.year_ranges);
+        }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const autoGroupsRaw = normalizeToArray<any>(rerunData.auto_groups);
-      if (autoGroupsRaw.length > 0) {
-        // API format uses { id, metadata, grp, g_id } — map back to internal form format
-        const mappedAutoGroups: MetaCatsFormData["auto_groups"] = autoGroupsRaw.map(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (item: any) => ({
-            id: crypto.randomUUID(),
-            patric_id: item.patric_id ?? item.id ?? "",
-            metadata: item.metadata ?? "",
-            group: item.group ?? item.grp ?? "",
-            genome_id: item.genome_id ?? item.g_id ?? "",
-            strain: item.strain ?? "",
-            genbank_accessions: item.genbank_accessions ?? "",
-          })
-        );
-        form.setFieldValue("auto_groups", mappedAutoGroups as never);
-        const uniqueGroupNames = Array.from(
-          new Set(mappedAutoGroups.map((item) => item.group).filter(Boolean))
-        ) as string[];
-        setGroupNames(uniqueGroupNames);
-      }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const autoGroupsRaw = normalizeToArray<any>(rerunData.auto_groups);
+        if (autoGroupsRaw.length > 0) {
+          const mappedAutoGroups: MetaCatsFormData["auto_groups"] =
+            autoGroupsRaw.map(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (item: any) => ({
+                id: crypto.randomUUID(),
+                patric_id: item.patric_id ?? item.id ?? "",
+                metadata: item.metadata ?? "",
+                group: item.group ?? item.grp ?? "",
+                genome_id: item.genome_id ?? item.g_id ?? "",
+                strain: item.strain ?? "",
+                genbank_accessions: item.genbank_accessions ?? "",
+              }),
+            );
+          form.setFieldValue("auto_groups", mappedAutoGroups as never);
+          const uniqueGroupNames = Array.from(
+            new Set(mappedAutoGroups.map((item) => item.group).filter(Boolean)),
+          ) as string[];
+          setGroupNames(uniqueGroupNames);
+        }
 
-      // Feature groups fields
-      const groupsRaw = normalizeToArray<string>(rerunData.groups);
-      if (groupsRaw.length > 0) {
-        form.setFieldValue("groups", groupsRaw as never);
-      }
+        const groupsRaw = normalizeToArray<string>(rerunData.groups);
+        if (groupsRaw.length > 0) {
+          form.setFieldValue("groups", groupsRaw as never);
+        }
 
-      // Alignment file fields
-      if (typeof rerunData.alignment_file === "string" && rerunData.alignment_file.trim() !== "") {
-        form.setFieldValue("alignment_file", rerunData.alignment_file as never);
-      }
-      if (typeof rerunData.group_file === "string" && rerunData.group_file.trim() !== "") {
-        form.setFieldValue("group_file", rerunData.group_file as never);
-      }
+        if (
+          typeof rerunData.alignment_file === "string" &&
+          rerunData.alignment_file.trim() !== ""
+        ) {
+          form.setFieldValue(
+            "alignment_file",
+            rerunData.alignment_file as never,
+          );
+        }
+        if (
+          typeof rerunData.group_file === "string" &&
+          rerunData.group_file.trim() !== ""
+        ) {
+          form.setFieldValue("group_file", rerunData.group_file as never);
+        }
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   // Calculate unique group count
   const uniqueGroupCount = useMemo(() => {
@@ -949,7 +942,7 @@ export default function MetaCATSPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

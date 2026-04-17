@@ -33,15 +33,13 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { toast } from "sonner";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { useServiceDebugging } from "@/contexts/service-debugging-context";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
 import {
   similarGenomeFinderInfo,
   similarGenomeFinderSelectGenome,
   similarGenomeFinderAdvancedParameters,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/similar-genome-finder";
 import {
   similarGenomeFinderFormSchema,
   defaultSimilarGenomeFinderFormValues,
@@ -51,6 +49,7 @@ import {
   type SimilarGenomeFinderFormData,
 } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-form-schema";
 import { buildMinhashServicePayload } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-form-utils";
+import { similarGenomeFinderService } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-service";
 import type { SimilarGenomeFinderResultRow } from "@/lib/forms/(genomics)/similar-genome-finder/similar-genome-finder-result-utils";
 import { submitSimilarGenomes } from "./actions";
 
@@ -80,16 +79,8 @@ export default function SimilarGenomeFinderServicePage() {
   const [results, setResults] = useState<SimilarGenomeFinderResultRow[]>([]);
 
   const { isDebugMode } = useServiceDebugging();
-  const { submit, isSubmitting: isJobSubmitting } = useServiceFormSubmission({
-    serviceName: "SimilarGenomeFinder",
-    displayName: "Similar Genome Finder",
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "SimilarGenomeFinder",
-  });
 
   const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
-  const isSubmitting = isJobSubmitting || isCustomSubmitting;
 
   const form = useForm({
     defaultValues: defaultSimilarGenomeFinderFormValues as SimilarGenomeFinderFormData,
@@ -99,9 +90,8 @@ export default function SimilarGenomeFinderServicePage() {
 
       // In debug mode, use the hook to show the params dialog
       if (isDebugMode) {
-        await previewOrPassthrough(
+        await runtime.previewOrSubmit(
           buildMinhashServicePayload(data) as unknown as Record<string, unknown>,
-          submit,
         );
         return;
       }
@@ -140,24 +130,11 @@ export default function SimilarGenomeFinderServicePage() {
 
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: similarGenomeFinderService,
     form,
-    fields: [
-      "selectedGenomeId",
-      "fasta_file",
-      "output_path",
-      "output_file",
-    ] as const,
-    onApply: (rerunData, form) => {
-      const d = rerunData;
-      if (typeof d.max_hits === "number") form.setFieldValue("max_hits", d.max_hits as never);
-      if (typeof d.max_pvalue === "number") form.setFieldValue("max_pvalue", d.max_pvalue as never);
-      if (typeof d.max_distance === "number") form.setFieldValue("max_distance", d.max_distance as never);
-      if (typeof d.include_bacterial === "boolean") form.setFieldValue("include_bacterial", d.include_bacterial as never);
-      if (typeof d.include_viral === "boolean") form.setFieldValue("include_viral", d.include_viral as never);
-      if (d.scope === "reference" || d.scope === "all") form.setFieldValue("scope", d.scope as never);
-    },
   });
+  const isSubmitting = runtime.isSubmitting || isCustomSubmitting;
 
   const handleReset = () => {
     form.reset(defaultSimilarGenomeFinderFormValues);
@@ -500,7 +477,7 @@ export default function SimilarGenomeFinderServicePage() {
         </Card>
       </div>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...runtime.jobParamsDialogProps} />
     </section>
   );
 }

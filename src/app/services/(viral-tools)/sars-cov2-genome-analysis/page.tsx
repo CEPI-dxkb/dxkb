@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { noop } from "@/lib/utils";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import {
@@ -44,15 +43,13 @@ import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   sarsCov2GenomeAnalysisInfo,
   sarsCov2GenomeAnalysisParameters,
   sarsCov2GenomeAnalysisStartWith,
   readInputFileInfo,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/sars-cov2-genome-analysis";
 
 import {
   sarsCov2GenomeAnalysisFormSchema,
@@ -67,14 +64,13 @@ import {
   type Primers,
 } from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-schema";
 import {
-  transformSarsCov2GenomeAnalysisParams,
   computeOutputName,
-  sanitizeTaxonomyForOutputName,
   handleLibraryError as handleLibraryErrorUtil,
   getPairedLibraryBuildFn,
   getSingleLibraryBuildFn,
   singleLibraryDuplicateMatcher,
 } from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-utils";
+import { sarsCov2GenomeAnalysisService } from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-service";
 import {
   buildBaseLibraryItem,
   useTanstackLibrarySelection,
@@ -99,11 +95,7 @@ export default function SarsCov2GenomeAnalysisPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: sarsCov2GenomeAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as SarsCov2GenomeAnalysisFormData;
-      await previewOrPassthrough(
-        transformSarsCov2GenomeAnalysisParams(data),
-        submit,
-      );
+      await runtime.submitFormData(value as SarsCov2GenomeAnalysisFormData);
     },
   });
 
@@ -173,59 +165,6 @@ export default function SarsCov2GenomeAnalysisPage() {
     }
   }, [primers, showPrimersSection, form]);
 
-  useRerunForm<Record<string, unknown>>({
-    form,
-    fields: [
-      "input_type",
-      "my_label",
-      "output_path",
-      "output_file",
-      "recipe",
-      "primers",
-      "primer_version",
-      "contigs",
-    ] as const,
-    libraries: ["paired", "single", "sra"],
-    getLibraryExtra: (lib, kind) => {
-      if (kind === "paired" || kind === "single") {
-        return { platform: lib.platform || "illumina" };
-      }
-      return {};
-    },
-    syncLibraries: (libs) => {
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
-    },
-    onApply: (rerunData, form) => {
-      // Taxonomy fetch: resolve scientific_name and extract label from output_file prefix
-      if (rerunData.taxonomy_id) {
-        const taxonId = String(rerunData.taxonomy_id);
-        form.setFieldValue("taxonomy_id", taxonId as never);
-        const outputFile = rerunData.output_file as string | undefined;
-        fetch(`/api/services/taxonomy?q=taxon_id:${taxonId}&fl=taxon_id,taxon_name`)
-          .then((r) => r.json())
-          .then((data) => {
-            const docs = Array.isArray(data) ? data : data?.response?.docs;
-            if (docs && docs.length > 0) {
-              const taxonName: string = docs[0].taxon_name;
-              form.setFieldValue("scientific_name", taxonName as never);
-              if (outputFile) {
-                const sanitized = sanitizeTaxonomyForOutputName(taxonName);
-                const prefix = sanitized + " ";
-                const label = outputFile.startsWith(prefix)
-                  ? outputFile.slice(prefix.length).trim()
-                  : "";
-                if (label) {
-                  form.setFieldValue("my_label", label as never);
-                }
-              }
-            }
-          })
-          .catch(noop);
-      }
-    },
-  });
-
   const handleLibraryError = (message: string) => {
     handleLibraryErrorUtil(message, toast);
   };
@@ -266,14 +205,18 @@ export default function SarsCov2GenomeAnalysisPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "ComprehensiveSARS2Analysis",
-    displayName: "SARS-CoV-2 Genome Analysis",
+  const runtime = useServiceRuntime({
+    definition: sarsCov2GenomeAnalysisService,
+    form,
     onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
+    },
   });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "ComprehensiveSARS2Analysis",
-  });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   return (
     <section>
@@ -860,7 +803,7 @@ export default function SarsCov2GenomeAnalysisPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

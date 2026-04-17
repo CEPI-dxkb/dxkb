@@ -41,10 +41,13 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { rerunBooleanValue } from "@/lib/rerun-utility";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
+import {
+  assignSampleIdToNewSraLibraries,
+  extractSampleIdFromPath,
+  mapLibraryToSampleIdItem,
+  mapSraLibraryToSampleIdItem,
+} from "@/lib/forms/service-library-rules";
 import {
   taxonomyClassificationInfo,
   taxonomyClassificationInput,
@@ -53,7 +56,7 @@ import {
   taxonomyClassificationDatabase,
   taxonomyClassificationFilterHostReads,
   taxonomyClassificatioConfidenceInterval,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/taxonomic-classification";
 
 import {
   taxonomicClassificationFormSchema,
@@ -68,14 +71,13 @@ import {
   type LibraryItem,
 } from "@/lib/forms/(metagenomics)/taxonomic-classification/taxonomic-classification-form-schema";
 import {
-  transformTaxonomicClassificationParams,
   getDefaultAnalysisType,
   getDefaultDatabase,
   isHostFilteringAvailable,
   isAnalysisTypeSelectable,
 } from "@/lib/forms/(metagenomics)/taxonomic-classification/taxonomic-classification-form-utils";
+import { taxonomicClassificationService } from "@/lib/forms/(metagenomics)/taxonomic-classification/taxonomic-classification-service";
 import {
-  buildBaseLibraryItem,
   findNewSraLibraries,
   getPairedLibraryName,
   getSingleLibraryName,
@@ -103,33 +105,11 @@ export default function TaxonomicClassificationPage() {
   // Track if this is the initial mount to avoid triggering validation on load
   const isInitialMount = useRef(true);
 
-  const handleReset = () => {
-    form.reset(defaultTaxonomicClassificationFormValues);
-    setLibrariesAndSync([]);
-    setPairedRead1(null);
-    setPairedRead2(null);
-    setSingleRead(null);
-    setPairedSampleId("");
-    setSingleSampleId("");
-    setSrrSampleId("");
-    setSraResetKey((k) => k + 1);
-  };
-
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "TaxonomicClassification",
-    displayName: "Taxonomic Classification",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "TaxonomicClassification",
-  });
-
   const form = useForm({
     defaultValues: defaultTaxonomicClassificationFormValues as TaxonomicClassificationFormData,
     validators: { onChange: taxonomicClassificationFormSchema },
     onSubmit: async ({ value }) => {
-      const data = value as TaxonomicClassificationFormData;
-      await previewOrPassthrough(transformTaxonomicClassificationParams(data), submit);
+      await runtime.submitFormData(value as TaxonomicClassificationFormData);
     },
   });
 
@@ -162,23 +142,6 @@ export default function TaxonomicClassificationPage() {
     }
   }, [sequenceType, form]);
 
-  // Extract sample ID (filename base without extension) from a file path
-  function extractSampleIdFromPath(
-    path: string,
-    fallback = "",
-  ): string {
-    const filename = path.split("/").pop() || "";
-    return filename.split(".")[0] || fallback;
-  }
-
-  // Derive sample ID from library name or files
-  const deriveSampleId = (library: Library): string => {
-    if (library.files && library.files.length > 0) {
-      return extractSampleIdFromPath(library.files[0], library.id);
-    }
-    return library.id;
-  };
-
   const {
     selectedLibraries,
     addPairedLibrary,
@@ -191,80 +154,45 @@ export default function TaxonomicClassificationPage() {
     { srr_accession: string; sample_id: string; title?: string }
   >({
     form,
-    mapLibraryToItem: (library) => ({
-      ...buildBaseLibraryItem(library),
-      sample_id: library.sampleId?.trim() || deriveSampleId(library),
-    }),
-    mapSraLibraryToItem: (library) => ({
-      srr_accession: library.id,
-      sample_id: library.sampleId?.trim() || library.id,
-      ...(library.title && { title: library.title }),
-    }),
+    mapLibraryToItem: mapLibraryToSampleIdItem,
+    mapSraLibraryToItem: mapSraLibraryToSampleIdItem,
     fields: {
       paired: "paired_end_libs",
       single: "single_end_libs",
       srr: "srr_libs",
     },
-    normalizeLibraries: (nextLibraries, previousLibraries) => {
-      const newSraIds = new Set(
-        findNewSraLibraries(nextLibraries, previousLibraries).map(
-          (lib) => lib.id,
-        ),
-      );
-      return nextLibraries.map((lib) => {
-        if (lib.type === "sra" && newSraIds.has(lib.id)) {
-          return { ...lib, sampleId: srrSampleId.trim() || lib.id };
-        }
-        return lib;
-      });
-    },
+    normalizeLibraries: (nextLibraries, previousLibraries) =>
+      assignSampleIdToNewSraLibraries(
+        nextLibraries,
+        previousLibraries,
+        srrSampleId,
+      ),
   });
 
-  useRerunForm<Record<string, unknown>>({
+  const handleReset = () => {
+    form.reset(defaultTaxonomicClassificationFormValues);
+    setLibrariesAndSync([]);
+    setPairedRead1(null);
+    setPairedRead2(null);
+    setSingleRead(null);
+    setPairedSampleId("");
+    setSingleSampleId("");
+    setSrrSampleId("");
+    setSraResetKey((k) => k + 1);
+  };
+
+  const runtime = useServiceRuntime({
+    definition: taxonomicClassificationService,
     form,
-    fields: [
-      "output_path",
-      "output_file",
-      "analysis_type",
-      "database",
-      "host_genome",
-      "confidence_interval",
-    ] as const,
-    libraries: ["paired", "single", "sra"],
-    getLibraryExtra: (lib, kind) => {
-      if (kind === "paired") {
-        return { sampleId: lib.sample_id || extractSampleIdFromPath(lib.read1, "sample") };
-      }
-      if (kind === "single") {
-        return { sampleId: lib.sample_id || extractSampleIdFromPath(lib.read, "sample") };
-      }
-      return { sampleId: lib.sample_id || "" };
-    },
-    syncLibraries: (libs) => {
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
-    },
-    onApply: (rerunData, form) => {
-      if (rerunData.sequence_type) {
-        const sequenceType = rerunData.sequence_type === "sixteenS"
-          ? "16s"
-          : rerunData.sequence_type as TaxonomicClassificationFormData["sequence_type"];
-        form.setFieldValue("sequence_type", sequenceType as never);
-      }
-      if (rerunData.save_classified_sequences !== undefined) {
-        form.setFieldValue(
-          "save_classified_sequences",
-          rerunBooleanValue(rerunData.save_classified_sequences) as never,
-        );
-      }
-      if (rerunData.save_unclassified_sequences !== undefined) {
-        form.setFieldValue(
-          "save_unclassified_sequences",
-          rerunBooleanValue(rerunData.save_unclassified_sequences) as never,
-        );
-      }
+    onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const handlePairedLibraryAdd = () => {
     addPairedLibrary({
@@ -963,7 +891,7 @@ export default function TaxonomicClassificationPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

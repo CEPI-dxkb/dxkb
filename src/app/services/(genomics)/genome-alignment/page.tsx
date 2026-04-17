@@ -35,16 +35,14 @@ import {
   genomeAlignmentAdvancedParamaterOptions,
   genomeAlignmentMauveInfo,
   genomeAlignmentSelectGenomes,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/genome-alignment";
 import {
   defaultGenomeAlignmentFormValues,
   genomeAlignmentFormSchema,
   type GenomeAlignmentFormData,
 } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-schema";
-import { transformGenomeAlignmentParams } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-form-utils";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { genomeAlignmentService } from "@/lib/forms/(genomics)/genome-alignment/genome-alignment-service";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import {
@@ -64,20 +62,11 @@ export default function GenomeAlignmentServicePage() {
   const [lastSelectedGroup, setLastSelectedGroup] = useState<string | null>(null);
   const [selectedGenomeGroup, setSelectedGenomeGroup] = useState<WorkspaceObject | null>(null);
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "GenomeAlignment",
-    displayName: "Genome Alignment",
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "GenomeAlignment",
-  });
-
   const form = useForm({
     defaultValues: defaultGenomeAlignmentFormValues,
     validators: { onChange: genomeAlignmentFormSchema },
     onSubmit: async ({ value }) => {
-      const data = value as GenomeAlignmentFormData;
-      await previewOrPassthrough(transformGenomeAlignmentParams(data), submit);
+      await runtime.submitFormData(value as GenomeAlignmentFormData);
     },
   });
 
@@ -178,28 +167,40 @@ export default function GenomeAlignmentServicePage() {
     }
   };
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: genomeAlignmentService,
     form,
-    fields: ["output_path", "output_file"] as const,
-    onApply: (rerunData, form) => {
-      if (rerunData.manual_seed_weight != null) {
-        form.setFieldValue("manual_seed_weight", rerunBooleanValue(rerunData.manual_seed_weight) as never);
-      }
-      if (rerunData.seed_weight != null) form.setFieldValue("seed_weight", rerunData.seed_weight as never);
-      if (rerunData.weight != null) form.setFieldValue("weight", rerunData.weight as never);
+    rerun: {
+      onApply: (rerunData, form) => {
+        if (rerunData.manual_seed_weight != null) {
+          form.setFieldValue(
+            "manual_seed_weight",
+            rerunBooleanValue(rerunData.manual_seed_weight) as never,
+          );
+        }
+        if (rerunData.seed_weight != null) {
+          form.setFieldValue("seed_weight", rerunData.seed_weight as never);
+        }
+        if (rerunData.weight != null) {
+          form.setFieldValue("weight", rerunData.weight as never);
+        }
 
-      const genomeIds = Array.isArray(rerunData.genome_ids) ? (rerunData.genome_ids as string[]) : [];
-      if (genomeIds.length > 0) {
-        fetchGenomesByIds(genomeIds)
-          .then((genomes) => setSelectedGenomes(genomes))
-          .catch(() => {
-            toast.error("Could not restore genomes from previous job", {
-              description: "Please re-add your genomes manually.",
+        const genomeIds = Array.isArray(rerunData.genome_ids)
+          ? (rerunData.genome_ids as string[])
+          : [];
+        if (genomeIds.length > 0) {
+          fetchGenomesByIds(genomeIds)
+            .then((genomes) => setSelectedGenomes(genomes))
+            .catch(() => {
+              toast.error("Could not restore genomes from previous job", {
+                description: "Please re-add your genomes manually.",
+              });
             });
-          });
-      }
+        }
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const handleReset = () => {
     form.reset(defaultGenomeAlignmentFormValues);
@@ -496,7 +497,7 @@ export default function GenomeAlignmentServicePage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

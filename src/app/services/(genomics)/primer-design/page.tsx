@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +31,7 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   primerDesignInfo,
   primerDesignInputSequence,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/primer-design";
 import {
   defaultPrimerDesignFormValues,
   primerDesignFormSchema,
@@ -43,15 +43,13 @@ import {
   primerArrayFields,
   primerScalarFields,
   stripPrimerMarkers,
-  transformPrimerDesignParams,
   validatePrimerDesignSequence,
   type MarkerType,
 } from "@/lib/forms/(genomics)/primer-design/primer-design-form-utils";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
+import { primerDesignService } from "@/lib/forms/(genomics)/primer-design/primer-design-service";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { WorkspaceObject } from "@/lib/workspace-client";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
 
 export default function PrimerDesignServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -67,14 +65,6 @@ export default function PrimerDesignServicePage() {
   const selectionRangeRef = useRef<{ start: number; end: number }>({
     start: 0,
     end: 0,
-  });
-
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "PrimerDesign",
-    displayName: "Primer Design",
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "PrimerDesign",
   });
 
   const form = useForm({
@@ -97,7 +87,7 @@ export default function PrimerDesignServicePage() {
         }
       }
 
-      await previewOrPassthrough(transformPrimerDesignParams(data), submit);
+      await runtime.submitFormData(data);
     },
   });
 
@@ -125,123 +115,113 @@ export default function PrimerDesignServicePage() {
     }
   }, [sequenceValidation, form]);
 
-  const handleSequenceValueChange = useCallback(
-    (value: string) => {
-      // Always update the form value with what the user typed (allow typing)
-      form.setFieldValue("sequence_input", value);
+  function handleSequenceValueChange(value: string) {
+    // Always update the form value with what the user typed (allow typing)
+    form.setFieldValue("sequence_input", value);
 
-      // Save to state for sequence_text input type
-      if (inputType === "sequence_text") {
-        setSequenceTextValue(value);
-      }
+    // Save to state for sequence_text input type
+    if (inputType === "sequence_text") {
+      setSequenceTextValue(value);
+    }
 
-      const validation = validatePrimerDesignSequence(value);
+    const validation = validatePrimerDesignSequence(value);
 
-      if (validation.isValid) {
-        form.setFieldMeta("sequence_input", (prev) => ({
-          ...prev,
-          errorMap: { ...prev.errorMap, onChange: undefined },
-        }));
+    if (validation.isValid) {
+      form.setFieldMeta("sequence_input", (prev) => ({
+        ...prev,
+        errorMap: { ...prev.errorMap, onChange: undefined },
+      }));
 
-        // When valid, update with sanitized version (matching legacy behavior)
-        const sanitized = validation.sanitizedSequence;
-        if (sanitized !== value) {
-          form.setFieldValue("sequence_input", sanitized);
-          // Update state with sanitized value
-          if (inputType === "sequence_text") {
-            setSequenceTextValue(sanitized);
-          }
-        }
-
-        // Set sequence identifier from header if present
-        if (validation.header) {
-          const currentIdentifier = form.state.values.SEQUENCE_ID?.trim() || "";
-          if (!currentIdentifier) {
-            form.setFieldValue("SEQUENCE_ID", validation.header);
-            setSequenceTextId(validation.header);
-          }
-        }
-      } else {
-        form.setFieldMeta("sequence_input", (prev) => ({
-          ...prev,
-          errorMap: { ...prev.errorMap, onChange: validation.message },
-        }));
-      }
-    },
-    [form, inputType],
-  );
-
-  const handleSequenceSelect = useCallback(
-    (event: React.SyntheticEvent<HTMLTextAreaElement>) => {
-      const target = event.currentTarget;
-      selectionRangeRef.current = {
-        start: target.selectionStart ?? 0,
-        end: target.selectionEnd ?? 0,
-      };
-    },
-    [],
-  );
-
-  const updateSequenceWithMarkers = useCallback(
-    (marker: MarkerType) => {
-      const currentSequence = form.state.values.sequence_input ?? "";
-      if (!currentSequence) {
-        return;
-      }
-
-      if (marker === "clear") {
-        const cleared = stripPrimerMarkers(currentSequence);
-        handleSequenceValueChange(cleared);
-        return;
-      }
-
-      const { start, end } = selectionRangeRef.current;
-      if (start === end) {
-        toast.error("Select a region in the sequence before applying markers.");
-        return;
-      }
-
-      if (currentSequence.startsWith(">")) {
-        const headerEndIndex = currentSequence.indexOf("\n");
-        if (headerEndIndex >= 0 && start <= headerEndIndex) {
-          toast.error("Markers cannot be added to the FASTA header.");
-          return;
+      // When valid, update with sanitized version (matching legacy behavior)
+      const sanitized = validation.sanitizedSequence;
+      if (sanitized !== value) {
+        form.setFieldValue("sequence_input", sanitized);
+        // Update state with sanitized value
+        if (inputType === "sequence_text") {
+          setSequenceTextValue(sanitized);
         }
       }
 
-      const markers = {
-        exclude: ["<", ">"],
-        target: ["[", "]"],
-        include: ["{", "}"],
-      } as const;
-
-      const [openMarker, closeMarker] = markers[marker as keyof typeof markers];
-      const markedSequence =
-        currentSequence.slice(0, start) +
-        openMarker +
-        currentSequence.slice(start, end) +
-        closeMarker +
-        currentSequence.slice(end);
-
-      handleSequenceValueChange(markedSequence);
-    },
-    [form, handleSequenceValueChange],
-  );
-
-  const handleWorkspaceSelection = useCallback(
-    (object: WorkspaceObject) => {
-      const path = object.path || "";
-      form.setFieldValue("sequence_input", path);
-      // Save to state for workplace_fasta input type
-      if (inputType === "workplace_fasta") {
-        setWorkspaceFastaValue(path);
+      // Set sequence identifier from header if present
+      if (validation.header) {
+        const currentIdentifier = form.state.values.SEQUENCE_ID?.trim() || "";
+        if (!currentIdentifier) {
+          form.setFieldValue("SEQUENCE_ID", validation.header);
+          setSequenceTextId(validation.header);
+        }
       }
-    },
-    [form, inputType],
-  );
+    } else {
+      form.setFieldMeta("sequence_input", (prev) => ({
+        ...prev,
+        errorMap: { ...prev.errorMap, onChange: validation.message },
+      }));
+    }
+  }
+
+  function handleSequenceSelect(
+    event: React.SyntheticEvent<HTMLTextAreaElement>,
+  ) {
+    const target = event.currentTarget;
+    selectionRangeRef.current = {
+      start: target.selectionStart ?? 0,
+      end: target.selectionEnd ?? 0,
+    };
+  }
+
+  function updateSequenceWithMarkers(marker: MarkerType) {
+    const currentSequence = form.state.values.sequence_input ?? "";
+    if (!currentSequence) {
+      return;
+    }
+
+    if (marker === "clear") {
+      const cleared = stripPrimerMarkers(currentSequence);
+      handleSequenceValueChange(cleared);
+      return;
+    }
+
+    const { start, end } = selectionRangeRef.current;
+    if (start === end) {
+      toast.error("Select a region in the sequence before applying markers.");
+      return;
+    }
+
+    if (currentSequence.startsWith(">")) {
+      const headerEndIndex = currentSequence.indexOf("\n");
+      if (headerEndIndex >= 0 && start <= headerEndIndex) {
+        toast.error("Markers cannot be added to the FASTA header.");
+        return;
+      }
+    }
+
+    const markers = {
+      exclude: ["<", ">"],
+      target: ["[", "]"],
+      include: ["{", "}"],
+    } as const;
+
+    const [openMarker, closeMarker] = markers[marker as keyof typeof markers];
+    const markedSequence =
+      currentSequence.slice(0, start) +
+      openMarker +
+      currentSequence.slice(start, end) +
+      closeMarker +
+      currentSequence.slice(end);
+
+    handleSequenceValueChange(markedSequence);
+  }
+
+  function handleWorkspaceSelection(object: WorkspaceObject) {
+    const path = object.path || "";
+    form.setFieldValue("sequence_input", path);
+    // Save to state for workplace_fasta input type
+    if (inputType === "workplace_fasta") {
+      setWorkspaceFastaValue(path);
+    }
+  }
 
   // Helper to restore workspace FASTA value
-  const restoreWorkspaceFasta = useCallback(() => {
+  function restoreWorkspaceFasta() {
     if (workspaceFastaValue) {
       isRestoringValueRef.current = true;
       form.setFieldValue("sequence_input", workspaceFastaValue);
@@ -251,68 +231,83 @@ export default function PrimerDesignServicePage() {
     } else {
       form.setFieldValue("sequence_input", "");
     }
-  }, [workspaceFastaValue, form]);
+  }
 
   // Helper to restore sequence text values
-  const restoreSequenceText = useCallback(() => {
+  function restoreSequenceText() {
     form.setFieldValue("sequence_input", sequenceTextValue);
     form.setFieldValue("SEQUENCE_ID", sequenceTextId);
-  }, [sequenceTextValue, sequenceTextId, form]);
+  }
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: primerDesignService,
     form,
-    fields: ["output_path", "output_file"] as const,
-    onApply: (rerunData, form) => {
-      const d = rerunData;
+    rerun: {
+      onApply: (rerunData, form) => {
+        const d = rerunData;
 
-      // Input type
-      const inputTypeVal = d.input_type as PrimerDesignFormData["input_type"] | undefined;
-      if (inputTypeVal === "sequence_text" || inputTypeVal === "workplace_fasta") {
-        form.setFieldValue("input_type", inputTypeVal as never);
-      }
-
-      // Sequence input — handle per input type
-      if (inputTypeVal === "workplace_fasta") {
-        const path = typeof d.sequence_input === "string" ? d.sequence_input : "";
-        isRestoringValueRef.current = true;
-        form.setFieldValue("sequence_input", path as never);
-        setWorkspaceFastaValue(path);
-        setTimeout(() => { isRestoringValueRef.current = false; }, 200);
-      } else {
-        // sequence_text (default)
-        const seq = typeof d.sequence_input === "string" ? d.sequence_input : "";
-        const seqId = typeof d.SEQUENCE_ID === "string" ? d.SEQUENCE_ID : "";
-        form.setFieldValue("sequence_input", seq as never);
-        form.setFieldValue("SEQUENCE_ID", seqId as never);
-        setSequenceTextValue(seq);
-        setSequenceTextId(seqId);
-      }
-
-      // Boolean fields
-      if (typeof d.PRIMER_PICK_INTERNAL_OLIGO === "boolean") {
-        form.setFieldValue("PRIMER_PICK_INTERNAL_OLIGO", d.PRIMER_PICK_INTERNAL_OLIGO as never);
-      }
-
-      // Array fields
-      for (const field of primerArrayFields) {
-        if (d[field] !== undefined) {
-          const val = Array.isArray(d[field]) ? (d[field] as string[]) : typeof d[field] === "string" ? (d[field] as string).trim().split(/\s+/).filter(Boolean) : undefined;
-          if (val !== undefined) form.setFieldValue(field, val as never);
+        const inputTypeVal = d.input_type as
+          | PrimerDesignFormData["input_type"]
+          | undefined;
+        if (
+          inputTypeVal === "sequence_text" ||
+          inputTypeVal === "workplace_fasta"
+        ) {
+          form.setFieldValue("input_type", inputTypeVal as never);
         }
-      }
 
-      // Scalar numeric/string fields
-      for (const field of primerScalarFields) {
-        if (d[field] !== undefined) {
-          form.setFieldValue(field, String(d[field]) as never);
+        if (inputTypeVal === "workplace_fasta") {
+          const path =
+            typeof d.sequence_input === "string" ? d.sequence_input : "";
+          isRestoringValueRef.current = true;
+          form.setFieldValue("sequence_input", path as never);
+          setWorkspaceFastaValue(path);
+          setTimeout(() => {
+            isRestoringValueRef.current = false;
+          }, 200);
+        } else {
+          const seq =
+            typeof d.sequence_input === "string" ? d.sequence_input : "";
+          const seqId = typeof d.SEQUENCE_ID === "string" ? d.SEQUENCE_ID : "";
+          form.setFieldValue("sequence_input", seq as never);
+          form.setFieldValue("SEQUENCE_ID", seqId as never);
+          setSequenceTextValue(seq);
+          setSequenceTextId(seqId);
         }
-      }
 
-      // Expand advanced section if any advanced field is present in rerun data
-      const hasAdvancedField = primerAdvancedFields.some((f) => d[f] !== undefined);
-      if (hasAdvancedField) {
-        setShowAdvanced(true);
-      }
+        if (typeof d.PRIMER_PICK_INTERNAL_OLIGO === "boolean") {
+          form.setFieldValue(
+            "PRIMER_PICK_INTERNAL_OLIGO",
+            d.PRIMER_PICK_INTERNAL_OLIGO as never,
+          );
+        }
+
+        for (const field of primerArrayFields) {
+          if (d[field] !== undefined) {
+            const val = Array.isArray(d[field])
+              ? (d[field] as string[])
+              : typeof d[field] === "string"
+                ? (d[field] as string).trim().split(/\s+/).filter(Boolean)
+                : undefined;
+            if (val !== undefined) {
+              form.setFieldValue(field, val as never);
+            }
+          }
+        }
+
+        for (const field of primerScalarFields) {
+          if (d[field] !== undefined) {
+            form.setFieldValue(field, String(d[field]) as never);
+          }
+        }
+
+        const hasAdvancedField = primerAdvancedFields.some(
+          (field) => d[field] !== undefined,
+        );
+        if (hasAdvancedField) {
+          setShowAdvanced(true);
+        }
+      },
     },
   });
 
@@ -939,15 +934,18 @@ export default function PrimerDesignServicePage() {
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
+            disabled={runtime.isSubmitting || !canSubmit || !isOutputNameValid}
           >
-            {isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
+            {runtime.isSubmitting && <Spinner className="mr-2 h-4 w-4" />}
             Submit
           </Button>
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} serviceName="Primer Design" />
+      <JobParamsDialog
+        {...runtime.jobParamsDialogProps}
+        serviceName="Primer Design"
+      />
     </section>
   );
 }

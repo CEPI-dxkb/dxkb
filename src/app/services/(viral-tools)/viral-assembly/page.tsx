@@ -25,15 +25,13 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
 import {
   viralAssemblyInfo,
   viralAssemblyInputFile,
   viralAssemblyParameters,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/viral-assembly";
 
 import {
   viralAssemblyFormSchema,
@@ -44,10 +42,10 @@ import {
   type ViralAssemblyLibraryItem,
 } from "@/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-schema";
 import {
-  transformViralAssemblyParams,
   getPairedLibraryBuildFn,
   getSingleLibraryBuildFn,
 } from "@/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-utils";
+import { viralAssemblyService } from "@/lib/forms/(viral-tools)/viral-assembly/viral-assembly-service";
 import {
   buildBaseLibraryItem,
   getPairedLibraryId,
@@ -66,8 +64,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: viralAssemblyFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as ViralAssemblyFormData;
-      await previewOrPassthrough(transformViralAssemblyParams(data), submit);
+      await runtime.submitFormData(value as ViralAssemblyFormData);
     },
   });
 
@@ -97,41 +94,6 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
   useEffect(() => {
     selectedLibrariesRef.current = selectedLibraries;
   }, [selectedLibraries]);
-
-  useRerunForm<Record<string, unknown>>({
-    form,
-    fields: ["strategy", "module", "output_path", "output_file"] as const,
-    onApply: (rerunData, form) => {
-      // The transform stores singular fields: paired_end_lib, single_end_lib, srr_id
-      const pairedLib = rerunData.paired_end_lib as Record<string, string> | undefined;
-      const singleLib = rerunData.single_end_lib as Record<string, string> | undefined;
-      const srrId = rerunData.srr_id as string | undefined;
-
-      if (pairedLib?.read1 && pairedLib?.read2) {
-        form.setFieldValue("input_type", "paired" as never);
-        setPairedRead1(pairedLib.read1);
-        setPairedRead2(pairedLib.read2);
-        const libs = buildPairedLibraries({ paired_end_libs: [pairedLib] });
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
-      } else if (singleLib?.read) {
-        form.setFieldValue("input_type", "single" as never);
-        setSingleRead(singleLib.read);
-        const libs = buildSingleLibraries({ single_end_libs: [singleLib] });
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
-      } else if (srrId) {
-        form.setFieldValue("input_type", "srr_accession" as never);
-        setSraDefaultValue(srrId);
-        // SraRunAccessionWithValidation reads defaultValue once on mount,
-        // so bump its reset key to remount with the rerun-provided value.
-        setSraResetKey((k) => k + 1);
-        const libs: Library[] = [{ id: srrId, name: srrId, type: "sra" }];
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
-      }
-    },
-  });
 
   // Sync selected single read into form when Single Read Library is selected (no Add button on this page)
   useEffect(() => {
@@ -220,14 +182,47 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
     setIsOutputNameValid(true);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "ViralAssembly",
-    displayName: "Viral Assembly",
+  const runtime = useServiceRuntime({
+    definition: viralAssemblyService,
+    form,
     onSuccess: handleReset,
+    rerun: {
+      onApply: (rerunData, form) => {
+        // The transform stores singular fields: paired_end_lib, single_end_lib, srr_id.
+        const pairedLib = rerunData.paired_end_lib as
+          | Record<string, string>
+          | undefined;
+        const singleLib = rerunData.single_end_lib as
+          | Record<string, string>
+          | undefined;
+        const srrId = rerunData.srr_id as string | undefined;
+
+        if (pairedLib?.read1 && pairedLib?.read2) {
+          form.setFieldValue("input_type", "paired" as never);
+          setPairedRead1(pairedLib.read1);
+          setPairedRead2(pairedLib.read2);
+          const libs = buildPairedLibraries({ paired_end_libs: [pairedLib] });
+          syncLibrariesToForm(libs);
+          setLibrariesAndSync(libs);
+        } else if (singleLib?.read) {
+          form.setFieldValue("input_type", "single" as never);
+          setSingleRead(singleLib.read);
+          const libs = buildSingleLibraries({ single_end_libs: [singleLib] });
+          syncLibrariesToForm(libs);
+          setLibrariesAndSync(libs);
+        } else if (srrId) {
+          form.setFieldValue("input_type", "srr_accession" as never);
+          setSraDefaultValue(srrId);
+          // SraRunAccessionWithValidation reads defaultValue once on mount.
+          setSraResetKey((k) => k + 1);
+          const libs: Library[] = [{ id: srrId, name: srrId, type: "sra" }];
+          syncLibrariesToForm(libs);
+          setLibrariesAndSync(libs);
+        }
+      },
+    },
   });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "ViralAssembly",
-  });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   return (
     <section>
@@ -495,7 +490,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 };

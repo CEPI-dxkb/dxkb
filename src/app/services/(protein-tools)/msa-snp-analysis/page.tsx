@@ -3,7 +3,7 @@
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { useState, useMemo, useEffect } from "react";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -42,8 +42,6 @@ import {
   type FeatureSummary,
 } from "@/lib/services/feature";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -52,9 +50,10 @@ import {
   msaSNPAnalysisParameters,
   msaSNPAnalysisSelectSequences,
   msaSNPAnalysisStartWith,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/msa-snp-analysis";
 import * as MsaSnpAnalysis from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-schema";
 import * as MsaSnpAnalysisUtils from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
+import { msaSnpAnalysisService } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-service";
 
 import { msaSNPAnalysisAligners } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 
@@ -111,25 +110,12 @@ export default function MSAandSNPAnalysisPage() {
     form.setFieldValue("feature_groups", "");
   }
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "MSA",
-    displayName: "MSA SNP Analysis",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "MSA",
-  });
-
   const form = useForm({
     defaultValues: MsaSnpAnalysis.defaultMsaSnpAnalysisFormValues as MsaSnpAnalysis.MsaSnpAnalysisFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: MsaSnpAnalysis.msaSnpAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as MsaSnpAnalysis.MsaSnpAnalysisFormData;
-      await previewOrPassthrough(
-        MsaSnpAnalysisUtils.transformMsaSnpAnalysisParams(data),
-        submit,
-      );
+      await runtime.submitFormData(value as MsaSnpAnalysis.MsaSnpAnalysisFormData);
     },
   });
 
@@ -143,86 +129,95 @@ export default function MSAandSNPAnalysisPage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: msaSnpAnalysisService,
     form,
-    fields: [
-      "input_status",
-      "alphabet",
-      "ref_type",
-      "aligner",
-      "output_path",
-      "output_file",
-    ] as const,
-    onApply: (rerunData, form) => {
-      // Map legacy API input_type values back to form values
-      const rawInputType = rerunData.input_type as string | undefined;
-      if (rawInputType) {
-        let inputTypeValue: MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"] | undefined;
-        if (rawInputType === "input_group") {
-          inputTypeValue = "input_feature_group";
-        } else if (rawInputType === "input_genomegroup") {
-          inputTypeValue = "input_genome_group";
-        } else if (rawInputType === "input_fasta" || rawInputType === "input_sequence") {
-          inputTypeValue = rawInputType as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"];
+    onSuccess: handleReset,
+    rerun: {
+      onApply: (rerunData, form) => {
+        const rawInputType = rerunData.input_type as string | undefined;
+        if (rawInputType) {
+          let inputTypeValue:
+            | MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"]
+            | undefined;
+          if (rawInputType === "input_group") {
+            inputTypeValue = "input_feature_group";
+          } else if (rawInputType === "input_genomegroup") {
+            inputTypeValue = "input_genome_group";
+          } else if (
+            rawInputType === "input_fasta" ||
+            rawInputType === "input_sequence"
+          ) {
+            inputTypeValue =
+              rawInputType as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"];
+          }
+          if (inputTypeValue) {
+            form.setFieldValue("input_type", inputTypeValue as never);
+          }
         }
-        if (inputTypeValue) {
-          form.setFieldValue("input_type", inputTypeValue as never);
+
+        const featureGroupsRaw = normalizeToArray<string>(
+          rerunData.feature_groups,
+        );
+        if (featureGroupsRaw.length > 0) {
+          form.setFieldValue("feature_groups", featureGroupsRaw[0] as never);
         }
-      }
 
-      // feature_groups (API sends as array; form stores as single string)
-      const featureGroupsRaw = normalizeToArray<string>(rerunData.feature_groups);
-      if (featureGroupsRaw.length > 0) {
-        form.setFieldValue("feature_groups", featureGroupsRaw[0] as never);
-      }
-
-      // select_genomegroup
-      const selectGenomegroupRaw = normalizeToArray<string>(rerunData.select_genomegroup);
-      if (selectGenomegroupRaw.length > 0) {
-        form.setFieldValue("select_genomegroup", selectGenomegroupRaw as never);
-      }
-
-      // fasta_files
-      const fastaFilesRaw = normalizeToArray<MsaSnpAnalysis.FastaFileItem>(rerunData.fasta_files);
-      if (fastaFilesRaw.length > 0) {
-        form.setFieldValue("fasta_files", fastaFilesRaw as never);
-      }
-
-      // fasta_keyboard_input
-      if (typeof rerunData.fasta_keyboard_input === "string" && rerunData.fasta_keyboard_input.trim() !== "") {
-        const text = rerunData.fasta_keyboard_input;
-        setFastaInputText(text);
-        form.setFieldValue("fasta_keyboard_input", text as never);
-      }
-
-      // ref_string — also restore the relevant UI state variables
-      if (typeof rerunData.ref_string === "string" && rerunData.ref_string.trim() !== "") {
-        form.setFieldValue("ref_string", rerunData.ref_string as never);
-        const resolvedRefType = rerunData.ref_type as string | undefined;
-        if (resolvedRefType === "feature_id") {
-          setSelectedFeatureId(rerunData.ref_string);
-        } else if (resolvedRefType === "genome_id") {
-          setSelectedGenomeId(rerunData.ref_string);
-        } else if (resolvedRefType === "string") {
-          setReferenceFastaText(rerunData.ref_string);
+        const selectGenomegroupRaw = normalizeToArray<string>(
+          rerunData.select_genomegroup,
+        );
+        if (selectGenomegroupRaw.length > 0) {
+          form.setFieldValue(
+            "select_genomegroup",
+            selectGenomegroupRaw as never,
+          );
         }
-      }
 
-      // strategy (API stores as "strategy" or "strategy_settings", but always
-      // sets strategy_settings:"auto" even for Muscle jobs as a backend default)
-      if (rerunData.aligner === "Muscle") {
-        // Muscle doesn't support strategy — clear the default "auto" value to
-        // avoid a schema validation error ("Strategy is only available for Mafft").
-        form.setFieldValue("strategy", undefined as never);
-      } else {
-        const strategyVal = (rerunData.strategy || rerunData.strategy_settings) as string | undefined;
-        if (strategyVal && strategyVal.trim() !== "") {
-          form.setFieldValue("strategy", strategyVal as never);
-          setShowStrategy(true);
+        const fastaFilesRaw = normalizeToArray<MsaSnpAnalysis.FastaFileItem>(
+          rerunData.fasta_files,
+        );
+        if (fastaFilesRaw.length > 0) {
+          form.setFieldValue("fasta_files", fastaFilesRaw as never);
         }
-      }
+
+        if (
+          typeof rerunData.fasta_keyboard_input === "string" &&
+          rerunData.fasta_keyboard_input.trim() !== ""
+        ) {
+          const text = rerunData.fasta_keyboard_input;
+          setFastaInputText(text);
+          form.setFieldValue("fasta_keyboard_input", text as never);
+        }
+
+        if (
+          typeof rerunData.ref_string === "string" &&
+          rerunData.ref_string.trim() !== ""
+        ) {
+          form.setFieldValue("ref_string", rerunData.ref_string as never);
+          const resolvedRefType = rerunData.ref_type as string | undefined;
+          if (resolvedRefType === "feature_id") {
+            setSelectedFeatureId(rerunData.ref_string);
+          } else if (resolvedRefType === "genome_id") {
+            setSelectedGenomeId(rerunData.ref_string);
+          } else if (resolvedRefType === "string") {
+            setReferenceFastaText(rerunData.ref_string);
+          }
+        }
+
+        if (rerunData.aligner === "Muscle") {
+          form.setFieldValue("strategy", undefined as never);
+        } else {
+          const strategyVal = (rerunData.strategy ||
+            rerunData.strategy_settings) as string | undefined;
+          if (strategyVal && strategyVal.trim() !== "") {
+            form.setFieldValue("strategy", strategyVal as never);
+            setShowStrategy(true);
+          }
+        }
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   // Update strategy visibility based on aligner
   useEffect(() => {
@@ -1341,7 +1336,7 @@ export default function MSAandSNPAnalysisPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

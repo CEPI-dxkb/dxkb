@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { noop } from "@/lib/utils";
 import { useForm, useStore } from "@tanstack/react-form";
 import { ServiceHeader } from "@/components/services/service-header";
 import {
@@ -24,15 +23,13 @@ import { HelpCircle } from "lucide-react";
 import {
   genomeAnnotationInfo,
   genomeAnnotationParameters,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/genome-annotation";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/workspace-client";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { toast } from "sonner";
 import {
   completeGenomeAnnotationSchema,
@@ -40,11 +37,11 @@ import {
   type GenomeAnnotationFormData,
 } from "@/lib/forms/(genomics)/genome-annotation/genome-annotation-form-schema";
 import {
-  transformGenomeAnnotationParams,
   generateOutputFileName,
   validateMyLabel,
   genomeAnnotationRecipes,
 } from "@/lib/forms/(genomics)/genome-annotation/genome-annotation-form-utils";
+import { genomeAnnotationService } from "@/lib/forms/(genomics)/genome-annotation/genome-annotation-service";
 import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
 import {
   Tooltip,
@@ -60,14 +57,6 @@ import { Label } from "@/components/ui/label";
 const GenomeAnnotationContent = () => {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "GenomeAnnotation",
-    displayName: "Genome Annotation",
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "GenomeAnnotation",
-  });
-
   const form = useForm({
     defaultValues: defaultGenomeAnnotationFormValues as GenomeAnnotationFormData,
     validators: { onChange: completeGenomeAnnotationSchema },
@@ -79,7 +68,7 @@ const GenomeAnnotationContent = () => {
         return;
       }
 
-      await previewOrPassthrough(transformGenomeAnnotationParams(value), submit);
+      await runtime.submitFormData(value);
     },
   });
 
@@ -109,32 +98,11 @@ const GenomeAnnotationContent = () => {
     previousValuesRef.current = currentValues;
   }, [watchedValues]);
 
-  useRerunForm<Record<string, unknown>>({
+  const runtime = useServiceRuntime({
+    definition: genomeAnnotationService,
     form,
-    fields: ["contigs", "recipe", "output_path", "output_file"] as const,
-    onApply: (rerunData, form) => {
-      if (rerunData.taxonomy_id) {
-        const taxonId = String(rerunData.taxonomy_id);
-        form.setFieldValue("taxonomy_id", taxonId as never);
-        const storedLabel = rerunData.my_label as string | undefined;
-        fetch(`/api/services/taxonomy?q=taxon_id:${taxonId}&fl=taxon_id,taxon_name`)
-          .then((r) => r.json())
-          .then((data) => {
-            const docs = Array.isArray(data) ? data : data?.response?.docs;
-            if (docs && docs.length > 0) {
-              form.setFieldValue("scientific_name", docs[0].taxon_name as never);
-            }
-            if (storedLabel) {
-              form.setFieldValue("my_label", storedLabel as never);
-            }
-          })
-          .catch(noop);
-      } else {
-        if (rerunData.scientific_name) form.setFieldValue("scientific_name", rerunData.scientific_name as never);
-        if (rerunData.my_label) form.setFieldValue("my_label", rerunData.my_label as never);
-      }
-    },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const handleReset = () => {
     form.reset(defaultGenomeAnnotationFormValues);
@@ -397,7 +365,7 @@ const GenomeAnnotationContent = () => {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 };

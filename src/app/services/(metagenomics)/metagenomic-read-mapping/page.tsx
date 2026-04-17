@@ -40,14 +40,12 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   metagenomicReadMappingInfo,
   metagenomicReadMappingParameters,
   readInputFileInfo,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/metagenomic-read-mapping";
 
 import {
   metagenomicReadMappingFormSchema,
@@ -56,9 +54,7 @@ import {
   type MetagenomicReadMappingFormData,
   type LibraryItem,
 } from "@/lib/forms/(metagenomics)/metagenomic-read-mapping/metagenomic-read-mapping-form-schema";
-import {
-  transformMetagenomicReadMappingParams,
-} from "@/lib/forms/(metagenomics)/metagenomic-read-mapping/metagenomic-read-mapping-form-utils";
+import { metagenomicReadMappingService } from "@/lib/forms/(metagenomics)/metagenomic-read-mapping/metagenomic-read-mapping-service";
 import {
   buildBaseLibraryItem,
   getPairedLibraryName,
@@ -87,21 +83,11 @@ export default function MetagenomicReadMappingPage() {
     setSraResetKey((k) => k + 1);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "MetagenomicReadMapping",
-    displayName: "Metagenomic Read Mapping",
-    onSuccess: handleReset,
-  });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "MetagenomicReadMapping",
-  });
-
   const form = useForm({
     defaultValues: defaultMetagenomicReadMappingFormValues as MetagenomicReadMappingFormData,
     validators: { onChange: metagenomicReadMappingFormSchema },
     onSubmit: async ({ value }) => {
-      const data = value as MetagenomicReadMappingFormData;
-      await previewOrPassthrough(transformMetagenomicReadMappingParams(data), submit);
+      await runtime.submitFormData(value as MetagenomicReadMappingFormData);
     },
   });
 
@@ -126,15 +112,18 @@ export default function MetagenomicReadMappingPage() {
     },
   });
 
-  useRerunForm({
+  const runtime = useServiceRuntime({
+    definition: metagenomicReadMappingService,
     form,
-    fields: ["output_path", "output_file", "gene_set_type", "gene_set_name", "gene_set_fasta", "gene_set_feature_group"] as const,
-    libraries: ["paired", "single", "sra"],
-    syncLibraries: (libs) => {
-      syncLibrariesToForm(libs);
-      setLibrariesAndSync(libs);
+    onSuccess: handleReset,
+    rerun: {
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibrariesAndSync(libs);
+      },
     },
   });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const handlePairedLibraryAdd = () => {
     addPairedLibrary({
@@ -533,7 +522,7 @@ export default function MetagenomicReadMappingPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

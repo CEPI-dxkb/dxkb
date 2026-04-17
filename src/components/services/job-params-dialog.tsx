@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-interface JobParamsDialogProps {
+export interface JobParamsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   params: Record<string, unknown>;
@@ -40,4 +40,3 @@ export function JobParamsDialog({
     </Dialog>
   );
 }
-

@@ -22,15 +22,12 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
-import { useServiceFormSubmission } from "@/hooks/services/use-service-form-submission";
-import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
-import { useRerunForm } from "@/hooks/services/use-rerun-form";
-import { normalizeToArray } from "@/lib/rerun-utility";
+import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { validateFasta } from "@/lib/fasta-validation";
 import {
   haSubtypeNumberingInput,
   haSubtypeNumberingConversionScheme,
-} from "@/lib/services/service-info";
+} from "@/lib/services/info/influenza-ha-subtype";
 import { HaReferenceTypes } from "@/types/services";
 
 import {
@@ -38,7 +35,7 @@ import {
   defaultInfluenzaHaSubtypeFormValues,
   type InfluenzaHaSubtypeFormData,
 } from "@/lib/forms/(viral-tools)/influenza-ha-subtype/influenza-ha-subtype-form-schema";
-import { transformHaSubtypeParams } from "@/lib/forms/(viral-tools)/influenza-ha-subtype/influenza-ha-subtype-form-utils";
+import { influenzaHaSubtypeService } from "@/lib/forms/(viral-tools)/influenza-ha-subtype/influenza-ha-subtype-service";
 
 const quickReference =
   "https://www.bv-brc.org/docs/quick_references/services/ha_numbering_service.html";
@@ -52,25 +49,7 @@ export default function HASubtypeNumberingPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: influenzaHaSubtypeFormSchema as any },
     onSubmit: async ({ value }) => {
-      const data = value as InfluenzaHaSubtypeFormData;
-      await previewOrPassthrough(transformHaSubtypeParams(data), submit);
-    },
-  });
-
-  useRerunForm<Record<string, unknown>>({
-    form,
-    fields: [
-      "input_source",
-      "input_fasta_data",
-      "input_fasta_file",
-      "input_feature_group",
-      "output_path",
-      "output_file",
-    ] as const,
-    onApply: (rerunData, form) => {
-      if (rerunData.types != null) {
-        form.setFieldValue("types", normalizeToArray(rerunData.types) as never);
-      }
+      await runtime.submitFormData(value as InfluenzaHaSubtypeFormData);
     },
   });
 
@@ -114,14 +93,12 @@ export default function HASubtypeNumberingPage() {
     setIsFastaValid(false);
   };
 
-  const { submit, isSubmitting } = useServiceFormSubmission({
-    serviceName: "HASubtypeNumberingConversion",
-    displayName: "HA Subtype Numbering Conversion",
+  const runtime = useServiceRuntime({
+    definition: influenzaHaSubtypeService,
+    form,
     onSuccess: handleReset,
   });
-  const { previewOrPassthrough, dialogProps } = useDebugParamsPreview({
-    serviceName: "HASubtypeNumberingConversion",
-  });
+  const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const isFastaDataInvalid =
     inputSource === "fasta_data" && !!fastaData?.trim() && !isFastaValid;
@@ -389,7 +366,7 @@ export default function HASubtypeNumberingPage() {
         </div>
       </form>
 
-      <JobParamsDialog {...dialogProps} />
+      <JobParamsDialog {...jobParamsDialogProps} />
     </section>
   );
 }

@@ -47,8 +47,19 @@ describe("GenomeAssembly page — rerun + submit flow", () => {
       http.get("*/api/auth/profile", () =>
         HttpResponse.json({ settings: { default_job_folder: "" } }),
       ),
-      // Workspace object lookups fired by WorkspaceObjectSelector — respond empty.
-      http.post("*/api/services/workspace", () => HttpResponse.json([])),
+      // Workspace calls used by this page:
+      //   - Workspace.ls  → WorkspaceObjectSelector listing (return [])
+      //   - Workspace.get → OutputFolder name-availability check;
+      //     checkWorkspaceObjectExists treats 200 as "name taken" and 500
+      //     as "name available", so we must return non-OK here or the
+      //     Assemble button gets disabled by the debounced check mid-test.
+      http.post("*/api/services/workspace", async ({ request }) => {
+        const body = (await request.json()) as { method?: string };
+        if (body.method === "Workspace.get") {
+          return new HttpResponse(null, { status: 500 });
+        }
+        return HttpResponse.json([]);
+      }),
     );
   });
 
@@ -93,17 +104,12 @@ describe("GenomeAssembly page — rerun + submit flow", () => {
 
     // Click Assemble to submit — wait for tanstack-form validation to mark the
     // form submittable (button is disabled until canSubmit flips to true).
-    // Bumped timeouts accommodate the single-vCPU ubuntu-latest CI runner,
-    // where the library-state → form-field sync + submission chain can exceed
-    // the 1s waitFor default.
     const assembleButton = screen.getByRole("button", { name: /assemble/i });
-    await waitFor(() => expect(assembleButton).toBeEnabled(), {
-      timeout: 5000,
-    });
+    await waitFor(() => expect(assembleButton).toBeEnabled());
     await userEvent.click(assembleButton);
 
-    await waitFor(() => expect(submittedBody).not.toBeNull(), {
-      timeout: 5000,
+    await waitFor(() => {
+      expect(submittedBody).not.toBeNull();
     });
 
     const body = submittedBody as { app_name: string; app_params: Record<string, unknown> };

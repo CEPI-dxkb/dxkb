@@ -186,6 +186,22 @@ export default function TaxonomicClassificationPage() {
     form,
     onSuccess: handleReset,
     rerun: {
+      libraries: ["paired", "single", "sra"],
+      getLibraryExtra: (lib, kind) => {
+        if (kind === "paired") {
+          return {
+            sampleId:
+              lib.sample_id || extractSampleIdFromPath(lib.read1, "sample"),
+          };
+        }
+        if (kind === "single") {
+          return {
+            sampleId:
+              lib.sample_id || extractSampleIdFromPath(lib.read, "sample"),
+          };
+        }
+        return { sampleId: lib.sample_id || "" };
+      },
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
         setLibrariesAndSync(libs);

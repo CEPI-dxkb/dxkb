@@ -10,31 +10,19 @@ import {
 } from "@/lib/rerun-utility";
 import { apiFetch } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth/types";
+import type {
+  ServiceFormApi,
+  ServiceLibraryKind,
+  ServiceRerunConfig,
+} from "@/lib/services/service-definition";
 import type { Library } from "@/types/services";
 
-type LibraryKind = "paired" | "single" | "sra";
-
-interface TanstackFormLike {
-  getFieldValue(field: string): unknown;
-  setFieldValue(field: string, value: never): void;
-}
-
-interface UseRerunFormOptions<T extends Record<string, unknown>> {
-  form: TanstackFormLike;
-  fields?: readonly (keyof T & string)[];
-  libraries?: readonly LibraryKind[];
-  getLibraryExtra?: (
-    lib: Record<string, string>,
-    kind: LibraryKind,
-  ) => Partial<Library>;
-  syncLibraries?: (libs: Library[]) => void;
-  onApply?: (
-    rerunData: T,
-    form: TanstackFormLike,
-    libraries: Library[],
-  ) => void;
-  defaultOutputPath?: null;
-}
+type UseRerunFormOptions<
+  TForm,
+  T extends Record<string, unknown>,
+> = ServiceRerunConfig<TForm, T> & {
+  form: ServiceFormApi<TForm>;
+};
 
 /**
  * Read rerun_key from the URL and pull the matching JSON blob from sessionStorage.
@@ -61,7 +49,7 @@ function useRerunData<T extends Record<string, unknown>>(): T | null {
 }
 
 const libraryBuilders: Record<
-  LibraryKind,
+  ServiceLibraryKind,
   (
     data: Record<string, unknown>,
     getExtra?: (lib: Record<string, string>) => Partial<Library>,
@@ -83,11 +71,12 @@ const libraryBuilders: Record<
  *
  * When no rerun data is present, pre-fills `output_path` from the user's `default_job_folder` profile
  * setting. Pass `defaultOutputPath: null` to opt out.
- *
- * Constraint: if `libraries` is declared, `syncLibraries` must also be provided.
  */
-export function useRerunForm<T extends Record<string, unknown>>(
-  options: UseRerunFormOptions<T>,
+export function useRerunForm<
+  T extends Record<string, unknown>,
+  TForm = unknown,
+>(
+  options: UseRerunFormOptions<TForm, T>,
 ): { rerunData: T | null } {
   const {
     form,
@@ -98,12 +87,6 @@ export function useRerunForm<T extends Record<string, unknown>>(
     onApply,
     defaultOutputPath,
   } = options;
-
-  if (libraries && libraries.length > 0 && !syncLibraries) {
-    throw new Error(
-      "useRerunForm: `syncLibraries` is required when `libraries` is declared",
-    );
-  }
 
   const rerunData = useRerunData<T>();
   const rerunApplied = useRef(false);

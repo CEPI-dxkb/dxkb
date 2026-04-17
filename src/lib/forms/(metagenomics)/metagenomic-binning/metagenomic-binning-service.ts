@@ -24,6 +24,5 @@ export const metagenomicBinningService =
         "contigs",
         "genome_group",
       ],
-      libraries: ["paired", "single", "sra"],
     },
   });

@@ -1,4 +1,3 @@
-import { extractSampleIdFromPath } from "@/lib/forms/service-library-rules";
 import { rerunBooleanValue } from "@/lib/rerun-utility";
 import { createServiceDefinition } from "@/lib/services/service-definition";
 
@@ -9,8 +8,33 @@ import {
 } from "./taxonomic-classification-form-schema";
 import { transformTaxonomicClassificationParams } from "./taxonomic-classification-form-utils";
 
+interface TaxonomicClassificationRerunData extends Record<string, unknown> {
+  output_path?: string;
+  output_file?: string;
+  analysis_type?: string;
+  database?: string;
+  host_genome?: string;
+  confidence_interval?: number;
+  sequence_type?: TaxonomicClassificationFormData["sequence_type"] | "sixteenS";
+}
+
+function normalizeRerunSequenceType(
+  sequenceType: TaxonomicClassificationRerunData["sequence_type"],
+): TaxonomicClassificationFormData["sequence_type"] | null {
+  if (sequenceType === "sixteenS") {
+    return "16s";
+  }
+  if (sequenceType === "16s" || sequenceType === "wgs") {
+    return sequenceType;
+  }
+  return null;
+}
+
 export const taxonomicClassificationService =
-  createServiceDefinition<TaxonomicClassificationFormData>({
+  createServiceDefinition<
+    TaxonomicClassificationFormData,
+    TaxonomicClassificationRerunData
+  >({
     serviceName: "TaxonomicClassification",
     displayName: "Taxonomic Classification",
     schema: taxonomicClassificationFormSchema,
@@ -25,28 +49,11 @@ export const taxonomicClassificationService =
         "host_genome",
         "confidence_interval",
       ],
-      libraries: ["paired", "single", "sra"],
-      getLibraryExtra: (lib, kind) => {
-        if (kind === "paired") {
-          return {
-            sampleId:
-              lib.sample_id || extractSampleIdFromPath(lib.read1, "sample"),
-          };
-        }
-        if (kind === "single") {
-          return {
-            sampleId:
-              lib.sample_id || extractSampleIdFromPath(lib.read, "sample"),
-          };
-        }
-        return { sampleId: lib.sample_id || "" };
-      },
       onApply: (rerunData, form) => {
-        if (rerunData.sequence_type) {
-          const sequenceType =
-            rerunData.sequence_type === "sixteenS"
-              ? "16s"
-              : (rerunData.sequence_type as TaxonomicClassificationFormData["sequence_type"]);
+        const sequenceType = normalizeRerunSequenceType(
+          rerunData.sequence_type,
+        );
+        if (sequenceType) {
           form.setFieldValue("sequence_type", sequenceType as never);
         }
         if (rerunData.save_classified_sequences !== undefined) {

@@ -22,18 +22,5 @@ export const sarsCov2WastewaterAnalysisService =
         "output_path",
         "output_file",
       ],
-      libraries: ["paired", "single", "sra"],
-      getLibraryExtra: (lib, kind) => {
-        const base = {
-          sampleId: lib.sample_id || "",
-          ...(lib.sample_level_date
-            ? { sampleLevelDate: lib.sample_level_date }
-            : {}),
-        };
-        if (kind === "sra") {
-          return { ...base, ...(lib.title ? { title: lib.title } : {}) };
-        }
-        return base;
-      },
     },
   });

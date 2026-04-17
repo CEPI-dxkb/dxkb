@@ -40,7 +40,22 @@ const exampleDefinition = createServiceDefinition<ExampleFormData>({
   displayName: "Genome Assembly",
   schema: null,
   defaultValues: { output_path: "", output_file: "", flag: false },
-  defaultOutputPath: null,
+  transformParams: (data) => ({
+    output_path: data.output_path,
+    output_file: data.output_file.trim(),
+    flag: data.flag ? "true" : "false",
+  }),
+  rerun: {
+    fields: ["output_path", "output_file"],
+    defaultOutputPath: null,
+  },
+});
+
+const defaultPathDefinition = createServiceDefinition<ExampleFormData>({
+  serviceName: "GenomeAssembly2",
+  displayName: "Genome Assembly",
+  schema: null,
+  defaultValues: { output_path: "", output_file: "", flag: false },
   transformParams: (data) => ({
     output_path: data.output_path,
     output_file: data.output_file.trim(),
@@ -168,6 +183,33 @@ describe("useServiceRuntime", () => {
         "rerun-output",
       );
     });
+  });
+
+  it("preserves call-site default-output-path opt out", async () => {
+    server.use(
+      http.get("*/api/auth/profile", () =>
+        HttpResponse.json({
+          settings: { default_job_folder: "/ws/default" },
+        }),
+      ),
+    );
+    const form = makeForm();
+
+    renderHook(
+      () =>
+        useServiceRuntime({
+          definition: defaultPathDefinition,
+          form,
+          rerun: { defaultOutputPath: null },
+        }),
+      { wrapper: wrapper() },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(form.setFieldValue).not.toHaveBeenCalledWith(
+      "output_path",
+      "/ws/default",
+    );
   });
 
   it("routes debug mode through the job params dialog without submitting", async () => {

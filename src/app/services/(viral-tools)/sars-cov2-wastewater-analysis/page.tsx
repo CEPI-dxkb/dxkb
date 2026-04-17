@@ -258,6 +258,19 @@ export default function SarsCov2WastewaterAnalysisPage() {
     form,
     onSuccess: handleReset,
     rerun: {
+      libraries: ["paired", "single", "sra"],
+      getLibraryExtra: (lib, kind) => {
+        const base = {
+          sampleId: lib.sample_id || "",
+          ...(lib.sample_level_date
+            ? { sampleLevelDate: lib.sample_level_date }
+            : {}),
+        };
+        if (kind === "sra") {
+          return { ...base, ...(lib.title ? { title: lib.title } : {}) };
+        }
+        return base;
+      },
       syncLibraries: (libs) => {
         skipSraNormalization.current = true;
         syncLibrariesToForm(libs);

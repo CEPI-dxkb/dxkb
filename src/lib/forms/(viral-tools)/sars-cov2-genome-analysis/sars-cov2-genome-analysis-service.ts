@@ -29,13 +29,6 @@ export const sarsCov2GenomeAnalysisService =
         "primer_version",
         "contigs",
       ],
-      libraries: ["paired", "single", "sra"],
-      getLibraryExtra: (lib, kind) => {
-        if (kind === "paired" || kind === "single") {
-          return { platform: lib.platform || "illumina" };
-        }
-        return {};
-      },
       onApply: (rerunData, form) => {
         if (!rerunData.taxonomy_id) return;
 

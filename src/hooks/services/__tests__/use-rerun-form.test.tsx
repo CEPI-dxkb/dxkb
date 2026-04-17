@@ -249,17 +249,4 @@ describe("useRerunForm", () => {
     expect(form.setFieldValue).not.toHaveBeenCalled();
   });
 
-  it("throws at mount when libraries declared without syncLibraries", () => {
-    expect(() =>
-      renderHook(
-        () =>
-          useRerunForm({
-            form: makeForm(),
-            libraries: ["paired"],
-            defaultOutputPath: null,
-          }),
-        { wrapper },
-      ),
-    ).toThrow(/syncLibraries.*required/);
-  });
 });

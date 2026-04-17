@@ -143,6 +143,20 @@ export default function GenomeAssemblyPage() {
     form,
     onSuccess: handleReset,
     rerun: {
+      libraries: ["paired", "single", "sra"],
+      getLibraryExtra: (lib, kind) => {
+        if (kind === "paired") {
+          return {
+            platform: lib.platform || "infer",
+            interleaved: !!lib.interleaved,
+            read_orientation_outward: !!lib.read_orientation_outward,
+          };
+        }
+        if (kind === "single") {
+          return { platform: lib.platform || "infer" };
+        }
+        return {};
+      },
       syncLibraries: setLibrariesAndSync,
     },
   });

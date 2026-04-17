@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { useDebugParamsPreview } from "@/hooks/services/use-debug-params-preview";
 import { useRerunForm } from "@/hooks/services/use-rerun-form";
@@ -20,7 +20,7 @@ interface UseServiceRuntimeOptions<
   definition: ServiceDefinition<TForm, TRerun>;
   form: TFormApi;
   onSuccess?: () => void;
-  rerun?: Partial<ServiceRerunConfig<TForm, TRerun>>;
+  rerun?: ServiceRerunConfig<TForm, TRerun>;
 }
 
 export interface ServiceRuntime<
@@ -38,6 +38,46 @@ export interface ServiceRuntime<
   submitParams(params: Record<string, unknown>): Promise<void>;
   previewOrSubmit(params: Record<string, unknown>): Promise<void>;
   submitFormData(data: TForm): Promise<void>;
+}
+
+function mergeServiceRerunConfig<
+  TForm,
+  TRerun extends Record<string, unknown>,
+>(
+  definitionRerun: ServiceRerunConfig<TForm, TRerun> | undefined,
+  overrideRerun: ServiceRerunConfig<TForm, TRerun> | undefined,
+): ServiceRerunConfig<TForm, TRerun> {
+  const fields = overrideRerun?.fields ?? definitionRerun?.fields;
+  const onApply = overrideRerun?.onApply ?? definitionRerun?.onApply;
+  const hasDefaultOutputPath =
+    (overrideRerun && "defaultOutputPath" in overrideRerun) ||
+    (definitionRerun && "defaultOutputPath" in definitionRerun);
+
+  const base = {
+    ...(fields ? { fields } : {}),
+    ...(onApply ? { onApply } : {}),
+    ...(hasDefaultOutputPath ? { defaultOutputPath: null } : {}),
+  };
+
+  if (overrideRerun?.libraries) {
+    return {
+      ...base,
+      libraries: overrideRerun.libraries,
+      getLibraryExtra: overrideRerun.getLibraryExtra,
+      syncLibraries: overrideRerun.syncLibraries,
+    };
+  }
+
+  if (definitionRerun?.libraries) {
+    return {
+      ...base,
+      libraries: definitionRerun.libraries,
+      getLibraryExtra: definitionRerun.getLibraryExtra,
+      syncLibraries: definitionRerun.syncLibraries,
+    };
+  }
+
+  return base;
 }
 
 export function useServiceRuntime<
@@ -63,16 +103,12 @@ export function useServiceRuntime<
     serviceName: definition.serviceName,
   });
 
-  const mergedRerun = {
-    ...(definition.rerun ?? {}),
-    ...(rerun ?? {}),
-    defaultOutputPath:
-      rerun?.defaultOutputPath ??
-      definition.rerun?.defaultOutputPath ??
-      definition.defaultOutputPath,
-  };
+  const mergedRerun = useMemo(
+    () => mergeServiceRerunConfig(definition.rerun, rerun),
+    [definition.rerun, rerun],
+  );
 
-  const { rerunData } = useRerunForm<TRerun>({
+  const { rerunData } = useRerunForm<TRerun, TForm>({
     ...mergedRerun,
     form,
   });

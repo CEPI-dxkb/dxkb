@@ -114,6 +114,9 @@ export const completeFormSchema = baseFormSchema
     }
   });
 
+// Type inference for the complete form schema
+export type BlastFormData = z.infer<typeof completeFormSchema>;
+
 // Default form values constant
 export const defaultBlastFormValues = {
   input_type: "dna" as const,
@@ -127,7 +130,4 @@ export const defaultBlastFormValues = {
   blast_max_hits: 10,
   blast_evalue_cutoff: 0.0001,
   db_precomputed_database: "bacteria-archaea" as const,
-};
-
-// Type inference for the complete form schema
-export type BlastFormData = z.infer<typeof completeFormSchema>;
+} satisfies BlastFormData;

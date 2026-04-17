@@ -125,6 +125,7 @@ export default function MetagenomicBinningPage() {
     form,
     onSuccess: handleReset,
     rerun: {
+      libraries: ["paired", "single", "sra"],
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
         setLibrariesAndSync(libs);

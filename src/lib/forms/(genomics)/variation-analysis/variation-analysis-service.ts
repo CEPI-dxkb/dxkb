@@ -22,6 +22,5 @@ export const variationAnalysisService =
         "mapper",
         "caller",
       ],
-      libraries: ["paired", "single", "sra"],
     },
   });

@@ -16,10 +16,5 @@ export const fastqUtilitiesService =
     transformParams: transformFastqUtilitiesParams,
     rerun: {
       fields: ["output_path", "output_file", "reference_genome_id"],
-      libraries: ["paired", "single", "sra"],
-      getLibraryExtra: (lib, kind) => {
-        if (kind === "single") return { platform: lib.platform };
-        return {};
-      },
     },
   });

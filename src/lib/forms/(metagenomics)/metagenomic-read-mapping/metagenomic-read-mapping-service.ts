@@ -23,6 +23,5 @@ export const metagenomicReadMappingService =
         "gene_set_fasta",
         "gene_set_feature_group",
       ],
-      libraries: ["paired", "single", "sra"],
     },
   });

@@ -145,6 +145,13 @@ export default function FastqUtilitiesPage() {
     form,
     onSuccess: handleReset,
     rerun: {
+      libraries: ["paired", "single", "sra"],
+      getLibraryExtra: (lib, kind) => {
+        if (kind === "single") {
+          return { platform: lib.platform };
+        }
+        return {};
+      },
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
         setLibrariesAndSync(libs);

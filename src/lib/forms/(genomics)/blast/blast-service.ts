@@ -11,7 +11,7 @@ export const blastService = createServiceDefinition<BlastFormData>({
   serviceName: "Homology",
   displayName: "BLAST",
   schema: completeFormSchema,
-  defaultValues: defaultBlastFormValues as BlastFormData,
+  defaultValues: defaultBlastFormValues,
   transformParams: transformBlastParams,
   rerun: {
     fields: [

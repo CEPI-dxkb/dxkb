@@ -210,6 +210,13 @@ export default function SarsCov2GenomeAnalysisPage() {
     form,
     onSuccess: handleReset,
     rerun: {
+      libraries: ["paired", "single", "sra"],
+      getLibraryExtra: (lib, kind) => {
+        if (kind === "paired" || kind === "single") {
+          return { platform: lib.platform || "illumina" };
+        }
+        return {};
+      },
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
         setLibrariesAndSync(libs);

@@ -16,17 +16,11 @@ export interface ServiceMetadata {
   instructionalVideo?: string;
 }
 
-export interface ServiceRerunConfig<
+interface ServiceRerunBaseConfig<
   TForm,
   TRerun extends Record<string, unknown> = Record<string, unknown>,
 > {
   fields?: readonly (keyof TRerun & string)[];
-  libraries?: readonly ServiceLibraryKind[];
-  getLibraryExtra?: (
-    lib: Record<string, string>,
-    kind: ServiceLibraryKind,
-  ) => Partial<Library>;
-  syncLibraries?: (libs: Library[]) => void;
   onApply?: (
     rerunData: TRerun,
     form: ServiceFormApi<TForm>,
@@ -34,6 +28,26 @@ export interface ServiceRerunConfig<
   ) => void;
   defaultOutputPath?: null;
 }
+
+type ServiceRerunLibraryConfig =
+  | {
+      libraries?: undefined;
+      getLibraryExtra?: never;
+      syncLibraries?: never;
+    }
+  | {
+      libraries: readonly ServiceLibraryKind[];
+      getLibraryExtra?: (
+        lib: Record<string, string>,
+        kind: ServiceLibraryKind,
+      ) => Partial<Library>;
+      syncLibraries: (libs: Library[]) => void;
+    };
+
+export type ServiceRerunConfig<
+  TForm,
+  TRerun extends Record<string, unknown> = Record<string, unknown>,
+> = ServiceRerunBaseConfig<TForm, TRerun> & ServiceRerunLibraryConfig;
 
 export interface ServiceDefinition<
   TForm,
@@ -45,7 +59,6 @@ export interface ServiceDefinition<
   defaultValues: TForm;
   transformParams(data: TForm): Record<string, unknown>;
   rerun?: ServiceRerunConfig<TForm, TRerun>;
-  defaultOutputPath?: null;
   metadata?: ServiceMetadata;
 }
 

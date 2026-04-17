@@ -13,7 +13,18 @@ interface ColumnInfo {
   id: string;
   label: string;
   visible: boolean;
+  facet?: boolean;
+  facet_hidden?: boolean;
 }
+
+type RawField = {
+  field?: string;
+  label?: string;
+  hidden?: boolean;
+  show_in_table?: boolean;
+  facet?: boolean;
+  facet_hidden?: boolean;
+};
 
 interface ListDataProps { 
   q: string; 
@@ -44,12 +55,14 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
           return;
         }
         setFields(
-          (Object.values(fieldObj) as Record<string, unknown>[])
+          (Object.values(fieldObj) as RawField[])
             .filter((f) => f.show_in_table !== false)
             .map((f) => ({
               id: String(f.field ?? ""),
               label: String(f.label ?? ""),
               visible: !f.hidden,
+              facet: f.facet ?? false,
+              facet_hidden: f.facet_hidden ?? true,
             }))
         );
       } catch (err) {
@@ -57,6 +70,8 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       }
     })();
   }, [resource]);
+
+  const facetFields = fields.filter(f => f.facet);
 
   const widget = {
     id: 'widget-1',
@@ -323,7 +338,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <FilterBar
-        fields={fields}
+        facetFields={facetFields}
         resource={resource}
         query={combinedQuery}
         onFilterChange={(rql) => {
@@ -332,14 +347,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
           setRowSelection({});      // ✅ clear selection
           onSelectionChange?.([]);  // ✅ clear parent selection
         }}
-        className="my-3"
-      />
-
-      <FacetPanel
-        fields={fields}
-        resource={resource}
-        query={combinedQuery}
-        onSelect={handleFacetSelect}
       />
 
       <div className="flex-1 overflow-hidden">

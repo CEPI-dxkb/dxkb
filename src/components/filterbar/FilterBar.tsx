@@ -14,20 +14,31 @@ type ColumnField = {
   id: string;
   label: string;
   visible: boolean;
+  facet?: boolean;
+  facet_hidden?: boolean; 
 };
 
 type FilterBarProps = {
-  fields: ColumnField[];
+  facetFields: ColumnField[];
   onFilterChange: (rql: string) => void;
-  className?: string;
   resource: string;
-  query?: string;
+  query: string;
 };
 
-export function FilterBar({ fields, onFilterChange, className, resource, query }: FilterBarProps) {
+export function FilterBar({ facetFields, onFilterChange, resource, query }: FilterBarProps) {
   
+  console.log('QRY in FilterBar is:', query);
+
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
+  const [showFacets, setShowFacets] = useState(false);
+  const rql = buildRql({ selected, keywords });
+
+console.log('RQL OUTPUT:', rql, typeof rql);
+
+const activeFacetFields = facetFields?.filter(
+    (f) => f.facet && !f.facet_hidden
+  ) ?? [];
 
   const buildQuery = () => {
     const parts: string[] = [];
@@ -68,6 +79,7 @@ export function FilterBar({ fields, onFilterChange, className, resource, query }
     if (parts.length === 0) return '';
     if (parts.length === 1) return parts[0];
 
+    console.log(`FULL QRY IS: and(${parts.join(',')})`);
     return `and(${parts.join(',')})`;
   };
 
@@ -77,20 +89,51 @@ export function FilterBar({ fields, onFilterChange, className, resource, query }
     onFilterChange?.(rql);
   }, [selected, keywords]);
 
+  
   return (
-    <div className={`flex flex-col gap-2 p-2 border rounded border-white ${className}`}>
+    <div className="flex flex-col gap-1 p-1 text-sm border rounded border-white mt-0 mb-2">
       
-      <KeywordSearch
-        value={keywords.join(' ')}
-        onChange={(val) => setKeywords(val.split(' ').filter(Boolean))}
-      />
+      {/* TOP ROW */}
+      <div className="flex items-start justify-between gap-2">
+        
+        {/* LEFT SIDE */}
+        <div className="flex flex-col gap-1 flex-1">
+          <KeywordSearch
+            value={keywords.join(' ')}
+            onChange={(val) => setKeywords(val.split(' ').filter(Boolean))}
+          />
 
-      <SelectedFilters
-        selected={selected}
-        onRemove={(idx) => {
-          setSelected((prev) => prev.filter((_, i) => i !== idx));
-        }}
-      />
+          <SelectedFilters
+            selected={selected}
+            onRemove={(idx) => {
+              setSelected((prev) => prev.filter((_, i) => i !== idx));
+            }}
+          />
+        </div>
+
+        {/* RIGHT SIDE — TOGGLE */}
+        <button
+          onClick={() => setShowFacets((prev) => !prev)}
+          className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700 whitespace-nowrap"
+        >
+          {showFacets ? 'Hide Filters' : 'Show Filters'}
+        </button>
+      </div>
+
+      {/* FACET PANEL */}
+      {showFacets && (
+        <FacetPanel
+          fields={activeFacetFields}
+          resource={resource}
+          query={query}
+          onSelect={(field, value) => {
+            setSelected((prev) => [
+              ...prev,
+              { field, value, op: 'eq' as const },
+            ]);
+          }}
+        />
+      )}
     </div>
   );
 }

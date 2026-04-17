@@ -12,6 +12,8 @@ type FacetItem = {
 type ColumnField = {
   id: string;
   label: string;
+  facet?: boolean;
+  facet_hidden?: boolean;
 };
 
 type FacetPanelProps = {
@@ -52,8 +54,16 @@ export function FacetPanel({
   onSelect,
 }: FacetPanelProps) {
   const [facets, setFacets] = useState<Record<string, FacetItem[]>>({});
-
   const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
+  const [visibleFacets, setVisibleFacets] = useState<string[]>([]);
+
+  useEffect(() => {
+    const initial = fields
+      .filter(f => f.facet && !f.facet_hidden)
+      .map(f => f.id);
+
+    setVisibleFacets(initial);
+  }, [fields]);
 
   console.log("QRY is:", query);
 
@@ -172,8 +182,10 @@ export function FacetPanel({
   }, [fields, query, resource, DataAPI]);
 
   return (
-    <div className="flex gap-4 overflow-x-auto bg-gray-800 p-2 rounded">
-      {fields.map((field) => (
+    <div className="flex gap-3 overflow-x-auto max-h-[120px] overflow-y-auto bg-gray-800 p-2 rounded text-[11px]">
+      {fields
+      .filter(f => visibleFacets.includes(f.id))
+      .map((field) => (
         <FacetColumn
           key={field.id}
           field={field}

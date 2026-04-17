@@ -6,7 +6,7 @@ export function SelectedFilters({ selected, onRemove }) {
       {selected.map((f, idx) => (
         <div
           key={idx}
-          className="bg-gray-200 px-2 py-1 rounded flex items-center gap-2"
+          className="bg-white text-black px-2 py-1 rounded flex items-center gap-2"
         >
           <span>{f.field}: {String(f.value)}</span>
           <button onClick={() => onRemove(idx)}>✕</button>

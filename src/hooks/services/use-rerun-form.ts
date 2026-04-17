@@ -117,6 +117,7 @@ export function useRerunForm<T extends Record<string, unknown>>(
       return res.json();
     },
     staleTime: 5 * 60 * 1000,
+    enabled: defaultOutputPath !== null && !rerunData,
   });
   const defaultJobFolder = profile?.settings?.default_job_folder;
 

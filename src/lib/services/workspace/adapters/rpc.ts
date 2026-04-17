@@ -48,7 +48,17 @@ export async function rpc<T = unknown>({
       throw new WorkspaceApiError(message, method, apiResponse);
     }
 
-    const payload = (await response.json()) as {
+    const rawPayload: unknown = await response.json();
+
+    if (typeof rawPayload !== "object" || rawPayload === null || Array.isArray(rawPayload)) {
+      throw new WorkspaceApiError(
+        "Malformed JSON-RPC response: expected an object",
+        method,
+        rawPayload,
+      );
+    }
+
+    const payload = rawPayload as {
       result?: unknown;
       error?: { message?: string; code?: number };
     };

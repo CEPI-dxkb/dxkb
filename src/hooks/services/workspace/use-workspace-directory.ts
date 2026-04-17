@@ -118,15 +118,15 @@ function modeQueryKey(mode: WorkspaceDirectoryMode): readonly unknown[] {
         user: mode.currentUser,
       });
     case "sharedPath":
-      return workspaceQueryKeys.listPath(mode.fullPath);
+      return workspaceQueryKeys.listPath(normalizeFullPath(mode.fullPath));
     case "publicRoot":
       return workspaceQueryKeys.publicRoot();
     case "publicUser":
       return workspaceQueryKeys.publicUser(mode.username);
     case "publicPath":
-      return workspaceQueryKeys.publicPath(mode.fullPath);
+      return workspaceQueryKeys.publicPath(normalizeFullPath(mode.fullPath));
     case "jobResult":
-      return workspaceQueryKeys.jobResult(mode.fullPath);
+      return workspaceQueryKeys.jobResult(normalizeFullPath(mode.fullPath));
   }
 }
 
@@ -261,6 +261,8 @@ export function useWorkspaceDirectory(
     error: listingQuery.error ?? null,
     refetch: () => {
       void listingQuery.refetch();
+      void permissionsQuery.refetch();
+      void currentPathPermissionsQuery.refetch();
     },
     memberCountByPath,
     permissions: combinedPermissions,

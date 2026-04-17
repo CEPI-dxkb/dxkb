@@ -275,12 +275,14 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
   async diskUsage(
     paths: string[],
     recursive = true,
+    options?: { silent?: boolean },
   ): Promise<[string, number, number, number, string][]> {
     if (paths.length === 0) return [];
     const raw = await rpc<unknown>({
       method: "Workspace.du",
       params: [{ paths, recursive }],
       baseUrl: this.baseUrl,
+      silent: options?.silent,
     });
     return parseDuResult(raw);
   }

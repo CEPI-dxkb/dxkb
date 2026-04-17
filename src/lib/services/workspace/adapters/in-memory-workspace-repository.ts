@@ -394,6 +394,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async diskUsage(
     paths: string[],
     recursive = true,
+    _options?: { silent?: boolean },
   ): Promise<[string, number, number, number, string][]> {
     this.calls.push({ method: "diskUsage", paths, recursive });
     this.throwIfConfigured("diskUsage");

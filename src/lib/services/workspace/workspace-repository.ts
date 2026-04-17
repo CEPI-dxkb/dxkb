@@ -91,7 +91,11 @@ export interface WorkspaceRepository {
   searchObjects(input: SearchWorkspaceObjectsInput): Promise<WorkspaceItem[]>;
 
   /** Disk usage for a set of paths (path, sizeBytes, fileCount, dirCount, error). */
-  diskUsage(paths: string[], recursive?: boolean): Promise<[string, number, number, number, string][]>;
+  diskUsage(
+    paths: string[],
+    recursive?: boolean,
+    options?: { silent?: boolean },
+  ): Promise<[string, number, number, number, string][]>;
 }
 
 /**

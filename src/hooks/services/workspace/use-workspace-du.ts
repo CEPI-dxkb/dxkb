@@ -16,7 +16,7 @@ export function useWorkspaceDu(path: string | null) {
     queryKey: workspaceQueryKeys.du(path ?? ""),
     queryFn: async () => {
       if (!path) return { sizeBytes: 0, files: 0, folders: 0 };
-      const entries = await repository.diskUsage([path], true);
+      const entries = await repository.diskUsage([path], true, { silent: true });
       const entry = entries[0];
       if (!entry) return { sizeBytes: 0, files: 0, folders: 0 };
       return {

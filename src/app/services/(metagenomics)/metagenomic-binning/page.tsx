@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import {
   Card,
   CardContent,
@@ -82,7 +86,7 @@ export default function MetagenomicBinningPage() {
 
   const handleReset = () => {
     form.reset(defaultMetagenomicBinningFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setShowAdvanced(false);
     setPairedRead1(null);
     setPairedRead2(null);
@@ -91,7 +95,8 @@ export default function MetagenomicBinningPage() {
   };
 
   const form = useForm({
-    defaultValues: defaultMetagenomicBinningFormValues as MetagenomicBinningFormData,
+    defaultValues:
+      defaultMetagenomicBinningFormValues as MetagenomicBinningFormData,
     validators: { onChange: metagenomicBinningFormSchema },
     onSubmit: async ({ value }) => {
       await runtime.submitFormData(value as MetagenomicBinningFormData);
@@ -108,7 +113,7 @@ export default function MetagenomicBinningPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
+    setLibraries,
     syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
@@ -128,7 +133,7 @@ export default function MetagenomicBinningPage() {
       libraries: ["paired", "single", "sra"],
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
+        setLibraries(libs);
       },
     },
   });
@@ -136,8 +141,12 @@ export default function MetagenomicBinningPage() {
 
   // Determine if MetaSPAdes should be disabled based on selectedLibraries (source of truth)
   // MetaSPAdes only supports a single paired-end library
-  const pairedCount = selectedLibraries.filter((lib) => lib.type === "paired").length;
-  const metaspadesDisabled = !(selectedLibraries.length === 1 && pairedCount === 1);
+  const pairedCount = selectedLibraries.filter(
+    (lib) => lib.type === "paired",
+  ).length;
+  const metaspadesDisabled = !(
+    selectedLibraries.length === 1 && pairedCount === 1
+  );
 
   // Reset assembler to auto if metaspades becomes disabled while selected
   useEffect(() => {
@@ -226,7 +235,12 @@ export default function MetagenomicBinningPage() {
                   <FieldItem>
                     <RadioGroup
                       value={field.state.value}
-                      onValueChange={(value) => value != null && field.handleChange(value as MetagenomicBinningFormData["start_with"])}
+                      onValueChange={(value) =>
+                        value != null &&
+                        field.handleChange(
+                          value as MetagenomicBinningFormData["start_with"],
+                        )
+                      }
                       className="service-radio-group-horizontal"
                     >
                       <div className="flex items-center gap-3">
@@ -333,14 +347,12 @@ export default function MetagenomicBinningPage() {
                     title="SRA Run Accession"
                     placeholder="SRR..."
                     selectedLibraries={selectedLibraries}
-                    setSelectedLibraries={setLibrariesAndSync}
+                    setSelectedLibraries={setLibraries}
                     allowDuplicates={false}
                   />
 
                   <form.Field name="paired_end_libs">
-                    {(field) => (
-                      <FieldErrors field={field} />
-                    )}
+                    {(field) => <FieldErrors field={field} />}
                   </form.Field>
                 </CardContent>
               </Card>
@@ -405,7 +417,7 @@ export default function MetagenomicBinningPage() {
                         Contigs
                       </FieldLabel>
                       <WorkspaceObjectSelector
-                        types={["contigs"]}
+                        preset="contigs"
                         placeholder="Select or Upload Contigs..."
                         onSelectedObjectChange={(
                           object: WorkspaceObject | null,
@@ -446,12 +458,20 @@ export default function MetagenomicBinningPage() {
                       <form.Field name="assembler">
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel field={field} className="service-card-label">
+                            <FieldLabel
+                              field={field}
+                              className="service-card-label"
+                            >
                               Assembly Strategy
                             </FieldLabel>
                             <RadioGroup
                               value={field.state.value}
-                              onValueChange={(value) => value != null && field.handleChange(value as MetagenomicBinningFormData["assembler"])}
+                              onValueChange={(value) =>
+                                value != null &&
+                                field.handleChange(
+                                  value as MetagenomicBinningFormData["assembler"],
+                                )
+                              }
                               className="service-radio-group-horizontal"
                             >
                               <div className="flex items-center gap-3">
@@ -468,14 +488,8 @@ export default function MetagenomicBinningPage() {
                                 </Label>
                               </div>
                               <div className="flex items-center gap-3">
-                                <RadioGroupItem
-                                  value="megahit"
-                                  id="megahit"
-                                />
-                                <Label
-                                  htmlFor="megahit"
-                                  className="text-sm"
-                                >
+                                <RadioGroupItem value="megahit" id="megahit" />
+                                <Label htmlFor="megahit" className="text-sm">
                                   MEGAHIT
                                 </Label>
                               </div>
@@ -498,19 +512,24 @@ export default function MetagenomicBinningPage() {
                     <form.Field name="organism">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Organisms of Interest
                           </FieldLabel>
                           <RadioGroup
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value as MetagenomicBinningFormData["organism"])}
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as MetagenomicBinningFormData["organism"],
+                              )
+                            }
                             className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
-                              <RadioGroupItem
-                                value="bacteria"
-                                id="bacteria"
-                              />
+                              <RadioGroupItem value="bacteria" id="bacteria" />
                               <Label htmlFor="bacteria" className="text-sm">
                                 Bacteria/Archaea
                               </Label>
@@ -571,7 +590,10 @@ export default function MetagenomicBinningPage() {
                   <form.Field name="genome_group">
                     {(field) => (
                       <FieldItem>
-                        <FieldLabel field={field} className="service-card-label">
+                        <FieldLabel
+                          field={field}
+                          className="service-card-label"
+                        >
                           Genome Group Name
                         </FieldLabel>
                         <Input
@@ -607,7 +629,10 @@ export default function MetagenomicBinningPage() {
                         <form.Field name="min_contig_len">
                           {(field) => (
                             <FieldItem className="w-full">
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Minimum Contig Length
                               </FieldLabel>
                               <NumberInput
@@ -630,7 +655,10 @@ export default function MetagenomicBinningPage() {
                         <form.Field name="min_contig_cov">
                           {(field) => (
                             <FieldItem className="w-full">
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Minimum Contig Coverage
                               </FieldLabel>
                               <NumberInput
@@ -658,7 +686,9 @@ export default function MetagenomicBinningPage() {
                               id="disable_dangling"
                               name="disable_dangling"
                               checked={field.state.value}
-                              onCheckedChange={(checked) => field.handleChange(!!checked)}
+                              onCheckedChange={(checked) =>
+                                field.handleChange(!!checked)
+                              }
                               className="mb-2 bg-white"
                             />
                             <FieldLabel

@@ -38,7 +38,10 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
-import { getGenomeIdsFromGroup, fetchGenomesByIds } from "@/lib/services/genome";
+import {
+  getGenomeIdsFromGroup,
+  fetchGenomesByIds,
+} from "@/lib/services/genome";
 import {
   proteomeComparisonFormSchema,
   defaultProteomeComparisonFormValues,
@@ -79,7 +82,8 @@ export default function ProteomeComparisonPage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const form = useForm({
-    defaultValues: defaultProteomeComparisonFormValues as ProteomeComparisonFormData,
+    defaultValues:
+      defaultProteomeComparisonFormValues as ProteomeComparisonFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: proteomeComparisonFormSchema as any },
     onSubmit: async ({ value }) => {
@@ -105,8 +109,14 @@ export default function ProteomeComparisonPage() {
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
   // Watch form values
-  const rawComparisonItems = useStore(form.store, (s) => s.values.comparison_items);
-  const comparisonItems = useMemo(() => rawComparisonItems || [], [rawComparisonItems]);
+  const rawComparisonItems = useStore(
+    form.store,
+    (s) => s.values.comparison_items,
+  );
+  const comparisonItems = useMemo(
+    () => rawComparisonItems || [],
+    [rawComparisonItems],
+  );
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
@@ -134,7 +144,11 @@ export default function ProteomeComparisonPage() {
     const currentItems = form.state.values.comparison_items || [];
 
     // Check for duplicates by genome_id
-    if (isDuplicateComparisonItem(currentItems, { genome_id: selectedCompGenomeId })) {
+    if (
+      isDuplicateComparisonItem(currentItems, {
+        genome_id: selectedCompGenomeId,
+      })
+    ) {
       toast.error("Duplicate genome", {
         description: "This genome is already in the comparison list.",
         closeButton: true,
@@ -147,16 +161,23 @@ export default function ProteomeComparisonPage() {
     try {
       // Fetch the genome name from the API
       const genomes = await fetchGenomesByIds([selectedCompGenomeId]);
-      const genomeName = genomes.length > 0 ? genomes[0].genome_name : selectedCompGenomeId;
+      const genomeName =
+        genomes.length > 0 ? genomes[0].genome_name : selectedCompGenomeId;
 
-      const newItem = createGenomeComparisonItem(selectedCompGenomeId, genomeName);
+      const newItem = createGenomeComparisonItem(
+        selectedCompGenomeId,
+        genomeName,
+      );
 
       form.setFieldValue("comparison_items", [...currentItems, newItem]);
       setSelectedCompGenomeId("");
     } catch (error) {
       console.error("Failed to fetch genome info:", error);
       // Fall back to using the genome ID as the name
-      const newItem = createGenomeComparisonItem(selectedCompGenomeId, selectedCompGenomeId);
+      const newItem = createGenomeComparisonItem(
+        selectedCompGenomeId,
+        selectedCompGenomeId,
+      );
       form.setFieldValue("comparison_items", [...currentItems, newItem]);
       setSelectedCompGenomeId("");
     } finally {
@@ -217,7 +238,7 @@ export default function ProteomeComparisonPage() {
 
     const currentItems = form.state.values.comparison_items || [];
     const newItem = createFeatureGroupComparisonItem(
-      selectedCompFeatureGroup.path
+      selectedCompFeatureGroup.path,
     );
 
     if (isDuplicateComparisonItem(currentItems, newItem)) {
@@ -246,7 +267,9 @@ export default function ProteomeComparisonPage() {
 
     try {
       // Fetch genome IDs from the group
-      const genomeIds = await getGenomeIdsFromGroup(selectedCompGenomeGroup.path);
+      const genomeIds = await getGenomeIdsFromGroup(
+        selectedCompGenomeGroup.path,
+      );
 
       if (genomeIds.length === 0) {
         toast.error("Empty genome group", {
@@ -262,7 +285,7 @@ export default function ProteomeComparisonPage() {
       const validation = validateGenomeGroupAddition(
         currentItems,
         genomeIds,
-        maxComparisonGenomes
+        maxComparisonGenomes,
       );
 
       if (!validation.valid) {
@@ -275,7 +298,7 @@ export default function ProteomeComparisonPage() {
 
       const newItem = createGenomeGroupComparisonItem(
         selectedCompGenomeGroup.path,
-        genomeIds
+        genomeIds,
       );
 
       if (isDuplicateComparisonItem(currentItems, newItem)) {
@@ -312,7 +335,7 @@ export default function ProteomeComparisonPage() {
       const updatedItems = removeComparisonItemById(currentItems, itemId);
       form.setFieldValue("comparison_items", updatedItems);
     },
-    [form]
+    [form],
   );
 
   return (
@@ -415,7 +438,7 @@ export default function ProteomeComparisonPage() {
                                   if (value !== undefined)
                                     field.handleChange(value);
                                 }}
-                                className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none service-card-input"
+                                className="bg-muted service-card-input relative [appearance:textfield] rounded-r-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>
@@ -430,7 +453,9 @@ export default function ProteomeComparisonPage() {
                               </Label>
                               <Input
                                 value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
+                                onChange={(e) =>
+                                  field.handleChange(e.target.value)
+                                }
                                 placeholder="1e-5"
                                 className="service-card-input"
                               />
@@ -455,7 +480,7 @@ export default function ProteomeComparisonPage() {
                                   if (value !== undefined)
                                     field.handleChange(value);
                                 }}
-                                className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none service-card-input"
+                                className="bg-muted service-card-input relative [appearance:textfield] rounded-r-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>
@@ -517,11 +542,11 @@ export default function ProteomeComparisonPage() {
                           Or a Protein FASTA File
                         </Label>
                         <WorkspaceObjectSelector
-                          types={["feature_protein_fasta"]}
+                          preset="featureProteinFasta"
                           placeholder="Select protein FASTA file (Optional)"
                           value={field.state.value}
                           onSelectedObjectChange={(
-                            object: WorkspaceObject | null
+                            object: WorkspaceObject | null,
                           ) => {
                             if (object?.path) {
                               field.handleChange(object.path);
@@ -552,11 +577,14 @@ export default function ProteomeComparisonPage() {
                           placeholder="Select feature group (Optional)"
                           value={field.state.value}
                           onSelectedObjectChange={(
-                            object: WorkspaceObject | null
+                            object: WorkspaceObject | null,
                           ) => {
                             if (object?.path) {
                               field.handleChange(object.path);
-                              form.setFieldValue("ref_source_type", "feature_group");
+                              form.setFieldValue(
+                                "ref_source_type",
+                                "feature_group",
+                              );
                               // Clear other reference fields
                               form.setFieldValue("ref_genome_id", "");
                               form.setFieldValue("ref_genome_name", "");
@@ -635,11 +663,11 @@ export default function ProteomeComparisonPage() {
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
-                        types={["feature_protein_fasta"]}
+                        preset="featureProteinFasta"
                         placeholder="Select protein FASTA file (Optional)"
                         value={selectedCompFasta?.path}
                         onSelectedObjectChange={(
-                          object: WorkspaceObject | null
+                          object: WorkspaceObject | null,
                         ) => {
                           setSelectedCompFasta(object);
                         }}
@@ -672,7 +700,7 @@ export default function ProteomeComparisonPage() {
                         placeholder="Select feature group (Optional)"
                         value={selectedCompFeatureGroup?.path}
                         onSelectedObjectChange={(
-                          object: WorkspaceObject | null
+                          object: WorkspaceObject | null,
                         ) => {
                           setSelectedCompFeatureGroup(object);
                         }}
@@ -705,7 +733,7 @@ export default function ProteomeComparisonPage() {
                         placeholder="Select genome group (Optional)"
                         value={selectedCompGenomeGroup?.path}
                         onSelectedObjectChange={(
-                          object: WorkspaceObject | null
+                          object: WorkspaceObject | null,
                         ) => {
                           setSelectedCompGenomeGroup(object);
                         }}

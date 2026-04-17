@@ -76,9 +76,10 @@ function toBrowserItem(
   index: number,
 ): WorkspaceBrowserItem {
   const parentNormalized = normalize(parent);
-  const fullPath = parentNormalized === "/"
-    ? `/${fixture.name}`
-    : `${parentNormalized}/${fixture.name}`;
+  const fullPath =
+    parentNormalized === "/"
+      ? `/${fixture.name}`
+      : `${parentNormalized}/${fixture.name}`;
   const createdAt = fixture.createdAt ?? "2026-01-01T00:00:00Z";
   return {
     id: `${fullPath}#${index}`,
@@ -148,9 +149,11 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       const name = normalized.split("/").filter(Boolean).pop() ?? "";
       const fixture = siblings.find((f) => f.name === name);
       const object = fixture
-        ? toWorkspaceItem(toBrowserItem(parent, fixture, siblings.indexOf(fixture)))
+        ? toWorkspaceItem(
+            toBrowserItem(parent, fixture, siblings.indexOf(fixture)),
+          )
         : null;
-      return { path: normalized, object, raw: object?.raw ?? null };
+      return { path: normalized, object, raw: null };
     });
   }
 
@@ -158,7 +161,9 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     this.calls.push({ method: "listDirectory", input });
     this.throwIfConfigured("listDirectory");
     const items = this.directories[normalize(input.path)] ?? [];
-    const mapped = items.map((f, i) => toWorkspaceItem(toBrowserItem(input.path, f, i)));
+    const mapped = items.map((f, i) =>
+      toWorkspaceItem(toBrowserItem(input.path, f, i)),
+    );
     const types = input.query?.type;
     const allowed = types && types.length > 0 ? new Set(types) : null;
     const term = input.query?.name?.toLowerCase();
@@ -310,17 +315,23 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
           if (key !== srcNormalized && !key.startsWith(srcPrefix)) continue;
           const suffix = key === srcNormalized ? "" : key.slice(suffixOffset);
           const newKey = normalize(`${destNormalized}${suffix}`);
-          this.directories[newKey] = this.directories[key].map((c) => ({ ...c }));
+          this.directories[newKey] = this.directories[key].map((c) => ({
+            ...c,
+          }));
           clonedKeys.push(key);
         }
       }
 
       if (input.move) {
-        this.directories[srcParent] = srcSiblings.filter((c) => c.name !== srcName);
+        this.directories[srcParent] = srcSiblings.filter(
+          (c) => c.name !== srcName,
+        );
         if (clonedKeys.length > 0) {
           const removed = new Set(clonedKeys);
           this.directories = Object.fromEntries(
-            Object.entries(this.directories).filter(([key]) => !removed.has(key)),
+            Object.entries(this.directories).filter(
+              ([key]) => !removed.has(key),
+            ),
           );
         }
       }
@@ -351,13 +362,22 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async getDownloadUrls(paths: string[]): Promise<string[][]> {
     this.calls.push({ method: "getDownloadUrls", paths });
     this.throwIfConfigured("getDownloadUrls");
-    return paths.map((path) => this.downloadUrls[normalize(path)] ?? [`https://shock.test/dl/${normalize(path)}`]);
+    return paths.map(
+      (path) =>
+        this.downloadUrls[normalize(path)] ?? [
+          `https://shock.test/dl/${normalize(path)}`,
+        ],
+    );
   }
 
   async getArchiveUrl(input: ArchiveRequest): Promise<ArchiveResult> {
     this.calls.push({ method: "getArchiveUrl", input });
     this.throwIfConfigured("getArchiveUrl");
-    return [`https://shock.test/archive/${input.archiveName}`, input.paths.length, 0];
+    return [
+      `https://shock.test/archive/${input.archiveName}`,
+      input.paths.length,
+      0,
+    ];
   }
 
   async searchObjects(
@@ -379,10 +399,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       const children = this.directories[dir] ?? [];
       children.forEach((f, i) => {
         const item = toWorkspaceItem(toBrowserItem(dir, f, i));
-        const isFolderLike = /folder|job_result|modelfolder|group/.test(item.type);
+        const isFolderLike = /folder|job_result|modelfolder|group/.test(
+          item.type,
+        );
         const typeMatches = !input.types || input.types.includes(item.type);
         const nameMatches =
-          !input.name || item.name.toLowerCase().includes(input.name.toLowerCase());
+          !input.name ||
+          item.name.toLowerCase().includes(input.name.toLowerCase());
         if (typeMatches && nameMatches) results.push(item);
         if (isFolderLike) visit(item.path);
       });
@@ -400,7 +423,8 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     this.throwIfConfigured("diskUsage");
     return paths.map((path) => {
       const entry = this.diskUsageMap[normalize(path)];
-      if (entry) return [path, ...entry] as [string, number, number, number, string];
+      if (entry)
+        return [path, ...entry] as [string, number, number, number, string];
       return [path, 0, 0, 0, ""];
     });
   }

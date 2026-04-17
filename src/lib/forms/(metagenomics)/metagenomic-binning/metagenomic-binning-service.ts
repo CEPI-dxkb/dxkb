@@ -2,7 +2,6 @@ import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
   defaultMetagenomicBinningFormValues,
-  metagenomicBinningFormSchema,
   type MetagenomicBinningFormData,
 } from "./metagenomic-binning-form-schema";
 import { transformMetagenomicBinningParams } from "./metagenomic-binning-form-utils";
@@ -11,7 +10,6 @@ export const metagenomicBinningService =
   createServiceDefinition<MetagenomicBinningFormData>({
     serviceName: "MetagenomeBinning",
     displayName: "Metagenomic Binning",
-    schema: metagenomicBinningFormSchema,
     defaultValues: defaultMetagenomicBinningFormValues,
     transformParams: transformMetagenomicBinningParams,
     rerun: {
@@ -28,7 +26,7 @@ export const metagenomicBinningService =
       ],
       onApply: (rerunData, form) => {
         if (rerunData.danglen === 0) {
-          form.setFieldValue("disable_dangling", true as never);
+          form.setFieldValue("disable_dangling", true);
         }
       },
     },

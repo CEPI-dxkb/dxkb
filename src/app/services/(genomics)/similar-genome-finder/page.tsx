@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -83,7 +87,8 @@ export default function SimilarGenomeFinderServicePage() {
   const [isCustomSubmitting, setIsCustomSubmitting] = useState(false);
 
   const form = useForm({
-    defaultValues: defaultSimilarGenomeFinderFormValues as SimilarGenomeFinderFormData,
+    defaultValues:
+      defaultSimilarGenomeFinderFormValues as SimilarGenomeFinderFormData,
     validators: { onChange: similarGenomeFinderFormSchema },
     onSubmit: async ({ value }) => {
       const data = value as SimilarGenomeFinderFormData;
@@ -91,7 +96,10 @@ export default function SimilarGenomeFinderServicePage() {
       // In debug mode, use the hook to show the params dialog
       if (isDebugMode) {
         await runtime.previewOrSubmit(
-          buildMinhashServicePayload(data) as unknown as Record<string, unknown>,
+          buildMinhashServicePayload(data) as unknown as Record<
+            string,
+            unknown
+          >,
         );
         return;
       }
@@ -203,7 +211,7 @@ export default function SimilarGenomeFinderServicePage() {
                       Or Upload FASTA/FASTQ
                     </FieldLabel>
                     <WorkspaceObjectSelector
-                      types={["contigs", "reads"]}
+                      preset="contigsOrReads"
                       placeholder="Select a FASTA/FASTQ file..."
                       value={field.state.value ?? ""}
                       onObjectSelect={(object: WorkspaceObject) => {
@@ -248,7 +256,10 @@ export default function SimilarGenomeFinderServicePage() {
                       <form.Field name="max_hits">
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel field={field} className="service-card-sublabel">
+                            <FieldLabel
+                              field={field}
+                              className="service-card-sublabel"
+                            >
                               Max Hits
                             </FieldLabel>
                             <Select
@@ -283,7 +294,10 @@ export default function SimilarGenomeFinderServicePage() {
                       <form.Field name="max_pvalue">
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel field={field} className="service-card-sublabel">
+                            <FieldLabel
+                              field={field}
+                              className="service-card-sublabel"
+                            >
                               P-Value Threshold
                             </FieldLabel>
                             <Select
@@ -318,7 +332,10 @@ export default function SimilarGenomeFinderServicePage() {
                       <form.Field name="max_distance">
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel field={field} className="service-card-sublabel">
+                            <FieldLabel
+                              field={field}
+                              className="service-card-sublabel"
+                            >
                               Distance
                             </FieldLabel>
                             <Select
@@ -365,9 +382,14 @@ export default function SimilarGenomeFinderServicePage() {
                                   id="include_bacterial"
                                   name="include_bacterial"
                                   checked={field.state.value}
-                                  onCheckedChange={(checked) => field.handleChange(checked)}
+                                  onCheckedChange={(checked) =>
+                                    field.handleChange(checked)
+                                  }
                                 />
-                                <Label htmlFor="include_bacterial" className="text-sm font-normal">
+                                <Label
+                                  htmlFor="include_bacterial"
+                                  className="text-sm font-normal"
+                                >
                                   Bacterial and Archaeal Genomes
                                 </Label>
                                 <FieldErrors field={field} />
@@ -382,9 +404,14 @@ export default function SimilarGenomeFinderServicePage() {
                                   id="include_viral"
                                   name="include_viral"
                                   checked={field.state.value}
-                                  onCheckedChange={(checked) => field.handleChange(checked)}
+                                  onCheckedChange={(checked) =>
+                                    field.handleChange(checked)
+                                  }
                                 />
-                                <Label htmlFor="include_viral" className="text-sm font-normal">
+                                <Label
+                                  htmlFor="include_viral"
+                                  className="text-sm font-normal"
+                                >
                                   Viral Genomes
                                 </Label>
                                 <FieldErrors field={field} />
@@ -401,7 +428,9 @@ export default function SimilarGenomeFinderServicePage() {
                               <FieldItem>
                                 <RadioGroup
                                   value={field.state.value}
-                                  onValueChange={(value) => field.handleChange(value)}
+                                  onValueChange={(value) =>
+                                    field.handleChange(value)
+                                  }
                                   className="grid w-full gap-2"
                                 >
                                   <div className="flex items-center gap-3">
@@ -445,10 +474,7 @@ export default function SimilarGenomeFinderServicePage() {
               <Button type="button" variant="outline" onClick={handleReset}>
                 Reset
               </Button>
-              <Button
-                type="submit"
-                disabled={isSubmitting || !canSubmit}
-              >
+              <Button type="submit" disabled={isSubmitting || !canSubmit}>
                 {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
                 <Search className="mr-2 h-4 w-4" />
                 Search

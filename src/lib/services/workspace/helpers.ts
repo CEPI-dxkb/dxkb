@@ -16,6 +16,7 @@ import type {
   WorkspaceBrowserItem,
   WorkspaceBrowserSort,
 } from "@/types/workspace-browser";
+import { hasWorkspaceWritePermission } from "./path-utils";
 
 export function metaListToObj(list: unknown[]) {
   return {
@@ -92,8 +93,7 @@ export function getJobResultDotPath(
   let parent = "";
   if (dotName) {
     const suffix = `/${dotName}`;
-    const nameAlreadyInPath =
-      fullPath === dotName || fullPath.endsWith(suffix);
+    const nameAlreadyInPath = fullPath === dotName || fullPath.endsWith(suffix);
     if (nameAlreadyInPath) {
       parent = fullPath
         .slice(0, Math.max(0, fullPath.length - dotName.length))
@@ -107,7 +107,9 @@ export function getJobResultDotPath(
   return parent ? `${parent}/.${dotName}` : `.${dotName}`;
 }
 
-export function isValidWorkspaceObjectType(type: string): type is ValidWorkspaceObjectTypes {
+export function isValidWorkspaceObjectType(
+  type: string,
+): type is ValidWorkspaceObjectTypes {
   const validTypes = getValidWorkspaceObjectTypes();
   return validTypes.includes(type as ValidWorkspaceObjectTypes);
 }
@@ -139,19 +141,10 @@ export function validateWorkspaceObjectTypes(types: string[]): {
 }
 
 export function hasWriteAccess(item: WorkspaceBrowserItem): boolean {
-  const userPerm = String(item.user_permission ?? "");
-  const globalPerm = String(item.global_permission ?? "");
-
-  const hasUserWrite =
-    userPerm === "o" ||
-    userPerm === "a" ||
-    userPerm.includes("w");
-  const hasGlobalWrite =
-    globalPerm === "o" ||
-    globalPerm === "a" ||
-    globalPerm.includes("w");
-
-  return hasUserWrite || hasGlobalWrite;
+  return hasWorkspaceWritePermission(
+    item.user_permission,
+    item.global_permission,
+  );
 }
 
 export function sortItems(
@@ -214,7 +207,10 @@ export function formatDate(dateString: string): string {
   });
 }
 
-export function formatFileSize(bytes: number, { showZero = false }: { showZero?: boolean } = {}): string {
+export function formatFileSize(
+  bytes: number,
+  { showZero = false }: { showZero?: boolean } = {},
+): string {
   if (!bytes || bytes === 0) return showZero ? "0 B" : "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -392,10 +388,12 @@ export async function ensureDestinationWriteAccess(
         errorMessage: `Access denied, you do not have write access to ${normalized || "/"}`,
       };
     }
-    const grandparentPath = parentPath.slice(0, parentPath.lastIndexOf("/")) || "/";
+    const grandparentPath =
+      parentPath.slice(0, parentPath.lastIndexOf("/")) || "/";
     const parentListing = await listFolder(grandparentPath);
     const parentItem = parentListing.find(
-      (item) => normalizeWsPath(item.path ?? "") === normalizeWsPath(parentPath),
+      (item) =>
+        normalizeWsPath(item.path ?? "") === normalizeWsPath(parentPath),
     );
     if (!parentItem || !hasWriteAccess(parentItem)) {
       return {

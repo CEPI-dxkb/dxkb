@@ -3,11 +3,7 @@
 import { useState, useCallback } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -75,7 +71,7 @@ export default function HASubtypeNumberingPage() {
     if (result.valid && result.status === "valid_dna") {
       setIsFastaValid(false);
       setFastaValidationMessage(
-        "This service requires protein (amino acid) sequences."
+        "This service requires protein (amino acid) sequences.",
       );
       return;
     }
@@ -103,10 +99,7 @@ export default function HASubtypeNumberingPage() {
   const isFastaDataInvalid =
     inputSource === "fasta_data" && !!fastaData?.trim() && !isFastaValid;
   const isSubmitDisabled = Boolean(
-    !canSubmit ||
-      !isOutputNameValid ||
-      isSubmitting ||
-      isFastaDataInvalid,
+    !canSubmit || !isOutputNameValid || isSubmitting || isFastaDataInvalid,
   );
 
   return (
@@ -174,9 +167,7 @@ export default function HASubtypeNumberingPage() {
                           value="fasta_data"
                           id="input_fasta_data"
                         />
-                        <Label htmlFor="input_fasta_data">
-                          Enter sequence
-                        </Label>
+                        <Label htmlFor="input_fasta_data">Enter sequence</Label>
                       </div>
                       <div className="service-radio-group-item">
                         <RadioGroupItem
@@ -232,7 +223,7 @@ export default function HASubtypeNumberingPage() {
                   {(field) => (
                     <FieldItem>
                       <WorkspaceObjectSelector
-                        types={["feature_protein_fasta", "contigs"]}
+                        preset="proteinFastaOrContigs"
                         placeholder="Select or upload FASTA file..."
                         value={field.state.value}
                         onSelectedObjectChange={(obj) =>
@@ -274,9 +265,7 @@ export default function HASubtypeNumberingPage() {
                 Parameters
                 <DialogInfoPopup
                   title={haSubtypeNumberingConversionScheme.title}
-                  description={
-                    haSubtypeNumberingConversionScheme.description
-                  }
+                  description={haSubtypeNumberingConversionScheme.description}
                 />
               </RequiredFormCardTitle>
             </CardHeader>
@@ -357,9 +346,7 @@ export default function HASubtypeNumberingPage() {
               Reset
             </Button>
             <Button type="submit" disabled={isSubmitDisabled}>
-              {isSubmitting ? (
-                <Spinner className="mr-2 h-4 w-4" />
-              ) : null}
+              {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Submit
             </Button>
           </div>

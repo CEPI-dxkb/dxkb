@@ -1,7 +1,6 @@
 import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
-  completeFormSchema,
   defaultBlastFormValues,
   type BlastFormData,
 } from "./blast-form-schema";
@@ -10,7 +9,6 @@ import { transformBlastParams } from "./blast-form-utils";
 export const blastService = createServiceDefinition<BlastFormData>({
   serviceName: "Homology",
   displayName: "BLAST",
-  schema: completeFormSchema,
   defaultValues: defaultBlastFormValues,
   transformParams: transformBlastParams,
   rerun: {

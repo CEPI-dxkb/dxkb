@@ -76,9 +76,7 @@ const libraryBuilders: Record<
 export function useRerunForm<
   T extends Record<string, unknown>,
   TForm = unknown,
->(
-  options: UseRerunFormOptions<TForm, T>,
-): { rerunData: T | null } {
+>(options: UseRerunFormOptions<TForm, T>): { rerunData: T | null } {
   const {
     form,
     fields,
@@ -119,10 +117,7 @@ export function useRerunForm<
         const value = rerunData[field];
         if (value !== undefined) {
           const formField = field as ServiceFormField<TForm>;
-          form.setFieldValue(
-            formField,
-            value as TForm[typeof formField],
-          );
+          form.setFieldValue(formField, value as TForm[typeof formField]);
         }
       }
     }
@@ -135,7 +130,15 @@ export function useRerunForm<
           getLibraryExtra ? (lib) => getLibraryExtra(lib, kind) : undefined,
         ),
       );
-      if (builtLibs.length > 0) syncLibraries?.(builtLibs);
+      if (builtLibs.length > 0) {
+        if (syncLibraries) {
+          syncLibraries(builtLibs);
+        } else {
+          console.warn(
+            "[useRerunForm] libraries were configured but syncLibraries is missing; built libraries were not applied.",
+          );
+        }
+      }
     }
 
     onApply?.(rerunData, form, builtLibs);

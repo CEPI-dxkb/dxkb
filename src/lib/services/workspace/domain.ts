@@ -9,7 +9,7 @@
  */
 
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
-import type { WorkspaceObject } from "./types";
+import type { ResolvedPathObject, WorkspaceObject } from "./types";
 import { isFolder, isFolderType, normalizeWorkspaceObjectType } from "./utils";
 
 /**
@@ -26,6 +26,9 @@ export interface WorkspaceItemPermissions {
   /** Global (public) permission on this object. */
   global?: string;
 }
+
+export type WorkspaceItemRaw = WorkspaceBrowserItem | ResolvedPathObject;
+export type WorkspaceMetadataRaw = unknown[] | null;
 
 /**
  * Canonical item used across the workspace browser, selector, and service pages.
@@ -53,7 +56,7 @@ export interface WorkspaceItem {
    * `Workspace.ls`). Kept so callers migrating off the old model can still
    * reach legacy fields without a second fetch.
    */
-  raw?: unknown;
+  raw?: WorkspaceItemRaw;
 }
 
 export interface WorkspaceSearchQuery {
@@ -95,8 +98,8 @@ export interface WorkspaceMetadata {
   path: string;
   /** Parsed metadata for the object at this path, if any. */
   object: WorkspaceItem | null;
-  /** Raw `Workspace.get` tuple. */
-  raw: unknown;
+  /** Raw `Workspace.get` path-result slice for this requested path. */
+  raw: WorkspaceMetadataRaw;
 }
 
 export interface DeleteOptions {
@@ -156,7 +159,9 @@ export function isWorkspaceFolder(item: Pick<WorkspaceItem, "type">): boolean {
   return isFolder(item.type);
 }
 
-export function isWorkspaceFolderLike(item: Pick<WorkspaceItem, "type">): boolean {
+export function isWorkspaceFolderLike(
+  item: Pick<WorkspaceItem, "type">,
+): boolean {
   return isFolderType(item.type);
 }
 
@@ -181,13 +186,29 @@ export function toWorkspaceItem(item: WorkspaceBrowserItem): WorkspaceItem {
     timestamp: typeof item.timestamp === "number" ? item.timestamp : undefined,
     permissions: {
       user: item.user_permission ? String(item.user_permission) : undefined,
-      global: item.global_permission ? String(item.global_permission) : undefined,
+      global: item.global_permission
+        ? String(item.global_permission)
+        : undefined,
     },
     userMeta: item.userMeta,
     autoMeta: item.autoMeta,
-    linkReference: item.link_reference ? String(item.link_reference) : undefined,
+    linkReference: item.link_reference
+      ? String(item.link_reference)
+      : undefined,
     raw: item,
   };
+}
+
+function isWorkspaceBrowserRaw(
+  raw: WorkspaceItemRaw | undefined,
+): raw is WorkspaceBrowserItem {
+  return (
+    !!raw &&
+    typeof raw === "object" &&
+    ("autoMeta" in raw ||
+      "user_permission" in raw ||
+      "global_permission" in raw)
+  );
 }
 
 /**
@@ -195,9 +216,11 @@ export function toWorkspaceItem(item: WorkspaceBrowserItem): WorkspaceItem {
  * `WorkspaceBrowserItem`. Used during migration while some components still
  * consume the old model.
  */
-export function toWorkspaceBrowserItem(item: WorkspaceItem): WorkspaceBrowserItem {
-  if (item.raw && typeof item.raw === "object") {
-    return item.raw as WorkspaceBrowserItem;
+export function toWorkspaceBrowserItem(
+  item: WorkspaceItem,
+): WorkspaceBrowserItem {
+  if (isWorkspaceBrowserRaw(item.raw)) {
+    return item.raw;
   }
   return {
     id: item.id,

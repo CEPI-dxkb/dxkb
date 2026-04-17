@@ -26,7 +26,10 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
-import { buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
+import {
+  buildPairedLibraries,
+  buildSingleLibraries,
+} from "@/lib/rerun-utility";
 import {
   viralAssemblyInfo,
   viralAssemblyInputFile,
@@ -79,7 +82,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  const { selectedLibraries, setLibrariesAndSync, syncLibrariesToForm } =
+  const { selectedLibraries, setLibraries, syncLibrariesToForm } =
     useTanstackLibrarySelection<ViralAssemblyLibraryItem, string>({
       form,
       mapLibraryToItem: buildBaseLibraryItem,
@@ -108,20 +111,18 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         currentSingleIds.length === 1 &&
         currentSingleIds[0] === desiredSingleId);
     if (alreadyMatches) return;
-    const otherLibs = selectedLibrariesRef.current.filter((lib) => lib.type !== "single");
+    const otherLibs = selectedLibrariesRef.current.filter(
+      (lib) => lib.type !== "single",
+    );
     if (singleRead) {
       const result = getSingleLibraryBuildFn()(singleRead);
       if (result.library) {
-        setLibrariesAndSync([...otherLibs, result.library]);
+        setLibraries([...otherLibs, result.library]);
       }
     } else {
-      setLibrariesAndSync(otherLibs);
+      setLibraries(otherLibs);
     }
-  }, [
-    inputType,
-    singleRead,
-    setLibrariesAndSync,
-  ]);
+  }, [inputType, singleRead, setLibraries]);
 
   const currentPairedIdsKey = useMemo(
     () =>
@@ -149,7 +150,9 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         currentPairedIds.length === 1 &&
         currentPairedIds[0] === desiredPairId);
     if (alreadyMatches) return;
-    const otherLibs = selectedLibrariesRef.current.filter((lib) => lib.type !== "paired");
+    const otherLibs = selectedLibrariesRef.current.filter(
+      (lib) => lib.type !== "paired",
+    );
     if (pairedRead1 && pairedRead2) {
       const libraryId = getPairedLibraryId(pairedRead1, pairedRead2);
       const result = getPairedLibraryBuildFn()(
@@ -158,22 +161,16 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         libraryId,
       );
       if (result.library) {
-        setLibrariesAndSync([...otherLibs, result.library]);
+        setLibraries([...otherLibs, result.library]);
       }
     } else {
-      setLibrariesAndSync(otherLibs);
+      setLibraries(otherLibs);
     }
-  }, [
-    inputType,
-    pairedRead1,
-    pairedRead2,
-    currentPairedIdsKey,
-    setLibrariesAndSync,
-  ]);
+  }, [inputType, pairedRead1, pairedRead2, currentPairedIdsKey, setLibraries]);
 
   const handleReset = () => {
     form.reset(defaultViralAssemblyFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -203,13 +200,13 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
           setPairedRead2(pairedLib.read2);
           const libs = buildPairedLibraries({ paired_end_libs: [pairedLib] });
           syncLibrariesToForm(libs);
-          setLibrariesAndSync(libs);
+          setLibraries(libs);
         } else if (singleLib?.read) {
           form.setFieldValue("input_type", "single" as never);
           setSingleRead(singleLib.read);
           const libs = buildSingleLibraries({ single_end_libs: [singleLib] });
           syncLibrariesToForm(libs);
-          setLibrariesAndSync(libs);
+          setLibraries(libs);
         } else if (srrId) {
           form.setFieldValue("input_type", "srr_accession" as never);
           setSraDefaultValue(srrId);
@@ -217,7 +214,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
           setSraResetKey((k) => k + 1);
           const libs: Library[] = [{ id: srrId, name: srrId, type: "sra" }];
           syncLibrariesToForm(libs);
-          setLibrariesAndSync(libs);
+          setLibraries(libs);
         }
       },
     },
@@ -278,13 +275,8 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                         </Label>
                       </div>
                       <div className="service-radio-group-item flex items-center gap-2">
-                        <RadioGroupItem
-                          value="srr_accession"
-                          id="input-sra"
-                        />
-                        <Label htmlFor="input-sra">
-                          SRA Run Accession
-                        </Label>
+                        <RadioGroupItem value="srr_accession" id="input-sra" />
+                        <Label htmlFor="input-sra">SRA Run Accession</Label>
                       </div>
                     </RadioGroup>
                     <FieldErrors field={field} />
@@ -338,7 +330,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                   placeholder="SRA Accession"
                   defaultValue={sraDefaultValue}
                   selectedLibraries={selectedLibraries}
-                  setSelectedLibraries={setLibrariesAndSync}
+                  setSelectedLibraries={setLibraries}
                   allowDuplicates={false}
                   showLabel={false}
                   showAddButton={false}
@@ -389,11 +381,8 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                            {strategyOptions.map((opt) => (
-                              <SelectItem
-                                key={opt.value}
-                                value={opt.value}
-                              >
+                              {strategyOptions.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
                                   {opt.label}
                                 </SelectItem>
                               ))}
@@ -477,13 +466,9 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
             </Button>
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !canSubmit || !isOutputNameValid
-              }
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
             >
-              {isSubmitting ? (
-                <Spinner className="mr-2 h-4 w-4" />
-              ) : null}
+              {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Assemble
             </Button>
           </div>

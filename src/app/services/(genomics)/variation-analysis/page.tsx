@@ -97,7 +97,7 @@ export default function VariationAnalysisPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
+    setLibraries,
     syncLibrariesToForm,
   } = useTanstackLibrarySelection<VariationLibraryItem>({
     form,
@@ -117,7 +117,7 @@ export default function VariationAnalysisPage() {
       libraries: ["paired", "single", "sra"],
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
+        setLibraries(libs);
       },
     },
   });
@@ -125,7 +125,7 @@ export default function VariationAnalysisPage() {
 
   function handleReset() {
     form.reset(defaultVariationAnalysisFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -210,8 +210,10 @@ export default function VariationAnalysisPage() {
               {/* Paired Read Library */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">Paired Read Library</Label>
-                  <div className="bg-border mx-4 h-[1px] flex-1" />
+                  <Label className="service-card-label">
+                    Paired Read Library
+                  </Label>
+                  <div className="bg-border mx-4 h-px flex-1" />
                   <Button
                     type="button"
                     variant="outline"
@@ -245,7 +247,9 @@ export default function VariationAnalysisPage() {
               {/* Single Read Library */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">Single Read Library</Label>
+                  <Label className="service-card-label">
+                    Single Read Library
+                  </Label>
                   <div className="bg-border mx-4 h-[1px] flex-1" />
                   <Button
                     type="button"
@@ -272,7 +276,7 @@ export default function VariationAnalysisPage() {
                 title="SRA Run Accession"
                 placeholder="SRR..."
                 selectedLibraries={selectedLibraries}
-                setSelectedLibraries={setLibrariesAndSync}
+                setSelectedLibraries={setLibraries}
                 allowDuplicates={false}
               />
             </CardContent>
@@ -354,7 +358,9 @@ export default function VariationAnalysisPage() {
                       <Select
                         items={variationAnalysisMappers}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select aligner" />
@@ -362,7 +368,10 @@ export default function VariationAnalysisPage() {
                         <SelectContent className="service-card-select-content">
                           <SelectGroup>
                             {variationAnalysisMappers.map((mapper) => (
-                              <SelectItem key={mapper.value} value={mapper.value}>
+                              <SelectItem
+                                key={mapper.value}
+                                value={mapper.value}
+                              >
                                 {mapper.label}
                               </SelectItem>
                             ))}
@@ -382,7 +391,9 @@ export default function VariationAnalysisPage() {
                       <Select
                         items={variationAnalysisCallers}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select SNP caller" />
@@ -390,7 +401,10 @@ export default function VariationAnalysisPage() {
                         <SelectContent className="service-card-select-content">
                           <SelectGroup>
                             {variationAnalysisCallers.map((caller) => (
-                              <SelectItem key={caller.value} value={caller.value}>
+                              <SelectItem
+                                key={caller.value}
+                                value={caller.value}
+                              >
                                 {caller.label}
                               </SelectItem>
                             ))}
@@ -438,7 +452,7 @@ export default function VariationAnalysisPage() {
         </div>
 
         {/* Right Column - Selected Libraries (desktop) */}
-        <div className="hidden md:block md:col-span-5">
+        <div className="hidden md:col-span-5 md:block">
           <Card className="h-full">
             <CardHeader className="service-card-header">
               <CardTitle className="service-card-title">
@@ -484,7 +498,10 @@ export default function VariationAnalysisPage() {
             >
               Reset
             </Button>
-            <Button type="submit" disabled={isSubmitting || !canSubmit || !isOutputNameValid}>
+            <Button
+              type="submit"
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
+            >
               {isSubmitting ? <Spinner /> : null}
               Submit
             </Button>

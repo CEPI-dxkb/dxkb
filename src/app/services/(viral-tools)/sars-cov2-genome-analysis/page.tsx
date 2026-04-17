@@ -127,7 +127,7 @@ export default function SarsCov2GenomeAnalysisPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
+    setLibraries,
     syncLibrariesToForm,
   } = useTanstackLibrarySelection<SarsCov2LibraryItem>({
     form,
@@ -196,7 +196,7 @@ export default function SarsCov2GenomeAnalysisPage() {
 
   const handleReset = () => {
     form.reset(defaultSarsCov2GenomeAnalysisFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -219,7 +219,7 @@ export default function SarsCov2GenomeAnalysisPage() {
       },
       syncLibraries: (libs) => {
         syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
+        setLibraries(libs);
       },
     },
   });
@@ -272,13 +272,8 @@ export default function SarsCov2GenomeAnalysisPage() {
                         <Label htmlFor="start-reads">Read File</Label>
                       </div>
                       <div className="service-radio-group-item flex items-center gap-2">
-                        <RadioGroupItem
-                          value="contigs"
-                          id="start-contigs"
-                        />
-                        <Label htmlFor="start-contigs">
-                          Assembled Contigs
-                        </Label>
+                        <RadioGroupItem value="contigs" id="start-contigs" />
+                        <Label htmlFor="start-contigs">Assembled Contigs</Label>
                       </div>
                     </RadioGroup>
                     <FieldErrors field={field} />
@@ -391,9 +386,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                       }
                     />
                     <div className="space-y-2">
-                      <Label className="service-card-sublabel">
-                        Platform
-                      </Label>
+                      <Label className="service-card-sublabel">Platform</Label>
                       <Select
                         items={sarsCov2SinglePlatformOptions}
                         value={singlePlatform}
@@ -427,7 +420,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                   title="SRA Run Accession"
                   placeholder="SRR..."
                   selectedLibraries={selectedLibraries}
-                  setSelectedLibraries={setLibrariesAndSync}
+                  setSelectedLibraries={setLibraries}
                   allowDuplicates={false}
                 />
 
@@ -495,7 +488,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                     <FieldItem>
                       <Label className="service-card-label">Contigs</Label>
                       <WorkspaceObjectSelector
-                        types={["contigs"]}
+                        preset="contigs"
                         placeholder="Select or Upload Contigs to your workspace for Annotation"
                         value={field.state.value ?? ""}
                         onObjectSelect={(object: WorkspaceObject) =>
@@ -544,10 +537,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                             <SelectContent>
                               <SelectGroup>
                                 {recipeOptions.map((opt) => (
-                                  <SelectItem
-                                    key={opt.value}
-                                    value={opt.value}
-                                  >
+                                  <SelectItem key={opt.value} value={opt.value}>
                                     {opt.label}
                                   </SelectItem>
                                 ))}
@@ -571,8 +561,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                                 items={primerOptions}
                                 value={field.state.value}
                                 onValueChange={(v) =>
-                                  v != null &&
-                                  field.handleChange(v as Primers)
+                                  v != null && field.handleChange(v as Primers)
                                 }
                               >
                                 <SelectTrigger className="service-card-select-trigger">
@@ -654,8 +643,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                       <FieldItem>
                         <TaxonNameSelector
                           value={
-                            field.state.value ||
-                            form.state.values.taxonomy_id
+                            field.state.value || form.state.values.taxonomy_id
                               ? {
                                   taxon_id:
                                     parseInt(
@@ -677,8 +665,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                                 item.taxon_name,
                                 form.state.values.my_label,
                               );
-                              if (out)
-                                form.setFieldValue("output_file", out);
+                              if (out) form.setFieldValue("output_file", out);
                             } else {
                               field.handleChange("");
                               form.setFieldValue("taxonomy_id", "");
@@ -721,8 +708,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                                 item.taxon_name,
                                 form.state.values.my_label,
                               );
-                              if (out)
-                                form.setFieldValue("output_file", out);
+                              if (out) form.setFieldValue("output_file", out);
                             } else {
                               field.handleChange("");
                               form.setFieldValue("scientific_name", "");
@@ -751,8 +737,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                           form.state.values.scientific_name,
                           e.target.value,
                         );
-                        if (out)
-                          form.setFieldValue("output_file", out);
+                        if (out) form.setFieldValue("output_file", out);
                       }}
                     />
                     <FieldErrors field={field} />
@@ -799,9 +784,7 @@ export default function SarsCov2GenomeAnalysisPage() {
             </Button>
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !canSubmit || !isOutputNameValid
-              }
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Submit

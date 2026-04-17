@@ -25,6 +25,12 @@ export interface WorkspacePaths {
   fullPath: string;
 }
 
+export function buildHomePath(username: string, relativePath: string): string {
+  const userSegment = username.includes("@") ? username : `${username}@bvbrc`;
+  const trimmed = relativePath.replace(/^\/+|\/+$/g, "");
+  return trimmed ? `/${userSegment}/home/${trimmed}` : `/${userSegment}/home`;
+}
+
 export function computeWorkspacePaths({
   mode,
   username,
@@ -83,16 +89,29 @@ export function canWriteToCurrentDir({
   );
 }
 
+export function hasWorkspaceWritePermission(
+  userPermission: string | undefined,
+  globalPermission: string | undefined,
+): boolean {
+  const user = String(userPermission ?? "");
+  const global = String(globalPermission ?? "");
+  return ["o", "a", "w"].some(
+    (permission) =>
+      user === permission ||
+      user.includes(permission) ||
+      global === permission ||
+      global.includes(permission),
+  );
+}
+
 /**
  * Decide whether a `WorkspaceItem` grants the current user write access using
  * its own permissions tuple. Used when listing children to decide per-item
  * write actions without an extra round-trip.
  */
 export function itemHasWriteAccess(item: WorkspaceItem): boolean {
-  const user = item.permissions?.user ?? "";
-  const global = item.permissions?.global ?? "";
-  const writePerms = ["o", "a", "w"];
-  if (writePerms.some((p) => user === p || user.includes(p))) return true;
-  if (writePerms.some((p) => global === p || global.includes(p))) return true;
-  return false;
+  return hasWorkspaceWritePermission(
+    item.permissions?.user,
+    item.permissions?.global,
+  );
 }

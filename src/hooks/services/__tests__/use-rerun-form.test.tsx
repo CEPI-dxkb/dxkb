@@ -41,21 +41,31 @@ beforeEach(() => {
   clearUrl();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("useRerunForm", () => {
   it("returns null rerunData when no ?rerun_key= is present", () => {
     const form = makeForm();
-    const { result } = renderHook(() => useRerunForm({ form, defaultOutputPath: null }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useRerunForm({ form, defaultOutputPath: null }),
+      {
+        wrapper,
+      },
+    );
     expect(result.current.rerunData).toBeNull();
   });
 
   it("reads + removes sessionStorage entry on mount and returns parsed data", () => {
     setRerunSession("k1", { foo: "bar" });
     const form = makeForm();
-    const { result } = renderHook(() => useRerunForm({ form, defaultOutputPath: null }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useRerunForm({ form, defaultOutputPath: null }),
+      {
+        wrapper,
+      },
+    );
     expect(result.current.rerunData).toEqual({ foo: "bar" });
     expect(sessionStorage.getItem("k1")).toBeNull();
   });
@@ -64,9 +74,12 @@ describe("useRerunForm", () => {
     sessionStorage.setItem("k2", "{not json");
     window.history.replaceState({}, "", "/?rerun_key=k2");
     const form = makeForm();
-    const { result } = renderHook(() => useRerunForm({ form, defaultOutputPath: null }), {
-      wrapper,
-    });
+    const { result } = renderHook(
+      () => useRerunForm({ form, defaultOutputPath: null }),
+      {
+        wrapper,
+      },
+    );
     expect(result.current.rerunData).toBeNull();
   });
 
@@ -113,9 +126,38 @@ describe("useRerunForm", () => {
     expect(libs.map((l) => l.type)).toEqual(["paired", "single", "sra"]);
   });
 
+  it("warns when libraries are declared without syncLibraries", async () => {
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined);
+    setRerunSession("k4-warning", {
+      single_end_libs: [{ read: "/s.fq" }],
+    });
+    const form = makeForm();
+
+    renderHook(
+      () =>
+        useRerunForm({
+          form,
+          libraries: ["single"],
+          defaultOutputPath: null,
+        } as never),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith(
+        "[useRerunForm] libraries were configured but syncLibraries is missing; built libraries were not applied.",
+      );
+    });
+    warnSpy.mockRestore();
+  });
+
   it("invokes getLibraryExtra with the correct kind per library", async () => {
     setRerunSession("k5", {
-      paired_end_libs: [{ read1: "/r1.fq", read2: "/r2.fq", platform: "illumina" }],
+      paired_end_libs: [
+        { read1: "/r1.fq", read2: "/r2.fq", platform: "illumina" },
+      ],
       single_end_libs: [{ read: "/s.fq", platform: "nanopore" }],
       srr_libs: [{ srr_accession: "SRR1" }],
     });
@@ -216,11 +258,9 @@ describe("useRerunForm", () => {
       ),
     );
     const form = makeForm();
-    renderHook(
-      () =>
-        useRerunForm({ form, fields: ["output_path"] }),
-      { wrapper },
-    );
+    renderHook(() => useRerunForm({ form, fields: ["output_path"] }), {
+      wrapper,
+    });
     await waitFor(() => {
       expect(form.setFieldValue).toHaveBeenCalledWith(
         "output_path",
@@ -248,5 +288,4 @@ describe("useRerunForm", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(form.setFieldValue).not.toHaveBeenCalled();
   });
-
 });

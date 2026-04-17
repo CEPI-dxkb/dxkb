@@ -111,11 +111,14 @@ export default function MSAandSNPAnalysisPage() {
   }
 
   const form = useForm({
-    defaultValues: MsaSnpAnalysis.defaultMsaSnpAnalysisFormValues as MsaSnpAnalysis.MsaSnpAnalysisFormData,
+    defaultValues:
+      MsaSnpAnalysis.defaultMsaSnpAnalysisFormValues as MsaSnpAnalysis.MsaSnpAnalysisFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: MsaSnpAnalysis.msaSnpAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      await runtime.submitFormData(value as MsaSnpAnalysis.MsaSnpAnalysisFormData);
+      await runtime.submitFormData(
+        value as MsaSnpAnalysis.MsaSnpAnalysisFormData,
+      );
     },
   });
 
@@ -124,8 +127,14 @@ export default function MSAandSNPAnalysisPage() {
   const refType = useStore(form.store, (s) => s.values.ref_type);
   const aligner = useStore(form.store, (s) => s.values.aligner);
   const featureGroup = useStore(form.store, (s) => s.values.feature_groups);
-  const rawSelectGenomegroup = useStore(form.store, (s) => s.values.select_genomegroup);
-  const selectGenomegroup = useMemo(() => rawSelectGenomegroup || [], [rawSelectGenomegroup]);
+  const rawSelectGenomegroup = useStore(
+    form.store,
+    (s) => s.values.select_genomegroup,
+  );
+  const selectGenomegroup = useMemo(
+    () => rawSelectGenomegroup || [],
+    [rawSelectGenomegroup],
+  );
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
@@ -414,25 +423,26 @@ export default function MSAandSNPAnalysisPage() {
   }, [refType, selectGenomegroup]);
 
   // Determine which reference options are available
-  const availableRefTypes = useMemo((): MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"][] => {
-    if (inputStatus === "aligned") {
-      return ["none", "first"];
-    }
+  const availableRefTypes =
+    useMemo((): MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"][] => {
+      if (inputStatus === "aligned") {
+        return ["none", "first"];
+      }
 
-    if (inputType === "input_feature_group") {
-      return ["none", "feature_id", "string"];
-    }
+      if (inputType === "input_feature_group") {
+        return ["none", "feature_id", "string"];
+      }
 
-    if (inputType === "input_genome_group") {
-      return ["none", "genome_id", "string"];
-    }
+      if (inputType === "input_genome_group") {
+        return ["none", "genome_id", "string"];
+      }
 
-    if (inputType === "input_fasta" || inputType === "input_sequence") {
-      return ["none", "first", "string"];
-    }
+      if (inputType === "input_fasta" || inputType === "input_sequence") {
+        return ["none", "first", "string"];
+      }
 
-    return ["none", "string"];
-  }, [inputStatus, inputType]);
+      return ["none", "string"];
+    }, [inputStatus, inputType]);
 
   return (
     <section>
@@ -478,7 +488,9 @@ export default function MSAandSNPAnalysisPage() {
                     onValueChange={(value) => {
                       if (value == null) return;
                       const previousStatus = field.state.value;
-                      field.handleChange(value as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_status"]);
+                      field.handleChange(
+                        value as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_status"],
+                      );
                       // Reset input type when status changes
                       if (value === "aligned") {
                         form.setFieldValue("input_type", undefined);
@@ -539,7 +551,9 @@ export default function MSAandSNPAnalysisPage() {
                           if (value == null) return;
                           // Reset reference type to "none" when input type changes
                           const previousInputType = field.state.value;
-                          field.handleChange(value as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"]);
+                          field.handleChange(
+                            value as MsaSnpAnalysis.MsaSnpAnalysisFormData["input_type"],
+                          );
 
                           // Only reset if the input type actually changed
                           if (previousInputType !== value) {
@@ -586,9 +600,7 @@ export default function MSAandSNPAnalysisPage() {
                             value="input_sequence"
                             id="input_sequence"
                           />
-                          <Label htmlFor="input_sequence">
-                            Input Sequence
-                          </Label>
+                          <Label htmlFor="input_sequence">Input Sequence</Label>
                         </div>
                       </RadioGroup>
                       <FieldErrors field={field} />
@@ -629,7 +641,12 @@ export default function MSAandSNPAnalysisPage() {
                         <FieldItem>
                           <RadioGroup
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value as MsaSnpAnalysis.MsaSnpAnalysisFormData["alphabet"])}
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as MsaSnpAnalysis.MsaSnpAnalysisFormData["alphabet"],
+                              )
+                            }
                             className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
@@ -637,10 +654,7 @@ export default function MSAandSNPAnalysisPage() {
                               <Label htmlFor="dna">DNA</Label>
                             </div>
                             <div className="flex items-center gap-3">
-                              <RadioGroupItem
-                                value="protein"
-                                id="protein"
-                              />
+                              <RadioGroupItem value="protein" id="protein" />
                               <Label htmlFor="protein">Protein</Label>
                             </div>
                           </RadioGroup>
@@ -699,8 +713,7 @@ export default function MSAandSNPAnalysisPage() {
                           const validation = await validateViralGenomes(
                             genomeIds,
                             {
-                              maxGenomeLength:
-                                MsaSnpAnalysis.maxGenomeLength,
+                              maxGenomeLength: MsaSnpAnalysis.maxGenomeLength,
                             },
                           );
 
@@ -723,7 +736,9 @@ export default function MSAandSNPAnalysisPage() {
                           }
 
                           // Replace the existing group (only one group allowed)
-                          form.setFieldValue("select_genomegroup", [inputValue]);
+                          form.setFieldValue("select_genomegroup", [
+                            inputValue,
+                          ]);
                           setSelectedGenomeGroupObject(null);
                         } catch (error) {
                           console.error(
@@ -764,7 +779,7 @@ export default function MSAandSNPAnalysisPage() {
                 {inputType === "input_fasta" && (
                   <div className="space-y-2">
                     <WorkspaceObjectSelector
-                      types={["feature_protein_fasta", "feature_dna_fasta"]}
+                      preset="featureFasta"
                       placeholder="Select FASTA file"
                       onSelectedObjectChange={(
                         object: WorkspaceObject | null,
@@ -789,11 +804,10 @@ export default function MSAandSNPAnalysisPage() {
                         }
 
                         // Replace the existing file (only one file allowed)
-                        const newFile =
-                          MsaSnpAnalysisUtils.createFastaFileItem(
-                            inputValue,
-                            type,
-                          );
+                        const newFile = MsaSnpAnalysisUtils.createFastaFileItem(
+                          inputValue,
+                          type,
+                        );
                         form.setFieldValue("fasta_files", [newFile]);
                         setSelectedFastaObject(null);
                       }}
@@ -850,11 +864,9 @@ export default function MSAandSNPAnalysisPage() {
                   Select an aligned FASTA file
                 </Label>
                 <WorkspaceObjectSelector
-                  types={["aligned_protein_fasta", "aligned_dna_fasta"]}
+                  preset="alignedFasta"
                   placeholder="Select aligned FASTA file"
-                  onSelectedObjectChange={(
-                    object: WorkspaceObject | null,
-                  ) => {
+                  onSelectedObjectChange={(object: WorkspaceObject | null) => {
                     if (!object || !object.path) {
                       setSelectedAlignedFastaObject(null);
                       return;
@@ -913,7 +925,9 @@ export default function MSAandSNPAnalysisPage() {
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value == null) return;
-                        field.handleChange(value as MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"]);
+                        field.handleChange(
+                          value as MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"],
+                        );
                         // Clear ref_string when changing ref_type
                         if (value === "none" || value === "first") {
                           form.setFieldValue("ref_string", "");
@@ -938,9 +952,7 @@ export default function MSAandSNPAnalysisPage() {
                           <Label htmlFor="ref_first">First Sequence</Label>
                         </div>
                       )}
-                      {availableRefTypes.includes(
-                        "feature_id" as const,
-                      ) && (
+                      {availableRefTypes.includes("feature_id" as const) && (
                         <div className="flex items-center gap-3">
                           <RadioGroupItem
                             value="feature_id"
@@ -975,9 +987,7 @@ export default function MSAandSNPAnalysisPage() {
               {/* Feature ID Reference */}
               {refType === "feature_id" && (
                 <div className="space-y-2">
-                  <Label className="service-card-label">
-                    Feature ID
-                  </Label>
+                  <Label className="service-card-label">Feature ID</Label>
                   <Select
                     value={selectedFeatureId}
                     onValueChange={(value) => {
@@ -1056,9 +1066,7 @@ export default function MSAandSNPAnalysisPage() {
               {/* Genome ID Reference */}
               {refType === "genome_id" && (
                 <div className="space-y-2">
-                  <Label className="service-card-label">
-                    Genome ID
-                  </Label>
+                  <Label className="service-card-label">Genome ID</Label>
                   <Select
                     value={selectedGenomeId}
                     open={genomeIdDropdownOpen}
@@ -1199,15 +1207,18 @@ export default function MSAandSNPAnalysisPage() {
               <form.Field name="aligner">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">
-                      Aligner
-                    </Label>
+                    <Label className="service-card-label">Aligner</Label>
                     <Select
-                      items={msaSNPAnalysisAligners.map((aligner) => ({ value: aligner.value, label: aligner.label }))}
+                      items={msaSNPAnalysisAligners.map((aligner) => ({
+                        value: aligner.value,
+                        label: aligner.label,
+                      }))}
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value == null) return;
-                        field.handleChange(value as MsaSnpAnalysis.MsaSnpAnalysisFormData["aligner"]);
+                        field.handleChange(
+                          value as MsaSnpAnalysis.MsaSnpAnalysisFormData["aligner"],
+                        );
                         // Reset strategy when aligner changes to Muscle
                         if (value === "Muscle") {
                           form.setFieldValue("strategy", undefined);
@@ -1223,7 +1234,10 @@ export default function MSAandSNPAnalysisPage() {
                       <SelectContent>
                         <SelectGroup>
                           {msaSNPAnalysisAligners.map((aligner) => (
-                            <SelectItem key={aligner.value} value={aligner.value}>
+                            <SelectItem
+                              key={aligner.value}
+                              value={aligner.value}
+                            >
                               {aligner.label}
                             </SelectItem>
                           ))}
@@ -1255,28 +1269,31 @@ export default function MSAandSNPAnalysisPage() {
                         <FieldItem>
                           <RadioGroup
                             value={field.state.value || "auto"}
-                            onValueChange={(value) => value != null && field.handleChange(value as MsaSnpAnalysis.MsaSnpAnalysisFormData["strategy"])}
-                            className="grid gap-2 w-full p-2"
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as MsaSnpAnalysis.MsaSnpAnalysisFormData["strategy"],
+                              )
+                            }
+                            className="grid w-full gap-2 p-2"
                           >
-                            {MsaSnpAnalysis.strategyOptions.map(
-                              (option) => (
-                                <div
-                                  key={option.value}
-                                  className="flex items-center gap-3"
+                            {MsaSnpAnalysis.strategyOptions.map((option) => (
+                              <div
+                                key={option.value}
+                                className="flex items-center gap-3"
+                              >
+                                <RadioGroupItem
+                                  value={option.value}
+                                  id={option.value}
+                                />
+                                <Label
+                                  htmlFor={option.value}
+                                  className="text-sm font-normal"
                                 >
-                                  <RadioGroupItem
-                                    value={option.value}
-                                    id={option.value}
-                                  />
-                                  <Label
-                                    htmlFor={option.value}
-                                    className="text-sm font-normal"
-                                  >
-                                    {option.label}
-                                  </Label>
-                                </div>
-                              ),
-                            )}
+                                  {option.label}
+                                </Label>
+                              </div>
+                            ))}
                           </RadioGroup>
                           <FieldErrors field={field} />
                         </FieldItem>
@@ -1326,9 +1343,7 @@ export default function MSAandSNPAnalysisPage() {
           </Button>
           <Button
             type="submit"
-            disabled={
-              isSubmitting || !canSubmit || !isOutputNameValid
-            }
+            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
           >
             {isSubmitting ? <Spinner /> : null}
             Submit

@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
 import {
   Card,
@@ -127,7 +131,8 @@ export default function GenomeAssemblyPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
+    setLibraries,
+    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: mapAssemblyLibraryToItem,
@@ -157,13 +162,16 @@ export default function GenomeAssemblyPage() {
         }
         return {};
       },
-      syncLibraries: setLibrariesAndSync,
+      syncLibraries: (libs) => {
+        syncLibrariesToForm(libs);
+        setLibraries(libs);
+      },
     },
   });
 
   function handleReset() {
     form.reset(defaultGenomeAssemblyFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setShowAdvanced(false);
     setGenomeSizeUnit("M");
     setExpectedGenomeSize(5);
@@ -259,7 +267,9 @@ export default function GenomeAssemblyPage() {
               {/* Paired Read Library */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">Paired Read Library</Label>
+                  <Label className="service-card-label">
+                    Paired Read Library
+                  </Label>
                   <div className="bg-border mx-4 h-px flex-1" />
                   <Button
                     type="button"
@@ -294,7 +304,9 @@ export default function GenomeAssemblyPage() {
               {/* Single Read Library */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">Single Read Library</Label>
+                  <Label className="service-card-label">
+                    Single Read Library
+                  </Label>
                   <div className="bg-border mx-4 h-px flex-1" />
                   <Button
                     type="button"
@@ -321,7 +333,7 @@ export default function GenomeAssemblyPage() {
                 title="SRA Run Accession"
                 placeholder="SRR..."
                 selectedLibraries={selectedLibraries}
-                setSelectedLibraries={setLibrariesAndSync}
+                setSelectedLibraries={setLibraries}
                 allowDuplicates={false}
               />
             </CardContent>
@@ -384,13 +396,13 @@ export default function GenomeAssemblyPage() {
                 <form.Field name="recipe">
                   {(field) => (
                     <FieldItem>
-                      <RequiredFormLabel>
-                        Assembly Strategy
-                      </RequiredFormLabel>
+                      <RequiredFormLabel>Assembly Strategy</RequiredFormLabel>
                       <Select
                         items={genomeAssemblyRecipes}
                         value={field.state.value}
-                        onValueChange={(value) => field.handleChange(value as string)}
+                        onValueChange={(value) =>
+                          field.handleChange(value as string)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select strategy" />
@@ -398,7 +410,10 @@ export default function GenomeAssemblyPage() {
                         <SelectContent className="service-card-select-content">
                           <SelectGroup>
                             {genomeAssemblyRecipes.map((recipe) => (
-                              <SelectItem key={recipe.value} value={recipe.value}>
+                              <SelectItem
+                                key={recipe.value}
+                                value={recipe.value}
+                              >
                                 {recipe.label}
                               </SelectItem>
                             ))}
@@ -446,7 +461,10 @@ export default function GenomeAssemblyPage() {
                   <form.Field name="genome_size">
                     {(field) => (
                       <FieldItem>
-                        <FieldLabel field={field} className="service-card-label">
+                        <FieldLabel
+                          field={field}
+                          className="service-card-label"
+                        >
                           Estimated Genome Size
                         </FieldLabel>
                         <div className="flex items-center gap-2">
@@ -456,7 +474,10 @@ export default function GenomeAssemblyPage() {
                             onChange={(e) => {
                               const value = parseInt(e.target.value);
                               setExpectedGenomeSize(value);
-                              const calculatedSize = calculateGenomeSize(value, genomeSizeUnit);
+                              const calculatedSize = calculateGenomeSize(
+                                value,
+                                genomeSizeUnit,
+                              );
                               field.handleChange(calculatedSize);
                             }}
                             className="service-card-input flex-1"
@@ -485,7 +506,10 @@ export default function GenomeAssemblyPage() {
                             <SelectContent>
                               <SelectGroup>
                                 {genomeSizeUnitOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
                                     {option.label}
                                   </SelectItem>
                                 ))}
@@ -515,17 +539,24 @@ export default function GenomeAssemblyPage() {
                   <CollapsibleContent className="service-collapsible-content">
                     {/* Read Processing */}
                     <div className="space-y-4">
-                      <Label className="service-card-label">Read Processing</Label>
+                      <Label className="service-card-label">
+                        Read Processing
+                      </Label>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <form.Field name="normalize">
                           {(field) => (
                             <FieldItem className="flex flex-col items-start justify-between">
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Normalize Illumina Reads
                               </FieldLabel>
                               <Switch
                                 checked={field.state.value}
-                                onCheckedChange={(checked) => field.handleChange(checked)}
+                                onCheckedChange={(checked) =>
+                                  field.handleChange(checked)
+                                }
                               />
                             </FieldItem>
                           )}
@@ -534,12 +565,17 @@ export default function GenomeAssemblyPage() {
                         <form.Field name="trim">
                           {(field) => (
                             <FieldItem className="flex flex-col items-start justify-between">
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Trim Short Reads
                               </FieldLabel>
                               <Switch
                                 checked={field.state.value}
-                                onCheckedChange={(checked) => field.handleChange(checked)}
+                                onCheckedChange={(checked) =>
+                                  field.handleChange(checked)
+                                }
                               />
                             </FieldItem>
                           )}
@@ -548,12 +584,17 @@ export default function GenomeAssemblyPage() {
                         <form.Field name="filtlong">
                           {(field) => (
                             <FieldItem className="flex flex-col items-start justify-between">
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Filter Long Reads
                               </FieldLabel>
                               <Switch
                                 checked={field.state.value}
-                                onCheckedChange={(checked) => field.handleChange(checked)}
+                                onCheckedChange={(checked) =>
+                                  field.handleChange(checked)
+                                }
                               />
                             </FieldItem>
                           )}
@@ -563,12 +604,17 @@ export default function GenomeAssemblyPage() {
 
                     {/* Genome Parameters */}
                     <div className="space-y-4">
-                      <Label className="service-card-label">Genome Parameters</Label>
+                      <Label className="service-card-label">
+                        Genome Parameters
+                      </Label>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <form.Field name="target_depth">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Target Genome Coverage
                               </FieldLabel>
                               <NumberInput
@@ -587,12 +633,17 @@ export default function GenomeAssemblyPage() {
 
                     {/* Assembly Polishing */}
                     <div className="space-y-4">
-                      <Label className="service-card-label">Assembly Polishing</Label>
+                      <Label className="service-card-label">
+                        Assembly Polishing
+                      </Label>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <form.Field name="racon_iter">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Racon Iterations
                               </FieldLabel>
                               <NumberInput
@@ -609,7 +660,10 @@ export default function GenomeAssemblyPage() {
                         <form.Field name="pilon_iter">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Pilon Iterations
                               </FieldLabel>
                               <NumberInput
@@ -627,12 +681,17 @@ export default function GenomeAssemblyPage() {
 
                     {/* Assembly Thresholds */}
                     <div className="space-y-4">
-                      <Label className="service-card-label">Assembly Thresholds</Label>
+                      <Label className="service-card-label">
+                        Assembly Thresholds
+                      </Label>
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <form.Field name="min_contig_len">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Min. contig length
                               </FieldLabel>
                               <NumberInput
@@ -650,7 +709,10 @@ export default function GenomeAssemblyPage() {
                         <form.Field name="min_contig_cov">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 Min. contig coverage
                               </FieldLabel>
                               <NumberInput
@@ -674,7 +736,7 @@ export default function GenomeAssemblyPage() {
         </div>
 
         {/* Right Column - Selected Libraries */}
-        <div className="hidden md:block md:col-span-5">
+        <div className="hidden md:col-span-5 md:block">
           <Card className="h-full">
             <CardHeader className="service-card-header">
               <CardTitle className="service-card-title">
@@ -725,7 +787,9 @@ export default function GenomeAssemblyPage() {
             </Button>
             <Button
               type="submit"
-              disabled={runtime.isSubmitting || !canSubmit || !isOutputNameValid}
+              disabled={
+                runtime.isSubmitting || !canSubmit || !isOutputNameValid
+              }
             >
               {runtime.isSubmitting ? <Spinner /> : null}
               Assemble

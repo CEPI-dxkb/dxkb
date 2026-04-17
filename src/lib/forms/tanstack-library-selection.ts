@@ -18,7 +18,11 @@ export interface BuildLibraryResult {
 export interface AddPairedLibraryOptions {
   read1: string | null;
   read2: string | null;
-  buildLibrary: (read1: string, read2: string, id: string) => BuildLibraryResult;
+  buildLibrary: (
+    read1: string,
+    read2: string,
+    id: string,
+  ) => BuildLibraryResult;
   onError?: (message: string) => void;
   onAfterAdd?: (library: Library) => void;
   missingMessage?: string;
@@ -81,10 +85,7 @@ export function findNewSraLibraries(
   );
 }
 
-export interface UseTanstackLibrarySelectionConfig<
-  LibraryItem,
-  SrrItem
-> {
+export interface UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem> {
   form: AnyFormApi;
   mapLibraryToItem: (library: Library) => LibraryItem;
   mapSraLibraryToItem?: (library: Library) => SrrItem;
@@ -93,13 +94,15 @@ export interface UseTanstackLibrarySelectionConfig<
     single: string;
     srr: string;
   };
-  normalizeLibraries?: (nextLibraries: Library[], previousLibraries: Library[]) => Library[];
+  normalizeLibraries?: (
+    nextLibraries: Library[],
+    previousLibraries: Library[],
+  ) => Library[];
 }
 
-export function useTanstackLibrarySelection<
-  LibraryItem,
-  SrrItem = string
->(config: UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem>) {
+export function useTanstackLibrarySelection<LibraryItem, SrrItem = string>(
+  config: UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem>,
+) {
   const [selectedLibraries, setSelectedLibraries] = useState<Library[]>([]);
   const shouldSyncRef = useRef(false);
   const configRef = useRef(config);
@@ -108,7 +111,10 @@ export function useTanstackLibrarySelection<
   }, [config]);
 
   const applyLibrariesToForm = useCallback(
-    (libraries: Library[], cfg: UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem>) => {
+    (
+      libraries: Library[],
+      cfg: UseTanstackLibrarySelectionConfig<LibraryItem, SrrItem>,
+    ) => {
       const pairedLibs: LibraryItem[] = [];
       const singleLibs: LibraryItem[] = [];
       const srrItems: SrrItem[] = [];
@@ -131,7 +137,7 @@ export function useTanstackLibrarySelection<
       cfg.form.setFieldValue(cfg.fields.single, singleLibs);
       cfg.form.setFieldValue(cfg.fields.srr, srrItems);
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -147,32 +153,31 @@ export function useTanstackLibrarySelection<
     (libraries: Library[]) => {
       applyLibrariesToForm(libraries, configRef.current);
     },
-    [applyLibrariesToForm]
+    [applyLibrariesToForm],
   );
 
-  const updateLibraries = useCallback(
-    (nextLibraries: Library[]) => {
-      setSelectedLibraries((previousLibraries) => {
-        return configRef.current.normalizeLibraries
-          ? configRef.current.normalizeLibraries(nextLibraries, previousLibraries)
-          : nextLibraries;
-      });
-    },
-    []
-  );
+  const updateLibraries = useCallback((nextLibraries: Library[]) => {
+    setSelectedLibraries((previousLibraries) => {
+      return configRef.current.normalizeLibraries
+        ? configRef.current.normalizeLibraries(nextLibraries, previousLibraries)
+        : nextLibraries;
+    });
+  }, []);
 
   const addPairedLibrary = useCallback(
     (options: AddPairedLibraryOptions) => {
       if (!options.read1 || !options.read2) {
         options.onError?.(
-          options.missingMessage ?? "Both read files must be selected for paired library"
+          options.missingMessage ??
+            "Both read files must be selected for paired library",
         );
         return;
       }
 
       if (options.read1 === options.read2) {
         options.onError?.(
-          options.sameFileMessage ?? "READ FILE 1 and READ FILE 2 cannot be the same"
+          options.sameFileMessage ??
+            "READ FILE 1 and READ FILE 2 cannot be the same",
         );
         return;
       }
@@ -181,12 +186,17 @@ export function useTanstackLibrarySelection<
       const isDuplicate = selectedLibraries.some((lib) => lib.id === libraryId);
       if (isDuplicate) {
         options.onError?.(
-          options.duplicateMessage ?? "This paired library has already been added"
+          options.duplicateMessage ??
+            "This paired library has already been added",
         );
         return;
       }
 
-      const result = options.buildLibrary(options.read1, options.read2, libraryId);
+      const result = options.buildLibrary(
+        options.read1,
+        options.read2,
+        libraryId,
+      );
       if (!result.library) {
         options.onError?.(result.error ?? "Unable to add paired library");
         return;
@@ -195,22 +205,27 @@ export function useTanstackLibrarySelection<
       updateLibraries([...selectedLibraries, result.library]);
       options.onAfterAdd?.(result.library);
     },
-    [selectedLibraries, updateLibraries]
+    [selectedLibraries, updateLibraries],
   );
 
   const addSingleLibrary = useCallback(
     (options: AddSingleLibraryOptions) => {
       if (!options.read) {
-        options.onError?.(options.missingMessage ?? "Read file must be selected");
+        options.onError?.(
+          options.missingMessage ?? "Read file must be selected",
+        );
         return;
       }
 
       const isDuplicate = selectedLibraries.some((lib) =>
-        options.duplicateMatcher ? options.duplicateMatcher(lib, options.read as string) : lib.id === options.read
+        options.duplicateMatcher
+          ? options.duplicateMatcher(lib, options.read as string)
+          : lib.id === options.read,
       );
       if (isDuplicate) {
         options.onError?.(
-          options.duplicateMessage ?? "This single library has already been added"
+          options.duplicateMessage ??
+            "This single library has already been added",
         );
         return;
       }
@@ -224,20 +239,20 @@ export function useTanstackLibrarySelection<
       updateLibraries([...selectedLibraries, result.library]);
       options.onAfterAdd?.(result.library);
     },
-    [selectedLibraries, updateLibraries]
+    [selectedLibraries, updateLibraries],
   );
 
   const removeLibrary = useCallback(
     (id: string) => {
       updateLibraries(selectedLibraries.filter((lib) => lib.id !== id));
     },
-    [selectedLibraries, updateLibraries]
+    [selectedLibraries, updateLibraries],
   );
 
   return {
     selectedLibraries,
     syncLibrariesToForm,
-    setLibrariesAndSync: updateLibraries,
+    setLibraries: updateLibraries,
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,

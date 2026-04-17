@@ -2,7 +2,6 @@ import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
   defaultMetaCatsFormValues,
-  metaCatsFormSchema,
   type MetaCatsFormData,
 } from "./meta-cats-form-schema";
 import { transformMetaCatsParams } from "./meta-cats-form-utils";
@@ -10,7 +9,6 @@ import { transformMetaCatsParams } from "./meta-cats-form-utils";
 export const metaCatsService = createServiceDefinition<MetaCatsFormData>({
   serviceName: "MetaCATS",
   displayName: "Meta-CATS",
-  schema: metaCatsFormSchema,
   defaultValues: defaultMetaCatsFormValues,
   transformParams: transformMetaCatsParams,
   rerun: {

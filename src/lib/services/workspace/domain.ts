@@ -20,7 +20,7 @@ import { isFolder, isFolderType, normalizeWorkspaceObjectType } from "./utils";
  */
 export type WorkspaceObjectType = string;
 
-export interface WorkspacePermissions {
+export interface WorkspaceItemPermissions {
   /** Permission granted to the current user on this object (e.g. "o", "a", "w", "r", "n"). */
   user?: string;
   /** Global (public) permission on this object. */
@@ -44,7 +44,7 @@ export interface WorkspaceItem {
   createdAt?: string;
   /** Parsed epoch ms, used for sorting. */
   timestamp?: number;
-  permissions?: WorkspacePermissions;
+  permissions?: WorkspaceItemPermissions;
   userMeta?: Record<string, unknown>;
   autoMeta?: Record<string, unknown>;
   linkReference?: string;

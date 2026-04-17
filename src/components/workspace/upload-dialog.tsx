@@ -18,8 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { knownUploadTypes } from "@/lib/services/workspace/types";
-import { createWorkspaceApiClient } from "@/lib/services/workspace/client";
-import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
+import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { toast } from "sonner";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -50,11 +49,7 @@ export function UploadDialog({
   const [isDragActive, setIsDragActive] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const workspaceApi = React.useMemo(() => createWorkspaceApiClient(), []);
-  const workspaceCrud = React.useMemo(
-    () => new WorkspaceCrudMethods(workspaceApi),
-    [workspaceApi],
-  );
+  const repository = useWorkspaceRepository("authenticated");
 
   React.useEffect(() => {
     if (open) {
@@ -112,13 +107,13 @@ export function UploadDialog({
     let hasError = false;
     try {
       for (const file of files) {
-        const { link_reference } = await workspaceCrud.createUploadNode(
-          targetPath,
-          file.name,
-          uploadType,
-        );
+        const { linkReference } = await repository.createUploadNode({
+          directoryPath: targetPath,
+          filename: file.name,
+          type: uploadType,
+        });
         const formData = new FormData();
-        formData.append("url", link_reference);
+        formData.append("url", linkReference);
         formData.append("file", file);
         const res = await fetch(uploadApi, {
           method: "POST",
@@ -135,7 +130,7 @@ export function UploadDialog({
         }
         const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
         const fullPath = dir + file.name;
-        await workspaceCrud.updateAutoMetadata([fullPath]);
+        await repository.updateAutoMetadata([fullPath]);
       }
       if (!hasError) {
         toast.success("Upload complete", {
@@ -150,7 +145,7 @@ export function UploadDialog({
     } finally {
       setIsUploading(false);
     }
-  }, [files, targetPath, uploadType, isUploading, workspaceCrud, onUploadComplete]);
+  }, [files, targetPath, uploadType, isUploading, repository, onUploadComplete]);
 
   const canStart = files.length > 0 && !isUploading;
 

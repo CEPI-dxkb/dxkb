@@ -28,8 +28,6 @@ export interface UseWorkspaceDialogHandlersOptions {
 }
 
 function invalidateWorkspaceQueries(queryClient: ReturnType<typeof useQueryClient>) {
-  void queryClient.invalidateQueries({ queryKey: ["workspace-browser"] });
-  void queryClient.invalidateQueries({ queryKey: ["workspace-list-path"] });
   void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
 }
 

@@ -38,8 +38,8 @@ export interface UseWorkspaceObjectSearchReturn {
 
 /**
  * Workspace object search hook used by `WorkspaceObjectSelector`. Hits the
- * repository (not the old singleton `WorkspaceApi` class) so tests and stories
- * can supply fixtures via `WorkspaceRepositoryProvider`.
+ * repository so tests and stories can supply fixtures via
+ * `WorkspaceRepositoryProvider`.
  */
 export function useWorkspaceObjectSearch({
   username,

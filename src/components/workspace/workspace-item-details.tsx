@@ -54,8 +54,6 @@ export function WorkspaceItemDetails({
       await repository.updateObjectType(item.path, newType);
     },
     onSuccess: (_, newType) => {
-      void queryClient.invalidateQueries({ queryKey: ["workspace-browser"] });
-      void queryClient.invalidateQueries({ queryKey: ["workspace-list-path"] });
       void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
       toast.success("Object type updated", {
         description: `${item.name} is now type "${newType}".`,

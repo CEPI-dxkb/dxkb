@@ -22,6 +22,7 @@ import { WorkspaceItemIcon } from "./workspace-item-icon";
 import { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { toWorkspaceBrowserItem } from "@/lib/services/workspace/domain";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { useSharedWithUser, useUserWorkspaces } from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
 import { hasWriteAccess, formatDate, formatFileSize } from "@/lib/services/workspace/helpers";
@@ -144,7 +145,7 @@ export function WorkspaceMiniBrowser({
 
   const repository = useWorkspaceRepository("authenticated");
   const pathQuery = useQuery({
-    queryKey: ["workspace-mini-browser", currentPath],
+    queryKey: workspaceQueryKeys.miniBrowser(currentPath),
     queryFn: async () => {
       const items = await repository.listDirectory({ path: currentPath });
       return items.map(toWorkspaceBrowserItem) as WorkspaceBrowserItem[];

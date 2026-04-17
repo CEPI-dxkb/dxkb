@@ -38,7 +38,6 @@ import { addRecentFolder } from "@/lib/recent-workspace-folders";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort, type WorkspaceViewMode } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, noop, workspaceUsername } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspaceApiClient } from "@/lib/services/workspace/client";
 
 type PublicWorkspaceLevel = "root" | "user" | "path";
 
@@ -89,11 +88,6 @@ export function WorkspaceBrowser({
   } = useWorkspacePanel();
   const { state: dialogState, dispatch: dialogDispatch } = useWorkspaceDialog();
 
-  const workspaceClient = useMemo(() => new WorkspaceApiClient(), []);
-  const workspaceDownload = useMemo(
-    () => new WorkspaceDownloadMethods(workspaceClient),
-    [workspaceClient],
-  );
   const queryClient = useQueryClient();
   const { data: favoritePaths = [] } = useQuery({
     queryKey: ["workspace-favorites", myWorkspaceRoot],
@@ -366,7 +360,6 @@ export function WorkspaceBrowser({
         <WorkspaceDialogs
           currentUserWorkspaceRoot={currentUserWorkspaceRoot}
           currentDirectoryPath={currentDirectoryPath}
-          workspaceDownload={workspaceDownload}
           isDialogLoading={isDialogLoading}
           onConfirmDelete={handleConfirmDelete}
           onCopyConfirm={handleCopyConfirm}

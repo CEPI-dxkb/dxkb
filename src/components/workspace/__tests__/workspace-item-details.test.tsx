@@ -8,16 +8,6 @@ vi.mock("@/lib/services/workspace/helpers", () => ({
   formatOwner: vi.fn((id: string) => id || "—"),
 }));
 
-vi.mock("@/lib/services/workspace/client", () => ({
-  WorkspaceApiClient: function WorkspaceApiClient() { return; },
-}));
-
-vi.mock("@/lib/services/workspace/methods/crud", () => ({
-  WorkspaceCrudMethods: function WorkspaceCrudMethods() {
-    return { updateObjectType: vi.fn() };
-  },
-}));
-
 vi.mock("@/lib/services/workspace/types", () => ({
   editTypeOptions: ["contigs", "reads", "csv", "txt", "json"],
 }));

@@ -91,8 +91,10 @@ describe("GenomeAssembly page — rerun + submit flow", () => {
       expect(screen.getAllByText(/sample_R1\.fq/).length).toBeGreaterThan(0);
     });
 
-    // Click Assemble to submit
+    // Click Assemble to submit — wait for tanstack-form validation to mark the
+    // form submittable (button is disabled until canSubmit flips to true).
     const assembleButton = screen.getByRole("button", { name: /assemble/i });
+    await waitFor(() => expect(assembleButton).toBeEnabled());
     await userEvent.click(assembleButton);
 
     await waitFor(() => {

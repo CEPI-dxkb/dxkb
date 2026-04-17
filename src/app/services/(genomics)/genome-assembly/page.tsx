@@ -132,7 +132,6 @@ export default function GenomeAssemblyPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: mapAssemblyLibraryToItem,
@@ -162,10 +161,7 @@ export default function GenomeAssemblyPage() {
         }
         return {};
       },
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibraries(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
 

@@ -32,6 +32,7 @@ import {
   hasWriteAccess,
   formatDate,
   formatFileSize,
+  formatOwner,
 } from "@/lib/services/workspace/helpers";
 import { FolderUp } from "lucide-react";
 import { isFolderType, isFolder } from "@/lib/services/workspace/utils";
@@ -398,7 +399,7 @@ export function WorkspaceMiniBrowser({
                         : formatFileSize(item.size ?? 0)}
                     </TableCell>
                     <TableCell className="hidden pl-3 text-sm md:table-cell">
-                      {(item.owner_id ?? "").replace(/@bvbrc$/, "")}
+                      {formatOwner(item.owner_id ?? "")}
                     </TableCell>
                     <TableCell className="hidden pl-3 text-sm lg:table-cell">
                       {formatDate(item.creation_time ?? "")}

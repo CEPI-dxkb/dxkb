@@ -99,7 +99,9 @@ export default function BlastServicePage() {
     if (dbPrecomputedDatabase !== "selFasta") {
       return "featureFasta";
     }
-    return dbType === "faa" ? "featureProteinFasta" : "dnaFasta";
+    return dbType === "faa"
+      ? "featureProteinFasta"
+      : "featureDnaFastaOrContigs";
   }, [dbPrecomputedDatabase, dbType]);
 
   // Determine workspace object types based on BLAST program (matching legacy behavior)
@@ -108,9 +110,9 @@ export default function BlastServicePage() {
       case "blastp":
         return "featureProteinFasta";
       case "blastn":
-        return "dnaFasta";
+        return "featureDnaFastaOrContigs";
       case "blastx":
-        return "dnaFasta";
+        return "featureDnaFastaOrContigs";
       case "tblastn":
         return "featureProteinFasta";
       default:
@@ -137,7 +139,6 @@ export default function BlastServicePage() {
   useEffect(() => {
     const previousProgram = previousProgramRef.current;
 
-    // Only clear if program actually changed (not on initial mount) and not during rerun application
     if (
       previousProgram !== currentBlastProgram &&
       previousProgram !== undefined &&
@@ -155,10 +156,8 @@ export default function BlastServicePage() {
     definition: blastService,
     form,
     rerun: {
-      // Page-local because rerun must coordinate with the program-change guard ref.
       onApply: (rerunData) => {
         if (rerunData.blast_program) {
-          // Guard the program-change clear effect only when we're actually changing the program
           if (rerunData.blast_program !== form.state.values.blast_program) {
             isApplyingRerunRef.current = true;
           }

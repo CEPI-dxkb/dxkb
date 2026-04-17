@@ -29,6 +29,7 @@ import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import {
   buildPairedLibraries,
   buildSingleLibraries,
+  buildSraLibraries,
 } from "@/lib/rerun-utility";
 import {
   viralAssemblyInfo,
@@ -56,7 +57,6 @@ import {
 } from "@/lib/forms/tanstack-library-selection";
 
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
-import type { Library } from "@/types/services";
 
 const tutorial =
   "https://www.bv-brc.org/docs/tutorial/viral_assembly/assembly.html";
@@ -82,7 +82,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  const { selectedLibraries, setLibraries, syncLibrariesToForm } =
+  const { selectedLibraries, setLibraries } =
     useTanstackLibrarySelection<ViralAssemblyLibraryItem, string>({
       form,
       mapLibraryToItem: buildBaseLibraryItem,
@@ -198,23 +198,17 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
           form.setFieldValue("input_type", "paired" as never);
           setPairedRead1(pairedLib.read1);
           setPairedRead2(pairedLib.read2);
-          const libs = buildPairedLibraries({ paired_end_libs: [pairedLib] });
-          syncLibrariesToForm(libs);
-          setLibraries(libs);
+          setLibraries(buildPairedLibraries({ paired_end_libs: [pairedLib] }));
         } else if (singleLib?.read) {
           form.setFieldValue("input_type", "single" as never);
           setSingleRead(singleLib.read);
-          const libs = buildSingleLibraries({ single_end_libs: [singleLib] });
-          syncLibrariesToForm(libs);
-          setLibraries(libs);
+          setLibraries(buildSingleLibraries({ single_end_libs: [singleLib] }));
         } else if (srrId) {
           form.setFieldValue("input_type", "srr_accession" as never);
           setSraDefaultValue(srrId);
           // SraRunAccessionWithValidation reads defaultValue once on mount.
           setSraResetKey((k) => k + 1);
-          const libs: Library[] = [{ id: srrId, name: srrId, type: "sra" }];
-          syncLibrariesToForm(libs);
-          setLibraries(libs);
+          setLibraries(buildSraLibraries({ srr_ids: [srrId] }));
         }
       },
     },

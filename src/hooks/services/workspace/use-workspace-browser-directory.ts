@@ -139,14 +139,9 @@ export function useWorkspaceBrowserDirectory(
     },
   );
 
-  const directoryItems = useMemo<WorkspaceItem[]>(
-    () => (enabled ? result.items : []),
-    [enabled, result.items],
-  );
-
   const items = useMemo(
-    () => directoryItems.map(toWorkspaceBrowserItem),
-    [directoryItems],
+    () => (enabled ? result.items.map(toWorkspaceBrowserItem) : []),
+    [enabled, result.items],
   );
 
   return {

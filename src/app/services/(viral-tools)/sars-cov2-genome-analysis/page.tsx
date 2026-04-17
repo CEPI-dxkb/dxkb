@@ -128,7 +128,6 @@ export default function SarsCov2GenomeAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<SarsCov2LibraryItem>({
     form,
     mapLibraryToItem: (library) => ({
@@ -217,10 +216,7 @@ export default function SarsCov2GenomeAnalysisPage() {
         }
         return {};
       },
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibraries(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;

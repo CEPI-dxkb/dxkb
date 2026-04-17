@@ -9,6 +9,7 @@ import {
 import type { ListPermissionsResult } from "@/lib/services/workspace/domain";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { buildHomePath } from "@/lib/services/workspace/path-utils";
+import { safeDecode } from "@/lib/url";
 import type { WorkspaceRepository } from "@/lib/services/workspace/workspace-repository";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
@@ -48,13 +49,7 @@ export interface UseWorkspaceDirectoryReturn {
 }
 
 function normalizeFullPath(raw: string): string {
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(raw);
-  } catch {
-    // Leave malformed percent-encodings as-is rather than crashing the render.
-    decoded = raw;
-  }
+  const decoded = safeDecode(raw);
   return decoded.startsWith("/") ? decoded : `/${decoded}`;
 }
 

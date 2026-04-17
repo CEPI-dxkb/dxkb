@@ -33,6 +33,7 @@ export const workspaceSelectorPresets: Record<
   alignedFasta: ["aligned_protein_fasta", "aligned_dna_fasta"],
   featureFasta: ["feature_protein_fasta", "feature_dna_fasta"],
   featureDnaFasta: ["feature_dna_fasta"],
+  featureDnaFastaOrContigs: ["feature_dna_fasta", "contigs"],
   featureProteinFasta: ["feature_protein_fasta"],
   proteinFastaOrContigs: ["feature_protein_fasta", "contigs"],
   contigsOrReads: ["contigs", "reads"],

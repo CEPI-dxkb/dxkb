@@ -247,7 +247,6 @@ export default function PrimerDesignServicePage() {
     definition: primerDesignService,
     form,
     rerun: {
-      // Page-local because rerun restores UI state refs alongside form fields.
       onApply: (rerunData, form) => {
         const d = rerunData;
 

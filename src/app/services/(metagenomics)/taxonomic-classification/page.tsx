@@ -153,7 +153,6 @@ export default function TaxonomicClassificationPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<
     LibraryItem,
     { srr_accession: string; sample_id: string; title?: string }
@@ -207,10 +206,7 @@ export default function TaxonomicClassificationPage() {
         }
         return { sampleId: lib.sample_id || "" };
       },
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibraries(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;

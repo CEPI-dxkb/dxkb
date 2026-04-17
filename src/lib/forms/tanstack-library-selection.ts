@@ -149,13 +149,6 @@ export function useTanstackLibrarySelection<LibraryItem, SrrItem = string>(
     applyLibrariesToForm(selectedLibraries, configRef.current);
   }, [selectedLibraries, applyLibrariesToForm]);
 
-  const syncLibrariesToForm = useCallback(
-    (libraries: Library[]) => {
-      applyLibrariesToForm(libraries, configRef.current);
-    },
-    [applyLibrariesToForm],
-  );
-
   const updateLibraries = useCallback((nextLibraries: Library[]) => {
     setSelectedLibraries((previousLibraries) => {
       return configRef.current.normalizeLibraries
@@ -251,7 +244,6 @@ export function useTanstackLibrarySelection<LibraryItem, SrrItem = string>(
 
   return {
     selectedLibraries,
-    syncLibrariesToForm,
     setLibraries: updateLibraries,
     addPairedLibrary,
     addSingleLibrary,

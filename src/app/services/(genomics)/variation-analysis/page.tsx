@@ -98,7 +98,6 @@ export default function VariationAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<VariationLibraryItem>({
     form,
     mapLibraryToItem: buildBaseLibraryItem,
@@ -115,10 +114,7 @@ export default function VariationAnalysisPage() {
     onSuccess: handleReset,
     rerun: {
       libraries: ["paired", "single", "sra"],
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibraries(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;

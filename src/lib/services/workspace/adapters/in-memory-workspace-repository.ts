@@ -98,6 +98,27 @@ function toBrowserItem(
   };
 }
 
+// Mirrors the `Workspace.get` tuple layout (see `parseWorkspaceGetSingle`), so
+// `WorkspaceMetadata.raw` / `getRaw()` carry the same shape the HTTP adapter
+// produces and tests can assert against it.
+function toGetTuple(parent: string, fixture: InMemoryFixtureItem): unknown[] {
+  const parentNormalized = normalize(parent);
+  const parentWithSlash =
+    parentNormalized === "/" ? "/" : `${parentNormalized}/`;
+  const createdAt = fixture.createdAt ?? "2026-01-01T00:00:00Z";
+  return [
+    fixture.name,
+    fixture.type,
+    parentWithSlash,
+    createdAt,
+    `${parentWithSlash}${fixture.name}#0`,
+    fixture.ownerId ?? "test-user@bvbrc",
+    fixture.size ?? 0,
+    {},
+    {},
+  ];
+}
+
 export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   readonly calls: CallRecord[] = [];
   private directories: Record<string, InMemoryFixtureItem[]> = {};
@@ -147,13 +168,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       const parent = normalize(path.slice(0, path.lastIndexOf("/")) || "/");
       const siblings = this.directories[parent] ?? [];
       const name = normalized.split("/").filter(Boolean).pop() ?? "";
-      const fixture = siblings.find((f) => f.name === name);
+      const fixtureIndex = siblings.findIndex((f) => f.name === name);
+      const fixture = fixtureIndex >= 0 ? siblings[fixtureIndex] : null;
       const object = fixture
-        ? toWorkspaceItem(
-            toBrowserItem(parent, fixture, siblings.indexOf(fixture)),
-          )
+        ? toWorkspaceItem(toBrowserItem(parent, fixture, fixtureIndex))
         : null;
-      return { path: normalized, object, raw: null };
+      const raw = fixture ? [toGetTuple(parent, fixture)] : null;
+      return { path: normalized, object, raw };
     });
   }
 
@@ -393,6 +414,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
     const results: WorkspaceItem[] = [];
     const seen = new Set<string>();
+    const nameFilter = input.name?.toLowerCase();
     const visit = (dir: string) => {
       if (seen.has(dir)) return;
       seen.add(dir);
@@ -404,8 +426,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         );
         const typeMatches = !input.types || input.types.includes(item.type);
         const nameMatches =
-          !input.name ||
-          item.name.toLowerCase().includes(input.name.toLowerCase());
+          !nameFilter || item.name.toLowerCase().includes(nameFilter);
         if (typeMatches && nameMatches) results.push(item);
         if (isFolderLike) visit(item.path);
       });

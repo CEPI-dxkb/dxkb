@@ -114,7 +114,6 @@ export default function MetagenomicBinningPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: buildBaseLibraryItem,
@@ -131,10 +130,7 @@ export default function MetagenomicBinningPage() {
     onSuccess: handleReset,
     rerun: {
       libraries: ["paired", "single", "sra"],
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibraries(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;

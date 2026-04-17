@@ -117,7 +117,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<SarsCov2WastewaterLibraryItem, SrrLibItem>({
     form,
     mapLibraryToItem: (library) => ({
@@ -146,9 +145,11 @@ export default function SarsCov2WastewaterAnalysisPage() {
         skipSraNormalization.current = false;
         return nextLibraries;
       }
-      const newSraLibs = findNewSraLibraries(nextLibraries, previousLibraries);
+      const newSraLibIds = new Set(
+        findNewSraLibraries(nextLibraries, previousLibraries).map((l) => l.id),
+      );
       return nextLibraries.map((lib) => {
-        if (lib.type === "sra" && newSraLibs.some((n) => n.id === lib.id)) {
+        if (lib.type === "sra" && newSraLibIds.has(lib.id)) {
           return {
             ...lib,
             sampleId: currentSampleId.trim() || lib.id,
@@ -268,7 +269,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
       },
       syncLibraries: (libs) => {
         skipSraNormalization.current = true;
-        syncLibrariesToForm(libs);
         setLibraries(libs);
       },
     },

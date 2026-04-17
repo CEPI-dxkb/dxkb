@@ -128,7 +128,6 @@ export default function FastqUtilitiesPage() {
     addSingleLibrary,
     removeLibrary,
     setLibraries,
-    syncLibrariesToForm,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: (library) => ({
@@ -156,10 +155,7 @@ export default function FastqUtilitiesPage() {
         }
         return {};
       },
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibraries(libs);
-      },
+      syncLibraries: setLibraries,
       onApply: (rerunData, form) => {
         // Backend rerun params may serialize a single action as a string and use Title Case.
         const rawRecipe = rerunData.recipe;

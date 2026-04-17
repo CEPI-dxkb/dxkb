@@ -34,6 +34,7 @@ import { WorkspaceShell } from "./workspace-shell";
 import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { addRecentFolder } from "@/lib/recent-workspace-folders";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort, type WorkspaceViewMode } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, noop, workspaceUsername } from "@/lib/utils";
@@ -90,7 +91,7 @@ export function WorkspaceBrowser({
 
   const queryClient = useQueryClient();
   const { data: favoritePaths = [] } = useQuery({
-    queryKey: ["workspace-favorites", myWorkspaceRoot],
+    queryKey: workspaceQueryKeys.favorites(myWorkspaceRoot),
     queryFn: () => loadFavorites(myWorkspaceRoot),
     enabled: mode === "home" && !!myWorkspaceRoot,
     staleTime: 2 * 60 * 1000,

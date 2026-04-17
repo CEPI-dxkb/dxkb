@@ -603,7 +603,7 @@ export default function MSAandSNPAnalysisPage() {
                       {(field) => (
                         <FieldItem>
                           <WorkspaceObjectSelector
-                            types={["feature_group"]}
+                            preset="featureGroup"
                             placeholder="Select feature group"
                             onSelectedObjectChange={(
                               object: WorkspaceObject | null,
@@ -655,7 +655,7 @@ export default function MSAandSNPAnalysisPage() {
                 {inputType === "input_genome_group" && (
                   <div className="space-y-2">
                     <WorkspaceObjectSelector
-                      types={["genome_group"]}
+                      preset="genomeGroup"
                       placeholder="Select viral genome group"
                       onSelectedObjectChange={async (
                         object: WorkspaceObject | null,

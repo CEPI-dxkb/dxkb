@@ -600,7 +600,7 @@ export default function MetaCATSPage() {
                   <Label className="service-card-label">Select Feature Group</Label>
                   <div className="flex gap-2">
                     <WorkspaceObjectSelector
-                      types={["feature_group"]}
+                      preset="featureGroup"
                       placeholder="Select feature group"
                       onSelectedObjectChange={(object: WorkspaceObject | null) => {
                         setSelectedAutoFeatureGroupObject(object);
@@ -790,7 +790,7 @@ export default function MetaCATSPage() {
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
-                        types={["feature_group"]}
+                        preset="featureGroup"
                         placeholder="Select feature group"
                         onSelectedObjectChange={(object: WorkspaceObject | null) => {
                           setSelectedFeatureGroupObject(object);

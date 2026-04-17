@@ -149,6 +149,32 @@ describe("HttpWorkspaceRepository", () => {
     expect((error as WorkspaceApiError).method).toBe("Workspace.ls");
   });
 
+  it("uses nested HTTP error messages when the proxy returns an error object", async () => {
+    server.use(
+      http.post("/api/services/workspace", () =>
+        HttpResponse.json(
+          { error: { code: -32603, message: "Workspace detail" } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    await expect(repository.listDirectory({ path: "/p" })).rejects.toMatchObject({
+      message: "Workspace detail",
+      apiResponse: { code: -32603, message: "Workspace detail" },
+    });
+  });
+
+  it("allows void write methods to omit result", async () => {
+    server.use(
+      http.post("/api/services/workspace", () =>
+        HttpResponse.json({ id: 1, jsonrpc: "2.0" }),
+      ),
+    );
+
+    await expect(repository.delete(["/a"])).resolves.toBeUndefined();
+  });
+
   it("sends archive_url request with camelCase translated fields", async () => {
     let body: unknown;
     server.use(

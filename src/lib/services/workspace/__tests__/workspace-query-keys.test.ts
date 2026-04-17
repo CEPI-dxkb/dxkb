@@ -19,6 +19,7 @@ describe("workspaceQueryKeys", () => {
       workspaceQueryKeys.permissions(["/a"]),
       workspaceQueryKeys.pathResolve("/a"),
       workspaceQueryKeys.jobResult("/a/.job"),
+      workspaceQueryKeys.jobResultResolved("/a/.job"),
       workspaceQueryKeys.du("/a"),
       workspaceQueryKeys.favorites("/a"),
       workspaceQueryKeys.miniBrowser("/a"),

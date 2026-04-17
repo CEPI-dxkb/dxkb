@@ -416,7 +416,7 @@ export default function GeneProteinTreePage() {
                 </Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
-                    types={["feature_group"]}
+                    preset="featureGroup"
                     placeholder="Optional"
                     onSelectedObjectChange={(object: WorkspaceObject | null) => {
                       setSelectedFeatureGroupObject(object);

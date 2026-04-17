@@ -16,6 +16,17 @@ export interface RpcOptions {
 export interface RpcRequestInit extends RpcOptions {
   method: string;
   params: unknown[];
+  /** Some write-only Workspace methods may return a JSON-RPC envelope without `result`. */
+  allowMissingResult?: boolean;
+}
+
+function getErrorMessage(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const message = (value as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return null;
 }
 
 /**
@@ -29,6 +40,7 @@ export async function rpc<T = unknown>({
   params,
   baseUrl = "/api/services/workspace",
   silent = false,
+  allowMissingResult = false,
 }: RpcRequestInit): Promise<T> {
   try {
     const response = await fetch(baseUrl, {
@@ -40,10 +52,14 @@ export async function rpc<T = unknown>({
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      const errorValue = (errorData as { error?: unknown }).error;
       const apiResponse =
-        (errorData as { apiResponse?: unknown }).apiResponse ?? errorData;
+        (errorData as { apiResponse?: unknown }).apiResponse ??
+        errorValue ??
+        errorData;
       const message =
-        (errorData as { error?: string }).error ||
+        getErrorMessage(apiResponse) ||
+        getErrorMessage(errorValue) ||
         `HTTP error! status: ${response.status}`;
       throw new WorkspaceApiError(message, method, apiResponse);
     }
@@ -72,6 +88,7 @@ export async function rpc<T = unknown>({
     }
 
     if (!("result" in payload)) {
+      if (allowMissingResult) return null as T;
       throw new WorkspaceApiError(
         "Malformed JSON-RPC response: missing `result` and `error`",
         method,

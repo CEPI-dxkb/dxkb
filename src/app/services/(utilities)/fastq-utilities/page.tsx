@@ -478,7 +478,7 @@ export default function FastqUtilitiesPage() {
                 </div>
                 <div className="space-y-3">
                   <WorkspaceObjectSelector
-                    types={["reads"]}
+                    preset="reads"
                     placeholder="Select READ FILE 1..."
                     value={pairedRead1 ?? ""}
                     onObjectSelect={(object: WorkspaceObject) => {
@@ -486,7 +486,7 @@ export default function FastqUtilitiesPage() {
                     }}
                   />
                   <WorkspaceObjectSelector
-                    types={["reads"]}
+                    preset="reads"
                     placeholder="Select READ FILE 2..."
                     value={pairedRead2 ?? ""}
                     onObjectSelect={(object: WorkspaceObject) => {
@@ -535,7 +535,7 @@ export default function FastqUtilitiesPage() {
                   </Select>
                 </div>
                 <WorkspaceObjectSelector
-                  types={["reads"]}
+                  preset="reads"
                   placeholder="Select READ FILE..."
                   value={singleRead ?? ""}
                   onObjectSelect={(object: WorkspaceObject) => {

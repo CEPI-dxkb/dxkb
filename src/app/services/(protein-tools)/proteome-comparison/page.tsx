@@ -548,7 +548,7 @@ export default function ProteomeComparisonPage() {
                           Or a Feature Group
                         </Label>
                         <WorkspaceObjectSelector
-                          types={["feature_group"]}
+                          preset="featureGroup"
                           placeholder="Select feature group (Optional)"
                           value={field.state.value}
                           onSelectedObjectChange={(
@@ -668,7 +668,7 @@ export default function ProteomeComparisonPage() {
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
-                        types={["feature_group"]}
+                        preset="featureGroup"
                         placeholder="Select feature group (Optional)"
                         value={selectedCompFeatureGroup?.path}
                         onSelectedObjectChange={(
@@ -701,7 +701,7 @@ export default function ProteomeComparisonPage() {
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
-                        types={["genome_group"]}
+                        preset="genomeGroup"
                         placeholder="Select genome group (Optional)"
                         value={selectedCompGenomeGroup?.path}
                         onSelectedObjectChange={(

@@ -268,7 +268,6 @@ export function WorkspaceObjectSelector({
       return []; // Return empty array if filteredObjects is undefined or not an array
     }
     if (isManualTrigger) {
-      console.log("Manual trigger - returning all objects:", objects);
       return objects; // Show all objects when manually triggered
     }
     return filteredObjects;

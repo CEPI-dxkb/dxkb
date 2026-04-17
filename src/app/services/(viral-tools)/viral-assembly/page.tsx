@@ -297,7 +297,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                 aria-hidden={inputType !== "paired"}
               >
                 <WorkspaceObjectSelector
-                  types={["reads"]}
+                  preset="reads"
                   placeholder="Select READ FILE 1..."
                   value={pairedRead1 ?? ""}
                   onObjectSelect={(object: WorkspaceObject) =>
@@ -305,7 +305,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                   }
                 />
                 <WorkspaceObjectSelector
-                  types={["reads"]}
+                  preset="reads"
                   placeholder="Select READ FILE 2..."
                   value={pairedRead2 ?? ""}
                   onObjectSelect={(object: WorkspaceObject) =>
@@ -319,7 +319,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                 aria-hidden={inputType !== "single"}
               >
                 <WorkspaceObjectSelector
-                  types={["reads"]}
+                  preset="reads"
                   placeholder="Select READ FILE..."
                   value={singleRead ?? ""}
                   onObjectSelect={(object: WorkspaceObject) =>

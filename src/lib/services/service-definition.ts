@@ -1,10 +1,14 @@
 import type { Library } from "@/types/services";
 
 export type ServiceLibraryKind = "paired" | "single" | "sra";
+export type ServiceFormField<TForm> = Extract<keyof TForm, string>;
 
-export interface ServiceFormApi<TForm = unknown> {
-  getFieldValue(field: string): unknown;
-  setFieldValue(field: string, value: never): void;
+export interface ServiceFormApi<TForm = Record<string, unknown>> {
+  getFieldValue<K extends ServiceFormField<TForm>>(field: K): TForm[K];
+  setFieldValue<K extends ServiceFormField<TForm>>(
+    field: K,
+    value: TForm[K],
+  ): void;
   reset?: (values?: TForm) => void;
 }
 

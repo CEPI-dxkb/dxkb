@@ -15,7 +15,7 @@ import type {
 interface UseServiceRuntimeOptions<
   TForm,
   TRerun extends Record<string, unknown>,
-  TFormApi extends ServiceFormApi<TForm>,
+  TFormApi,
 > {
   definition: ServiceDefinition<TForm, TRerun>;
   form: TFormApi;
@@ -26,7 +26,7 @@ interface UseServiceRuntimeOptions<
 export interface ServiceRuntime<
   TForm,
   TRerun extends Record<string, unknown>,
-  TFormApi extends ServiceFormApi<TForm>,
+  TFormApi,
 > {
   form: TFormApi;
   serviceName: string;
@@ -83,7 +83,7 @@ function mergeServiceRerunConfig<
 export function useServiceRuntime<
   TForm,
   TRerun extends Record<string, unknown> = Record<string, unknown>,
-  TFormApi extends ServiceFormApi<TForm> = ServiceFormApi<TForm>,
+  TFormApi = ServiceFormApi<TForm>,
 >({
   definition,
   form,
@@ -110,7 +110,7 @@ export function useServiceRuntime<
 
   const { rerunData } = useRerunForm<TRerun, TForm>({
     ...mergedRerun,
-    form,
+    form: form as unknown as ServiceFormApi<TForm>,
   });
 
   const transformParams = useCallback(

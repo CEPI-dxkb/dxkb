@@ -13,6 +13,7 @@ import {
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { toggleFavorite } from "@/lib/services/workspace/favorites";
 import { forbiddenDownloadTypes } from "@/lib/services/workspace/types";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
 import { getStructureViewerUrl } from "@/components/workspace/file-viewer/file-viewer-registry";
 
@@ -41,7 +42,7 @@ export function useWorkspaceActionDispatch({
     },
     onSuccess: (added, folderPath) => {
       void queryClient.invalidateQueries({
-        queryKey: ["workspace-favorites", myWorkspaceRoot],
+        queryKey: workspaceQueryKeys.favorites(myWorkspaceRoot),
       });
       toast.success(
         added ? "Added to favorites" : "Removed from favorites",

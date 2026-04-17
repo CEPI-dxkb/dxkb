@@ -274,7 +274,7 @@ export default function GenomeAssemblyPage() {
                 <div className="space-y-3">
                   <div>
                     <WorkspaceObjectSelector
-                      types={["reads"]}
+                      preset="reads"
                       placeholder="Select READ FILE 1..."
                       onObjectSelect={(object: WorkspaceObject) => {
                         setPairedRead1(object.path);
@@ -282,7 +282,7 @@ export default function GenomeAssemblyPage() {
                     />
                   </div>
                   <WorkspaceObjectSelector
-                    types={["reads"]}
+                    preset="reads"
                     placeholder="Select READ FILE 2..."
                     onObjectSelect={(object: WorkspaceObject) => {
                       setPairedRead2(object.path);
@@ -307,7 +307,7 @@ export default function GenomeAssemblyPage() {
                   </Button>
                 </div>
                 <WorkspaceObjectSelector
-                  types={["reads"]}
+                  preset="reads"
                   placeholder="Select READ FILE..."
                   onObjectSelect={(object: WorkspaceObject) => {
                     setSingleRead(object.path);

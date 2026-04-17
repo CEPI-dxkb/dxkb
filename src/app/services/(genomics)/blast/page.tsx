@@ -426,7 +426,7 @@ export default function BlastServicePage() {
                       {(groupField) => (
                         <FieldItem>
                           <WorkspaceObjectSelector
-                            types={["feature_group"]}
+                            preset="featureGroup"
                             placeholder="Select a feature group to search..."
                             value={groupField.state.value}
                             onObjectSelect={(object: WorkspaceObject) => {
@@ -572,7 +572,7 @@ export default function BlastServicePage() {
                     {(field) => (
                       <FieldItem>
                         <WorkspaceObjectSelector
-                          types={["genome_group"]}
+                          preset="genomeGroup"
                           placeholder="Genome group..."
                           onObjectSelect={(object: WorkspaceObject) => {
                             field.handleChange(object.path);
@@ -598,7 +598,7 @@ export default function BlastServicePage() {
                     {(field) => (
                       <FieldItem>
                         <WorkspaceObjectSelector
-                          types={["feature_group"]}
+                          preset="featureGroup"
                           placeholder="Feature group..."
                           onObjectSelect={(object: WorkspaceObject) => {
                             field.handleChange(object.path);

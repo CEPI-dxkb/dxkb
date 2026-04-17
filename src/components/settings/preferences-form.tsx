@@ -81,7 +81,7 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
             <div className="flex items-center gap-2">
               <div className="flex-1">
                 <WorkspaceObjectSelector
-                  types={["folder"]}
+                  preset="folder"
                   placeholder="Select a default output folder..."
                   value={defaultJobFolder}
                   onObjectSelect={(object) => {

@@ -45,6 +45,9 @@ export const workspaceQueryKeys = {
   jobResult: (dotPath: string) =>
     [...workspaceQueryKeys.all, "job-result", dotPath] as const,
 
+  jobResultResolved: (dotPath: string) =>
+    [...workspaceQueryKeys.all, "job-result-resolved", dotPath] as const,
+
   du: (path: string) => [...workspaceQueryKeys.all, "du", path] as const,
 
   favorites: (userRoot: string) =>

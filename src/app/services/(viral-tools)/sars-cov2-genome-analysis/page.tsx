@@ -322,7 +322,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                   </div>
                   <div className="space-y-3">
                     <WorkspaceObjectSelector
-                      types={["reads"]}
+                      preset="reads"
                       placeholder="Select READ FILE 1..."
                       value={pairedRead1 ?? ""}
                       onObjectSelect={(object: WorkspaceObject) =>
@@ -330,7 +330,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                       }
                     />
                     <WorkspaceObjectSelector
-                      types={["reads"]}
+                      preset="reads"
                       placeholder="Select READ FILE 2..."
                       value={pairedRead2 ?? ""}
                       onObjectSelect={(object: WorkspaceObject) =>
@@ -383,7 +383,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                       </Button>
                     </div>
                     <WorkspaceObjectSelector
-                      types={["reads"]}
+                      preset="reads"
                       placeholder="Select READ FILE..."
                       value={singleRead ?? ""}
                       onObjectSelect={(object: WorkspaceObject) =>

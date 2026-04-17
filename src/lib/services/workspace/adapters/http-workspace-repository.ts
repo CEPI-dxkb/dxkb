@@ -119,6 +119,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
       method: "Workspace.create",
       params: [{ objects: [[path, "Directory"]] }],
       baseUrl: this.baseUrl,
+      allowMissingResult: true,
     });
   }
 
@@ -162,6 +163,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
         },
       ],
       baseUrl: this.baseUrl,
+      allowMissingResult: true,
     });
   }
 
@@ -177,6 +179,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
         },
       ],
       baseUrl: this.baseUrl,
+      allowMissingResult: true,
     });
   }
 
@@ -193,6 +196,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
       ],
       baseUrl: this.baseUrl,
       silent: true,
+      allowMissingResult: true,
     });
   }
 
@@ -201,6 +205,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
       method: "Workspace.update_metadata",
       params: [{ objects: [[path, {}, newType]] }],
       baseUrl: this.baseUrl,
+      allowMissingResult: true,
     });
   }
 
@@ -210,6 +215,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
       method: "Workspace.update_auto_meta",
       params: [{ objects: paths }],
       baseUrl: this.baseUrl,
+      allowMissingResult: true,
     });
   }
 

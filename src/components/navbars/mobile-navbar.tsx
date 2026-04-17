@@ -47,6 +47,7 @@ import { useAuth } from "@/lib/auth";
 import Logo from "@/components/ui/logo";
 import { UserAvatarDropdown } from "@/components/navbars/user-avatar-dropdown";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import {
   getRecentFolders,
   getWorkspaceFolderDisplayName,
@@ -177,7 +178,7 @@ const MobileNavbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { data: favoritePaths = [] } = useQuery({
-    queryKey: ["workspace-favorites", wsUsername],
+    queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     enabled: isAuthenticated && !!wsUsername,
     staleTime: 2 * 60 * 1000,

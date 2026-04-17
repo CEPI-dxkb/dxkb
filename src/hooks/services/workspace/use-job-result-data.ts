@@ -6,6 +6,7 @@ import {
   getJobResultDotPath,
   parseWorkspaceGetSingle,
 } from "@/lib/services/workspace/helpers";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import type { ResolvedPathObject } from "@/lib/services/workspace/types";
 
 export interface JobResultData {
@@ -30,7 +31,7 @@ export function useJobResultData({
     resolvedJobMeta != null ? getJobResultDotPath(resolvedJobMeta) : "";
 
   const dotGetQuery = useQuery<ResolvedPathObject | null, Error>({
-    queryKey: ["workspace-get-resolved", [dotPath]],
+    queryKey: workspaceQueryKeys.jobResultResolved(dotPath),
     queryFn: async () => {
       const raw = await getWorkspaceMetadata([dotPath]);
       return parseWorkspaceGetSingle(raw as unknown[], 0);

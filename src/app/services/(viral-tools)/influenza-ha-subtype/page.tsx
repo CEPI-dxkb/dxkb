@@ -250,7 +250,7 @@ export default function HASubtypeNumberingPage() {
                   {(field) => (
                     <FieldItem>
                       <WorkspaceObjectSelector
-                        types={["feature_group"]}
+                        preset="featureGroup"
                         placeholder="Select a feature group..."
                         value={field.state.value}
                         onSelectedObjectChange={(obj) =>

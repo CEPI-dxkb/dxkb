@@ -405,7 +405,7 @@ export default function ViralGenomeTreePage() {
                 </Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
-                    types={["genome_group"]}
+                    preset="genomeGroup"
                     placeholder="Optional"
                     onSelectedObjectChange={(object: WorkspaceObject | null) => {
                       setSelectedGenomeGroupObject(object);

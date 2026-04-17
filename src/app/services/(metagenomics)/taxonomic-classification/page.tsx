@@ -365,7 +365,7 @@ export default function TaxonomicClassificationPage() {
                 </div>
                 <div className="space-y-3">
                   <WorkspaceObjectSelector
-                    types={["reads"]}
+                    preset="reads"
                     placeholder="Select READ FILE 1..."
                     value={pairedRead1 ?? ""}
                     onObjectSelect={(object: WorkspaceObject) => {
@@ -374,7 +374,7 @@ export default function TaxonomicClassificationPage() {
                     }}
                   />
                   <WorkspaceObjectSelector
-                    types={["reads"]}
+                    preset="reads"
                     placeholder="Select READ FILE 2..."
                     value={pairedRead2 ?? ""}
                     onObjectSelect={(object: WorkspaceObject) => {
@@ -420,7 +420,7 @@ export default function TaxonomicClassificationPage() {
                   </Button>
                 </div>
                 <WorkspaceObjectSelector
-                  types={["reads"]}
+                  preset="reads"
                   placeholder="Select READ FILE..."
                   value={singleRead ?? ""}
                   onObjectSelect={(object: WorkspaceObject) => {

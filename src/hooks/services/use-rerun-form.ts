@@ -12,6 +12,7 @@ import { apiFetch } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth/types";
 import type {
   ServiceFormApi,
+  ServiceFormField,
   ServiceLibraryKind,
   ServiceRerunConfig,
 } from "@/lib/services/service-definition";
@@ -116,9 +117,13 @@ export function useRerunForm<
     if (fields) {
       for (const field of fields) {
         const value = rerunData[field];
-        // `as never` matches tanstack-form's setFieldValue typing, which expects
-        // a value whose type is derived from the field path. The field is declared in T.
-        if (value !== undefined) form.setFieldValue(field, value as never);
+        if (value !== undefined) {
+          const formField = field as ServiceFormField<TForm>;
+          form.setFieldValue(
+            formField,
+            value as TForm[typeof formField],
+          );
+        }
       }
     }
 
@@ -143,12 +148,15 @@ export function useRerunForm<
     if (!defaultJobFolder) return;
     if (rerunData) return;
 
-    const currentValue = form.getFieldValue("output_path") ?? "";
+    const outputPathField = "output_path" as ServiceFormField<TForm>;
+    const currentValue = form.getFieldValue(outputPathField) ?? "";
     if (currentValue !== "") return;
 
     defaultPathApplied.current = true;
-    // `as never` — see comment in the rerun effect above.
-    form.setFieldValue("output_path", defaultJobFolder as never);
+    form.setFieldValue(
+      outputPathField,
+      defaultJobFolder as TForm[typeof outputPathField],
+    );
   }, [defaultJobFolder, rerunData, form, defaultOutputPath]);
 
   return { rerunData };

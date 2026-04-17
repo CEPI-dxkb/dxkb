@@ -285,7 +285,7 @@ export default function GenomeAlignmentServicePage() {
               <div className="flex items-start gap-2">
                 <div className="flex-1">
                   <WorkspaceObjectSelector
-                    types={["genome_group"]}
+                    preset="genomeGroup"
                     placeholder="Select a genome group from your workspace"
                     onObjectSelect={handleGenomeGroupSelect}
                     onSelectedObjectChange={setSelectedGenomeGroup}

@@ -8,6 +8,7 @@ import { workspaceNavItems, type WorkspaceNavItem } from "@/components/navbars/n
 import { NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { getRecentFolders, getWorkspaceFolderDisplayName } from "@/lib/recent-workspace-folders";
 import { buildEncodedSegmentPath, encodeWorkspaceSegment, parsePathSegments, workspaceUsername } from "@/lib/utils";
 
@@ -42,7 +43,7 @@ export function WorkspaceDropdownContent({
   wsUsername,
 }: WorkspaceDropdownContentProps) {
   const { data: favoritePaths = [], isLoading: favoritesLoading } = useQuery({
-    queryKey: ["workspace-favorites", wsUsername],
+    queryKey: workspaceQueryKeys.favorites(wsUsername),
     queryFn: () => loadFavorites(wsUsername),
     enabled: isAuthenticated && !!wsUsername,
     staleTime: 2 * 60 * 1000,

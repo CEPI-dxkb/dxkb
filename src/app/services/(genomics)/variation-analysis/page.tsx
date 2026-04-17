@@ -56,7 +56,7 @@ import {
   RequiredFormLabel,
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { Spinner } from "@/components/ui/spinner";
 import {

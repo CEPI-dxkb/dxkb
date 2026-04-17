@@ -20,14 +20,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceItemIcon } from "./workspace-item-icon";
 import { WorkspaceBrowserItem } from "@/types/workspace-browser";
-import { WorkspaceApiClient } from "@/lib/services/workspace/client";
+import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import { toWorkspaceBrowserItem } from "@/lib/services/workspace/domain";
 import { useSharedWithUser, useUserWorkspaces } from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
 import { hasWriteAccess, formatDate, formatFileSize } from "@/lib/services/workspace/helpers";
 import { ChevronRight, FolderUp } from "lucide-react";
 import { isFolderType, isFolder } from "@/lib/services/workspace/utils";
-
-const client = new WorkspaceApiClient();
 
 /** Derive username (e.g. "user") from workspace root path (e.g. "/user@bvbrc"). */
 function usernameFromWorkspaceRoot(workspaceRoot: string): string {
@@ -38,14 +37,6 @@ function normalizePath(path: string | null | undefined): string {
   if (!path) return "/";
   const trimmed = path.replace(/\/+$/, "");
   return trimmed || "/";
-}
-
-async function fetchListByPath(fullPath: string): Promise<WorkspaceBrowserItem[]> {
-  const results = await client.makeRequest<WorkspaceBrowserItem[]>(
-    "Workspace.ls",
-    [{ paths: [fullPath], includeSubDirs: false, recursive: false }],
-  );
-  return results ?? [];
 }
 
 function _MiniBrowserBreadcrumbs({
@@ -151,9 +142,13 @@ export function WorkspaceMiniBrowser({
     enabled: isAtRoot && !!username,
   });
 
+  const repository = useWorkspaceRepository("authenticated");
   const pathQuery = useQuery({
     queryKey: ["workspace-mini-browser", currentPath],
-    queryFn: () => fetchListByPath(currentPath),
+    queryFn: async () => {
+      const items = await repository.listDirectory({ path: currentPath });
+      return items.map(toWorkspaceBrowserItem) as WorkspaceBrowserItem[];
+    },
     enabled: !!currentPath && !isAtRoot,
     staleTime: 60 * 1000,
   });

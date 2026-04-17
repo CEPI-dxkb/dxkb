@@ -45,7 +45,7 @@ import {
 } from "@/lib/forms/(viral-tools)/subspecies-classification/subspecies-classification-form-utils";
 import { subspeciesClassificationService } from "@/lib/forms/(viral-tools)/subspecies-classification/subspecies-classification-service";
 
-import type { WorkspaceObject } from "@/lib/workspace-client";
+import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 
 const quickReference =

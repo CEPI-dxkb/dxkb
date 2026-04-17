@@ -41,7 +41,7 @@ import {
   RequiredFormLabel,
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";

@@ -4,22 +4,22 @@ import { useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
-import type { WorkspaceApiClient } from "@/lib/services/workspace/client";
-import type { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
-import type { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
+import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import {
+  toWorkspaceBrowserItem,
+  WorkspaceApiError,
+} from "@/lib/services/workspace/domain";
 import {
   getFolderPathsFromItems,
   getNonEmptyFolderPaths,
   ensureDestinationWriteAccess,
 } from "@/lib/services/workspace/helpers";
 import { isFolder } from "@/lib/services/workspace/utils";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { sanitizePathSegment } from "@/lib/utils";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
 
 export interface UseWorkspaceDialogHandlersOptions {
-  workspaceCrud: WorkspaceCrudMethods;
-  workspaceDownload: WorkspaceDownloadMethods;
-  workspaceClient: WorkspaceApiClient;
   currentDirectoryPath: string;
   currentUserWorkspaceRoot: string;
   username: string;
@@ -30,18 +30,18 @@ export interface UseWorkspaceDialogHandlersOptions {
 function invalidateWorkspaceQueries(queryClient: ReturnType<typeof useQueryClient>) {
   void queryClient.invalidateQueries({ queryKey: ["workspace-browser"] });
   void queryClient.invalidateQueries({ queryKey: ["workspace-list-path"] });
+  void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
 }
 
 export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOptions) {
   const {
-    workspaceCrud,
-    workspaceClient,
     currentDirectoryPath,
     currentUserWorkspaceRoot,
     username,
     clearSelection,
   } = options;
 
+  const repository = useWorkspaceRepository("authenticated");
   const { state, dispatch } = useWorkspaceDialog();
   const { activeDialog } = state;
   const queryClient = useQueryClient();
@@ -53,19 +53,17 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
     const folderPaths = getFolderPathsFromItems(deleteItems);
     if (folderPaths.length === 0) return;
     const controller = new AbortController();
-    const listFolder = (p: string) =>
-      workspaceClient.makeRequest<WorkspaceBrowserItem[]>(
-        "Workspace.ls",
-        [{ paths: [p], includeSubDirs: false, recursive: false }],
-        { silent: true },
-      );
+    const listFolder = async (p: string) => {
+      const items = await repository.listDirectory({ path: p, silent: true });
+      return items.map(toWorkspaceBrowserItem);
+    };
     void getNonEmptyFolderPaths(folderPaths, listFolder, {
       signal: controller.signal,
     })
       .then((paths) => dispatch({ type: "SET_DELETE_NON_EMPTY_PATHS", paths }))
       .catch(() => { /* abort errors ignored */ });
     return () => controller.abort();
-  }, [deleteItems, workspaceClient, dispatch]);
+  }, [deleteItems, repository, dispatch]);
 
   const deleteMutation = useMutation({
     mutationFn: async (items: WorkspaceBrowserItem[]) => {
@@ -73,11 +71,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
         .map((item) => item.path)
         .filter((p): p is string => Boolean(p));
       if (paths.length === 0) return;
-      await workspaceCrud.delete({
-        objects: paths,
-        force: true,
-        deleteDirectories: true,
-      });
+      await repository.delete(paths, { force: true, deleteDirectories: true });
     },
     onSuccess: () => {
       clearSelection();
@@ -101,11 +95,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       firstDestName: string;
       destinationPath: string;
     }) => {
-      await workspaceCrud.copyByPaths({
-        objects,
-        recursive: true,
-        move: isMove,
-      });
+      await repository.copy({ pairs: objects, recursive: true, move: isMove });
       return { objects, isMove };
     },
     onSuccess: ({ objects, isMove }, { firstDestName, destinationPath }) => {
@@ -126,15 +116,8 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       });
     },
     onError: (err, { isMove, firstDestName, destinationPath }) => {
-      const apiResponse = (err as Error & { apiResponse?: unknown }).apiResponse;
-      const errorCode =
-        apiResponse != null &&
-        typeof apiResponse === "object" &&
-        "error" in apiResponse &&
-        typeof (apiResponse as { error?: { code?: number } }).error === "object"
-          ? (apiResponse as { error: { code?: number } }).error?.code
-          : (apiResponse as { code?: number } | null)?.code;
-      const isOverwriteError = errorCode === -32603;
+      const apiError = err instanceof WorkspaceApiError ? err : null;
+      const isOverwriteError = apiError?.code === -32603;
 
       let message: string;
       let description: string | undefined;
@@ -149,6 +132,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       } else {
         message =
           err instanceof Error ? err.message : isMove ? "Move failed." : "Copy failed.";
+        const apiResponse = apiError?.apiResponse;
         description =
           apiResponse !== undefined && apiResponse !== null
             ? typeof apiResponse === "string"
@@ -165,7 +149,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
     mutationFn: async (safeName: string) => {
       const parent = currentDirectoryPath.replace(/\/+$/, "") || currentDirectoryPath;
       const newFolderPath = `${parent}/${safeName}`;
-      await workspaceCrud.createFolderByPath(newFolderPath);
+      await repository.createFolder(newFolderPath);
       return safeName;
     },
     onSuccess: (safeName) => {
@@ -184,7 +168,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
   const createWorkspaceMutation = useMutation({
     mutationFn: async (safeName: string) => {
       const fullPath = `/${username}/${safeName}/`;
-      await workspaceCrud.createFolderByPath(fullPath);
+      await repository.createFolder(fullPath);
       return safeName;
     },
     onSuccess: (safeName) => {
@@ -209,7 +193,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       newType: string;
       itemName?: string;
     }) => {
-      await workspaceCrud.updateObjectType(path, newType);
+      await repository.updateObjectType(path, newType);
     },
     onSuccess: (_, { newType, itemName }) => {
       clearSelection();
@@ -264,12 +248,10 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       );
       return;
     }
-    const listFolder = (p: string) =>
-      workspaceClient.makeRequest<WorkspaceBrowserItem[]>(
-        "Workspace.ls",
-        [{ paths: [p], includeSubDirs: false, recursive: false }],
-        { silent: true },
-      );
+    const listFolder = async (p: string) => {
+      const items = await repository.listDirectory({ path: p, silent: true });
+      return items.map(toWorkspaceBrowserItem);
+    };
     const result = await ensureDestinationWriteAccess(base, listFolder);
     if (!result.ok) {
       toast.error(result.errorMessage);

@@ -21,8 +21,8 @@ import {
 import { DetailPanel } from "@/components/detail-panel";
 import { WorkspaceItemIcon } from "@/components/workspace/workspace-item-icon";
 import { formatDate, formatOwner } from "@/lib/services/workspace/helpers";
-import { WorkspaceApiClient } from "@/lib/services/workspace/client";
-import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
+import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { editTypeOptions } from "@/lib/services/workspace/types";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
@@ -38,11 +38,7 @@ export function WorkspaceItemDetails({
   children,
 }: WorkspaceItemDetailsProps) {
   const queryClient = useQueryClient();
-
-  const workspaceCrud = useMemo(
-    () => new WorkspaceCrudMethods(new WorkspaceApiClient()),
-    [],
-  );
+  const repository = useWorkspaceRepository("authenticated");
 
   const typeOptions = useMemo(() => {
     const currentType = item.type ?? "";
@@ -55,11 +51,12 @@ export function WorkspaceItemDetails({
 
   const editTypeMutation = useMutation({
     mutationFn: async (newType: string) => {
-      await workspaceCrud.updateObjectType(item.path, newType);
+      await repository.updateObjectType(item.path, newType);
     },
     onSuccess: (_, newType) => {
       void queryClient.invalidateQueries({ queryKey: ["workspace-browser"] });
       void queryClient.invalidateQueries({ queryKey: ["workspace-list-path"] });
+      void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
       toast.success("Object type updated", {
         description: `${item.name} is now type "${newType}".`,
       });

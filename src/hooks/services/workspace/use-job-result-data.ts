@@ -20,7 +20,7 @@ interface UseJobResultDataOptions {
 
 /**
  * For a resolved job_result path, computes the dot-folder path and fetches its metadata (Workspace.get).
- * The view should use useWorkspaceListByPath(dotPath) to get the folder contents for the table.
+ * The view uses `useWorkspaceDirectory({ kind: "jobResult", ... })` to list the dot-folder contents.
  */
 export function useJobResultData({
   resolvedJobMeta,

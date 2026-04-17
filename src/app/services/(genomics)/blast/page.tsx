@@ -36,7 +36,7 @@ import {
   RequiredFormCardTitle,
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { blastPrecomputedDatabases } from "@/types/services";
 import {

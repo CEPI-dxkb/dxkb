@@ -1,8 +1,13 @@
 // Core workspace object types
+//
+// `type` is the raw string returned by the Workspace API (folder, job_result,
+// reads, genome_group, etc.). It is intentionally not narrowed here — the
+// rules for which types count as folder-like live in `./utils` and the
+// canonical `WorkspaceItem` in `./domain.ts`.
 export interface WorkspaceObject {
   id: string;
   name: string;
-  type: "file" | "folder" | "job";
+  type: string;
   size?: number;
   modified?: string;
   status?: string;

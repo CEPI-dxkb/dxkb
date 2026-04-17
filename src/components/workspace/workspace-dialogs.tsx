@@ -1,7 +1,6 @@
 "use client";
 
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
-import type { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
 import { CopyToDialog } from "./copy-to-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
@@ -13,7 +12,6 @@ import { UploadDialog } from "./upload-dialog";
 interface WorkspaceDialogsProps {
   currentUserWorkspaceRoot: string;
   currentDirectoryPath: string;
-  workspaceDownload: WorkspaceDownloadMethods;
   isDialogLoading: boolean;
   onConfirmDelete: () => Promise<void>;
   onCopyConfirm: (destPath: string) => Promise<void>;
@@ -26,7 +24,6 @@ interface WorkspaceDialogsProps {
 export function WorkspaceDialogs({
   currentUserWorkspaceRoot,
   currentDirectoryPath,
-  workspaceDownload,
   isDialogLoading,
   onConfirmDelete,
   onCopyConfirm,
@@ -85,7 +82,6 @@ export function WorkspaceDialogs({
         onOpenChange={closeDialog}
         paths={activeDialog?.type === "downloadOptions" ? activeDialog.paths : []}
         defaultArchiveName={activeDialog?.type === "downloadOptions" ? activeDialog.defaultName : ""}
-        downloadMethods={workspaceDownload}
       />
       <DeleteConfirmDialog
         open={activeDialog?.type === "delete"}

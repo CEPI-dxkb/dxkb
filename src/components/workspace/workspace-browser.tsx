@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspacePanel } from "@/contexts/workspace-panel-context";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
 import { useWorkspacePathResolve } from "@/hooks/services/workspace/use-workspace-path-resolve";
-import { useWorkspaceData } from "@/hooks/services/workspace/use-workspace-data";
+import { useWorkspaceBrowserDirectory } from "@/hooks/services/workspace/use-workspace-browser-directory";
 import { useWorkspaceFilteredItems } from "@/hooks/services/workspace/use-workspace-filtered-items";
 import { useWorkspaceSelection } from "@/hooks/services/workspace/use-workspace-selection";
 import { useWorkspaceNavigation } from "@/hooks/services/workspace/use-workspace-navigation";
@@ -18,9 +18,11 @@ import { useWorkspaceActionDispatch } from "@/hooks/services/workspace/use-works
 import { useWorkspaceDialogHandlers } from "@/hooks/services/workspace/use-workspace-dialog-handlers";
 import { JobMetadataCard } from "./job-metadata-card";
 import { useJobResultData } from "@/hooks/services/workspace/use-job-result-data";
-import { useWorkspaceListByPath } from "@/hooks/services/workspace/use-shared-with-user";
 import { getDotPathRelative } from "@/lib/services/workspace/helpers";
-import { safeDecode } from "@/lib/url";
+import {
+  canWriteToCurrentDir as computeCanWriteToCurrentDir,
+  computeWorkspacePaths,
+} from "@/lib/services/workspace/path-utils";
 import { WorkspaceBreadcrumbs } from "./workspace-breadcrumbs";
 import { WorkspaceToolbar } from "./workspace-toolbar";
 import {
@@ -31,17 +33,14 @@ import { WorkspaceActionBar, type WorkspaceActionId } from "./workspace-action-b
 import { WorkspaceShell } from "./workspace-shell";
 import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
-import { WorkspaceDownloadMethods } from "@/lib/services/workspace/methods/download";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { addRecentFolder } from "@/lib/recent-workspace-folders";
-import { usePublicWorkspaceData, type PublicWorkspaceLevel } from "@/hooks/services/workspace/use-public-workspace-data";
 import { WorkspaceBrowserItem, WorkspaceBrowserSort, type WorkspaceViewMode } from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, noop, workspaceUsername } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceApiClient } from "@/lib/services/workspace/client";
-import { WorkspaceCrudMethods } from "@/lib/services/workspace/methods/crud";
 
-const emptyItems: WorkspaceBrowserItem[] = [];
+type PublicWorkspaceLevel = "root" | "user" | "path";
 
 interface WorkspaceBrowserProps {
   /** "home" = current user's home; "shared" = shared-with-me / shared folder view; "public" = public browsing */
@@ -91,10 +90,6 @@ export function WorkspaceBrowser({
   const { state: dialogState, dispatch: dialogDispatch } = useWorkspaceDialog();
 
   const workspaceClient = useMemo(() => new WorkspaceApiClient(), []);
-  const workspaceCrud = useMemo(
-    () => new WorkspaceCrudMethods(workspaceClient),
-    [workspaceClient],
-  );
   const workspaceDownload = useMemo(
     () => new WorkspaceDownloadMethods(workspaceClient),
     [workspaceClient],
@@ -137,12 +132,6 @@ export function WorkspaceBrowser({
     return pathSegments.length > 1 ? "path" : "user";
   }, [isPublic, username, path]);
 
-  const publicData = usePublicWorkspaceData({
-    level: isPublic ? publicLevel : "root",
-    username: isPublic ? username : undefined,
-    fullPath: isPublic && publicLevel === "path" ? fullPath : undefined,
-  });
-
   const resolveQuery = useWorkspacePathResolve({
     fullPath: currentFullPath,
     enabled: !isPublic && !!currentFullPath,
@@ -153,7 +142,12 @@ export function WorkspaceBrowser({
     path.trim() !== "" &&
     resolveQuery.data?.type === "job_result";
 
-  const authenticatedData = useWorkspaceData({
+  const { dotPath } = useJobResultData({
+    resolvedJobMeta: resolveQuery.data ?? null,
+    enabled: isJobResultView,
+  });
+
+  const browserDirectory = useWorkspaceBrowserDirectory({
     mode,
     username,
     path,
@@ -161,44 +155,17 @@ export function WorkspaceBrowser({
     currentUser,
     isJobResultView,
     isAtSharedRoot,
+    isPublic,
+    publicLevel,
+    jobDotPath: dotPath,
     pathResolveFailed: resolveQuery.isError,
     initialSharedItems,
     initialPathItems,
     initialPermissions,
   });
 
-  const { dotPath } = useJobResultData({
-    resolvedJobMeta: resolveQuery.data ?? null,
-    enabled: isJobResultView,
-  });
-  const dotPathNormalized = dotPath.startsWith("/") ? dotPath : `/${dotPath}`;
-  const jobListQuery = useWorkspaceListByPath({
-    fullPath: dotPathNormalized,
-    enabled: isJobResultView && !!dotPath,
-  });
-
   const { items, isLoading, isFetching, error, refetch, memberCountByPath, currentDirPermissions } =
-    isPublic
-      ? {
-          items: publicData.items,
-          isLoading: publicData.isLoading,
-          isFetching: publicData.isFetching,
-          error: publicData.error,
-          refetch: publicData.refetch,
-          memberCountByPath: undefined,
-          currentDirPermissions: undefined,
-        }
-      : isJobResultView
-        ? {
-            items: jobListQuery.data ?? emptyItems,
-            isLoading: jobListQuery.isLoading,
-            isFetching: jobListQuery.isFetching,
-            error: jobListQuery.error,
-            refetch: () => void jobListQuery.refetch(),
-            memberCountByPath: undefined,
-            currentDirPermissions: undefined,
-          }
-        : authenticatedData;
+    browserDirectory;
 
   const processedItems = useWorkspaceFilteredItems(items, {
     showHiddenFiles: isJobResultView ? true : showHiddenFiles,
@@ -232,41 +199,45 @@ export function WorkspaceBrowser({
     currentUser,
     myWorkspaceRoot,
     queryClient,
-    workspaceDownload,
-    workspaceClient,
     items,
   });
 
-  const currentUserWorkspaceRoot =
-    myWorkspaceRoot ? `/${myWorkspaceRoot}` : `/${currentUser}`;
-  const currentDirectoryPath = isHome
-    ? `${currentUserWorkspaceRoot}/home${fullPath ? fullPath : ""}`
-    : fullPath;
+  const { currentDirectoryPath, currentUserWorkspaceRoot } = useMemo(
+    () =>
+      computeWorkspacePaths({
+        mode: isPublic ? "public" : isHome ? "home" : "shared",
+        username,
+        path,
+        myWorkspaceRoot,
+      }),
+    [isPublic, isHome, username, path, myWorkspaceRoot],
+  );
 
   useEffect(() => {
     if (isPublic || !currentDirectoryPath || mode !== "home") return;
     addRecentFolder(currentDirectoryPath, currentUserWorkspaceRoot);
   }, [isPublic, currentDirectoryPath, mode, currentUserWorkspaceRoot]);
 
-  const canWriteToCurrentDir = useMemo(() => {
-    if (isPublic || !fullPath) return false;
-    // User owns this path (created it themselves)
-    const decodedFullPath = safeDecode(fullPath);
-    const isOwnedPath =
-      decodedFullPath.startsWith(`/${myWorkspaceRoot}/`) ||
-      decodedFullPath.startsWith(`/${currentUser}/`);
-    if (isOwnedPath) return true;
-    // Folder shared to the user with write access
-    if (!currentDirPermissions) return false;
-    const perms = currentDirPermissions[decodedFullPath] ?? currentDirPermissions[fullPath];
-    if (!perms) return false;
-    const writePerms = ["w", "a", "o"];
-    return perms.some(
-      ([user, perm]) =>
-        (user === currentUser || user === fullWorkspaceUsername) &&
-        writePerms.includes(perm),
-    );
-  }, [isPublic, currentDirPermissions, fullPath, currentUser, fullWorkspaceUsername, myWorkspaceRoot]);
+  const canWriteToCurrentDir = useMemo(
+    () =>
+      computeCanWriteToCurrentDir({
+        mode: isPublic ? "public" : isHome ? "home" : "shared",
+        fullPath,
+        currentUser,
+        fullWorkspaceUsername,
+        myWorkspaceRoot,
+        currentDirPermissions,
+      }),
+    [
+      isPublic,
+      isHome,
+      fullPath,
+      currentUser,
+      fullWorkspaceUsername,
+      myWorkspaceRoot,
+      currentDirPermissions,
+    ],
+  );
 
   const {
     isDialogLoading,
@@ -276,9 +247,6 @@ export function WorkspaceBrowser({
     handleCreateWorkspace,
     handleEditTypeConfirm,
   } = useWorkspaceDialogHandlers({
-    workspaceCrud,
-    workspaceDownload,
-    workspaceClient,
     currentDirectoryPath,
     currentUserWorkspaceRoot,
     username,

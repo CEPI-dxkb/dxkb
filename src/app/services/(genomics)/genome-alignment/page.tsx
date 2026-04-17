@@ -25,7 +25,7 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { GenomeNameSelector } from "@/components/services/genome-name-selector";

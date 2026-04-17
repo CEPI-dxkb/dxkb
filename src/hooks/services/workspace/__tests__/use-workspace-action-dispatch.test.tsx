@@ -1,8 +1,28 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { QueryClient } from "@tanstack/react-query";
-import { createQueryClientWrapper } from "@/test-helpers/api-route-helpers";
+import type { ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
+import { InMemoryWorkspaceRepository } from "@/lib/services/workspace/adapters/in-memory-workspace-repository";
+import { WorkspaceRepositoryProvider } from "@/contexts/workspace-repository-context";
 import { useWorkspaceActionDispatch } from "@/hooks/services/workspace/use-workspace-action-dispatch";
+
+function makeWrapper(repo: InMemoryWorkspaceRepository) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <WorkspaceRepositoryProvider value={{ authenticated: repo, public: repo }}>
+          {children}
+        </WorkspaceRepositoryProvider>
+      </QueryClientProvider>
+    );
+  };
+}
 
 const { mockDispatch } = vi.hoisted(() => ({ mockDispatch: vi.fn() }));
 vi.mock("@/contexts/workspace-dialog-context", () => ({
@@ -58,10 +78,6 @@ const makeItem = (
   }) as WorkspaceBrowserItem;
 
 describe("useWorkspaceActionDispatch", () => {
-  const mockGetDownloadUrls = vi.fn();
-  const mockGetArchiveUrl = vi.fn();
-  const mockMakeRequest = vi.fn();
-
   function createDefaultOptions() {
     return {
       currentUser: "user@bvbrc",
@@ -72,16 +88,13 @@ describe("useWorkspaceActionDispatch", () => {
           mutations: { retry: false },
         },
       }),
-      workspaceDownload: {
-        getDownloadUrls: mockGetDownloadUrls,
-        getArchiveUrl: mockGetArchiveUrl,
-      },
-      workspaceClient: {
-        makeRequest: mockMakeRequest,
-      },
       items: [] as WorkspaceBrowserItem[],
     };
   }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
   it("dispatches OPEN_DELETE for delete action", async () => {
     const options = createDefaultOptions();
@@ -89,7 +102,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -108,7 +121,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -128,7 +141,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -148,7 +161,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -167,7 +180,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -187,7 +200,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -211,7 +224,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -229,7 +242,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -245,15 +258,16 @@ describe("useWorkspaceActionDispatch", () => {
   });
 
   it("triggers download mutation for single downloadable file", async () => {
-    mockGetDownloadUrls.mockResolvedValue([["https://example.com/download/file.txt"]]);
-
     const fileItem = makeItem({ name: "data.txt", path: "/user@bvbrc/home/data.txt", type: "txt" });
     const options = createDefaultOptions();
     options.items = [fileItem];
+    const repo = new InMemoryWorkspaceRepository({
+      downloadUrls: { [fileItem.path]: ["https://example.com/download/file.txt"] },
+    });
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(repo) },
     );
 
     await act(async () => {
@@ -261,7 +275,8 @@ describe("useWorkspaceActionDispatch", () => {
     });
 
     await waitFor(() => {
-      expect(mockGetDownloadUrls).toHaveBeenCalledWith([fileItem.path]);
+      const call = repo.calls.find((c) => c.method === "getDownloadUrls");
+      expect(call).toEqual({ method: "getDownloadUrls", paths: [fileItem.path] });
     });
   });
 
@@ -272,7 +287,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -294,7 +309,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -308,10 +323,11 @@ describe("useWorkspaceActionDispatch", () => {
   it("ignores unknown action ids", async () => {
     const options = createDefaultOptions();
     const selection = [makeItem({})];
+    const repo = new InMemoryWorkspaceRepository();
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(repo) },
     );
 
     await act(async () => {
@@ -319,7 +335,7 @@ describe("useWorkspaceActionDispatch", () => {
     });
 
     expect(mockDispatch).not.toHaveBeenCalled();
-    expect(mockGetDownloadUrls).not.toHaveBeenCalled();
+    expect(repo.calls.some((c) => c.method === "getDownloadUrls")).toBe(false);
   });
 
   it("download: folder item dispatches OPEN_DOWNLOAD_OPTIONS", async () => {
@@ -329,7 +345,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -354,7 +370,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -375,7 +391,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -400,7 +416,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -425,7 +441,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {
@@ -445,7 +461,7 @@ describe("useWorkspaceActionDispatch", () => {
 
     const { result } = renderHook(
       () => useWorkspaceActionDispatch(options as never),
-      { wrapper: createQueryClientWrapper() },
+      { wrapper: makeWrapper(new InMemoryWorkspaceRepository()) },
     );
 
     await act(async () => {

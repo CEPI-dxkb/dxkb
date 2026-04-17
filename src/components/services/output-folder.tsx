@@ -149,7 +149,7 @@ const OutputFolder = ({
         <div className="flex gap-2">
           {variant === "default" && (
             <WorkspaceObjectSelector
-              types={["folder"]}
+              preset="folder"
               placeholder="Search for folders..."
               value={value}
               onObjectSelect={(object) => {

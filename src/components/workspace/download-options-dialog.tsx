@@ -18,10 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  WorkspaceDownloadMethods,
-} from "@/lib/services/workspace/methods/download";
-import { workspaceApi } from "@/lib/services/workspace/client";
+import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { toast } from "sonner";
 
 const archiveTypeOptions = [{ value: "zip", label: "zip" }];
@@ -34,8 +31,6 @@ export interface DownloadOptionsDialogProps {
   onOpenChange: (open: boolean) => void;
   paths: string[];
   defaultArchiveName?: string;
-  /** Injected for consistency and testability; uses default client when omitted. */
-  downloadMethods?: WorkspaceDownloadMethods;
 }
 
 export function DownloadOptionsDialog({
@@ -43,13 +38,8 @@ export function DownloadOptionsDialog({
   onOpenChange,
   paths,
   defaultArchiveName = "",
-  downloadMethods: downloadMethodsProp,
 }: DownloadOptionsDialogProps) {
-  const defaultDownloadMethods = React.useMemo(
-    () => new WorkspaceDownloadMethods(workspaceApi),
-    [],
-  );
-  const downloadMethods = downloadMethodsProp ?? defaultDownloadMethods;
+  const repository = useWorkspaceRepository("authenticated");
 
   const [archiveName, setArchiveName] = React.useState("");
   const [archiveType, setArchiveType] = React.useState("zip");
@@ -97,11 +87,11 @@ export function DownloadOptionsDialog({
 
     setIsSubmitting(true);
     try {
-      const [url] = await downloadMethods.getArchiveUrl({
-        objects: paths,
+      const [url] = await repository.getArchiveUrl({
+        paths,
         recursive: true,
-        archive_name: nameWithExt,
-        archive_type: archiveType,
+        archiveName: nameWithExt,
+        archiveType,
       });
       if (url) {
         window.location.assign(url);
@@ -116,7 +106,7 @@ export function DownloadOptionsDialog({
     } finally {
       setIsSubmitting(false);
     }
-  }, [archiveName, archiveType, paths, onOpenChange, downloadMethods]);
+  }, [archiveName, archiveType, paths, onOpenChange, repository]);
 
   const canSubmit =
     archiveName.trim().length > 0 && !isSubmitting && paths.length > 0;
@@ -177,7 +167,7 @@ export function DownloadOptionsDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectGroup> 
+                <SelectGroup>
                   {archiveTypeOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}

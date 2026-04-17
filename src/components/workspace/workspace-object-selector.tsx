@@ -20,10 +20,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useWorkspaceObjects } from "@/hooks/services/workspace/use-workspace-objects";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { useWorkspaceObjectSearch } from "@/hooks/services/workspace/use-workspace-object-search";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { validateWorkspaceObjectTypes } from "@/lib/services/workspace/helpers";
 import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
+import {
+  resolveSelectorPreset,
+  type WorkspaceSelectorPreset,
+} from "./workspace-selector-presets";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +39,8 @@ interface WorkspaceObjectSelectorProps {
   className?: string;
   path?: string;
   types?: ValidWorkspaceObjectTypes | ValidWorkspaceObjectTypes[];
+  /** Optional preset that supplies `types`; if set, takes precedence over `types`. */
+  preset?: WorkspaceSelectorPreset;
   value?: string;
 }
 
@@ -46,6 +52,7 @@ export function WorkspaceObjectSelector({
   className,
   path = "/home/",
   types,
+  preset,
   value,
 }: WorkspaceObjectSelectorProps) {
   const { user } = useAuth();
@@ -74,25 +81,28 @@ export function WorkspaceObjectSelector({
   const dropdownRef = React.useRef<HTMLDivElement | null>(null);
   const itemRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
-  // Normalize and validate types prop
+  // Effective types come from either the preset or the explicit `types` prop.
+  const effectiveTypes = React.useMemo<
+    ValidWorkspaceObjectTypes[] | undefined
+  >(() => {
+    if (preset) return resolveSelectorPreset(preset);
+    if (!types) return undefined;
+    return Array.isArray(types) ? types : [types];
+  }, [preset, types]);
+
   const validatedTypes = React.useMemo(() => {
-    if (!types) {
-      return undefined;
-    }
-
-    const typesArray = Array.isArray(types) ? types : [types];
-    const { valid, invalid } = validateWorkspaceObjectTypes(typesArray);
-
+    if (!effectiveTypes) return undefined;
+    const { valid, invalid } = validateWorkspaceObjectTypes(effectiveTypes);
     if (invalid.length > 0) {
       return { valid: valid.length > 0 ? valid : undefined, invalid };
     }
     return { valid, invalid: [] as string[] };
-  }, [types]);
+  }, [effectiveTypes]);
 
-  const [prevTypes, setPrevTypes] = React.useState(types);
-  if (prevTypes !== types) {
-    setPrevTypes(types);
-    if (!types) {
+  const [prevTypes, setPrevTypes] = React.useState(effectiveTypes);
+  if (prevTypes !== effectiveTypes) {
+    setPrevTypes(effectiveTypes);
+    if (!effectiveTypes) {
       setValidationError(null);
     } else if (validatedTypes && validatedTypes.invalid.length > 0) {
       const errorMsg = `Invalid upload type(s): ${validatedTypes.invalid.join(", ")}. Valid types include: unspecified, aligned_dna_fasta, reads, contigs, etc.`;
@@ -104,7 +114,7 @@ export function WorkspaceObjectSelector({
 
   const resolvedTypes = validatedTypes?.valid;
 
-  // Use the workspace objects hook
+  // Use the repository-backed object search hook
   const {
     objects,
     filteredObjects,
@@ -113,8 +123,8 @@ export function WorkspaceObjectSelector({
     searchQuery,
     setSearchQuery,
     search,
-  } = useWorkspaceObjects({
-    user: user?.username || "",
+  } = useWorkspaceObjectSearch({
+    username: user?.username || "",
     path,
     types: resolvedTypes,
   });

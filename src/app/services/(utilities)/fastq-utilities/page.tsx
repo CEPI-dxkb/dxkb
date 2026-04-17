@@ -75,7 +75,7 @@ import {
 } from "@/lib/forms/tanstack-library-selection";
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
-import type { WorkspaceObject } from "@/lib/workspace-client";
+import type { WorkspaceObject } from "@/lib/services/workspace/types";
 
 export default function FastqUtilitiesPage() {
   // Read input state

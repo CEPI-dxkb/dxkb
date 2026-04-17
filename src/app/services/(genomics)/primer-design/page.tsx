@@ -49,7 +49,7 @@ import {
 import { primerDesignService } from "@/lib/forms/(genomics)/primer-design/primer-design-service";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 
 export default function PrimerDesignServicePage() {
   const [showAdvanced, setShowAdvanced] = useState(false);

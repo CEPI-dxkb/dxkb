@@ -27,7 +27,7 @@ import {
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { toast } from "sonner";

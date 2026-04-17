@@ -52,7 +52,7 @@ import {
   useTanstackLibrarySelection,
 } from "@/lib/forms/tanstack-library-selection";
 
-import type { WorkspaceObject } from "@/lib/workspace-client";
+import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { Library } from "@/types/services";
 
 const tutorial =

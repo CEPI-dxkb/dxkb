@@ -39,7 +39,7 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceObject } from "@/lib/workspace-client";
+import { WorkspaceObject } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";

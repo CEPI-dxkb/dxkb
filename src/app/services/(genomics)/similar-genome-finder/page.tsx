@@ -27,7 +27,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import type { WorkspaceObject } from "@/lib/workspace-client";
+import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";

@@ -65,23 +65,26 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
     const raw = await this.getRaw(paths, options);
     return paths.map((path, index) => {
       const object = parseWorkspaceGetSingle(raw as unknown[], index);
+      if (!object) return { path, raw, object: null };
+      const parsedTimestamp = object.creation_time
+        ? Date.parse(object.creation_time)
+        : Number.NaN;
       return {
         path,
         raw,
-        object: object
-          ? {
-              id: object.id,
-              name: object.name,
-              path: object.path,
-              type: object.type,
-              size: object.size,
-              ownerId: object.owner_id,
-              createdAt: object.creation_time,
-              userMeta: object.userMeta,
-              autoMeta: object.sysMeta,
-              raw: object,
-            }
-          : null,
+        object: {
+          id: object.id,
+          name: object.name,
+          path: object.path,
+          type: object.type,
+          size: object.size,
+          ownerId: object.owner_id,
+          createdAt: object.creation_time,
+          timestamp: Number.isNaN(parsedTimestamp) ? undefined : parsedTimestamp,
+          userMeta: object.userMeta,
+          autoMeta: object.sysMeta,
+          raw: object,
+        },
       };
     });
   }

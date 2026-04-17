@@ -194,6 +194,7 @@ export function WorkspaceBrowser({
     myWorkspaceRoot,
     queryClient,
     items,
+    isPublic,
   });
 
   const { currentDirectoryPath, currentUserWorkspaceRoot } = useMemo(

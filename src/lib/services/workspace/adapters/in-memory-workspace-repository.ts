@@ -27,6 +27,7 @@ import type {
 type CallRecord =
   | { method: "listDirectory"; input: ListDirectoryInput }
   | { method: "getMetadata"; paths: string[]; options?: WorkspaceReadOptions }
+  | { method: "getRaw"; paths: string[] }
   | { method: "listPermissions"; paths: string[] }
   | { method: "createFolder"; path: string }
   | { method: "createUploadNode"; input: UploadNodeRequest }
@@ -132,7 +133,25 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   private throwIfConfigured(method: CallRecord["method"]): void {
     const err = this.errors[method];
-    if (err) throw err;
+    if (err) {
+      // One-shot: matches the JSDoc on `InMemoryFixtures.errors`.
+      this.errors[method] = undefined;
+      throw err;
+    }
+  }
+
+  private buildMetadata(paths: string[]): WorkspaceMetadata[] {
+    return paths.map((path) => {
+      const normalized = normalize(path);
+      const parent = normalize(path.slice(0, path.lastIndexOf("/")) || "/");
+      const siblings = this.directories[parent] ?? [];
+      const name = normalized.split("/").filter(Boolean).pop() ?? "";
+      const fixture = siblings.find((f) => f.name === name);
+      const object = fixture
+        ? toWorkspaceItem(toBrowserItem(parent, fixture, siblings.indexOf(fixture)))
+        : null;
+      return { path: normalized, object, raw: object?.raw ?? null };
+    });
   }
 
   async listDirectory(input: ListDirectoryInput): Promise<WorkspaceItem[]> {
@@ -157,22 +176,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   ): Promise<WorkspaceMetadata[]> {
     this.calls.push({ method: "getMetadata", paths, options });
     this.throwIfConfigured("getMetadata");
-    return paths.map((path) => {
-      const normalized = normalize(path);
-      const parent = normalize(path.slice(0, path.lastIndexOf("/")) || "/");
-      const siblings = this.directories[parent] ?? [];
-      const name = normalized.split("/").filter(Boolean).pop() ?? "";
-      const fixture = siblings.find((f) => f.name === name);
-      const object = fixture
-        ? toWorkspaceItem(toBrowserItem(parent, fixture, siblings.indexOf(fixture)))
-        : null;
-      return { path: normalized, object, raw: object?.raw ?? null };
-    });
+    return this.buildMetadata(paths);
   }
 
   async getRaw(paths: string[]): Promise<unknown> {
-    this.calls.push({ method: "getMetadata", paths });
-    return this.getMetadata(paths).then((metas) => metas.map((m) => m.raw));
+    this.calls.push({ method: "getRaw", paths });
+    this.throwIfConfigured("getRaw");
+    return this.buildMetadata(paths).map((m) => m.raw);
   }
 
   async listPermissions(paths: string[]): Promise<ListPermissionsResult> {

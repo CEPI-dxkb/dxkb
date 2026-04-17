@@ -21,6 +21,8 @@ export interface UseWorkspaceActionDispatchOptions {
   myWorkspaceRoot: string;
   queryClient: QueryClient;
   items: WorkspaceBrowserItem[];
+  /** When true, dispatch download through the public (unauthenticated) repository. */
+  isPublic?: boolean;
 }
 
 export function useWorkspaceActionDispatch({
@@ -28,8 +30,9 @@ export function useWorkspaceActionDispatch({
   myWorkspaceRoot,
   queryClient,
   items,
+  isPublic = false,
 }: UseWorkspaceActionDispatchOptions) {
-  const repository = useWorkspaceRepository("authenticated");
+  const repository = useWorkspaceRepository(isPublic ? "public" : "authenticated");
   const { dispatch } = useWorkspaceDialog();
 
   const favoriteMutation = useMutation({

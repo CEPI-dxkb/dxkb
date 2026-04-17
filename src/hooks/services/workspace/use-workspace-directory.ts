@@ -52,7 +52,13 @@ function buildHomePath(username: string, relativePath: string): string {
 }
 
 function normalizeFullPath(raw: string): string {
-  const decoded = decodeURIComponent(raw);
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    // Leave malformed percent-encodings as-is rather than crashing the render.
+    decoded = raw;
+  }
   return decoded.startsWith("/") ? decoded : `/${decoded}`;
 }
 

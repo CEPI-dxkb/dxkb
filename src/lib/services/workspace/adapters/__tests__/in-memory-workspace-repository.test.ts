@@ -106,4 +106,19 @@ describe("InMemoryWorkspaceRepository", () => {
     const urls = await repo.getDownloadUrls(["/x/y/z"]);
     expect(urls[0]?.[0]).toContain("/x/y/z");
   });
+
+  it("raw tuple id matches object.id for non-first siblings", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/u/home": [
+          { name: "first.fa", type: "contigs" },
+          { name: "second.fa", type: "contigs" },
+        ],
+      },
+    });
+    const [meta] = await repo.getMetadata(["/u/home/second.fa"]);
+    const rawTuple = (meta?.raw as unknown[][])?.[0];
+    expect(meta?.object?.id).toBe("/u/home/second.fa#1");
+    expect(rawTuple?.[4]).toBe("/u/home/second.fa#1");
+  });
 });

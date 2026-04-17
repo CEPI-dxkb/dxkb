@@ -101,7 +101,11 @@ function toBrowserItem(
 // Mirrors the `Workspace.get` tuple layout (see `parseWorkspaceGetSingle`), so
 // `WorkspaceMetadata.raw` / `getRaw()` carry the same shape the HTTP adapter
 // produces and tests can assert against it.
-function toGetTuple(parent: string, fixture: InMemoryFixtureItem): unknown[] {
+function toGetTuple(
+  parent: string,
+  fixture: InMemoryFixtureItem,
+  index: number,
+): unknown[] {
   const parentNormalized = normalize(parent);
   const parentWithSlash =
     parentNormalized === "/" ? "/" : `${parentNormalized}/`;
@@ -111,7 +115,7 @@ function toGetTuple(parent: string, fixture: InMemoryFixtureItem): unknown[] {
     fixture.type,
     parentWithSlash,
     createdAt,
-    `${parentWithSlash}${fixture.name}#0`,
+    `${parentWithSlash}${fixture.name}#${index}`,
     fixture.ownerId ?? "test-user@bvbrc",
     fixture.size ?? 0,
     {},
@@ -173,7 +177,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       const object = fixture
         ? toWorkspaceItem(toBrowserItem(parent, fixture, fixtureIndex))
         : null;
-      const raw = fixture ? [toGetTuple(parent, fixture)] : null;
+      const raw = fixture ? [toGetTuple(parent, fixture, fixtureIndex)] : null;
       return { path: normalized, object, raw };
     });
   }

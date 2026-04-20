@@ -2,7 +2,6 @@ import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
   defaultMetagenomicReadMappingFormValues,
-  metagenomicReadMappingFormSchema,
   type MetagenomicReadMappingFormData,
 } from "./metagenomic-read-mapping-form-schema";
 import { transformMetagenomicReadMappingParams } from "./metagenomic-read-mapping-form-utils";
@@ -11,7 +10,6 @@ export const metagenomicReadMappingService =
   createServiceDefinition<MetagenomicReadMappingFormData>({
     serviceName: "MetagenomicReadMapping",
     displayName: "Metagenomic Read Mapping",
-    schema: metagenomicReadMappingFormSchema,
     defaultValues: defaultMetagenomicReadMappingFormValues,
     transformParams: transformMetagenomicReadMappingParams,
     rerun: {

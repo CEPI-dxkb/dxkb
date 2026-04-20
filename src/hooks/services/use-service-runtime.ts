@@ -11,6 +11,7 @@ import type {
   ServiceFormApi,
   ServiceRerunConfig,
 } from "@/lib/services/service-definition";
+import type { Library } from "@/types/services";
 
 interface UseServiceRuntimeOptions<
   TForm,
@@ -23,32 +24,31 @@ interface UseServiceRuntimeOptions<
   rerun?: ServiceRerunConfig<TForm, TRerun>;
 }
 
-export interface ServiceRuntime<
-  TForm,
-  TRerun extends Record<string, unknown>,
-  TFormApi,
-> {
-  form: TFormApi;
-  serviceName: string;
-  displayName: string;
+export interface ServiceRuntime<TForm> {
   isSubmitting: boolean;
-  rerunData: TRerun | null;
   jobParamsDialogProps: JobParamsDialogProps;
-  transformParams(data: TForm): Record<string, unknown>;
-  submitParams(params: Record<string, unknown>): Promise<void>;
   previewOrSubmit(params: Record<string, unknown>): Promise<void>;
   submitFormData(data: TForm): Promise<void>;
 }
 
-function mergeServiceRerunConfig<
-  TForm,
-  TRerun extends Record<string, unknown>,
->(
+function mergeServiceRerunConfig<TForm, TRerun extends Record<string, unknown>>(
   definitionRerun: ServiceRerunConfig<TForm, TRerun> | undefined,
   overrideRerun: ServiceRerunConfig<TForm, TRerun> | undefined,
 ): ServiceRerunConfig<TForm, TRerun> {
   const fields = overrideRerun?.fields ?? definitionRerun?.fields;
-  const onApply = overrideRerun?.onApply ?? definitionRerun?.onApply;
+  const definitionOnApply = definitionRerun?.onApply;
+  const overrideOnApply = overrideRerun?.onApply;
+  const onApply =
+    definitionOnApply && overrideOnApply
+      ? (
+          rerunData: TRerun,
+          form: ServiceFormApi<TForm>,
+          libraries: Library[],
+        ) => {
+          definitionOnApply(rerunData, form, libraries);
+          overrideOnApply(rerunData, form, libraries);
+        }
+      : (overrideOnApply ?? definitionOnApply);
   const hasDefaultOutputPath =
     (overrideRerun && "defaultOutputPath" in overrideRerun) ||
     (definitionRerun && "defaultOutputPath" in definitionRerun);
@@ -59,6 +59,9 @@ function mergeServiceRerunConfig<
     ...(hasDefaultOutputPath ? { defaultOutputPath: null } : {}),
   };
 
+  // Library-family fields travel as a bundle — the discriminated
+  // `ServiceRerunConfig` union requires `libraries` to be present alongside
+  // its siblings, so keep the two branches explicit.
   if (overrideRerun?.libraries) {
     return {
       ...base,
@@ -89,11 +92,7 @@ export function useServiceRuntime<
   form,
   onSuccess,
   rerun,
-}: UseServiceRuntimeOptions<TForm, TRerun, TFormApi>): ServiceRuntime<
-  TForm,
-  TRerun,
-  TFormApi
-> {
+}: UseServiceRuntimeOptions<TForm, TRerun, TFormApi>): ServiceRuntime<TForm> {
   const { submit, isSubmitting } = useServiceFormSubmission({
     serviceName: definition.serviceName,
     displayName: definition.displayName,
@@ -108,22 +107,10 @@ export function useServiceRuntime<
     [definition.rerun, rerun],
   );
 
-  const { rerunData } = useRerunForm<TRerun, TForm>({
+  useRerunForm<TRerun, TForm>({
     ...mergedRerun,
     form: form as unknown as ServiceFormApi<TForm>,
   });
-
-  const transformParams = useCallback(
-    (data: TForm) => definition.transformParams(data),
-    [definition],
-  );
-
-  const submitParams = useCallback(
-    async (params: Record<string, unknown>) => {
-      await submit(params);
-    },
-    [submit],
-  );
 
   const previewOrSubmit = useCallback(
     async (params: Record<string, unknown>) => {
@@ -134,20 +121,14 @@ export function useServiceRuntime<
 
   const submitFormData = useCallback(
     async (data: TForm) => {
-      await previewOrSubmit(transformParams(data));
+      await previewOrSubmit(definition.transformParams(data));
     },
-    [previewOrSubmit, transformParams],
+    [definition, previewOrSubmit],
   );
 
   return {
-    form,
-    serviceName: definition.serviceName,
-    displayName: definition.displayName,
     isSubmitting,
-    rerunData,
     jobParamsDialogProps: dialogProps,
-    transformParams,
-    submitParams,
     previewOrSubmit,
     submitFormData,
   };

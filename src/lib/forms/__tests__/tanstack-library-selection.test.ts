@@ -431,8 +431,8 @@ describe("useTanstackLibrarySelection", () => {
     });
   });
 
-  describe("syncLibrariesToForm", () => {
-    it("calls form.setFieldValue for all 3 field types", () => {
+  describe("setLibraries", () => {
+    it("applies all 3 field types to form", () => {
       const mockForm = createMockForm();
       const config = createHookConfig({ form: mockForm });
       const { result } = renderHook(() => useTanstackLibrarySelection(config));
@@ -444,7 +444,7 @@ describe("useTanstackLibrarySelection", () => {
       ];
 
       act(() => {
-        result.current.syncLibrariesToForm(libraries);
+        result.current.setLibraries(libraries);
       });
 
       expect((mockForm as { setFieldValue: ReturnType<typeof vi.fn> }).setFieldValue).toHaveBeenCalledWith(

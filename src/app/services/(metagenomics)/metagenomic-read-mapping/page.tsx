@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import {
   Card,
   CardContent,
@@ -76,7 +80,7 @@ export default function MetagenomicReadMappingPage() {
 
   const handleReset = () => {
     form.reset(defaultMetagenomicReadMappingFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -84,7 +88,8 @@ export default function MetagenomicReadMappingPage() {
   };
 
   const form = useForm({
-    defaultValues: defaultMetagenomicReadMappingFormValues as MetagenomicReadMappingFormData,
+    defaultValues:
+      defaultMetagenomicReadMappingFormValues as MetagenomicReadMappingFormData,
     validators: { onChange: metagenomicReadMappingFormSchema },
     onSubmit: async ({ value }) => {
       await runtime.submitFormData(value as MetagenomicReadMappingFormData);
@@ -100,8 +105,7 @@ export default function MetagenomicReadMappingPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
-    syncLibrariesToForm,
+    setLibraries,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: buildBaseLibraryItem,
@@ -118,10 +122,7 @@ export default function MetagenomicReadMappingPage() {
     onSuccess: handleReset,
     rerun: {
       libraries: ["paired", "single", "sra"],
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;
@@ -269,14 +270,12 @@ export default function MetagenomicReadMappingPage() {
                 title="SRA Run Accession"
                 placeholder="SRR..."
                 selectedLibraries={selectedLibraries}
-                    setSelectedLibraries={setLibrariesAndSync}
+                setSelectedLibraries={setLibraries}
                 allowDuplicates={false}
               />
 
               <form.Field name="paired_end_libs">
-                {(field) => (
-                  <FieldErrors field={field} />
-                )}
+                {(field) => <FieldErrors field={field} />}
               </form.Field>
             </CardContent>
           </Card>
@@ -338,12 +337,20 @@ export default function MetagenomicReadMappingPage() {
                   <form.Field name="gene_set_type">
                     {(field) => (
                       <FieldItem>
-                        <FieldLabel field={field} className="service-card-label">
+                        <FieldLabel
+                          field={field}
+                          className="service-card-label"
+                        >
                           Gene Set Type
                         </FieldLabel>
                         <RadioGroup
                           value={field.state.value}
-                          onValueChange={(value) => value != null && field.handleChange(value as MetagenomicReadMappingFormData["gene_set_type"])}
+                          onValueChange={(value) =>
+                            value != null &&
+                            field.handleChange(
+                              value as MetagenomicReadMappingFormData["gene_set_type"],
+                            )
+                          }
                           className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
@@ -351,7 +358,10 @@ export default function MetagenomicReadMappingPage() {
                               value="predefined_list"
                               id="predefined_list"
                             />
-                            <Label htmlFor="predefined_list" className="text-sm">
+                            <Label
+                              htmlFor="predefined_list"
+                              className="text-sm"
+                            >
                               Predefined List
                             </Label>
                           </div>
@@ -386,13 +396,21 @@ export default function MetagenomicReadMappingPage() {
                     <form.Field name="gene_set_name">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Predefined Gene Set Name
                           </FieldLabel>
                           <Select
                             items={predefinedGeneSetOptions}
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value as MetagenomicReadMappingFormData["gene_set_name"])}
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as MetagenomicReadMappingFormData["gene_set_name"],
+                              )
+                            }
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select Gene Set" />
@@ -400,7 +418,10 @@ export default function MetagenomicReadMappingPage() {
                             <SelectContent>
                               <SelectGroup>
                                 {predefinedGeneSetOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
                                     {option.label}
                                   </SelectItem>
                                 ))}
@@ -420,19 +441,17 @@ export default function MetagenomicReadMappingPage() {
                     <form.Field name="gene_set_fasta">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Gene Set FASTA
                           </FieldLabel>
                           <WorkspaceObjectSelector
-                            types={[
-                              "aligned_dna_fasta",
-                              "aligned_protein_fasta",
-                              "feature_dna_fasta",
-                              "feature_protein_fasta",
-                            ]}
+                            preset="geneSetFasta"
                             placeholder="Select Gene Set FASTA File..."
                             onSelectedObjectChange={(
-                              object: WorkspaceObject | null
+                              object: WorkspaceObject | null,
                             ) => {
                               field.handleChange(object?.path || "");
                             }}
@@ -451,14 +470,17 @@ export default function MetagenomicReadMappingPage() {
                     <form.Field name="gene_set_feature_group">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Gene Set Feature Group
                           </FieldLabel>
                           <WorkspaceObjectSelector
                             preset="featureGroup"
                             placeholder="Select Gene Set Feature Group..."
                             onSelectedObjectChange={(
-                              object: WorkspaceObject | null
+                              object: WorkspaceObject | null,
                             ) => {
                               field.handleChange(object?.path || "");
                             }}

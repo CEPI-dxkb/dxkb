@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,7 +224,6 @@ export default function PrimerDesignServicePage() {
     }
   }
 
-  // Helper to restore workspace FASTA value
   function restoreWorkspaceFasta() {
     if (workspaceFastaValue) {
       isRestoringValueRef.current = true;
@@ -233,7 +236,6 @@ export default function PrimerDesignServicePage() {
     }
   }
 
-  // Helper to restore sequence text values
   function restoreSequenceText() {
     form.setFieldValue("sequence_input", sequenceTextValue);
     form.setFieldValue("SEQUENCE_ID", sequenceTextId);
@@ -351,11 +353,13 @@ export default function PrimerDesignServicePage() {
             <Tabs
               value={inputType}
               onValueChange={(value) => {
-                const newInputType = value as PrimerDesignFormData["input_type"];
+                const newInputType =
+                  value as PrimerDesignFormData["input_type"];
                 const previousInputType = form.state.values.input_type;
 
                 // Save current values before switching
-                const currentSequenceInput = form.state.values.sequence_input || "";
+                const currentSequenceInput =
+                  form.state.values.sequence_input || "";
                 if (previousInputType === "sequence_text") {
                   setSequenceTextValue(currentSequenceInput);
                   setSequenceTextId(form.state.values.SEQUENCE_ID || "");
@@ -372,15 +376,11 @@ export default function PrimerDesignServicePage() {
                 } else if (newInputType === "workplace_fasta") {
                   restoreWorkspaceFasta();
                 }
-
-
               }}
               className="w-full"
             >
               <TabsList>
-                <TabsTrigger value="sequence_text">
-                  Paste Sequence
-                </TabsTrigger>
+                <TabsTrigger value="sequence_text">Paste Sequence</TabsTrigger>
                 <TabsTrigger value="workplace_fasta">
                   Workspace FASTA
                 </TabsTrigger>
@@ -390,7 +390,7 @@ export default function PrimerDesignServicePage() {
                 <form.Field name="SEQUENCE_ID">
                   {(field) => (
                     <FieldItem>
-                      <FieldLabel field={field} className="service-card-label ">
+                      <FieldLabel field={field} className="service-card-label">
                         Sequence Identifier
                       </FieldLabel>
                       <Input
@@ -413,7 +413,7 @@ export default function PrimerDesignServicePage() {
                 <form.Field name="sequence_input">
                   {(field) => (
                     <FieldItem>
-                      <FieldLabel field={field} className="service-card-label ">
+                      <FieldLabel field={field} className="service-card-label">
                         Paste Sequence
                       </FieldLabel>
                       <Textarea
@@ -477,11 +477,11 @@ export default function PrimerDesignServicePage() {
                 <form.Field name="sequence_input">
                   {(field) => (
                     <FieldItem>
-                      <FieldLabel field={field} className="service-card-label ">
+                      <FieldLabel field={field} className="service-card-label">
                         FASTA File
                       </FieldLabel>
                       <WorkspaceObjectSelector
-                        types={["feature_dna_fasta"]}
+                        preset="featureDnaFasta"
                         placeholder="Select FASTA file from workspace"
                         value={field.state.value}
                         onObjectSelect={handleWorkspaceSelection}
@@ -495,9 +495,13 @@ export default function PrimerDesignServicePage() {
                             const path = object.path || "";
                             form.setFieldValue("sequence_input", path);
                             setWorkspaceFastaValue(path);
-                          } else if (!object && inputType === "workplace_fasta") {
+                          } else if (
+                            !object &&
+                            inputType === "workplace_fasta"
+                          ) {
                             // Only clear if user explicitly deselects and we have a value
-                            const currentValue = form.state.values.sequence_input;
+                            const currentValue =
+                              form.state.values.sequence_input;
                             if (currentValue) {
                               form.setFieldValue("sequence_input", "");
                               setWorkspaceFastaValue("");
@@ -518,14 +522,12 @@ export default function PrimerDesignServicePage() {
             <form.Field name="PRIMER_PICK_INTERNAL_OLIGO">
               {(field) => (
                 <FieldItem className="flex flex-row items-center gap-2">
-                  <FieldLabel field={field} className="service-card-sublabel ">
+                  <FieldLabel field={field} className="service-card-sublabel">
                     Pick Internal Oligo
                   </FieldLabel>
                   <Switch
                     checked={field.state.value ? true : false}
-                    onCheckedChange={(checked) =>
-                      field.handleChange(checked)
-                    }
+                    onCheckedChange={(checked) => field.handleChange(checked)}
                   />
                   <FieldErrors field={field} />
                 </FieldItem>
@@ -536,12 +538,16 @@ export default function PrimerDesignServicePage() {
               {(field) => (
                 <FieldItem>
                   <div className="flex items-center gap-2">
-                    <FieldLabel field={field} className="service-card-label ">
+                    <FieldLabel field={field} className="service-card-label">
                       Product Size Range (bp)
                     </FieldLabel>
                     <TooltipProvider>
                       <Tooltip>
-                        <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
+                        <TooltipTrigger
+                          render={
+                            <HelpCircle className="service-card-tooltip-icon" />
+                          }
+                        />
                         <TooltipContent className="max-w-sm">
                           Minimum, optimum, and maximum lengths (in bases) of
                           the PCR product. Primer3 attempts to pick primers
@@ -572,14 +578,18 @@ export default function PrimerDesignServicePage() {
 
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <Label className="service-card-label ">Primer Size (bp)</Label>
+                <Label className="service-card-label">Primer Size (bp)</Label>
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
+                    <TooltipTrigger
+                      render={
+                        <HelpCircle className="service-card-tooltip-icon" />
+                      }
+                    />
                     <TooltipContent className="max-w-sm">
                       Specify minimum, optimum, and maximum primer lengths.
-                      Primer3 will not pick primers shorter than the minimum
-                      or longer than the maximum.
+                      Primer3 will not pick primers shorter than the minimum or
+                      longer than the maximum.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -592,13 +602,13 @@ export default function PrimerDesignServicePage() {
                     { label: "Max", name: "PRIMER_MAX_SIZE" },
                   ] as const
                 ).map(({ label, name }) => (
-                  <form.Field
-                    key={name}
-                    name={name}
-                  >
+                  <form.Field key={name} name={name}>
                     {(field) => (
                       <FieldItem>
-                        <FieldLabel field={field} className="service-card-sublabel ">
+                        <FieldLabel
+                          field={field}
+                          className="service-card-sublabel"
+                        >
                           {label}
                         </FieldLabel>
                         <Input
@@ -654,19 +664,23 @@ export default function PrimerDesignServicePage() {
                   },
                 ] as const
               ).map(({ label, name, prefix, suffix, tooltip }) => (
-                <form.Field
-                  key={name}
-                  name={name}
-                >
+                <form.Field key={name} name={name}>
                   {(field) => (
                     <FieldItem>
                       <div className="flex items-center gap-2">
-                        <FieldLabel field={field} className="service-card-label ">
+                        <FieldLabel
+                          field={field}
+                          className="service-card-label"
+                        >
                           {label}
                         </FieldLabel>
                         <TooltipProvider>
                           <Tooltip>
-                            <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
+                            <TooltipTrigger
+                              render={
+                                <HelpCircle className="service-card-tooltip-icon" />
+                              }
+                            />
                             <TooltipContent className="max-w-sm">
                               {tooltip}
                             </TooltipContent>
@@ -716,15 +730,22 @@ export default function PrimerDesignServicePage() {
                     {(field) => (
                       <FieldItem>
                         <div className="flex items-center gap-2">
-                          <FieldLabel field={field} className="service-card-label ">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Number to Return
                           </FieldLabel>
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
+                              <TooltipTrigger
+                                render={
+                                  <HelpCircle className="service-card-tooltip-icon" />
+                                }
+                              />
                               <TooltipContent className="max-w-sm">
-                                Maximum number of primer pairs to return.
-                                Larger values may increase runtime.
+                                Maximum number of primer pairs to return. Larger
+                                values may increase runtime.
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -745,12 +766,16 @@ export default function PrimerDesignServicePage() {
 
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <Label className="service-card-label ">
+                      <Label className="service-card-label">
                         Primer Tm ({"\u00B0"}C)
                       </Label>
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
+                          <TooltipTrigger
+                            render={
+                              <HelpCircle className="service-card-tooltip-icon" />
+                            }
+                          />
                           <TooltipContent className="max-w-sm">
                             Define minimum, optimum, and maximum melting
                             temperatures as well as the maximum pairwise
@@ -771,13 +796,13 @@ export default function PrimerDesignServicePage() {
                           },
                         ] as const
                       ).map(({ label, name }) => (
-                        <form.Field
-                          key={name}
-                          name={name}
-                        >
+                        <form.Field key={name} name={name}>
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel ">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 {label}
                               </FieldLabel>
                               <Input
@@ -798,10 +823,14 @@ export default function PrimerDesignServicePage() {
 
                   <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <Label className="service-card-label ">Primer GC%</Label>
+                      <Label className="service-card-label">Primer GC%</Label>
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger render={<HelpCircle className="service-card-tooltip-icon" />} />
+                          <TooltipTrigger
+                            render={
+                              <HelpCircle className="service-card-tooltip-icon" />
+                            }
+                          />
                           <TooltipContent className="max-w-sm">
                             Specify acceptable GC content range for designed
                             primers.
@@ -817,13 +846,13 @@ export default function PrimerDesignServicePage() {
                           { label: "Max", name: "PRIMER_MAX_GC" },
                         ] as const
                       ).map(({ label, name }) => (
-                        <form.Field
-                          key={name}
-                          name={name}
-                        >
+                        <form.Field key={name} name={name}>
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel field={field} className="service-card-sublabel ">
+                              <FieldLabel
+                                field={field}
+                                className="service-card-sublabel"
+                              >
                                 {label}
                               </FieldLabel>
                               <Input
@@ -863,13 +892,13 @@ export default function PrimerDesignServicePage() {
                         },
                       ] as const
                     ).map(({ label, name }) => (
-                      <form.Field
-                        key={name}
-                        name={name}
-                      >
+                      <form.Field key={name} name={name}>
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel field={field} className="service-card-label ">
+                            <FieldLabel
+                              field={field}
+                              className="service-card-label"
+                            >
                               {label}
                             </FieldLabel>
                             <Input
@@ -928,7 +957,7 @@ export default function PrimerDesignServicePage() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-row justify-end gap-4 mt-3!">
+        <div className="mt-3! flex flex-row justify-end gap-4">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset
           </Button>

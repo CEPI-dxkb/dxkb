@@ -3,12 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
 import { ServiceHeader } from "@/components/services/service-header";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,7 +37,11 @@ import {
   genomeAnnotationRecipes,
 } from "@/lib/forms/(genomics)/genome-annotation/genome-annotation-form-utils";
 import { genomeAnnotationService } from "@/lib/forms/(genomics)/genome-annotation/genome-annotation-service";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import {
   Tooltip,
   TooltipContent,
@@ -58,7 +57,8 @@ const GenomeAnnotationContent = () => {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const form = useForm({
-    defaultValues: defaultGenomeAnnotationFormValues as GenomeAnnotationFormData,
+    defaultValues:
+      defaultGenomeAnnotationFormValues as GenomeAnnotationFormData,
     validators: { onChange: completeGenomeAnnotationSchema },
     onSubmit: async ({ value }) => {
       // Validate my label for slashes
@@ -155,7 +155,7 @@ const GenomeAnnotationContent = () => {
                       <span className="gap-1 text-red-500">*</span>
                     </Label>
                     <WorkspaceObjectSelector
-                      types={["contigs"]}
+                      preset="contigs"
                       placeholder="Select or Upload Contigs to your workspace for Annotation"
                       onObjectSelect={(object: WorkspaceObject) => {
                         field.handleChange(object.path);
@@ -177,7 +177,11 @@ const GenomeAnnotationContent = () => {
                     <Select
                       items={genomeAnnotationRecipes}
                       value={field.state.value}
-                      onValueChange={(val) => field.handleChange(val as GenomeAnnotationFormData["recipe"])}
+                      onValueChange={(val) =>
+                        field.handleChange(
+                          val as GenomeAnnotationFormData["recipe"],
+                        )
+                      }
                     >
                       <SelectTrigger className="service-card-select-trigger">
                         <SelectValue placeholder="--- Select Recipe ---" />
@@ -198,7 +202,7 @@ const GenomeAnnotationContent = () => {
               </form.Field>
 
               {/* Taxonomy Name and ID */}
-              <div className="flex flex-col gap-4 sm:flex-row ">
+              <div className="flex flex-col gap-4 sm:flex-row">
                 <form.Field name="scientific_name">
                   {(field) => (
                     <FieldItem className="sm:w-[75%]">
@@ -211,8 +215,9 @@ const GenomeAnnotationContent = () => {
                             </TooltipTrigger>
                             <TooltipContent className="max-w-sm">
                               <p>
-                                Taxon must be specified at the genus level or below
-                                to get the latest protein family predictions.
+                                Taxon must be specified at the genus level or
+                                below to get the latest protein family
+                                predictions.
                               </p>
                             </TooltipContent>
                           </Tooltip>
@@ -221,10 +226,14 @@ const GenomeAnnotationContent = () => {
                       </Label>
 
                       <TaxonNameSelector
-                        value={field.state.value ? {
-                          taxon_id: parseInt(field.state.value) || 0,
-                          taxon_name: field.state.value,
-                        } : null}
+                        value={
+                          field.state.value
+                            ? {
+                                taxon_id: parseInt(field.state.value) || 0,
+                                taxon_name: field.state.value,
+                              }
+                            : null
+                        }
                         onChange={(taxonomyItem) => {
                           // Extract the taxon_name string from the TaxonomyItem object
                           const taxonName = taxonomyItem?.taxon_name || null;
@@ -240,7 +249,10 @@ const GenomeAnnotationContent = () => {
                           // Auto-generate output file name
                           const myLabel = form.state.values.my_label;
                           if (taxonName && myLabel) {
-                            const outputFileName = generateOutputFileName(taxonName, myLabel);
+                            const outputFileName = generateOutputFileName(
+                              taxonName,
+                              myLabel,
+                            );
                             form.setFieldValue("output_file", outputFileName);
                           }
                         }}
@@ -261,13 +273,19 @@ const GenomeAnnotationContent = () => {
                       <FieldItem className="sm:w-[25%]">
                         <FieldLabel field={field}>Taxonomy ID</FieldLabel>
                         <TaxIDSelector
-                          value={field.state.value ? {
-                            taxon_id: parseInt(field.state.value) || 0,
-                            taxon_name: scientificName || "",
-                          } : null}
+                          value={
+                            field.state.value
+                              ? {
+                                  taxon_id: parseInt(field.state.value) || 0,
+                                  taxon_name: scientificName || "",
+                                }
+                              : null
+                          }
                           onChange={(taxonomyItem) => {
                             // Extract the taxon_id string from the TaxonomyItem object
-                            const taxonId = taxonomyItem ? String(taxonomyItem.taxon_id) : null;
+                            const taxonId = taxonomyItem
+                              ? String(taxonomyItem.taxon_id)
+                              : null;
                             field.handleChange(taxonId);
                           }}
                           placeholder="NCBI Taxonomy ID"
@@ -296,9 +314,13 @@ const GenomeAnnotationContent = () => {
                       onChange={(e) => {
                         field.handleChange(e.target.value);
                         // Auto-generate output file name
-                        const scientificName = form.state.values.scientific_name;
+                        const scientificName =
+                          form.state.values.scientific_name;
                         if (e.target.value && scientificName) {
-                          const outputFileName = generateOutputFileName(scientificName, e.target.value);
+                          const outputFileName = generateOutputFileName(
+                            scientificName,
+                            e.target.value,
+                          );
                           form.setFieldValue("output_file", outputFileName);
                         }
                       }}

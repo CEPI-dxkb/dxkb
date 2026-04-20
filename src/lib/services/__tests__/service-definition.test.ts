@@ -5,7 +5,6 @@ describe("createServiceDefinition", () => {
     const definition = createServiceDefinition({
       serviceName: "ExampleService",
       displayName: "Example Service",
-      schema: null,
       defaultValues: { output_path: "", count: 1 },
       transformParams: (data: { output_path: string; count: number }) => ({
         output_path: data.output_path.trim(),

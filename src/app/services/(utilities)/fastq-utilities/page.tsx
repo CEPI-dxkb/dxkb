@@ -87,14 +87,16 @@ export default function FastqUtilitiesPage() {
 
   // Pipeline state
   const [selectedAction, setSelectedAction] = useState<PipelineAction | "">("");
-  const [pipelineActions, setPipelineActions] = useState<PipelineActionItem[]>([]);
+  const [pipelineActions, setPipelineActions] = useState<PipelineActionItem[]>(
+    [],
+  );
 
   // Output name uniqueness (variant="name"); valid until check says otherwise
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
 
   const handleReset = () => {
     form.reset(defaultFastqUtilitiesFormValues as FastqUtilitiesFormData);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -125,13 +127,14 @@ export default function FastqUtilitiesPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
-    syncLibrariesToForm,
+    setLibraries,
   } = useTanstackLibrarySelection<LibraryItem>({
     form,
     mapLibraryToItem: (library) => ({
       ...buildBaseLibraryItem(library),
-      ...(library.type === "single" && { platform: (library.platform as Platform) ?? "illumina" }),
+      ...(library.type === "single" && {
+        platform: (library.platform as Platform) ?? "illumina",
+      }),
     }),
     fields: {
       paired: "paired_end_libs",
@@ -152,10 +155,7 @@ export default function FastqUtilitiesPage() {
         }
         return {};
       },
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
-      },
+      syncLibraries: setLibraries,
       onApply: (rerunData, form) => {
         // Backend rerun params may serialize a single action as a string and use Title Case.
         const rawRecipe = rerunData.recipe;
@@ -227,7 +227,8 @@ export default function FastqUtilitiesPage() {
           },
         };
       },
-      duplicateMatcher: (library, read) => library.id === read && library.type === "single",
+      duplicateMatcher: (library, read) =>
+        library.id === read && library.type === "single",
       onError: handleLibraryError,
       onAfterAdd: () => {
         setSingleRead(null);
@@ -249,7 +250,10 @@ export default function FastqUtilitiesPage() {
       return;
     }
 
-    const newActionItem = createPipelineActionItem(selectedAction, pipelineActions.length);
+    const newActionItem = createPipelineActionItem(
+      selectedAction,
+      pipelineActions.length,
+    );
     const newActions = [...pipelineActions, newActionItem];
     setPipelineActions(newActions);
     form.setFieldValue("recipe", actionItemsToRecipe(newActions));
@@ -264,7 +268,10 @@ export default function FastqUtilitiesPage() {
     form.setFieldValue("recipe", actionItemsToRecipe(newActions));
 
     // Clear target genome if align is removed
-    if (removedAction?.action === "align" && !newActions.some((a) => a.action === "align")) {
+    if (
+      removedAction?.action === "align" &&
+      !newActions.some((a) => a.action === "align")
+    ) {
       form.setFieldValue("reference_genome_id", "");
     }
   };
@@ -351,18 +358,21 @@ export default function FastqUtilitiesPage() {
                   <Select
                     items={pipelineActionOptions}
                     value={selectedAction}
-                    onValueChange={(value) => value != null && setSelectedAction(value as PipelineAction)}
+                    onValueChange={(value) =>
+                      value != null &&
+                      setSelectedAction(value as PipelineAction)
+                    }
                   >
                     <SelectTrigger className="service-card-select-trigger">
                       <SelectValue placeholder="Select Action" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                      {pipelineActionOptions.map((action) => (
-                        <SelectItem key={action.value} value={action.value}>
-                          {action.label}
-                        </SelectItem>
-                      ))}
+                        {pipelineActionOptions.map((action) => (
+                          <SelectItem key={action.value} value={action.value}>
+                            {action.label}
+                          </SelectItem>
+                        ))}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -371,7 +381,10 @@ export default function FastqUtilitiesPage() {
                     variant="outline"
                     size="icon"
                     onClick={handleAddPipelineAction}
-                    disabled={!selectedAction || pipelineActions.length >= maxPipelineActions}
+                    disabled={
+                      !selectedAction ||
+                      pipelineActions.length >= maxPipelineActions
+                    }
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -381,7 +394,7 @@ export default function FastqUtilitiesPage() {
               {/* Pipeline Actions List */}
               <div className="mt-4 space-y-2">
                 {pipelineActions.length === 0 ? (
-                  <p className="text-muted-foreground text-center text-sm py-4">
+                  <p className="text-muted-foreground py-4 text-center text-sm">
                     No actions added yet
                   </p>
                 ) : (
@@ -518,7 +531,9 @@ export default function FastqUtilitiesPage() {
                   <Select
                     items={platformOptions}
                     value={singlePlatform}
-                    onValueChange={(value) => value != null && setSinglePlatform(value as Platform)}
+                    onValueChange={(value) =>
+                      value != null && setSinglePlatform(value as Platform)
+                    }
                   >
                     <SelectTrigger className="service-card-select-trigger">
                       <SelectValue placeholder="Select a Platform..." />
@@ -526,7 +541,10 @@ export default function FastqUtilitiesPage() {
                     <SelectContent>
                       <SelectGroup>
                         {platformOptions.map((platform) => (
-                          <SelectItem key={platform.value} value={platform.value}>
+                          <SelectItem
+                            key={platform.value}
+                            value={platform.value}
+                          >
                             {platform.label}
                           </SelectItem>
                         ))}
@@ -550,7 +568,7 @@ export default function FastqUtilitiesPage() {
                 title="SRA Run Accession"
                 placeholder="SRR..."
                 selectedLibraries={selectedLibraries}
-                setSelectedLibraries={setLibrariesAndSync}
+                setSelectedLibraries={setLibraries}
                 allowDuplicates={false}
               />
 

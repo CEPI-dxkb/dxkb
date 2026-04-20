@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useForm, useStore } from "@tanstack/react-form";
-import { FieldItem, FieldLabel, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldLabel,
+  FieldErrors,
+} from "@/components/ui/tanstack-form";
 import {
   Card,
   CardContent,
@@ -106,7 +110,8 @@ export default function TaxonomicClassificationPage() {
   const isInitialMount = useRef(true);
 
   const form = useForm({
-    defaultValues: defaultTaxonomicClassificationFormValues as TaxonomicClassificationFormData,
+    defaultValues:
+      defaultTaxonomicClassificationFormValues as TaxonomicClassificationFormData,
     validators: { onChange: taxonomicClassificationFormSchema },
     onSubmit: async ({ value }) => {
       await runtime.submitFormData(value as TaxonomicClassificationFormData);
@@ -147,8 +152,7 @@ export default function TaxonomicClassificationPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
-    syncLibrariesToForm,
+    setLibraries,
   } = useTanstackLibrarySelection<
     LibraryItem,
     { srr_accession: string; sample_id: string; title?: string }
@@ -171,7 +175,7 @@ export default function TaxonomicClassificationPage() {
 
   const handleReset = () => {
     form.reset(defaultTaxonomicClassificationFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -202,10 +206,7 @@ export default function TaxonomicClassificationPage() {
         }
         return { sampleId: lib.sample_id || "" };
       },
-      syncLibraries: (libs) => {
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
-      },
+      syncLibraries: setLibraries,
     },
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;
@@ -291,7 +292,7 @@ export default function TaxonomicClassificationPage() {
   // When SRA/libs are updated, assign sample_id to newly added SRA entries
   const handleSetSelectedLibraries = (libs: Library[]) => {
     const newSraLibs = findNewSraLibraries(libs, selectedLibraries);
-    setLibrariesAndSync(libs);
+    setLibraries(libs);
 
     // Set top-level sample ID form field and clear the textbox after adding SRA libs
     if (newSraLibs.length > 0) {
@@ -380,9 +381,7 @@ export default function TaxonomicClassificationPage() {
                     onObjectSelect={(object: WorkspaceObject) => {
                       setPairedRead2(object.path);
                       if (!pairedRead1) {
-                        setPairedSampleId(
-                          extractSampleIdFromPath(object.path),
-                        );
+                        setPairedSampleId(extractSampleIdFromPath(object.path));
                       }
                     }}
                   />
@@ -462,18 +461,14 @@ export default function TaxonomicClassificationPage() {
                 </Label>
                 <Input
                   value={srrSampleId}
-                  onChange={(e) =>
-                    handleSampleIdChange("srr", e.target.value)
-                  }
+                  onChange={(e) => handleSampleIdChange("srr", e.target.value)}
                   placeholder="Sample ID"
                   className="service-card-input mt-1.5 font-mono text-sm"
                 />
               </div>
 
               <form.Field name="paired_end_libs">
-                {(field) => (
-                  <FieldErrors field={field} />
-                )}
+                {(field) => <FieldErrors field={field} />}
               </form.Field>
             </CardContent>
           </Card>
@@ -535,7 +530,10 @@ export default function TaxonomicClassificationPage() {
                   <form.Field name="sequence_type">
                     {(field) => (
                       <FieldItem>
-                        <FieldLabel field={field} className="service-card-label">
+                        <FieldLabel
+                          field={field}
+                          className="service-card-label"
+                        >
                           Sequencing Type
                           <TooltipProvider>
                             <Tooltip>
@@ -554,7 +552,12 @@ export default function TaxonomicClassificationPage() {
 
                         <RadioGroup
                           value={field.state.value}
-                          onValueChange={(value) => value != null && field.handleChange(value as TaxonomicClassificationFormData["sequence_type"])}
+                          onValueChange={(value) =>
+                            value != null &&
+                            field.handleChange(
+                              value as TaxonomicClassificationFormData["sequence_type"],
+                            )
+                          }
                           className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
@@ -582,7 +585,10 @@ export default function TaxonomicClassificationPage() {
                     <form.Field name="analysis_type">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Analysis Type
                             <DialogInfoPopup
                               title={taxonomyClassificationAnalysisType.title}
@@ -598,10 +604,13 @@ export default function TaxonomicClassificationPage() {
                           <Select
                             items={analysisTypeOptions}
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value as TaxonomicClassificationFormData["analysis_type"])}
-                            disabled={
-                              !isAnalysisTypeSelectable(sequenceType)
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as TaxonomicClassificationFormData["analysis_type"],
+                              )
                             }
+                            disabled={!isAnalysisTypeSelectable(sequenceType)}
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select analysis type" />
@@ -630,23 +639,29 @@ export default function TaxonomicClassificationPage() {
                     <form.Field name="database">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Database
                             <DialogInfoPopup
                               title={taxonomyClassificationDatabase.title}
                               description={
                                 taxonomyClassificationDatabase.description
                               }
-                              sections={
-                                taxonomyClassificationDatabase.sections
-                              }
+                              sections={taxonomyClassificationDatabase.sections}
                               className="ml-2"
                             />
                           </FieldLabel>
                           <Select
                             items={databaseOptions}
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value as TaxonomicClassificationFormData["database"])}
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as TaxonomicClassificationFormData["database"],
+                              )
+                            }
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select database" />
@@ -675,7 +690,10 @@ export default function TaxonomicClassificationPage() {
                     <form.Field name="host_genome">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Filter Host Reads
                             <DialogInfoPopup
                               title={
@@ -690,10 +708,13 @@ export default function TaxonomicClassificationPage() {
                           <Select
                             items={hostGenomeOptions}
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value as TaxonomicClassificationFormData["host_genome"])}
-                            disabled={
-                              !isHostFilteringAvailable(sequenceType)
+                            onValueChange={(value) =>
+                              value != null &&
+                              field.handleChange(
+                                value as TaxonomicClassificationFormData["host_genome"],
+                              )
                             }
+                            disabled={!isHostFilteringAvailable(sequenceType)}
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select filter option" />
@@ -722,7 +743,10 @@ export default function TaxonomicClassificationPage() {
                     <form.Field name="confidence_interval">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Confidence Interval
                             <DialogInfoPopup
                               title={
@@ -737,20 +761,23 @@ export default function TaxonomicClassificationPage() {
                           <Select
                             items={confidenceIntervalOptions}
                             value={field.state.value}
-                            onValueChange={(value) => value != null && field.handleChange(value)}
+                            onValueChange={(value) =>
+                              value != null && field.handleChange(value)
+                            }
                           >
                             <SelectTrigger className="service-card-select-trigger">
                               <SelectValue placeholder="Select confidence interval" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
-                                {confidenceIntervalOptions.map(
-                                  (option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                      {option.label}
-                                    </SelectItem>
-                                  ),
-                                )}
+                                {confidenceIntervalOptions.map((option) => (
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
                               </SelectGroup>
                             </SelectContent>
                           </Select>
@@ -765,21 +792,22 @@ export default function TaxonomicClassificationPage() {
                     <form.Field name="save_classified_sequences">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Save Classified Sequences
                           </FieldLabel>
                           <RadioGroup
                             value={field.state.value ? "yes" : "no"}
                             onValueChange={(value) =>
-                              value != null && field.handleChange(value === "yes")
+                              value != null &&
+                              field.handleChange(value === "yes")
                             }
                             className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
-                              <RadioGroupItem
-                                value="no"
-                                id="classified-no"
-                              />
+                              <RadioGroupItem value="no" id="classified-no" />
                               <Label
                                 htmlFor="classified-no"
                                 className="text-sm"
@@ -788,10 +816,7 @@ export default function TaxonomicClassificationPage() {
                               </Label>
                             </div>
                             <div className="flex items-center gap-3">
-                              <RadioGroupItem
-                                value="yes"
-                                id="classified-yes"
-                              />
+                              <RadioGroupItem value="yes" id="classified-yes" />
                               <Label
                                 htmlFor="classified-yes"
                                 className="text-sm"
@@ -811,21 +836,22 @@ export default function TaxonomicClassificationPage() {
                     <form.Field name="save_unclassified_sequences">
                       {(field) => (
                         <FieldItem>
-                          <FieldLabel field={field} className="service-card-label">
+                          <FieldLabel
+                            field={field}
+                            className="service-card-label"
+                          >
                             Save Unclassified Sequences
                           </FieldLabel>
                           <RadioGroup
                             value={field.state.value ? "yes" : "no"}
                             onValueChange={(value) =>
-                              value != null && field.handleChange(value === "yes")
+                              value != null &&
+                              field.handleChange(value === "yes")
                             }
                             className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
-                              <RadioGroupItem
-                                value="no"
-                                id="unclassified-no"
-                              />
+                              <RadioGroupItem value="no" id="unclassified-no" />
                               <Label
                                 htmlFor="unclassified-no"
                                 className="text-sm"
@@ -896,9 +922,7 @@ export default function TaxonomicClassificationPage() {
             </Button>
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !canSubmit || !isOutputNameValid
-              }
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Submit

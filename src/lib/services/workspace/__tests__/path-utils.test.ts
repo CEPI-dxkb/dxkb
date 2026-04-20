@@ -1,6 +1,8 @@
 import {
+  buildHomePath,
   canWriteToCurrentDir,
   computeWorkspacePaths,
+  hasWorkspaceWritePermission,
   itemHasWriteAccess,
 } from "@/lib/services/workspace/path-utils";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
@@ -36,6 +38,15 @@ describe("computeWorkspacePaths", () => {
     });
     expect(paths.currentUserWorkspaceRoot).toBe("/alice");
     expect(paths.currentDirectoryPath).toBe("/alice/home");
+  });
+});
+
+describe("buildHomePath", () => {
+  it("normalizes usernames and trims relative paths", () => {
+    expect(buildHomePath("alice", "/folder/item/")).toBe(
+      "/alice@bvbrc/home/folder/item",
+    );
+    expect(buildHomePath("alice@bvbrc", "")).toBe("/alice@bvbrc/home");
   });
 });
 
@@ -118,5 +129,14 @@ describe("itemHasWriteAccess", () => {
   it("treats read-only as non-writeable", () => {
     expect(itemHasWriteAccess(withPerms("r", "n"))).toBe(false);
     expect(itemHasWriteAccess(withPerms("n", "n"))).toBe(false);
+  });
+});
+
+describe("hasWorkspaceWritePermission", () => {
+  it("owns the shared o/a/w predicate", () => {
+    expect(hasWorkspaceWritePermission("o", "n")).toBe(true);
+    expect(hasWorkspaceWritePermission("r", "a")).toBe(true);
+    expect(hasWorkspaceWritePermission("rw", "n")).toBe(true);
+    expect(hasWorkspaceWritePermission("r", "n")).toBe(false);
   });
 });

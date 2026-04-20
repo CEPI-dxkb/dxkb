@@ -38,7 +38,6 @@ const noopSetters: DebugSetters = {
 const exampleDefinition = createServiceDefinition<ExampleFormData>({
   serviceName: "GenomeAssembly2",
   displayName: "Genome Assembly",
-  schema: null,
   defaultValues: { output_path: "", output_file: "", flag: false },
   transformParams: (data) => ({
     output_path: data.output_path,
@@ -54,7 +53,6 @@ const exampleDefinition = createServiceDefinition<ExampleFormData>({
 const defaultPathDefinition = createServiceDefinition<ExampleFormData>({
   serviceName: "GenomeAssembly2",
   displayName: "Genome Assembly",
-  schema: null,
   defaultValues: { output_path: "", output_file: "", flag: false },
   transformParams: (data) => ({
     output_path: data.output_path,
@@ -77,7 +75,11 @@ function makeForm() {
   };
 }
 
-function DebugToggler({ onReady }: { onReady: (setters: DebugSetters) => void }) {
+function DebugToggler({
+  onReady,
+}: {
+  onReady: (setters: DebugSetters) => void;
+}) {
   const { setIsDebugMode, setContainerBuildId } = useServiceDebugging();
   React.useEffect(() => {
     onReady({ setIsDebugMode, setContainerBuildId });
@@ -183,6 +185,44 @@ describe("useServiceRuntime", () => {
         "rerun-output",
       );
     });
+  });
+
+  it("composes definition and call-site rerun onApply handlers", async () => {
+    const definitionOnApply = vi.fn();
+    const overrideOnApply = vi.fn();
+    const definition = createServiceDefinition<ExampleFormData>({
+      serviceName: "GenomeAssembly2",
+      displayName: "Genome Assembly",
+      defaultValues: { output_path: "", output_file: "", flag: false },
+      transformParams: exampleDefinition.transformParams,
+      rerun: {
+        defaultOutputPath: null,
+        onApply: definitionOnApply,
+      },
+    });
+    setRerunSession("rerun-compose", { output_path: "/ws/rerun" });
+
+    const form = makeForm();
+    renderHook(
+      () =>
+        useServiceRuntime({
+          definition,
+          form,
+          rerun: {
+            defaultOutputPath: null,
+            onApply: overrideOnApply,
+          },
+        }),
+      { wrapper: wrapper() },
+    );
+
+    await waitFor(() => {
+      expect(definitionOnApply).toHaveBeenCalledTimes(1);
+      expect(overrideOnApply).toHaveBeenCalledTimes(1);
+    });
+    expect(definitionOnApply.mock.invocationCallOrder[0]).toBeLessThan(
+      overrideOnApply.mock.invocationCallOrder[0],
+    );
   });
 
   it("preserves call-site default-output-path opt out", async () => {

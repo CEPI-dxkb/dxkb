@@ -46,20 +46,11 @@ import {
 import { subspeciesClassificationService } from "@/lib/forms/(viral-tools)/subspecies-classification/subspecies-classification-service";
 
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
-import type { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 
 const quickReference =
   "https://www.bv-brc.org/docs/quick_references/services/subspecies_classification_service.html";
 const tutorial =
   "https://www.bv-brc.org/docs/tutorial/subspecies_classification/subspecies_classification.html";
-
-const fastaWorkspaceTypes: ValidWorkspaceObjectTypes[] = [
-  "feature_protein_fasta",
-  "feature_dna_fasta",
-  "aligned_protein_fasta",
-  "aligned_dna_fasta",
-  "contigs",
-];
 
 /** Indices in SUBSPECIES_VIRUS_TYPE_OPTIONS before which to render a SelectSeparator (legacy family grouping). */
 const subspeciesSpeciesSeparatorBeforeIndex = new Set([5, 7, 17, 21, 23, 24]);
@@ -90,7 +81,10 @@ export default function SubspeciesClassificationPage() {
       form.setFieldMeta("input_fasta_data", (prev) => ({
         ...prev,
         errors: [getSubspeciesFastaMessage(result)],
-        errorMap: { ...prev.errorMap, onChange: getSubspeciesFastaMessage(result) },
+        errorMap: {
+          ...prev.errorMap,
+          onChange: getSubspeciesFastaMessage(result),
+        },
       }));
     } else {
       form.setFieldMeta("input_fasta_data", (prev) => ({
@@ -168,9 +162,7 @@ export default function SubspeciesClassificationPage() {
                 Query Source
                 <DialogInfoPopup
                   title={subspeciesClassificationQuerySource.title}
-                  description={
-                    subspeciesClassificationQuerySource.description
-                  }
+                  description={subspeciesClassificationQuerySource.description}
                   sections={subspeciesClassificationQuerySource.sections}
                 />
               </RequiredFormCardTitle>
@@ -246,7 +238,7 @@ export default function SubspeciesClassificationPage() {
                   {(field) => (
                     <FieldItem className="mt-4">
                       <WorkspaceObjectSelector
-                        types={fastaWorkspaceTypes}
+                        preset="fasta"
                         placeholder="Select or upload FASTA file to your workspace."
                         value={field.state.value ?? ""}
                         onObjectSelect={(object: WorkspaceObject) =>
@@ -270,9 +262,7 @@ export default function SubspeciesClassificationPage() {
                 Species
                 <DialogInfoPopup
                   title={subspeciesClassificationSpeciesInfo.title}
-                  description={
-                    subspeciesClassificationSpeciesInfo.description
-                  }
+                  description={subspeciesClassificationSpeciesInfo.description}
                 />
               </CardTitle>
             </CardHeader>
@@ -357,9 +347,7 @@ export default function SubspeciesClassificationPage() {
 
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !canSubmit || !isOutputNameValid
-              }
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Submit

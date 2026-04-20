@@ -12,14 +12,6 @@ export interface ServiceFormApi<TForm = Record<string, unknown>> {
   reset?: (values?: TForm) => void;
 }
 
-export interface ServiceMetadata {
-  title?: string;
-  description?: string;
-  quickReferenceGuide?: string;
-  tutorial?: string;
-  instructionalVideo?: string;
-}
-
 interface ServiceRerunBaseConfig<
   TForm,
   TRerun extends Record<string, unknown> = Record<string, unknown>,
@@ -59,11 +51,9 @@ export interface ServiceDefinition<
 > {
   serviceName: string;
   displayName: string;
-  schema: unknown;
   defaultValues: TForm;
   transformParams(data: TForm): Record<string, unknown>;
   rerun?: ServiceRerunConfig<TForm, TRerun>;
-  metadata?: ServiceMetadata;
 }
 
 export function createServiceDefinition<

@@ -36,13 +36,14 @@ import {
   phylogeneticTreeTreeParameters,
 } from "@/lib/services/info/phylogenetic-tree";
 import OutputFolder from "@/components/services/output-folder";
-import {
-  RequiredFormCardTitle,
-} from "@/components/forms/required-form-components";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
 
-import { fetchGenomeGroupMembers, validateViralGenomes } from "@/lib/services/genome";
+import {
+  fetchGenomeGroupMembers,
+  validateViralGenomes,
+} from "@/lib/services/genome";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
@@ -74,8 +75,9 @@ export default function ViralGenomeTreePage() {
     useState<WorkspaceObject | null>(null);
   const [selectedUnalignedFastaObject, setSelectedUnalignedFastaObject] =
     useState<WorkspaceObject | null>(null);
-  const [metadataFields, setMetadataFields] =
-    useState<MetadataField[]>(ViralGenomeTree.defaultMetadataFields as MetadataField[]);
+  const [metadataFields, setMetadataFields] = useState<MetadataField[]>(
+    ViralGenomeTree.defaultMetadataFields as MetadataField[],
+  );
   const [selectedMetadataField, setSelectedMetadataField] =
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -83,11 +85,14 @@ export default function ViralGenomeTreePage() {
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
 
   const form = useForm({
-    defaultValues: ViralGenomeTree.defaultViralGenomeTreeFormValues as ViralGenomeTree.ViralGenomeTreeFormData,
+    defaultValues:
+      ViralGenomeTree.defaultViralGenomeTreeFormValues as ViralGenomeTree.ViralGenomeTreeFormData,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: ViralGenomeTree.viralGenomeTreeFormSchema as any },
     onSubmit: async ({ value }) => {
-      await runtime.submitFormData(value as ViralGenomeTree.ViralGenomeTreeFormData);
+      await runtime.submitFormData(
+        value as ViralGenomeTree.ViralGenomeTreeFormData,
+      );
     },
   });
 
@@ -146,7 +151,10 @@ export default function ViralGenomeTreePage() {
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const selectedMetadataIds = useMemo(
-    () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),
+    () =>
+      new Set(
+        metadataFields.filter((field) => field.selected).map((f) => f.id),
+      ),
     [metadataFields],
   );
 
@@ -177,7 +185,13 @@ export default function ViralGenomeTreePage() {
     const currentSequences = form.state.values.sequences;
 
     // Check for duplicate genome group
-    if (ViralGenomeTreeUtils.checkDuplicateSequence(currentSequences, inputValue, "genome_group")) {
+    if (
+      ViralGenomeTreeUtils.checkDuplicateSequence(
+        currentSequences,
+        inputValue,
+        "genome_group",
+      )
+    ) {
       toast.error("Duplicate selection detected", {
         description: "This genome group is already selected.",
         closeButton: true,
@@ -217,9 +231,10 @@ export default function ViralGenomeTreePage() {
 
       if (!validation.allValid) {
         const errorMessages = Object.values(validation.errors).filter(Boolean);
-        const errorMsg = errorMessages.length > 0
-          ? errorMessages.join("\n")
-          : "Invalid genome group. Please check that all genomes are viruses with single contigs.";
+        const errorMsg =
+          errorMessages.length > 0
+            ? errorMessages.join("\n")
+            : "Invalid genome group. Please check that all genomes are viruses with single contigs.";
 
         toast.error("Genome group validation failed", {
           description: errorMsg,
@@ -234,7 +249,10 @@ export default function ViralGenomeTreePage() {
       // (This would require fetching genome IDs from other genome groups, which is complex)
       // For now, we'll just add the group if validation passes
 
-      const newSequence = ViralGenomeTreeUtils.createSequenceItem(inputValue, "genome_group");
+      const newSequence = ViralGenomeTreeUtils.createSequenceItem(
+        inputValue,
+        "genome_group",
+      );
 
       form.setFieldValue("sequences", [...currentSequences, newSequence]);
       setSelectedGenomeGroupObject(null);
@@ -246,7 +264,9 @@ export default function ViralGenomeTreePage() {
     } catch (error) {
       console.error("Failed to validate genome group:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to validate genome group";
+        error instanceof Error
+          ? error.message
+          : "Failed to validate genome group";
       toast.error("Validation error", {
         description: errorMessage,
         closeButton: true,
@@ -281,7 +301,13 @@ export default function ViralGenomeTreePage() {
 
     const currentSequences = form.state.values.sequences;
 
-    if (ViralGenomeTreeUtils.checkDuplicateSequence(currentSequences, inputValue, type)) {
+    if (
+      ViralGenomeTreeUtils.checkDuplicateSequence(
+        currentSequences,
+        inputValue,
+        type,
+      )
+    ) {
       toast.error("Duplicate selection detected", {
         description: `${ViralGenomeTreeUtils.getSequenceTypeLabel(type)} is already selected.`,
         closeButton: true,
@@ -297,7 +323,10 @@ export default function ViralGenomeTreePage() {
       return;
     }
 
-    const newSequence = ViralGenomeTreeUtils.createSequenceItem(inputValue, type);
+    const newSequence = ViralGenomeTreeUtils.createSequenceItem(
+      inputValue,
+      type,
+    );
 
     form.setFieldValue("sequences", [...currentSequences, newSequence]);
 
@@ -329,7 +358,9 @@ export default function ViralGenomeTreePage() {
       return;
     }
 
-    const newField = ViralGenomeTreeUtils.createMetadataField(selectedMetadataField);
+    const newField = ViralGenomeTreeUtils.createMetadataField(
+      selectedMetadataField,
+    );
     setMetadataFields((prev) => [newField, ...prev]);
     setSelectedMetadataField("");
   }
@@ -356,7 +387,9 @@ export default function ViralGenomeTreePage() {
     () =>
       sequences.map((seq, index) => ({
         id: `${index}`,
-        name: ViralGenomeTreeUtils.getDisplayName(seq.filename.split("/").pop() || seq.filename),
+        name: ViralGenomeTreeUtils.getDisplayName(
+          seq.filename.split("/").pop() || seq.filename,
+        ),
         type: ViralGenomeTreeUtils.getSequenceTypeLabel(seq.type),
         description: seq.filename,
       })),
@@ -400,14 +433,14 @@ export default function ViralGenomeTreePage() {
           <CardContent className="service-card-content">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="service-card-label">
-                  Genome Group
-                </Label>
+                <Label className="service-card-label">Genome Group</Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
                     preset="genomeGroup"
                     placeholder="Optional"
-                    onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                    onSelectedObjectChange={(
+                      object: WorkspaceObject | null,
+                    ) => {
                       setSelectedGenomeGroupObject(object);
                     }}
                     value={selectedGenomeGroupObject?.path}
@@ -418,22 +451,28 @@ export default function ViralGenomeTreePage() {
                     size="icon"
                     variant="outline"
                     onClick={handleAddGenomeGroup}
-                    disabled={!selectedGenomeGroupObject || isValidatingGenomeGroup}
+                    disabled={
+                      !selectedGenomeGroupObject || isValidatingGenomeGroup
+                    }
                   >
-                    {isValidatingGenomeGroup ? <Spinner className="h-4 w-4" /> : <Plus size={16} />}
+                    {isValidatingGenomeGroup ? (
+                      <Spinner className="h-4 w-4" />
+                    ) : (
+                      <Plus size={16} />
+                    )}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="service-card-label">
-                  Aligned FASTA
-                </Label>
+                <Label className="service-card-label">Aligned FASTA</Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
-                    types={["aligned_dna_fasta", "contigs"]}
+                    preset="alignedDnaFastaOrContigs"
                     placeholder="Optional"
-                    onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                    onSelectedObjectChange={(
+                      object: WorkspaceObject | null,
+                    ) => {
                       setSelectedAlignedFastaObject(object);
                     }}
                     value={selectedAlignedFastaObject?.path}
@@ -444,7 +483,9 @@ export default function ViralGenomeTreePage() {
                     size="icon"
                     variant="outline"
                     onClick={() => handleAddSequence("aligned")}
-                    disabled={!selectedAlignedFastaObject || isValidatingGenomeGroup}
+                    disabled={
+                      !selectedAlignedFastaObject || isValidatingGenomeGroup
+                    }
                   >
                     <Plus size={16} />
                   </Button>
@@ -452,14 +493,14 @@ export default function ViralGenomeTreePage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="service-card-label">
-                  Unaligned FASTA
-                </Label>
+                <Label className="service-card-label">Unaligned FASTA</Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
-                    types={["feature_dna_fasta"]}
+                    preset="featureDnaFasta"
                     placeholder="Optional"
-                    onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                    onSelectedObjectChange={(
+                      object: WorkspaceObject | null,
+                    ) => {
                       setSelectedUnalignedFastaObject(object);
                     }}
                     value={selectedUnalignedFastaObject?.path}
@@ -470,7 +511,9 @@ export default function ViralGenomeTreePage() {
                     size="icon"
                     variant="outline"
                     onClick={() => handleAddSequence("unaligned")}
-                    disabled={!selectedUnalignedFastaObject || isValidatingGenomeGroup}
+                    disabled={
+                      !selectedUnalignedFastaObject || isValidatingGenomeGroup
+                    }
                   >
                     <Plus size={16} />
                   </Button>
@@ -518,9 +561,14 @@ export default function ViralGenomeTreePage() {
                         Trim Ends of Alignment Threshold
                       </Label>
                       <Select
-                        items={ViralGenomeTree.thresholdOptions.map((v) => ({ value: v, label: v }))}
+                        items={ViralGenomeTree.thresholdOptions.map((v) => ({
+                          value: v,
+                          label: v,
+                        }))}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select" />
@@ -547,9 +595,14 @@ export default function ViralGenomeTreePage() {
                         Remove Gappy Sequences Threshold
                       </Label>
                       <Select
-                        items={ViralGenomeTree.thresholdOptions.map((v) => ({ value: v, label: v }))}
+                        items={ViralGenomeTree.thresholdOptions.map((v) => ({
+                          value: v,
+                          label: v,
+                        }))}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select" />
@@ -591,7 +644,12 @@ export default function ViralGenomeTreePage() {
                     <FieldItem>
                       <RadioGroup
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value as ViralGenomeTree.ViralGenomeTreeFormData["recipe"])}
+                        onValueChange={(value) =>
+                          value != null &&
+                          field.handleChange(
+                            value as ViralGenomeTree.ViralGenomeTreeFormData["recipe"],
+                          )
+                        }
                         className="service-radio-group-horizontal"
                       >
                         <div className="flex items-center gap-3">
@@ -615,13 +673,16 @@ export default function ViralGenomeTreePage() {
                 <form.Field name="substitution_model">
                   {(field) => (
                     <FieldItem>
-                      <Label className="service-card-label">
-                        Model
-                      </Label>
+                      <Label className="service-card-label">Model</Label>
                       <Select
-                        items={ViralGenomeTree.dnaModels.map((m) => ({ value: m.value, label: m.label }))}
+                        items={ViralGenomeTree.dnaModels.map((m) => ({
+                          value: m.value,
+                          label: m.label,
+                        }))}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger
                           id="model"
@@ -696,7 +757,8 @@ export default function ViralGenomeTreePage() {
                 <div>
                   <Label>Metadata Table Fields</Label>
                   <p className="text-muted-foreground pt-2 pb-4 text-sm">
-                    These fields will appear as options in the phyloxml visualization
+                    These fields will appear as options in the phyloxml
+                    visualization
                   </p>
 
                   <div className="flex gap-2">
@@ -705,7 +767,9 @@ export default function ViralGenomeTreePage() {
                         .filter((f) => !f.isLabel)
                         .map((f) => ({ value: f.value, label: f.label }))}
                       value={selectedMetadataField}
-                      onValueChange={(value) => value != null && handleMetadataSelection(value)}
+                      onValueChange={(value) =>
+                        value != null && handleMetadataSelection(value)
+                      }
                     >
                       <SelectTrigger className="service-card-select-trigger">
                         <SelectValue placeholder="Select field" />
@@ -718,7 +782,7 @@ export default function ViralGenomeTreePage() {
                               return (
                                 <SelectLabel
                                   key={field.value}
-                                  className="border-b border-border pb-1.5 mb-1 font-medium"
+                                  className="border-border mb-1 border-b pb-1.5 font-medium"
                                 >
                                   {field.label}
                                 </SelectLabel>
@@ -750,7 +814,9 @@ export default function ViralGenomeTreePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-8 py-1">Field</TableHead>
-                      <TableHead className="w-24 h-8 py-1 text-center">Remove</TableHead>
+                      <TableHead className="h-8 w-24 py-1 text-center">
+                        Remove
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -764,7 +830,7 @@ export default function ViralGenomeTreePage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => removeMetadataField(field.id)}
-                              className="h-6 w-6 text-destructive hover:text-destructive/90"
+                              className="text-destructive hover:text-destructive/90 h-6 w-6"
                             >
                               <X size={14} />
                             </Button>

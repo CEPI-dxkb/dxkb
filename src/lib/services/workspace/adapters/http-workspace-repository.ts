@@ -33,6 +33,17 @@ import {
 } from "./parsers";
 import { rpc } from "./rpc";
 
+function getWorkspaceGetPathRaw(
+  raw: unknown,
+  pathIndex: number,
+): unknown[] | null {
+  if (!Array.isArray(raw)) return null;
+  const pathResults = raw[0];
+  if (!Array.isArray(pathResults)) return null;
+  const objectsAtPath = pathResults[pathIndex];
+  return Array.isArray(objectsAtPath) ? objectsAtPath : null;
+}
+
 export interface HttpWorkspaceRepositoryOptions {
   /** "/api/services/workspace" (default) or "/api/workspace/public". */
   baseUrl?: string;
@@ -64,14 +75,17 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
     if (paths.length === 0) return [];
     const raw = await this.getRaw(paths, options);
     return paths.map((path, index) => {
-      const object = parseWorkspaceGetSingle(raw as unknown[], index);
-      if (!object) return { path, raw, object: null };
+      const pathRaw = getWorkspaceGetPathRaw(raw, index);
+      const object = Array.isArray(raw)
+        ? parseWorkspaceGetSingle(raw, index)
+        : null;
+      if (!object) return { path, raw: pathRaw, object: null };
       const parsedTimestamp = object.creation_time
         ? Date.parse(object.creation_time)
         : Number.NaN;
       return {
         path,
-        raw,
+        raw: pathRaw,
         object: {
           id: object.id,
           name: object.name,
@@ -80,7 +94,9 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
           size: object.size,
           ownerId: object.owner_id,
           createdAt: object.creation_time,
-          timestamp: Number.isNaN(parsedTimestamp) ? undefined : parsedTimestamp,
+          timestamp: Number.isNaN(parsedTimestamp)
+            ? undefined
+            : parsedTimestamp,
           userMeta: object.userMeta,
           autoMeta: object.sysMeta,
           raw: object,
@@ -89,7 +105,10 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
     });
   }
 
-  async getRaw(paths: string[], options?: WorkspaceReadOptions): Promise<unknown> {
+  async getRaw(
+    paths: string[],
+    options?: WorkspaceReadOptions,
+  ): Promise<unknown> {
     if (paths.length === 0) return [];
     return rpc<unknown>({
       method: "Workspace.get",

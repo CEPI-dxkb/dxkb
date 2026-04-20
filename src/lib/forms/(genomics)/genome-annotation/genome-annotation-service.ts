@@ -1,8 +1,7 @@
-import { noop } from "@/lib/utils";
+import { applyTaxonomyIdWithLookup } from "@/lib/forms/taxonomy-lookup";
 import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
-  completeGenomeAnnotationSchema,
   defaultGenomeAnnotationFormValues,
   type GenomeAnnotationFormData,
 } from "./genome-annotation-form-schema";
@@ -12,41 +11,24 @@ export const genomeAnnotationService =
   createServiceDefinition<GenomeAnnotationFormData>({
     serviceName: "GenomeAnnotation",
     displayName: "Genome Annotation",
-    schema: completeGenomeAnnotationSchema,
     defaultValues: defaultGenomeAnnotationFormValues,
     transformParams: transformGenomeAnnotationParams,
     rerun: {
       fields: ["contigs", "recipe", "output_path", "output_file"],
       onApply: (rerunData, form) => {
+        const label =
+          typeof rerunData.my_label === "string" ? rerunData.my_label : "";
         if (rerunData.taxonomy_id) {
-          const taxonId = String(rerunData.taxonomy_id);
-          form.setFieldValue("taxonomy_id", taxonId as never);
-          if (rerunData.my_label) {
-            form.setFieldValue("my_label", rerunData.my_label as never);
+          applyTaxonomyIdWithLookup(String(rerunData.taxonomy_id), form);
+          if (label) {
+            form.setFieldValue("my_label", label);
           }
-          fetch(
-            `/api/services/taxonomy?q=taxon_id:${encodeURIComponent(taxonId)}&fl=taxon_id,taxon_name`,
-          )
-            .then((r) => r.json())
-            .then((data) => {
-              const docs = Array.isArray(data) ? data : data?.response?.docs;
-              if (docs && docs.length > 0) {
-                form.setFieldValue(
-                  "scientific_name",
-                  docs[0].taxon_name as never,
-                );
-              }
-            })
-            .catch(noop);
         } else {
-          if (rerunData.scientific_name) {
-            form.setFieldValue(
-              "scientific_name",
-              rerunData.scientific_name as never,
-            );
+          if (typeof rerunData.scientific_name === "string") {
+            form.setFieldValue("scientific_name", rerunData.scientific_name);
           }
-          if (rerunData.my_label) {
-            form.setFieldValue("my_label", rerunData.my_label as never);
+          if (label) {
+            form.setFieldValue("my_label", label);
           }
         }
       },

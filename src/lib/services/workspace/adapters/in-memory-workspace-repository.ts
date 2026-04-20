@@ -76,9 +76,10 @@ function toBrowserItem(
   index: number,
 ): WorkspaceBrowserItem {
   const parentNormalized = normalize(parent);
-  const fullPath = parentNormalized === "/"
-    ? `/${fixture.name}`
-    : `${parentNormalized}/${fixture.name}`;
+  const fullPath =
+    parentNormalized === "/"
+      ? `/${fixture.name}`
+      : `${parentNormalized}/${fixture.name}`;
   const createdAt = fixture.createdAt ?? "2026-01-01T00:00:00Z";
   return {
     id: `${fullPath}#${index}`,
@@ -95,6 +96,31 @@ function toBrowserItem(
     global_permission: fixture.globalPermission ?? "n",
     timestamp: fixture.timestamp ?? Date.parse(createdAt),
   };
+}
+
+// Mirrors the `Workspace.get` tuple layout (see `parseWorkspaceGetSingle`), so
+// `WorkspaceMetadata.raw` / `getRaw()` carry the same shape the HTTP adapter
+// produces and tests can assert against it.
+function toGetTuple(
+  parent: string,
+  fixture: InMemoryFixtureItem,
+  index: number,
+): unknown[] {
+  const parentNormalized = normalize(parent);
+  const parentWithSlash =
+    parentNormalized === "/" ? "/" : `${parentNormalized}/`;
+  const createdAt = fixture.createdAt ?? "2026-01-01T00:00:00Z";
+  return [
+    fixture.name,
+    fixture.type,
+    parentWithSlash,
+    createdAt,
+    `${parentWithSlash}${fixture.name}#${index}`,
+    fixture.ownerId ?? "test-user@bvbrc",
+    fixture.size ?? 0,
+    {},
+    {},
+  ];
 }
 
 export class InMemoryWorkspaceRepository implements WorkspaceRepository {
@@ -146,11 +172,13 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
       const parent = normalize(path.slice(0, path.lastIndexOf("/")) || "/");
       const siblings = this.directories[parent] ?? [];
       const name = normalized.split("/").filter(Boolean).pop() ?? "";
-      const fixture = siblings.find((f) => f.name === name);
+      const fixtureIndex = siblings.findIndex((f) => f.name === name);
+      const fixture = fixtureIndex >= 0 ? siblings[fixtureIndex] : null;
       const object = fixture
-        ? toWorkspaceItem(toBrowserItem(parent, fixture, siblings.indexOf(fixture)))
+        ? toWorkspaceItem(toBrowserItem(parent, fixture, fixtureIndex))
         : null;
-      return { path: normalized, object, raw: object?.raw ?? null };
+      const raw = fixture ? [toGetTuple(parent, fixture, fixtureIndex)] : null;
+      return { path: normalized, object, raw };
     });
   }
 
@@ -158,7 +186,9 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     this.calls.push({ method: "listDirectory", input });
     this.throwIfConfigured("listDirectory");
     const items = this.directories[normalize(input.path)] ?? [];
-    const mapped = items.map((f, i) => toWorkspaceItem(toBrowserItem(input.path, f, i)));
+    const mapped = items.map((f, i) =>
+      toWorkspaceItem(toBrowserItem(input.path, f, i)),
+    );
     const types = input.query?.type;
     const allowed = types && types.length > 0 ? new Set(types) : null;
     const term = input.query?.name?.toLowerCase();
@@ -310,17 +340,23 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
           if (key !== srcNormalized && !key.startsWith(srcPrefix)) continue;
           const suffix = key === srcNormalized ? "" : key.slice(suffixOffset);
           const newKey = normalize(`${destNormalized}${suffix}`);
-          this.directories[newKey] = this.directories[key].map((c) => ({ ...c }));
+          this.directories[newKey] = this.directories[key].map((c) => ({
+            ...c,
+          }));
           clonedKeys.push(key);
         }
       }
 
       if (input.move) {
-        this.directories[srcParent] = srcSiblings.filter((c) => c.name !== srcName);
+        this.directories[srcParent] = srcSiblings.filter(
+          (c) => c.name !== srcName,
+        );
         if (clonedKeys.length > 0) {
           const removed = new Set(clonedKeys);
           this.directories = Object.fromEntries(
-            Object.entries(this.directories).filter(([key]) => !removed.has(key)),
+            Object.entries(this.directories).filter(
+              ([key]) => !removed.has(key),
+            ),
           );
         }
       }
@@ -351,13 +387,22 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   async getDownloadUrls(paths: string[]): Promise<string[][]> {
     this.calls.push({ method: "getDownloadUrls", paths });
     this.throwIfConfigured("getDownloadUrls");
-    return paths.map((path) => this.downloadUrls[normalize(path)] ?? [`https://shock.test/dl/${normalize(path)}`]);
+    return paths.map(
+      (path) =>
+        this.downloadUrls[normalize(path)] ?? [
+          `https://shock.test/dl/${normalize(path)}`,
+        ],
+    );
   }
 
   async getArchiveUrl(input: ArchiveRequest): Promise<ArchiveResult> {
     this.calls.push({ method: "getArchiveUrl", input });
     this.throwIfConfigured("getArchiveUrl");
-    return [`https://shock.test/archive/${input.archiveName}`, input.paths.length, 0];
+    return [
+      `https://shock.test/archive/${input.archiveName}`,
+      input.paths.length,
+      0,
+    ];
   }
 
   async searchObjects(
@@ -373,16 +418,19 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
     const results: WorkspaceItem[] = [];
     const seen = new Set<string>();
+    const nameFilter = input.name?.toLowerCase();
     const visit = (dir: string) => {
       if (seen.has(dir)) return;
       seen.add(dir);
       const children = this.directories[dir] ?? [];
       children.forEach((f, i) => {
         const item = toWorkspaceItem(toBrowserItem(dir, f, i));
-        const isFolderLike = /folder|job_result|modelfolder|group/.test(item.type);
+        const isFolderLike = /folder|job_result|modelfolder|group/.test(
+          item.type,
+        );
         const typeMatches = !input.types || input.types.includes(item.type);
         const nameMatches =
-          !input.name || item.name.toLowerCase().includes(input.name.toLowerCase());
+          !nameFilter || item.name.toLowerCase().includes(nameFilter);
         if (typeMatches && nameMatches) results.push(item);
         if (isFolderLike) visit(item.path);
       });
@@ -400,7 +448,8 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     this.throwIfConfigured("diskUsage");
     return paths.map((path) => {
       const entry = this.diskUsageMap[normalize(path)];
-      if (entry) return [path, ...entry] as [string, number, number, number, string];
+      if (entry)
+        return [path, ...entry] as [string, number, number, number, string];
       return [path, 0, 0, 0, ""];
     });
   }

@@ -2,7 +2,6 @@ import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
   defaultSubspeciesClassificationFormValues,
-  subspeciesClassificationFormSchema,
   type SubspeciesClassificationFormData,
 } from "./subspecies-classification-form-schema";
 import { transformSubspeciesClassificationParams } from "./subspecies-classification-form-utils";
@@ -11,7 +10,6 @@ export const subspeciesClassificationService =
   createServiceDefinition<SubspeciesClassificationFormData>({
     serviceName: "SubspeciesClassification",
     displayName: "Subspecies Classification",
-    schema: subspeciesClassificationFormSchema,
     defaultValues: defaultSubspeciesClassificationFormValues,
     transformParams: transformSubspeciesClassificationParams,
     rerun: {

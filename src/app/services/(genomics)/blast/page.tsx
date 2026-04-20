@@ -36,8 +36,8 @@ import {
   RequiredFormCardTitle,
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
-import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { blastPrecomputedDatabases } from "@/types/services";
 import {
   useBlastDatabaseTypes,
@@ -85,47 +85,46 @@ export default function BlastServicePage() {
 
   const availableDatabaseTypes = useBlastDatabaseTypes(form);
   const currentBlastProgram = useBlastProgramTracking(form);
-  const dbPrecomputedDatabase = useStore(form.store, (s) => s.values.db_precomputed_database);
+  const dbPrecomputedDatabase = useStore(
+    form.store,
+    (s) => s.values.db_precomputed_database,
+  );
   const dbType = useStore(form.store, (s) => s.values.db_type);
   const inputSource = useStore(form.store, (s) => s.values.input_source);
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
   const { fastaValidationResult, isFastaValid, handleFastaValidationChange } =
     useFastaValidation(form, currentBlastProgram);
-  const dbFastaTypes = useMemo(
-    (): ValidWorkspaceObjectTypes[] => {
-      if (dbPrecomputedDatabase !== "selFasta") {
-        return ["feature_protein_fasta", "feature_dna_fasta"];
-      }
-      return dbType === "faa"
-        ? ["feature_protein_fasta"]
-        : ["feature_dna_fasta", "contigs"];
-    },
-    [dbPrecomputedDatabase, dbType],
-  );
+  const dbFastaPreset = useMemo<WorkspaceSelectorPreset>(() => {
+    if (dbPrecomputedDatabase !== "selFasta") {
+      return "featureFasta";
+    }
+    return dbType === "faa"
+      ? "featureProteinFasta"
+      : "featureDnaFastaOrContigs";
+  }, [dbPrecomputedDatabase, dbType]);
 
-  // Determine workspace object types based on BLAST program (matching legacy behavior)
-  const inputFastaTypes = useMemo((): ValidWorkspaceObjectTypes[] => {
+  const inputFastaPreset = useMemo<WorkspaceSelectorPreset>(() => {
     switch (currentBlastProgram) {
       case "blastp":
-        return ["feature_protein_fasta"];
+        return "featureProteinFasta";
       case "blastn":
-        return ["feature_dna_fasta", "contigs"];
+        return "featureDnaFastaOrContigs";
       case "blastx":
-        return ["feature_dna_fasta", "contigs"];
+        return "featureDnaFastaOrContigs";
       case "tblastn":
-        return ["feature_protein_fasta"];
+        return "featureProteinFasta";
       default:
-        return ["feature_protein_fasta", "feature_dna_fasta"];
+        return "featureFasta";
     }
   }, [currentBlastProgram]);
 
-  const previousProgramRef = useRef<BlastFormData["blast_program"]>(currentBlastProgram);
+  const previousProgramRef =
+    useRef<BlastFormData["blast_program"]>(currentBlastProgram);
 
-  // Prevents the program-change clear effect from wiping inputs set by a rerun
+  // Suppresses the program-change clear effect while a rerun is writing fields.
   const isApplyingRerunRef = useRef(false);
 
-  // Keep input_type aligned with the current program (legacy behavior)
   useEffect(() => {
     const derivedInputType =
       currentBlastProgram === "blastp" || currentBlastProgram === "tblastn"
@@ -134,16 +133,18 @@ export default function BlastServicePage() {
     form.setFieldValue("input_type", derivedInputType);
   }, [currentBlastProgram, form]);
 
-  // Clear input fields when BLAST program changes to prevent stale/incorrect files
   useEffect(() => {
     const previousProgram = previousProgramRef.current;
 
-    // Only clear if program actually changed (not on initial mount) and not during rerun application
-    if (previousProgram !== currentBlastProgram && previousProgram !== undefined && !isApplyingRerunRef.current) {
+    if (
+      previousProgram !== currentBlastProgram &&
+      previousProgram !== undefined &&
+      !isApplyingRerunRef.current &&
+      form.getFieldValue("input_fasta_file") !== ""
+    ) {
       form.setFieldValue("input_fasta_file", "");
     }
 
-    // Rerun application is complete once this effect has run after the program change
     isApplyingRerunRef.current = false;
     previousProgramRef.current = currentBlastProgram;
   }, [currentBlastProgram, form]);
@@ -154,7 +155,6 @@ export default function BlastServicePage() {
     rerun: {
       onApply: (rerunData) => {
         if (rerunData.blast_program) {
-          // Guard the program-change clear effect only when we're actually changing the program
           if (rerunData.blast_program !== form.state.values.blast_program) {
             isApplyingRerunRef.current = true;
           }
@@ -195,7 +195,9 @@ export default function BlastServicePage() {
   const handleInputSourceChange = (
     newSource: BlastFormData["input_source"],
   ) => {
-    const preservedFastaData = String((form.state.values as Record<string, unknown>).input_fasta_data ?? "");
+    const preservedFastaData = String(
+      (form.state.values as Record<string, unknown>).input_fasta_data ?? "",
+    );
 
     form.setFieldValue("input_fasta_data", "");
     form.setFieldValue("input_fasta_file", "");
@@ -263,7 +265,7 @@ export default function BlastServicePage() {
                   <RadioGroup
                     value={field.state.value}
                     onValueChange={field.handleChange}
-                    className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full"
+                    className="grid w-full grid-cols-1 gap-4 md:grid-cols-2"
                   >
                     <div className="flex items-center gap-3">
                       <RadioGroupItem value="blastn" id="blastn" />
@@ -340,19 +342,12 @@ export default function BlastServicePage() {
                       className="service-radio-group-horizontal"
                     >
                       <div className="flex items-center gap-3">
-                        <RadioGroupItem
-                          value="fasta_data"
-                          id="fastaSequence"
-                        />
-                        <Label htmlFor="fastaSequence">
-                          Enter sequence
-                        </Label>
+                        <RadioGroupItem value="fasta_data" id="fastaSequence" />
+                        <Label htmlFor="fastaSequence">Enter sequence</Label>
                       </div>
                       <div className="flex items-center gap-3">
                         <RadioGroupItem value="fasta_file" id="fastaFile" />
-                        <Label htmlFor="fastaFile">
-                          Select FASTA file
-                        </Label>
+                        <Label htmlFor="fastaFile">Select FASTA file</Label>
                       </div>
                       <div className="flex items-center gap-3">
                         <RadioGroupItem
@@ -402,7 +397,7 @@ export default function BlastServicePage() {
                       {(fileField) => (
                         <FieldItem>
                           <WorkspaceObjectSelector
-                            types={inputFastaTypes}
+                            preset={inputFastaPreset}
                             placeholder="Select a FASTA file to search..."
                             value={fileField.state.value}
                             onObjectSelect={(object: WorkspaceObject) => {
@@ -478,7 +473,10 @@ export default function BlastServicePage() {
                         <SelectContent>
                           <SelectGroup>
                             {blastPrecomputedDatabases.map((dbSource) => (
-                              <SelectItem key={dbSource.value} value={dbSource.value}>
+                              <SelectItem
+                                key={dbSource.value}
+                                value={dbSource.value}
+                              >
                                 {dbSource.label}
                               </SelectItem>
                             ))}
@@ -504,7 +502,10 @@ export default function BlastServicePage() {
                         key={`${currentBlastProgram}-${dbPrecomputedDatabase}-${availableDatabaseTypes.length}`}
                         value={field.state.value || ""}
                         onValueChange={(value) => {
-                          if (value != null) field.handleChange(value as BlastFormData["db_type"]);
+                          if (value != null)
+                            field.handleChange(
+                              value as BlastFormData["db_type"],
+                            );
                         }}
                       >
                         <SelectTrigger className="service-card-select-trigger">
@@ -513,7 +514,10 @@ export default function BlastServicePage() {
                         <SelectContent>
                           <SelectGroup>
                             {availableDatabaseTypes.map((dbTypeOption) => (
-                              <SelectItem key={dbTypeOption.value} value={dbTypeOption.value}>
+                              <SelectItem
+                                key={dbTypeOption.value}
+                                value={dbTypeOption.value}
+                              >
                                 {dbTypeOption.label}
                               </SelectItem>
                             ))}
@@ -546,7 +550,7 @@ export default function BlastServicePage() {
                     {(field) => (
                       <FieldItem>
                         <WorkspaceObjectSelector
-                          types={["unspecified"]}
+                          preset="unspecified"
                           placeholder="Genome..."
                           onObjectSelect={(object: WorkspaceObject) => {
                             field.handleChange([object.path]);
@@ -624,7 +628,7 @@ export default function BlastServicePage() {
                     {(field) => (
                       <FieldItem>
                         <WorkspaceObjectSelector
-                          types={["unspecified"]}
+                          preset="unspecified"
                           placeholder="Taxon..."
                           onObjectSelect={(object: WorkspaceObject) => {
                             field.handleChange([object.path]);
@@ -650,7 +654,7 @@ export default function BlastServicePage() {
                     {(field) => (
                       <FieldItem>
                         <WorkspaceObjectSelector
-                          types={dbFastaTypes}
+                          preset={dbFastaPreset}
                           placeholder="FASTA file..."
                           onObjectSelect={(object: WorkspaceObject) => {
                             field.handleChange(object.path);
@@ -799,7 +803,9 @@ export default function BlastServicePage() {
             </Button>
             <Button
               type="submit"
-              disabled={runtime.isSubmitting || !canSubmit || !isOutputNameValid}
+              disabled={
+                runtime.isSubmitting || !canSubmit || !isOutputNameValid
+              }
             >
               {runtime.isSubmitting ? <Spinner /> : null}
               Submit

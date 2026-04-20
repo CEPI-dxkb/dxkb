@@ -1,8 +1,8 @@
 import { createServiceDefinition } from "@/lib/services/service-definition";
+import { rerunBooleanValue } from "@/lib/rerun-utility";
 
 import {
   defaultSimilarGenomeFinderFormValues,
-  similarGenomeFinderFormSchema,
   type SimilarGenomeFinderFormData,
 } from "./similar-genome-finder-form-schema";
 import { transformSimilarGenomeFinderParams } from "./similar-genome-finder-form-utils";
@@ -11,48 +11,34 @@ export const similarGenomeFinderService =
   createServiceDefinition<SimilarGenomeFinderFormData>({
     serviceName: "SimilarGenomeFinder",
     displayName: "Similar Genome Finder",
-    schema: similarGenomeFinderFormSchema,
     defaultValues: defaultSimilarGenomeFinderFormValues,
     transformParams: transformSimilarGenomeFinderParams,
     rerun: {
-      fields: [
-        "selectedGenomeId",
-        "fasta_file",
-        "output_path",
-        "output_file",
-      ],
+      fields: ["selectedGenomeId", "fasta_file", "output_path", "output_file"],
       onApply: (rerunData, form) => {
         if (typeof rerunData.max_hits === "number") {
-          form.setFieldValue("max_hits", rerunData.max_hits as never);
+          form.setFieldValue("max_hits", rerunData.max_hits);
         }
         if (typeof rerunData.max_pvalue === "number") {
-          form.setFieldValue("max_pvalue", rerunData.max_pvalue as never);
+          form.setFieldValue("max_pvalue", rerunData.max_pvalue);
         }
         if (typeof rerunData.max_distance === "number") {
-          form.setFieldValue("max_distance", rerunData.max_distance as never);
+          form.setFieldValue("max_distance", rerunData.max_distance);
         }
-        if (
-          typeof rerunData.include_bacterial === "boolean" ||
-          rerunData.include_bacterial === 0 ||
-          rerunData.include_bacterial === 1
-        ) {
+        if (rerunData.include_bacterial != null) {
           form.setFieldValue(
             "include_bacterial",
-            Boolean(rerunData.include_bacterial) as never,
+            rerunBooleanValue(rerunData.include_bacterial),
           );
         }
-        if (
-          typeof rerunData.include_viral === "boolean" ||
-          rerunData.include_viral === 0 ||
-          rerunData.include_viral === 1
-        ) {
+        if (rerunData.include_viral != null) {
           form.setFieldValue(
             "include_viral",
-            Boolean(rerunData.include_viral) as never,
+            rerunBooleanValue(rerunData.include_viral),
           );
         }
         if (rerunData.scope === "reference" || rerunData.scope === "all") {
-          form.setFieldValue("scope", rerunData.scope as never);
+          form.setFieldValue("scope", rerunData.scope);
         }
       },
     },

@@ -3,7 +3,6 @@ import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
   defaultProteomeComparisonFormValues,
-  proteomeComparisonFormSchema,
   type ComparisonItem,
   type ProteomeComparisonFormData,
 } from "./proteome-comparison-form-schema";
@@ -18,7 +17,6 @@ export const proteomeComparisonService =
   createServiceDefinition<ProteomeComparisonFormData>({
     serviceName: "GenomeComparison",
     displayName: "Proteome Comparison",
-    schema: proteomeComparisonFormSchema,
     defaultValues: defaultProteomeComparisonFormValues,
     transformParams: transformProteomeComparisonParams,
     rerun: {
@@ -27,13 +25,13 @@ export const proteomeComparisonService =
         if (typeof rerunData.min_seq_cov === "number") {
           form.setFieldValue(
             "min_seq_cov",
-            Math.round(rerunData.min_seq_cov * 100) as never,
+            Math.round(rerunData.min_seq_cov * 100),
           );
         }
         if (typeof rerunData.min_ident === "number") {
           form.setFieldValue(
             "min_ident",
-            Math.round(rerunData.min_ident * 100) as never,
+            Math.round(rerunData.min_ident * 100),
           );
         }
 
@@ -58,23 +56,25 @@ export const proteomeComparisonService =
 
         if (refIsGenome && genomeIds.length > 0) {
           const refGenomeId = genomeIds[refIndex - 1];
-          form.setFieldValue("ref_genome_id", refGenomeId as never);
-          form.setFieldValue("ref_source_type", "genome" as never);
+          if (refGenomeId) {
+            form.setFieldValue("ref_genome_id", refGenomeId);
+            form.setFieldValue("ref_source_type", "genome");
+          }
         } else if (refIsFasta && userGenomes.length > 0) {
           const refFastaIndex = refIndex - genomeIds.length - 1;
-          form.setFieldValue(
-            "ref_fasta_file",
-            userGenomes[refFastaIndex] as never,
-          );
-          form.setFieldValue("ref_source_type", "fasta" as never);
+          const refFastaFile = userGenomes[refFastaIndex];
+          if (refFastaFile) {
+            form.setFieldValue("ref_fasta_file", refFastaFile);
+            form.setFieldValue("ref_source_type", "fasta");
+          }
         } else if (refIsFeatureGroup && userFeatureGroups.length > 0) {
           const refFgIndex =
             refIndex - genomeIds.length - userGenomes.length - 1;
-          form.setFieldValue(
-            "ref_feature_group",
-            userFeatureGroups[refFgIndex] as never,
-          );
-          form.setFieldValue("ref_source_type", "feature_group" as never);
+          const refFeatureGroup = userFeatureGroups[refFgIndex];
+          if (refFeatureGroup) {
+            form.setFieldValue("ref_feature_group", refFeatureGroup);
+            form.setFieldValue("ref_source_type", "feature_group");
+          }
         }
 
         const compItems: ComparisonItem[] = [];
@@ -100,7 +100,7 @@ export const proteomeComparisonService =
         });
 
         if (compItems.length > 0) {
-          form.setFieldValue("comparison_items", compItems as never);
+          form.setFieldValue("comparison_items", compItems);
         }
       },
     },

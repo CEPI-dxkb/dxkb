@@ -23,10 +23,18 @@ import { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { toWorkspaceBrowserItem } from "@/lib/services/workspace/domain";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
-import { useSharedWithUser, useUserWorkspaces } from "@/hooks/services/workspace/use-shared-with-user";
+import {
+  useSharedWithUser,
+  useUserWorkspaces,
+} from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
-import { hasWriteAccess, formatDate, formatFileSize } from "@/lib/services/workspace/helpers";
-import { ChevronRight, FolderUp } from "lucide-react";
+import {
+  hasWriteAccess,
+  formatDate,
+  formatFileSize,
+  formatOwner,
+} from "@/lib/services/workspace/helpers";
+import { FolderUp } from "lucide-react";
 import { isFolderType, isFolder } from "@/lib/services/workspace/utils";
 
 /** Derive username (e.g. "user") from workspace root path (e.g. "/user@bvbrc"). */
@@ -38,57 +46,6 @@ function normalizePath(path: string | null | undefined): string {
   if (!path) return "/";
   const trimmed = path.replace(/\/+$/, "");
   return trimmed || "/";
-}
-
-function _MiniBrowserBreadcrumbs({
-  currentPath,
-  onNavigate,
-  className,
-  clickable = true,
-}: {
-  currentPath: string;
-  onNavigate: (path: string) => void;
-  className?: string;
-  /** When false, breadcrumbs are display-only (e.g. when viewing a shared folder). */
-  clickable?: boolean;
-}) {
-  const segments = currentPath.split("/").filter(Boolean);
-  if (segments.length === 0) return null;
-
-  return (
-    <nav
-      aria-label="Current path"
-      className={cn("text-muted-foreground flex flex-wrap items-center gap-1 text-sm", className)}
-    >
-      {segments.map((segment, index) => {
-        const pathUpToHere = "/" + segments.slice(0, index + 1).join("/");
-        const isLast = index === segments.length - 1;
-        const segmentClassName = cn(
-          "truncate max-w-[150px] px-0.5 py-0.5 text-left",
-          isLast && "text-foreground font-medium",
-        );
-        return (
-          <span key={pathUpToHere} className="flex items-center gap-1">
-            {clickable ? (
-              <button
-                type="button"
-                onClick={() => onNavigate(pathUpToHere)}
-                className={cn("hover:text-foreground rounded transition-colors", segmentClassName)}
-                title={pathUpToHere}
-              >
-                {segment}
-              </button>
-            ) : (
-              <span className={segmentClassName} title={pathUpToHere}>
-                {segment}
-              </span>
-            )}
-            {!isLast && <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-          </span>
-        );
-      })}
-    </nav>
-  );
 }
 
 export interface WorkspaceMiniBrowserProps {
@@ -132,7 +89,9 @@ export function WorkspaceMiniBrowser({
     onSelectPath(normalizedCurrent);
   }, [normalizedCurrent, onSelectPath]);
 
-  const username = workspaceRoot ? usernameFromWorkspaceRoot(workspaceRoot) : "";
+  const username = workspaceRoot
+    ? usernameFromWorkspaceRoot(workspaceRoot)
+    : "";
 
   const userWorkspacesQuery = useUserWorkspaces({
     username,
@@ -173,7 +132,7 @@ export function WorkspaceMiniBrowser({
     ? userWorkspacesQuery.isLoading || sharedQuery.isLoading
     : pathQuery.isLoading;
   const error = isAtRoot
-    ? userWorkspacesQuery.error ?? sharedQuery.error
+    ? (userWorkspacesQuery.error ?? sharedQuery.error)
     : pathQuery.error;
 
   const displayItems = useMemo(() => {
@@ -188,14 +147,12 @@ export function WorkspaceMiniBrowser({
       const aFolder = isFolderType(a.type);
       const bFolder = isFolderType(b.type);
       if (aFolder !== bFolder) return aFolder ? -1 : 1;
-      return (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" });
+      return (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+        sensitivity: "base",
+      });
     };
     return [...list].sort(sortCompare);
   }, [items, mode, showHidden]);
-
-  const _handleNavigate = (path: string) => {
-    setCurrentPath(path);
-  };
 
   const handleFolderDoubleClick = (item: WorkspaceBrowserItem) => {
     if (isFolderType(item.type)) {
@@ -229,30 +186,26 @@ export function WorkspaceMiniBrowser({
       return;
     }
     const parentSegments = pathSegments.slice(0, -1);
-    const parentPath = parentSegments.length > 0 ? "/" + parentSegments.join("/") : "/";
+    const parentPath =
+      parentSegments.length > 0 ? "/" + parentSegments.join("/") : "/";
     setCurrentPath(parentPath);
   }, [isInSharedFolder, pathSegments, workspaceRoot]);
-
-  const _breadcrumbsClickable = !isInSharedFolder;
 
   const navigableItems = useMemo(
     () => displayItems.filter((item) => isFolderType(item.type)),
     [displayItems],
   );
 
-  const navigationTargets = useMemo<("parent" | string)[]>(
-    () => {
-      const targets: ("parent" | string)[] = [];
-      if (showParentRow) {
-        targets.push("parent");
-      }
-      for (const item of navigableItems) {
-        targets.push(normalizePath(item.path));
-      }
-      return targets;
-    },
-    [showParentRow, navigableItems],
-  );
+  const navigationTargets = useMemo<("parent" | string)[]>(() => {
+    const targets: ("parent" | string)[] = [];
+    if (showParentRow) {
+      targets.push("parent");
+    }
+    for (const item of navigableItems) {
+      targets.push(normalizePath(item.path));
+    }
+    return targets;
+  }, [showParentRow, navigableItems]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
@@ -266,9 +219,8 @@ export function WorkspaceMiniBrowser({
         if (!focusedRow && selectedPath == null) return;
         const key = focusedRow ?? normalizePath(selectedPath);
         const focusedItem =
-          navigableItems.find(
-            (item) => normalizePath(item.path) === key,
-          ) ?? null;
+          navigableItems.find((item) => normalizePath(item.path) === key) ??
+          null;
         if (focusedItem) {
           e.preventDefault();
           setCurrentPath(focusedItem.path);
@@ -290,9 +242,7 @@ export function WorkspaceMiniBrowser({
 
       let nextIndex: number;
       if (e.shiftKey) {
-        nextIndex = e.key === "ArrowDown"
-          ? navigationTargets.length - 1
-          : 0;
+        nextIndex = e.key === "ArrowDown" ? navigationTargets.length - 1 : 0;
       } else if (e.key === "ArrowDown") {
         nextIndex =
           currentIndex < 0
@@ -330,8 +280,7 @@ export function WorkspaceMiniBrowser({
     if (!tableContainerRef.current) return;
 
     const key =
-      focusedRow ??
-      (selectedPath != null ? normalizePath(selectedPath) : null);
+      focusedRow ?? (selectedPath != null ? normalizePath(selectedPath) : null);
     if (!key) return;
 
     const container = tableContainerRef.current;
@@ -342,26 +291,19 @@ export function WorkspaceMiniBrowser({
 
     // Defer so DOM has the new focus/selection; use "start" so first row scrolls into view
     const id = requestAnimationFrame(() => {
-      row.scrollIntoView({ block: "center", inline: "start"});
+      row.scrollIntoView({ block: "center", inline: "start" });
     });
     return () => cancelAnimationFrame(id);
   }, [focusedRow, selectedPath]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      {/* <MiniBrowserBreadcrumbs
-        currentPath={currentPath}
-        onNavigate={handleNavigate}
-        className="px-2 pt-2"
-        clickable={breadcrumbsClickable}
-      /> */}
-
       <div
         ref={tableContainerRef}
         role="grid"
         tabIndex={0}
         aria-label="Workspace destination browser"
-        className="scrollbar-themed flex h-full min-h-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="scrollbar-themed focus-visible:ring-ring flex h-full min-h-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2"
         onKeyDown={handleKeyDown}
         onPointerDownCapture={() => tableContainerRef.current?.focus()}
       >
@@ -371,7 +313,9 @@ export function WorkspaceMiniBrowser({
               <TableHead className="pl-3">Name</TableHead>
               <TableHead className="hidden pl-3 sm:table-cell">Size</TableHead>
               <TableHead className="hidden pl-3 md:table-cell">Owner</TableHead>
-              <TableHead className="hidden pl-3 lg:table-cell">Created</TableHead>
+              <TableHead className="hidden pl-3 lg:table-cell">
+                Created
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -380,7 +324,7 @@ export function WorkspaceMiniBrowser({
               <TableRow
                 data-row-key="parent"
                 className={cn(
-                  "cursor-pointer hover:bg-muted/50",
+                  "hover:bg-muted/50 cursor-pointer",
                   focusedRow === "parent" && "bg-muted",
                 )}
                 onClick={handleParentClick}
@@ -434,7 +378,7 @@ export function WorkspaceMiniBrowser({
                     key={item.id ?? item.path}
                     data-row-key={normalizePath(item.path)}
                     className={cn(
-                      "cursor-pointer hover:bg-muted/50",
+                      "hover:bg-muted/50 cursor-pointer",
                       isFolderType(item.type) &&
                         isSelected &&
                         focusedRow !== "parent" &&
@@ -449,13 +393,15 @@ export function WorkspaceMiniBrowser({
                         <span className="truncate text-sm">{item.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden pl-3 sm:table-cell text-sm">
-                      {isFolderType(item.type) ? "—" : formatFileSize(item.size ?? 0)}
+                    <TableCell className="hidden pl-3 text-sm sm:table-cell">
+                      {isFolderType(item.type)
+                        ? "—"
+                        : formatFileSize(item.size ?? 0)}
                     </TableCell>
-                    <TableCell className="hidden pl-3 md:table-cell text-sm">
-                      {(item.owner_id ?? "").replace(/@bvbrc$/, "")}
+                    <TableCell className="hidden pl-3 text-sm md:table-cell">
+                      {formatOwner(item.owner_id ?? "")}
                     </TableCell>
-                    <TableCell className="hidden pl-3 lg:table-cell text-sm">
+                    <TableCell className="hidden pl-3 text-sm lg:table-cell">
                       {formatDate(item.creation_time ?? "")}
                     </TableCell>
                   </TableRow>

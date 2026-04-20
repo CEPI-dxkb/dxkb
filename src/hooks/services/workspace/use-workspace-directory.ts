@@ -1,10 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { toWorkspaceItem, type WorkspaceItem } from "@/lib/services/workspace/domain";
+import {
+  toWorkspaceItem,
+  type WorkspaceItem,
+} from "@/lib/services/workspace/domain";
 import type { ListPermissionsResult } from "@/lib/services/workspace/domain";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
+import { buildHomePath } from "@/lib/services/workspace/path-utils";
+import { safeDecode } from "@/lib/url";
 import type { WorkspaceRepository } from "@/lib/services/workspace/workspace-repository";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
@@ -43,22 +48,8 @@ export interface UseWorkspaceDirectoryReturn {
   permissions: ListPermissionsResult | undefined;
 }
 
-function buildHomePath(username: string, relativePath: string): string {
-  const userSegment = username.includes("@") ? username : `${username}@bvbrc`;
-  const trimmed = relativePath.replace(/^\/+|\/+$/g, "");
-  return trimmed
-    ? `/${userSegment}/home/${trimmed}`
-    : `/${userSegment}/home`;
-}
-
 function normalizeFullPath(raw: string): string {
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(raw);
-  } catch {
-    // Leave malformed percent-encodings as-is rather than crashing the render.
-    decoded = raw;
-  }
+  const decoded = safeDecode(raw);
   return decoded.startsWith("/") ? decoded : `/${decoded}`;
 }
 
@@ -174,15 +165,21 @@ async function fetchModeItems(
     case "sharedRoot":
       return fetchSharedRoot(repository, mode.currentUser);
     case "sharedPath":
-      return repository.listDirectory({ path: normalizeFullPath(mode.fullPath) });
+      return repository.listDirectory({
+        path: normalizeFullPath(mode.fullPath),
+      });
     case "publicRoot":
       return fetchPublicRoot(repository);
     case "publicUser":
       return fetchPublicUser(repository, mode.username);
     case "publicPath":
-      return repository.listDirectory({ path: normalizeFullPath(mode.fullPath) });
+      return repository.listDirectory({
+        path: normalizeFullPath(mode.fullPath),
+      });
     case "jobResult":
-      return repository.listDirectory({ path: normalizeFullPath(mode.fullPath) });
+      return repository.listDirectory({
+        path: normalizeFullPath(mode.fullPath),
+      });
   }
 }
 
@@ -224,7 +221,9 @@ export function useWorkspaceDirectory(
       ? workspaceQueryKeys.permissions([currentPath])
       : workspaceQueryKeys.permissions([]),
     queryFn: () =>
-      currentPath ? repository.listPermissions([currentPath]) : Promise.resolve({}),
+      currentPath
+        ? repository.listPermissions([currentPath])
+        : Promise.resolve({}),
     enabled:
       enabled &&
       isAuthenticatedMode(mode) &&
@@ -252,18 +251,27 @@ export function useWorkspaceDirectory(
     const itemPerms = permissionsQuery.data ?? {};
     const currentPerms = currentPathPermissionsQuery.data ?? {};
     return { ...currentPerms, ...itemPerms };
-  }, [isAuthenticated, permissionsQuery.data, currentPathPermissionsQuery.data]);
+  }, [
+    isAuthenticated,
+    permissionsQuery.data,
+    currentPathPermissionsQuery.data,
+  ]);
+
+  const listingRefetch = listingQuery.refetch;
+  const permissionsRefetch = permissionsQuery.refetch;
+  const currentPathPermissionsRefetch = currentPathPermissionsQuery.refetch;
+  const refetch = useCallback(() => {
+    void listingRefetch();
+    void permissionsRefetch();
+    void currentPathPermissionsRefetch();
+  }, [listingRefetch, permissionsRefetch, currentPathPermissionsRefetch]);
 
   return {
     items,
     isLoading: listingQuery.isLoading,
     isFetching: listingQuery.isFetching,
     error: listingQuery.error ?? null,
-    refetch: () => {
-      void listingQuery.refetch();
-      void permissionsQuery.refetch();
-      void currentPathPermissionsQuery.refetch();
-    },
+    refetch,
     memberCountByPath,
     permissions: combinedPermissions,
   };

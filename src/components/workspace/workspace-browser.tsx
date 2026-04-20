@@ -20,6 +20,7 @@ import { JobMetadataCard } from "./job-metadata-card";
 import { useJobResultData } from "@/hooks/services/workspace/use-job-result-data";
 import { getDotPathRelative } from "@/lib/services/workspace/helpers";
 import {
+  buildHomePath,
   canWriteToCurrentDir as computeCanWriteToCurrentDir,
   computeWorkspacePaths,
 } from "@/lib/services/workspace/path-utils";
@@ -29,14 +30,21 @@ import {
   WorkspaceDataTable,
   type WorkspaceDataTableHandle,
 } from "./workspace-file-table";
-import { WorkspaceActionBar, type WorkspaceActionId } from "./workspace-action-bar";
+import {
+  WorkspaceActionBar,
+  type WorkspaceActionId,
+} from "./workspace-action-bar";
 import { WorkspaceShell } from "./workspace-shell";
 import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { addRecentFolder } from "@/lib/recent-workspace-folders";
-import { WorkspaceBrowserItem, WorkspaceBrowserSort, type WorkspaceViewMode } from "@/types/workspace-browser";
+import {
+  WorkspaceBrowserItem,
+  WorkspaceBrowserSort,
+  type WorkspaceViewMode,
+} from "@/types/workspace-browser";
 import { encodeWorkspaceSegment, noop, workspaceUsername } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -110,11 +118,7 @@ export function WorkspaceBrowser({
 
   const currentFullPath = useMemo(() => {
     if (!path || path.trim() === "") return "";
-    if (isHome) {
-      const trimmed = path.replace(/^\/+|\/+$/g, "");
-      const userSegment = username.includes("@") ? username : `${username}@bvbrc`;
-      return `/${userSegment}/home${trimmed ? `/${trimmed}` : ""}`;
-    }
+    if (isHome) return buildHomePath(username, path);
     return fullPath;
   }, [path, isHome, username, fullPath]);
 
@@ -159,8 +163,15 @@ export function WorkspaceBrowser({
     initialPermissions,
   });
 
-  const { items, isLoading, isFetching, error, refetch, memberCountByPath, currentDirPermissions } =
-    browserDirectory;
+  const {
+    items,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    memberCountByPath,
+    currentDirPermissions,
+  } = browserDirectory;
 
   const processedItems = useWorkspaceFilteredItems(items, {
     showHiddenFiles: isJobResultView ? true : showHiddenFiles,
@@ -169,12 +180,17 @@ export function WorkspaceBrowser({
     sort,
   });
 
-  const { selectedItems, selectedPaths, primaryItem, handleSelectItem, clearSelection } =
-    useWorkspaceSelection({
-      processedItems,
-      panelManuallyHidden,
-      setPanelExpanded,
-    });
+  const {
+    selectedItems,
+    selectedPaths,
+    primaryItem,
+    handleSelectItem,
+    clearSelection,
+  } = useWorkspaceSelection({
+    processedItems,
+    panelManuallyHidden,
+    setPanelExpanded,
+  });
 
   const jobResultBasePath = useMemo(() => {
     if (!isJobResultView || !resolveQuery.data) return undefined;
@@ -190,13 +206,14 @@ export function WorkspaceBrowser({
     basePath: jobResultBasePath,
   });
 
-  const { handleAction, isDownloading, isFavoriting } = useWorkspaceActionDispatch({
-    currentUser,
-    myWorkspaceRoot,
-    queryClient,
-    items,
-    isPublic,
-  });
+  const { handleAction, isDownloading, isFavoriting } =
+    useWorkspaceActionDispatch({
+      currentUser,
+      myWorkspaceRoot,
+      queryClient,
+      items,
+      isPublic,
+    });
 
   const { currentDirectoryPath, currentUserWorkspaceRoot } = useMemo(
     () =>
@@ -275,10 +292,24 @@ export function WorkspaceBrowser({
     username === myWorkspaceRoot ||
     (currentUser && username.startsWith(`${currentUser}@`));
   useEffect(() => {
-    if (isPublic || isHome || !isAtSharedRoot || !myWorkspaceRoot || isUrlCurrentUser)
+    if (
+      isPublic ||
+      isHome ||
+      !isAtSharedRoot ||
+      !myWorkspaceRoot ||
+      isUrlCurrentUser
+    )
       return;
     router.replace(`/workspace/${encodeWorkspaceSegment(myWorkspaceRoot)}`);
-  }, [isPublic, isHome, isAtSharedRoot, myWorkspaceRoot, isUrlCurrentUser, username, router]);
+  }, [
+    isPublic,
+    isHome,
+    isAtSharedRoot,
+    myWorkspaceRoot,
+    isUrlCurrentUser,
+    username,
+    router,
+  ]);
 
   // Detect when the workspace path doesn't exist
   const pathNotFound = useMemo(() => {
@@ -291,7 +322,9 @@ export function WorkspaceBrowser({
   }, [isPublic, path, resolveQuery.isError, resolveQuery.isLoading, error]);
 
   const handleNotFoundConfirm = useCallback(() => {
-    router.replace(`/workspace/${encodeWorkspaceSegment(myWorkspaceRoot)}/home`);
+    router.replace(
+      `/workspace/${encodeWorkspaceSegment(myWorkspaceRoot)}/home`,
+    );
   }, [router, myWorkspaceRoot]);
 
   // --- Early returns ---
@@ -316,7 +349,13 @@ export function WorkspaceBrowser({
     </div>
   );
 
-  if (!isPublic && path && path.trim() !== "" && resolveQuery.isLoading && !resolveQuery.isError) {
+  if (
+    !isPublic &&
+    path &&
+    path.trim() !== "" &&
+    resolveQuery.isLoading &&
+    !resolveQuery.isError
+  ) {
     return loadingSkeleton(isHome ? "home" : "shared");
   }
 
@@ -337,9 +376,15 @@ export function WorkspaceBrowser({
   const { activeDialog } = dialogState;
   const disabledAndLoading: WorkspaceActionId[] = [
     ...(isDownloading ? (["download"] as const) : []),
-    ...(isDialogLoading && activeDialog?.type === "delete" ? (["delete"] as const) : []),
-    ...(isDialogLoading && activeDialog?.type === "copy" ? (["copy", "move"] as const) : []),
-    ...(isDialogLoading && activeDialog?.type === "editType" ? (["editType"] as const) : []),
+    ...(isDialogLoading && activeDialog?.type === "delete"
+      ? (["delete"] as const)
+      : []),
+    ...(isDialogLoading && activeDialog?.type === "copy"
+      ? (["copy", "move"] as const)
+      : []),
+    ...(isDialogLoading && activeDialog?.type === "editType"
+      ? (["editType"] as const)
+      : []),
     ...(isFavoriting ? (["favorite"] as const) : []),
   ];
 
@@ -350,7 +395,9 @@ export function WorkspaceBrowser({
         <WorkspaceActionBar
           selection={selectedItems}
           workspaceGuideUrl={workspaceGuideUrl}
-          isCurrentSelectionFavorite={isJobResultView ? false : isCurrentSelectionFavorite}
+          isCurrentSelectionFavorite={
+            isJobResultView ? false : isCurrentSelectionFavorite
+          }
           disabledActionIds={isJobResultView ? [] : disabledAndLoading}
           loadingActionIds={isJobResultView ? [] : disabledAndLoading}
           readOnly={isPublic}
@@ -376,7 +423,15 @@ export function WorkspaceBrowser({
           path={path}
           username={username}
           itemCount={items.length}
-          viewMode={isPublic ? "public" : isHome ? "home" : isAtSharedRoot ? "root" : "shared"}
+          viewMode={
+            isPublic
+              ? "public"
+              : isHome
+                ? "home"
+                : isAtSharedRoot
+                  ? "root"
+                  : "shared"
+          }
           currentUsername={currentUser}
           workspaceRootUsername={isHome ? undefined : myWorkspaceRoot}
         />
@@ -392,18 +447,33 @@ export function WorkspaceBrowser({
           isRefreshing={isFetching}
           showHiddenFiles={isJobResultView ? true : showHiddenFiles}
           onShowHiddenFilesChange={isJobResultView ? noop : setShowHiddenFiles}
-          onNewFolder={!isPublic && !isJobResultView && (isHome || canWriteToCurrentDir) ? () => dialogDispatch({ type: "OPEN_CREATE_FOLDER" }) : undefined}
-          onUpload={!isPublic && !isJobResultView && (isHome || canWriteToCurrentDir) ? () => dialogDispatch({ type: "OPEN_UPLOAD" }) : undefined}
+          onNewFolder={
+            !isPublic && !isJobResultView && (isHome || canWriteToCurrentDir)
+              ? () => dialogDispatch({ type: "OPEN_CREATE_FOLDER" })
+              : undefined
+          }
+          onUpload={
+            !isPublic && !isJobResultView && (isHome || canWriteToCurrentDir)
+              ? () => dialogDispatch({ type: "OPEN_UPLOAD" })
+              : undefined
+          }
           isAtRoot={isAtSharedRoot}
           onNewWorkspace={
-            !isPublic && !isJobResultView && isAtSharedRoot ? () => dialogDispatch({ type: "OPEN_CREATE_WORKSPACE" }) : undefined
+            !isPublic && !isJobResultView && isAtSharedRoot
+              ? () => dialogDispatch({ type: "OPEN_CREATE_WORKSPACE" })
+              : undefined
           }
         />
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              {isPublic ? "Failed to load public workspaces" : isHome ? "Failed to load workspace contents" : "Failed to load shared folders"}: {error.message}
+              {isPublic
+                ? "Failed to load public workspaces"
+                : isHome
+                  ? "Failed to load workspace contents"
+                  : "Failed to load shared folders"}
+              : {error.message}
             </AlertDescription>
           </Alert>
         )}
@@ -411,7 +481,12 @@ export function WorkspaceBrowser({
       {isJobResultView ? (
         <div className="border-border flex min-h-0 flex-1 flex-col gap-4 overflow-hidden pb-4">
           <div className="px-4">
-            {resolveQuery.data && <JobMetadataCard resolvedJobMeta={resolveQuery.data} className="px-4" />}
+            {resolveQuery.data && (
+              <JobMetadataCard
+                resolvedJobMeta={resolveQuery.data}
+                className="px-4"
+              />
+            )}
           </div>
           <div className="min-h-0 flex-1">
             <WorkspaceDataTable
@@ -454,7 +529,9 @@ export function WorkspaceBrowser({
       )}
       <WorkspaceNotFoundDialog
         open={pathNotFound && !notFoundDismissed}
-        onOpenChange={(open) => { if (!open) setDismissedPath(path); }}
+        onOpenChange={(open) => {
+          if (!open) setDismissedPath(path);
+        }}
         onConfirm={handleNotFoundConfirm}
       />
     </WorkspaceShell>

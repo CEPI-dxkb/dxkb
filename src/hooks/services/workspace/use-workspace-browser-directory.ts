@@ -7,7 +7,10 @@ import {
   type ListPermissionsResult,
   type WorkspaceItem,
 } from "@/lib/services/workspace/domain";
-import type { WorkspaceBrowserItem, WorkspaceViewMode } from "@/types/workspace-browser";
+import type {
+  WorkspaceBrowserItem,
+  WorkspaceViewMode,
+} from "@/types/workspace-browser";
 import {
   useWorkspaceDirectory,
   type WorkspaceDirectoryMode,
@@ -44,7 +47,6 @@ export interface UseWorkspaceBrowserDirectoryOptions {
 
 export interface UseWorkspaceBrowserDirectoryReturn {
   items: WorkspaceBrowserItem[];
-  canonicalItems: WorkspaceItem[];
   isLoading: boolean;
   isFetching: boolean;
   error: Error | null;
@@ -71,8 +73,14 @@ function pickDirectoryMode(
 
   if (isJobResultView) {
     if (!jobDotPath) return null;
-    const dotPathNormalized = jobDotPath.startsWith("/") ? jobDotPath : `/${jobDotPath}`;
-    return { kind: "jobResult", fullPath: dotPathNormalized, visiblePath: path };
+    const dotPathNormalized = jobDotPath.startsWith("/")
+      ? jobDotPath
+      : `/${jobDotPath}`;
+    return {
+      kind: "jobResult",
+      fullPath: dotPathNormalized,
+      visiblePath: path,
+    };
   }
   if (isPublic) {
     if (publicLevel === "root" || !username) return { kind: "publicRoot" };
@@ -131,19 +139,13 @@ export function useWorkspaceBrowserDirectory(
     },
   );
 
-  const canonicalItems = useMemo<WorkspaceItem[]>(
-    () => (enabled ? result.items : []),
-    [enabled, result.items],
-  );
-
   const items = useMemo(
-    () => canonicalItems.map(toWorkspaceBrowserItem),
-    [canonicalItems],
+    () => (enabled ? result.items.map(toWorkspaceBrowserItem) : []),
+    [enabled, result.items],
   );
 
   return {
     items,
-    canonicalItems,
     isLoading: enabled && result.isLoading,
     isFetching: enabled && result.isFetching,
     error: enabled ? result.error : null,

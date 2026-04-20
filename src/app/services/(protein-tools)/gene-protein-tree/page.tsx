@@ -41,8 +41,8 @@ import {
   RequiredFormLabel,
 } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
-import { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
@@ -88,7 +88,6 @@ interface MetadataField {
   selected: boolean;
 }
 
-
 export default function GeneProteinTreePage() {
   const [selectedFeatureGroupObject, setSelectedFeatureGroupObject] =
     useState<WorkspaceObject | null>(null);
@@ -96,8 +95,9 @@ export default function GeneProteinTreePage() {
     useState<WorkspaceObject | null>(null);
   const [selectedUnalignedFastaObject, setSelectedUnalignedFastaObject] =
     useState<WorkspaceObject | null>(null);
-  const [metadataFields, setMetadataFields] =
-    useState<MetadataField[]>(defaultMetadataFields);
+  const [metadataFields, setMetadataFields] = useState<MetadataField[]>(
+    defaultMetadataFields,
+  );
   const [selectedMetadataField, setSelectedMetadataField] =
     useState<string>("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -139,7 +139,8 @@ export default function GeneProteinTreePage() {
       return;
     }
 
-    const resetModel = alphabet === "DNA" ? dnaModels[0].value : proteinModels[0].value;
+    const resetModel =
+      alphabet === "DNA" ? dnaModels[0].value : proteinModels[0].value;
     form.setFieldValue("substitution_model", resetModel);
 
     // Clear sequences that don't match the new alphabet
@@ -219,15 +220,16 @@ export default function GeneProteinTreePage() {
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const selectedMetadataIds = useMemo(
-    () => new Set(metadataFields.filter((field) => field.selected).map((f) => f.id)),
+    () =>
+      new Set(
+        metadataFields.filter((field) => field.selected).map((f) => f.id),
+      ),
     [metadataFields],
   );
 
   // Always show all metadata fields with labels, excluding already selected ones
   const availableMetadataOptions = useMemo(() => {
-    const allOptions = getMetadataSelectOptions(
-      formatMetadataLabel,
-    );
+    const allOptions = getMetadataSelectOptions(formatMetadataLabel);
     return allOptions.filter(
       (option) =>
         option.isLabel || // Always show section labels
@@ -235,12 +237,10 @@ export default function GeneProteinTreePage() {
     );
   }, [selectedMetadataIds]);
 
-  const inputFastaTypes = useMemo((): ValidWorkspaceObjectTypes[] => {
-    if (alphabet === "DNA") {
-      return ["aligned_dna_fasta", "feature_dna_fasta"];
-    }
-    return ["aligned_protein_fasta", "feature_protein_fasta"];
-  }, [alphabet]);
+  const alignedFastaPreset: WorkspaceSelectorPreset =
+    alphabet === "DNA" ? "alignedDnaFasta" : "alignedProteinFasta";
+  const unalignedFastaPreset: WorkspaceSelectorPreset =
+    alphabet === "DNA" ? "featureDnaFasta" : "featureProteinFasta";
 
   function handleAddSequence(source: "feature" | "aligned" | "unaligned") {
     let selectedObject: WorkspaceObject | null = null;
@@ -393,7 +393,12 @@ export default function GeneProteinTreePage() {
                   <FieldItem>
                     <RadioGroup
                       value={field.state.value}
-                      onValueChange={(value) => value != null && field.handleChange(value as GeneProteinTreeFormData["alphabet"])}
+                      onValueChange={(value) =>
+                        value != null &&
+                        field.handleChange(
+                          value as GeneProteinTreeFormData["alphabet"],
+                        )
+                      }
                       className="service-radio-group-horizontal"
                     >
                       <div className="flex items-center gap-3">
@@ -411,14 +416,14 @@ export default function GeneProteinTreePage() {
               </form.Field>
 
               <div className="space-y-2">
-                <Label className="service-card-label">
-                  Feature Group
-                </Label>
+                <Label className="service-card-label">Feature Group</Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
                     preset="featureGroup"
                     placeholder="Optional"
-                    onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                    onSelectedObjectChange={(
+                      object: WorkspaceObject | null,
+                    ) => {
                       setSelectedFeatureGroupObject(object);
                     }}
                     value={selectedFeatureGroupObject?.path}
@@ -442,11 +447,11 @@ export default function GeneProteinTreePage() {
                 </Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
-                    types={inputFastaTypes.filter((t) =>
-                      t.includes("aligned"),
-                    ) as ValidWorkspaceObjectTypes[]}
+                    preset={alignedFastaPreset}
                     placeholder="Optional"
-                    onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                    onSelectedObjectChange={(
+                      object: WorkspaceObject | null,
+                    ) => {
                       setSelectedAlignedFastaObject(object);
                     }}
                     value={selectedAlignedFastaObject?.path}
@@ -470,11 +475,11 @@ export default function GeneProteinTreePage() {
                 </Label>
                 <div className="flex gap-2">
                   <WorkspaceObjectSelector
-                    types={inputFastaTypes.filter((t) =>
-                      t.includes("feature"),
-                    ) as ValidWorkspaceObjectTypes[]}
+                    preset={unalignedFastaPreset}
                     placeholder="Optional"
-                    onSelectedObjectChange={(object: WorkspaceObject | null) => {
+                    onSelectedObjectChange={(
+                      object: WorkspaceObject | null,
+                    ) => {
                       setSelectedUnalignedFastaObject(object);
                     }}
                     value={selectedUnalignedFastaObject?.path}
@@ -533,9 +538,14 @@ export default function GeneProteinTreePage() {
                         Trim Ends of Alignment Threshold
                       </RequiredFormLabel>
                       <Select
-                        items={thresholdOptions.map((v) => ({ value: v, label: v }))}
+                        items={thresholdOptions.map((v) => ({
+                          value: v,
+                          label: v,
+                        }))}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select" />
@@ -562,9 +572,14 @@ export default function GeneProteinTreePage() {
                         Remove Gappy Sequences Threshold
                       </RequiredFormLabel>
                       <Select
-                        items={thresholdOptions.map((v) => ({ value: v, label: v }))}
+                        items={thresholdOptions.map((v) => ({
+                          value: v,
+                          label: v,
+                        }))}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger className="service-card-select-trigger">
                           <SelectValue placeholder="Select" />
@@ -606,7 +621,12 @@ export default function GeneProteinTreePage() {
                     <FieldItem>
                       <RadioGroup
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value as GeneProteinTreeFormData["recipe"])}
+                        onValueChange={(value) =>
+                          value != null &&
+                          field.handleChange(
+                            value as GeneProteinTreeFormData["recipe"],
+                          )
+                        }
                         className="service-radio-group-horizontal"
                       >
                         <div className="flex items-center gap-3">
@@ -634,9 +654,14 @@ export default function GeneProteinTreePage() {
                         Model
                       </RequiredFormLabel>
                       <Select
-                        items={substitutionModelOptions.map((m) => ({ value: m.value, label: m.label }))}
+                        items={substitutionModelOptions.map((m) => ({
+                          value: m.value,
+                          label: m.label,
+                        }))}
                         value={field.state.value}
-                        onValueChange={(value) => value != null && field.handleChange(value)}
+                        onValueChange={(value) =>
+                          value != null && field.handleChange(value)
+                        }
                       >
                         <SelectTrigger
                           id="model"
@@ -711,7 +736,8 @@ export default function GeneProteinTreePage() {
                 <div>
                   <Label>Metadata Table Fields</Label>
                   <p className="text-muted-foreground pt-2 pb-4 text-sm">
-                    These fields will appear as options in the phyloxml visualization
+                    These fields will appear as options in the phyloxml
+                    visualization
                   </p>
 
                   <div className="flex gap-2">
@@ -720,7 +746,9 @@ export default function GeneProteinTreePage() {
                         .filter((f) => !f.isLabel)
                         .map((f) => ({ value: f.value, label: f.label }))}
                       value={selectedMetadataField}
-                      onValueChange={(value) => value != null && handleMetadataSelection(value)}
+                      onValueChange={(value) =>
+                        value != null && handleMetadataSelection(value)
+                      }
                     >
                       <SelectTrigger className="service-card-select-trigger">
                         <SelectValue placeholder="Select field" />
@@ -733,7 +761,7 @@ export default function GeneProteinTreePage() {
                               return (
                                 <SelectLabel
                                   key={field.value}
-                                  className="border-b border-border pb-1.5 mb-1 font-medium"
+                                  className="border-border mb-1 border-b pb-1.5 font-medium"
                                 >
                                   {field.label}
                                 </SelectLabel>
@@ -765,7 +793,9 @@ export default function GeneProteinTreePage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="h-8 py-1">Field</TableHead>
-                      <TableHead className="w-24 h-8 py-1 text-center">Remove</TableHead>
+                      <TableHead className="h-8 w-24 py-1 text-center">
+                        Remove
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -779,7 +809,7 @@ export default function GeneProteinTreePage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => removeMetadataField(field.id)}
-                              className="h-6 w-6 text-destructive hover:text-destructive/90"
+                              className="text-destructive hover:text-destructive/90 h-6 w-6"
                             >
                               <X size={14} />
                             </Button>

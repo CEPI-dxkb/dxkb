@@ -59,7 +59,9 @@ describe("HttpWorkspaceRepository", () => {
     server.use(
       http.post("/api/services/workspace", () =>
         HttpResponse.json({
-          result: [{ "/user@bvbrc/home": [lsTuple({ 0: "file.fa", 4: "id-1" })] }],
+          result: [
+            { "/user@bvbrc/home": [lsTuple({ 0: "file.fa", 4: "id-1" })] },
+          ],
         }),
       ),
     );
@@ -106,6 +108,51 @@ describe("HttpWorkspaceRepository", () => {
     expect(meta?.path).toBe("/user@bvbrc/home/file.fa");
     expect(meta?.object).toEqual(
       expect.objectContaining({ id: "id-1", type: "contigs", size: 123 }),
+    );
+  });
+
+  it("stores only the requested path slice on Workspace.get metadata raw", async () => {
+    const firstTuple = [
+      "file-a.fa",
+      "contigs",
+      "/user@bvbrc/home/",
+      "2026-04-01",
+      "id-a",
+      "user@bvbrc",
+      123,
+      {},
+      {},
+    ];
+    const secondTuple = [
+      "file-b.fa",
+      "contigs",
+      "/user@bvbrc/home/",
+      "2026-04-02",
+      "id-b",
+      "user@bvbrc",
+      456,
+      {},
+      {},
+    ];
+    server.use(
+      http.post("/api/services/workspace", () =>
+        HttpResponse.json({
+          result: [[[firstTuple], [secondTuple]]],
+        }),
+      ),
+    );
+
+    const [first, second] = await repository.getMetadata([
+      "/user@bvbrc/home/file-a.fa",
+      "/user@bvbrc/home/file-b.fa",
+    ]);
+
+    expect(first?.raw).toEqual([firstTuple]);
+    expect(second?.raw).toEqual([secondTuple]);
+    expect(first?.raw).not.toEqual(second?.raw);
+    expect(first?.object?.raw).toEqual(expect.objectContaining({ id: "id-a" }));
+    expect(second?.object?.raw).toEqual(
+      expect.objectContaining({ id: "id-b" }),
     );
   });
 
@@ -159,7 +206,9 @@ describe("HttpWorkspaceRepository", () => {
       ),
     );
 
-    await expect(repository.listDirectory({ path: "/p" })).rejects.toMatchObject({
+    await expect(
+      repository.listDirectory({ path: "/p" }),
+    ).rejects.toMatchObject({
       message: "Workspace detail",
       apiResponse: { code: -32603, message: "Workspace detail" },
     });

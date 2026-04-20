@@ -91,9 +91,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validators: { onChange: sarsCov2WastewaterAnalysisFormSchema as any },
     onSubmit: async ({ value }) => {
-      await runtime.submitFormData(
-        value as SarsCov2WastewaterAnalysisFormData,
-      );
+      await runtime.submitFormData(value as SarsCov2WastewaterAnalysisFormData);
     },
   });
 
@@ -118,12 +116,8 @@ export default function SarsCov2WastewaterAnalysisPage() {
     addPairedLibrary,
     addSingleLibrary,
     removeLibrary,
-    setLibrariesAndSync,
-    syncLibrariesToForm,
-  } = useTanstackLibrarySelection<
-    SarsCov2WastewaterLibraryItem,
-    SrrLibItem
-  >({
+    setLibraries,
+  } = useTanstackLibrarySelection<SarsCov2WastewaterLibraryItem, SrrLibItem>({
     form,
     mapLibraryToItem: (library) => ({
       ...buildBaseLibraryItem(library),
@@ -151,9 +145,11 @@ export default function SarsCov2WastewaterAnalysisPage() {
         skipSraNormalization.current = false;
         return nextLibraries;
       }
-      const newSraLibs = findNewSraLibraries(nextLibraries, previousLibraries);
+      const newSraLibIds = new Set(
+        findNewSraLibraries(nextLibraries, previousLibraries).map((l) => l.id),
+      );
       return nextLibraries.map((lib) => {
-        if (lib.type === "sra" && newSraLibs.some((n) => n.id === lib.id)) {
+        if (lib.type === "sra" && newSraLibIds.has(lib.id)) {
           return {
             ...lib,
             sampleId: currentSampleId.trim() || lib.id,
@@ -167,7 +163,6 @@ export default function SarsCov2WastewaterAnalysisPage() {
     },
   });
 
-  // When primers change, set default primer_version
   useEffect(() => {
     if (primers) {
       const defaultVersion = defaultPrimerVersion[primers];
@@ -229,7 +224,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
 
   const handleSetSelectedLibraries = (libs: Library[]) => {
     const newSraLibs = findNewSraLibraries(libs, selectedLibraries);
-    setLibrariesAndSync(libs);
+    setLibraries(libs);
     if (newSraLibs.length > 0) {
       setCurrentSampleId("");
       setCurrentSampleDate("");
@@ -244,7 +239,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
 
   const handleReset = () => {
     form.reset(defaultSarsCov2WastewaterAnalysisFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -273,8 +268,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
       },
       syncLibraries: (libs) => {
         skipSraNormalization.current = true;
-        syncLibrariesToForm(libs);
-        setLibrariesAndSync(libs);
+        setLibraries(libs);
       },
     },
   });
@@ -397,8 +391,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
                           items={primerOptions}
                           value={field.state.value}
                           onValueChange={(v) =>
-                            v != null &&
-                            field.handleChange(v as Primers)
+                            v != null && field.handleChange(v as Primers)
                           }
                         >
                           <SelectTrigger className="service-card-select-trigger">
@@ -458,9 +451,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="service-card-label">
-                  Sample Identifier
-                </Label>
+                <Label className="service-card-label">Sample Identifier</Label>
                 <Input
                   className="service-card-input"
                   placeholder="SAMPLE ID"
@@ -613,9 +604,7 @@ export default function SarsCov2WastewaterAnalysisPage() {
             </Button>
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !canSubmit || !isOutputNameValid
-              }
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
             >
               {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Submit

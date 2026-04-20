@@ -26,7 +26,11 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
-import { buildPairedLibraries, buildSingleLibraries } from "@/lib/rerun-utility";
+import {
+  buildPairedLibraries,
+  buildSingleLibraries,
+  buildSraLibraries,
+} from "@/lib/rerun-utility";
 import {
   viralAssemblyInfo,
   viralAssemblyInputFile,
@@ -53,7 +57,6 @@ import {
 } from "@/lib/forms/tanstack-library-selection";
 
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
-import type { Library } from "@/types/services";
 
 const tutorial =
   "https://www.bv-brc.org/docs/tutorial/viral_assembly/assembly.html";
@@ -79,7 +82,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
   const outputPath = useStore(form.store, (s) => s.values.output_path);
   const canSubmit = useStore(form.store, (s) => s.canSubmit);
 
-  const { selectedLibraries, setLibrariesAndSync, syncLibrariesToForm } =
+  const { selectedLibraries, setLibraries } =
     useTanstackLibrarySelection<ViralAssemblyLibraryItem, string>({
       form,
       mapLibraryToItem: buildBaseLibraryItem,
@@ -95,7 +98,6 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
     selectedLibrariesRef.current = selectedLibraries;
   }, [selectedLibraries]);
 
-  // Sync selected single read into form when Single Read Library is selected (no Add button on this page)
   useEffect(() => {
     if (inputType !== "single") return;
     const desiredSingleId = singleRead ?? null;
@@ -108,20 +110,18 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         currentSingleIds.length === 1 &&
         currentSingleIds[0] === desiredSingleId);
     if (alreadyMatches) return;
-    const otherLibs = selectedLibrariesRef.current.filter((lib) => lib.type !== "single");
+    const otherLibs = selectedLibrariesRef.current.filter(
+      (lib) => lib.type !== "single",
+    );
     if (singleRead) {
       const result = getSingleLibraryBuildFn()(singleRead);
       if (result.library) {
-        setLibrariesAndSync([...otherLibs, result.library]);
+        setLibraries([...otherLibs, result.library]);
       }
     } else {
-      setLibrariesAndSync(otherLibs);
+      setLibraries(otherLibs);
     }
-  }, [
-    inputType,
-    singleRead,
-    setLibrariesAndSync,
-  ]);
+  }, [inputType, singleRead, setLibraries]);
 
   const currentPairedIdsKey = useMemo(
     () =>
@@ -133,7 +133,6 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
     [selectedLibraries],
   );
 
-  // Sync selected paired reads into form when Paired Read Library is selected (no Add button on this page)
   useEffect(() => {
     if (inputType !== "paired") return;
     const desiredPairId =
@@ -149,7 +148,9 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         currentPairedIds.length === 1 &&
         currentPairedIds[0] === desiredPairId);
     if (alreadyMatches) return;
-    const otherLibs = selectedLibrariesRef.current.filter((lib) => lib.type !== "paired");
+    const otherLibs = selectedLibrariesRef.current.filter(
+      (lib) => lib.type !== "paired",
+    );
     if (pairedRead1 && pairedRead2) {
       const libraryId = getPairedLibraryId(pairedRead1, pairedRead2);
       const result = getPairedLibraryBuildFn()(
@@ -158,22 +159,16 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
         libraryId,
       );
       if (result.library) {
-        setLibrariesAndSync([...otherLibs, result.library]);
+        setLibraries([...otherLibs, result.library]);
       }
     } else {
-      setLibrariesAndSync(otherLibs);
+      setLibraries(otherLibs);
     }
-  }, [
-    inputType,
-    pairedRead1,
-    pairedRead2,
-    currentPairedIdsKey,
-    setLibrariesAndSync,
-  ]);
+  }, [inputType, pairedRead1, pairedRead2, currentPairedIdsKey, setLibraries]);
 
   const handleReset = () => {
     form.reset(defaultViralAssemblyFormValues);
-    setLibrariesAndSync([]);
+    setLibraries([]);
     setPairedRead1(null);
     setPairedRead2(null);
     setSingleRead(null);
@@ -201,23 +196,17 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
           form.setFieldValue("input_type", "paired" as never);
           setPairedRead1(pairedLib.read1);
           setPairedRead2(pairedLib.read2);
-          const libs = buildPairedLibraries({ paired_end_libs: [pairedLib] });
-          syncLibrariesToForm(libs);
-          setLibrariesAndSync(libs);
+          setLibraries(buildPairedLibraries({ paired_end_libs: [pairedLib] }));
         } else if (singleLib?.read) {
           form.setFieldValue("input_type", "single" as never);
           setSingleRead(singleLib.read);
-          const libs = buildSingleLibraries({ single_end_libs: [singleLib] });
-          syncLibrariesToForm(libs);
-          setLibrariesAndSync(libs);
+          setLibraries(buildSingleLibraries({ single_end_libs: [singleLib] }));
         } else if (srrId) {
           form.setFieldValue("input_type", "srr_accession" as never);
           setSraDefaultValue(srrId);
           // SraRunAccessionWithValidation reads defaultValue once on mount.
           setSraResetKey((k) => k + 1);
-          const libs: Library[] = [{ id: srrId, name: srrId, type: "sra" }];
-          syncLibrariesToForm(libs);
-          setLibrariesAndSync(libs);
+          setLibraries(buildSraLibraries({ srr_ids: [srrId] }));
         }
       },
     },
@@ -278,13 +267,8 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                         </Label>
                       </div>
                       <div className="service-radio-group-item flex items-center gap-2">
-                        <RadioGroupItem
-                          value="srr_accession"
-                          id="input-sra"
-                        />
-                        <Label htmlFor="input-sra">
-                          SRA Run Accession
-                        </Label>
+                        <RadioGroupItem value="srr_accession" id="input-sra" />
+                        <Label htmlFor="input-sra">SRA Run Accession</Label>
                       </div>
                     </RadioGroup>
                     <FieldErrors field={field} />
@@ -338,7 +322,7 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                   placeholder="SRA Accession"
                   defaultValue={sraDefaultValue}
                   selectedLibraries={selectedLibraries}
-                  setSelectedLibraries={setLibrariesAndSync}
+                  setSelectedLibraries={setLibraries}
                   allowDuplicates={false}
                   showLabel={false}
                   showAddButton={false}
@@ -389,11 +373,8 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                            {strategyOptions.map((opt) => (
-                              <SelectItem
-                                key={opt.value}
-                                value={opt.value}
-                              >
+                              {strategyOptions.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
                                   {opt.label}
                                 </SelectItem>
                               ))}
@@ -477,13 +458,9 @@ export const ViralAssemblyPage = function ViralAssemblyPage() {
             </Button>
             <Button
               type="submit"
-              disabled={
-                isSubmitting || !canSubmit || !isOutputNameValid
-              }
+              disabled={isSubmitting || !canSubmit || !isOutputNameValid}
             >
-              {isSubmitting ? (
-                <Spinner className="mr-2 h-4 w-4" />
-              ) : null}
+              {isSubmitting ? <Spinner className="mr-2 h-4 w-4" /> : null}
               Assemble
             </Button>
           </div>

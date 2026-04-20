@@ -3,7 +3,6 @@ import { createServiceDefinition } from "@/lib/services/service-definition";
 
 import {
   defaultInfluenzaHaSubtypeFormValues,
-  influenzaHaSubtypeFormSchema,
   type InfluenzaHaSubtypeFormData,
 } from "./influenza-ha-subtype-form-schema";
 import { transformHaSubtypeParams } from "./influenza-ha-subtype-form-utils";
@@ -12,7 +11,6 @@ export const influenzaHaSubtypeService =
   createServiceDefinition<InfluenzaHaSubtypeFormData>({
     serviceName: "HASubtypeNumberingConversion",
     displayName: "HA Subtype Numbering Conversion",
-    schema: influenzaHaSubtypeFormSchema,
     defaultValues: defaultInfluenzaHaSubtypeFormValues,
     transformParams: transformHaSubtypeParams,
     rerun: {
@@ -26,7 +24,10 @@ export const influenzaHaSubtypeService =
       ],
       onApply: (rerunData, form) => {
         if (rerunData.types != null) {
-          form.setFieldValue("types", normalizeToArray(rerunData.types) as never);
+          form.setFieldValue(
+            "types",
+            normalizeToArray<string>(rerunData.types),
+          );
         }
       },
     },

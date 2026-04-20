@@ -355,7 +355,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
         ) : (
           <DataTable
             id={widget.id}
-            data={pageData ?? []}
+            data={totalItems === 0 ? [] : (pageData ?? [])}
             columns={widget.columns}
             resource={resource}
             rowSelection={rowSelection}

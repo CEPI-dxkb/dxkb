@@ -65,8 +65,6 @@ export function FacetPanel({
     setVisibleFacets(initial);
   }, [fields]);
 
-  console.log("QRY is:", query);
-
   useEffect(() => {
     // ---------------------------------------------------
     // HARD GUARDS (THIS FIXES YOUR CURRENT ERROR)
@@ -109,44 +107,15 @@ export function FacetPanel({
 
         const facetStr = `facet(${facetFieldsStr},(mincount,1),(limit,100))`;
 
-        console.log('FacetPanel: built facetStr:', facetStr);
-        // ---------------------------------------------------
-        // BUILD URL SAFELY (NO FRAGILE CONCATENATION)
-        // ---------------------------------------------------
-        const rqlParts: string[] = [];
-
-        console.log('FacetPanel: building RQL with query:', query);
-
-        const safeQuery = (query || '')
-          .split('&')
+        const RQLstring = [
+          query || '',
+          'limit(1)',
+          facetStr
+        ]
           .filter(Boolean)
-          .filter(part => !part.startsWith('facet'))
-          .filter(part => !part.startsWith('limit'))
           .join('&');
 
-        if (safeQuery) {
-          rqlParts.push(safeQuery);
-        }
-
-        rqlParts.push('limit(1)');
-        rqlParts.push(facetStr);
-
-        console.log('FacetPanel: final RQL parts:', rqlParts);
-        const RQLstring = rqlParts.join('&');
-        console.log('FacetPanel: final RQL string:', RQLstring);
-
         const url = `${DataAPI}/${resource}/?${RQLstring}`;
-
-        console.log('FACET URL:', url);
-
-        console.log('FACET DEBUG STATE:', {
-          fields,
-          validFields,
-          facetFieldsStr: validFields.join(','),
-          query,
-          resource,
-        });
-
 
         // ---------------------------------------------------
         // FETCH

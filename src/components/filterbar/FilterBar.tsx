@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { buildRql } from './filterUtils';
 import { KeywordSearch } from './KeywordSearch';
 import { SelectedFilters } from './SelectedFilters';
@@ -27,18 +27,31 @@ type FilterBarProps = {
 
 export function FilterBar({ facetFields, onFilterChange, resource, query }: FilterBarProps) {
   
-  console.log('QRY in FilterBar is:', query);
-
   const [keywords, setKeywords] = useState<string[]>([]);
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
   const [showFacets, setShowFacets] = useState(false);
+  const [localFacetFields, setLocalFacetFields] = useState<ColumnField[]>(() => facetFields ?? []);
+  const [facetMenuOpen, setFacetMenuOpen] = useState(false);
+  const facetMenuRef = useRef<HTMLDivElement | null>(null);
+  const clearAll = () => {
+    setSelected([]);
+    setKeywords([]);
+  };
+
   const rql = buildRql({ selected, keywords });
 
-console.log('RQL OUTPUT:', rql, typeof rql);
 
-const activeFacetFields = facetFields?.filter(
+  const activeFacetFields = localFacetFields.filter(
     (f) => f.facet && !f.facet_hidden
-  ) ?? [];
+  );
+
+  const toggleFacetVisibility = (id: string) => {
+    setLocalFacetFields((prev) =>
+      prev.map((f) =>
+        f.id === id ? { ...f, facet_hidden: !f.facet_hidden } : f
+      )
+    );
+  };
 
   const buildQuery = () => {
     const parts: string[] = [];
@@ -89,9 +102,22 @@ const activeFacetFields = facetFields?.filter(
     onFilterChange?.(rql);
   }, [selected, keywords]);
 
-  
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        facetMenuRef.current &&
+        !facetMenuRef.current.contains(e.target as Node)
+      ) {
+        setFacetMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <div className="flex flex-col gap-1 p-1 text-sm border rounded border-white mt-0 mb-2">
+    <div className="flex flex-col gap-1 p-1 text-sm mt-0 mb-2">
       
       {/* TOP ROW */}
       <div className="flex items-start justify-between gap-2">
@@ -111,13 +137,62 @@ const activeFacetFields = facetFields?.filter(
           />
         </div>
 
-        {/* RIGHT SIDE — TOGGLE */}
-        <button
-          onClick={() => setShowFacets((prev) => !prev)}
-          className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700 whitespace-nowrap"
-        >
-          {showFacets ? 'Hide Filters' : 'Show Filters'}
-        </button>
+        <div className="flex items-center gap-2">
+
+          {/* FACET DROPDOWN */}
+          {showFacets && (
+            <div className="relative" ref={facetMenuRef}>
+              <button
+                onClick={() => setFacetMenuOpen((prev) => !prev)}
+                className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700"
+              >
+                Facets ⚙
+              </button>
+
+              {facetMenuOpen && (
+                <div className="absolute right-0 mt-1 w-56 max-h-64 overflow-y-auto bg-gray-800 border border-gray-600 rounded shadow-lg z-[9999]">
+                  {localFacetFields
+                    .filter((f) => f.facet)
+                    .map((f) => (
+                      <label
+                        key={f.id}
+                        className="flex items-center gap-2 px-2 py-1 text-xs hover:bg-gray-700 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!f.facet_hidden}
+                          onChange={() => toggleFacetVisibility(f.id)}
+                        />
+                        {f.label}
+                      </label>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* CLEAR ALL */}
+          <button
+            onClick={clearAll}
+            disabled={selected.length === 0 && keywords.length === 0}
+            className={`text-xs px-2 py-1 border rounded whitespace-nowrap ${
+              selected.length === 0 && keywords.length === 0
+                ? 'border-gray-600 text-gray-500 cursor-not-allowed'
+                : 'border-red-400 text-red-300 hover:bg-red-900'
+            }`}          
+          >
+            Clear All Filters
+          </button>
+
+          {/* SHOW/HIDE FILTERS */}
+          <button
+            onClick={() => setShowFacets((prev) => !prev)}
+            className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700 whitespace-nowrap"
+          >
+            {showFacets ? 'Hide Filters' : 'Show Filters'}
+          </button>
+
+        </div>
       </div>
 
       {/* FACET PANEL */}

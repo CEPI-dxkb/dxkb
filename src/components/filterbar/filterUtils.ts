@@ -18,7 +18,7 @@ export function buildRql({ selected, keywords }) {
   });
 
   if (keywords.length) {
-    const kw = keywords.map((k) => `keyword(${k})`);
+    const kw = keywords.map((k) => `keyword(${k}*)`);
     parts.push(kw.length === 1 ? kw[0] : `and(${kw.join(',')})`);
   }
 

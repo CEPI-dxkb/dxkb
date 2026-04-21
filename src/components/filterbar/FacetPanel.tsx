@@ -116,7 +116,7 @@ export function FacetPanel({
           .join('&');
 
         const url = `${DataAPI}/${resource}/?${RQLstring}`;
-
+        console.log('Fetching facets with URL:', url);
         // ---------------------------------------------------
         // FETCH
         // ---------------------------------------------------

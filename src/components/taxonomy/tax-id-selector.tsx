@@ -85,21 +85,20 @@ export function TaxIDSelector({
   const error = queryError?.message ?? null;
 
   // Sync searchQuery with value prop when value is set externally
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevDisabled, setPrevDisabled] = useState(disabled);
+  if (prevValue !== value || prevDisabled !== disabled) {
+    setPrevValue(value);
+    setPrevDisabled(disabled);
     if (disabled) {
       // When disabled, always sync with value
-      if (value) {
-        setSearchQuery(String(value.taxon_id));
-      } else {
-        setSearchQuery("");
-      }
+      setSearchQuery(value ? String(value.taxon_id) : "");
     } else if (value && String(value.taxon_id) !== searchQuery) {
       // When not disabled but value changes externally (e.g., from taxon name selector),
       // update searchQuery only if it doesn't match (to avoid overriding active typing)
       setSearchQuery(String(value.taxon_id));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, disabled]);
+  }
 
   const handleSearchChange = (value: string) => {
     if (disabled) return;

@@ -185,8 +185,22 @@ export function WorkspaceObjectSelector({
   }, []);
 
   // Reset highlighted index when displayObjects change
-  React.useEffect(() => {
+  const [prevHighlightDeps, setPrevHighlightDeps] = React.useState({
+    filteredObjects,
+    objects,
+    isManualTrigger,
+    showDropdown,
+  });
+  if (
+    prevHighlightDeps.filteredObjects !== filteredObjects ||
+    prevHighlightDeps.objects !== objects ||
+    prevHighlightDeps.isManualTrigger !== isManualTrigger ||
+    prevHighlightDeps.showDropdown !== showDropdown
+  ) {
+    setPrevHighlightDeps({ filteredObjects, objects, isManualTrigger, showDropdown });
     setHighlightedIndex(-1);
+  }
+  React.useEffect(() => {
     itemRefs.current = [];
   }, [filteredObjects, objects, isManualTrigger, showDropdown]);
 
@@ -290,26 +304,28 @@ export function WorkspaceObjectSelector({
       if (valueChanged || resolvedValueRef.current !== value) {
         resolvedValueRef.current = value;
         const foundObject = objects.find((obj) => obj.path === value);
-        if (foundObject) {
-          setDisplayName(foundObject.name || "");
-          setSelectedObject(foundObject);
-        } else {
-          // Object not in the loaded list (e.g. a subfolder not fetched at this level).
-          // Derive a display name from the last path segment.
-          const derivedName = value.split("/").filter(Boolean).pop() ?? value;
-          setDisplayName(derivedName);
-          setSelectedObject(null);
-          setSearchQuery("");
-        }
+        queueMicrotask(() => {
+          if (foundObject) {
+            setDisplayName(foundObject.name || "");
+            setSelectedObject(foundObject);
+          } else {
+            // Object not in the loaded list (e.g. a subfolder not fetched at this level).
+            // Derive a display name from the last path segment.
+            const derivedName = value.split("/").filter(Boolean).pop() ?? value;
+            setDisplayName(derivedName);
+            setSelectedObject(null);
+            setSearchQuery("");
+          }
+        });
       }
-    } else if (!value) {
+    } else if (!value && valueChanged) {
       // Clear display name and selected object when value is cleared
-      if (valueChanged) {
-        resolvedValueRef.current = undefined;
+      resolvedValueRef.current = undefined;
+      queueMicrotask(() => {
         setDisplayName("");
         setSelectedObject(null);
         setSearchQuery("");
-      }
+      });
     }
   }, [value, objects, setSearchQuery]);
 

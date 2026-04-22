@@ -51,12 +51,15 @@ export function UploadDialog({
 
   const repository = useWorkspaceRepository("authenticated");
 
-  React.useEffect(() => {
+  const [prevOpen, setPrevOpen] = React.useState(open);
+
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) {
       setFiles([]);
       setUploadType("unspecified");
     }
-  }, [open]);
+  }
 
   const addFiles = React.useCallback((newFiles: FileList | File[]) => {
     const list = Array.from(newFiles).filter((f) => f.name && f.size !== undefined);

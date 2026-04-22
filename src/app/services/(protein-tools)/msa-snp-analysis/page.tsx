@@ -231,15 +231,15 @@ export default function MSAandSNPAnalysisPage() {
   // Update strategy visibility based on aligner
   useEffect(() => {
     if (aligner === "Muscle" || inputStatus === "aligned") {
-      setShowStrategy(false);
+      queueMicrotask(() => setShowStrategy(false));
     }
   }, [aligner, inputStatus]);
 
   // Validate FASTA input when text changes
   useEffect(() => {
     if (!fastaInputText.trim()) {
-      setFastaValidationResult(null);
       form.setFieldValue("fasta_keyboard_input", "");
+      queueMicrotask(() => setFastaValidationResult(null));
       return;
     }
 
@@ -250,13 +250,15 @@ export default function MSAandSNPAnalysisPage() {
       hasReference,
     );
 
-    setFastaValidationResult({
-      valid: validation.valid && validation.meetsMinSequenceRequirement,
-      message: validation.meetsMinSequenceRequirement
-        ? validation.message
-        : `At least ${hasReference ? "one" : "two"} sequence(s) are required.`,
-      numseq: validation.numseq,
-    });
+    queueMicrotask(() =>
+      setFastaValidationResult({
+        valid: validation.valid && validation.meetsMinSequenceRequirement,
+        message: validation.meetsMinSequenceRequirement
+          ? validation.message
+          : `At least ${hasReference ? "one" : "two"} sequence(s) are required.`,
+        numseq: validation.numseq,
+      }),
+    );
 
     if (validation.valid && validation.meetsMinSequenceRequirement) {
       form.setFieldValue("fasta_keyboard_input", validation.trimFasta);
@@ -266,26 +268,28 @@ export default function MSAandSNPAnalysisPage() {
   // Validate reference FASTA input when text changes
   useEffect(() => {
     if (!referenceFastaText.trim()) {
-      setReferenceFastaValidationResult(null);
       // Only clear ref_string when the "string" ref type controls it.
       // For "feature_id" / "genome_id", ref_string is set by the dropdown
       // and must not be wiped out (e.g. after a rerun pre-fill).
       if (refType === "string") {
         form.setFieldValue("ref_string", "");
       }
+      queueMicrotask(() => setReferenceFastaValidationResult(null));
       return;
     }
 
     const validation =
       MsaSnpAnalysisUtils.validateReferenceFasta(referenceFastaText);
 
-    setReferenceFastaValidationResult({
-      valid: validation.valid && validation.isSingleSequence,
-      message: validation.isSingleSequence
-        ? validation.message
-        : "Only one sequence is allowed.",
-      numseq: validation.numseq,
-    });
+    queueMicrotask(() =>
+      setReferenceFastaValidationResult({
+        valid: validation.valid && validation.isSingleSequence,
+        message: validation.isSingleSequence
+          ? validation.message
+          : "Only one sequence is allowed.",
+        numseq: validation.numseq,
+      }),
+    );
 
     if (validation.valid && validation.isSingleSequence) {
       form.setFieldValue("ref_string", validation.trimFasta);
@@ -298,8 +302,10 @@ export default function MSAandSNPAnalysisPage() {
       refType === "feature_id" && featureGroup && featureGroup.trim() !== "";
 
     if (!shouldFetch) {
-      setFeatureOptions([]);
-      setSelectedFeatureId("");
+      queueMicrotask(() => {
+        setFeatureOptions([]);
+        setSelectedFeatureId("");
+      });
       return;
     }
 
@@ -358,8 +364,10 @@ export default function MSAandSNPAnalysisPage() {
       selectGenomegroup.length > 0;
 
     if (!shouldFetch) {
-      setGenomeOptions([]);
-      setSelectedGenomeId("");
+      queueMicrotask(() => {
+        setGenomeOptions([]);
+        setSelectedGenomeId("");
+      });
       return;
     }
 

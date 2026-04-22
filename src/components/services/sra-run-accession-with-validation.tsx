@@ -138,7 +138,9 @@ const SraRunAccessionWithValidation = ({
   const [isValidSra, setIsValidSra] = useState(false);
   const validationCacheRef = useRef<{ accession: string; result: ValidationResult } | null>(null);
   const selectedLibrariesRef = useRef(selectedLibraries);
-  selectedLibrariesRef.current = selectedLibraries;
+  useEffect(() => {
+    selectedLibrariesRef.current = selectedLibraries;
+  }, [selectedLibraries]);
 
   const applyValidationResult = useCallback(
     (
@@ -276,9 +278,11 @@ const SraRunAccessionWithValidation = ({
   useEffect(() => {
     const trimmed = sraAccession.trim();
     if (!trimmed) {
-      setValidationMessage("");
-      setIsValidSra(false);
       validationCacheRef.current = null;
+      queueMicrotask(() => {
+        setValidationMessage("");
+        setIsValidSra(false);
+      });
       return;
     }
 

@@ -64,7 +64,11 @@ export function DatePickerInput({
   const [error, setError] = React.useState<string>("");
 
   // Sync from external value prop or format change
-  React.useEffect(() => {
+  const [prevValue, setPrevValue] = React.useState(value);
+  const [prevDateFns, setPrevDateFns] = React.useState(fmt.dateFns);
+  if (prevValue !== value || prevDateFns !== fmt.dateFns) {
+    setPrevValue(value);
+    setPrevDateFns(fmt.dateFns);
     if (value === undefined) {
       setDate(undefined);
       setInputValue("");
@@ -73,7 +77,7 @@ export function DatePickerInput({
       setInputValue(formatDateFns(value, fmt.dateFns));
       setCalendarMonth(value);
     }
-  }, [value, fmt.dateFns]);
+  }
 
   // Format input as selected format
   function formatInputValue(value: string) {
@@ -145,11 +149,12 @@ export function DatePickerInput({
   }
 
   // When inputValue changes (from outside, e.g. reset), update calendarMonth
-  React.useEffect(() => {
+  const [prevInputValue, setPrevInputValue] = React.useState(inputValue);
+  if (prevInputValue !== inputValue) {
+    setPrevInputValue(inputValue);
     const parsed = parseInputDate(inputValue);
     if (parsed) setCalendarMonth(parsed);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputValue]);
+  }
 
   // When popover opens, sync calendarMonth to input or today
   const popoverRef = React.useRef<HTMLButtonElement>(null);

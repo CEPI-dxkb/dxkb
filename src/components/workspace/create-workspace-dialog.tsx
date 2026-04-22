@@ -26,12 +26,12 @@ export function CreateWorkspaceDialog({
   isCreating,
 }: CreateWorkspaceDialogProps) {
   const [workspaceName, setWorkspaceName] = React.useState("");
+  const [prevOpen, setPrevOpen] = React.useState(open);
 
-  React.useEffect(() => {
-    if (open) {
-      setWorkspaceName("");
-    }
-  }, [open]);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setWorkspaceName("");
+  }
 
   const handleCreate = React.useCallback(async () => {
     const name = workspaceName.trim();

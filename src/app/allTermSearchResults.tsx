@@ -335,17 +335,8 @@ function getFormattedContent(doc: Record<string, unknown>, dataType: string) {
 }
 
 function SearchResultsContent({ query }: { query: string }) {
-    useEffect(() => {
-    if (query) {
-        fetchSearchResults(query);
-    }
-    }, [query]);
-
-
   const [searchResults, setSearchResults] = useState<SearchResults>({});
   const [isLoading, setIsLoading] = useState(false);
-
-
 
   const fetchSearchResults = async (query: string) => {
     setIsLoading(true);
@@ -397,6 +388,12 @@ function SearchResultsContent({ query }: { query: string }) {
 
 //    console.log("results", searchResults);
   };
+
+  useEffect(() => {
+    if (query) {
+      queueMicrotask(() => fetchSearchResults(query));
+    }
+  }, [query]);
 
   // Filter out empty results and sort by numFound
   const validResults = Object.entries(searchResults)

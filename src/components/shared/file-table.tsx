@@ -278,6 +278,7 @@ function DataTableInner<T>(
     focus: () => tableContainerRef.current?.focus(),
   }));
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable<T>({
     data,
     columns,

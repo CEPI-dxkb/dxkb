@@ -252,6 +252,7 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns]);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data,
     columns: columnDefs,

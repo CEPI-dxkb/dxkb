@@ -230,10 +230,12 @@ export function CodeMirrorViewer({
     const cached = viewCache.get(filePath);
     if (cached) {
       container.appendChild(cached.wrapper);
-      setStatus(cached.status);
-      setTruncated(cached.truncated);
-      setProgress({ bytesLoaded: 0, totalBytes: null });
-      setErrorMsg(null);
+      queueMicrotask(() => {
+        setStatus(cached.status);
+        setTruncated(cached.truncated);
+        setProgress({ bytesLoaded: 0, totalBytes: null });
+        setErrorMsg(null);
+      });
       return () => {
         // Detach but don't destroy — keep in cache
         if (cached.wrapper.parentNode === container) {

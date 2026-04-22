@@ -48,13 +48,16 @@ export function DownloadOptionsDialog({
     null,
   );
 
-  React.useEffect(() => {
+  const [prevOpen, setPrevOpen] = React.useState(open);
+
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) {
       setArchiveName(defaultArchiveName ?? "");
       setArchiveType("zip");
       setValidationError(null);
     }
-  }, [open, defaultArchiveName]);
+  }
 
   const handleSubmit = React.useCallback(async () => {
     const trimmed = archiveName.trim();

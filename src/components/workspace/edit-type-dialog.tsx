@@ -38,12 +38,16 @@ export function EditTypeDialog({
 }: EditTypeDialogProps) {
   const currentType = item?.type ?? "";
   const [selectedType, setSelectedType] = React.useState(currentType);
+  const [prevOpen, setPrevOpen] = React.useState(open);
+  const [prevItem, setPrevItem] = React.useState(item);
 
-  React.useEffect(() => {
+  if (prevOpen !== open || prevItem !== item) {
+    setPrevOpen(open);
+    setPrevItem(item);
     if (open && item) {
       setSelectedType(item.type ?? "");
     }
-  }, [open, item]);
+  }
 
   const handleSave = React.useCallback(async () => {
     if (!selectedType.trim()) return;

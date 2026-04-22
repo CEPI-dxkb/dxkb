@@ -23,6 +23,15 @@ interface AuthErrorShape {
   status?: number;
 }
 
+function isValidHttpStatus(value: unknown): value is number {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 200 &&
+    value <= 599
+  );
+}
+
 function isAuthErrorShape(value: unknown): value is AuthErrorShape {
   if (value instanceof Error) return false;
   if (typeof value !== "object" || value === null) return false;
@@ -31,7 +40,7 @@ function isAuthErrorShape(value: unknown): value is AuthErrorShape {
     typeof candidate.message === "string" &&
     typeof candidate.code === "string" &&
     authErrorCodes.includes(candidate.code as AuthErrorCode) &&
-    (candidate.status === undefined || typeof candidate.status === "number")
+    (candidate.status === undefined || isValidHttpStatus(candidate.status))
   );
 }
 

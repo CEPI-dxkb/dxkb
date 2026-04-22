@@ -17,7 +17,7 @@ export const sessionMaxAge = 3600 * 4; // 4 hours
 // ============================================================================
 
 export function extractRealmFromToken(token: string): string | undefined {
-  const unMatch = token.match(/un=([^|]+)/);
+  const unMatch = token.match(/(?:^|\|)un=([^|]+)/);
   if (unMatch) {
     const unValue = unMatch[1];
     const atIndex = unValue.indexOf("@");

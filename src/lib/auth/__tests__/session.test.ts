@@ -105,6 +105,13 @@ describe("extractRealmFromToken", () => {
     const result = extractRealmFromToken("");
     expect(result).toBeUndefined();
   });
+
+  it("ignores fields whose key merely ends in 'un'", () => {
+    const result = extractRealmFromToken(
+      "sun=evil@attacker.com|un=real@good.org|sig=abc",
+    );
+    expect(result).toBe("good.org");
+  });
 });
 
 describe("createSession", () => {

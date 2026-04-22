@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { authAdmin } from "@/lib/auth/server/instance";
+import { statusFor } from "@/lib/auth/server/errors";
 
 export async function POST() {
   try {
@@ -8,7 +9,7 @@ export async function POST() {
     if (result.error) {
       return NextResponse.json(
         { success: false, message: result.error.message },
-        { status: result.error.status ?? 500 },
+        { status: statusFor(result.error) },
       );
     }
 

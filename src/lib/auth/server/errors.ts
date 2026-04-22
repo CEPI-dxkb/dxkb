@@ -5,6 +5,36 @@ import type { AuthErrorCode } from "@/lib/auth/port";
 import { statusToErrorCode } from "@/lib/api/types";
 import type { ApiErrorCode } from "@/lib/api/types";
 
+const authErrorCodes: readonly AuthErrorCode[] = [
+  "invalid_credentials",
+  "unauthorized",
+  "network",
+  "service_unavailable",
+  "validation",
+  "forbidden",
+  "not_found",
+  "conflict",
+  "unknown",
+];
+
+interface AuthErrorShape {
+  message: string;
+  code: AuthErrorCode;
+  status?: number;
+}
+
+function isAuthErrorShape(value: unknown): value is AuthErrorShape {
+  if (value instanceof Error) return false;
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.message === "string" &&
+    typeof candidate.code === "string" &&
+    authErrorCodes.includes(candidate.code as AuthErrorCode) &&
+    (candidate.status === undefined || typeof candidate.status === "number")
+  );
+}
+
 export function statusFor(error: {
   code: AuthErrorCode;
   status?: number;
@@ -59,6 +89,14 @@ export function errorResponse(
         code: statusToErrorCode(status),
         details: error.data,
       },
+      { status },
+    );
+  }
+
+  if (isAuthErrorShape(error)) {
+    const status = statusFor(error);
+    return NextResponse.json(
+      { error: error.message, code: statusToErrorCode(status) },
       { status },
     );
   }

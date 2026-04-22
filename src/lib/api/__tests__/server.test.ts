@@ -94,6 +94,33 @@ describe("errorResponse", () => {
       expect.objectContaining({ error: "Unknown error", code: "unknown" }),
     );
   });
+
+  it("maps thrown AuthError shape to its code-derived status", async () => {
+    const response = errorResponse({
+      message: "Invalid credentials",
+      code: "invalid_credentials",
+    });
+    expect(response.status).toBe(401);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({
+        error: "Invalid credentials",
+        code: "unauthenticated",
+      }),
+    );
+  });
+
+  it("honors an explicit status on an AuthError shape", async () => {
+    const response = errorResponse({
+      message: "Conflict",
+      code: "conflict",
+      status: 422,
+    });
+    expect(response.status).toBe(422);
+    const body = await response.json();
+    expect(body.error).toBe("Conflict");
+    expect(body.code).toBe("validation");
+  });
 });
 
 describe("withAuth", () => {

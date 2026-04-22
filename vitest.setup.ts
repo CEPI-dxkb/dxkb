@@ -23,9 +23,10 @@ vi.mock("next/navigation", () => ({
 // / `withAuth` to bridge through the session mock — preserving test intent
 // without rewriting every call site. Tests that exercise the real auth.route
 // logic use `createAuth()` directly and are unaffected.
-vi.mock("@/lib/auth/server", async (importOriginal) => {
+vi.mock("@/lib/auth/server/instance", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/lib/auth/server")>();
+    await importOriginal<typeof import("@/lib/auth/server/instance")>();
+  const errorsModule = await import("@/lib/auth/server/errors");
 
   type RouteHandler = (req: unknown, ctx: unknown) => Promise<Response>;
 
@@ -63,7 +64,7 @@ vi.mock("@/lib/auth/server", async (importOriginal) => {
           realm,
         });
       } catch (error) {
-        return actual.errorResponse(error);
+        return errorsModule.errorResponse(error);
       }
     }) as unknown as H;
 

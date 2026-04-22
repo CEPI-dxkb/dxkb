@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 
 function isAllowedShockUrl(urlString: string, allowedOrigins: string): boolean {

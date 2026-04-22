@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authAdmin } from "@/lib/auth/server";
+import { authAdmin } from "@/lib/auth/server/instance";
 
 /**
  * Request password reset (better-auth style endpoint)

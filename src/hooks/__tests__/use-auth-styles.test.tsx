@@ -4,7 +4,7 @@ import { useAuthStyles } from "@/hooks/use-auth-styles";
 const { mockAuth } = vi.hoisted(() => ({
   mockAuth: { isAuthenticated: false, status: "guest" as "loading" | "authed" | "guest" },
 }));
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/lib/auth/hooks", () => ({
   useAuth: () => mockAuth,
 }));
 vi.mock("@/lib/utils", () => ({

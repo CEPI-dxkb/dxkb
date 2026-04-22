@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useForm } from "@tanstack/react-form";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth, useSignIn } from "@/lib/auth";
+import { useAuth, useSignIn } from "@/lib/auth/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

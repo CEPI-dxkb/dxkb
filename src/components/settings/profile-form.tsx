@@ -18,7 +18,8 @@ import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { Label } from "@/components/ui/label";
 
-import { apiFetch, authAccount } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth/fetch";
+import { authAccount } from "@/lib/auth/advanced";
 import type { UserProfile } from "@/lib/auth/types";
 import {
   profileFormSchema,

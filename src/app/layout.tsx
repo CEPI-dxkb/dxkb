@@ -6,8 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
 import { Providers } from "./providers";
-import { AuthBoundary } from "@/lib/auth";
-import { auth } from "@/lib/auth/server";
+import { AuthBoundary } from "@/lib/auth/provider";
+import { auth } from "@/lib/auth/server/instance";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({

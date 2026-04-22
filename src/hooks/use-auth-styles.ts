@@ -1,4 +1,4 @@
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
 import { cn } from "@/lib/utils";
 
 export function useAuthStyles() {

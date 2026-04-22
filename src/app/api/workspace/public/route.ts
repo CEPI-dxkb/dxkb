@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 
 const allowedMethods = new Set(["Workspace.ls", "Workspace.get"]);

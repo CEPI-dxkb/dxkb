@@ -15,7 +15,7 @@ import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { PasswordInput } from "@/components/settings/password-input";
 
-import { apiFetch } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth/fetch";
 import {
   passwordFormSchema,
   type PasswordFormData,

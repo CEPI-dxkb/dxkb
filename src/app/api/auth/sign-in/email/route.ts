@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { authAdmin, respondWithSession } from "@/lib/auth/server";
+import { authAdmin } from "@/lib/auth/server/instance";
+import { respondWithSession } from "@/lib/auth/server/respond";
 
 export async function POST(request: NextRequest) {
   return respondWithSession(await authAdmin.signIn(await request.json()));

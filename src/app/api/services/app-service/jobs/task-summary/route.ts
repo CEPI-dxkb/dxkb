@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
-import { withAuth } from "@/lib/auth/server";
+import { withAuth } from "@/lib/auth/server/instance";
 
 /**
  * Query task status summary

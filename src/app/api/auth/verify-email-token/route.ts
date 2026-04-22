@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { authAdmin } from "@/lib/auth/server";
+import { authAdmin } from "@/lib/auth/server/instance";
 
 /**
  * Verify email via URL link (better-auth style endpoint)

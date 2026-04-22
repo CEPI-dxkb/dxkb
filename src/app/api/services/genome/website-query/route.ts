@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from "csv-parse/sync";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/server/instance";
 
 /**
  * Base URL for PATRIC/BV-BRC genome API (e.g. https://patricbrc.org/api or BV-BRC equivalent).

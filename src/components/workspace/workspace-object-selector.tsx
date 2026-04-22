@@ -28,7 +28,7 @@ import {
   resolveSelectorPreset,
   type WorkspaceSelectorPreset,
 } from "./workspace-selector-presets";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
 import { cn } from "@/lib/utils";
 
 interface WorkspaceObjectSelectorProps {

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 

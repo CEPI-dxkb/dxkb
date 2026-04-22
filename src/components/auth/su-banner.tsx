@@ -2,7 +2,8 @@
 
 import { ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth, authAdmin } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
+import { authAdmin } from "@/lib/auth/advanced";
 import { toast } from "sonner";
 
 export function SuBanner() {

@@ -8,7 +8,7 @@ import {
   buildSingleLibraries,
   buildSraLibraries,
 } from "@/lib/rerun-utility";
-import { apiFetch } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth/fetch";
 import type { UserProfile } from "@/lib/auth/types";
 import type {
   ServiceFormApi,

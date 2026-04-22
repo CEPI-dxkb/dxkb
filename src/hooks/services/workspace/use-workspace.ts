@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth/fetch";
 import { toast } from "sonner";
 import type { KillJobResponse } from "@/types/workspace";
 

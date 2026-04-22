@@ -17,7 +17,8 @@ import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Mail, ArrowLeft } from "lucide-react";
-import { useAuth, authAccount } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
+import { authAccount } from "@/lib/auth/advanced";
 import { useRouter } from "next/navigation";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
 

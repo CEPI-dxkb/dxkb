@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth/server";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
 import { safeDecode } from "@/lib/url";

@@ -1,9 +1,9 @@
-import type { AuthError, AuthErrorCode, Result } from "@/lib/auth/port";
 import type {
   SigninCredentials,
   SignupCredentials,
   UserProfile,
 } from "@/lib/auth/types";
+import { ok, fail } from "../result";
 import type {
   IdentityProviderPort,
   SessionIdentity,
@@ -28,18 +28,6 @@ export interface InMemoryIdentityAdapter extends IdentityProviderPort {
   getAccount(username: string): InMemoryAccount | undefined;
   resetPasswordRequests(): string[];
   verificationEmailRequests(): { userId: string; token: string }[];
-}
-
-function fail<T>(
-  message: string,
-  code: AuthErrorCode,
-  status?: number,
-): Result<T> {
-  return { data: null, error: { message, code, status } as AuthError };
-}
-
-function ok<T>(data: T): Result<T> {
-  return { data, error: null };
 }
 
 export function inMemoryIdentity(
@@ -76,14 +64,14 @@ export function inMemoryIdentity(
     async authenticate({ username, password }: SigninCredentials) {
       const account = accounts.get(username);
       if (!account || account.password !== password) {
-        return fail("Invalid credentials", "invalid_credentials", 401);
+        return fail("invalid_credentials", "Invalid credentials", 401);
       }
       return ok({ token: account.token });
     },
 
     async signUp(input: SignupCredentials) {
       if (accounts.has(input.username)) {
-        return fail("Username already exists", "conflict", 409);
+        return fail("conflict", "Username already exists", 409);
       }
       const account: InMemoryAccount = {
         username: input.username,
@@ -109,11 +97,11 @@ export function inMemoryIdentity(
 
     async impersonate(_actingUserId, targetUser, password) {
       if (options.suPassword !== undefined && password !== options.suPassword) {
-        return fail("Invalid credentials", "invalid_credentials", 401);
+        return fail("invalid_credentials", "Invalid credentials", 401);
       }
       const target = accounts.get(targetUser);
       if (!target) {
-        return fail("Target user not found", "not_found", 404);
+        return fail("not_found", "Target user not found", 404);
       }
       return ok({ token: target.token });
     },
@@ -121,7 +109,7 @@ export function inMemoryIdentity(
     async validateToken(userId, token) {
       const account = accounts.get(userId) ?? findByToken(token);
       if (!account || account.token !== token) {
-        return fail("Token validation failed", "unauthorized", 401);
+        return fail("unauthorized", "Token validation failed", 401);
       }
       return ok(account.profile);
     },
@@ -142,7 +130,7 @@ export function inMemoryIdentity(
 
     async verifyEmailToken(_verificationToken, username) {
       const account = accounts.get(username);
-      if (!account) return fail("User not found", "not_found", 404);
+      if (!account) return fail("not_found", "User not found", 404);
       accounts.set(username, {
         ...account,
         profile: { ...account.profile, email_verified: true },
@@ -153,10 +141,10 @@ export function inMemoryIdentity(
     async changePassword(userId, token, currentPassword, newPassword) {
       const account = accounts.get(userId);
       if (!account || account.token !== token) {
-        return fail("Unauthorized", "unauthorized", 401);
+        return fail("unauthorized", "Unauthorized", 401);
       }
       if (account.password !== currentPassword) {
-        return fail("Current password is incorrect", "validation", 400);
+        return fail("validation", "Current password is incorrect", 400);
       }
       accounts.set(userId, { ...account, password: newPassword });
       return ok(undefined);

@@ -9,6 +9,4 @@ const authority = createAuth({
 
 export const auth = authority.auth;
 export const authAdmin = authority.authAdmin;
-
-/** Alias for `auth.route` — migrated from the legacy `@/lib/api/server.withAuth`. */
 export const withAuth = authority.auth.route;

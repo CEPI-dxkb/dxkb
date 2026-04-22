@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authAdmin } from "@/lib/auth/server/instance";
 
-/**
- * POST /api/auth/change-password — Change user password via JSON-RPC.
- * Body: { currentPassword, newPassword }
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));

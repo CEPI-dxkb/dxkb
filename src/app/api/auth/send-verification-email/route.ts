@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { authAdmin } from "@/lib/auth/server/instance";
 
-/**
- * Send verification email (better-auth style endpoint)
- * POST /api/auth/send-verification-email
- */
 export async function POST() {
   try {
     const result = await authAdmin.sendVerificationEmail();

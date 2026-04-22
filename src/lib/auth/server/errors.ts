@@ -5,25 +5,6 @@ import type { AuthErrorCode } from "@/lib/auth/port";
 import { statusToErrorCode } from "@/lib/api/types";
 import type { ApiErrorCode } from "@/lib/api/types";
 
-export interface AuthErrorInit {
-  status?: number;
-  details?: unknown;
-}
-
-export class AuthError extends Error {
-  readonly code: AuthErrorCode;
-  readonly status?: number;
-  readonly details?: unknown;
-
-  constructor(code: AuthErrorCode, message: string, init: AuthErrorInit = {}) {
-    super(message);
-    this.name = "AuthError";
-    this.code = code;
-    this.status = init.status;
-    this.details = init.details;
-  }
-}
-
 export function statusFor(error: {
   code: AuthErrorCode;
   status?: number;
@@ -70,18 +51,6 @@ export function errorResponse(
   error: unknown,
   fallbackStatus = 500,
 ): NextResponse {
-  if (error instanceof AuthError) {
-    const status = statusFor(error);
-    return NextResponse.json(
-      {
-        error: error.message,
-        code: error.code,
-        details: error.details,
-      },
-      { status },
-    );
-  }
-
   if (error instanceof JsonRpcError) {
     const status = rpcCodeToHttpStatus(error.code, fallbackStatus);
     return NextResponse.json(

@@ -1,11 +1,11 @@
-import type { AuthError, AuthErrorCode, Result } from "@/lib/auth/port";
+import type { Result } from "@/lib/auth/port";
 import type {
   AuthUser,
   SigninCredentials,
   SignupCredentials,
   UserProfile,
 } from "@/lib/auth/types";
-import { allowAdminToAdminImpersonation } from "@/lib/auth/su";
+import { ok, fail, forwardError } from "./result";
 import { sessionMaxAgeMs } from "./envelope";
 import { extractRealmFromToken } from "./token";
 import type {
@@ -13,6 +13,8 @@ import type {
   SessionIdentity,
   SessionStoragePort,
 } from "./ports";
+
+const allowAdminToAdminImpersonation = true;
 
 export interface AuthAdmin {
   signIn(credentials: SigninCredentials): Promise<Result<AuthUser>>;
@@ -39,18 +41,6 @@ export interface AuthAdmin {
 export interface AuthAdminPorts {
   identity: IdentityProviderPort;
   session: SessionStoragePort;
-}
-
-function fail<T>(
-  code: AuthErrorCode,
-  message: string,
-  status?: number,
-): Result<T> {
-  return { data: null, error: { code, message, status } as AuthError };
-}
-
-function ok<T>(data: T): Result<T> {
-  return { data, error: null };
 }
 
 function deriveUserId(username: string, profileId?: string): string {
@@ -104,7 +94,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
     }
 
     const authResult = await identity.authenticate(credentials);
-    if (authResult.error) return fail(authResult.error.code, authResult.error.message, authResult.error.status);
+    if (authResult.error) return forwardError(authResult.error);
 
     const token = authResult.data.token;
     const realm = extractRealmFromToken(token);
@@ -113,10 +103,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
 
     await session.write(buildSessionIdentity(token, userId, realm));
 
-    return ok({
-      ...buildBaseUser(credentials.username, realm, profile),
-      id: profile?.id || credentials.username,
-    });
+    return ok(buildBaseUser(credentials.username, realm, profile));
   }
 
   async function signUp(input: SignupCredentials): Promise<Result<AuthUser>> {
@@ -132,13 +119,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
     }
 
     const signUpResult = await identity.signUp(input);
-    if (signUpResult.error) {
-      return fail(
-        signUpResult.error.code,
-        signUpResult.error.message,
-        signUpResult.error.status,
-      );
-    }
+    if (signUpResult.error) return forwardError(signUpResult.error);
 
     const token = signUpResult.data.token;
     const realm = extractRealmFromToken(token);
@@ -148,14 +129,11 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
     await session.write(buildSessionIdentity(token, userId, realm));
 
     return ok({
-      id: profile?.id || input.username,
-      username: input.username,
+      ...buildBaseUser(input.username, realm, profile),
       email: input.email,
       first_name: input.first_name || "",
       last_name: input.last_name || "",
       email_verified: false,
-      realm,
-      token: "",
     });
   }
 
@@ -194,13 +172,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
       targetUser,
       password,
     );
-    if (impResult.error) {
-      return fail(
-        impResult.error.code,
-        impResult.error.message,
-        impResult.error.status,
-      );
-    }
+    if (impResult.error) return forwardError(impResult.error);
 
     const targetToken = impResult.data.token;
     const targetRealm = extractRealmFromToken(targetToken);
@@ -213,11 +185,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
       !allowAdminToAdminImpersonation &&
       targetProfile?.roles?.includes("admin")
     ) {
-      return fail(
-        "forbidden",
-        "Cannot impersonate another admin",
-        403,
-      );
+      return fail("forbidden", "Cannot impersonate another admin", 403);
     }
 
     await session.writeBackup(current);
@@ -226,15 +194,8 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
     );
 
     return ok({
-      id: targetProfile?.id || targetUser,
-      username: targetUser,
-      email: targetProfile?.email || "",
-      first_name: targetProfile?.first_name || "",
-      last_name: targetProfile?.last_name || "",
-      email_verified: targetProfile?.email_verified || false,
-      realm: targetRealm,
+      ...buildBaseUser(targetUser, targetRealm, targetProfile),
       roles: targetProfile?.roles || [],
-      token: "",
       isImpersonating: true,
       originalUsername: current.userId,
     });
@@ -243,11 +204,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
   async function exitImpersonation(): Promise<Result<AuthUser>> {
     const backup = await session.readBackup();
     if (!backup) {
-      return fail(
-        "validation",
-        "No active impersonation session",
-        400,
-      );
+      return fail("validation", "No active impersonation session", 400);
     }
 
     await session.write(backup);
@@ -256,15 +213,8 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
     const profile = await identity.fetchProfile(backup.userId, backup.token);
 
     return ok({
-      id: profile?.id || backup.userId,
-      username: backup.userId,
-      email: profile?.email || "",
-      first_name: profile?.first_name || "",
-      last_name: profile?.last_name || "",
-      email_verified: profile?.email_verified || false,
-      realm: backup.realm,
+      ...buildBaseUser(backup.userId, backup.realm, profile),
       roles: profile?.roles || [],
-      token: "",
     });
   }
 
@@ -275,13 +225,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
       return fail("validation", "Email or username is required", 400);
     }
     const result = await identity.requestPasswordReset(usernameOrEmail);
-    if (result.error) {
-      return fail(
-        result.error.code,
-        result.error.message,
-        result.error.status,
-      );
-    }
+    if (result.error) return forwardError(result.error);
     return ok(undefined);
   }
 
@@ -294,13 +238,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
       current.userId,
       current.token,
     );
-    if (result.error) {
-      return fail(
-        result.error.code,
-        result.error.message,
-        result.error.status,
-      );
-    }
+    if (result.error) return forwardError(result.error);
     return ok(undefined);
   }
 
@@ -319,13 +257,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
       verificationToken,
       username,
     );
-    if (result.error) {
-      return fail(
-        result.error.code,
-        result.error.message,
-        result.error.status,
-      );
-    }
+    if (result.error) return forwardError(result.error);
     return ok(undefined);
   }
 
@@ -350,13 +282,7 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
       currentPassword,
       newPassword,
     );
-    if (result.error) {
-      return fail(
-        result.error.code,
-        result.error.message,
-        result.error.status,
-      );
-    }
+    if (result.error) return forwardError(result.error);
     return ok(undefined);
   }
 
@@ -380,24 +306,14 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
 
     const backup = await session.readBackup();
     const profile = validation.data;
-    const isImpersonating = Boolean(backup);
 
-    const user: AuthUser = {
-      id: profile.id || current.userId,
-      username: current.userId,
-      email: profile.email || "",
-      first_name: profile.first_name || "",
-      last_name: profile.last_name || "",
-      email_verified: profile.email_verified || false,
-      realm: current.realm,
+    return ok({
+      ...buildBaseUser(current.userId, current.realm, profile),
       roles: profile.roles,
-      token: "",
-      ...(isImpersonating && backup
+      ...(backup
         ? { isImpersonating: true, originalUsername: backup.userId }
         : {}),
-    };
-
-    return ok(user);
+    });
   }
 
   return {

@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authAdmin } from "@/lib/auth/server/instance";
 
-/**
- * Request password reset (better-auth style endpoint)
- * POST /api/auth/forget-password
- */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

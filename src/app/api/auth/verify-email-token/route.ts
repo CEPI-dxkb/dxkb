@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authAdmin } from "@/lib/auth/server/instance";
 
-/**
- * Verify email via URL link (better-auth style endpoint)
- * GET /api/auth/verify-email-token?token=xxx&username=xxx
- */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -27,20 +23,8 @@ export async function GET(request: NextRequest) {
     );
 
     if (result.error) {
-      if (result.error.code === "service_unavailable" && result.error.status === 504) {
-        return NextResponse.json(
-          {
-            success: false,
-            message: "Email verification request timed out",
-          },
-          { status: 504 },
-        );
-      }
       return NextResponse.json(
-        {
-          success: false,
-          message: result.error.message,
-        },
+        { success: false, message: result.error.message },
         { status: result.error.status ?? 500 },
       );
     }
@@ -50,12 +34,6 @@ export async function GET(request: NextRequest) {
       message: "Email verified successfully",
     });
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      return NextResponse.json(
-        { success: false, message: "Email verification request timed out" },
-        { status: 504 },
-      );
-    }
     console.error("Email verification error:", error);
     return NextResponse.json(
       {

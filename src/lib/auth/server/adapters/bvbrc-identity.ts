@@ -1,29 +1,21 @@
 import { getRequiredEnv } from "@/lib/env";
-import type { Result, AuthError, AuthErrorCode } from "@/lib/auth/port";
+import type { Result, AuthErrorCode } from "@/lib/auth/port";
 import type {
   SigninCredentials,
   SignupCredentials,
   UserProfile,
 } from "@/lib/auth/types";
+import { ok, fail, networkFailure } from "../result";
 import type { IdentityProviderPort } from "../ports";
 
-function fail(
-  message: string,
-  code: AuthErrorCode,
-  status?: number,
-): { data: null; error: AuthError } {
-  return { data: null, error: { message, code, status } };
-}
-
-function ok<T>(data: T): { data: T; error: null } {
-  return { data, error: null };
-}
-
-function networkFailure(cause: unknown, fallback: string): AuthError {
-  return {
-    message: cause instanceof Error ? cause.message : fallback,
-    code: "network",
+async function parseErrorMessage(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  const body = (await response.json().catch(() => ({}))) as {
+    message?: string;
   };
+  return body.message || fallback;
 }
 
 async function authenticate(
@@ -43,10 +35,10 @@ async function authenticate(
     if (!response.ok) {
       const isAuthFailure = response.status === 401 || response.status === 403;
       return isAuthFailure
-        ? fail("Invalid credentials", "invalid_credentials", 401)
+        ? fail("invalid_credentials", "Invalid credentials", 401)
         : fail(
-            "Authentication service unavailable",
             "service_unavailable",
+            "Authentication service unavailable",
             503,
           );
     }
@@ -56,8 +48,8 @@ async function authenticate(
     const token = rawToken.trim();
     if (!token) {
       return fail(
-        "Authentication service unavailable",
         "service_unavailable",
+        "Authentication service unavailable",
         503,
       );
     }
@@ -99,7 +91,7 @@ async function signUp(
       } catch {
         message = body || message;
       }
-      return fail(message, "validation", response.status);
+      return fail("validation", message, response.status);
     }
 
     const body = await response.text();
@@ -107,8 +99,8 @@ async function signUp(
     const token = rawToken.trim();
     if (!token) {
       return fail(
-        "Registration failed: missing auth token",
         "service_unavailable",
+        "Registration failed: missing auth token",
         502,
       );
     }
@@ -140,12 +132,12 @@ async function impersonate(
     });
 
     if (!response.ok) {
-      return fail("Invalid credentials", "invalid_credentials", 401);
+      return fail("invalid_credentials", "Invalid credentials", 401);
     }
 
     const token = (await response.text()).trim();
     if (!token) {
-      return fail("Invalid credentials", "invalid_credentials", 401);
+      return fail("invalid_credentials", "Invalid credentials", 401);
     }
 
     return ok({ token });
@@ -175,7 +167,7 @@ async function validateToken(
     if (!response.ok) {
       const code: AuthErrorCode =
         response.status === 401 ? "unauthorized" : "service_unavailable";
-      return fail("Token validation failed", code, response.status);
+      return fail(code, "Token validation failed", response.status);
     }
 
     const profile = (await response.json()) as UserProfile;
@@ -213,8 +205,6 @@ async function fetchProfile(
   }
 }
 
-// BV-BRC password reset endpoint is hard-coded in the existing route handler;
-// preserved verbatim here for Phase 1. Candidate for an env var in Phase 9.
 const bvbrcPasswordResetUrl = "https://user.bv-brc.org/reset";
 
 async function requestPasswordReset(
@@ -228,12 +218,9 @@ async function requestPasswordReset(
     });
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as {
-        message?: string;
-      };
       return fail(
-        body.message || "Failed to send password reset email",
         "service_unavailable",
+        await parseErrorMessage(response, "Failed to send password reset email"),
         response.status,
       );
     }
@@ -262,12 +249,9 @@ async function sendVerificationEmail(
     });
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as {
-        message?: string;
-      };
       return fail(
-        body.message || "Failed to send verification email",
         "service_unavailable",
+        await parseErrorMessage(response, "Failed to send verification email"),
         response.status,
       );
     }
@@ -300,24 +284,20 @@ async function verifyEmailToken(
     });
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as {
-        message?: string;
-      };
       return fail(
-        body.message || "Email verification failed",
         "validation",
+        await parseErrorMessage(response, "Email verification failed"),
         response.status,
       );
     }
 
-    // Drain the response body to keep semantics with the existing route.
     await response.json().catch(() => undefined);
     return ok(undefined);
   } catch (cause) {
     if (cause instanceof Error && cause.name === "AbortError") {
       return fail(
-        "Email verification request timed out",
         "service_unavailable",
+        "Email verification request timed out",
         504,
       );
     }
@@ -358,8 +338,8 @@ async function changePassword(
     if (!response.ok) {
       const errorText = await response.text();
       return fail(
-        errorText || "Failed to change password",
         "validation",
+        errorText || "Failed to change password",
         response.status,
       );
     }
@@ -367,8 +347,8 @@ async function changePassword(
     const result = (await response.json()) as { error?: { message?: string } };
     if (result.error) {
       return fail(
-        result.error.message || "Failed to change password",
         "validation",
+        result.error.message || "Failed to change password",
         400,
       );
     }

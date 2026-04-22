@@ -79,8 +79,6 @@ export function cookieSession(): SessionStoragePort {
 
     async clear() {
       const store = await cookies();
-      // Order matches the existing deleteSession() in src/lib/auth/session.ts to
-      // preserve test-observable call order during the Phase 1 transition.
       clearCookie(store, sessionCookieNames.token);
       clearCookie(store, sessionCookieNames.realm);
       clearCookie(store, vestigialUserProfileCookieName);

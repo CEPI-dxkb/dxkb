@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 
-/**
- * GET /api/auth/profile — Fetch full user profile from BV-BRC.
- */
 export const GET = auth.route(async (_request, { userId }) => {
   try {
     const response = await auth.fetch(
@@ -30,10 +27,6 @@ export const GET = auth.route(async (_request, { userId }) => {
   }
 });
 
-/**
- * POST /api/auth/profile — Update profile via JSON Patch.
- * Body: [{ op, path, value }]
- */
 export const POST = auth.route(async (request: NextRequest, { userId }) => {
   try {
     const body = await request.text();

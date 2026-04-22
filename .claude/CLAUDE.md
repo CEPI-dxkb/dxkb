@@ -111,3 +111,8 @@ Requires **Node v24** (`nvm use 24`). Vitest 4 / rolldown needs Node >= 22.
 ### Plans
 
 - When creating plans, ensure that a .md file is also created in /plans to ensure proper documentation.
+
+### Error Handling
+
+- Do NOT use generic errors for errors. The original error message should still be displayed.
+- If the original error is too long, condense it but ensure the error still remains the same,

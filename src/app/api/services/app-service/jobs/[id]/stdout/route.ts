@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withAuth } from "@/lib/api/server";
+import { withAuth } from "@/lib/auth/server";
 import { createAppService } from "@/lib/app-service";
 
 interface RouteParams {

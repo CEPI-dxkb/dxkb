@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authAdmin } from "@/lib/auth/server";
 
 /**
  * Request password reset (better-auth style endpoint)
@@ -7,10 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { usernameOrEmail, email } = body;
-
-    // Support both usernameOrEmail and email fields
-    const identifier = usernameOrEmail || email;
+    const identifier = body.usernameOrEmail || body.email;
 
     if (!identifier) {
       return NextResponse.json(
@@ -19,27 +17,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call BV-BRC password reset endpoint
-    const response = await fetch("https://user.bv-brc.org/reset", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ email: identifier }),
-    });
+    const result = await authAdmin.requestPasswordReset(identifier);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+    if (result.error) {
+      const status =
+        result.error.code === "network" ? 503 : (result.error.status ?? 500);
+      const message =
+        result.error.code === "network"
+          ? "Password reset service unavailable"
+          : result.error.message;
       return NextResponse.json(
-        {
-          success: false,
-          message: errorData.message || "Failed to send password reset email",
-        },
-        { status: response.status },
+        { success: false, message },
+        { status },
       );
     }
 
-    // Return better-auth style response
     return NextResponse.json({
       success: true,
       message: "Password reset email sent successfully",
@@ -47,10 +39,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Forget password error:", error);
     return NextResponse.json(
-      { 
-        success: false,
-        message: "Password reset service unavailable" 
-      },
+      { success: false, message: "Password reset service unavailable" },
       { status: 503 },
     );
   }

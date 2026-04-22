@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequiredEnv } from "@/lib/env";
-import { withErrorHandling } from "@/lib/api/server";
+import { withErrorHandling } from "@/lib/auth/server";
 import { statusToErrorCode } from "@/lib/api/types";
 
 export const GET = withErrorHandling(async (request: NextRequest) => {

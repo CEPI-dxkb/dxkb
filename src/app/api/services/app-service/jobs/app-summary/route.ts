@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAppService } from "@/lib/app-service";
-import { withAuth } from "@/lib/api/server";
+import { withAuth } from "@/lib/auth/server";
 
 /**
  * Query app/service summary

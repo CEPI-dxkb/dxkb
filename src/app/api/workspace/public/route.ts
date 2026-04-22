@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthToken } from "@/lib/auth/session";
+import { auth } from "@/lib/auth/server";
 import { getRequiredEnv } from "@/lib/env";
 
 const allowedMethods = new Set(["Workspace.ls", "Workspace.get"]);
@@ -29,8 +29,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Optionally include auth token if user is logged in
-    const authToken = await getAuthToken();
+    let authToken: string | undefined;
+    try {
+      const session = await auth.requireSession();
+      authToken = session.token;
+    } catch {
+      authToken = undefined;
+    }
+
     const headers: Record<string, string> = {
       "Content-Type": "application/jsonrpc+json",
     };

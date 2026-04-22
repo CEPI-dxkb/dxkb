@@ -75,17 +75,26 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   const pageIndex = controlledPageIndex !== undefined ? controlledPageIndex : internalPageIndex;
   const setPageIndex = onPageChange || setInternalPageIndex;
 
-  // Reset sorting when resource/query actually changes
+  // Reset sorting and selection when resource/query actually changes.
+  // Local state resets run during render (React's derived-state pattern);
+  // parent-owned callbacks (setRowSelection when controlled, onSelectionChange)
+  // are deferred to an effect to avoid render-phase updates on other components.
   const [prevResource, setPrevResource] = useState(resource);
   const [prevCleanQ, setPrevCleanQ] = useState(cleanQ);
+  const [resetNonce, setResetNonce] = useState(0);
 
   if (prevResource !== resource || prevCleanQ !== cleanQ) {
     setPrevResource(resource);
     setPrevCleanQ(cleanQ);
     setSorting([]);
+    setResetNonce((n) => n + 1);
+  }
+
+  useEffect(() => {
+    if (resetNonce === 0) return;
     setRowSelection({});
     onSelectionChange?.([]);
-  }
+  }, [resetNonce, setRowSelection, onSelectionChange]);
 
   const setSortingAndResetPage = useCallback((newSorting: SortingState) => {
     setSorting(newSorting);

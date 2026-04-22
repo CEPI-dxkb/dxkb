@@ -33,31 +33,27 @@ export interface DownloadOptionsDialogProps {
   defaultArchiveName?: string;
 }
 
-export function DownloadOptionsDialog({
-  open,
-  onOpenChange,
+// State lives inside the form, not the dialog wrapper, so closing the dialog
+// unmounts this subtree (base-ui Dialog uses keepMounted={false} by default)
+// and state is destroyed. Reopening remounts with fresh state — no explicit
+// prop→state sync needed.
+function DownloadOptionsForm({
   paths,
-  defaultArchiveName = "",
-}: DownloadOptionsDialogProps) {
+  defaultArchiveName,
+  onOpenChange,
+}: {
+  paths: string[];
+  defaultArchiveName: string;
+  onOpenChange: (open: boolean) => void;
+}) {
   const repository = useWorkspaceRepository("authenticated");
 
-  const [archiveName, setArchiveName] = React.useState("");
+  const [archiveName, setArchiveName] = React.useState(defaultArchiveName);
   const [archiveType, setArchiveType] = React.useState("zip");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [validationError, setValidationError] = React.useState<string | null>(
     null,
   );
-
-  const [prevOpen, setPrevOpen] = React.useState(open);
-
-  if (prevOpen !== open) {
-    setPrevOpen(open);
-    if (open) {
-      setArchiveName(defaultArchiveName ?? "");
-      setArchiveType("zip");
-      setValidationError(null);
-    }
-  }
 
   const handleSubmit = React.useCallback(async () => {
     const trimmed = archiveName.trim();
@@ -115,88 +111,105 @@ export function DownloadOptionsDialog({
     archiveName.trim().length > 0 && !isSubmitting && paths.length > 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogTitle>Download File Options</DialogTitle>
-        <div className="grid gap-4 py-2">
-          <div className="grid gap-2">
-            <label
-              className="text-muted-foreground text-xs font-medium"
-              htmlFor="download-archive-name"
+    <>
+      <DialogTitle>Download File Options</DialogTitle>
+      <div className="grid gap-4 py-2">
+        <div className="grid gap-2">
+          <label
+            className="text-muted-foreground text-xs font-medium"
+            htmlFor="download-archive-name"
+          >
+            File Name
+          </label>
+          <Input
+            id="download-archive-name"
+            value={archiveName}
+            onChange={(e) => {
+              setArchiveName(e.target.value);
+              setValidationError(null);
+            }}
+            placeholder={defaultArchiveName}
+            disabled={isSubmitting}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (canSubmit) handleSubmit();
+              }
+            }}
+            aria-invalid={!!validationError}
+            aria-describedby={validationError ? "archive-name-error" : undefined}
+          />
+          {validationError && (
+            <p
+              id="archive-name-error"
+              className="text-destructive text-xs"
+              role="alert"
             >
-              File Name
-            </label>
-            <Input
-              id="download-archive-name"
-              value={archiveName}
-              onChange={(e) => {
-                setArchiveName(e.target.value);
-                setValidationError(null);
-              }}
-              placeholder={defaultArchiveName}
-              disabled={isSubmitting}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (canSubmit) handleSubmit();
-                }
-              }}
-              aria-invalid={!!validationError}
-              aria-describedby={validationError ? "archive-name-error" : undefined}
-            />
-            {validationError && (
-              <p
-                id="archive-name-error"
-                className="text-destructive text-xs"
-                role="alert"
-              >
-                {validationError}
-              </p>
-            )}
-          </div>
-          <div className="grid gap-2">
-            <label
-              className="text-muted-foreground text-xs font-medium"
-              htmlFor="download-archive-type"
-            >
-              File Type
-            </label>
-            <Select
-              value={archiveType}
-              onValueChange={(value) => value != null && setArchiveType(value)}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger id="download-archive-type" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {archiveTypeOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
+              {validationError}
+            </p>
+          )}
         </div>
-        <DialogFooter showCloseButton={false}>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
+        <div className="grid gap-2">
+          <label
+            className="text-muted-foreground text-xs font-medium"
+            htmlFor="download-archive-type"
+          >
+            File Type
+          </label>
+          <Select
+            value={archiveType}
+            onValueChange={(value) => value != null && setArchiveType(value)}
             disabled={isSubmitting}
           >
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!canSubmit}>
-            {isSubmitting ? (
-              <Spinner className="h-4 w-4 shrink-0" />
-            ) : (
-              "Submit"
-            )}
-          </Button>
-        </DialogFooter>
+            <SelectTrigger id="download-archive-type" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {archiveTypeOptions.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <DialogFooter showCloseButton={false}>
+        <Button
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button onClick={handleSubmit} disabled={!canSubmit}>
+          {isSubmitting ? (
+            <Spinner className="h-4 w-4 shrink-0" />
+          ) : (
+            "Submit"
+          )}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+export function DownloadOptionsDialog({
+  open,
+  onOpenChange,
+  paths,
+  defaultArchiveName = "",
+}: DownloadOptionsDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DownloadOptionsForm
+          paths={paths}
+          defaultArchiveName={defaultArchiveName}
+          onOpenChange={onOpenChange}
+        />
       </DialogContent>
     </Dialog>
   );

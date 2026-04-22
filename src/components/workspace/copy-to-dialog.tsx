@@ -47,7 +47,7 @@ export function CopyToDialog({
     currentUserWorkspaceRoot.startsWith("/")
       ? currentUserWorkspaceRoot
       : `/${currentUserWorkspaceRoot}`;
-  const [prevOpen, setPrevOpen] = React.useState(open);
+  const [prevOpen, setPrevOpen] = React.useState(false);
 
   if (prevOpen !== open) {
     setPrevOpen(open);

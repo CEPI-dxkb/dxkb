@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
     try {
       const session = await auth.requireSession();
       authToken = session.token;
-    } catch {
-      authToken = undefined;
+    } catch (error) {
+      if (!(error instanceof Response)) throw error;
     }
 
     const headers: Record<string, string> = {

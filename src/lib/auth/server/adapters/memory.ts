@@ -39,6 +39,8 @@ export function inMemoryIdentity(
   }
   const resetRequests: string[] = [];
   const verifyRequests: { userId: string; token: string }[] = [];
+  const now = () =>
+    new Date(options.clockMs ? options.clockMs() : Date.now()).toISOString();
 
   function findByToken(token: string): InMemoryAccount | undefined {
     for (const account of accounts.values()) {
@@ -83,8 +85,8 @@ export function inMemoryIdentity(
           email_verified: false,
           first_name: input.first_name,
           last_name: input.last_name,
-          creation_date: new Date().toISOString(),
-          last_login: new Date().toISOString(),
+          creation_date: now(),
+          last_login: now(),
           organisms: input.organisms ?? "",
           reverification: false,
           source: "memory",

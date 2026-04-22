@@ -11,13 +11,36 @@ import { errorResponse, withAuth, withOptionalAuth, withErrorHandling } from "..
 import { JsonRpcError, jsonRpcErrorCodes } from "@/lib/jsonrpc-client";
 
 describe("errorResponse", () => {
-  it("normalizes a plain Error to { error } with status 500", async () => {
+  it("preserves a plain Error message with status 500", async () => {
     const response = errorResponse(new Error("something broke"));
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body).toEqual(
-      expect.objectContaining({ error: "something broke", code: "upstream" }),
+      expect.objectContaining({
+        error: "something broke",
+        code: "upstream",
+      }),
     );
+  });
+
+  it("preserves the Error message when the fallback status is 4xx", async () => {
+    const response = errorResponse(new Error("not found"), 404);
+    expect(response.status).toBe(404);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({ error: "not found", code: "upstream" }),
+    );
+  });
+
+  it("preserves JsonRpcError messages when the mapped status is 5xx", async () => {
+    const rpcError = new JsonRpcError(
+      "db host=prod-replica timeout",
+      jsonRpcErrorCodes.INTERNAL_ERROR,
+    );
+    const response = errorResponse(rpcError);
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("db host=prod-replica timeout");
   });
 
   it("preserves JsonRpcError.data as details and maps code to HTTP status", async () => {
@@ -63,17 +86,12 @@ describe("errorResponse", () => {
     expect(body.code).toBe("upstream");
   });
 
-  it("uses a provided fallback status", () => {
-    const response = errorResponse(new Error("not found"), 404);
-    expect(response.status).toBe(404);
-  });
-
   it("handles non-Error values", async () => {
     const response = errorResponse("string error");
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body).toEqual(
-      expect.objectContaining({ error: "Internal server error" }),
+      expect.objectContaining({ error: "Unknown error", code: "unknown" }),
     );
   });
 });

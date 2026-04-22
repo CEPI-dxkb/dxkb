@@ -71,7 +71,7 @@ export function errorResponse(
   }
 
   return NextResponse.json(
-    { error: "Internal server error", code: "unknown" as ApiErrorCode },
+    { error: "Unknown error", code: "unknown" as ApiErrorCode },
     { status: fallbackStatus },
   );
 }

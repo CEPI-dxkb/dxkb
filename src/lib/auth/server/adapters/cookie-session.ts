@@ -4,13 +4,14 @@ import {
   sessionCookieNames,
   suBackupCookieNames,
 } from "../middleware";
+import { sessionMaxAgeMs } from "../envelope";
 import type { SessionStoragePort, SessionIdentity } from "../ports";
 
 export { sessionCookieNames, suBackupCookieNames };
 
 const vestigialUserProfileCookieName = "bvbrc_user_profile";
 
-const sessionMaxAgeSeconds = 3600 * 4;
+const sessionMaxAgeSeconds = sessionMaxAgeMs / 1000;
 
 const cookieOptions = {
   httpOnly: true,

@@ -7,6 +7,7 @@ beforeEach(() => {
   process.env.USER_URL = "https://user.test/user";
   process.env.USER_REGISTER_URL = "https://auth.test/register";
   process.env.USER_VERIFICATION_URL = "https://auth.test/verify";
+  process.env.USER_PASSWORD_RESET_URL = "https://auth.test/reset";
 });
 
 afterEach(() => {
@@ -14,6 +15,7 @@ afterEach(() => {
   delete process.env.USER_URL;
   delete process.env.USER_REGISTER_URL;
   delete process.env.USER_VERIFICATION_URL;
+  delete process.env.USER_PASSWORD_RESET_URL;
 });
 
 describe("bvbrcIdentity().authenticate", () => {
@@ -237,7 +239,7 @@ describe("bvbrcIdentity().requestPasswordReset", () => {
   it("returns ok on success", async () => {
     server.use(
       http.post(
-        "https://user.bv-brc.org/reset",
+        "https://auth.test/reset",
         () => new HttpResponse(null, { status: 200 }),
       ),
     );
@@ -249,7 +251,7 @@ describe("bvbrcIdentity().requestPasswordReset", () => {
 
   it("returns service_unavailable on failure", async () => {
     server.use(
-      http.post("https://user.bv-brc.org/reset", () =>
+      http.post("https://auth.test/reset", () =>
         HttpResponse.json({ message: "boom" }, { status: 502 }),
       ),
     );

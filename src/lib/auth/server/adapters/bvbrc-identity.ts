@@ -205,13 +205,11 @@ async function fetchProfile(
   }
 }
 
-const bvbrcPasswordResetUrl = "https://user.bv-brc.org/reset";
-
 async function requestPasswordReset(
   usernameOrEmail: string,
 ): Promise<Result<void>> {
   try {
-    const response = await fetch(bvbrcPasswordResetUrl, {
+    const response = await fetch(getRequiredEnv("USER_PASSWORD_RESET_URL"), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ email: usernameOrEmail }),

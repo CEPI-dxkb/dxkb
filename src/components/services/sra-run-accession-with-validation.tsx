@@ -13,7 +13,8 @@ const validationDebounceMs = 500;
 
 /** Strips HTML tags so only plain text is stored/displayed (XSS safety). */
 function toPlainText(s: string): string {
-  return s.replace(/<[^>]+>/g, "").trim() || s;
+  const text = new DOMParser().parseFromString(s, "text/html").body.textContent ?? "";
+  return text.trim() || s;
 }
 
 interface ValidationResult {

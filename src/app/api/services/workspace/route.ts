@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuthToken } from "@/lib/auth/session";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 
 /** Safe shape we forward to the client; avoids leaking stack traces, paths, or config. */
@@ -33,16 +33,11 @@ function sanitizeUpstreamError(raw: unknown): SanitizedApiError | null {
  * Workspace API proxy route
  * Forwards JSON-RPC requests to WORKSPACE_API_URL
  */
-export async function POST(request: NextRequest) {
+export const POST = auth.route(async (request: NextRequest, { token }) => {
   try {
-    const authToken = await requireAuthToken();
-    if (authToken instanceof NextResponse) return authToken;
-
-    // Get the request body
     const body = await request.json();
     const { method, params } = body;
 
-    // Validate required fields
     if (!method) {
       return NextResponse.json(
         { error: "method is required" },
@@ -50,12 +45,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Make the request to BV-BRC Workspace API
     const response = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
       method: "POST",
       headers: {
         "Content-Type": "application/jsonrpc+json",
-        "Authorization": authToken,
+        Authorization: token,
       },
       body: JSON.stringify({
         id: 1,
@@ -66,9 +60,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
-      // Missing preferences path is expected when .preferences or favorites.json does not exist.
-      // Only treat 404 as "not found" so the client can create the file/dir. Do not treat 500 as not
-      // found — 500 indicates upstream server/database failures; those must be logged and propagated.
       const isPreferencesGet =
         method === "Workspace.get" &&
         Array.isArray(params) &&
@@ -114,5 +105,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
-
+});

@@ -6,7 +6,8 @@ import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAuth, authAccount } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
+import { authAccount } from "@/lib/auth/advanced";
 import {
   Card,
   CardContent,

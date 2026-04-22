@@ -10,7 +10,7 @@ import { SearchBar } from "@/components/search/search-bar";
 import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import Logo from "@/components/ui/logo";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
 import { UserAvatarDropdown } from "@/components/navbars/user-avatar-dropdown";
 import { WorkspaceDropdownContent, workspaceUsername } from "@/components/navbars/workspace-dropdown-content";
 import { SuBanner } from "@/components/auth/su-banner";

@@ -6,7 +6,8 @@ import React from "react";
 
 import GenomeAssemblyPage from "@/app/services/(genomics)/genome-assembly/page";
 import { ServiceDebuggingProvider } from "@/contexts/service-debugging-context";
-import { AuthBoundary, memoryAuthAdapter } from "@/lib/auth";
+import { AuthBoundary } from "@/lib/auth/provider";
+import { memoryAuthAdapter } from "@/lib/auth/adapters/memory";
 import { server } from "@/test-helpers/msw-server";
 
 function Providers({ children }: { children: React.ReactNode }) {

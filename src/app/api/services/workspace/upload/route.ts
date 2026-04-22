@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuthToken } from "@/lib/auth/session";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 
 function isAllowedShockUrl(urlString: string, allowedOrigins: string): boolean {
@@ -16,7 +16,7 @@ function isAllowedShockUrl(urlString: string, allowedOrigins: string): boolean {
  * Proxy route: accepts a file and Shock node URL, then PUTs the file to Shock with auth.
  * Keeps the BV-BRC token server-side and avoids CORS.
  */
-export async function POST(request: NextRequest) {
+export const POST = auth.route(async (request: NextRequest, { token }) => {
   try {
     let allowedShockOrigins: string;
     try {
@@ -27,9 +27,6 @@ export async function POST(request: NextRequest) {
         { status: 503 },
       );
     }
-
-    const authToken = await requireAuthToken();
-    if (authToken instanceof NextResponse) return authToken;
 
     const formData = await request.formData();
     const urlRaw = formData.get("url");
@@ -58,9 +55,7 @@ export async function POST(request: NextRequest) {
     const uploadFormData = new FormData();
     uploadFormData.append("upload", file);
 
-    // Shock expects "OAuth <token>" (legacy UploadManager uses Authorization: 'OAuth ' + token)
-    const shockAuth =
-      authToken.startsWith("OAuth ") ? authToken : `OAuth ${authToken}`;
+    const shockAuth = token.startsWith("OAuth ") ? token : `OAuth ${token}`;
 
     const response = await fetch(urlRaw.trim(), {
       method: "PUT",
@@ -93,4 +88,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});

@@ -3,6 +3,14 @@ import { server } from "@/test-helpers/msw-server";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 
+beforeEach(() => {
+  process.env.USER_PASSWORD_RESET_URL = "https://auth.test/reset";
+});
+
+afterEach(() => {
+  delete process.env.USER_PASSWORD_RESET_URL;
+});
+
 describe("POST /api/auth/forget-password", () => {
   it("returns 400 when no identifier is provided", async () => {
     const request = mockNextRequest({
@@ -20,7 +28,7 @@ describe("POST /api/auth/forget-password", () => {
   it("accepts usernameOrEmail field", async () => {
     let handlerCalled = false;
     server.use(
-      http.post("https://user.bv-brc.org/reset", () => {
+      http.post("https://auth.test/reset", () => {
         handlerCalled = true;
         return new HttpResponse(null, { status: 200 });
       }),
@@ -42,7 +50,7 @@ describe("POST /api/auth/forget-password", () => {
 
   it("accepts email field as fallback", async () => {
     server.use(
-      http.post("https://user.bv-brc.org/reset", () => {
+      http.post("https://auth.test/reset", () => {
         return new HttpResponse(null, { status: 200 });
       }),
     );
@@ -61,7 +69,7 @@ describe("POST /api/auth/forget-password", () => {
 
   it("returns upstream error with message from JSON response", async () => {
     server.use(
-      http.post("https://user.bv-brc.org/reset", () => {
+      http.post("https://auth.test/reset", () => {
         return HttpResponse.json(
           { message: "User not found" },
           { status: 404 },
@@ -84,7 +92,7 @@ describe("POST /api/auth/forget-password", () => {
 
   it("returns default error message when upstream JSON parse fails", async () => {
     server.use(
-      http.post("https://user.bv-brc.org/reset", () => {
+      http.post("https://auth.test/reset", () => {
         return new HttpResponse("not json", { status: 500 });
       }),
     );
@@ -104,7 +112,7 @@ describe("POST /api/auth/forget-password", () => {
 
   it("returns 503 when an exception is thrown", async () => {
     server.use(
-      http.post("https://user.bv-brc.org/reset", () => {
+      http.post("https://auth.test/reset", () => {
         return HttpResponse.error();
       }),
     );

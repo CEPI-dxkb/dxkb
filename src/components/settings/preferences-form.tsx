@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 
-import { apiFetch } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth/fetch";
 import type { UserProfile } from "@/lib/auth/types";
 
 interface PreferencesFormProps {

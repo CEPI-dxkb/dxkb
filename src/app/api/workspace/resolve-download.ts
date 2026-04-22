@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthToken } from "@/lib/auth/session";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
 import { safeDecode } from "@/lib/url";
@@ -13,11 +13,9 @@ export function contentDisposition(
   disposition: "inline" | "attachment",
   filename: string,
 ): string {
-  // ASCII-safe fallback: strip characters that break the quoted-string
   const asciiFallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
   const base = `${disposition}; filename="${asciiFallback}"`;
 
-  // If the original name differs, add the extended parameter for full Unicode support
   if (asciiFallback !== filename) {
     const encoded = encodeURIComponent(filename).replace(/'/g, "%27");
     return `${base}; filename*=UTF-8''${encoded}`;
@@ -26,18 +24,12 @@ export function contentDisposition(
   return base;
 }
 
-/**
- * Shared result from resolving a workspace path to a Shock download stream.
- */
 export interface ResolvedDownload {
   shockResponse: Response;
   filename: string;
   contentType: string;
 }
 
-/**
- * Decode route path segments into a workspace path string.
- */
 export function buildWorkspacePath(segments: string[]): string {
   return "/" + segments.map((s) => safeDecode(s)).join("/");
 }
@@ -51,8 +43,13 @@ export function buildWorkspacePath(segments: string[]): string {
 export async function resolveWorkspaceDownload(
   segments: string[],
 ): Promise<ResolvedDownload | NextResponse> {
-  const authToken = await requireAuthToken();
-  if (authToken instanceof NextResponse) return authToken;
+  let session;
+  try {
+    session = await auth.requireSession();
+  } catch (error) {
+    if (error instanceof Response) return error as NextResponse;
+    throw error;
+  }
 
   const workspacePath = buildWorkspacePath(segments);
 
@@ -60,7 +57,7 @@ export async function resolveWorkspaceDownload(
     method: "POST",
     headers: {
       "Content-Type": "application/jsonrpc+json",
-      Authorization: authToken,
+      Authorization: session.token,
     },
     body: JSON.stringify({
       id: 1,

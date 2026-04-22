@@ -1,55 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthToken } from "@/lib/auth/session";
-import { JsonRpcError, jsonRpcErrorCodes } from "@/lib/jsonrpc-client";
-import { statusToErrorCode } from "./types";
-import type { ApiErrorCode } from "./types";
+import { errorResponse } from "@/lib/auth/server/errors";
 
-function rpcCodeToHttpStatus(rpcCode: number, fallback: number): number {
-  switch (rpcCode) {
-    case jsonRpcErrorCodes.UNAUTHORIZED:
-      return 401;
-    case jsonRpcErrorCodes.FORBIDDEN:
-      return 403;
-    case jsonRpcErrorCodes.NOT_FOUND:
-      return 404;
-    case jsonRpcErrorCodes.VALIDATION_ERROR:
-    case jsonRpcErrorCodes.INVALID_PARAMS:
-      return 400;
-    default:
-      return fallback;
-  }
-}
+export { errorResponse };
 
-export function errorResponse(
-  error: unknown,
-  fallbackStatus = 500,
-): NextResponse {
-  if (error instanceof JsonRpcError) {
-    const status = rpcCodeToHttpStatus(error.code, fallbackStatus);
-    return NextResponse.json(
-      {
-        error: error.message,
-        code: statusToErrorCode(status),
-        details: error.data,
-      },
-      { status },
-    );
-  }
-
-  if (error instanceof Error) {
-    return NextResponse.json(
-      { error: error.message, code: "upstream" as ApiErrorCode },
-      { status: fallbackStatus },
-    );
-  }
-
-  return NextResponse.json(
-    { error: "Internal server error", code: "unknown" as ApiErrorCode },
-    { status: fallbackStatus },
-  );
-}
-
-async function safeHandle(fn: () => Promise<NextResponse>): Promise<NextResponse> {
+async function safeHandle(
+  fn: () => Promise<NextResponse>,
+): Promise<NextResponse> {
   try {
     return await fn();
   } catch (error) {

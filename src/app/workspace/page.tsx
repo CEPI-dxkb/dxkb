@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
 import { encodeWorkspaceSegment } from "@/lib/utils";
 
 export default function WorkspacePage() {

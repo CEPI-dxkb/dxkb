@@ -9,7 +9,7 @@ import { ProfileForm } from "@/components/settings/profile-form";
 import { PreferencesForm } from "@/components/settings/preferences-form";
 import { PasswordChangeForm } from "@/components/settings/password-change-form";
 
-import { apiFetch } from "@/lib/auth";
+import { apiFetch } from "@/lib/auth/fetch";
 import type { UserProfile } from "@/lib/auth/types";
 
 export default function SettingsPage() {

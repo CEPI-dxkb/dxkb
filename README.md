@@ -39,6 +39,7 @@ Fill in `.env.local` with the appropriate values:
 | `USER_URL` | BV-BRC User Service URL |
 | `USER_AUTH_URL` | BV-BRC Authentication Service URL |
 | `USER_VERIFICATION_URL` | BV-BRC Email Verification Service URL |
+| `USER_PASSWORD_RESET_URL` | BV-BRC Password Reset Service URL |
 | `APP_SERVICE_URL` | BV-BRC AppService — JSON-RPC endpoint for job submission |
 | `DATA_SERVICE_URL` | BV-BRC Data Service URL |
 | `NEXT_PUBLIC_DATA_API` | Public-facing data API endpoint |

@@ -43,7 +43,7 @@ import {
 import { SearchBar } from "@/components/search/search-bar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
 import Logo from "@/components/ui/logo";
 import { UserAvatarDropdown } from "@/components/navbars/user-avatar-dropdown";
 import { loadFavorites } from "@/lib/services/workspace/favorites";

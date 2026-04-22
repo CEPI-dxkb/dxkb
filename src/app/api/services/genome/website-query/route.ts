@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parse } from "csv-parse/sync";
-import { requireAuthToken } from "@/lib/auth/session";
+import { auth } from "@/lib/auth/server/instance";
 
 /**
  * Base URL for PATRIC/BV-BRC genome API (e.g. https://patricbrc.org/api or BV-BRC equivalent).
@@ -10,10 +10,6 @@ const genomeWebsiteApi = `${process.env.BVBRC_WEBSITE_API_URL}/genome/`;
 
 const maxRows = 25_000;
 
-/**
- * Parse CSV text into array of objects (first row = headers).
- * Uses csv-parse for quoted fields, escaped quotes, and multiline support.
- */
 function csvToJson(csvText: string): Record<string, string>[] {
   const trimmed = csvText.trim();
   if (trimmed.length === 0) return [];
@@ -44,11 +40,8 @@ function escapeSolrTerm(value: string): string {
   return value.replace(/([+\-!(){}[\]^"~*?:\\/]|&&|\|\|)/g, "\\$1");
 }
 
-export async function POST(request: NextRequest) {
+export const POST = auth.route(async (request: NextRequest, { token }) => {
   try {
-    const token = await requireAuthToken();
-    if (token instanceof NextResponse) return token;
-
     const body = await request.json().catch(() => ({}));
     const genomeIds: string[] = Array.isArray(body?.genome_ids)
       ? (body.genome_ids as string[]).map((id: unknown) => String(id).trim())
@@ -58,14 +51,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ results: [] });
     }
 
-    // Build Solr-style query: genome_id:(id1 OR id2 OR ...)
     const escapedIds = genomeIds
       .filter((id) => id.length > 0)
       .map((id) => `"${escapeSolrTerm(id)}"`);
     const q = `genome_id:(${escapedIds.join(" OR ")})`;
     const rowsParam = String(Math.min(maxRows, genomeIds.length));
 
-    // PATRIC/BV-BRC genome API expects POST with form body (solrquery or x-www-form-urlencoded)
     const formBody = new URLSearchParams({ rows: rowsParam, q });
 
     const response = await fetch(genomeWebsiteApi, {
@@ -98,7 +89,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ results });
     }
 
-    // CSV response (e.g. api-for-website returns CSV)
     const results = csvToJson(text);
     return NextResponse.json({ results });
   } catch (error) {
@@ -108,4 +98,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});

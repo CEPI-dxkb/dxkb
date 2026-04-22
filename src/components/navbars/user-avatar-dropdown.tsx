@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SignoutButton } from "@/components/auth/signout-button";
 import { SuLoginDialog } from "@/components/auth/su-login-dialog";
-import { useAuth, authAdmin, authAccount } from "@/lib/auth";
+import { useAuth } from "@/lib/auth/hooks";
+import { authAdmin, authAccount } from "@/lib/auth/advanced";
 import { toast } from "sonner";
 import { encodeWorkspaceSegment, workspaceUsername } from "@/lib/utils";
 

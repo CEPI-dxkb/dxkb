@@ -198,7 +198,7 @@ describe("POST /api/services/app-service/submit", () => {
 
     expect(response.status).toBe(500);
     expect(data).toEqual(
-      expect.objectContaining({ error: "Internal server error" }),
+      expect.objectContaining({ error: "Unknown error", code: "unknown" }),
     );
   });
 });

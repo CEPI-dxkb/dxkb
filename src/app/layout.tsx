@@ -6,9 +6,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "sonner";
 import { ThemeSwitcher } from "@/styles/theme-switcher-floating";
 import { Providers } from "./providers";
-import { AuthBoundary } from "@/lib/auth";
-import { cookies } from "next/headers";
-import type { AuthUser } from "@/lib/auth/types";
+import { AuthBoundary } from "@/lib/auth/provider";
+import { auth } from "@/lib/auth/server/instance";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
@@ -33,13 +32,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("bvbrc_user_id")?.value;
-  const realm = cookieStore.get("bvbrc_realm")?.value;
-
-  const initialUser: AuthUser | null = userId
-    ? { username: userId, email: "", token: "", realm }
-    : null;
+  const initialUser = await auth.currentUser();
 
   return (
     <html

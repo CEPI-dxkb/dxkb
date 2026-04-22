@@ -107,6 +107,7 @@ describe("POST /api/workspace/public", () => {
   it("forwards auth token when user is logged in", async () => {
     mockCookieStore.get.mockImplementation((name: string) => {
       if (name === "bvbrc_token") return { value: "user-token" };
+      if (name === "bvbrc_user_id") return { value: "testuser" };
       return undefined;
     });
 

@@ -123,9 +123,7 @@ describe("GET /api/auth/profile", () => {
 
 describe("POST /api/auth/profile", () => {
   it("returns 401 when not authenticated", async () => {
-    mockRequireAuth.mockResolvedValue(
-      NextResponse.json({ error: "Authentication required" }, { status: 401 }),
-    );
+    mockCookieStore.get.mockReturnValue(undefined);
 
     const request = mockNextRequest({
       method: "POST",

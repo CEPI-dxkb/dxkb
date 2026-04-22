@@ -1,15 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isProtectedPagePath, isProtectedApiPath } from "@/lib/auth/routes";
-
-/**
- * Check if user has BV-BRC session cookies.
- * Cookie existence only — full validation happens in API routes via getAuthToken().
- */
-function hasBvbrcSession(request: NextRequest): boolean {
-  const token = request.cookies.get("bvbrc_token")?.value;
-  const userId = request.cookies.get("bvbrc_user_id")?.value;
-  return Boolean(token && userId);
-}
+import { hasSession } from "@/lib/auth/server/middleware";
 
 /**
  * Next.js Proxy for authentication checks (better-auth stateless pattern).
@@ -19,7 +10,7 @@ export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   if (isProtectedApiPath(pathname)) {
-    if (!hasBvbrcSession(request)) {
+    if (!hasSession(request)) {
       return NextResponse.json(
         { message: "Authentication required" },
         { status: 401 },
@@ -29,7 +20,7 @@ export function proxy(request: NextRequest) {
   }
 
   if (isProtectedPagePath(pathname)) {
-    if (!hasBvbrcSession(request)) {
+    if (!hasSession(request)) {
       const signInUrl = new URL("/sign-in", request.url);
       signInUrl.searchParams.set("redirect", pathname + search);
       return NextResponse.redirect(signInUrl);

@@ -1,18 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-
-import { requireAuth, serverAuthenticatedFetch } from "@/lib/auth/session";
+import { auth } from "@/lib/auth/server/instance";
 import { getRequiredEnv } from "@/lib/env";
 
-/**
- * GET /api/auth/profile — Fetch full user profile from BV-BRC.
- */
-export async function GET() {
+export const GET = auth.route(async (_request, { userId }) => {
   try {
-    const auth = await requireAuth();
-    if (auth instanceof NextResponse) return auth;
-
-    const response = await serverAuthenticatedFetch(
-      `${getRequiredEnv("USER_URL")}/${encodeURIComponent(auth.userId)}`,
+    const response = await auth.fetch(
+      `${getRequiredEnv("USER_URL")}/${encodeURIComponent(userId)}`,
       { headers: { Accept: "application/json" } },
     );
 
@@ -32,21 +25,14 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+});
 
-/**
- * POST /api/auth/profile — Update profile via JSON Patch.
- * Body: [{ op, path, value }]
- */
-export async function POST(request: NextRequest) {
+export const POST = auth.route(async (request: NextRequest, { userId }) => {
   try {
-    const auth = await requireAuth();
-    if (auth instanceof NextResponse) return auth;
-
     const body = await request.text();
 
-    const response = await serverAuthenticatedFetch(
-      `${getRequiredEnv("USER_URL")}/${encodeURIComponent(auth.userId)}`,
+    const response = await auth.fetch(
+      `${getRequiredEnv("USER_URL")}/${encodeURIComponent(userId)}`,
       {
         method: "POST",
         headers: {
@@ -73,4 +59,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
-}
+});

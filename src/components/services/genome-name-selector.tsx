@@ -77,21 +77,22 @@ export function GenomeNameSelector({
       return;
     }
 
-    if (!shouldSearch(query, minQueryLength) || selectionDisabled) {
-      setSuggestions([]);
-      setError(null);
-      setIsLoading(false);
-      latestAbortController.current?.abort();
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
+    const shouldReset =
+      !shouldSearch(query, minQueryLength) || selectionDisabled;
     const controller = new AbortController();
     latestAbortController.current = controller;
 
     const timeoutId = window.setTimeout(() => {
+      if (shouldReset) {
+        setSuggestions([]);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
       fetchGenomeSuggestions(query, { signal: controller.signal })
         .then((results) => {
           if (!controller.signal.aborted) {
@@ -115,7 +116,7 @@ export function GenomeNameSelector({
             setIsLoading(false);
           }
         });
-    }, 250);
+    }, shouldReset ? 0 : 250);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -144,8 +145,12 @@ export function GenomeNameSelector({
   }, []);
 
   // Reset highlighted index when suggestions change
-  useEffect(() => {
+  const [prevSuggestions, setPrevSuggestions] = useState(suggestions);
+  if (prevSuggestions !== suggestions) {
+    setPrevSuggestions(suggestions);
     setHighlightedIndex(-1);
+  }
+  useEffect(() => {
     itemRefs.current = [];
   }, [suggestions]);
 

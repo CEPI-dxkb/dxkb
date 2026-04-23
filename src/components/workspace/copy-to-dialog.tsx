@@ -47,23 +47,21 @@ export function CopyToDialog({
     currentUserWorkspaceRoot.startsWith("/")
       ? currentUserWorkspaceRoot
       : `/${currentUserWorkspaceRoot}`;
-  const prevOpenRef = React.useRef(false);
+  const [prevOpen, setPrevOpen] = React.useState(false);
 
-  React.useEffect(() => {
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) {
       setDestinationPath(null);
       setCustomFilename("");
     } else {
-      // Only initialize when opening (false → true), so we don't reset
-      // customFilename on parent re-renders that pass a new sourceItems reference.
-      if (!prevOpenRef.current) {
-        setDestinationPath(workspaceRootPath);
-        setCustomFilename(sourceItems[0]?.name ?? "");
-        setShowAllFiles(false); // Default: only folders, no hidden files/folders
-      }
+      // Initialize only on false → true transitions so parent re-renders
+      // passing a new sourceItems reference don't reset customFilename.
+      setDestinationPath(workspaceRootPath);
+      setCustomFilename(sourceItems[0]?.name ?? "");
+      setShowAllFiles(false);
     }
-    prevOpenRef.current = open;
-  }, [open, sourceItems, workspaceRootPath]);
+  }
 
   const handleConfirm = React.useCallback(() => {
     if (destinationPath == null) return;

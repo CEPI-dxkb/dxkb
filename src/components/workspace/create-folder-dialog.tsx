@@ -25,12 +25,12 @@ export function CreateFolderDialog({
   isCreating,
 }: CreateFolderDialogProps) {
   const [folderName, setFolderName] = React.useState("");
+  const [prevOpen, setPrevOpen] = React.useState(open);
 
-  React.useEffect(() => {
-    if (open) {
-      setFolderName("");
-    }
-  }, [open]);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (open) setFolderName("");
+  }
 
   const handleCreate = React.useCallback(() => {
     const name = folderName.trim();

@@ -79,6 +79,15 @@ export function SingleGenomeSelector({
   const latestAbortController = useRef<AbortController | null>(null);
   const selectedGenomeIdRef = useRef<string | null>(null);
 
+  // Whenever suggestions change, the highlighted index and item refs must reset
+  // together. Bundling them here avoids deriving state from state via an Effect
+  // or render-phase setState (React docs: "chains of computations" anti-pattern).
+  const updateSuggestions = useCallback((nextSuggestions: GenomeSummary[]) => {
+    itemRefs.current = [];
+    setSuggestions(nextSuggestions);
+    setHighlightedIndex(-1);
+  }, []);
+
   // Check if a string looks like a genome ID (numeric pattern like "123.45")
   const isGenomeId = (str: string): boolean => {
     return /^[0-9]+(\.[0-9]+)?$/.test(str.trim());
@@ -89,8 +98,10 @@ export function SingleGenomeSelector({
     // If value is empty, clear query
     if (!value) {
       if (query) {
-        setQuery("");
-        setSelectedGenome(null);
+        queueMicrotask(() => {
+          setQuery("");
+          setSelectedGenome(null);
+        });
         selectedGenomeIdRef.current = null;
       }
       return;
@@ -105,7 +116,7 @@ export function SingleGenomeSelector({
       }
       // If we have a genome ID but no matching selectedGenome, fetch it
       if (!selectedGenome || selectedGenome.genome_id !== value) {
-        setIsLoading(true);
+        queueMicrotask(() => setIsLoading(true));
         fetchGenomesByIds([value])
           .then((results) => {
             if (results.length > 0) {
@@ -139,20 +150,17 @@ export function SingleGenomeSelector({
         return;
       }
       // Otherwise, update query and clear selectedGenome if value doesn't match
-      setQuery(value);
-      if (selectedGenome && value !== selectedGenome.genome_id && value !== selectedGenome.genome_name) {
-        setSelectedGenome(null);
-      }
+      queueMicrotask(() => {
+        setQuery(value);
+        if (selectedGenome && value !== selectedGenome.genome_id && value !== selectedGenome.genome_name) {
+          setSelectedGenome(null);
+        }
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
   useEffect(() => {
-    // Skip search if manually triggered (handled directly in button click handler)
-    // if (isManualTrigger) {
-    //   return;
-    // }
-
     // Normal search logic for typed queries
     // Skip search if query matches selected genome (from dropdown click)
     if (selectedGenome && query.trim() === selectedGenome.genome_name) {
@@ -161,26 +169,25 @@ export function SingleGenomeSelector({
     }
 
     console.log("query is:", query);
-    if (disabled) {
-      setSuggestions([]);
-      setError(null);
-      setIsLoading(false);
-      latestAbortController.current?.abort();
-      console.log("shouldSearch is false, skipping search");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
     const controller = new AbortController();
     latestAbortController.current = controller;
     console.log("fetching suggestions for query:", query);
     const timeoutId = window.setTimeout(() => {
+      if (disabled) {
+        updateSuggestions([]);
+        setError(null);
+        setIsLoading(false);
+        console.log("shouldSearch is false, skipping search");
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
       fetchGenomeSuggestions(query, { signal: controller.signal })
         .then((results) => {
           if (!controller.signal.aborted) {
-            setSuggestions(results);
+            updateSuggestions(results);
             console.log("suggestions are:", results);
           }
         })
@@ -195,20 +202,20 @@ export function SingleGenomeSelector({
               ? fetchError.message
               : "Failed to search genomes";
           setError(message);
-          setSuggestions([]);
+          updateSuggestions([]);
         })
         .finally(() => {
           if (!controller.signal.aborted) {
             setIsLoading(false);
           }
         });
-    }, 250);
+    }, disabled ? 0 : 250);
 
     return () => {
       window.clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [query, minQueryLength, disabled, selectedGenome, isManualTrigger]);
+  }, [query, minQueryLength, disabled, selectedGenome, isManualTrigger, updateSuggestions]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -282,12 +289,6 @@ export function SingleGenomeSelector({
     };
   }, [showDropdown, updateDropdownLayout]);
 
-  // Reset highlighted index when suggestions change
-  useEffect(() => {
-    setHighlightedIndex(-1);
-    itemRefs.current = [];
-  }, [suggestions]);
-
   // Scroll highlighted item into view
   useEffect(() => {
     if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
@@ -303,7 +304,7 @@ export function SingleGenomeSelector({
     onChange(genome.genome_id);
     setQuery(genome.genome_name);
     setSelectedGenome(genome);
-    setSuggestions([]);
+    updateSuggestions([]);
     setShowDropdown(false);
     setIsManualTrigger(false);
   };
@@ -333,20 +334,20 @@ export function SingleGenomeSelector({
       fetchGenomeSuggestions("", { signal: controller.signal })
         .then((results) => {
           if (!controller.signal.aborted) {
-            setSuggestions(results);
+            updateSuggestions(results);
           }
         })
         .catch((fetchError) => {
           if (controller.signal.aborted) {
             return;
           }
-          
+
           const message =
             fetchError instanceof Error
               ? fetchError.message
               : "Failed to search genomes";
           setError(message);
-          setSuggestions([]);
+          updateSuggestions([]);
         })
         .finally(() => {
           if (!controller.signal.aborted) {

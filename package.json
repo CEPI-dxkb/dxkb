@@ -1,10 +1,11 @@
 {
   "name": "react-dxkb",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 3019",
     "build": "next build",
+    "build-pm2": "next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static",
     "start": "next start -p 3010",
     "lint": "eslint .",
     "test": "vitest run",

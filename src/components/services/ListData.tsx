@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/shared/data-table";
 import { SortingState, RowSelectionState } from "@tanstack/react-table";
@@ -69,28 +69,32 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   }
   const pageSize = 200;
 
-  // Reset sorting when resource/query actually changes
-  const prevResourceRef = useRef(resource);
-  const prevCleanQRef = useRef(cleanQ);
-  
-  useEffect(() => {
-    const resourceChanged = prevResourceRef.current !== resource;
-    const queryChanged = prevCleanQRef.current !== cleanQ;
-    
-    if (resourceChanged || queryChanged) {
-      setSorting([]);
-      setRowSelection({});
-      onSelectionChange?.([]);
-      prevResourceRef.current = resource;
-      prevCleanQRef.current = cleanQ;
-    }
-  }, [resource, cleanQ, onSelectionChange, setRowSelection]);
-
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>([]);
   const [internalPageIndex, setInternalPageIndex] = useState(0);
   const pageIndex = controlledPageIndex !== undefined ? controlledPageIndex : internalPageIndex;
   const setPageIndex = onPageChange || setInternalPageIndex;
+
+  // Reset sorting and selection when resource/query actually changes.
+  // Local state resets run during render (React's derived-state pattern);
+  // parent-owned callbacks (setRowSelection when controlled, onSelectionChange)
+  // are deferred to an effect to avoid render-phase updates on other components.
+  const [prevResource, setPrevResource] = useState(resource);
+  const [prevCleanQ, setPrevCleanQ] = useState(cleanQ);
+  const [resetNonce, setResetNonce] = useState(0);
+
+  if (prevResource !== resource || prevCleanQ !== cleanQ) {
+    setPrevResource(resource);
+    setPrevCleanQ(cleanQ);
+    setSorting([]);
+    setResetNonce((n) => n + 1);
+  }
+
+  useEffect(() => {
+    if (resetNonce === 0) return;
+    setRowSelection({});
+    onSelectionChange?.([]);
+  }, [resetNonce, setRowSelection, onSelectionChange]);
 
   const setSortingAndResetPage = useCallback((newSorting: SortingState) => {
     setSorting(newSorting);
@@ -101,20 +105,21 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
 
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean> | null>(null);
 
-  useEffect(() => {
-    if (!fields.length || columnVisibility !== null) return;
+  if (fields.length > 0 && columnVisibility === null) {
     const vis: Record<string, boolean> = { __select__: true };
     fields.forEach(f => {
       vis[f.id] = f.visible !== false;
     });
     setColumnVisibility(vis);
-  }, [fields, columnVisibility]);
+  }
 
-  useEffect(() => {
+  const [prevFields, setPrevFields] = useState(fields);
+  if (prevFields !== fields) {
+    setPrevFields(fields);
     if (fields.length) {
       setColumnOrder(['__select__', ...fields.map(f => f.id)]);
     }
-  }, [fields]);
+  }
 
   // Compute sortingKey from state using useMemo
   const sortingKey = useMemo(() => {

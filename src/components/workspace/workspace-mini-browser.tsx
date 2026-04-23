@@ -74,12 +74,14 @@ export function WorkspaceMiniBrowser({
   className,
 }: WorkspaceMiniBrowserProps) {
   const [currentPath, setCurrentPath] = useState(initialPath);
+  const [prevInitialPath, setPrevInitialPath] = useState(initialPath);
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const [focusedRow, setFocusedRow] = useState<"parent" | string | null>(null);
 
-  useEffect(() => {
+  if (prevInitialPath !== initialPath) {
+    setPrevInitialPath(initialPath);
     setCurrentPath(initialPath);
-  }, [initialPath]);
+  }
 
   const normalizedCurrent = currentPath.replace(/\/+$/, "") || "/";
   const normalizedRoot = workspaceRoot?.replace(/\/+$/, "") ?? "";

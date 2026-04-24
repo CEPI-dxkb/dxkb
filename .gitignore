@@ -46,8 +46,17 @@ next-env.d.ts
 
 # Claude
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 /plans/
 /reports/
 
 # Playwright MCP
 .playwright-mcp
+
+# Playwright e2e
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/
+# /e2e/__snapshots__ is NOT ignored — baselines must be committed for visual regression to work.

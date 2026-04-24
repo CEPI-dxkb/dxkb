@@ -4,6 +4,19 @@ const port = Number(process.env.E2E_PORT ?? 3020);
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
 const isCi = Boolean(process.env.CI);
 
+// The wrapper loads .env.e2e.local (gitignored, dev overrides) + .env.e2e.test
+// (committed defaults) into process.env, then runs `next start`. Caller must
+// already have a valid .next/ build — run `pnpm build` first. We deliberately
+// do not invoke `next build` inside the wrapper because a cold build exceeds
+// the webServer timeout and blocks targeted runs.
+//
+// Without the loopback env overrides, server components make real outbound
+// fetches that Playwright's page.route() can't intercept, and the test server
+// spams "JSON-RPC call failed: HTTP error! status: 500". We can't use node's
+// --env-file flag directly: it leaks into NODE_OPTIONS and Next's worker
+// threads reject NODE_OPTIONS containing --env-file.
+const webServerCommand = `node e2e/scripts/start-webserver.mjs ${port}`;
+
 export default defineConfig({
   testDir: "./e2e",
   testMatch: /tests\/.*\.spec\.ts$/,
@@ -78,7 +91,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `next build && next start -p ${port}`,
+    command: webServerCommand,
     url: baseURL,
     reuseExistingServer: !isCi,
     timeout: 180_000,

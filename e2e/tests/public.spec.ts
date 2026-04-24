@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { applyBackendMocks } from "../mocks/backends";
+import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
   workspaceOverrides,
   permissiveBackendOverrides,

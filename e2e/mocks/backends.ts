@@ -1,4 +1,4 @@
-import type { Page, Route } from "@playwright/test";
+import { test as base, type Page, type Route } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -18,7 +18,8 @@ export interface BackendMockOptions {
 }
 
 // Per-page log of backend requests the strict guard aborted. Populated inside the
-// strict route handler and read by verifyNoUnmockedBackendRequests() in afterEach.
+// strict route handler and drained by verifyNoUnmockedBackendRequests() — which the
+// custom `test` fixture below calls on teardown.
 // WeakMap so entries are GC'd when Playwright retires the page.
 const unmockedBackendRequests = new WeakMap<Page, string[]>();
 
@@ -66,9 +67,10 @@ function matchesOverride(override: JsonOverride, requestUrl: string, method: str
  * else matched.
  *
  * With `strict: true` (default), every unmocked request to a backend host or the app's /api/**
- * namespace is aborted AND recorded on the page. Tests must assert no leaks in `afterEach` via
- * `verifyNoUnmockedBackendRequests(page)` — the route handler cannot fail the test by itself
- * because Playwright swallows thrown errors in route callbacks.
+ * namespace is aborted AND recorded on the page. Import `test` from this module (instead of
+ * `@playwright/test`) to get automatic leak verification on teardown — the custom `page` fixture
+ * calls `verifyNoUnmockedBackendRequests` after each test. The route handler itself cannot fail
+ * the test because Playwright swallows thrown errors in route callbacks.
  *
  * Non-backend requests (Next.js assets, fonts, CDN) pass through unchanged regardless of strict
  * mode.
@@ -140,10 +142,14 @@ export function getUnmockedBackendRequests(page: Page): string[] {
 
 /**
  * Throws if any unmocked backend request reached the strict guard during the test.
- * Call from `test.afterEach(({ page }) => verifyNoUnmockedBackendRequests(page))`.
  *
- * The route handler itself cannot fail the test — Playwright swallows thrown errors in route
- * callbacks and logs them instead. Doing the assertion in afterEach surfaces leaks loudly.
+ * The `test` exported from this module already calls this automatically in its `page` fixture
+ * teardown, so suites that `import { test } from "../mocks/backends"` do not need to call it
+ * manually. Use it directly only when the default Playwright `test` is in play (e.g. the strict
+ * self-tests in `backends.spec.ts`).
+ *
+ * The route handler cannot fail the test — Playwright swallows thrown errors in route callbacks
+ * and logs them instead. Throwing during fixture teardown is what actually fails the test.
  */
 export function verifyNoUnmockedBackendRequests(page: Page): void {
   const leaks = unmockedBackendRequests.get(page);
@@ -154,6 +160,25 @@ export function verifyNoUnmockedBackendRequests(page: Page): void {
     `applyBackendMocks/strict: ${leaks.length} unmocked backend request(s) leaked during this test:\n${list}`,
   );
 }
+
+/**
+ * Playwright `test` extended with a `page` fixture that verifies no unmocked backend requests
+ * leaked once the test finishes. Import this (and `expect`) from here in any suite that uses
+ * `applyBackendMocks`, instead of `@playwright/test`:
+ *
+ *     import { test, expect } from "../mocks/backends";
+ *
+ * If the suite never calls `applyBackendMocks` (or calls it with `strict: false`), the
+ * `unmockedBackendRequests` WeakMap has no entry for the page and the teardown is a no-op.
+ */
+export const test = base.extend({
+  page: async ({ page }, runTest) => {
+    await runTest(page);
+    verifyNoUnmockedBackendRequests(page);
+  },
+});
+
+export { expect } from "@playwright/test";
 
 export const bvbrcCookies = [
   { name: "bvbrc_token", value: "e2e-test-token", path: "/", domain: "127.0.0.1" },

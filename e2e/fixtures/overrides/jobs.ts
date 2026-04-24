@@ -21,12 +21,12 @@ export const mockJobs = [
 
 export const jobsOverrides: JsonOverride[] = [
   {
-    url: /\/api\/services\/app-service\/jobs$/,
-    method: "GET",
-    body: { jobs: mockJobs, total: mockJobs.length },
+    url: /\/api\/services\/app-service\/jobs\/enumerate-tasks-filtered$/,
+    method: "POST",
+    body: { jobs: mockJobs, totalTasks: mockJobs.length },
   },
   {
-    url: /\/api\/services\/app-service\/jobs\/job-001/,
+    url: /\/api\/services\/app-service\/jobs\/job-001(?:\?|$)/,
     method: "GET",
     body: mockJobs[0],
   },

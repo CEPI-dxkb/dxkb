@@ -78,7 +78,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `next start -p ${port}`,
+    command: `next build && next start -p ${port}`,
     url: baseURL,
     reuseExistingServer: !isCi,
     timeout: 180_000,

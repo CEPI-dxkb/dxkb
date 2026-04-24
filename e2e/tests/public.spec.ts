@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { applyBackendMocks } from "../mocks/backends";
 import {
-  authSessionOverrides,
   workspaceOverrides,
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
@@ -12,7 +11,6 @@ test.describe("public routes (no auth)", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspaceOverrides,
         ...permissiveBackendOverrides,
       ],

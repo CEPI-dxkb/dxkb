@@ -32,6 +32,16 @@ test.describe("visual regression", () => {
 
   test("sign-in page matches snapshot", async ({ page, context }) => {
     await context.clearCookies();
+    // authSessionOverrides in beforeEach mocks a logged-in user, which would make
+    // useAuth() report authenticated and redirect the sign-in page to `/`. Register
+    // an unauthenticated response here so the sign-in form actually renders.
+    const unauthenticated = {
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ user: null }),
+    };
+    await page.route("**/api/auth/get-session", (route) => route.fulfill(unauthenticated));
+    await page.route("**/api/auth/profile", (route) => route.fulfill(unauthenticated));
     await page.goto("/sign-in");
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveScreenshot("sign-in.png", { fullPage: true });

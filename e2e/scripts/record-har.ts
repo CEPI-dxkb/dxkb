@@ -32,6 +32,12 @@ async function main(): Promise<void> {
     console.error("Example: pnpm e2e:record auth-sign-in");
     process.exit(1);
   }
+  if (!/^[a-zA-Z0-9_-]+$/.test(journeyName)) {
+    console.error(
+      `Invalid journey name "${journeyName}". Use only letters, numbers, dashes, and underscores.`,
+    );
+    process.exit(1);
+  }
 
   loadEnvE2e();
   const baseURL = process.env.E2E_RECORD_BASE_URL ?? "http://127.0.0.1:3019";

@@ -2,7 +2,10 @@ import type { JsonOverride } from "../../mocks/backends";
 
 export const mockUserProfile = {
   id: "e2e-test-user@patricbrc.org",
+  username: "e2e-test-user@patricbrc.org",
+  token: "e2e-test-token",
   email: "e2e@example.com",
+  email_verified: true,
   first_name: "E2E",
   last_name: "User",
   created_at: "2026-01-01T00:00:00Z",

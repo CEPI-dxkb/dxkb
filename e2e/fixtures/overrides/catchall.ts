@@ -15,11 +15,14 @@ export const apiCatchallOverrides: JsonOverride[] = [
   { url: /\/api\/workspace\//, method: "POST", body: {} },
 ];
 
+// Anchor to scheme + host so these only match outbound requests whose HOST ends in one of the
+// domains. Without the anchor, a URL like `http://127.0.0.1:3020/workspace/user@patricbrc.org/home`
+// would match `/patricbrc\.org/` and hijack the page navigation itself.
 export const externalCatchallOverrides: JsonOverride[] = [
-  { url: /patricbrc\.org/, body: {} },
-  { url: /bv-brc\.org/, body: {} },
-  { url: /theseed\.org/, body: { result: [[]] } },
-  { url: /ncbi\.nlm\.nih\.gov/, body: {} },
+  { url: /^https?:\/\/(?:[a-z0-9-]+\.)*patricbrc\.org(?:[:/]|$)/i, body: {} },
+  { url: /^https?:\/\/(?:[a-z0-9-]+\.)*bv-brc\.org(?:[:/]|$)/i, body: {} },
+  { url: /^https?:\/\/(?:[a-z0-9-]+\.)*theseed\.org(?:[:/]|$)/i, body: { result: [[]] } },
+  { url: /^https?:\/\/(?:[a-z0-9-]+\.)*ncbi\.nlm\.nih\.gov(?:[:/]|$)/i, body: {} },
 ];
 
 /** Combined catch-all for the quick "I just want the page to render" case. */

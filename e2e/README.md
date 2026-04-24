@@ -66,14 +66,46 @@ The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overri
 
 ## Visual regression
 
-Baselines live in `e2e/__snapshots__/`, one per `(spec, browser)` pair. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.
+Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.
 
-Update baselines after an intentional UI change:
+We commit both `*-linux.png` (for CI on `ubuntu-latest`) and `*-darwin.png` (for local Macs) so visual tests work out of the box on both. Windows contributors regenerate their own `*-win32.png` locally and are not expected to commit them.
+
+### Regenerate on macOS
+
+For intentional UI changes, first refresh your local (Darwin) baselines:
 
 ```bash
 pnpm e2e:update-snapshots
 git add e2e/__snapshots__
 ```
+
+### Regenerate Linux baselines (for CI)
+
+**Preferred — pull from a failing CI run.** Open a PR with your UI change, let the e2e job fail on the visual diff, then download the actuals and commit them:
+
+```bash
+# Find the failed run id for your PR
+gh run list --workflow="E2E (Playwright)" --branch=<your-branch> --limit 1
+
+# Download all artifacts
+gh run download <run-id> --dir /tmp/dxkb-ci
+
+# Copy actuals into the baseline dir (adjust page/browser to match what failed)
+DEST=e2e/__snapshots__/tests/visual/visual.spec.ts-snapshots
+for B in chromium firefox webkit; do
+  for P in home sign-in workspace genome-assembly jobs; do
+    ACTUAL=$(find /tmp/dxkb-ci/playwright-report-$B -type d -name "*-snapshot-$B" \
+      -exec find {} -name "$P-actual.png" \; 2>/dev/null | head -1)
+    [ -n "$ACTUAL" ] && cp "$ACTUAL" "$DEST/$P-$B-linux.png"
+  done
+done
+
+git add e2e/__snapshots__
+```
+
+This is the only way to get byte-exact parity with GitHub Actions runners.
+
+**Do not** use `docker run --platform linux/amd64 mcr.microsoft.com/playwright:X-noble …` on Apple Silicon. QEMU emulation produces ~20-24 px height differences and ~6% pixel drift vs native amd64, which busts chromium's zero-tolerance. The image works on a native amd64 host (EC2, GitHub Codespaces) if you have one.
 
 Review the PNG diffs in the PR before merging.
 

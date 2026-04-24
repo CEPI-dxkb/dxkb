@@ -8,11 +8,6 @@ import {
 } from "../../fixtures/overrides";
 
 test.describe("visual regression", () => {
-  test.skip(
-    Boolean(process.env.CI) && !process.env.E2E_VISUAL_LINUX_BASELINES_READY,
-    "Visual baselines are OS-specific. Generate Linux baselines (e.g. `docker run -v $PWD:/app mcr.microsoft.com/playwright:latest pnpm e2e:update-snapshots`) and commit them, then set E2E_VISUAL_LINUX_BASELINES_READY=1 in the CI workflow.",
-  );
-
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
@@ -49,6 +44,9 @@ test.describe("visual regression", () => {
 
   test("workspace browser matches snapshot", async ({ page }) => {
     await page.goto("/workspace");
+    await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
+    // Wait for the WorkspaceBrowser toolbar to hydrate so Firefox doesn't snapshot the pre-hydration navbar-only state.
+    await page.getByPlaceholder(/Search files/).waitFor({ timeout: 10_000 });
     await page.waitForLoadState("networkidle");
     await expect(page).toHaveScreenshot("workspace.png", { fullPage: true });
   });

@@ -47,7 +47,7 @@ test.describe("auth (signed out)", () => {
     await signIn.expectValidationError(/at least 8 characters/i);
   });
 
-  test("submits credentials to /api/auth/sign-in/email", async ({ page }) => {
+  test("submits credentials and redirects to target on success", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
         signedOutGetSession,
@@ -68,7 +68,7 @@ test.describe("auth (signed out)", () => {
       ],
     });
     const signIn = new SignInPage(page);
-    await signIn.goto();
+    await signIn.goto("/forgot-password");
 
     const signInRequest = page.waitForRequest(
       (req) =>
@@ -81,6 +81,7 @@ test.describe("auth (signed out)", () => {
       username: "e2e-test-user",
       password: "password1234",
     });
+    await expect(page).toHaveURL(/\/forgot-password$/);
   });
 
   test("surfaces backend error on invalid credentials", async ({ page }) => {

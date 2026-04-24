@@ -28,16 +28,17 @@ e2e/
     public.setup.ts             # Empty storageState for public specs
   mocks/
     backends.ts                 # applyBackendMocks(page, { har, overrides })
+  pages/                        # Page-object helpers (SignInPage, …) — import from "../pages"
   fixtures/
     hars/                       # Recorded HAR files (committed)
     overrides/                  # Hand-written JSON overrides (committed)
   scripts/
     record-har.ts               # Manual HAR recorder
   tests/
-    auth.spec.ts                # Sign-in redirects, protected route guards
+    auth.spec.ts                # Sign-in redirects, submit payload, sign-out journey
     public.spec.ts              # /, /services, /workspace/public, footer pages
     workspace.spec.ts           # Signed-in workspace browsing
-    services/*.spec.ts          # One file per service category
+    services/services-smoke.spec.ts  # Parametrized h1 smoke for all 21 services
     jobs.spec.ts                # Jobs list + detail
     visual/visual.spec.ts       # Screenshot baselines
   __snapshots__/                # Visual regression baselines (per browser)
@@ -70,6 +71,22 @@ To fix this the test server runs through a wrapper that seeds the right env vars
 - The handler is guarded by `E2E_MOCK_ENABLED=1` (set in `.env.e2e.test`). Without that flag every handler returns 404, so a production build that somehow shipped this file can't serve fake data.
 
 If you add a new server-side backend dependency, add its env var to `.env.e2e.test` pointing at `/api/e2e-mock/<something>`. No code changes needed beyond that.
+
+## Page objects
+
+`e2e/pages/` holds thin wrappers around the selectors and interactions for each major page. Import from `../pages` and drive the page through the wrapper rather than re-finding selectors in every spec:
+
+```ts
+import { SignInPage } from "../pages";
+
+const signIn = new SignInPage(page);
+await signIn.goto("/workspace");          // goto with optional redirect=
+await signIn.fill(username, password);
+await signIn.submit();
+await signIn.expectInlineError(/invalid/i);
+```
+
+Add a new page object when a spec starts repeating the same selector tuple twice, not preemptively — the wrappers are meant to encode the actual shape of the page, not a speculative surface.
 
 ## Recording a HAR
 

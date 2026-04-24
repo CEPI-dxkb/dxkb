@@ -66,14 +66,35 @@ The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overri
 
 ## Visual regression
 
-Baselines live in `e2e/__snapshots__/`, one per `(spec, browser)` pair. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.
+Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.
 
-Update baselines after an intentional UI change:
+We commit both `*-linux.png` (for CI on `ubuntu-latest`) and `*-darwin.png` (for local Macs) so visual tests work out of the box on both. Windows contributors regenerate their own `*-win32.png` locally and are not expected to commit them.
+
+### Regenerate on macOS
+
+For intentional UI changes, first refresh your local (Darwin) baselines:
 
 ```bash
 pnpm e2e:update-snapshots
 git add e2e/__snapshots__
 ```
+
+### Regenerate Linux baselines (for CI)
+
+CI runs on `ubuntu-latest` (Noble 24.04, amd64). Match that environment with the Playwright Docker image:
+
+```bash
+docker run --rm --platform linux/amd64 --init \
+  -v "$PWD:/app" \
+  -v /app/node_modules \
+  -v /app/.next \
+  -w /app \
+  -e CI=true \
+  mcr.microsoft.com/playwright:v1.59.1-noble \
+  bash -c "corepack enable && pnpm install --frozen-lockfile && pnpm exec playwright install chromium firefox webkit && pnpm e2e:update-snapshots"
+```
+
+The anonymous `node_modules` and `.next` volumes keep your host's macOS install untouched. Commit the resulting `*-linux.png` files alongside the Darwin ones.
 
 Review the PNG diffs in the PR before merging.
 

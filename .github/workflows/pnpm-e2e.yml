@@ -68,6 +68,10 @@ jobs:
         run: pnpm e2e --project=setup-signed-in --project="$BROWSER"
         env:
           CI: "true"
+          # Server components on /workspace/[username]/** call getRequiredEnv("WORKSPACE_GUIDE_URL")
+          # at request time. .env is gitignored so CI has no default; set a placeholder here so the
+          # pages render (the value is only used as a link href, never fetched by the tests).
+          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}

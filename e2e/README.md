@@ -55,6 +55,19 @@ Call `applyBackendMocks(page, { overrides, har? })` in a `beforeEach`. **Strict 
 
 The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overrides`) covers `/api/auth/`, `/api/services/`, `/api/workspace/`, and the four backend hosts with generic 200 responses — use it as the last spread in your override list for the "I just want the page to render" case, after specific fixtures.
 
+### Server-side backends: loopback isolation
+
+`page.route()` only intercepts *browser* requests. Server components and API route handlers make their own outbound fetches to `APP_SERVICE_URL`, `WORKSPACE_API_URL`, `USER_URL`, etc. before the page is streamed, and those fetches bypass Playwright entirely — previously they failed with "JSON-RPC call failed: HTTP error! status: 500" and flooded the webServer log on every render.
+
+To fix this the test server runs with a committed env file:
+
+- **`.env.e2e.test`** (committed, loaded by `playwright.config.ts`'s webServer command via `node --env-file=`) points every backend URL at a loopback mock: `http://127.0.0.1:3020/api/e2e-mock/<service>`.
+- **`.env.e2e.local`** (gitignored) is loaded after `.env.e2e.test` via `--env-file-if-exists=` for local overrides.
+- **`src/app/api/e2e-mock/[...path]/route.ts`** answers those loopback requests. `GET → 200 {}`, `POST → 200 {"id":1,"jsonrpc":"2.0","result":[[]]}`. Hits are logged as `[api/e2e-mock] <METHOD> /<path>` so fixtures can be promoted into overrides later.
+- The handler is guarded by `E2E_MOCK_ENABLED=1` (set in `.env.e2e.test`). Without that flag every handler returns 404, so a production build that somehow shipped this file can't serve fake data.
+
+If you add a new server-side backend dependency, add its env var to `.env.e2e.test` pointing at `/api/e2e-mock/<something>`. No code changes needed beyond that.
+
 ## Recording a HAR
 
 1. `cp .env.e2e.example .env.e2e` and fill in valid BV-BRC creds (never commit).

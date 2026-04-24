@@ -70,3 +70,12 @@ vi.mock("next/headers", () => ({
 - The only exceptions are environment variable names (OS convention) and zod schema objects which conventionally use camelCase anyway.
 - Do not use `//eslint-disable` comments, fix the code instead. If you absolutely must use them, add a comment explaining why.
 
+## Playwright (E2E) Rules
+
+- E2E specs live under `/e2e/tests/**`. One spec file per route family; visual-regression specs under `/e2e/tests/visual/`.
+- Do **not** add Playwright tests that duplicate Vitest coverage (auth route handlers, hooks, contexts, units). Reserve Playwright for: multi-page browser journeys, cross-browser parity, and jsdom-impossible interactions.
+- Always mock backends via `applyBackendMocks(page, { har, overrides })` from `e2e/mocks/backends.ts`. Never hit live BV-BRC/PATRIC from the CI suite.
+- HAR files live in `e2e/fixtures/hars/` (committed). Record with `pnpm e2e:record <journey>`. Overrides live in `e2e/fixtures/overrides/` and run before HAR replay.
+- Snapshot tolerances: Chromium is strict (zero-pixel diff). Firefox/WebKit allow `maxDiffPixelRatio: 0.05`. Update baselines via `pnpm e2e:update-snapshots` and review PNG diffs in the PR.
+- Before committing: `pnpm lint && pnpm build && pnpm test && pnpm e2e --project=chromium` for a fast local check (full three-browser matrix runs in CI).
+

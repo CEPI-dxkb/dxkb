@@ -11,6 +11,9 @@ pnpm lint         # ESLint
 pnpm test         # Vitest (run once)
 pnpm test:watch   # Vitest (watch mode)
 pnpm test:coverage # Vitest with V8 coverage
+pnpm e2e          # Playwright e2e suite (all browsers)
+pnpm e2e:ui       # Playwright UI runner
+pnpm e2e:record <journey>  # Record a HAR against live backend (local only)
 ```
 
 Requires **Node v24** (`nvm use 24`). Vitest 4 / rolldown needs Node >= 22.
@@ -116,3 +119,11 @@ Requires **Node v24** (`nvm use 24`). Vitest 4 / rolldown needs Node >= 22.
 
 - Do NOT use generic errors for errors. The original error message should still be displayed.
 - If the original error is too long, condense it but ensure the error still remains the same,
+
+### E2E Testing (Playwright)
+
+- Playwright specs live under `/e2e/`. See `/e2e/README.md` for the full runbook.
+- Do **not** duplicate Vitest coverage. Playwright is only for multi-page journeys, cross-browser parity, and jsdom-impossible interactions (file upload, drag/drop, 3D viewer, visual regressions).
+- All `/api/**` and outbound HTTPS to BV-BRC/PATRIC/TheSEED/NCBI are mocked via `e2e/mocks/backends.ts` (HAR replay + JSON overrides). Never depend on a live backend in the suite that runs in CI.
+- The `plugin:playwright` MCP server is available to agents for interactive browser driving. Start `pnpm dev` and `browser_navigate` to `http://localhost:3019`.
+- Visual regression: strict on Chromium, tolerant on Firefox/WebKit. Update baselines with `pnpm e2e:update-snapshots` and review the PNG diffs in the PR.

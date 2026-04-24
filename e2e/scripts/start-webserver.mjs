@@ -1,41 +1,33 @@
 #!/usr/bin/env node
-// Wrapper that loads .env.e2e.test (+ optional .env.e2e.local) into process.env
-// and then execs `next build && next start -p <port>`. We can't use node's
-// --env-file=... flag directly because it propagates into NODE_OPTIONS, and
-// Next's build worker threads reject NODE_OPTIONS that contains --env-file.
+// Wrapper that loads .env.e2e.local (optional, dev overrides) and .env.e2e.test
+// (committed defaults) into process.env, then execs `next start -p <port>`.
+//
+// Caller is responsible for having a valid .next/ build; we do not run `next build`
+// here because a cold build blows past Playwright's default webServer timeout and
+// prevents targeted runs like `playwright test foo.spec.ts` from starting.
+//
+// We can't use node's --env-file flag directly because it propagates into
+// NODE_OPTIONS, and Next's build worker threads reject NODE_OPTIONS containing
+// --env-file (ERR_WORKER_INVALID_EXEC_ARGV).
+//
+// Precedence (highest first): shell-exported vars > .env.e2e.local > .env.e2e.test.
+// Values can reference ${E2E_PORT}; env-loader substitutes at load time so the
+// committed defaults stay port-agnostic.
 //
 // Usage: node e2e/scripts/start-webserver.mjs [port]
 
-import fs from "node:fs";
 import { spawn } from "node:child_process";
-import { parseEnv } from "node:util";
+import { loadEnvFile } from "./env-loader.mjs";
 
-function loadEnvFile(path, { required }) {
-  let content;
-  try {
-    content = fs.readFileSync(path, "utf8");
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      if (required) throw new Error(`Required env file not found: ${path}`);
-      return;
-    }
-    throw err;
-  }
-
-  const parsed = parseEnv(content);
-  for (const [key, value] of Object.entries(parsed)) {
-    // Match `node --env-file=` semantics: do not override values already set
-    // by the parent shell. Lets CI or a dev export an override and win.
-    if (!(key in process.env)) {
-      process.env[key] = value;
-    }
-  }
-}
-
-loadEnvFile(".env.e2e.test", { required: true });
-loadEnvFile(".env.e2e.local", { required: false });
-
+// Resolve the port first so .env.e2e.* values can substitute ${E2E_PORT}.
 const port = process.argv[2] ?? process.env.E2E_PORT ?? "3020";
+process.env.E2E_PORT = port;
+
+// Load order matters: local first (higher precedence), committed defaults second.
+// The loader's "existing keys win" rule means local values are preserved when .test loads.
+loadEnvFile(".env.e2e.local", { required: false, port });
+loadEnvFile(".env.e2e.test", { required: true, port });
+
 const nextBin = "node_modules/next/dist/bin/next";
 
 function runStep(args) {
@@ -54,7 +46,6 @@ function runStep(args) {
 }
 
 try {
-  await runStep(["build"]);
   await runStep(["start", "-p", port]);
 } catch (err) {
   console.error(err.message);

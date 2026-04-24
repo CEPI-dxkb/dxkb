@@ -15,7 +15,9 @@ pnpm e2e:update-snapshots      # Regenerate visual baselines
 pnpm e2e:record <journey>      # Record a HAR against live backend (manual, local only)
 ```
 
-The suite runs against a **production build** on port `3020` (independent from `pnpm dev` on 3019 and `pnpm start` on 3010). Playwright's `webServer` config starts `next start -p 3020` automatically.
+The suite runs against a **production build** on port `3020` (independent from `pnpm dev` on 3019 and `pnpm start` on 3010). Playwright's `webServer` config starts `next start -p 3020` automatically; it does **not** build the app for you. Run `pnpm build` before `pnpm e2e` after any source change. The `pnpm e2e` script in `package.json` wires this together; CI runs `pnpm build` as a separate workflow step for the same reason.
+
+Override the port with `E2E_PORT=3030 pnpm e2e --project=chromium`. The wrapper substitutes `${E2E_PORT}` in every backend URL in `.env.e2e.test` so server-side fetches still reach the correct loopback mock.
 
 ## Layout
 
@@ -59,10 +61,11 @@ The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overri
 
 `page.route()` only intercepts *browser* requests. Server components and API route handlers make their own outbound fetches to `APP_SERVICE_URL`, `WORKSPACE_API_URL`, `USER_URL`, etc. before the page is streamed, and those fetches bypass Playwright entirely — previously they failed with "JSON-RPC call failed: HTTP error! status: 500" and flooded the webServer log on every render.
 
-To fix this the test server runs with a committed env file:
+To fix this the test server runs through a wrapper that seeds the right env vars before Next starts:
 
-- **`.env.e2e.test`** (committed, loaded by `playwright.config.ts`'s webServer command via `node --env-file=`) points every backend URL at a loopback mock: `http://127.0.0.1:3020/api/e2e-mock/<service>`.
-- **`.env.e2e.local`** (gitignored) is loaded after `.env.e2e.test` via `--env-file-if-exists=` for local overrides.
+- **`e2e/scripts/start-webserver.mjs`** is what `playwright.config.ts`'s `webServer.command` launches. It resolves the port (CLI arg > `E2E_PORT` > `3020`), then reads `.env.e2e.local` (optional) followed by `.env.e2e.test` (required) via `node:util`'s `parseEnv`, merging each key into `process.env` under `node --env-file=` semantics (existing values win). Values can reference `${E2E_PORT}`; the wrapper substitutes the resolved port at load time so the committed file stays port-agnostic. Finally it spawns `next start -p <port>` — it does **not** run `next build`, because a cold build exceeds Playwright's webServer timeout and blocks targeted runs. Run `pnpm build` yourself first. We can't just use `node --env-file=` here because that flag leaks into `NODE_OPTIONS` and Next's build worker threads reject `NODE_OPTIONS` containing `--env-file` (`ERR_WORKER_INVALID_EXEC_ARGV`).
+- **`.env.e2e.test`** (committed, loaded by the wrapper) points every backend URL at a loopback mock: `http://127.0.0.1:${E2E_PORT}/api/e2e-mock/<service>`.
+- **`.env.e2e.local`** (gitignored, loaded by the wrapper if present) is for local-only overrides. Because the wrapper loads `.env.e2e.local` **before** `.env.e2e.test`, any key set in the local file wins over the committed default. A shell-exported variable beats both.
 - **`src/app/api/e2e-mock/[...path]/route.ts`** answers those loopback requests. `GET → 200 {}`, `POST → 200 {"id":1,"jsonrpc":"2.0","result":[[]]}`. Hits are logged as `[api/e2e-mock] <METHOD> /<path>` so fixtures can be promoted into overrides later.
 - The handler is guarded by `E2E_MOCK_ENABLED=1` (set in `.env.e2e.test`). Without that flag every handler returns 404, so a production build that somehow shipped this file can't serve fake data.
 

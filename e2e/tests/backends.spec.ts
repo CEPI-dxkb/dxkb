@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { applyBackendMocks, type JsonOverride } from "../mocks/backends";
+import {
+  applyBackendMocks,
+  getUnmockedBackendRequests,
+  verifyNoUnmockedBackendRequests,
+  type JsonOverride,
+} from "../mocks/backends";
 
 /**
  * Self-tests for applyBackendMocks. Exercises precedence rules (overrides > HAR > strict),
@@ -15,25 +20,34 @@ interface FetchResult {
   body: unknown;
 }
 
-async function inPageFetch(page: import("@playwright/test").Page, url: string, init?: RequestInit): Promise<FetchResult> {
-  return page.evaluate(
-    async ([u, i]: [string, RequestInit | undefined]) => {
+// Narrow, serializable subset of RequestInit — Playwright's page.evaluate requires args to be
+// JSON-safe, and the full RequestInit type (Headers, AbortSignal) is not.
+interface SerializableRequestInit {
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+}
+
+async function inPageFetch(
+  page: import("@playwright/test").Page,
+  url: string,
+  init?: SerializableRequestInit,
+): Promise<FetchResult> {
+  return page.evaluate(async (args: { url: string; init?: SerializableRequestInit }) => {
+    try {
+      const res = await fetch(args.url, args.init);
+      const text = await res.text();
+      let body: unknown = text;
       try {
-        const res = await fetch(u, i);
-        const text = await res.text();
-        let body: unknown = text;
-        try {
-          body = JSON.parse(text);
-        } catch {
-          /* keep as text */
-        }
-        return { status: res.status, ok: res.ok, body };
-      } catch (error) {
-        return { status: 0, ok: false, body: (error as Error).message };
+        body = JSON.parse(text);
+      } catch {
+        /* keep as text */
       }
-    },
-    [url, init],
-  );
+      return { status: res.status, ok: res.ok, body };
+    } catch (error) {
+      return { status: 0, ok: false, body: (error as Error).message };
+    }
+  }, { url, init });
 }
 
 test.describe("applyBackendMocks", () => {
@@ -70,18 +84,33 @@ test.describe("applyBackendMocks", () => {
     expect(get.body).toEqual({ matched: "get" });
   });
 
-  test("strict mode aborts an unmocked backend request", async ({ page, baseURL }) => {
+  test("strict mode aborts an unmocked backend request and records it", async ({ page, baseURL }) => {
     await applyBackendMocks(page, { overrides: [], strict: true });
     await page.goto(baseURL ?? "/");
     const result = await inPageFetch(page, "/api/services/unmocked-endpoint");
     // Strict mode calls route.abort("failed") which surfaces as a fetch network error in the page.
     expect(result.ok).toBe(false);
     expect(result.status).toBe(0);
+    // The guard also records the leak. We don't assert exact count because the app's hydration
+    // may fire its own /api calls (e.g. /api/auth/get-session) that strict also records.
+    const leaks = getUnmockedBackendRequests(page);
+    expect(leaks.some((r) => r.includes("/api/services/unmocked-endpoint"))).toBe(true);
+    expect(() => verifyNoUnmockedBackendRequests(page)).toThrow(/unmocked backend request/);
+  });
+
+  test("verifyNoUnmockedBackendRequests is a no-op when nothing leaked", async ({ page }) => {
+    await applyBackendMocks(page, { overrides: [], strict: true });
+    // Stay on about:blank — no browser requests means nothing for strict to record.
+    // This exercises the empty-leak path in isolation from any app hydration fetches.
+    expect(getUnmockedBackendRequests(page)).toEqual([]);
+    expect(() => verifyNoUnmockedBackendRequests(page)).not.toThrow();
   });
 
   test("strict mode lets non-backend navigation pass through", async ({ page, baseURL }) => {
     await applyBackendMocks(page, { overrides: [], strict: true });
     const response = await page.goto(baseURL ?? "/");
+    // The document response itself is served by Next, not a backend — goto must succeed even
+    // though downstream /api calls from hydration get aborted by strict.
     expect(response?.ok()).toBe(true);
   });
 
@@ -95,6 +124,11 @@ test.describe("applyBackendMocks", () => {
     const result = await inPageFetch(page, "/api/auth/get-session");
     expect(result.status).toBe(200);
     expect(result.body).toEqual({ user: null });
+    // Override handled /api/auth/get-session, so that specific URL was never recorded as a leak.
+    // (Other app-internal /api calls may get recorded; we only assert about the override target.)
+    expect(
+      getUnmockedBackendRequests(page).filter((r) => r.includes("/api/auth/get-session")),
+    ).toHaveLength(0);
   });
 
   test("first matching override wins when multiple apply", async ({ page, baseURL }) => {

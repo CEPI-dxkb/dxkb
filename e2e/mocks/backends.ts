@@ -17,6 +17,11 @@ export interface BackendMockOptions {
   strict?: boolean;
 }
 
+// Per-page log of backend requests the strict guard aborted. Populated inside the
+// strict route handler and read by verifyNoUnmockedBackendRequests() in afterEach.
+// WeakMap so entries are GC'd when Playwright retires the page.
+const unmockedBackendRequests = new WeakMap<Page, string[]>();
+
 const backendHostPattern =
   /^https?:\/\/([a-z0-9-]+\.)*(patricbrc\.org|bv-brc\.org|theseed\.org|ncbi\.nlm\.nih\.gov)(\/|$)/i;
 
@@ -60,9 +65,13 @@ function matchesOverride(override: JsonOverride, requestUrl: string, method: str
  * then overrides. That way overrides win, then HAR fills gaps, and strict only fires if nothing
  * else matched.
  *
- * With `strict: true` (default), any unmocked request to a backend host or the app's /api/**
- * namespace fails the test. Non-backend requests (Next.js assets, fonts, CDN) pass through
- * unchanged regardless of strict mode.
+ * With `strict: true` (default), every unmocked request to a backend host or the app's /api/**
+ * namespace is aborted AND recorded on the page. Tests must assert no leaks in `afterEach` via
+ * `verifyNoUnmockedBackendRequests(page)` — the route handler cannot fail the test by itself
+ * because Playwright swallows thrown errors in route callbacks.
+ *
+ * Non-backend requests (Next.js assets, fonts, CDN) pass through unchanged regardless of strict
+ * mode.
  */
 export async function applyBackendMocks(page: Page, options: BackendMockOptions = {}): Promise<void> {
   const { har, overrides = [], strict = true } = options;
@@ -70,17 +79,18 @@ export async function applyBackendMocks(page: Page, options: BackendMockOptions 
 
   // 1. Strict guard — registered FIRST so it runs LAST (routes are LIFO).
   //    Only fires for backend requests that none of the later handlers matched.
-  //    Aborts without throwing so downstream test assertions decide pass/fail; logs to aid debug.
+  //    Aborts + records to the per-page log; verifyNoUnmockedBackendRequests throws later.
   if (strict) {
+    unmockedBackendRequests.set(page, []);
     await page.route("**/*", async (route: Route) => {
       const url = route.request().url();
       if (!isBackendRequest(url, appHost)) {
         await route.fallback();
         return;
       }
-      console.warn(
-        `[applyBackendMocks/strict] aborting unmocked backend request: ${route.request().method()} ${url}`,
-      );
+      const record = `${route.request().method()} ${url}`;
+      unmockedBackendRequests.get(page)?.push(record);
+      console.warn(`[applyBackendMocks/strict] aborting unmocked backend request: ${record}`);
       await route.abort("failed");
     });
   }
@@ -118,6 +128,31 @@ export async function applyBackendMocks(page: Page, options: BackendMockOptions 
       });
     });
   }
+}
+
+/**
+ * Snapshot of backend requests the strict guard aborted for this page.
+ * Empty array when strict was enabled but nothing leaked; empty array when strict was disabled.
+ */
+export function getUnmockedBackendRequests(page: Page): string[] {
+  return [...(unmockedBackendRequests.get(page) ?? [])];
+}
+
+/**
+ * Throws if any unmocked backend request reached the strict guard during the test.
+ * Call from `test.afterEach(({ page }) => verifyNoUnmockedBackendRequests(page))`.
+ *
+ * The route handler itself cannot fail the test — Playwright swallows thrown errors in route
+ * callbacks and logs them instead. Doing the assertion in afterEach surfaces leaks loudly.
+ */
+export function verifyNoUnmockedBackendRequests(page: Page): void {
+  const leaks = unmockedBackendRequests.get(page);
+  if (!leaks || leaks.length === 0) return;
+  const list = leaks.map((r) => `  - ${r}`).join("\n");
+  unmockedBackendRequests.set(page, []);
+  throw new Error(
+    `applyBackendMocks/strict: ${leaks.length} unmocked backend request(s) leaked during this test:\n${list}`,
+  );
 }
 
 export const bvbrcCookies = [

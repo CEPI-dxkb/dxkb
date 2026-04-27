@@ -40,6 +40,9 @@ e2e/
     workspace.spec.ts           # Signed-in workspace browsing
     services/services-smoke.spec.ts  # Parametrized h1 smoke for all 21 services
     jobs.spec.ts                # Jobs list + detail
+    a11y.spec.ts                # axe-core sweep on home, sign-in, workspace, jobs, genome-assembly
+    viewer-3d.spec.ts           # Mol* /viewer/structure container + WebGL canvas paint
+    search-keyboard.spec.ts     # Navbar SearchBar keyboard journey + clipboard paste
     visual/visual.spec.ts       # Screenshot baselines
   __snapshots__/                # Visual regression baselines (per browser)
 ```
@@ -159,6 +162,14 @@ Two paths, depending on what the agent needs to do.
 ```
 
 **Pnpm scripts (for running the suite)** — use the `pnpm e2e*` commands above from a Bash tool.
+
+## Cross-cutting specs
+
+**`a11y.spec.ts`** — runs `@axe-core/playwright` on home, sign-in, workspace, the genome-assembly form, and jobs. Fails on `serious` or `critical` violations; logs `moderate`/`minor` ones via `console.warn`. A short list of pre-existing rule IDs is disabled at the top of the spec (with comments) so the suite can land green; tighten that list as the underlying issues are fixed.
+
+**`viewer-3d.spec.ts`** — drives `/viewer/structure/<path>`, mocks `/api/workspace/view/...` with a minimal one-atom PDB, and asserts the page chrome + Mol* container render. The full WebGL canvas-paint assertion is gated on Mol*'s own runtime probe — if Mol* surfaces "WebGL does not seem to be available" (e.g. headless Chromium without GPU), the paint test self-skips. Firefox and WebKit are skipped wholesale because their headless WebGL stacks are unreliable.
+
+**`search-keyboard.spec.ts`** — covers the keyboard journey through the navbar `SearchBar`: type → Enter → routed to `/search?q=...&searchtype=everything`, empty submission stays put, clipboard paste fills the input (Chromium / Firefox; WebKit's headless clipboard permissions are unreliable). The repo has no Cmd+K command palette today — the dead `CommandSearch` component binds Cmd+J and is never mounted — so the spec exercises the real navbar form instead.
 
 ## When to add a Playwright test vs a Vitest test
 

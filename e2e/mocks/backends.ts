@@ -2,12 +2,30 @@ import { test as base, type Page, type Route } from "@playwright/test";
 import path from "node:path";
 import fs from "node:fs";
 
+export interface JsonOverrideBodyContext {
+  /** Parsed JSON request body (null when the body was not JSON or was empty). */
+  parsedBody: unknown;
+  /** 0-based count of how many times this override has been served on the current page. */
+  callIndex: number;
+}
+
 export interface JsonOverride {
   url: string | RegExp;
   method?: string;
   status?: number;
-  body?: unknown;
+  /**
+   * Response body. Static value, or a function that receives `{ parsedBody, callIndex }` and
+   * returns the body for that call — used when a single mock needs to evolve between calls
+   * (e.g. a workspace listing that gains a new row after an upload completes).
+   */
+  body?: unknown | ((ctx: JsonOverrideBodyContext) => unknown);
   headers?: Record<string, string>;
+  /**
+   * Optional predicate against the parsed JSON request body. Lets multiple overrides share the
+   * same URL and HTTP method (e.g. a single JSON-RPC endpoint that dispatches many methods).
+   * If parsing fails, the predicate receives `null`.
+   */
+  matchBody?: (body: unknown) => boolean;
 }
 
 export interface BackendMockOptions {
@@ -52,10 +70,29 @@ function isBackendRequest(requestUrl: string, appHost: string | undefined): bool
   return isInternalApi(parsed, appHost);
 }
 
-function matchesOverride(override: JsonOverride, requestUrl: string, method: string): boolean {
+function matchesOverride(
+  override: JsonOverride,
+  requestUrl: string,
+  method: string,
+  parsedBody: unknown,
+): boolean {
   if (override.method && override.method.toUpperCase() !== method.toUpperCase()) return false;
-  if (typeof override.url === "string") return requestUrl.includes(override.url);
-  return override.url.test(requestUrl);
+  if (typeof override.url === "string") {
+    if (!requestUrl.includes(override.url)) return false;
+  } else if (!override.url.test(requestUrl)) {
+    return false;
+  }
+  if (override.matchBody && !override.matchBody(parsedBody)) return false;
+  return true;
+}
+
+function parseJsonBody(raw: string | null): unknown {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -115,18 +152,39 @@ export async function applyBackendMocks(page: Page, options: BackendMockOptions 
 
   // 3. Overrides — registered LAST so they run FIRST. These win over HAR and strict.
   if (overrides.length > 0) {
+    const callCounts = new WeakMap<JsonOverride, { value: number }>();
+    const counterFor = (o: JsonOverride) => {
+      let counter = callCounts.get(o);
+      if (!counter) {
+        counter = { value: 0 };
+        callCounts.set(o, counter);
+      }
+      return counter;
+    };
     await page.route("**/*", async (route: Route) => {
       const request = route.request();
-      const override = overrides.find((o) => matchesOverride(o, request.url(), request.method()));
+      const parsedBody = parseJsonBody(request.postData());
+      const override = overrides.find((o) =>
+        matchesOverride(o, request.url(), request.method(), parsedBody),
+      );
       if (!override) {
         await route.fallback();
         return;
       }
+      const counter = counterFor(override);
+      const resolvedBody =
+        typeof override.body === "function"
+          ? (override.body as (ctx: JsonOverrideBodyContext) => unknown)({
+              parsedBody,
+              callIndex: counter.value,
+            })
+          : override.body;
+      counter.value += 1;
       await route.fulfill({
         status: override.status ?? 200,
         contentType: "application/json",
         headers: override.headers ?? {},
-        body: typeof override.body === "string" ? override.body : JSON.stringify(override.body ?? {}),
+        body: typeof resolvedBody === "string" ? resolvedBody : JSON.stringify(resolvedBody ?? {}),
       });
     });
   }

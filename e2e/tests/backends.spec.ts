@@ -142,4 +142,38 @@ test.describe("applyBackendMocks", () => {
     const result = await inPageFetch(page, "/api/workspace/view/something");
     expect(result.body).toEqual({ winner: "first" });
   });
+
+  test("matchBody routes same URL to different responses by request body", async ({ page, baseURL }) => {
+    // Simulates JSON-RPC dispatch: one endpoint, many methods. matchBody lets us fan out by payload.
+    const overrides: JsonOverride[] = [
+      {
+        url: "/api/services/workspace",
+        method: "POST",
+        matchBody: (body) => (body as { method?: string } | null)?.method === "Workspace.ls",
+        body: { result: "ls-result" },
+      },
+      {
+        url: "/api/services/workspace",
+        method: "POST",
+        matchBody: (body) => (body as { method?: string } | null)?.method === "Workspace.get",
+        body: { result: "get-result" },
+      },
+    ];
+    await applyBackendMocks(page, { overrides, strict: false });
+    await page.goto(baseURL ?? "/");
+
+    const ls = await inPageFetch(page, "/api/services/workspace", {
+      method: "POST",
+      body: JSON.stringify({ method: "Workspace.ls", params: [], id: 1, jsonrpc: "2.0" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect(ls.body).toEqual({ result: "ls-result" });
+
+    const get = await inPageFetch(page, "/api/services/workspace", {
+      method: "POST",
+      body: JSON.stringify({ method: "Workspace.get", params: [], id: 2, jsonrpc: "2.0" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect(get.body).toEqual({ result: "get-result" });
+  });
 });

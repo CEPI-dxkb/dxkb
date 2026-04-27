@@ -242,16 +242,22 @@ export function buildWorkspaceOverrides(
       const params = body.params?.[0] as { paths?: string[]; recursive?: boolean } | undefined;
       return params?.recursive === true;
     },
-    body: (() => {
-      // Use the first requested path as the map key so parseLsResult finds the items.
+    body: ({ parsedBody }) => {
+      // Use the requested path as the map key so parseLsResult — which does an exact lookup
+      // by `requestedPath` — always finds the items, regardless of how the caller built the
+      // path (`@bvbrc` vs `@patricbrc.org`, trailing slash, etc.).
+      const params = (parsedBody as { params?: unknown[] } | null)?.params?.[0] as
+        | { paths?: string[] }
+        | undefined;
+      const requestedPath = params?.paths?.[0] ?? `/${e2eUsername}/home/`;
       return {
         result: [
           {
-            [`/${e2eUsername}/home/`]: searchItems.map(workspaceTuple),
+            [requestedPath]: searchItems.map(workspaceTuple),
           },
         ],
       };
-    })(),
+    },
   };
 
   const listPermsOverride = workspaceRpcOverride(

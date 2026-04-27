@@ -37,7 +37,9 @@ export class WorkspacePage {
   }
 
   rowByName(name: string): Locator {
-    return this.page.getByRole("row").filter({ hasText: name });
+    return this.page.getByRole("row").filter({
+      has: this.page.getByRole("cell", { name, exact: true }),
+    });
   }
 
   /** Selection-mode single-click: opens details panel without navigating. */

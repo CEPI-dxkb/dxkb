@@ -22,7 +22,9 @@ export class JobsListPage {
   }
 
   rowById(jobId: string): Locator {
-    return this.page.getByRole("row").filter({ hasText: jobId });
+    return this.page.getByRole("row").filter({
+      has: this.page.getByRole("cell", { name: jobId, exact: true }),
+    });
   }
 
   async waitForRows(): Promise<void> {

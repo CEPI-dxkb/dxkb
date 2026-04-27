@@ -2,8 +2,10 @@ import { expect, type Page, type Locator } from "@playwright/test";
 
 /**
  * Page object for bioinformatics service forms (e.g. `/services/genome-assembly`).
- * The form layout is shared across services — input cards, parameters, output folder/name,
- * and a primary submit button — so this helper covers the common interactions.
+ * Specs that need to drive a form interaction not covered here should reach for the underlying
+ * Playwright `page` directly rather than expanding this object with helpers that no real test
+ * exercises — the WorkspaceObjectSelector in particular has too many service-specific quirks
+ * (async dropdowns, portal listboxes, paired vs. single inputs) for a single shared helper.
  */
 export class ServiceFormPage {
   readonly page: Page;
@@ -17,29 +19,6 @@ export class ServiceFormPage {
   async goto(path: string): Promise<void> {
     await this.page.goto(path);
     await expect(this.heading).toBeVisible();
-  }
-
-  /**
-   * Type a path into a WorkspaceObjectSelector input by its placeholder, then press Enter to
-   * commit the selection. This bypasses the dropdown, since object-selector options only appear
-   * when the search matches a loaded object, and typing the full path already gives the form
-   * everything it needs.
-   */
-  async fillObjectSelector(placeholder: RegExp, value: string): Promise<void> {
-    const input = this.page.getByPlaceholder(placeholder).first();
-    await input.click();
-    await input.fill(value);
-  }
-
-  /** Set the output folder via the workspace object selector labelled "Select Output Folder..." */
-  async setOutputFolder(path: string): Promise<void> {
-    await this.fillObjectSelector(/select output folder/i, path);
-  }
-
-  /** Set the output name field (text input, not a selector). */
-  async setOutputName(name: string): Promise<void> {
-    const input = this.page.getByPlaceholder(/select output name/i);
-    await input.fill(name);
   }
 
   /** Click the primary submit button by its visible label. */

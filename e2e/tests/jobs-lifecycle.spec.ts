@@ -99,7 +99,21 @@ test.describe("jobs lifecycle", () => {
     await expect(page.getByText("Running step 1")).toBeVisible();
   });
 
-  test("clicking KILL on a running job POSTs the kill endpoint", async ({ page }) => {
+  test("KILL transitions the running job to a terminal status in the list", async ({ page }) => {
+    // Stateful kill flow:
+    //   1. Until kill is invoked, /enumerate-tasks-filtered and the per-job GET return the
+    //      original lifecycle fixture (job-running is "running").
+    //   2. After the kill POST fires, both endpoints flip job-running to "cancelled" — this is
+    //      the production terminal state the kill action drives the job into (statusConfig has
+    //      no "killed"; the mock model uses "cancelled" as the canonical terminal label).
+    // The two `useKillJob.onSuccess` invalidations (jobs / jobs-filtered) drive a refetch,
+    // and the row transitions in the UI without any extra prompting.
+    let killed = false;
+    const buildJobs = () =>
+      mockLifecycleJobs.map((j) =>
+        j.id === "job-running" && killed ? { ...j, status: "cancelled" as const } : j,
+      );
+
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
@@ -108,6 +122,37 @@ test.describe("jobs lifecycle", () => {
         ...permissiveBackendOverrides,
       ],
     });
+
+    // Register kill-aware routes AFTER applyBackendMocks so they match first (Playwright routes
+    // run LIFO). These take over the three endpoints that observe the kill transition; every
+    // other route still falls through to the standard jobsListOverrides.
+    await page.route("**/api/services/app-service/jobs/job-running/kill", async (route) => {
+      killed = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true, message: "Kill request accepted" }),
+      });
+    });
+    await page.route("**/api/services/app-service/jobs/enumerate-tasks-filtered", async (route) => {
+      const list = buildJobs();
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ jobs: list, totalTasks: list.length }),
+      });
+    });
+    await page.route(/\/api\/services\/app-service\/jobs\/job-running(?:\?|$)/, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const list = buildJobs();
+      const updated = list.find((j) => j.id === "job-running");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(updated),
+      });
+    });
+
     const jobs = new JobsListPage(page);
     await jobs.goto();
     await jobs.waitForRows();
@@ -120,5 +165,57 @@ test.describe("jobs lifecycle", () => {
     );
     await jobs.killSelected();
     await killRequest;
+
+    // The toast confirms the kill request reached the server. The row transition that follows
+    // proves the invalidations actually re-rendered the list with the new status.
+    await expect(page.getByText(/kill request for job job-running/i)).toBeVisible();
+    await expect(jobs.rowById("job-running")).toContainText(/cancelled/i);
+  });
+
+  test("polling refreshes the running job's status when the backend transitions it", async ({ page }) => {
+    // The jobs list polls /enumerate-tasks-filtered every 10s while any active job is present.
+    // We flip job-running to "completed" on the second enumerate call to verify the row + the
+    // details panel both re-render on a backend transition rather than freezing on the initial
+    // fetch. JobDetailsPanel reads `job.status` from the list selection, so the badge update is
+    // the observable signal that the list refetch landed.
+    let enumerateCalls = 0;
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...workspacePopulatedOverrides,
+        ...buildJobsOverrides({ jobs: mockLifecycleJobs }),
+        ...permissiveBackendOverrides,
+      ],
+    });
+    await page.route(
+      "**/api/services/app-service/jobs/enumerate-tasks-filtered",
+      async (route) => {
+        enumerateCalls += 1;
+        const list = mockLifecycleJobs.map((j) =>
+          j.id === "job-running" && enumerateCalls > 1
+            ? { ...j, status: "completed" as const }
+            : j,
+        );
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ jobs: list, totalTasks: list.length }),
+        });
+      },
+    );
+
+    const jobs = new JobsListPage(page);
+    await jobs.goto();
+    await jobs.waitForRows();
+    await jobs.selectJob("job-running");
+
+    const statusBadge = page
+      .locator("h3", { hasText: "job-running" })
+      .locator("xpath=following-sibling::span");
+    await expect(statusBadge).toContainText(/running/i);
+    // List refetch interval is 10s when there are active jobs; allow some headroom so the test
+    // isn't a coin-flip on a slow CI runner.
+    await expect(statusBadge).toContainText(/completed/i, { timeout: 20_000 });
+    expect(enumerateCalls).toBeGreaterThanOrEqual(2);
   });
 });

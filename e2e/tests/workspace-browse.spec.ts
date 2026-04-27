@@ -61,12 +61,13 @@ test.describe("workspace browse", () => {
     await workspace.goto();
     await expect(workspace.rowByName("Datasets").first()).toBeVisible();
 
-    // Select the row, then press Enter. The keyboard handler in useTableKeyboardNavigation
-    // calls onEnter(item) which navigates for folders. Using Enter is more deterministic than
-    // `dblclick()`: Playwright's dblclick fires two rapid mouse events that can race with the
-    // selection-mode click handler in a virtualized row (the row re-mounts on selection,
-    // and the second click can land on a different DOM node).
-    await workspace.rowByName("Datasets").first().click();
+    // Select the row first, then press Enter. `useTableKeyboardNavigation.onEnter` requires the
+    // row to already be selected — under load the keyboard event can arrive before React has
+    // committed the selection state, so we wait for the row to render its selected variant
+    // before firing Enter.
+    const datasetsRow = workspace.rowByName("Datasets").first();
+    await datasetsRow.click();
+    await expect(datasetsRow).toHaveAttribute("aria-selected", "true");
     await page.keyboard.press("Enter");
 
     await expect(page).toHaveURL(/\/home\/Datasets$/);
@@ -121,5 +122,55 @@ test.describe("workspace browse", () => {
     await expect(workspace.rowByName("Datasets").first()).toBeVisible();
     // The username cookie is the same user as the mocked owner, so the row renders normally.
     expect(e2eUsername).toBe("e2e-test-user@patricbrc.org");
+  });
+
+  test("toggling FAVORITE on a folder POSTs the updated favorites.json", async ({ page }) => {
+    // Starts with no favorites, then drives the action-bar FAVORITE button and asserts that
+    // Workspace.create persists the toggled folder path. This is the end-to-end persistence
+    // contract — a UI that lights up the star locally but never calls the API would fail here.
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...buildWorkspaceOverrides(),
+        ...permissiveBackendOverrides,
+      ],
+    });
+    const workspace = new WorkspacePage(page);
+    await workspace.goto();
+
+    // Select the Datasets folder so the FAVORITE action becomes valid (favorite is folder-only).
+    await workspace.rowByName("Datasets").first().click();
+
+    const favoritesFilePath = `${e2eHomePath}/.preferences/favorites.json`;
+    // Wait specifically for the Workspace.create that writes favorites.json — toggleFavorite
+    // also calls Workspace.create to ensure the .preferences dir exists, and we don't want to
+    // race-match that earlier call.
+    const writeRequest = page.waitForRequest((req) => {
+      if (!req.url().endsWith("/api/services/workspace") || req.method() !== "POST") return false;
+      const raw = req.postData();
+      if (!raw) return false;
+      try {
+        const body = JSON.parse(raw) as { method?: string; params?: unknown[] };
+        if (body.method !== "Workspace.create") return false;
+        const objects = (body.params?.[0] as { objects?: unknown[][] } | undefined)?.objects ?? [];
+        const first = objects[0];
+        return Array.isArray(first) && String(first[0]) === favoritesFilePath;
+      } catch {
+        return false;
+      }
+    });
+
+    await page.getByRole("button", { name: /^favorite$/i }).click();
+
+    const req = await writeRequest;
+    const body = JSON.parse(req.postData() ?? "{}") as {
+      params?: [{ objects?: unknown[][]; overwrite?: number }];
+    };
+    const objects = body.params?.[0]?.objects ?? [];
+    const tuple = objects[0] as [string, string, unknown, string];
+    // The 4th tuple slot is the JSON body; it must contain the toggled folder path.
+    const content = JSON.parse(String(tuple[3])) as { folders?: string[] };
+    expect(content.folders).toContain(`${e2eHomePath}/Datasets`);
+    expect(body.params?.[0]?.overwrite).toBe(1);
   });
 });

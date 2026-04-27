@@ -131,6 +131,12 @@ interface BuildWorkspaceOverridesOptions {
   searchItems?: TupleItem[];
   /** Optional extra RPC method overrides to append. */
   extraRpc?: JsonOverride[];
+  /**
+   * When true, `Workspace.create` echoes back the filename it was asked to create AND any
+   * subsequent `Workspace.ls` for the create's parent directory includes the new tuple. Lets
+   * upload specs assert that the listing actually refreshes with the uploaded file.
+   */
+  reflectUploads?: boolean;
 }
 
 const defaultHomeItems: TupleItem[] = [
@@ -174,6 +180,32 @@ const defaultHomeItems: TupleItem[] = [
 const favoritesPath = `/${e2eUsername}/home/.preferences/favorites.json`;
 
 /**
+ * Resolve a workspace path against a pathItems map. A path matches when:
+ *   1. It is a child file/folder listed under one of the directory keys (parent + "/" + name).
+ *   2. It is a directory key itself — synthesizes a folder tuple so directory existence checks
+ *      (Workspace.get on a folder path) return metadata instead of 404.
+ * Returns null when no match is found so callers can fall back to a 500 "not found" response.
+ */
+function findKnownItem(
+  pathItems: Record<string, TupleItem[]>,
+  fullPath: string,
+): TupleItem | null {
+  for (const [parent, items] of Object.entries(pathItems)) {
+    const parentNoTrailing = parent.replace(/\/+$/, "");
+    for (const item of items) {
+      if (`${parentNoTrailing}/${item.name}` === fullPath) return item;
+    }
+  }
+  if (pathItems[fullPath]) {
+    const lastSlash = fullPath.lastIndexOf("/");
+    const name = lastSlash >= 0 ? fullPath.slice(lastSlash + 1) : fullPath;
+    const parentPath = lastSlash > 0 ? fullPath.slice(0, lastSlash) : "/";
+    return { name, type: "folder", parentPath };
+  }
+  return null;
+}
+
+/**
  * Build a workspace override set backed by tuple-encoded RPC responses. Covers the three RPC
  * methods the browser hits on load (`ls`, `list_permissions`, `get` for favorites) plus the
  * preview/view proxy endpoints. Designed so specs can compose scenarios without re-specifying
@@ -182,7 +214,7 @@ const favoritesPath = `/${e2eUsername}/home/.preferences/favorites.json`;
 export function buildWorkspaceOverrides(
   options: BuildWorkspaceOverridesOptions = {},
 ): JsonOverride[] {
-  const pathItems = options.pathItems ?? { [e2eHomePath]: defaultHomeItems };
+  const pathItems = { ...(options.pathItems ?? { [e2eHomePath]: defaultHomeItems }) };
   const favorites = options.favorites ?? [];
   const searchItems = options.searchItems ?? defaultHomeItems;
 
@@ -196,7 +228,9 @@ export function buildWorkspaceOverrides(
       // Recursive ls calls hit a different branch (object selector search).
       return params?.recursive !== true;
     },
-    body: { result: mockWorkspaceLsResult({ pathItems }) },
+    // Function body lets reflectUploads mutate `pathItems` between calls (Workspace.create
+    // appends the new tuple, then the next Workspace.ls picks it up).
+    body: () => ({ result: mockWorkspaceLsResult({ pathItems }) }),
   };
 
   const searchOverride: JsonOverride = {
@@ -239,34 +273,99 @@ export function buildWorkspaceOverrides(
     },
   };
 
-  const createOverride = workspaceRpcOverride(
-    "Workspace.create",
-    {
-      result: [
-        [
+  // Mirror back whatever filename the request asked to create. With reflectUploads on, we also
+  // append the new tuple to `pathItems` so the next Workspace.ls picks it up — the listing
+  // refresh that the upload dialog triggers is what surfaces the row in the UI.
+  const createOverride: JsonOverride = {
+    url: /\/api\/services\/workspace(?:$|\?)/,
+    method: "POST",
+    matchBody: (parsed) =>
+      (parsed as { method?: string } | null)?.method === "Workspace.create",
+    body: ({ parsedBody }) => {
+      const params = (parsedBody as { params?: unknown[] } | null)?.params?.[0] as
+        | { objects?: unknown[][] }
+        | undefined;
+      const firstObject = params?.objects?.[0];
+      const fullPath = Array.isArray(firstObject) ? String(firstObject[0]) : "";
+      const type = Array.isArray(firstObject) ? String(firstObject[1] ?? "unspecified") : "unspecified";
+      const lastSlash = fullPath.lastIndexOf("/");
+      const name = lastSlash >= 0 ? fullPath.slice(lastSlash + 1) : fullPath || "uploaded";
+      const parentPath = lastSlash > 0 ? fullPath.slice(0, lastSlash) : e2eHomePath;
+      if (options.reflectUploads) {
+        const existing = pathItems[parentPath] ?? [];
+        if (!existing.some((it) => it.name === name)) {
+          pathItems[parentPath] = [
+            ...existing,
+            { name, type, parentPath, creationTime: "2026-04-20T00:00:00Z", size: 0 },
+          ];
+        }
+      }
+      return {
+        result: [
           [
-            "uploaded.txt",
-            "unspecified",
-            `${e2eHomePath}/`,
-            "2026-04-20T00:00:00Z",
-            "id-uploaded",
-            e2eUsername,
-            0,
-            {},
-            {},
-            "o",
-            "n",
-            "http://127.0.0.1/shock/upload/stub",
+            [
+              name,
+              type,
+              `${parentPath}/`,
+              "2026-04-20T00:00:00Z",
+              `id-${name}`,
+              e2eUsername,
+              0,
+              {},
+              {},
+              "o",
+              "n",
+              "http://127.0.0.1/shock/upload/stub",
+            ],
           ],
         ],
-      ],
+      };
     },
-  );
+  };
 
   const updateMetaOverride = workspaceRpcOverride(
     "Workspace.update_auto_meta",
     { result: [[]] },
   );
+
+  // Workspace.get serves two distinct UI flows:
+  //   1. Path resolution (`useWorkspacePathResolve`) — must succeed with metadata for any path
+  //      that actually exists in `pathItems`, otherwise the workspace browser shows the "Folder
+  //      not found" dialog when navigating into a real subfolder.
+  //   2. Output-name availability (`checkWorkspaceObjectExists`) — must return non-200 for paths
+  //      that don't exist, otherwise the form's submit button stays disabled.
+  // We resolve known paths against the assembled `pathItems` map. Unknown paths fall through to
+  // a 500 so the availability check treats them as available.
+  const getKnownOverride: JsonOverride = {
+    url: /\/api\/services\/workspace(?:$|\?)/,
+    method: "POST",
+    matchBody: (parsed) => {
+      const body = parsed as { method?: string; params?: unknown[] } | null;
+      if (body?.method !== "Workspace.get") return false;
+      const objects = (body.params?.[0] as { objects?: string[] } | undefined)?.objects ?? [];
+      return objects.some((p) => findKnownItem(pathItems, p) !== null);
+    },
+    body: ({ parsedBody }) => {
+      const objects =
+        ((parsedBody as { params?: unknown[] } | null)?.params?.[0] as
+          | { objects?: string[] }
+          | undefined)?.objects ?? [];
+      const perPath = objects.map((p) => {
+        const item = findKnownItem(pathItems, p);
+        return item ? [workspaceTuple(item)] : [];
+      });
+      return { result: [perPath] };
+    },
+  };
+
+  const getNotFoundOverride: JsonOverride = {
+    url: /\/api\/services\/workspace(?:$|\?)/,
+    method: "POST",
+    matchBody: (parsed) =>
+      (parsed as { method?: string } | null)?.method === "Workspace.get",
+    status: 500,
+    body: { error: { code: -32000, message: "Object not found" } },
+  };
 
   // Fallback for any Workspace.* methods we haven't explicitly mocked. Keeps strict happy.
   const workspaceCatchall: JsonOverride = {
@@ -283,6 +382,8 @@ export function buildWorkspaceOverrides(
     createOverride,
     updateMetaOverride,
     ...(options.extraRpc ?? []),
+    getKnownOverride,
+    getNotFoundOverride,
     workspaceCatchall,
     // Proxy / preview endpoints the file viewer calls.
     {

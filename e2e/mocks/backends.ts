@@ -8,6 +8,12 @@ export interface JsonOverride {
   status?: number;
   body?: unknown;
   headers?: Record<string, string>;
+  /**
+   * Optional predicate against the parsed JSON request body. Lets multiple overrides share the
+   * same URL and HTTP method (e.g. a single JSON-RPC endpoint that dispatches many methods).
+   * If parsing fails, the predicate receives `null`.
+   */
+  matchBody?: (body: unknown) => boolean;
 }
 
 export interface BackendMockOptions {
@@ -52,10 +58,29 @@ function isBackendRequest(requestUrl: string, appHost: string | undefined): bool
   return isInternalApi(parsed, appHost);
 }
 
-function matchesOverride(override: JsonOverride, requestUrl: string, method: string): boolean {
+function matchesOverride(
+  override: JsonOverride,
+  requestUrl: string,
+  method: string,
+  parsedBody: unknown,
+): boolean {
   if (override.method && override.method.toUpperCase() !== method.toUpperCase()) return false;
-  if (typeof override.url === "string") return requestUrl.includes(override.url);
-  return override.url.test(requestUrl);
+  if (typeof override.url === "string") {
+    if (!requestUrl.includes(override.url)) return false;
+  } else if (!override.url.test(requestUrl)) {
+    return false;
+  }
+  if (override.matchBody && !override.matchBody(parsedBody)) return false;
+  return true;
+}
+
+function parseJsonBody(raw: string | null): unknown {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -117,7 +142,10 @@ export async function applyBackendMocks(page: Page, options: BackendMockOptions 
   if (overrides.length > 0) {
     await page.route("**/*", async (route: Route) => {
       const request = route.request();
-      const override = overrides.find((o) => matchesOverride(o, request.url(), request.method()));
+      const parsedBody = parseJsonBody(request.postData());
+      const override = overrides.find((o) =>
+        matchesOverride(o, request.url(), request.method(), parsedBody),
+      );
       if (!override) {
         await route.fallback();
         return;

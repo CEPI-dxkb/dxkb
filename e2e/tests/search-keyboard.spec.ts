@@ -56,8 +56,8 @@ test.describe("global search (keyboard journey)", () => {
 
   test("clipboard paste fills the navbar search input", async ({ page, context, browserName }) => {
     test.skip(
-      browserName === "webkit",
-      "WebKit's headless clipboard permissions are unreliable; skip until we wire up a webkit-friendly clipboard helper",
+      browserName !== "chromium",
+      "Only Chromium accepts Playwright's clipboard-read/clipboard-write permissions; Firefox rejects them as unknown and WebKit's headless clipboard is unreliable",
     );
 
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);

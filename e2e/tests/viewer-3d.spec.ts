@@ -20,14 +20,18 @@ const viewerUrl = "/viewer/structure/e2e-test-user%40patricbrc.org/home/test.pdb
 async function applyViewerMocks(page: import("@playwright/test").Page) {
   await applyBackendMocks(page, {
     overrides: [
-      ...authSessionOverrides,
-      ...workspaceOverrides,
+      // PDB override MUST come before workspaceOverrides — applyBackendMocks
+      // does first-match-wins, and workspaceOverrides has a generic
+      // /api/workspace/view GET that returns JSON `{items: []}`. If that wins
+      // here, Mol* receives JSON instead of PDB text and never mounts a canvas.
       {
         url: /\/api\/workspace\/view\//,
         method: "GET",
         status: 200,
         body: minimalPdb,
       },
+      ...authSessionOverrides,
+      ...workspaceOverrides,
       ...permissiveBackendOverrides,
     ],
   });

@@ -242,24 +242,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     setPageIndex(newPage);
   };
 
-  const handleFacetSelect = (field: string, value: string) => {
-    // optionally clear page / selection if needed
-    setPageIndex(0);
-    setRowSelection({});
-    onSelectionChange?.([]);
-
-    // convert facet click into RQL filter
-    setFilter((prev) => {
-      const newFilter = `${field}=${value}`;
-
-      // If no existing filter, just return it
-      if (!prev) return newFilter;
-
-      // otherwise AND it (simple version)
-      return `and(${prev},eq(${field},${encodeURIComponent(value)}))`;
-    });
-  };
-
   async function handleDownloadAll(format: 'csv' | 'txt', visibleColumns: string[] | null) {
     if (!totalItems) {
       console.warn('No totalItems available for download');

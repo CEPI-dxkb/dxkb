@@ -5,8 +5,8 @@ export const taxonomyFields = {
         hidden: false,
         group: 'Taxon Info',
         link: 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id={value}', 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: true 
         },
     taxon_name: { 
@@ -14,8 +14,8 @@ export const taxonomyFields = {
         field: 'taxon_name', 
         hidden: false,
         group: 'Taxon Info', 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: true 
         },
     taxon_rank: { 
@@ -32,8 +32,8 @@ export const taxonomyFields = {
         field: 'other_names', 
         hidden: false,
         group: 'Taxon Info', 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: true 
         },
     genetic_code: { 
@@ -51,8 +51,8 @@ export const taxonomyFields = {
         hidden: true,
         group: 'Taxon Info',
         show_in_table: false, 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: false  
         },
     parent_id: { 
@@ -60,8 +60,8 @@ export const taxonomyFields = {
         field: 'parent_id', 
         hidden: true,
         group: 'Taxon Info', 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: false     
         },
     division: { 
@@ -78,8 +78,8 @@ export const taxonomyFields = {
         field: 'description', 
         hidden: true,
         group: 'Taxon Info', 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: false  
         },
     genomes: { 
@@ -87,8 +87,8 @@ export const taxonomyFields = {
         field: 'genomes', 
         hidden: false,
         group: 'Taxon Info', 
-        facet: true, 
-        facet_hidden: false, 
+        facet: false, 
+        facet_hidden: true, 
         search: true 
         },
     };

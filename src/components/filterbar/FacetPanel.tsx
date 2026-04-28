@@ -66,9 +66,6 @@ export function FacetPanel({
   }, [fields]);
 
   useEffect(() => {
-    // ---------------------------------------------------
-    // HARD GUARDS (THIS FIXES YOUR CURRENT ERROR)
-    // ---------------------------------------------------
     if (!DataAPI) return;
     if (!resource) return;
     if (!fields || fields.length === 0) {
@@ -96,7 +93,7 @@ export function FacetPanel({
         }
 
         // ---------------------------------------------------
-        // BUILD FACET STRING (DOJO-EQUIVALENT)
+        // BUILD FACET STRING 
         // ---------------------------------------------------
         const facetFieldsStr = validFields.join(',');
 

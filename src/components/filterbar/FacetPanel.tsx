@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { FacetColumn } from './FacetColumn';
 
 interface FacetItem {
@@ -55,14 +55,11 @@ export function FacetPanel({
 }: FacetPanelProps) {
   const [facets, setFacets] = useState<Record<string, FacetItem[]>>({});
   const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
-  const [visibleFacets, setVisibleFacets] = useState<string[]>([]);
 
-  useEffect(() => {
-    const initial = fields
+  const visibleFacets = useMemo(() => {
+    return fields
       .filter(f => f.facet && !f.facet_hidden)
       .map(f => f.id);
-
-    setVisibleFacets(initial);
   }, [fields]);
 
   useEffect(() => {

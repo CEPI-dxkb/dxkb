@@ -165,6 +165,38 @@ describe("harOverridesFor", () => {
     expect(headers).not.toHaveProperty("Authentication-Info");
   });
 
+  // The recorder captures the live server's framing headers verbatim, but
+  // route.fulfill re-serializes the body so values like `Transfer-Encoding:
+  // chunked`, `Content-Length`, or `Content-Encoding: gzip` would no longer
+  // describe the bytes the browser actually receives.
+  it("strips hop-by-hop and body-shape headers from replayed responses", () => {
+    const harPath = writeHar(tmpDir, "transport.har", [
+      {
+        request: { method: "GET", url: "http://e2e-har-replay.local/api/services/foo" },
+        response: {
+          status: 200,
+          headers: [
+            { name: "Connection", value: "keep-alive" },
+            { name: "Keep-Alive", value: "timeout=5" },
+            { name: "Transfer-Encoding", value: "chunked" },
+            { name: "Content-Length", value: "1234" },
+            { name: "Content-Encoding", value: "gzip" },
+            { name: "Content-Type", value: "application/json" },
+          ],
+          content: { text: '{"ok":true}' },
+        },
+      },
+    ]);
+
+    const headers = harOverridesFor(harPath)[0].headers ?? {};
+    expect(headers).toHaveProperty("Content-Type", "application/json");
+    expect(headers).not.toHaveProperty("Connection");
+    expect(headers).not.toHaveProperty("Keep-Alive");
+    expect(headers).not.toHaveProperty("Transfer-Encoding");
+    expect(headers).not.toHaveProperty("Content-Length");
+    expect(headers).not.toHaveProperty("Content-Encoding");
+  });
+
   it("uses path+search so the host placeholder is irrelevant", () => {
     // The recorder rewrites every recorded host to `http://e2e-har-replay.local`.
     // The override matcher does a `requestUrl.includes(override.url)` check

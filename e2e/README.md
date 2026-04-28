@@ -111,7 +111,7 @@ Steps:
 
 Two integration modes — pick the one that matches what the spec is asserting.
 
-**Auth-shape contract test (`{ har }` option).** Routes the entire recorded HAR through `page.routeFromHAR`. URL+method matching only; for endpoints recorded multiple times the *first* matching response is served on every call. Use this when the spec drives the recorded auth flow itself and just asserts the sign-in response shape (drift canary against contract changes). `auth.spec.ts` is the canonical example.
+**Auth-shape contract test (`{ har }` option).** Routes the entire recorded HAR through `page.routeFromHAR`. Matching is strict: URL + HTTP method, plus an exact POST-payload comparison for POSTs, with header similarity as the tiebreaker when multiple entries match the same key. Use this when the spec drives the recorded auth flow itself and just asserts the sign-in response shape (drift canary against contract changes) — strict-body matching is fine here because the spec replays the same payload bytes the recorder captured. `auth.spec.ts` is the canonical example.
 
 ```ts
 await applyBackendMocks(page, {

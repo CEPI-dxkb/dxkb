@@ -105,13 +105,18 @@ test.describe("workspace viewer", () => {
 // refresh sees a signed-in user instead of the HAR's pre-sign-in
 // `{user:null}` probe. The auth-shape contract test against
 // `auth-sign-in.har` lives in `auth.spec.ts`; not duplicated here.
+//
+// No `permissiveBackendOverrides` here on purpose — this spec is the canary
+// that the recorded HAR fully covers the viewer journey. A catch-all would
+// silently serve `{}` / `{result:[[]]}` for any drift in coverage and the
+// test would still pass; instead we let the strict guard fail loudly so the
+// missing replay surfaces and the HAR can be re-recorded.
 test.describe("workspace viewer via recorded HAR replay", () => {
   test("opens readme.txt and renders the recorded file content", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
         ...harOverridesFor("workspace-viewer.har"),
-        ...permissiveBackendOverrides,
       ],
     });
 

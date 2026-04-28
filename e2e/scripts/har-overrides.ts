@@ -40,6 +40,25 @@ const sensitiveHeaders = new Set([
   "x-api-key",
 ]);
 
+// Hop-by-hop transport headers (RFC 7230 §6.1) plus body-shape headers whose
+// values are tied to the original wire bytes. Replaying any of these against
+// `route.fulfill` lies to the browser about a body Playwright re-serializes:
+// `Transfer-Encoding: chunked` claims chunked framing on a non-chunked body,
+// the recorded `Content-Length` no longer matches the served bytes once the
+// body has been re-encoded, and `Content-Encoding: gzip` claims the body is
+// compressed when the HAR stored it as decoded text. Drop them and let the
+// runtime compute fresh framing/length from whatever it actually serves.
+const transportHeaders = new Set([
+  "connection",
+  "keep-alive",
+  "transfer-encoding",
+  "te",
+  "trailer",
+  "upgrade",
+  "content-length",
+  "content-encoding",
+]);
+
 /**
  * Pull the JSON-RPC `method` field out of a request body, or null if the body
  * is empty / non-JSON / lacks a string-typed `method` field. The override
@@ -84,9 +103,9 @@ function urlToPathSearch(url: string): string {
 function pickHeaders(headers: HarHeader[] | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const header of headers ?? []) {
-    if (!sensitiveHeaders.has(header.name.toLowerCase())) {
-      out[header.name] = header.value;
-    }
+    const lower = header.name.toLowerCase();
+    if (sensitiveHeaders.has(lower) || transportHeaders.has(lower)) continue;
+    out[header.name] = header.value;
   }
   return out;
 }

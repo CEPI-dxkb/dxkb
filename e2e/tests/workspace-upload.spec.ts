@@ -80,11 +80,16 @@ test.describe("workspace upload via recorded HAR replay", () => {
   test("uploads a file and the recorded post-upload listing renders the new row", async ({
     page,
   }) => {
+    // No `permissiveBackendOverrides` here on purpose — this spec is the
+    // canary that the recorded HAR fully covers the upload journey. Letting
+    // the catch-all "mop up anything the HAR didn't capture" would silently
+    // serve `{}` / `{result:[[]]}` for any drift in coverage and the test
+    // would still pass; instead we let the strict guard fail loudly so the
+    // missing replay surfaces and the HAR can be re-recorded.
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
         ...harOverridesFor("workspace-upload.har"),
-        ...permissiveBackendOverrides,
       ],
     });
 

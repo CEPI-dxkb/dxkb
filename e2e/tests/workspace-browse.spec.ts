@@ -196,16 +196,19 @@ test.describe("workspace browse", () => {
 // captured the pre-sign-in signed-out probe) can reach the handler. The
 // AuthBoundary's hydration refresh would otherwise see `{user:null}` and
 // redirect to `/sign-in` before the workspace listing rendered. `harOverridesFor`
-// then handles every recorded `/api/services/workspace` call;
-// `permissiveBackendOverrides` mops up anything the HAR didn't capture so
-// strict mode doesn't trip over an unmocked call from a future code path.
+// then handles every recorded `/api/services/workspace` call.
+//
+// No `permissiveBackendOverrides` here on purpose — this spec is the canary
+// that the recorded HAR fully covers the browse journey. A catch-all would
+// silently serve `{}` / `{result:[[]]}` for any drift in coverage and the
+// test would still pass; instead we let the strict guard fail loudly so the
+// missing replay surfaces and the HAR can be re-recorded.
 test.describe("workspace browse via recorded HAR replay", () => {
   test("renders the recorded workspace listing", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
         ...harOverridesFor("workspace-browse.har"),
-        ...permissiveBackendOverrides,
       ],
     });
 

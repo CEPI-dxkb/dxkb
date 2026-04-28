@@ -61,7 +61,7 @@ interface HarEntry {
   };
 }
 
-function sanitizeHar(
+export function sanitizeHar(
   harPath: string,
   user: string,
   password: string,
@@ -75,8 +75,6 @@ function sanitizeHar(
   const emailRe = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
   const originRe = new RegExp(escapeRegExp(recordedOrigin), "g");
 
-  // Whole-document scrub: replace credentials, emails, and the recorded host
-  // origin in any string in the HAR. Used once on the serialized JSON below.
   const scrub = (text: string): string => {
     let next = text;
     if (passwordRe) next = next.replace(passwordRe, E2E_PASSWORD_PLACEHOLDER);
@@ -89,20 +87,25 @@ function sanitizeHar(
     headers?.filter((h) => !SENSITIVE_HEADER_NAMES.has(h.name.toLowerCase()));
 
   for (const entry of har.log.entries) {
-    // Drop sensitive headers + structured cookies; the value-scrub below handles
-    // non-sensitive headers (Referer, etc.) and the parsed queryString/cookies arrays.
+    // Drop sensitive headers + structured cookies; the per-string scrub below
+    // handles non-sensitive headers (Referer, etc.) and parsed queryString/cookies.
     entry.request.headers = stripSensitiveHeaders(entry.request.headers);
     entry.response.headers = stripSensitiveHeaders(entry.response.headers);
     if (entry.response.cookies) entry.response.cookies = [];
   }
 
-  // Whole-document scrub. Catches every place the username can leak —
-  // request.url, response.redirectURL, request.queryString[].value,
-  // request.cookies[].value, non-sensitive header values (Referer, Origin),
-  // entry.pageref, response.content.text, request.postData.text, and anything
-  // Playwright adds in a future schema bump — without us having to enumerate
-  // every field by hand.
-  fs.writeFileSync(harPath, scrub(JSON.stringify(har, null, 2)));
+  // Scrub during serialization via a replacer so each string is matched in its
+  // unescaped form. Scrubbing the post-stringify text would miss credentials
+  // containing JSON-escaped chars (e.g. a password with `"` or `\` becomes
+  // `\"` / `\\` in the output and the raw-credential regex no longer matches).
+  // Reaches every place the username can leak — request.url, response.redirectURL,
+  // queryString/cookies values, non-sensitive header values, entry.pageref,
+  // response.content.text, request.postData.text, and anything Playwright adds
+  // in a future schema bump — without enumerating fields by hand.
+  fs.writeFileSync(
+    harPath,
+    JSON.stringify(har, (_key, value) => (typeof value === "string" ? scrub(value) : value), 2),
+  );
   assertNoSensitiveData(harPath, user, password);
 }
 
@@ -112,14 +115,23 @@ function sanitizeHar(
  * `sanitizeHar`. The check runs against the on-disk file (post-write), so it
  * catches drift in either the sanitizer or the HAR shape.
  */
-function assertNoSensitiveData(harPath: string, user: string, password: string): void {
+export function assertNoSensitiveData(harPath: string, user: string, password: string): void {
   const text = fs.readFileSync(harPath, "utf8");
   const violations: string[] = [];
 
-  if (user && text.includes(user)) {
+  // A credential containing `"`, `\`, or a control character is JSON-escaped
+  // in the on-disk file (e.g. `pa$$"word` → `pa$$\"word`), so a raw
+  // `text.includes(secret)` would miss the leak. Check the JSON-escaped form too.
+  const includesAnyForm = (secret: string): boolean => {
+    if (text.includes(secret)) return true;
+    const escaped = JSON.stringify(secret).slice(1, -1);
+    return escaped !== secret && text.includes(escaped);
+  };
+
+  if (user && includesAnyForm(user)) {
     violations.push(`live username "${user}" appears in HAR`);
   }
-  if (password && text.includes(password)) {
+  if (password && includesAnyForm(password)) {
     violations.push(`live password appears in HAR`);
   }
   // BV-BRC tokens are pipe-delimited fields ending in a hex `sig=` — match the
@@ -275,7 +287,12 @@ async function main(): Promise<void> {
   console.log(`HAR saved to ${harPath}`);
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// Only run main() when invoked as a script. Vitest imports this module to
+// exercise sanitizeHar / assertNoSensitiveData directly; without the guard the
+// recorder would launch a browser whenever the test file is loaded.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}

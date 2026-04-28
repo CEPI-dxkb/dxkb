@@ -3,20 +3,20 @@
 import { useEffect, useState } from 'react';
 import { FacetColumn } from './FacetColumn';
 
-type FacetItem = {
+interface FacetItem {
   label: string;
   value: string;
   count: number;
 };
 
-type ColumnField = {
+interface ColumnField {
   id: string;
   label: string;
   facet?: boolean;
   facet_hidden?: boolean;
 };
 
-type FacetPanelProps = {
+interface FacetPanelProps {
   fields: ColumnField[];
   query: string;
   resource: string;

@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { harOverridesFor } from "../har-overrides";
+import { harOverridesFor, uploadedFilenameFromHar } from "../har-overrides";
 
 interface MinimalEntry {
   request: { method: string; url: string; postData?: { text: string } };
@@ -249,5 +249,76 @@ describe("harOverridesFor", () => {
     } finally {
       process.chdir(cwd);
     }
+  });
+});
+
+describe("uploadedFilenameFromHar", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "har-overrides-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns the basename of the Workspace.create object path", () => {
+    const harPath = writeHar(tmpDir, "upload.har", [
+      {
+        request: {
+          method: "POST",
+          url: "http://e2e-har-replay.local/api/services/workspace",
+          postData: { text: '{"id":1,"method":"Workspace.ls","params":[]}' },
+        },
+        response: { status: 200, content: { text: '{"result":[]}' } },
+      },
+      {
+        request: {
+          method: "POST",
+          url: "http://e2e-har-replay.local/api/services/workspace",
+          postData: {
+            text: JSON.stringify({
+              id: 1,
+              method: "Workspace.create",
+              params: [
+                {
+                  objects: [
+                    [
+                      "/e2e-test-user@bvbrc/home/.e2e-records/recorded-2026-04-28T16-22-52-740Z.txt",
+                      "unspecified",
+                      {},
+                      "",
+                    ],
+                  ],
+                  createUploadNodes: true,
+                },
+              ],
+              jsonrpc: "2.0",
+            }),
+          },
+        },
+        response: { status: 200, content: { text: "{}" } },
+      },
+    ]);
+
+    expect(uploadedFilenameFromHar(harPath)).toBe(
+      "recorded-2026-04-28T16-22-52-740Z.txt",
+    );
+  });
+
+  it("throws when no Workspace.create entry is present", () => {
+    const harPath = writeHar(tmpDir, "no-upload.har", [
+      {
+        request: {
+          method: "POST",
+          url: "http://e2e-har-replay.local/api/services/workspace",
+          postData: { text: '{"id":1,"method":"Workspace.ls","params":[]}' },
+        },
+        response: { status: 200, content: { text: '{"result":[]}' } },
+      },
+    ]);
+
+    expect(() => uploadedFilenameFromHar(harPath)).toThrow(/Workspace\.create/);
   });
 });

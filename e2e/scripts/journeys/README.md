@@ -9,8 +9,22 @@ HMR plumbing blocks React hydration in headless Chromium, leaving the auth bound
 stuck in `loading` and the sign-in form unsubmittable. Run `pnpm build && pnpm start`
 in another terminal first.
 
-The resulting HAR lands in `e2e/fixtures/hars/<name>.har` and is consumed by specs
-via `applyBackendMocks(page, { har: "<name>.har", overrides: [...] })`.
+The resulting HAR lands in `e2e/fixtures/hars/<name>.har`. How a spec consumes it
+depends on what the spec is asserting:
+
+- **Auth-shape contract test:** `applyBackendMocks(page, { har: "<name>.har", overrides: [] })`.
+  Routes the entire HAR through `page.routeFromHAR` (URL + method + strict POST-body
+  match). Use this only when the spec replays the recorded auth payload itself —
+  `auth.spec.ts` against `auth-sign-in.har` is the canonical example.
+- **Body-aware journey replay (everything else):** `harOverridesFor("<name>.har")`
+  from `../scripts/har-overrides`. `routeFromHAR` matches URL + method only and
+  cannot disambiguate the four-plus JSON-RPC methods that share
+  `/api/services/workspace`, so a `{ har }` wiring would serve the first recorded
+  response for every workspace call. `harOverridesFor` parses the HAR and emits one
+  override per `(path, method, JSON-RPC method)` tuple, with `matchBody` fanning the
+  RPC entry point out by request `method`. This is what the workspace, viewer,
+  upload, jobs, and service-submit replay specs use; see `e2e/README.md` ("Wiring a
+  HAR into a spec") for the full rationale.
 
 When no driver file exists for a journey name, the recorder falls back to launching
 a headed browser and waiting for the operator to drive manually — same behaviour as
@@ -68,8 +82,9 @@ day, which yanks the recording every refresh.
 2. `pnpm build && pnpm start` in another terminal so the production server is
    listening on `E2E_RECORD_BASE_URL` (default `http://127.0.0.1:3010`).
 3. `pnpm e2e:record <name>` to capture.
-4. Wire `e2e/fixtures/hars/<name>.har` into the relevant spec via
-   `applyBackendMocks(page, { har, overrides })`.
+4. Wire `e2e/fixtures/hars/<name>.har` into the relevant spec — use
+   `harOverridesFor("<name>.har")` for body-aware journey replay, or the `{ har }`
+   option only for auth-shape contract tests (see the modes described above).
 5. Add the journey to the right group in `.github/workflows/e2e-har-refresh.yml`'s
    matrix:
    - `read-only` group → covered by the cron automatically.

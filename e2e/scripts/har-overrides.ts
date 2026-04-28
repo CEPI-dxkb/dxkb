@@ -202,3 +202,51 @@ export function harOverridesFor(harPath: string): JsonOverride[] {
     return override;
   });
 }
+
+/**
+ * Find the basename of the file uploaded in a recorded upload HAR.
+ *
+ * The upload dialog fires a `Workspace.create` JSON-RPC call before posting the
+ * multipart body; that call's `params[0].objects[0][0]` is the absolute
+ * workspace path of the new file. Re-recordings produce a fresh timestamped
+ * name (`recorded-<ISO>.txt`) every run, so specs that assert on the uploaded
+ * row would otherwise need a manual edit on every HAR refresh — derive the
+ * name from the HAR instead.
+ */
+export function uploadedFilenameFromHar(harPath: string): string {
+  const resolvedPath = path.isAbsolute(harPath)
+    ? harPath
+    : path.resolve(process.cwd(), "e2e/fixtures/hars", harPath);
+  const har = JSON.parse(fs.readFileSync(resolvedPath, "utf8")) as HarFile;
+
+  for (const entry of har.log.entries) {
+    const body = entry.request.postData?.text;
+    if (!body) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      continue;
+    }
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      (parsed as { method?: unknown }).method !== "Workspace.create"
+    ) {
+      continue;
+    }
+    const params = (parsed as { params?: unknown }).params;
+    if (!Array.isArray(params)) continue;
+    const first = params[0] as { objects?: unknown } | undefined;
+    if (!first || !Array.isArray(first.objects)) continue;
+    const obj = first.objects[0];
+    if (!Array.isArray(obj) || typeof obj[0] !== "string") continue;
+    const fullPath = obj[0];
+    const basename = fullPath.split("/").pop();
+    if (basename) return basename;
+  }
+
+  throw new Error(
+    `No Workspace.create entry with an object path found in ${harPath}`,
+  );
+}

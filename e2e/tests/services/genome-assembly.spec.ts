@@ -144,6 +144,12 @@ test.describe("genome assembly submission", () => {
 // `authSessionOverrides` layers first to keep the AuthBoundary's
 // hydration refresh signed-in; the auth-shape contract test against
 // `auth-sign-in.har` lives in `auth.spec.ts` and isn't duplicated here.
+//
+// No `permissiveBackendOverrides` here on purpose — this spec is the canary
+// that the recorded HAR fully covers the form-load journey. A catch-all
+// would silently serve `{}` / `{result:[[]]}` for any drift in coverage and
+// the test would still pass; instead we let the strict guard fail loudly so
+// the missing replay surfaces and the HAR can be re-recorded.
 test.describe("genome assembly via recorded HAR replay", () => {
   test("renders the form heading and submit button from recorded form-load traffic", async ({
     page,
@@ -152,7 +158,6 @@ test.describe("genome assembly via recorded HAR replay", () => {
       overrides: [
         ...authSessionOverrides,
         ...harOverridesFor("service-submit.har"),
-        ...permissiveBackendOverrides,
       ],
     });
 

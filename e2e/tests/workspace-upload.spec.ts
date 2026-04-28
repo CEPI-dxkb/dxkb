@@ -5,7 +5,7 @@ import {
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
-import { harOverridesFor } from "../scripts/har-overrides";
+import { harOverridesFor, uploadedFilenameFromHar } from "../scripts/har-overrides";
 
 test.describe("workspace upload", () => {
   test("uploads a file through the dialog and the new row appears in the listing", async ({ page }) => {
@@ -69,9 +69,10 @@ test.describe("workspace upload", () => {
 // We upload a placeholder file from the spec; the upload POST is
 // multipart (no JSON-RPC method) so the HAR override matches by
 // URL+method only and serves the recorded response regardless of the
-// spec's filename. The recorded post-upload Workspace.ls names a specific
-// timestamped file (`recorded-2026-04-28T16-22-52-740Z.txt`); that's what
-// shows up in the listing assertion.
+// spec's filename. The recorded post-upload Workspace.ls names a
+// timestamped file the recorder generated; the spec reads that name out
+// of the HAR's `Workspace.create` entry via `uploadedFilenameFromHar` so
+// re-recording the HAR doesn't require a parallel edit here.
 //
 // `authSessionOverrides` layers first to keep the AuthBoundary's
 // hydration refresh signed-in; auth-shape contract testing lives in
@@ -111,12 +112,13 @@ test.describe("workspace upload via recorded HAR replay", () => {
     await dialog.getByRole("button", { name: /^start upload$/i }).click();
     await expect(dialog).toBeHidden();
 
-    // The recorded post-upload `Workspace.ls` (entry 11) names this exact
-    // file. If the HAR-derived overrides actually drove the post-upload
-    // refetch, the row appears; if the upload POST or the refetch missed
-    // the override path, the listing would still show only the pre-upload
-    // file.
-    const newFile = "recorded-2026-04-28T16-22-52-740Z.txt";
+    // The recorded post-upload `Workspace.ls` names whichever timestamped
+    // file the recorder generated this run; pull that name out of the HAR
+    // so the assertion stays in sync with the fixture across re-records.
+    // If the HAR-derived overrides actually drove the post-upload refetch,
+    // the row appears; if the upload POST or the refetch missed the
+    // override path, the listing would still show only the pre-upload file.
+    const newFile = uploadedFilenameFromHar("workspace-upload.har");
     await expect(workspace.rowByName(newFile).first()).toBeVisible();
   });
 });

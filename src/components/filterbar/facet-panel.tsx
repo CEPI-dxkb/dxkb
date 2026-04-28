@@ -155,7 +155,7 @@ export function FacetPanel({
     };
 
     fetchFacets();
-  }, [fields, query, resource, DataAPI]);
+  }, [fields, query, resource, DataAPI, selected]);
 
   return (
     <div className="flex gap-3 overflow-x-auto max-h-[120px] overflow-y-auto bg-gray-800 p-2 rounded text-[11px]">

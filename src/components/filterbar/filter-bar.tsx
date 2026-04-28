@@ -1,14 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { buildRql } from './filterUtils';
-import { KeywordSearch } from './KeywordSearch';
-import { SelectedFilters } from './SelectedFilters';
-import { FacetPanel } from './FacetPanel';
-
-interface SelectedFilter {
-  field: string;
-  value: string | [string, string];
-  op: 'eq' | 'ne' | 'gt' | 'lt' | 'between';
-};
+import { buildRql } from "./filter-utils";
+import { KeywordSearch } from "./keyword-search";
+import { SelectedFilters } from "./selected-filters";
+import { FacetPanel } from "./facet-panel";
+import { SelectedFilter } from "@/types/filters";
 
 interface ColumnField {
   id: string;
@@ -66,8 +61,8 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -79,8 +74,8 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
         {/* LEFT SIDE */}
         <div className="flex flex-col gap-1 flex-1">
           <KeywordSearch
-            value={keywords.join(' ')}
-            onChange={(val) => setKeywords(val.split(' ').filter(Boolean))}
+            value={keywords.join(" ")}
+            onChange={(val) => setKeywords(val.split(" ").filter(Boolean))}
           />
 
           <SelectedFilters
@@ -131,8 +126,8 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
             disabled={selected.length === 0 && keywords.length === 0}
             className={`text-xs px-2 py-1 border rounded whitespace-nowrap ${
               selected.length === 0 && keywords.length === 0
-                ? 'border-gray-600 text-gray-500 cursor-not-allowed'
-                : 'border-red-400 text-red-300 hover:bg-red-900'
+                ? "border-gray-600 text-gray-500 cursor-not-allowed"
+                : "border-red-400 text-red-300 hover:bg-red-900"
             }`}          
           >
             Clear All Filters
@@ -143,7 +138,7 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
             onClick={() => setShowFacets((prev) => !prev)}
             className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700 whitespace-nowrap"
           >
-            {showFacets ? 'Hide Filters' : 'Show Filters'}
+            {showFacets ? "Hide Filters" : "Show Filters"}
           </button>
 
         </div>
@@ -155,11 +150,20 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
           fields={activeFacetFields}
           resource={resource}
           query={query}
+          selected={selected}
           onSelect={(field, value) => {
-            setSelected((prev) => [
-              ...prev,
-              { field, value, op: 'eq' as const },
-            ]);
+            setSelected((prev) => {
+              const exists = prev.some(
+                f => f.field === field && f.value === value
+              );
+
+              if (exists) return prev;
+
+              return [
+                ...prev,
+                { field, value, op: "eq" as const },
+              ];
+            });
           }}
         />
       )}

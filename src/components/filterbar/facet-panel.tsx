@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo } from 'react';
-import { FacetColumn } from './FacetColumn';
+import { useEffect, useState, useMemo, useRef } from "react";
+import { FacetColumn } from "./facet-column";
+import { SelectedFilter } from "@/types/filters";
 
 interface FacetItem {
   label: string;
@@ -21,6 +22,7 @@ interface FacetPanelProps {
   query: string;
   resource: string;
   onSelect: (field: string, value: string) => void;
+  selected: SelectedFilter[];
 };
 
 // ------------------------------
@@ -52,9 +54,11 @@ export function FacetPanel({
   query,
   resource,
   onSelect,
+  selected,
 }: FacetPanelProps) {
   const [facets, setFacets] = useState<Record<string, FacetItem[]>>({});
   const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
+  const requestId = useRef(0);
 
   const visibleFacets = useMemo(() => {
     return fields
@@ -66,11 +70,13 @@ export function FacetPanel({
     if (!DataAPI) return;
     if (!resource) return;
     if (!fields || fields.length === 0) {
-      console.warn('FacetPanel: fields not ready yet — skipping fetch');
+      console.warn("FacetPanel: fields not ready yet — skipping fetch");
       return;
     }
 
     const fetchFacets = async () => {
+      const currentRequest = ++requestId.current;
+
       try {
 
         // ---------------------------------------------------
@@ -79,51 +85,55 @@ export function FacetPanel({
         const validFields = fields
           .filter((f): f is ColumnField =>
             f &&
-            typeof f.id === 'string' &&
+            typeof f.id === "string" &&
             f.id.trim().length > 0
           )
           .map(f => f.id);
           
         if (validFields.length === 0) {
-          console.warn('FacetPanel: no valid facet fields', fields);
+          console.warn("FacetPanel: no valid facet fields", fields);
           return;
         }
 
         // ---------------------------------------------------
         // BUILD FACET STRING 
         // ---------------------------------------------------
-        const facetFieldsStr = validFields.join(',');
+        const facetFieldsStr = validFields.join(",");
 
         if (!facetFieldsStr) {
-          console.warn('FacetPanel: facetFieldsStr empty');
+          console.warn("FacetPanel: facetFieldsStr empty");
           return;
         }
 
         const facetStr = `facet(${facetFieldsStr},(mincount,1),(limit,100))`;
-
+        const filterStr = selected
+          .map(f => `eq(${f.field},${f.value})`)
+          .join(",");
+          
         const RQLstring = [
-          query || '',
-          'limit(1)',
+          query || "",
+          filterStr,
+          "limit(1)",
           facetStr
         ]
           .filter(Boolean)
-          .join('&');
+          .join("&");
 
         const url = `${DataAPI}/${resource}/?${RQLstring}`;
-        console.log('Fetching facets with URL:', url);
+        console.log("Fetching facets with URL:", url);
         // ---------------------------------------------------
         // FETCH
         // ---------------------------------------------------
         const res = await fetch(url, {
           headers: {
-            'Accept': 'application/solr+json',
+            "Accept": "application/solr+json",
           },
         });
 
         if (!res.ok) {
           const text = await res.text();
-          console.error('Facet error response:', text);
-          throw new Error('Failed to fetch facets');
+          console.error("Facet error response:", text);
+          throw new Error("Failed to fetch facets");
         }
 
         const json = await res.json();
@@ -131,13 +141,16 @@ export function FacetPanel({
         // ---------------------------------------------------
         // PARSE RESPONSE
         // ---------------------------------------------------
+ // 🚨 ignore stale responses
+        if (currentRequest !== requestId.current) return;
+        
         const parsed = parseFacetCounts(
           json?.facet_counts?.facet_fields || {}
         );
 
         setFacets(parsed);
       } catch (err) {
-        console.error('Facet fetch error:', err);
+        console.error("Facet fetch error:", err);
       }
     };
 

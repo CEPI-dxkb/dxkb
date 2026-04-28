@@ -12,7 +12,7 @@ interface FacetColumnProps {
 
 export function FacetColumn({ field, items, onSelect }: FacetColumnProps) {
   return (
-    <div className="min-w-[200px] text-white text-[10px]">
+    <div className="min-w-[200px] text-white text-[12px]">
       {/* Title */}
       <div className="font-semibold mb-2 border-b border-gray-500">
         {field.label}

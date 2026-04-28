@@ -6,7 +6,7 @@ import { DataTable } from "@/components/shared/data-table";
 import { SortingState, RowSelectionState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { noop } from "@/lib/utils";
-import { FilterBar } from "@/components/filterbar/FilterBar";
+import { FilterBar } from "@/components/filterbar/filter-bar";
 
 interface ColumnInfo {
   id: string;

@@ -9,7 +9,7 @@ import {
   workspaceErrorOverrides,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
-import { WorkspacePage } from "../pages";
+import { SignInPage, WorkspacePage } from "../pages";
 
 test.describe("workspace browse", () => {
   test("populated listing renders rows for each workspace item", async ({ page }) => {
@@ -172,5 +172,48 @@ test.describe("workspace browse", () => {
     const content = JSON.parse(String(tuple[3])) as { folders?: string[] };
     expect(content.folders).toContain(`${e2eHomePath}/Datasets`);
     expect(body.params?.[0]?.overwrite).toBe(1);
+  });
+});
+
+// Replays the auth section of the recorded `workspace-browse.har` to validate
+// the live BV-BRC sign-in response shape every journey driver depends on. The
+// post-auth workspace traffic in the HAR is NOT exercised here: `Set-Cookie`
+// is scrubbed by the recorder for safety, so a HAR-driven sign-in cannot unlock
+// the middleware-gated `/workspace/*` route. Body-aware replay across the four
+// JSON-RPC POSTs that share `/api/services/workspace` would also need a
+// custom harness — `routeFromHAR` only matches URL+method. The override-based
+// tests above cover those workspace shapes; this one closes the auth-shape
+// loop against the same HAR the bi-weekly refresh re-records.
+test.describe("workspace browse via recorded HAR replay", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("auth flow hydrates from recorded HAR", async ({ page }) => {
+    // No `permissiveBackendOverrides` here: those have a `/\/api\/auth\//` POST
+    // catch-all that would intercept the sign-in call before HAR replay sees it,
+    // returning `{}` instead of the recorded session payload.
+    await applyBackendMocks(page, { har: "workspace-browse.har" });
+
+    const signIn = new SignInPage(page);
+    await signIn.goto();
+
+    const signInResponse = page.waitForResponse(
+      (res) =>
+        res.url().endsWith("/api/auth/sign-in/email") &&
+        res.request().method() === "POST",
+    );
+    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
+    await signIn.submit();
+    const res = await signInResponse;
+    const body = (await res.json()) as {
+      user?: Record<string, unknown>;
+      session?: Record<string, unknown>;
+    };
+    expect(body.user).toMatchObject({
+      username: "e2e-test-user",
+      realm: "bvbrc",
+      email_verified: true,
+    });
+    expect(body.session).toHaveProperty("expiresAt");
+    await expect(page).toHaveURL(/\/$/);
   });
 });

@@ -31,66 +31,30 @@ permissions:
   contents: read
 
 jobs:
-  refresh:
-    # Two journey groups, fanned out so a single bad recording doesn't fail
-    # the whole batch:
-    #   - read-only: runs on cron + manual dispatch. Nothing writes to the
-    #     test account, so re-recording is always safe.
-    #   - write: runs on manual dispatch only, gated on the
-    #     `include_write` input. These drivers create files (and, if added
-    #     later, jobs) on the test account; we don't want a fortnightly cron
-    #     silently spamming remote state.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - group: read-only
-            journeys: auth-sign-in workspace-browse workspace-viewer jobs-lifecycle service-submit
-          - group: write
-            journeys: workspace-upload
+  # Read-only journeys: nothing writes to the test account, so re-recording
+  # is always safe. Runs on cron + every manual dispatch.
+  refresh-read-only:
+    name: Refresh read-only HARs
     runs-on: ubuntu-latest
-    # Skip on forks: secrets are not exposed there and the live backend would
-    # reject the empty credentials.
-    # Also skip the write group unless this is a manual dispatch with the
-    # opt-in input set — schedule events never get to trigger writes.
-    if: |
-      github.repository == 'chrescobar/dxkb-fork' && (
-        matrix.group == 'read-only' ||
-        (github.event_name == 'workflow_dispatch' && github.event.inputs.include_write == 'true')
-      )
+    if: github.repository == 'chrescobar/dxkb-fork'
     timeout-minutes: 20
-
     env:
       E2E_TEST_USER: ${{ secrets.E2E_TEST_USER }}
       E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
-      # Records against the production build started in step 5 below.
       E2E_RECORD_BASE_URL: http://127.0.0.1:3010
-      # Space-separated list of journey driver names for this matrix shard.
-      # Read by the "Re-record HARs" step's loop.
-      JOURNEYS: ${{ matrix.journeys }}
-
+      JOURNEYS: auth-sign-in workspace-browse workspace-viewer jobs-lifecycle service-submit
+      PR_BRANCH: chore/e2e-har-refresh-read-only
+      PR_GROUP: read-only
     steps:
-      - name: Code Checkout
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Use Node.js 24
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Build app
-        run: pnpm build
-
+      - run: pnpm install
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
       - name: Start production server
         run: |
           pnpm start > /tmp/next-start.log 2>&1 &
@@ -105,7 +69,6 @@ jobs:
           echo "server failed to start within 60s" >&2
           tail -50 /tmp/next-start.log >&2
           exit 1
-
       - name: Write .env.e2e from secrets
         run: |
           umask 077
@@ -113,18 +76,13 @@ jobs:
             printf 'E2E_TEST_USER=%s\n' "$E2E_TEST_USER"
             printf 'E2E_TEST_PASSWORD=%s\n' "$E2E_TEST_PASSWORD"
           } > .env.e2e
-
       - name: Re-record HARs
         run: |
-          # JOURNEYS is the matrix shard's list (space-separated). Each name
-          # MUST match a driver under e2e/scripts/journeys/. New journeys
-          # land in the matrix above, not here.
           for journey in $JOURNEYS; do
             echo "::group::record $journey"
             pnpm e2e:record "$journey"
             echo "::endgroup::"
           done
-
       - name: Stop server and scrub creds
         if: always()
         run: |
@@ -132,25 +90,104 @@ jobs:
             kill "$(cat /tmp/next-start.pid)" 2>/dev/null || true
           fi
           rm -f .env.e2e
-
       - name: Open PR if HARs changed
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.E2E_HAR_REFRESH_TOKEN }}
-          commit-message: "chore(e2e): refresh recorded HARs (${{ matrix.group }})"
-          # One branch per matrix group so simultaneous read-only and write
-          # runs don't race onto the same ref.
-          branch: chore/e2e-har-refresh-${{ matrix.group }}
+          commit-message: "chore(e2e): refresh recorded HARs (${{ env.PR_GROUP }})"
+          branch: ${{ env.PR_BRANCH }}
           delete-branch: true
-          title: "chore(e2e): refresh recorded HARs (${{ matrix.group }})"
+          title: "chore(e2e): refresh recorded HARs (${{ env.PR_GROUP }})"
           body: |
             Automated refresh of the journey HARs in `e2e/fixtures/hars/`
-            for the **${{ matrix.group }}** group: `${{ matrix.journeys }}`.
+            for the **${{ env.PR_GROUP }}** group.
 
             If this PR's diff shows real shape changes (new fields, renamed
             keys, status code drift), update the matching specs to assert
             against the new shape. If it shows only timestamp / nonce churn,
             merge as-is.
+
+            Triggered by `.github/workflows/e2e-har-refresh.yml`.
+          add-paths: |
+            e2e/fixtures/hars/**
+
+  # Write journeys: each run creates files / jobs on the test account, so
+  # only run on manual dispatch with the opt-in input set. Schedule events
+  # never reach this job.
+  refresh-write:
+    name: Refresh write HARs
+    runs-on: ubuntu-latest
+    if: |
+      github.repository == 'chrescobar/dxkb-fork' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.include_write == 'true'
+    timeout-minutes: 20
+    env:
+      E2E_TEST_USER: ${{ secrets.E2E_TEST_USER }}
+      E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+      E2E_RECORD_BASE_URL: http://127.0.0.1:3010
+      JOURNEYS: workspace-upload
+      PR_BRANCH: chore/e2e-har-refresh-write
+      PR_GROUP: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+      - run: pnpm install
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build
+      - name: Start production server
+        run: |
+          pnpm start > /tmp/next-start.log 2>&1 &
+          echo "$!" > /tmp/next-start.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3010 -o /dev/null; then
+              echo "server up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server failed to start within 60s" >&2
+          tail -50 /tmp/next-start.log >&2
+          exit 1
+      - name: Write .env.e2e from secrets
+        run: |
+          umask 077
+          {
+            printf 'E2E_TEST_USER=%s\n' "$E2E_TEST_USER"
+            printf 'E2E_TEST_PASSWORD=%s\n' "$E2E_TEST_PASSWORD"
+          } > .env.e2e
+      - name: Re-record HARs
+        run: |
+          for journey in $JOURNEYS; do
+            echo "::group::record $journey"
+            pnpm e2e:record "$journey"
+            echo "::endgroup::"
+          done
+      - name: Stop server and scrub creds
+        if: always()
+        run: |
+          if [ -f /tmp/next-start.pid ]; then
+            kill "$(cat /tmp/next-start.pid)" 2>/dev/null || true
+          fi
+          rm -f .env.e2e
+      - name: Open PR if HARs changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.E2E_HAR_REFRESH_TOKEN }}
+          commit-message: "chore(e2e): refresh recorded HARs (${{ env.PR_GROUP }})"
+          branch: ${{ env.PR_BRANCH }}
+          delete-branch: true
+          title: "chore(e2e): refresh recorded HARs (${{ env.PR_GROUP }})"
+          body: |
+            Automated refresh of the journey HARs in `e2e/fixtures/hars/`
+            for the **${{ env.PR_GROUP }}** group.
+
+            Triggered manually with `include_write: true`. Each run wrote a
+            file to the test account; sweep `home/.e2e-records/` periodically.
 
             Triggered by `.github/workflows/e2e-har-refresh.yml`.
           add-paths: |

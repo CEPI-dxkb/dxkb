@@ -6,7 +6,7 @@ import {
   mockLifecycleJobs,
   permissiveBackendOverrides,
 } from "../../fixtures/overrides";
-import { JobsListPage, ServiceFormPage } from "../../pages";
+import { JobsListPage, ServiceFormPage, SignInPage } from "../../pages";
 
 test.describe("genome assembly submission", () => {
   /**
@@ -126,5 +126,44 @@ test.describe("genome assembly submission", () => {
     await form.goto("/services/genome-assembly");
     await expect(form.heading).toBeVisible();
     await expect(page.getByRole("button", { name: /assemble/i })).toBeVisible();
+  });
+});
+
+// Replays the auth section of the recorded `service-submit.har` to validate
+// the live BV-BRC sign-in response shape. Same caveat as the other journey
+// HAR replay tests: post-auth form-load traffic isn't exercised here because
+// `Set-Cookie` is scrubbed by the recorder, so the middleware-gated
+// `/services/*` route can't be unlocked from a HAR-only sign-in. The
+// override-based tests above cover the form-load and submit shapes; this one
+// closes the auth-shape loop against the same HAR the bi-weekly refresh
+// re-records.
+test.describe("genome assembly via recorded HAR replay", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("auth flow hydrates from recorded HAR", async ({ page }) => {
+    await applyBackendMocks(page, { har: "service-submit.har" });
+
+    const signIn = new SignInPage(page);
+    await signIn.goto();
+
+    const signInResponse = page.waitForResponse(
+      (res) =>
+        res.url().endsWith("/api/auth/sign-in/email") &&
+        res.request().method() === "POST",
+    );
+    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
+    await signIn.submit();
+    const res = await signInResponse;
+    const body = (await res.json()) as {
+      user?: Record<string, unknown>;
+      session?: Record<string, unknown>;
+    };
+    expect(body.user).toMatchObject({
+      username: "e2e-test-user",
+      realm: "bvbrc",
+      email_verified: true,
+    });
+    expect(body.session).toHaveProperty("expiresAt");
+    await expect(page).toHaveURL(/\/$/);
   });
 });

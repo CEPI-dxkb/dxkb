@@ -4,7 +4,7 @@ import {
   buildWorkspaceOverrides,
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
-import { WorkspacePage } from "../pages";
+import { SignInPage, WorkspacePage } from "../pages";
 
 test.describe("workspace upload", () => {
   test("uploads a file through the dialog and the new row appears in the listing", async ({ page }) => {
@@ -53,5 +53,44 @@ test.describe("workspace upload", () => {
     // a UI that POSTs successfully but never invalidates / re-renders the listing.
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(workspace.rowByName("sample.txt").first()).toBeVisible();
+  });
+});
+
+// Replays the auth section of the recorded `workspace-upload.har` to validate
+// the live BV-BRC sign-in response shape. Same caveat as the other journey
+// HAR replay tests: post-auth upload traffic isn't exercised here because
+// `Set-Cookie` is scrubbed by the recorder, so the middleware-gated workspace
+// route can't be unlocked from a HAR-only sign-in. The override-based test
+// above covers the upload + post-upload `Workspace.ls` shape; this one closes
+// the auth-shape loop against the same HAR the manual-dispatch write-group
+// refresh re-records.
+test.describe("workspace upload via recorded HAR replay", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test("auth flow hydrates from recorded HAR", async ({ page }) => {
+    await applyBackendMocks(page, { har: "workspace-upload.har" });
+
+    const signIn = new SignInPage(page);
+    await signIn.goto();
+
+    const signInResponse = page.waitForResponse(
+      (res) =>
+        res.url().endsWith("/api/auth/sign-in/email") &&
+        res.request().method() === "POST",
+    );
+    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
+    await signIn.submit();
+    const res = await signInResponse;
+    const body = (await res.json()) as {
+      user?: Record<string, unknown>;
+      session?: Record<string, unknown>;
+    };
+    expect(body.user).toMatchObject({
+      username: "e2e-test-user",
+      realm: "bvbrc",
+      email_verified: true,
+    });
+    expect(body.session).toHaveProperty("expiresAt");
+    await expect(page).toHaveURL(/\/$/);
   });
 });

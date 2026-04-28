@@ -70,7 +70,7 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
     }
 
     // selected filters
-    const byField: Record<string, string[]> = {};
+    const byField: Record<string, (string | [string, string])[]> = {};
 
     selected.forEach(({ field, value }) => {
       if (!byField[field]) byField[field] = [];
@@ -79,11 +79,16 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
 
     Object.entries(byField).forEach(([field, values]) => {
       if (values.length === 1) {
-        parts.push(`eq(${field},${encodeURIComponent(values[0])})`);
+        const val = values[0];
+        const strVal = Array.isArray(val) ? val.join(',') : val;
+        parts.push(`eq(${field},${encodeURIComponent(strVal)})`);
       } else {
         parts.push(
           `or(${values
-            .map((v) => `eq(${field},${encodeURIComponent(v)})`)
+            .map((v) => {
+              const strVal = Array.isArray(v) ? v.join(',') : v;
+              return `eq(${field},${encodeURIComponent(strVal)})`;
+            })
             .join(',')})`
         );
       }

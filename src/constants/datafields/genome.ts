@@ -677,7 +677,7 @@ export const genomeFields = {
         group: 'Isolate Info',
         facet: true,
         facet_hidden: true,
-        search: fa
+        search: false
       },
       isolation_country: {
         label: 'Isolation Country',

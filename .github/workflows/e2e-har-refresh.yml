@@ -18,16 +18,46 @@ on:
     # below lets a maintainer kick it off manually if a refresh is overdue.
     - cron: "0 8 1-7,15-21 * 1"
   workflow_dispatch:
+    inputs:
+      include_write:
+        description: >
+          Also re-record write-journey HARs (workspace-upload). These create
+          real files / jobs under the test account; only enable when a
+          maintainer is watching the run and willing to clean up after.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   refresh:
+    # Two journey groups, fanned out so a single bad recording doesn't fail
+    # the whole batch:
+    #   - read-only: runs on cron + manual dispatch. Nothing writes to the
+    #     test account, so re-recording is always safe.
+    #   - write: runs on manual dispatch only, gated on the
+    #     `include_write` input. These drivers create files (and, if added
+    #     later, jobs) on the test account; we don't want a fortnightly cron
+    #     silently spamming remote state.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: read-only
+            journeys: auth-sign-in workspace-browse workspace-viewer jobs-lifecycle service-submit
+          - group: write
+            journeys: workspace-upload
     runs-on: ubuntu-latest
     # Skip on forks: secrets are not exposed there and the live backend would
     # reject the empty credentials.
-    if: github.repository == 'chrescobar/dxkb-fork'
+    # Also skip the write group unless this is a manual dispatch with the
+    # opt-in input set — schedule events never get to trigger writes.
+    if: |
+      github.repository == 'chrescobar/dxkb-fork' && (
+        matrix.group == 'read-only' ||
+        (github.event_name == 'workflow_dispatch' && github.event.inputs.include_write == 'true')
+      )
     timeout-minutes: 20
 
     env:
@@ -35,6 +65,9 @@ jobs:
       E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
       # Records against the production build started in step 5 below.
       E2E_RECORD_BASE_URL: http://127.0.0.1:3010
+      # Space-separated list of journey driver names for this matrix shard.
+      # Read by the "Re-record HARs" step's loop.
+      JOURNEYS: ${{ matrix.journeys }}
 
     steps:
       - name: Code Checkout
@@ -83,9 +116,10 @@ jobs:
 
       - name: Re-record HARs
         run: |
-          # One line per scripted journey under e2e/scripts/journeys/.
-          # Add new journeys here as their drivers land.
-          for journey in auth-sign-in; do
+          # JOURNEYS is the matrix shard's list (space-separated). Each name
+          # MUST match a driver under e2e/scripts/journeys/. New journeys
+          # land in the matrix above, not here.
+          for journey in $JOURNEYS; do
             echo "::group::record $journey"
             pnpm e2e:record "$journey"
             echo "::endgroup::"
@@ -103,13 +137,15 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.E2E_HAR_REFRESH_TOKEN }}
-          commit-message: "chore(e2e): refresh recorded HARs"
-          branch: chore/e2e-har-refresh
+          commit-message: "chore(e2e): refresh recorded HARs (${{ matrix.group }})"
+          # One branch per matrix group so simultaneous read-only and write
+          # runs don't race onto the same ref.
+          branch: chore/e2e-har-refresh-${{ matrix.group }}
           delete-branch: true
-          title: "chore(e2e): refresh recorded HARs"
+          title: "chore(e2e): refresh recorded HARs (${{ matrix.group }})"
           body: |
-            Automated bi-weekly refresh of the journey HARs in
-            `e2e/fixtures/hars/`.
+            Automated refresh of the journey HARs in `e2e/fixtures/hars/`
+            for the **${{ matrix.group }}** group: `${{ matrix.journeys }}`.
 
             If this PR's diff shows real shape changes (new fields, renamed
             keys, status code drift), update the matching specs to assert

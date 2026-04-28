@@ -27,13 +27,50 @@ the original script.
   is structurally stable across re-records.
 - Headless by default. Set `E2E_RECORD_HEADED=1` to debug a driver visually.
 
+## Catalogue of journeys
+
+The `e2e-har-refresh` workflow refreshes these on a schedule (read-only) or on
+manual dispatch (write). Drivers share `_helpers/sign-in.ts` so the auth flow
+lives in one place.
+
+| Journey | Group | What it captures | Notes |
+|---|---|---|---|
+| `auth-sign-in` | read-only | `/api/auth/sign-in/email`, `/api/auth/get-session` | The bare auth surface. |
+| `workspace-browse` | read-only | `Workspace.ls`, `Workspace.get` for `favorites.json` | Lands on the test user's home. |
+| `workspace-viewer` | read-only | `/api/workspace/view/<path>` for a seeded text file | Requires a seeded `home/e2e-fixtures/readme.txt` on the test account. |
+| `jobs-lifecycle` | read-only | `enumerate-tasks-filtered` + sidebar counters | List page only — no row select / kill. |
+| `service-submit` | read-only | genome-assembly form-load traffic | Does NOT click submit. See driver doc-comment. |
+| `workspace-upload` | **write** | `POST /api/services/workspace/upload` + post-upload `Workspace.ls` | Writes a `recorded-<timestamp>.txt` file under `home/.e2e-records/`. Manual dispatch only. |
+
+Read-only journeys re-record on the bi-weekly cron. Write journeys only run
+when a maintainer triggers `workflow_dispatch` with `include_write: true`,
+because they create remote state on the test account every run.
+
+## Test-account seeding
+
+Some drivers need fixtures pre-existing on the BV-BRC test user. Seed once
+via the workspace UI:
+
+- `home/e2e-fixtures/readme.txt` — any small ASCII text file (< 1 KB).
+  Required by `workspace-viewer`.
+- `home/.e2e-records/` — empty folder. Required by `workspace-upload` as the
+  upload destination so files don't clutter the home listing.
+
+If a driver fails because the seeded fixture is missing, re-seed and re-run
+rather than rewriting the driver to dodge the dependency — the alternative
+is HARs that depend on whatever the test account happened to contain that
+day, which yanks the recording every refresh.
+
 ## Adding a new journey
 
-1. Drop a `<name>.ts` in this directory exporting `drive(page, env)`.
+1. Drop a `<name>.ts` in this directory exporting `drive(page, env)`. Reuse
+   `_helpers/sign-in.ts` for any signed-in surface.
 2. `pnpm build && pnpm start` in another terminal so the production server is
    listening on `E2E_RECORD_BASE_URL` (default `http://127.0.0.1:3010`).
 3. `pnpm e2e:record <name>` to capture.
 4. Wire `e2e/fixtures/hars/<name>.har` into the relevant spec via
    `applyBackendMocks(page, { har, overrides })`.
-5. Add the journey to the `journeys` matrix in
-   `.github/workflows/e2e-har-refresh.yml` so the bi-weekly drift check covers it.
+5. Add the journey to the right group in `.github/workflows/e2e-har-refresh.yml`'s
+   matrix:
+   - `read-only` group → covered by the cron automatically.
+   - `write` group → manual `workflow_dispatch` with `include_write: true`.

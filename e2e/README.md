@@ -123,6 +123,13 @@ await applyBackendMocks(page, {
 
 `.github/workflows/e2e-har-refresh.yml` runs the scripted recorders against the live backend on a fortnightly cron and opens a `chore(e2e): refresh recorded HARs` PR if any HAR diffed. Real shape changes (new fields, renamed keys, status drift) surface as a normal review; pure timestamp churn merges as-is. Required secrets: `E2E_TEST_USER`, `E2E_TEST_PASSWORD`, `E2E_HAR_REFRESH_TOKEN` (PAT with `contents:write` + `pull-requests:write`).
 
+The workflow has two matrix groups:
+
+- **read-only** (cron + manual dispatch): `auth-sign-in`, `workspace-browse`, `workspace-viewer`, `jobs-lifecycle`, `service-submit`. Nothing writes to the test account.
+- **write** (manual dispatch with `include_write: true` only): `workspace-upload`. Each refresh creates a new file under `home/.e2e-records/` on the test account, so we keep this off the cron.
+
+Each group opens its own PR (`chore/e2e-har-refresh-read-only` / `chore/e2e-har-refresh-write`). Some journeys depend on seeded fixtures on the test account — see [`e2e/scripts/journeys/README.md`](./scripts/journeys/README.md) for the catalogue and seeding requirements.
+
 ## Visual regression
 
 Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.

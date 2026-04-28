@@ -10,6 +10,7 @@ import {
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
+import { recordedTestUserId } from "../scripts/har-constants";
 import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("workspace browse", () => {
@@ -176,33 +177,11 @@ test.describe("workspace browse", () => {
   });
 });
 
-// Drives the workspace journey against the post-auth traffic recorded in
-// `workspace-browse.har`. `harOverridesFor` parses the HAR and emits one
-// JSON override per (path, method, JSON-RPC method) tuple — closing the
-// routeFromHAR gap (which matches URL+method only) so the four distinct
-// `Workspace.*` POSTs that share `/api/services/workspace` each replay
-// their own recorded response.
-//
-// Cookies are pre-seeded by the signed-in storage state, so middleware
-// admits the request without exercising the sign-in flow (the recorder
-// scrubs Set-Cookie, which means a HAR-driven sign-in could never unlock
-// the gate). The contract assertion that the sign-in response shape is
-// stable lives in `auth.spec.ts`'s auth-only HAR test against
-// `auth-sign-in.har`; that's the canonical canary — we don't duplicate it
-// here.
-//
-// `authSessionOverrides` is layered first so it intercepts
-// `/api/auth/get-session` before the HAR's first recorded entry (which
-// captured the pre-sign-in signed-out probe) can reach the handler. The
-// AuthBoundary's hydration refresh would otherwise see `{user:null}` and
-// redirect to `/sign-in` before the workspace listing rendered. `harOverridesFor`
-// then handles every recorded `/api/services/workspace` call.
-//
-// No `permissiveBackendOverrides` here on purpose — this spec is the canary
-// that the recorded HAR fully covers the browse journey. A catch-all would
-// silently serve `{}` / `{result:[[]]}` for any drift in coverage and the
-// test would still pass; instead we let the strict guard fail loudly so the
-// missing replay surfaces and the HAR can be re-recorded.
+// Drives the browse journey against post-auth traffic recorded in
+// `workspace-browse.har`. The auth-shape contract test against
+// `auth-sign-in.har` lives in `auth.spec.ts` — the canonical canary, not
+// duplicated here. See `harOverridesFor` for the rationale on why this
+// spec must NOT layer `permissiveBackendOverrides`.
 test.describe("workspace browse via recorded HAR replay", () => {
   test("renders the recorded workspace listing", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -212,13 +191,7 @@ test.describe("workspace browse via recorded HAR replay", () => {
       ],
     });
 
-    // The recorder ran against the live BV-BRC test account whose realm is
-    // `bvbrc`, so every recorded `Workspace.ls` / `Workspace.get` keys its
-    // response against `/e2e-test-user@bvbrc/...`. Match the recorded path
-    // here so the workspace browser's outbound calls hit the recorded
-    // entries — cookies just need to satisfy the middleware existence
-    // check, they don't have to agree with the URL realm.
-    await page.goto(`/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home`);
+    await page.goto(`/workspace/${encodeURIComponent(recordedTestUserId)}/home`);
 
     const workspace = new WorkspacePage(page);
     await expect(workspace.breadcrumbs).toBeVisible();

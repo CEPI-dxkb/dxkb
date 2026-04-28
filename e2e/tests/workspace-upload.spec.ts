@@ -5,6 +5,7 @@ import {
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
+import { recordedTestUserId } from "../scripts/har-constants";
 import { harOverridesFor, uploadedFilenameFromHar } from "../scripts/har-overrides";
 
 test.describe("workspace upload", () => {
@@ -58,35 +59,18 @@ test.describe("workspace upload", () => {
 });
 
 // Drives the upload journey against post-auth traffic recorded in
-// `workspace-upload.har`. The recorder navigated to `home/.e2e-records`,
-// uploaded a timestamped txt file, and waited for the post-upload
-// `Workspace.ls` refetch to surface the new row. `harOverridesFor` plays
-// each recorded `Workspace.*` call back to the JSON-RPC method that
-// matches its body; the two `Workspace.ls` entries (pre- vs post-upload)
+// `workspace-upload.har`. The two `Workspace.ls` entries (pre- vs post-upload)
 // are served sequentially via `callIndex`, so the second call returns the
-// listing that includes the freshly-uploaded row.
-//
-// We upload a placeholder file from the spec; the upload POST is
-// multipart (no JSON-RPC method) so the HAR override matches by
-// URL+method only and serves the recorded response regardless of the
-// spec's filename. The recorded post-upload Workspace.ls names a
-// timestamped file the recorder generated; the spec reads that name out
-// of the HAR's `Workspace.create` entry via `uploadedFilenameFromHar` so
-// re-recording the HAR doesn't require a parallel edit here.
-//
-// `authSessionOverrides` layers first to keep the AuthBoundary's
-// hydration refresh signed-in; auth-shape contract testing lives in
-// `auth.spec.ts` against `auth-sign-in.har` and isn't duplicated here.
+// listing that includes the freshly-uploaded row. The upload POST is multipart
+// (no JSON-RPC method) so the override matches by URL+method only and serves
+// the recorded response regardless of the spec's filename;
+// `uploadedFilenameFromHar` recovers the recorder-generated name so re-records
+// don't require parallel edits. See `harOverridesFor` for the canary rationale
+// (no `permissiveBackendOverrides` here).
 test.describe("workspace upload via recorded HAR replay", () => {
   test("uploads a file and the recorded post-upload listing renders the new row", async ({
     page,
   }) => {
-    // No `permissiveBackendOverrides` here on purpose — this spec is the
-    // canary that the recorded HAR fully covers the upload journey. Letting
-    // the catch-all "mop up anything the HAR didn't capture" would silently
-    // serve `{}` / `{result:[[]]}` for any drift in coverage and the test
-    // would still pass; instead we let the strict guard fail loudly so the
-    // missing replay surfaces and the HAR can be re-recorded.
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
@@ -95,7 +79,7 @@ test.describe("workspace upload via recorded HAR replay", () => {
     });
 
     await page.goto(
-      `/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home/.e2e-records`,
+      `/workspace/${encodeURIComponent(recordedTestUserId)}/home/.e2e-records`,
     );
 
     const workspace = new WorkspacePage(page);

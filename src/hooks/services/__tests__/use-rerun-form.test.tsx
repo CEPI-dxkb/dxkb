@@ -57,7 +57,7 @@ describe("useRerunForm", () => {
     expect(result.current.rerunData).toBeNull();
   });
 
-  it("reads sessionStorage entry on mount and leaves it in place for subsequent reads", () => {
+  it("reads sessionStorage entry on mount and leaves it in place across remounts", () => {
     // Idempotent on purpose: AuthBoundary's Suspense fallback shares the same
     // children as the resolved tree, so the form can mount twice on hydration
     // when useSearchParams suspends. Consuming on read would null out the

@@ -4,27 +4,13 @@ import fs from "node:fs";
 import { pathToFileURL } from "node:url";
 import readline from "node:readline";
 
-import { HAR_REPLAY_HOST_PLACEHOLDER } from "./har-constants";
+import { loadEnvFile } from "./env-loader.mjs";
+import { harReplayHostPlaceholder } from "./har-constants";
 
 /** Placeholder values written into HARs in place of real credentials / PII. */
-const E2E_USERNAME_PLACEHOLDER = "e2e-test-user";
-const E2E_PASSWORD_PLACEHOLDER = "REDACTED-PASSWORD";
-const E2E_EMAIL_PLACEHOLDER = "e2e@example.com";
-
-/**
- * Strip credentials and PII from a HAR file in place. Replaces:
- *  - the live username with `E2E_USERNAME_PLACEHOLDER`
- *  - the live password with `E2E_PASSWORD_PLACEHOLDER`
- *  - any email-shaped substring in request/response bodies with `E2E_EMAIL_PLACEHOLDER`
- *
- * Walks request post bodies and response content (both JSON strings or JSON-RPC
- * envelopes) and drops any header in `SENSITIVE_HEADER_NAMES` from both request
- * and response — `mode: "minimal"` already omits most headers, but the auth
- * cookie / set-cookie pair is not minimal-stripped and must be removed explicitly.
- */
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+const usernamePlaceholder = "e2e-test-user";
+const passwordPlaceholder = "REDACTED-PASSWORD";
+const emailPlaceholder = "e2e@example.com";
 
 /**
  * Headers that may carry session tokens, signed cookies, or other credentials.
@@ -32,7 +18,7 @@ function escapeRegExp(s: string): string {
  * for matching, and the served set-cookie would otherwise reach the browser at
  * replay time. Compared lower-case.
  */
-const SENSITIVE_HEADER_NAMES = new Set([
+const sensitiveHeaderNames = new Set([
   "cookie",
   "authorization",
   "proxy-authorization",
@@ -41,6 +27,10 @@ const SENSITIVE_HEADER_NAMES = new Set([
   "x-auth-token",
   "x-api-key",
 ]);
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 interface HarHeader {
   name: string;
@@ -61,6 +51,19 @@ interface HarEntry {
   };
 }
 
+/**
+ * Strip credentials and PII from a HAR file in place. Replaces the live
+ * username, password, any email-shaped substring, and the recorder's origin
+ * with stable placeholders, then drops every header in `sensitiveHeaderNames`
+ * from both request and response — `mode: "minimal"` already omits most
+ * headers, but the auth cookie / set-cookie pair is not minimal-stripped and
+ * must be removed explicitly.
+ *
+ * Username scrubbing runs before email scrubbing on purpose: the BV-BRC
+ * realm-qualified user id (e.g. `liveuser@patricbrc.org`) matches the email
+ * regex, so swapping the username first prevents the user-id form from being
+ * clobbered by the email placeholder.
+ */
 export function sanitizeHar(
   harPath: string,
   user: string,
@@ -77,14 +80,14 @@ export function sanitizeHar(
 
   const scrub = (text: string): string => {
     let next = text;
-    if (passwordRe) next = next.replace(passwordRe, E2E_PASSWORD_PLACEHOLDER);
-    if (userRe) next = next.replace(userRe, E2E_USERNAME_PLACEHOLDER);
-    next = next.replace(emailRe, E2E_EMAIL_PLACEHOLDER);
-    return next.replace(originRe, HAR_REPLAY_HOST_PLACEHOLDER);
+    if (passwordRe) next = next.replace(passwordRe, passwordPlaceholder);
+    if (userRe) next = next.replace(userRe, usernamePlaceholder);
+    next = next.replace(emailRe, emailPlaceholder);
+    return next.replace(originRe, harReplayHostPlaceholder);
   };
 
   const stripSensitiveHeaders = (headers: HarHeader[] | undefined): HarHeader[] | undefined =>
-    headers?.filter((h) => !SENSITIVE_HEADER_NAMES.has(h.name.toLowerCase()));
+    headers?.filter((h) => !sensitiveHeaderNames.has(h.name.toLowerCase()));
 
   for (const entry of har.log.entries) {
     // Drop sensitive headers + structured cookies; the per-string scrub below
@@ -161,18 +164,6 @@ export interface JourneyEnv {
 
 export type JourneyDriver = (page: Page, env: JourneyEnv) => Promise<void>;
 
-function loadEnvE2e(): void {
-  const envPath = path.resolve(process.cwd(), ".env.e2e");
-  if (!fs.existsSync(envPath)) {
-    console.error("Missing .env.e2e. Copy .env.e2e.example and fill in credentials.");
-    process.exit(1);
-  }
-  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
-    if (match) process.env[match[1]] = match[2].replace(/^"|"$/g, "");
-  }
-}
-
 async function loadJourneyDriver(name: string): Promise<JourneyDriver | null> {
   const journeyPath = path.resolve(process.cwd(), "e2e/scripts/journeys", `${name}.ts`);
   if (!fs.existsSync(journeyPath)) return null;
@@ -213,7 +204,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  loadEnvE2e();
+  loadEnvFile(path.resolve(process.cwd(), ".env.e2e"), {
+    required: true,
+    port: process.env.E2E_PORT ?? "3020",
+  });
   // Default to `pnpm start` (production build, port 3010) rather than `pnpm dev`.
   // Dev mode + Turbopack injects HMR plumbing that blocks React hydration in
   // headless Chromium, which means the auth boundary's useEffect never fires

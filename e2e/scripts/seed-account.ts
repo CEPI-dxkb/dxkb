@@ -20,24 +20,15 @@
 
 import { chromium } from "@playwright/test";
 import path from "node:path";
-import fs from "node:fs";
 
+import { loadEnvFile } from "./env-loader.mjs";
 import { signIn, getUserId } from "./journeys/_helpers/sign-in";
 
-function loadEnvE2e(): void {
-  const envPath = path.resolve(process.cwd(), ".env.e2e");
-  if (!fs.existsSync(envPath)) {
-    console.error("Missing .env.e2e. Copy .env.e2e.example and fill in credentials.");
-    process.exit(1);
-  }
-  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
-    if (match) process.env[match[1]] = match[2].replace(/^"|"$/g, "");
-  }
-}
-
 async function main(): Promise<void> {
-  loadEnvE2e();
+  loadEnvFile(path.resolve(process.cwd(), ".env.e2e"), {
+    required: true,
+    port: process.env.E2E_PORT ?? "3020",
+  });
   const baseURL = process.env.E2E_RECORD_BASE_URL ?? "http://127.0.0.1:3010";
   const user = process.env.E2E_TEST_USER ?? "";
   const password = process.env.E2E_TEST_PASSWORD ?? "";

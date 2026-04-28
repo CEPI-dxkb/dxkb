@@ -59,14 +59,19 @@ const transportHeaders = new Set([
   "content-encoding",
 ]);
 
+interface RpcRequest {
+  method: string;
+  params: unknown;
+}
+
 /**
- * Pull the JSON-RPC `method` field out of a request body, or null if the body
- * is empty / non-JSON / lacks a string-typed `method` field. The override
- * mechanism's `matchBody` predicate uses this to fan a single endpoint
- * (`/api/services/workspace`) out to the four-plus JSON-RPC methods that
- * share it.
+ * Parse a JSON-RPC request body into `{ method, params }`, or return null when
+ * the body is empty / non-JSON (e.g. multipart upload) / lacks a string-typed
+ * `method` field. The override mechanism's `matchBody` predicate fans a single
+ * endpoint (`/api/services/workspace`) out by `method` field, and
+ * `uploadedFilenameFromHar` reads `params` to recover the uploaded filename.
  */
-function extractRpcMethod(body: string | null | undefined): string | null {
+function parseRpcRequest(body: string | null | undefined): RpcRequest | null {
   if (!body) return null;
   try {
     const parsed: unknown = JSON.parse(body);
@@ -75,10 +80,11 @@ function extractRpcMethod(body: string | null | undefined): string | null {
       typeof parsed === "object" &&
       typeof (parsed as { method?: unknown }).method === "string"
     ) {
-      return (parsed as { method: string }).method;
+      const obj = parsed as { method: string; params?: unknown };
+      return { method: obj.method, params: obj.params };
     }
   } catch {
-    // non-JSON request body (e.g. multipart upload) — no RPC method to extract
+    // non-JSON request body
   }
   return null;
 }
@@ -98,6 +104,27 @@ function urlToPathSearch(url: string): string {
   } catch {
     return url;
   }
+}
+
+function resolveHarPath(harPath: string): string {
+  return path.isAbsolute(harPath)
+    ? harPath
+    : path.resolve(process.cwd(), "e2e/fixtures/hars", harPath);
+}
+
+// Memoize the parsed HAR per process. Specs that read the same fixture twice
+// (e.g. `harOverridesFor` + `uploadedFilenameFromHar` in workspace-upload)
+// would otherwise re-read and re-parse a multi-MB file on every call.
+const parsedHarCache = new Map<string, HarFile>();
+
+function loadHar(harPath: string): HarFile {
+  const resolved = resolveHarPath(harPath);
+  let har = parsedHarCache.get(resolved);
+  if (!har) {
+    har = JSON.parse(fs.readFileSync(resolved, "utf8")) as HarFile;
+    parsedHarCache.set(resolved, har);
+  }
+  return har;
 }
 
 function pickHeaders(headers: HarHeader[] | undefined): Record<string, string> {
@@ -146,21 +173,24 @@ interface GroupedEntries {
  * fixture-specific overrides before or after for behaviour the recorder
  * couldn't capture (empty list, 500 response, etc.).
  *
+ * **Canary specs that drive a HAR-replay journey should NOT layer
+ * `permissiveBackendOverrides` on top.** The catch-all would silently serve
+ * `{}` / `{result:[[]]}` for any drift in the HAR's coverage and the test
+ * would still pass; letting the strict guard fail loudly is what surfaces
+ * the missing replay so the HAR can be re-recorded. Layer
+ * `authSessionOverrides` first so the AuthBoundary's hydration refresh sees
+ * a signed-in user instead of the HAR's pre-sign-in `{user:null}` probe.
+ *
  * @param harPath  Absolute path or relative-to-CWD path; relative paths
  *                 resolve from `e2e/fixtures/hars/`.
  */
 export function harOverridesFor(harPath: string): JsonOverride[] {
-  const resolvedPath = path.isAbsolute(harPath)
-    ? harPath
-    : path.resolve(process.cwd(), "e2e/fixtures/hars", harPath);
-
-  const raw = fs.readFileSync(resolvedPath, "utf8");
-  const har = JSON.parse(raw) as HarFile;
+  const har = loadHar(harPath);
 
   const groupOrder: string[] = [];
   const groups = new Map<string, GroupedEntries>();
   for (const entry of har.log.entries) {
-    const rpcMethod = extractRpcMethod(entry.request.postData?.text);
+    const rpcMethod = parseRpcRequest(entry.request.postData?.text)?.method ?? null;
     const pathSearch = urlToPathSearch(entry.request.url);
     const method = entry.request.method.toUpperCase();
     const key = `${method} ${pathSearch} ${rpcMethod ?? ""}`;
@@ -214,35 +244,17 @@ export function harOverridesFor(harPath: string): JsonOverride[] {
  * name from the HAR instead.
  */
 export function uploadedFilenameFromHar(harPath: string): string {
-  const resolvedPath = path.isAbsolute(harPath)
-    ? harPath
-    : path.resolve(process.cwd(), "e2e/fixtures/hars", harPath);
-  const har = JSON.parse(fs.readFileSync(resolvedPath, "utf8")) as HarFile;
+  const har = loadHar(harPath);
 
   for (const entry of har.log.entries) {
-    const body = entry.request.postData?.text;
-    if (!body) continue;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(body);
-    } catch {
-      continue;
-    }
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      (parsed as { method?: unknown }).method !== "Workspace.create"
-    ) {
-      continue;
-    }
-    const params = (parsed as { params?: unknown }).params;
-    if (!Array.isArray(params)) continue;
-    const first = params[0] as { objects?: unknown } | undefined;
+    const rpc = parseRpcRequest(entry.request.postData?.text);
+    if (rpc?.method !== "Workspace.create") continue;
+    if (!Array.isArray(rpc.params)) continue;
+    const first = rpc.params[0] as { objects?: unknown } | undefined;
     if (!first || !Array.isArray(first.objects)) continue;
     const obj = first.objects[0];
     if (!Array.isArray(obj) || typeof obj[0] !== "string") continue;
-    const fullPath = obj[0];
-    const basename = fullPath.split("/").pop();
+    const basename = obj[0].split("/").pop();
     if (basename) return basename;
   }
 

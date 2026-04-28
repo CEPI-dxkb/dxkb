@@ -131,25 +131,12 @@ test.describe("genome assembly submission", () => {
 });
 
 // Drives the genome-assembly form-load journey against post-auth traffic
-// recorded in `service-submit.har`. The recorder navigated to
-// `/services/genome-assembly` and waited for the form to mount; the HAR
-// captures the `Workspace.get` favorites lookup, two `Workspace.ls` calls
-// the workspace-object selector fires for the file picker, and the
-// `/api/auth/profile` fetch the form's debug panel reads. The submission
-// POST itself isn't recorded — the recorder explicitly avoids it (a real
-// submit would create a billable job under the test account; see
+// recorded in `service-submit.har`. The submission POST itself isn't
+// recorded — the recorder explicitly avoids it (a real submit would create
+// a billable job under the test account; see
 // `scripts/journeys/service-submit.ts`). Spec assertions stay scoped to
-// what the form renders on mount.
-//
-// `authSessionOverrides` layers first to keep the AuthBoundary's
-// hydration refresh signed-in; the auth-shape contract test against
-// `auth-sign-in.har` lives in `auth.spec.ts` and isn't duplicated here.
-//
-// No `permissiveBackendOverrides` here on purpose — this spec is the canary
-// that the recorded HAR fully covers the form-load journey. A catch-all
-// would silently serve `{}` / `{result:[[]]}` for any drift in coverage and
-// the test would still pass; instead we let the strict guard fail loudly so
-// the missing replay surfaces and the HAR can be re-recorded.
+// what the form renders on mount. See `harOverridesFor` for the canary
+// rationale (no `permissiveBackendOverrides` here).
 test.describe("genome assembly via recorded HAR replay", () => {
   test("renders the form heading and submit button from recorded form-load traffic", async ({
     page,

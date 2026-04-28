@@ -6,6 +6,7 @@ import {
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
+import { recordedTestUserId } from "../scripts/har-constants";
 import { harOverridesFor } from "../scripts/har-overrides";
 
 const viewerFixtureItems = [
@@ -92,25 +93,12 @@ test.describe("workspace viewer", () => {
 });
 
 // Drives the file-viewer journey against post-auth traffic recorded in
-// `workspace-viewer.har`. The recorder navigated to `home/e2e-fixtures`,
-// clicked `readme.txt`, and waited for the viewer to mount — so the HAR
-// captures the workspace listing for the seeded folder, the viewer's
-// `/api/workspace/view/<path>` GET, and the JSON-RPC envelope around it.
-// `harOverridesFor` fans `Workspace.get` / `Workspace.ls` /
-// `Workspace.list_permissions` out by JSON-RPC method via `matchBody`, and
-// serves the three sequential `Workspace.get` entries (favorites x2, then
-// the e2e-fixtures folder lookup) in HAR order via `callIndex`.
-//
-// `authSessionOverrides` is layered first so the AuthBoundary's hydration
-// refresh sees a signed-in user instead of the HAR's pre-sign-in
-// `{user:null}` probe. The auth-shape contract test against
-// `auth-sign-in.har` lives in `auth.spec.ts`; not duplicated here.
-//
-// No `permissiveBackendOverrides` here on purpose — this spec is the canary
-// that the recorded HAR fully covers the viewer journey. A catch-all would
-// silently serve `{}` / `{result:[[]]}` for any drift in coverage and the
-// test would still pass; instead we let the strict guard fail loudly so the
-// missing replay surfaces and the HAR can be re-recorded.
+// `workspace-viewer.har`. The HAR captures the workspace listing for the
+// seeded folder, the viewer's `/api/workspace/view/<path>` GET, and the
+// JSON-RPC envelope around it. Three sequential `Workspace.get` entries
+// (favorites x2, then the e2e-fixtures folder lookup) replay in HAR order
+// via `callIndex`. See `harOverridesFor` for the canary rationale (no
+// `permissiveBackendOverrides` here).
 test.describe("workspace viewer via recorded HAR replay", () => {
   test("opens readme.txt and renders the recorded file content", async ({ page }) => {
     await applyBackendMocks(page, {
@@ -121,7 +109,7 @@ test.describe("workspace viewer via recorded HAR replay", () => {
     });
 
     await page.goto(
-      `/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home/e2e-fixtures`,
+      `/workspace/${encodeURIComponent(recordedTestUserId)}/home/e2e-fixtures`,
     );
 
     const workspace = new WorkspacePage(page);

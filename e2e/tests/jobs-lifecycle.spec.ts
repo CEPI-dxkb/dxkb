@@ -222,21 +222,12 @@ test.describe("jobs lifecycle", () => {
 });
 
 // Drives the jobs page against post-auth traffic recorded in
-// `jobs-lifecycle.har`. The recorder hit `/jobs` against the live test
-// account (which has no submitted jobs), so the recorded
-// `enumerate-tasks-filtered` payload is `{jobs:[],totalTasks:0}` — i.e. the
-// empty-state path. Asserting on the empty-state copy proves the
-// HAR-derived overrides actually fed the jobs hook.
-//
-// `authSessionOverrides` layers first so the AuthBoundary's hydration
-// refresh sees a signed-in user; the auth-shape contract test against
-// `auth-sign-in.har` lives in `auth.spec.ts` and isn't duplicated here.
-//
-// No `permissiveBackendOverrides` here on purpose — this spec is the canary
-// that the recorded HAR fully covers the jobs lifecycle. A catch-all would
-// silently serve `{result:[[]]}` for any drift in coverage and the test would
-// still pass; instead we let the strict guard fail loudly so the missing
-// replay surfaces and the HAR can be re-recorded.
+// `jobs-lifecycle.har`. The recorder ran against the live test account
+// (which has no submitted jobs), so the recorded `enumerate-tasks-filtered`
+// payload is `{jobs:[],totalTasks:0}` — asserting on the empty-state copy
+// proves the HAR-derived overrides actually fed the jobs hook. See
+// `harOverridesFor` for the canary rationale (no `permissiveBackendOverrides`
+// here).
 test.describe("jobs lifecycle via recorded HAR replay", () => {
   test("renders the recorded empty jobs state", async ({ page }) => {
     await applyBackendMocks(page, {

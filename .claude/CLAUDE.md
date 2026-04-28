@@ -64,9 +64,9 @@ Requires **Node v24** (`nvm use 24`). Vitest 4 / rolldown needs Node >= 22.
 
 **Rerun pre-fill pattern**
 
-- `useRerunForm<T>()` reads job params from `sessionStorage` (keyed by `?rerun_key=`) and returns `{ rerunData, markApplied }`
-- `markApplied()` returns `false` if already called — use as a one-shot guard in the effect: `if (!rerunData || !markApplied()) return;`
-- Never use a manual `useRef(false)` guard alongside `useRerunForm`; `markApplied` replaces it
+- `useRerunForm<T>()` reads job params from `sessionStorage` (keyed by `?rerun_key=`) and returns `{ rerunData }`
+- Pre-fill is auto-applied via the hook's declarative options (`fields`, `libraries`, `syncLibraries`, `onApply`); the hook self-manages one-shot application internally
+- The sessionStorage entry is intentionally NOT consumed on read — `<AuthBoundary>`'s Suspense fallback can mount the form twice during hydration, so a consume-on-read would null out the second mount
 - Library reconstruction helpers in `src/lib/rerun-utility.ts`:
   - `buildPairedLibraries(rerunData, getExtra?)` — paired-end libs from `paired_end_libs`
   - `buildSingleLibraries(rerunData, getExtra?)` — single-end libs from `single_end_libs`

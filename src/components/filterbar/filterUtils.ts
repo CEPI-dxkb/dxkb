@@ -4,8 +4,8 @@ function encodeRqlField(val: string) {
 
 function encodeRqlValue(val: string) {
   return encodeURIComponent(`"${val}"`)
-    .replace(/\(/g, '%28')
-    .replace(/\)/g, '%29')
+    .replace(/\(/g, "%28")
+    .replace(/\)/g, "%29")
     ;
 }
 

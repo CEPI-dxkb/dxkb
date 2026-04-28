@@ -1,4 +1,14 @@
-export function SelectedFilters({ selected, onRemove }) {
+interface SelectedFilter {
+  field: string;
+  value: unknown; // or be stricter if you know the type (string | number | etc.)
+}
+
+interface SelectedFiltersProps {
+  selected: SelectedFilter[];
+  onRemove: (index: number) => void;
+}
+
+export function SelectedFilters({ selected, onRemove }: SelectedFiltersProps) {
   if (!selected.length) return null;
 
   return (

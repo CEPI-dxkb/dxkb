@@ -1,10 +1,10 @@
-type FacetItem = {
+interface FacetItem{
   label: string;
   value: string;
   count: number;
 };
 
-type FacetColumnProps = {
+interface FacetColumnProps {
   field: { id: string; label: string };
   items: FacetItem[];
   onSelect: (field: string, value: string) => void;

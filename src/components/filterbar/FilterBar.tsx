@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from "react";
 import { buildRql } from './filterUtils';
 import { KeywordSearch } from './KeywordSearch';
 import { SelectedFilters } from './SelectedFilters';
 import { FacetPanel } from './FacetPanel';
 
-type SelectedFilter = {
+interface SelectedFilter {
   field: string;
   value: string | [string, string];
   op: 'eq' | 'ne' | 'gt' | 'lt' | 'between';

@@ -84,6 +84,43 @@ test.describe("auth (signed out)", () => {
     await expect(page).toHaveURL(/\/forgot-password$/);
   });
 
+  // Same flow as the test above but driven by the recorded `auth-sign-in.har` instead
+  // of a hand-written override. Catches drift between the test fixture and the real
+  // BV-BRC sign-in response shape — re-record via `pnpm e2e:record auth-sign-in`
+  // when the contract changes (the bi-weekly workflow runs this automatically).
+  test("submits credentials via recorded HAR replay", async ({ page }) => {
+    // No `permissiveBackendOverrides` here: those have a `/\/api\/auth\//` POST
+    // catch-all that would intercept the sign-in call before HAR replay sees it,
+    // returning `{}` instead of the recorded session payload. The HAR itself
+    // covers `/api/auth/get-session` (signed-out shape) and `/api/auth/sign-in/email`.
+    await applyBackendMocks(page, {
+      har: "auth-sign-in.har",
+    });
+    const signIn = new SignInPage(page);
+    await signIn.goto();
+
+    const signInResponse = page.waitForResponse(
+      (res) =>
+        res.url().endsWith("/api/auth/sign-in/email") &&
+        res.request().method() === "POST",
+    );
+    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
+    await signIn.submit();
+    const res = await signInResponse;
+    const body = await res.json();
+    expect(body.user).toMatchObject({
+      username: "e2e-test-user",
+      realm: "bvbrc",
+      email_verified: true,
+    });
+    expect(body.session).toHaveProperty("expiresAt");
+    // Without an explicit `?redirect=...`, the sign-in page pushes to "/" once
+    // the store flips to authed. Asserting the post-signin landing URL proves
+    // both that the recorded payload was accepted and that the authed-redirect
+    // effect fired — i.e. the HAR's user shape unwrapped cleanly.
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test("surfaces backend error on invalid credentials", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [

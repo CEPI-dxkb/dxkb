@@ -93,12 +93,35 @@ Add a new page object when a spec starts repeating the same selector tuple twice
 
 ## Recording a HAR
 
-1. `cp .env.e2e.example .env.e2e` and fill in valid BV-BRC creds (never commit).
-2. In one shell: `pnpm dev`.
-3. In another: `pnpm e2e:record workspace-home`.
-4. A headed Chromium opens. Sign in, drive the flow you want to capture.
-5. Press Enter in the terminal to close. The HAR lands in `e2e/fixtures/hars/workspace-home.har`.
-6. Commit the HAR. Re-record when the API contract drifts.
+`pnpm e2e:record <journey>` captures real backend traffic into `e2e/fixtures/hars/<journey>.har`. Specs replay the HAR via `applyBackendMocks(page, { har, overrides })` so they assert against the real BV-BRC response shape rather than hand-maintained mocks. Two recording modes:
+
+**Scripted (preferred — used by the bi-weekly refresh workflow):** drop a driver at `e2e/scripts/journeys/<name>.ts` exporting `drive(page, env)` (see `e2e/scripts/journeys/README.md`). The recorder runs it headless against `E2E_RECORD_BASE_URL` (default `http://127.0.0.1:3010`, the production build). Use this when you want determinism — the same driver records the same flow every time, which is what makes the cron'd refresh meaningful.
+
+**Interactive (one-off exploration):** if no driver file exists for the journey name, the recorder launches a headed Chromium and waits for you to drive the flow manually, then press Enter.
+
+Steps:
+
+1. `cp .env.e2e.example .env.e2e` and fill in valid BV-BRC creds (gitignored — never commit).
+2. `pnpm build && pnpm start` — recording requires the production build because `pnpm dev` (Turbopack) injects HMR plumbing that blocks React hydration in headless Chromium, leaving the auth boundary stuck in `loading`.
+3. `pnpm e2e:record auth-sign-in` (or your journey name).
+4. The recorder filters non-backend traffic (skips `_next/static`, fonts, images), scrubs the live username/password/email out of all bodies, and rewrites the recorded host to `http://e2e-har-replay.local`. `applyBackendMocks` swaps that placeholder back to the active app host at replay time, so HARs are port-portable across `E2E_PORT` values.
+5. Commit the resulting `.har`. Re-record when the API contract drifts; the bi-weekly cron does this automatically (see below).
+
+### Wiring a HAR into a spec
+
+```ts
+await applyBackendMocks(page, {
+  har: "auth-sign-in.har",
+  // Skip `permissiveBackendOverrides` for routes the HAR covers — overrides
+  // run before HAR replay (LIFO route registration), so a permissive override
+  // would intercept and return `{}` before the HAR served the recorded body.
+  overrides: [],
+});
+```
+
+### Bi-weekly refresh
+
+`.github/workflows/e2e-har-refresh.yml` runs the scripted recorders against the live backend on a fortnightly cron and opens a `chore(e2e): refresh recorded HARs` PR if any HAR diffed. Real shape changes (new fields, renamed keys, status drift) surface as a normal review; pure timestamp churn merges as-is. Required secrets: `E2E_TEST_USER`, `E2E_TEST_PASSWORD`, `E2E_HAR_REFRESH_TOKEN` (PAT with `contents:write` + `pull-requests:write`).
 
 ## Visual regression
 

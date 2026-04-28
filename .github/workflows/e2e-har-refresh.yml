@@ -1,0 +1,121 @@
+name: E2E HAR refresh
+
+# Re-records the journey HARs in `e2e/fixtures/hars/` against the live BV-BRC
+# backend on a fixed cadence and opens a PR if any HAR changed. Surfaces real
+# contract drift (response shape, new fields, unexpected status codes) on a
+# known schedule rather than waiting for a spec to flake on the next sync.
+#
+# The job needs three repo secrets:
+#   - E2E_TEST_USER, E2E_TEST_PASSWORD: dedicated BV-BRC test account.
+#   - E2E_HAR_REFRESH_TOKEN: a fine-grained PAT with `contents:write` and
+#     `pull-requests:write`. The default GITHUB_TOKEN cannot open PRs that
+#     re-trigger required workflows, so a PAT is required.
+
+on:
+  schedule:
+    # Every other Monday at 08:00 UTC. GitHub cron is "best effort" — the
+    # scheduler can skip runs under load, so the workflow_dispatch trigger
+    # below lets a maintainer kick it off manually if a refresh is overdue.
+    - cron: "0 8 1-7,15-21 * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # Skip on forks: secrets are not exposed there and the live backend would
+    # reject the empty credentials.
+    if: github.repository == 'chrescobar/dxkb-fork'
+    timeout-minutes: 20
+
+    env:
+      E2E_TEST_USER: ${{ secrets.E2E_TEST_USER }}
+      E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD }}
+      # Records against the production build started in step 5 below.
+      E2E_RECORD_BASE_URL: http://127.0.0.1:3010
+
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build app
+        run: pnpm build
+
+      - name: Start production server
+        run: |
+          pnpm start > /tmp/next-start.log 2>&1 &
+          echo "$!" > /tmp/next-start.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3010 -o /dev/null; then
+              echo "server up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server failed to start within 60s" >&2
+          tail -50 /tmp/next-start.log >&2
+          exit 1
+
+      - name: Write .env.e2e from secrets
+        run: |
+          umask 077
+          {
+            printf 'E2E_TEST_USER=%s\n' "$E2E_TEST_USER"
+            printf 'E2E_TEST_PASSWORD=%s\n' "$E2E_TEST_PASSWORD"
+          } > .env.e2e
+
+      - name: Re-record HARs
+        run: |
+          # One line per scripted journey under e2e/scripts/journeys/.
+          # Add new journeys here as their drivers land.
+          for journey in auth-sign-in; do
+            echo "::group::record $journey"
+            pnpm e2e:record "$journey"
+            echo "::endgroup::"
+          done
+
+      - name: Stop server and scrub creds
+        if: always()
+        run: |
+          if [ -f /tmp/next-start.pid ]; then
+            kill "$(cat /tmp/next-start.pid)" 2>/dev/null || true
+          fi
+          rm -f .env.e2e
+
+      - name: Open PR if HARs changed
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.E2E_HAR_REFRESH_TOKEN }}
+          commit-message: "chore(e2e): refresh recorded HARs"
+          branch: chore/e2e-har-refresh
+          delete-branch: true
+          title: "chore(e2e): refresh recorded HARs"
+          body: |
+            Automated bi-weekly refresh of the journey HARs in
+            `e2e/fixtures/hars/`.
+
+            If this PR's diff shows real shape changes (new fields, renamed
+            keys, status code drift), update the matching specs to assert
+            against the new shape. If it shows only timestamp / nonce churn,
+            merge as-is.
+
+            Triggered by `.github/workflows/e2e-har-refresh.yml`.
+          add-paths: |
+            e2e/fixtures/hars/**

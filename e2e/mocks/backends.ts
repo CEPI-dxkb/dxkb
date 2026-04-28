@@ -1,6 +1,9 @@
 import { test as base, type Page, type Route } from "@playwright/test";
 import path from "node:path";
+import os from "node:os";
 import fs from "node:fs";
+
+import { HAR_REPLAY_HOST_PLACEHOLDER } from "../scripts/har-constants";
 
 export interface JsonOverrideBodyContext {
   /** Parsed JSON request body (null when the body was not JSON or was empty). */
@@ -136,6 +139,9 @@ export async function applyBackendMocks(page: Page, options: BackendMockOptions 
 
   // 2. HAR replay — registered SECOND so it runs between overrides (above) and strict (below).
   //    `notFound: "fallback"` lets uncovered requests fall through to overrides then strict.
+  //    Recorded HARs use HAR_REPLAY_HOST_PLACEHOLDER for the origin so they don't lock to
+  //    the recorder's port. Materialize a per-test copy with the placeholder swapped to
+  //    the live app host, then point routeFromHAR at the copy.
   if (har) {
     const harPath = path.isAbsolute(har) ? har : path.resolve(process.cwd(), "e2e/fixtures/hars", har);
     if (!fs.existsSync(harPath)) {
@@ -143,7 +149,15 @@ export async function applyBackendMocks(page: Page, options: BackendMockOptions 
         `HAR file not found: ${harPath}. Record it first with \`pnpm e2e:record ${path.basename(har, ".har")}\`.`,
       );
     }
-    await page.routeFromHAR(harPath, {
+    const liveOrigin = `http://${appHost ?? `127.0.0.1:${process.env.E2E_PORT ?? "3020"}`}`;
+    const harText = fs
+      .readFileSync(harPath, "utf8")
+      .split(HAR_REPLAY_HOST_PLACEHOLDER)
+      .join(liveOrigin);
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-har-"));
+    const liveHarPath = path.join(tmpDir, path.basename(harPath));
+    fs.writeFileSync(liveHarPath, harText);
+    await page.routeFromHAR(liveHarPath, {
       url: /.*/,
       update: false,
       notFound: "fallback",

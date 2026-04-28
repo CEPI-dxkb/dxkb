@@ -1,7 +1,3 @@
-import { fastaFileItemSchema } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-schema";
-import { tr } from "date-fns/locale";
-import { fa } from "zod/v4/locales";
-
 export const genomeFields = {
 
       genome_id: {

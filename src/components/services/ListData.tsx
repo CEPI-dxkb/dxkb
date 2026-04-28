@@ -7,7 +7,6 @@ import { SortingState, RowSelectionState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { noop } from "@/lib/utils";
 import { FilterBar } from "@/components/filterbar/FilterBar";
-import { FacetPanel } from "@/components/filterbar/FacetPanel";
 
 interface ColumnInfo {
   id: string;
@@ -17,7 +16,7 @@ interface ColumnInfo {
   facet_hidden?: boolean;
 }
 
-type RawField = {
+interface RawField {
   field?: string;
   label?: string;
   hidden?: boolean;

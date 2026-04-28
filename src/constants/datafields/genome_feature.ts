@@ -1,5 +1,3 @@
-import { tr } from "date-fns/locale";
-
 export const genome_featureFields = {
     genome_id: { 
         label: 'Genome ID', 

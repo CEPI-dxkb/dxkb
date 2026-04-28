@@ -1,6 +1,3 @@
-import { tr } from "date-fns/locale";
-import { fa } from "zod/v4/locales";
-
 export const genome_sequenceFields = {
     genome_id: { 
         label: 'Genome ID', 

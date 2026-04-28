@@ -1,5 +1,3 @@
-import { tr } from "date-fns/locale";
-
 export const serologyFields = {
     project_identifier: { 
         label: 'Project Identifier', 

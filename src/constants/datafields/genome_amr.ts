@@ -1,5 +1,3 @@
-import { tr } from "date-fns/locale";
-
 export const genome_amrFields = {
     taxon_id: { 
         label: 'Taxon ID', 

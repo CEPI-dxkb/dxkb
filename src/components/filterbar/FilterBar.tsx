@@ -10,7 +10,7 @@ interface SelectedFilter {
   op: 'eq' | 'ne' | 'gt' | 'lt' | 'between';
 };
 
-type ColumnField = {
+interface ColumnField {
   id: string;
   label: string;
   visible: boolean;
@@ -18,7 +18,7 @@ type ColumnField = {
   facet_hidden?: boolean; 
 };
 
-type FilterBarProps = {
+interface FilterBarProps {
   facetFields: ColumnField[];
   onFilterChange: (rql: string) => void;
   resource: string;
@@ -38,9 +38,6 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
     setKeywords([]);
   };
 
-  const rql = buildRql({ selected, keywords });
-
-
   const activeFacetFields = localFacetFields.filter(
     (f) => f.facet && !f.facet_hidden
   );
@@ -51,54 +48,6 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
         f.id === id ? { ...f, facet_hidden: !f.facet_hidden } : f
       )
     );
-  };
-
-  const buildQuery = () => {
-    const parts: string[] = [];
-
-    // keywords
-    if (keywords.length > 0) {
-      const keywordParts = keywords.map(
-        (k) => `keyword(${encodeURIComponent(k)})`
-      );
-
-      if (keywordParts.length === 1) {
-        parts.push(keywordParts[0]);
-      } else {
-        parts.push(`and(${keywordParts.join(',')})`);
-      }
-    }
-
-    // selected filters
-    const byField: Record<string, (string | [string, string])[]> = {};
-
-    selected.forEach(({ field, value }) => {
-      if (!byField[field]) byField[field] = [];
-      byField[field].push(value);
-    });
-
-    Object.entries(byField).forEach(([field, values]) => {
-      if (values.length === 1) {
-        const val = values[0];
-        const strVal = Array.isArray(val) ? val.join(',') : val;
-        parts.push(`eq(${field},${encodeURIComponent(strVal)})`);
-      } else {
-        parts.push(
-          `or(${values
-            .map((v) => {
-              const strVal = Array.isArray(v) ? v.join(',') : v;
-              return `eq(${field},${encodeURIComponent(strVal)})`;
-            })
-            .join(',')})`
-        );
-      }
-    });
-
-    if (parts.length === 0) return '';
-    if (parts.length === 1) return parts[0];
-
-    console.log(`FULL QRY IS: and(${parts.join(',')})`);
-    return `and(${parts.join(',')})`;
   };
 
   // emit filter upward

@@ -1,5 +1,3 @@
-import { tr } from "date-fns/locale";
-
 export const protein_structureFields = {
     pdb_id: { 
         label: 'PDB ID', 

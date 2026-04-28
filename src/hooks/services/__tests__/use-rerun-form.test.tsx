@@ -57,7 +57,11 @@ describe("useRerunForm", () => {
     expect(result.current.rerunData).toBeNull();
   });
 
-  it("reads + removes sessionStorage entry on mount and returns parsed data", () => {
+  it("reads sessionStorage entry on mount and leaves it in place for subsequent reads", () => {
+    // Idempotent on purpose: AuthBoundary's Suspense fallback shares the same
+    // children as the resolved tree, so the form can mount twice on hydration
+    // when useSearchParams suspends. Consuming on read would null out the
+    // second mount and drop every rerun pre-fill under load.
     setRerunSession("k1", { foo: "bar" });
     const form = makeForm();
     const { result } = renderHook(
@@ -67,7 +71,7 @@ describe("useRerunForm", () => {
       },
     );
     expect(result.current.rerunData).toEqual({ foo: "bar" });
-    expect(sessionStorage.getItem("k1")).toBeNull();
+    expect(sessionStorage.getItem("k1")).toBe(JSON.stringify({ foo: "bar" }));
   });
 
   it("returns null when stored JSON is malformed (no throw)", () => {

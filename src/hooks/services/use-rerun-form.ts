@@ -28,6 +28,19 @@ type UseRerunFormOptions<
 /**
  * Read rerun_key from the URL and pull the matching JSON blob from sessionStorage.
  * Private primitive — use useRerunForm instead.
+ *
+ * The read is idempotent: the sessionStorage entry is left in place rather
+ * than consumed at read time. `<AuthBoundary>` wraps every page in a Suspense
+ * whose fallback is the same children, so the form can mount twice during
+ * client hydration when `useSearchParams` suspends — once under the fallback,
+ * once under the resolved tree. A consume-on-read here would empty
+ * sessionStorage on the first mount and leave the second mount staring at
+ * `null`, dropping every pre-fill. `useRerunForm`'s `rerunApplied` ref handles
+ * one-shot application within a single mount; cross-mount idempotence is
+ * fine because `setFieldValue` with the same value is a no-op for TanStack
+ * Form. Stranded entries are scoped to the tab's sessionStorage and keyed by
+ * a fresh 8-char UUID per rerun, so they don't collide and they evaporate on
+ * tab close.
  */
 function useRerunData<T extends Record<string, unknown>>(): T | null {
   const [rerunData] = useState<T | null>(() => {
@@ -36,7 +49,6 @@ function useRerunData<T extends Record<string, unknown>>(): T | null {
     if (!key) return null;
     const stored = sessionStorage.getItem(key);
     if (!stored) return null;
-    sessionStorage.removeItem(key);
     try {
       return JSON.parse(stored) as T;
     } catch {

@@ -109,6 +109,10 @@ Steps:
 
 ### Wiring a HAR into a spec
 
+Two integration modes — pick the one that matches what the spec is asserting.
+
+**Auth-shape contract test (`{ har }` option).** Routes the entire recorded HAR through `page.routeFromHAR`. URL+method matching only; for endpoints recorded multiple times the *first* matching response is served on every call. Use this when the spec drives the recorded auth flow itself and just asserts the sign-in response shape (drift canary against contract changes). `auth.spec.ts` is the canonical example.
+
 ```ts
 await applyBackendMocks(page, {
   har: "auth-sign-in.har",
@@ -118,6 +122,34 @@ await applyBackendMocks(page, {
   overrides: [],
 });
 ```
+
+**Body-aware journey replay (`harOverridesFor` helper).** Reads the HAR file and emits one `JsonOverride` per `(path, method, JSON-RPC method)` tuple, with `matchBody` fanning the JSON-RPC entry point out by request `method` field. Sequential entries that share a tuple replay in HAR order via the override's `callIndex` body function — so a `Workspace.ls` recorded twice (pre- and post-upload) replays correctly. Use this when the spec drives a signed-in journey (workspace listing, file viewer, jobs page, service form) and asserts on UI rendered from the recorded post-auth payloads.
+
+```ts
+import { harOverridesFor } from "../scripts/har-overrides";
+
+await applyBackendMocks(page, {
+  overrides: [
+    // Layered first so the AuthBoundary's hydration refresh sees a signed-in
+    // user. Without this, the HAR's pre-sign-in `/api/auth/get-session` entry
+    // (recorded before sign-in fired) would return `{user:null}` and the
+    // ProtectedRouteGuard would redirect to /sign-in.
+    ...authSessionOverrides,
+    ...harOverridesFor("workspace-browse.har"),
+    // Mops up anything the HAR didn't capture (future code paths) so strict
+    // mode doesn't fail the test on an unrelated unmocked request.
+    ...permissiveBackendOverrides,
+  ],
+});
+
+// Recorded paths key off the realm the recorder authenticated against (`bvbrc`),
+// not the mocked-cookie realm (`patricbrc.org`). Match the recorded path so the
+// workspace browser's outbound RPC calls land on the recorded entries; cookies
+// just satisfy the middleware existence check.
+await page.goto(`/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home`);
+```
+
+`harOverridesFor` matches on `pathname + search`, so the host-placeholder rewrite (`http://e2e-har-replay.local`) is irrelevant — the override matcher does a substring `includes` check against the live request URL. Status and response headers are taken from the first entry of each group; if a journey needs status drift across same-key calls, layer hand-rolled overrides on top.
 
 ### Bi-weekly refresh
 

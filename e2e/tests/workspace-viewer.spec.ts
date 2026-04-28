@@ -5,7 +5,8 @@ import {
   e2eHomePath,
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
-import { SignInPage, WorkspacePage } from "../pages";
+import { WorkspacePage } from "../pages";
+import { harOverridesFor } from "../scripts/har-overrides";
 
 const viewerFixtureItems = [
   {
@@ -90,40 +91,46 @@ test.describe("workspace viewer", () => {
   });
 });
 
-// Replays the auth section of the recorded `workspace-viewer.har` to validate
-// the live BV-BRC sign-in response shape. Same caveat as the workspace-browse
-// HAR replay test: post-auth viewer traffic isn't exercised here because
-// `Set-Cookie` is scrubbed by the recorder, so the middleware-gated workspace
-// route can't be unlocked from a HAR-only sign-in. The override-based tests
-// above cover the viewer-proxy shape; this one closes the auth-shape loop
-// against the same HAR the bi-weekly refresh re-records.
+// Drives the file-viewer journey against post-auth traffic recorded in
+// `workspace-viewer.har`. The recorder navigated to `home/e2e-fixtures`,
+// clicked `readme.txt`, and waited for the viewer to mount — so the HAR
+// captures the workspace listing for the seeded folder, the viewer's
+// `/api/workspace/view/<path>` GET, and the JSON-RPC envelope around it.
+// `harOverridesFor` fans `Workspace.get` / `Workspace.ls` /
+// `Workspace.list_permissions` out by JSON-RPC method via `matchBody`, and
+// serves the three sequential `Workspace.get` entries (favorites x2, then
+// the e2e-fixtures folder lookup) in HAR order via `callIndex`.
+//
+// `authSessionOverrides` is layered first so the AuthBoundary's hydration
+// refresh sees a signed-in user instead of the HAR's pre-sign-in
+// `{user:null}` probe. The auth-shape contract test against
+// `auth-sign-in.har` lives in `auth.spec.ts`; not duplicated here.
 test.describe("workspace viewer via recorded HAR replay", () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test("auth flow hydrates from recorded HAR", async ({ page }) => {
-    await applyBackendMocks(page, { har: "workspace-viewer.har" });
-
-    const signIn = new SignInPage(page);
-    await signIn.goto();
-
-    const signInResponse = page.waitForResponse(
-      (res) =>
-        res.url().endsWith("/api/auth/sign-in/email") &&
-        res.request().method() === "POST",
-    );
-    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
-    await signIn.submit();
-    const res = await signInResponse;
-    const body = (await res.json()) as {
-      user?: Record<string, unknown>;
-      session?: Record<string, unknown>;
-    };
-    expect(body.user).toMatchObject({
-      username: "e2e-test-user",
-      realm: "bvbrc",
-      email_verified: true,
+  test("opens readme.txt and renders the recorded file content", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("workspace-viewer.har"),
+        ...permissiveBackendOverrides,
+      ],
     });
-    expect(body.session).toHaveProperty("expiresAt");
-    await expect(page).toHaveURL(/\/$/);
+
+    await page.goto(
+      `/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home/e2e-fixtures`,
+    );
+
+    const workspace = new WorkspacePage(page);
+    await expect(workspace.breadcrumbs).toBeVisible();
+
+    // The recorded `Workspace.ls` for `home/e2e-fixtures` returns a single
+    // `readme.txt` row.
+    await expect(workspace.rowByName("readme.txt").first()).toBeVisible();
+    await workspace.selectFile("readme.txt");
+
+    // CodeMirror renders the recorded `/api/workspace/view/.../readme.txt`
+    // body into `.cm-content`. `e2e seed fixture` is the leading substring
+    // of the recorded payload — sidesteps the em-dash mojibake the HAR
+    // recorder captured downstream of it.
+    await expect(page.locator(".cm-content")).toContainText("e2e seed fixture");
   });
 });

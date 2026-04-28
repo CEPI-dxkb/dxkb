@@ -9,7 +9,8 @@ import {
   workspaceErrorOverrides,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
-import { SignInPage, WorkspacePage } from "../pages";
+import { WorkspacePage } from "../pages";
+import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("workspace browse", () => {
   test("populated listing renders rows for each workspace item", async ({ page }) => {
@@ -175,45 +176,57 @@ test.describe("workspace browse", () => {
   });
 });
 
-// Replays the auth section of the recorded `workspace-browse.har` to validate
-// the live BV-BRC sign-in response shape every journey driver depends on. The
-// post-auth workspace traffic in the HAR is NOT exercised here: `Set-Cookie`
-// is scrubbed by the recorder for safety, so a HAR-driven sign-in cannot unlock
-// the middleware-gated `/workspace/*` route. Body-aware replay across the four
-// JSON-RPC POSTs that share `/api/services/workspace` would also need a
-// custom harness — `routeFromHAR` only matches URL+method. The override-based
-// tests above cover those workspace shapes; this one closes the auth-shape
-// loop against the same HAR the bi-weekly refresh re-records.
+// Drives the workspace journey against the post-auth traffic recorded in
+// `workspace-browse.har`. `harOverridesFor` parses the HAR and emits one
+// JSON override per (path, method, JSON-RPC method) tuple — closing the
+// routeFromHAR gap (which matches URL+method only) so the four distinct
+// `Workspace.*` POSTs that share `/api/services/workspace` each replay
+// their own recorded response.
+//
+// Cookies are pre-seeded by the signed-in storage state, so middleware
+// admits the request without exercising the sign-in flow (the recorder
+// scrubs Set-Cookie, which means a HAR-driven sign-in could never unlock
+// the gate). The contract assertion that the sign-in response shape is
+// stable lives in `auth.spec.ts`'s auth-only HAR test against
+// `auth-sign-in.har`; that's the canonical canary — we don't duplicate it
+// here.
+//
+// `authSessionOverrides` is layered first so it intercepts
+// `/api/auth/get-session` before the HAR's first recorded entry (which
+// captured the pre-sign-in signed-out probe) can reach the handler. The
+// AuthBoundary's hydration refresh would otherwise see `{user:null}` and
+// redirect to `/sign-in` before the workspace listing rendered. `harOverridesFor`
+// then handles every recorded `/api/services/workspace` call;
+// `permissiveBackendOverrides` mops up anything the HAR didn't capture so
+// strict mode doesn't trip over an unmocked call from a future code path.
 test.describe("workspace browse via recorded HAR replay", () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test("auth flow hydrates from recorded HAR", async ({ page }) => {
-    // No `permissiveBackendOverrides` here: those have a `/\/api\/auth\//` POST
-    // catch-all that would intercept the sign-in call before HAR replay sees it,
-    // returning `{}` instead of the recorded session payload.
-    await applyBackendMocks(page, { har: "workspace-browse.har" });
-
-    const signIn = new SignInPage(page);
-    await signIn.goto();
-
-    const signInResponse = page.waitForResponse(
-      (res) =>
-        res.url().endsWith("/api/auth/sign-in/email") &&
-        res.request().method() === "POST",
-    );
-    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
-    await signIn.submit();
-    const res = await signInResponse;
-    const body = (await res.json()) as {
-      user?: Record<string, unknown>;
-      session?: Record<string, unknown>;
-    };
-    expect(body.user).toMatchObject({
-      username: "e2e-test-user",
-      realm: "bvbrc",
-      email_verified: true,
+  test("renders the recorded workspace listing", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("workspace-browse.har"),
+        ...permissiveBackendOverrides,
+      ],
     });
-    expect(body.session).toHaveProperty("expiresAt");
-    await expect(page).toHaveURL(/\/$/);
+
+    // The recorder ran against the live BV-BRC test account whose realm is
+    // `bvbrc`, so every recorded `Workspace.ls` / `Workspace.get` keys its
+    // response against `/e2e-test-user@bvbrc/...`. Match the recorded path
+    // here so the workspace browser's outbound calls hit the recorded
+    // entries — cookies just need to satisfy the middleware existence
+    // check, they don't have to agree with the URL realm.
+    await page.goto(`/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home`);
+
+    const workspace = new WorkspacePage(page);
+    await expect(workspace.breadcrumbs).toBeVisible();
+
+    // These four folders all appear in the recorded `Workspace.ls` response
+    // (`workspace-browse.har` entry 5). If the HAR replay actually fed the
+    // workspace browser, the rows render; if the override fell through to
+    // the permissive catchall (`{result:[[]]}`), the listing would be empty
+    // and these assertions would time out.
+    for (const name of ["Experiment Groups", "Genome Groups", "Experiments", "Feature Groups"]) {
+      await expect(workspace.rowByName(name).first()).toBeVisible();
+    }
   });
 });

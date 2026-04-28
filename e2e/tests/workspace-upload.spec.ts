@@ -4,7 +4,8 @@ import {
   buildWorkspaceOverrides,
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
-import { SignInPage, WorkspacePage } from "../pages";
+import { WorkspacePage } from "../pages";
+import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("workspace upload", () => {
   test("uploads a file through the dialog and the new row appears in the listing", async ({ page }) => {
@@ -56,41 +57,61 @@ test.describe("workspace upload", () => {
   });
 });
 
-// Replays the auth section of the recorded `workspace-upload.har` to validate
-// the live BV-BRC sign-in response shape. Same caveat as the other journey
-// HAR replay tests: post-auth upload traffic isn't exercised here because
-// `Set-Cookie` is scrubbed by the recorder, so the middleware-gated workspace
-// route can't be unlocked from a HAR-only sign-in. The override-based test
-// above covers the upload + post-upload `Workspace.ls` shape; this one closes
-// the auth-shape loop against the same HAR the manual-dispatch write-group
-// refresh re-records.
+// Drives the upload journey against post-auth traffic recorded in
+// `workspace-upload.har`. The recorder navigated to `home/.e2e-records`,
+// uploaded a timestamped txt file, and waited for the post-upload
+// `Workspace.ls` refetch to surface the new row. `harOverridesFor` plays
+// each recorded `Workspace.*` call back to the JSON-RPC method that
+// matches its body; the two `Workspace.ls` entries (pre- vs post-upload)
+// are served sequentially via `callIndex`, so the second call returns the
+// listing that includes the freshly-uploaded row.
+//
+// We upload a placeholder file from the spec; the upload POST is
+// multipart (no JSON-RPC method) so the HAR override matches by
+// URL+method only and serves the recorded response regardless of the
+// spec's filename. The recorded post-upload Workspace.ls names a specific
+// timestamped file (`recorded-2026-04-28T16-22-52-740Z.txt`); that's what
+// shows up in the listing assertion.
+//
+// `authSessionOverrides` layers first to keep the AuthBoundary's
+// hydration refresh signed-in; auth-shape contract testing lives in
+// `auth.spec.ts` against `auth-sign-in.har` and isn't duplicated here.
 test.describe("workspace upload via recorded HAR replay", () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test("auth flow hydrates from recorded HAR", async ({ page }) => {
-    await applyBackendMocks(page, { har: "workspace-upload.har" });
-
-    const signIn = new SignInPage(page);
-    await signIn.goto();
-
-    const signInResponse = page.waitForResponse(
-      (res) =>
-        res.url().endsWith("/api/auth/sign-in/email") &&
-        res.request().method() === "POST",
-    );
-    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
-    await signIn.submit();
-    const res = await signInResponse;
-    const body = (await res.json()) as {
-      user?: Record<string, unknown>;
-      session?: Record<string, unknown>;
-    };
-    expect(body.user).toMatchObject({
-      username: "e2e-test-user",
-      realm: "bvbrc",
-      email_verified: true,
+  test("uploads a file and the recorded post-upload listing renders the new row", async ({
+    page,
+  }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("workspace-upload.har"),
+        ...permissiveBackendOverrides,
+      ],
     });
-    expect(body.session).toHaveProperty("expiresAt");
-    await expect(page).toHaveURL(/\/$/);
+
+    await page.goto(
+      `/workspace/${encodeURIComponent("e2e-test-user@bvbrc")}/home/.e2e-records`,
+    );
+
+    const workspace = new WorkspacePage(page);
+    await expect(workspace.breadcrumbs).toBeVisible();
+    await workspace.openUpload();
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "spec-upload.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("e2e replay upload\n"),
+    });
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("spec-upload.txt")).toBeVisible();
+    await dialog.getByRole("button", { name: /^start upload$/i }).click();
+    await expect(dialog).toBeHidden();
+
+    // The recorded post-upload `Workspace.ls` (entry 11) names this exact
+    // file. If the HAR-derived overrides actually drove the post-upload
+    // refetch, the row appears; if the upload POST or the refetch missed
+    // the override path, the listing would still show only the pre-upload
+    // file.
+    const newFile = "recorded-2026-04-28T16-22-52-740Z.txt";
+    await expect(workspace.rowByName(newFile).first()).toBeVisible();
   });
 });

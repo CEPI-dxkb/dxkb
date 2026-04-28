@@ -7,7 +7,8 @@ import {
   permissiveBackendOverrides,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
-import { JobsListPage, SignInPage } from "../pages";
+import { JobsListPage } from "../pages";
+import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("jobs lifecycle", () => {
   test("list renders all three mocked jobs", async ({ page }) => {
@@ -220,41 +221,32 @@ test.describe("jobs lifecycle", () => {
   });
 });
 
-// Replays the auth section of the recorded `jobs-lifecycle.har` to validate
-// the live BV-BRC sign-in response shape. Same caveat as the other journey
-// HAR replay tests: post-auth jobs traffic isn't exercised here because
-// `Set-Cookie` is scrubbed by the recorder, so the middleware-gated `/jobs`
-// route can't be unlocked from a HAR-only sign-in. The override-based tests
-// above cover `enumerate-tasks-filtered` and the sidebar summary shapes; this
-// one closes the auth-shape loop against the same HAR the bi-weekly refresh
-// re-records.
+// Drives the jobs page against post-auth traffic recorded in
+// `jobs-lifecycle.har`. The recorder hit `/jobs` against the live test
+// account (which has no submitted jobs), so the recorded
+// `enumerate-tasks-filtered` payload is `{jobs:[],totalTasks:0}` — i.e. the
+// empty-state path. Asserting on the empty-state copy proves the
+// HAR-derived overrides actually fed the jobs hook; if they had fallen
+// through to `permissiveBackendOverrides` (`{result:[[]]}`), the page
+// would surface a different "still loading" / partial state instead.
+//
+// `authSessionOverrides` layers first so the AuthBoundary's hydration
+// refresh sees a signed-in user; the auth-shape contract test against
+// `auth-sign-in.har` lives in `auth.spec.ts` and isn't duplicated here.
 test.describe("jobs lifecycle via recorded HAR replay", () => {
-  test.use({ storageState: { cookies: [], origins: [] } });
-
-  test("auth flow hydrates from recorded HAR", async ({ page }) => {
-    await applyBackendMocks(page, { har: "jobs-lifecycle.har" });
-
-    const signIn = new SignInPage(page);
-    await signIn.goto();
-
-    const signInResponse = page.waitForResponse(
-      (res) =>
-        res.url().endsWith("/api/auth/sign-in/email") &&
-        res.request().method() === "POST",
-    );
-    await signIn.fill("e2e-test-user", "REDACTED-PASSWORD");
-    await signIn.submit();
-    const res = await signInResponse;
-    const body = (await res.json()) as {
-      user?: Record<string, unknown>;
-      session?: Record<string, unknown>;
-    };
-    expect(body.user).toMatchObject({
-      username: "e2e-test-user",
-      realm: "bvbrc",
-      email_verified: true,
+  test("renders the recorded empty jobs state", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("jobs-lifecycle.har"),
+        ...permissiveBackendOverrides,
+      ],
     });
-    expect(body.session).toHaveProperty("expiresAt");
-    await expect(page).toHaveURL(/\/$/);
+
+    const jobs = new JobsListPage(page);
+    await jobs.goto();
+
+    await expect(page.getByRole("heading", { level: 1, name: /^jobs$/i })).toBeVisible();
+    await expect(page.getByText(/no jobs found/i).first()).toBeVisible();
   });
 });

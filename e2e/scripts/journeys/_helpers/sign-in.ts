@@ -59,19 +59,31 @@ export async function signIn(page: Page, env: JourneyEnv): Promise<void> {
 }
 
 /**
- * Read the canonical user id from the `user_id` cookie set by sign-in. The
- * `E2E_TEST_USER` env var may be the bare username; the workspace URL needs
- * the realm-qualified id (e.g. `e2e-test-user@patricbrc.org`). Reading from
- * the cookie avoids hard-coding the realm and follows whatever the auth
- * backend actually issued.
+ * Read the canonical user id set by sign-in. The `E2E_TEST_USER` env var may
+ * be the bare username; the workspace URL needs the realm-qualified id
+ * (e.g. `e2e-test-user@patricbrc.org`).
+ *
+ * `setSession` in `src/lib/auth/session.ts` writes `bvbrc_user_id` from
+ * `userProfile.id ?? username.split("@")[0]`. When the BV-BRC profile lacks
+ * an `id` field the cookie holds only the bare username, so we re-attach
+ * the `bvbrc_realm` cookie value to reconstruct the full id.
  */
 export async function getUserId(page: Page): Promise<string> {
   const cookies = await page.context().cookies();
-  const userId = cookies.find((c) => c.name === "user_id")?.value;
-  if (!userId) {
+  const raw = cookies.find((c) => c.name === "bvbrc_user_id")?.value;
+  if (!raw) {
     throw new Error(
-      "user_id cookie not set after sign-in. Sign-in helper must be called first.",
+      "bvbrc_user_id cookie not set after sign-in — sign-in likely failed. " +
+        "Check the recorder log above for a 4xx/5xx on /api/auth/sign-in/email.",
     );
   }
-  return userId;
+  if (raw.includes("@")) return raw;
+  const realm = cookies.find((c) => c.name === "bvbrc_realm")?.value;
+  if (!realm) {
+    throw new Error(
+      `bvbrc_user_id cookie ("${raw}") has no realm and bvbrc_realm cookie is missing — ` +
+        "cannot construct the workspace URL.",
+    );
+  }
+  return `${raw}@${realm}`;
 }

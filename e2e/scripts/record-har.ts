@@ -75,39 +75,34 @@ function sanitizeHar(
   const emailRe = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi;
   const originRe = new RegExp(escapeRegExp(recordedOrigin), "g");
 
-  const scrubText = (text: string | undefined): string | undefined => {
-    if (!text) return text;
+  // Whole-document scrub: replace credentials, emails, and the recorded host
+  // origin in any string in the HAR. Used once on the serialized JSON below.
+  const scrub = (text: string): string => {
     let next = text;
     if (passwordRe) next = next.replace(passwordRe, E2E_PASSWORD_PLACEHOLDER);
     if (userRe) next = next.replace(userRe, E2E_USERNAME_PLACEHOLDER);
     next = next.replace(emailRe, E2E_EMAIL_PLACEHOLDER);
-    return next;
+    return next.replace(originRe, HAR_REPLAY_HOST_PLACEHOLDER);
   };
-
-  const rewriteHost = (url: string | undefined): string | undefined =>
-    url ? url.replace(originRe, HAR_REPLAY_HOST_PLACEHOLDER) : url;
 
   const stripSensitiveHeaders = (headers: HarHeader[] | undefined): HarHeader[] | undefined =>
     headers?.filter((h) => !SENSITIVE_HEADER_NAMES.has(h.name.toLowerCase()));
 
   for (const entry of har.log.entries) {
-    entry.request.url = rewriteHost(entry.request.url) ?? entry.request.url;
+    // Drop sensitive headers + structured cookies; the value-scrub below handles
+    // non-sensitive headers (Referer, etc.) and the parsed queryString/cookies arrays.
     entry.request.headers = stripSensitiveHeaders(entry.request.headers);
     entry.response.headers = stripSensitiveHeaders(entry.response.headers);
-    // `response.cookies` is a structured array of the same set-cookie data; drop it too.
     if (entry.response.cookies) entry.response.cookies = [];
-    if (entry.response.redirectURL) {
-      entry.response.redirectURL = rewriteHost(entry.response.redirectURL) ?? "";
-    }
-    if (entry.request.postData) {
-      entry.request.postData.text = scrubText(entry.request.postData.text);
-    }
-    if (entry.response.content) {
-      entry.response.content.text = scrubText(entry.response.content.text);
-    }
   }
 
-  fs.writeFileSync(harPath, JSON.stringify(har, null, 2));
+  // Whole-document scrub. Catches every place the username can leak —
+  // request.url, response.redirectURL, request.queryString[].value,
+  // request.cookies[].value, non-sensitive header values (Referer, Origin),
+  // entry.pageref, response.content.text, request.postData.text, and anything
+  // Playwright adds in a future schema bump — without us having to enumerate
+  // every field by hand.
+  fs.writeFileSync(harPath, scrub(JSON.stringify(har, null, 2)));
   assertNoSensitiveData(harPath, user, password);
 }
 
@@ -246,6 +241,7 @@ async function main(): Promise<void> {
   });
   const page = await context.newPage();
 
+  let driverError: unknown;
   try {
     if (driver) {
       await driver(page, { baseURL, user, password });
@@ -254,14 +250,27 @@ async function main(): Promise<void> {
       console.log("The browser will stay open. Drive the journey manually, then press Enter.");
       await promptEnter("Press Enter here when you are done with the journey...");
     }
+  } catch (e) {
+    driverError = e;
   } finally {
+    // Closing the context flushes the HAR to disk. Must happen before sanitize
+    // so the file actually exists.
     await context.close();
     await browser.close();
   }
 
+  // Always sanitize what hit disk, even if the driver threw partway through.
+  // Otherwise a partial HAR full of live credentials would sit in the workspace
+  // until someone noticed (or worse, got committed). `sanitizeHar` deletes the
+  // file when its post-write assertion finds anything sensitive.
   if (fs.existsSync(harPath)) {
     const recordedOrigin = new URL(baseURL).origin;
     sanitizeHar(harPath, user, password, recordedOrigin);
+  }
+
+  if (driverError) {
+    // Re-throw after sanitizing so the recorder still exits non-zero.
+    throw driverError;
   }
   console.log(`HAR saved to ${harPath}`);
 }

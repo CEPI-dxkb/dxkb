@@ -4,6 +4,7 @@ import {
   e2eHomePath,
   e2eUsername,
   journeyOverrides,
+  workspaceRpcOverride,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
 
@@ -13,9 +14,11 @@ test.describe("workspace actions", () => {
   }) => {
     await applyBackendMocks(page, {
       overrides: [
-        // reflectUploads covers folder creates: Workspace.create with type "Directory" appends
-        // the new folder to pathItems so the post-create Workspace.ls refresh surfaces the row.
-        ...buildWorkspaceOverrides({ reflectUploads: true }),
+        // reflectFolderCreates: Workspace.create with type "Directory" appends the new folder
+        // tuple to pathItems so the post-create Workspace.ls refresh surfaces the row.
+        // Distinct from reflectUploads (which covers file uploads) so this spec doesn't also
+        // reflect any incidental file-upload Workspace.create traffic.
+        ...buildWorkspaceOverrides({ reflectFolderCreates: true }),
         ...journeyOverrides,
       ],
     });
@@ -72,6 +75,9 @@ test.describe("workspace actions", () => {
       overrides: [
         // Single owned file in home. Omitting `userPermission` defaults to "o" via
         // workspaceTuple, which makes the DELETE action (requireWrite) visible.
+        // The test asserts on the Workspace.delete request shape, so we pin only
+        // that method explicitly — leaving the catch-all off keeps strict-mode
+        // tripping on any new RPC the action introduces.
         ...buildWorkspaceOverrides({
           pathItems: {
             [e2eHomePath]: [
@@ -84,6 +90,7 @@ test.describe("workspace actions", () => {
               },
             ],
           },
+          extraRpc: [workspaceRpcOverride("Workspace.delete", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],
@@ -129,21 +136,23 @@ test.describe("workspace actions", () => {
     expect(body.params?.[0]?.deleteDirectories).toBe(true);
   });
 
-  test("copying a folder to the workspace root POSTs Workspace.copy with move: false", async ({
+  test("copying a file: pick a non-default destination via the mini-browser and POST Workspace.copy with move: false", async ({
     page,
   }) => {
+    // The CopyToDialog mini-browser at root mode renders items from `useUserWorkspaces`,
+    // which derives the root listing path by stripping the realm from the workspaceRoot
+    // and reapplying `@bvbrc` (see `useUserWorkspaces` in
+    // src/hooks/services/workspace/use-shared-with-user.ts). With workspaceRoot
+    // `/e2e-test-user@patricbrc.org`, the hook ends up requesting `/e2e-test-user@bvbrc`
+    // — so the destination tree we render here lives at that path, and any picked
+    // destination paths use the same `@bvbrc` segment.
+    const userBvbrcRoot = `/${e2eUsername.split("@")[0]}@bvbrc`;
     await applyBackendMocks(page, {
       overrides: [
-        // Single owned folder in home. COPY action is "*"-typed (no requireWrite on the source),
-        // so the default "o" permission from workspaceTuple is sufficient.
-        // pathItems also includes a root listing ("/") so ensureDestinationWriteAccess —
-        // which calls Workspace.ls at "/" to verify write access on the workspace root
-        // destination before firing Workspace.copy — can find the workspace root folder.
         ...buildWorkspaceOverrides({
           pathItems: {
-            // Root listing: Workspace.ls at "/" returns the workspace root folder entry.
-            // ensureDestinationWriteAccess calls listFolder("/") when the destination
-            // is the workspace root (e.g. /e2e-test-user@patricbrc.org).
+            // Workspace.ls at "/" — used by ensureDestinationWriteAccess and by the
+            // mini-browser's `useSharedWithUser` scan for shared folders.
             "/": [
               {
                 name: e2eUsername,
@@ -152,15 +161,38 @@ test.describe("workspace actions", () => {
                 userPermission: "o",
               },
             ],
+            // Workspace root listing the mini-browser actually queries (via
+            // useUserWorkspaces). Stage "Reports" + "Archive" so we have at least
+            // one obviously-pickable folder row that's distinct from the default
+            // root destination.
+            [userBvbrcRoot]: [
+              {
+                name: "Reports",
+                type: "folder",
+                parentPath: userBvbrcRoot,
+                userPermission: "o",
+              },
+              {
+                name: "Archive",
+                type: "folder",
+                parentPath: userBvbrcRoot,
+                userPermission: "o",
+              },
+            ],
+            // Source listing in /home — a single source file we'll copy.
             [e2eHomePath]: [
               {
-                name: "Datasets",
-                type: "folder",
+                name: "report.txt",
+                type: "txt",
                 parentPath: e2eHomePath,
-                creationTime: "2026-02-01T00:00:00Z",
+                creationTime: "2026-04-01T00:00:00Z",
+                size: 12,
               },
             ],
           },
+          // Pin Workspace.copy explicitly. The test asserts on its request shape, and
+          // the explicit override keeps strict-mode active for any unrelated RPC.
+          extraRpc: [workspaceRpcOverride("Workspace.copy", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],
@@ -168,18 +200,27 @@ test.describe("workspace actions", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    // Select the folder row so the COPY action becomes visible.
-    await workspace.rowByName("Datasets").first().click();
-
-    // The action-bar COPY button (label "COPY") is the only matching control before
-    // the dialog opens; case-insensitive regex matches the all-caps label.
+    // Source is a file. Click the row to select it as the COPY action's source.
+    await workspace.rowByName("report.txt").first().click();
     await page.getByRole("button", { name: /^copy$/i }).click();
 
-    // Copy uses a regular Dialog (role="dialog", not alertdialog).
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
-    // Register the request watcher BEFORE clicking confirm so we don't race.
+    // The dialog's default destination is the workspace root. For a file source,
+    // rootWithIncompatibleTypes blocks the Copy button until the user picks a folder
+    // destination. Single-click on a folder row in the mini-browser sets that folder
+    // as the destinationPath (vs. dblclick which navigates into the folder).
+    const confirmButton = dialog.getByRole("button", { name: /^copy$/i });
+    await expect(confirmButton).toBeDisabled();
+
+    // The mini-browser table row's accessible name combines all visible cell texts —
+    // match against just the leading folder-name token so date/owner cell drift doesn't
+    // brittle the selector. `data-row-key` would be cleaner but is internal markup.
+    const reportsRow = dialog.getByRole("row", { name: /^Reports\s/ }).first();
+    await reportsRow.click();
+    await expect(confirmButton).toBeEnabled();
+
     const copyRequestPromise = page.waitForRequest((req) => {
       if (!req.url().endsWith("/api/services/workspace") || req.method() !== "POST") {
         return false;
@@ -192,10 +233,7 @@ test.describe("workspace actions", () => {
       }
     });
 
-    // The dialog's default destinationPath is the workspace root. For a folder source,
-    // rootWithIncompatibleTypes is false, so the Copy button is enabled immediately —
-    // no mini-browser navigation required.
-    await dialog.getByRole("button", { name: /^copy$/i }).click();
+    await confirmButton.click();
     const req = await copyRequestPromise;
     const body = JSON.parse(req.postData() ?? "{}") as {
       params?: [{
@@ -206,27 +244,26 @@ test.describe("workspace actions", () => {
     };
     const pairs = body.params?.[0]?.objects ?? [];
     expect(pairs.length).toBe(1);
-    // Source path is the full path of the selected folder.
-    expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/Datasets`);
-    // Destination contains the source folder name (default filename preserved).
-    expect(pairs[0]?.[1]).toMatch(/Datasets/);
+    // Source path is the full path of the selected file.
+    expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/report.txt`);
+    // Destination uses the picked "Reports" folder under the @bvbrc root the mini-browser
+    // queries — distinct from the @patricbrc.org workspace-root default — with the
+    // original filename preserved.
+    expect(pairs[0]?.[1]).toBe(`${userBvbrcRoot}/Reports/report.txt`);
     // move: false distinguishes copy from move; recursive: true is the default.
     expect(body.params?.[0]?.move).toBe(false);
     expect(body.params?.[0]?.recursive).toBe(true);
   });
 
-  test("moving a folder to the workspace root POSTs Workspace.copy with move: true", async ({
+  test("moving a file: pick a non-default destination via the mini-browser and POST Workspace.copy with move: true", async ({
     page,
   }) => {
+    // See the copy test above for why the destination listing lives at /<user>@bvbrc.
+    const userBvbrcRoot = `/${e2eUsername.split("@")[0]}@bvbrc`;
     await applyBackendMocks(page, {
       overrides: [
-        // Source folder + root listing for ensureDestinationWriteAccess. Default "o"
-        // userPermission satisfies the MOVE action's requireWrite gate.
         ...buildWorkspaceOverrides({
           pathItems: {
-            // Root listing: Workspace.ls at "/" returns the workspace root folder entry.
-            // ensureDestinationWriteAccess calls listFolder("/") when the destination
-            // is the workspace root (e.g. /e2e-test-user@patricbrc.org).
             "/": [
               {
                 name: e2eUsername,
@@ -235,15 +272,33 @@ test.describe("workspace actions", () => {
                 userPermission: "o",
               },
             ],
+            [userBvbrcRoot]: [
+              {
+                name: "Reports",
+                type: "folder",
+                parentPath: userBvbrcRoot,
+                userPermission: "o",
+              },
+              {
+                name: "Archive",
+                type: "folder",
+                parentPath: userBvbrcRoot,
+                userPermission: "o",
+              },
+            ],
             [e2eHomePath]: [
               {
-                name: "Datasets",
-                type: "folder",
+                name: "report.txt",
+                type: "txt",
                 parentPath: e2eHomePath,
-                creationTime: "2026-02-01T00:00:00Z",
+                creationTime: "2026-04-01T00:00:00Z",
+                size: 12,
               },
             ],
           },
+          // Move uses Workspace.copy with move: true. Pin only that method so any
+          // other unexpected RPC trips strict-mode.
+          extraRpc: [workspaceRpcOverride("Workspace.copy", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],
@@ -251,14 +306,23 @@ test.describe("workspace actions", () => {
     const workspace = new WorkspacePage(page);
     await workspace.goto();
 
-    await workspace.rowByName("Datasets").first().click();
-
-    // Action-bar MOVE button (label "MOVE"). Case-insensitive regex matches.
+    await workspace.rowByName("report.txt").first().click();
     await page.getByRole("button", { name: /^move$/i }).click();
 
-    // Move uses the same Dialog as copy (role="dialog").
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
+
+    // Default destination (workspace root) is incompatible for a file source — Move stays
+    // disabled until the user picks a folder row from the mini-browser.
+    const confirmButton = dialog.getByRole("button", { name: /^move$/i });
+    await expect(confirmButton).toBeDisabled();
+
+    // The mini-browser table row's accessible name combines all visible cell texts —
+    // match against just the leading folder-name token so date/owner cell drift doesn't
+    // brittle the selector. `data-row-key` would be cleaner but is internal markup.
+    const reportsRow = dialog.getByRole("row", { name: /^Reports\s/ }).first();
+    await reportsRow.click();
+    await expect(confirmButton).toBeEnabled();
 
     const moveRequestPromise = page.waitForRequest((req) => {
       if (!req.url().endsWith("/api/services/workspace") || req.method() !== "POST") {
@@ -277,9 +341,7 @@ test.describe("workspace actions", () => {
       }
     });
 
-    // Default destination is the workspace root; folder sources are valid there.
-    // The dialog button label is "Move" in move mode (vs "Copy" in copy mode).
-    await dialog.getByRole("button", { name: /^move$/i }).click();
+    await confirmButton.click();
     const req = await moveRequestPromise;
     const body = JSON.parse(req.postData() ?? "{}") as {
       params?: [{
@@ -290,11 +352,10 @@ test.describe("workspace actions", () => {
     };
     const pairs = body.params?.[0]?.objects ?? [];
     expect(pairs.length).toBe(1);
-    // Source path is the full path of the selected folder.
-    expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/Datasets`);
-    // Destination contains the source folder name (default filename preserved).
-    expect(pairs[0]?.[1]).toMatch(/Datasets/);
-    // move: true distinguishes move from copy; recursive: true is the default.
+    expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/report.txt`);
+    // Destination uses the picked "Reports" folder under the @bvbrc root, not the
+    // @patricbrc.org workspace root default.
+    expect(pairs[0]?.[1]).toBe(`${userBvbrcRoot}/Reports/report.txt`);
     expect(body.params?.[0]?.move).toBe(true);
     expect(body.params?.[0]?.recursive).toBe(true);
   });
@@ -317,6 +378,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
+          // Pin Workspace.update_metadata explicitly so the test asserts on its
+          // request shape against a real override, not a permissive catch-all.
+          extraRpc: [workspaceRpcOverride("Workspace.update_metadata", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],

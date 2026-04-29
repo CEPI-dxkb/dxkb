@@ -29,7 +29,7 @@ interface FacetPanelProps {
 // Parse Solr facet response
 // ------------------------------
 function parseFacetCounts(
-  facets: Record<string, any[]>
+  facets: Record<string, (string | number)[]>
 ): Record<string, FacetItem[]> {
   const out: Record<string, FacetItem[]> = {};
 
@@ -38,10 +38,11 @@ function parseFacetCounts(
     out[cat] = [];
 
     for (let i = 0; i < data.length - 1; i += 2) {
+      const label = String(data[i]);
       out[cat].push({
-        label: data[i],
-        value: data[i],
-        count: data[i + 1],
+        label,
+        value: label,
+        count: Number(data[i + 1]),
       });
     }
   });

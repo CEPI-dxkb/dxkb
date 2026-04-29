@@ -1,70 +1,84 @@
-const { mockAuthAdmin } = vi.hoisted(() => ({
-  mockAuthAdmin: { changePassword: vi.fn() },
+import { http, HttpResponse } from "msw";
+import { server } from "@/test-helpers/msw-server";
+
+const { mockCookieStore } = vi.hoisted(() => ({
+  mockCookieStore: { get: vi.fn(), set: vi.fn() },
 }));
 
-vi.mock("@/lib/auth/server/instance", () => ({
-  authAdmin: mockAuthAdmin,
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }));
 
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { POST } from "../route";
 
-describe("POST /api/auth/change-password", () => {
-  beforeEach(() => {
-    mockAuthAdmin.changePassword.mockReset();
-  });
+const userUrl = "https://user.test/user";
 
-  it("returns 400 when both fields are missing", async () => {
+beforeEach(() => {
+  process.env.USER_URL = userUrl;
+  mockCookieStore.get.mockReset();
+  mockCookieStore.set.mockReset();
+});
+
+afterEach(() => {
+  delete process.env.USER_URL;
+});
+
+function setSessionCookies(token: string, userId: string) {
+  mockCookieStore.get.mockImplementation((name: string) => {
+    if (name === "bvbrc_token") return { value: token };
+    if (name === "bvbrc_user_id") return { value: userId };
+    return undefined;
+  });
+}
+
+describe("POST /api/auth/change-password", () => {
+  it("returns 400 when both fields are missing without calling upstream", async () => {
+    let upstreamCalled = false;
+    server.use(
+      http.post(`${userUrl}/`, () => {
+        upstreamCalled = true;
+        return HttpResponse.json({ id: 1, jsonrpc: "2.0", result: null });
+      }),
+    );
+
     const request = mockNextRequest({ method: "POST", body: {} });
     const response = await POST(request);
     const data = await response.json();
 
     expect(response.status).toBe(400);
     expect(data.message).toBe("Current password and new password are required");
-    expect(mockAuthAdmin.changePassword).not.toHaveBeenCalled();
+    expect(upstreamCalled).toBe(false);
   });
 
-  it("returns 400 when currentPassword is missing", async () => {
+  it("returns 401 when no session cookies are set so the session.read() returns null", async () => {
+    mockCookieStore.get.mockReturnValue(undefined);
+
     const request = mockNextRequest({
       method: "POST",
-      body: { newPassword: "newSecret123" },
+      body: { currentPassword: "old", newPassword: "newSecret123" },
     });
     const response = await POST(request);
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.message).toBe("Current password and new password are required");
-    expect(mockAuthAdmin.changePassword).not.toHaveBeenCalled();
+    expect(response.status).toBe(401);
+    expect(data.message).toMatch(/authentication required/i);
   });
 
-  it("returns 400 when newPassword is an empty string", async () => {
-    const request = mockNextRequest({
-      method: "POST",
-      body: { currentPassword: "old", newPassword: "" },
-    });
-    const response = await POST(request);
-    const data = await response.json();
+  it("forwards the JSON-RPC setPassword body with the session token as the Authorization header to USER_URL on success", async () => {
+    setSessionCookies("valid-token", "alice");
 
-    expect(response.status).toBe(400);
-    expect(data.message).toBe("Current password and new password are required");
-    expect(mockAuthAdmin.changePassword).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when currentPassword is an empty string", async () => {
-    const request = mockNextRequest({
-      method: "POST",
-      body: { currentPassword: "", newPassword: "newSecret123" },
-    });
-    const response = await POST(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.message).toBe("Current password and new password are required");
-    expect(mockAuthAdmin.changePassword).not.toHaveBeenCalled();
-  });
-
-  it("forwards both passwords positionally to authAdmin.changePassword and returns { success: true }", async () => {
-    mockAuthAdmin.changePassword.mockResolvedValue({ data: undefined, error: null });
+    let capturedAuthorization: string | null = null;
+    let capturedContentType: string | null = null;
+    let capturedBody: string | null = null;
+    server.use(
+      http.post(`${userUrl}/`, async ({ request }) => {
+        capturedAuthorization = request.headers.get("Authorization");
+        capturedContentType = request.headers.get("Content-Type");
+        capturedBody = await request.text();
+        return HttpResponse.json({ id: 1, jsonrpc: "2.0", result: null });
+      }),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -75,18 +89,54 @@ describe("POST /api/auth/change-password", () => {
 
     expect(response.status).toBe(200);
     expect(data).toEqual({ success: true });
-    expect(mockAuthAdmin.changePassword).toHaveBeenCalledWith("old", "newSecret123");
+    expect(capturedAuthorization).toBe("valid-token");
+    expect(capturedContentType).toBe("application/json");
+
+    const parsedBody = JSON.parse(capturedBody ?? "{}") as {
+      jsonrpc?: string;
+      method?: string;
+      params?: unknown[];
+    };
+    expect(parsedBody.jsonrpc).toBe("2.0");
+    expect(parsedBody.method).toBe("setPassword");
+    // params: [userId, currentPassword, newPassword] — pulled from session cookies + body.
+    expect(parsedBody.params).toEqual(["alice", "old", "newSecret123"]);
   });
 
-  it("uses error.status (explicit) over the fallback 500", async () => {
-    mockAuthAdmin.changePassword.mockResolvedValue({
-      data: null,
-      error: {
-        code: "invalid_credentials",
-        message: "Wrong current password",
-        status: 403,
-      },
+  it("propagates the JSON-RPC error message when upstream returns a 200 with an error envelope", async () => {
+    setSessionCookies("valid-token", "alice");
+
+    server.use(
+      http.post(`${userUrl}/`, () =>
+        HttpResponse.json({
+          id: 1,
+          jsonrpc: "2.0",
+          error: { message: "Wrong current password" },
+        }),
+      ),
+    );
+
+    const request = mockNextRequest({
+      method: "POST",
+      body: { currentPassword: "wrong", newPassword: "newSecret123" },
     });
+    const response = await POST(request);
+    const data = await response.json();
+
+    // bvbrcIdentity.changePassword maps a JSON-RPC error envelope to fail("validation", msg, 400)
+    // and the route surfaces error.status (400) directly.
+    expect(response.status).toBe(400);
+    expect(data.message).toBe("Wrong current password");
+  });
+
+  it("returns the upstream HTTP error status with the upstream body text on a transport-level failure", async () => {
+    setSessionCookies("valid-token", "alice");
+
+    server.use(
+      http.post(`${userUrl}/`, () =>
+        new HttpResponse("Forbidden", { status: 403 }),
+      ),
+    );
 
     const request = mockNextRequest({
       method: "POST",
@@ -96,49 +146,6 @@ describe("POST /api/auth/change-password", () => {
     const data = await response.json();
 
     expect(response.status).toBe(403);
-    expect(data.message).toBe("Wrong current password");
-  });
-
-  it("falls back to 500 when error has no explicit status", async () => {
-    mockAuthAdmin.changePassword.mockResolvedValue({
-      data: null,
-      error: {
-        code: "unknown",
-        message: "Something went wrong",
-      },
-    });
-
-    const request = mockNextRequest({
-      method: "POST",
-      body: { currentPassword: "old", newPassword: "newSecret123" },
-    });
-    const response = await POST(request);
-    const data = await response.json();
-
-    // change-password uses error.status ?? 500, not statusFor
-    expect(response.status).toBe(500);
-    expect(data.message).toBe("Something went wrong");
-  });
-
-  it("returns 500 when request.json() throws (outer try/catch)", async () => {
-    // Craft a request with a malformed body so JSON.parse fails.
-    // mockNextRequest always sets Content-Type: application/json, but we
-    // override the body to a raw non-JSON string by creating the NextRequest directly.
-    const { NextRequest } = await import("next/server");
-    const badRequest = new NextRequest("http://localhost/api/auth/change-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "not json at all",
-    });
-
-    // The route catches JSON parse errors via .catch(() => ({})), so it won't
-    // throw — it falls back to an empty object and returns 400 (missing fields).
-    // This test verifies the .catch fallback path, not a 500.
-    const response = await POST(badRequest);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.message).toBe("Current password and new password are required");
-    expect(mockAuthAdmin.changePassword).not.toHaveBeenCalled();
+    expect(data.message).toBe("Forbidden");
   });
 });

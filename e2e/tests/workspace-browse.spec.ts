@@ -53,6 +53,10 @@ test.describe("workspace browse", () => {
             ],
             [`${e2eHomePath}/Datasets`]: nestedItems,
           },
+          // Folder navigation triggers ancillary Workspace.* RPCs (permissions
+          // re-check, metadata fetch). These are covered by the helper's path-
+          // agnostic listPermsOverride and getKnownOverride (since Datasets is in
+          // pathItems), so no permissive catch-all is needed.
         }),
         ...journeyOverrides,
       ],
@@ -127,6 +131,13 @@ test.describe("workspace browse", () => {
     // contract — a UI that lights up the star locally but never calls the API would fail here.
     await applyBackendMocks(page, {
       overrides: [
+        // The favorites toggle fires Workspace.create against favorites.json AND a
+        // follow-up Workspace.get to re-read it. The helper's createOverride matches
+        // both creates (the .preferences dir bootstrap and the favorites.json write),
+        // and getOverride matches the favorites.json read by path. The .preferences
+        // dir existence check (Workspace.get on the dir path) falls through to
+        // getNotFoundOverride's 500, which ensurePreferencesDir handles by creating
+        // the dir. No permissive catch-all needed.
         ...buildWorkspaceOverrides(),
         ...journeyOverrides,
       ],

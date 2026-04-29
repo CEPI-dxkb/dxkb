@@ -132,11 +132,26 @@ interface BuildWorkspaceOverridesOptions {
   /** Optional extra RPC method overrides to append. */
   extraRpc?: JsonOverride[];
   /**
-   * When true, `Workspace.create` echoes back the filename it was asked to create AND any
-   * subsequent `Workspace.ls` for the create's parent directory includes the new tuple. Lets
-   * upload specs assert that the listing actually refreshes with the uploaded file.
+   * When true, file (non-Directory) `Workspace.create` calls append the new tuple to
+   * `pathItems` so the post-upload `Workspace.ls` refresh surfaces the uploaded row.
+   * Folder creates ignore this flag — use `reflectFolderCreates` for those.
    */
   reflectUploads?: boolean;
+  /**
+   * When true, folder (`Workspace.create` with type "Directory") calls append the new
+   * folder tuple to `pathItems` so the post-create `Workspace.ls` refresh surfaces the
+   * row. Independent of `reflectUploads` so file-upload specs don't accidentally enable
+   * folder reflection (and vice versa).
+   */
+  reflectFolderCreates?: boolean;
+  /**
+   * When true, append a permissive `{ result: [[]] }` fallback for any `Workspace.*` RPC
+   * the explicit overrides above don't match. Lets older specs avoid declaring every RPC
+   * the page might fire. Default: `false` — matches the strict-mock spirit of journey
+   * overrides so new RPC traffic surfaces as a strict-mode failure rather than being
+   * silently swallowed.
+   */
+  permissiveCatchall?: boolean;
 }
 
 const defaultHomeItems: TupleItem[] = [
@@ -228,8 +243,8 @@ export function buildWorkspaceOverrides(
       // Recursive ls calls hit a different branch (object selector search).
       return params?.recursive !== true;
     },
-    // Function body lets reflectUploads mutate `pathItems` between calls (Workspace.create
-    // appends the new tuple, then the next Workspace.ls picks it up).
+    // Function body lets reflectUploads / reflectFolderCreates mutate `pathItems` between
+    // calls (Workspace.create appends the new tuple, then the next Workspace.ls picks it up).
     body: () => ({ result: mockWorkspaceLsResult({ pathItems }) }),
   };
 
@@ -279,9 +294,11 @@ export function buildWorkspaceOverrides(
     },
   };
 
-  // Mirror back whatever filename the request asked to create. With reflectUploads on, we also
-  // append the new tuple to `pathItems` so the next Workspace.ls picks it up — the listing
-  // refresh that the upload dialog triggers is what surfaces the row in the UI.
+  // Mirror back whatever filename the request asked to create. The two reflection flags
+  // route by type so file-upload specs and folder-create specs can opt in independently:
+  // `reflectUploads` mirrors non-Directory creates (file uploads); `reflectFolderCreates`
+  // mirrors Directory creates (new folders). Either way, the new tuple is appended to
+  // `pathItems` so the next Workspace.ls refresh surfaces the row.
   const createOverride: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -297,7 +314,11 @@ export function buildWorkspaceOverrides(
       const lastSlash = fullPath.lastIndexOf("/");
       const name = lastSlash >= 0 ? fullPath.slice(lastSlash + 1) : fullPath || "uploaded";
       const parentPath = lastSlash > 0 ? fullPath.slice(0, lastSlash) : e2eHomePath;
-      if (options.reflectUploads) {
+      const isDirectory = type === "Directory";
+      const shouldReflect = isDirectory
+        ? options.reflectFolderCreates === true
+        : options.reflectUploads === true;
+      if (shouldReflect) {
         const existing = pathItems[parentPath] ?? [];
         if (!existing.some((it) => it.name === name)) {
           pathItems[parentPath] = [
@@ -331,6 +352,15 @@ export function buildWorkspaceOverrides(
 
   const updateMetaOverride = workspaceRpcOverride(
     "Workspace.update_auto_meta",
+    { result: [[]] },
+  );
+
+  // Workspace.du fires whenever a folder is selected in the browser (the details panel
+  // calls it for disk-usage). Returning an empty tuple-array is enough — the panel just
+  // renders zero size when no entry matches. Pinning it here keeps the strict-mock
+  // contract intact without forcing every spec that selects a folder to opt in.
+  const duOverride = workspaceRpcOverride(
+    "Workspace.du",
     { result: [[]] },
   );
 
@@ -373,7 +403,9 @@ export function buildWorkspaceOverrides(
     body: { error: { code: -32000, message: "Object not found" } },
   };
 
-  // Fallback for any Workspace.* methods we haven't explicitly mocked. Keeps strict happy.
+  // Fallback for any Workspace.* methods we haven't explicitly mocked. Off by default —
+  // turning this on weakens strict-mode by silently swallowing unknown RPCs. Specs that
+  // rely on it should opt in via `permissiveCatchall: true`.
   const workspaceCatchall: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -387,10 +419,11 @@ export function buildWorkspaceOverrides(
     getOverride,
     createOverride,
     updateMetaOverride,
+    duOverride,
     ...(options.extraRpc ?? []),
     getKnownOverride,
     getNotFoundOverride,
-    workspaceCatchall,
+    ...(options.permissiveCatchall ? [workspaceCatchall] : []),
     // Proxy / preview endpoints the file viewer calls.
     {
       url: /\/api\/workspace\/view\//,

@@ -34,6 +34,7 @@ export default defineConfig({
     pool: "forks",
     coverage: {
       provider: "v8",
+      reporter: ["text", "html", "json-summary", "json"],
       include: ["src/lib/**", "src/hooks/**", "src/contexts/**"],
       exclude: [
         "src/**/*.d.ts",
@@ -41,6 +42,15 @@ export default defineConfig({
         "src/**/types/**",
         "src/components/ui/**",
       ],
+      // Floors set just below the measured baseline so unrelated PRs don't
+      // randomly trip on rounding drift. Bump these incrementally as new tests
+      // raise the measured numbers.
+      thresholds: {
+        lines: 77,
+        statements: 76,
+        functions: 82,
+        branches: 66,
+      },
     },
   },
 });

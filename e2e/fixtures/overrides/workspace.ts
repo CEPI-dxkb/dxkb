@@ -132,11 +132,18 @@ interface BuildWorkspaceOverridesOptions {
   /** Optional extra RPC method overrides to append. */
   extraRpc?: JsonOverride[];
   /**
-   * When true, `Workspace.create` echoes back the filename it was asked to create AND any
-   * subsequent `Workspace.ls` for the create's parent directory includes the new tuple. Lets
-   * upload specs assert that the listing actually refreshes with the uploaded file.
+   * When true, file (non-Directory) `Workspace.create` calls append the new tuple to
+   * `pathItems` so the post-upload `Workspace.ls` refresh surfaces the uploaded row.
+   * Folder creates ignore this flag — use `reflectFolderCreates` for those.
    */
   reflectUploads?: boolean;
+  /**
+   * When true, folder (`Workspace.create` with type "Directory") calls append the new
+   * folder tuple to `pathItems` so the post-create `Workspace.ls` refresh surfaces the
+   * row. Independent of `reflectUploads` so file-upload specs don't accidentally enable
+   * folder reflection (and vice versa).
+   */
+  reflectFolderCreates?: boolean;
   /**
    * When true, append a permissive `{ result: [[]] }` fallback for any `Workspace.*` RPC
    * the explicit overrides above don't match. Lets older specs avoid declaring every RPC
@@ -236,8 +243,8 @@ export function buildWorkspaceOverrides(
       // Recursive ls calls hit a different branch (object selector search).
       return params?.recursive !== true;
     },
-    // Function body lets reflectUploads mutate `pathItems` between calls (Workspace.create
-    // appends the new tuple, then the next Workspace.ls picks it up).
+    // Function body lets reflectUploads / reflectFolderCreates mutate `pathItems` between
+    // calls (Workspace.create appends the new tuple, then the next Workspace.ls picks it up).
     body: () => ({ result: mockWorkspaceLsResult({ pathItems }) }),
   };
 
@@ -287,9 +294,11 @@ export function buildWorkspaceOverrides(
     },
   };
 
-  // Mirror back whatever filename the request asked to create. With reflectUploads on, we also
-  // append the new tuple to `pathItems` so the next Workspace.ls picks it up — the listing
-  // refresh that the upload dialog triggers is what surfaces the row in the UI.
+  // Mirror back whatever filename the request asked to create. The two reflection flags
+  // route by type so file-upload specs and folder-create specs can opt in independently:
+  // `reflectUploads` mirrors non-Directory creates (file uploads); `reflectFolderCreates`
+  // mirrors Directory creates (new folders). Either way, the new tuple is appended to
+  // `pathItems` so the next Workspace.ls refresh surfaces the row.
   const createOverride: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -305,7 +314,11 @@ export function buildWorkspaceOverrides(
       const lastSlash = fullPath.lastIndexOf("/");
       const name = lastSlash >= 0 ? fullPath.slice(lastSlash + 1) : fullPath || "uploaded";
       const parentPath = lastSlash > 0 ? fullPath.slice(0, lastSlash) : e2eHomePath;
-      if (options.reflectUploads) {
+      const isDirectory = type === "Directory";
+      const shouldReflect = isDirectory
+        ? options.reflectFolderCreates === true
+        : options.reflectUploads === true;
+      if (shouldReflect) {
         const existing = pathItems[parentPath] ?? [];
         if (!existing.some((it) => it.name === name)) {
           pathItems[parentPath] = [

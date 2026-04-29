@@ -10,6 +10,8 @@ import {
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
+import { recordedTestUserId } from "../scripts/har-constants";
+import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("workspace browse", () => {
   test("populated listing renders rows for each workspace item", async ({ page }) => {
@@ -172,5 +174,35 @@ test.describe("workspace browse", () => {
     const content = JSON.parse(String(tuple[3])) as { folders?: string[] };
     expect(content.folders).toContain(`${e2eHomePath}/Datasets`);
     expect(body.params?.[0]?.overwrite).toBe(1);
+  });
+});
+
+// Drives the browse journey against post-auth traffic recorded in
+// `workspace-browse.har`. The auth-shape contract test against
+// `auth-sign-in.har` lives in `auth.spec.ts` — the canonical canary, not
+// duplicated here. See `harOverridesFor` for the rationale on why this
+// spec must NOT layer `permissiveBackendOverrides`.
+test.describe("workspace browse via recorded HAR replay", () => {
+  test("renders the recorded workspace listing", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("workspace-browse.har"),
+      ],
+    });
+
+    await page.goto(`/workspace/${encodeURIComponent(recordedTestUserId)}/home`);
+
+    const workspace = new WorkspacePage(page);
+    await expect(workspace.breadcrumbs).toBeVisible();
+
+    // These four folders all appear in the recorded `Workspace.ls` response
+    // (`workspace-browse.har` entry 5). If the HAR replay actually fed the
+    // workspace browser, the rows render; if the override fell through to
+    // the permissive catchall (`{result:[[]]}`), the listing would be empty
+    // and these assertions would time out.
+    for (const name of ["Experiment Groups", "Genome Groups", "Experiments", "Feature Groups"]) {
+      await expect(workspace.rowByName(name).first()).toBeVisible();
+    }
   });
 });

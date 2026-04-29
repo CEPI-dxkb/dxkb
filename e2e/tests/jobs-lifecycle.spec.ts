@@ -8,6 +8,7 @@ import {
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 import { JobsListPage } from "../pages";
+import { harOverridesFor } from "../scripts/har-overrides";
 
 test.describe("jobs lifecycle", () => {
   test("list renders all three mocked jobs", async ({ page }) => {
@@ -217,5 +218,29 @@ test.describe("jobs lifecycle", () => {
     // isn't a coin-flip on a slow CI runner.
     await expect(statusBadge).toContainText(/completed/i, { timeout: 20_000 });
     expect(enumerateCalls).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// Drives the jobs page against post-auth traffic recorded in
+// `jobs-lifecycle.har`. The recorder ran against the live test account
+// (which has no submitted jobs), so the recorded `enumerate-tasks-filtered`
+// payload is `{jobs:[],totalTasks:0}` — asserting on the empty-state copy
+// proves the HAR-derived overrides actually fed the jobs hook. See
+// `harOverridesFor` for the canary rationale (no `permissiveBackendOverrides`
+// here).
+test.describe("jobs lifecycle via recorded HAR replay", () => {
+  test("renders the recorded empty jobs state", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("jobs-lifecycle.har"),
+      ],
+    });
+
+    const jobs = new JobsListPage(page);
+    await jobs.goto();
+
+    await expect(page.getByRole("heading", { level: 1, name: /^jobs$/i })).toBeVisible();
+    await expect(page.getByText(/no jobs found/i).first()).toBeVisible();
   });
 });

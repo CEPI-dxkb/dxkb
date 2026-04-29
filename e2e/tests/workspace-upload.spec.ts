@@ -5,6 +5,8 @@ import {
   permissiveBackendOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
+import { recordedTestUserId } from "../scripts/har-constants";
+import { harOverridesFor, uploadedFilenameFromHar } from "../scripts/har-overrides";
 
 test.describe("workspace upload", () => {
   test("uploads a file through the dialog and the new row appears in the listing", async ({ page }) => {
@@ -53,5 +55,54 @@ test.describe("workspace upload", () => {
     // a UI that POSTs successfully but never invalidates / re-renders the listing.
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(workspace.rowByName("sample.txt").first()).toBeVisible();
+  });
+});
+
+// Drives the upload journey against post-auth traffic recorded in
+// `workspace-upload.har`. The two `Workspace.ls` entries (pre- vs post-upload)
+// are served sequentially via `callIndex`, so the second call returns the
+// listing that includes the freshly-uploaded row. The upload POST is multipart
+// (no JSON-RPC method) so the override matches by URL+method only and serves
+// the recorded response regardless of the spec's filename;
+// `uploadedFilenameFromHar` recovers the recorder-generated name so re-records
+// don't require parallel edits. See `harOverridesFor` for the canary rationale
+// (no `permissiveBackendOverrides` here).
+test.describe("workspace upload via recorded HAR replay", () => {
+  test("uploads a file and the recorded post-upload listing renders the new row", async ({
+    page,
+  }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...harOverridesFor("workspace-upload.har"),
+      ],
+    });
+
+    await page.goto(
+      `/workspace/${encodeURIComponent(recordedTestUserId)}/home/.e2e-records`,
+    );
+
+    const workspace = new WorkspacePage(page);
+    await expect(workspace.breadcrumbs).toBeVisible();
+    await workspace.openUpload();
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "spec-upload.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("e2e replay upload\n"),
+    });
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("spec-upload.txt")).toBeVisible();
+    await dialog.getByRole("button", { name: /^start upload$/i }).click();
+    await expect(dialog).toBeHidden();
+
+    // The recorded post-upload `Workspace.ls` names whichever timestamped
+    // file the recorder generated this run; pull that name out of the HAR
+    // so the assertion stays in sync with the fixture across re-records.
+    // If the HAR-derived overrides actually drove the post-upload refetch,
+    // the row appears; if the upload POST or the refetch missed the
+    // override path, the listing would still show only the pre-upload file.
+    const newFile = uploadedFilenameFromHar("workspace-upload.har");
+    await expect(workspace.rowByName(newFile).first()).toBeVisible();
   });
 });

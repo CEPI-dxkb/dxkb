@@ -20,6 +20,11 @@ const validPayload = {
 };
 
 describe("fastqUtilitiesFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = fastqUtilitiesFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on the empty default payload (no recipe, empty paths)", () => {
     const result = fastqUtilitiesFormSchema.safeParse(
       defaultFastqUtilitiesFormValues,

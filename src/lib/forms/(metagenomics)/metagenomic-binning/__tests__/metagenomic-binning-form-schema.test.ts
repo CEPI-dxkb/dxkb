@@ -19,6 +19,11 @@ const validPayload = {
 };
 
 describe("metagenomicBinningFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = metagenomicBinningFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on default empty payload (missing libraries when start_with=reads)", () => {
     const result = metagenomicBinningFormSchema.safeParse(
       defaultMetagenomicBinningFormValues,

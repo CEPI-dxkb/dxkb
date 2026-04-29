@@ -342,6 +342,15 @@ export function buildWorkspaceOverrides(
     { result: [[]] },
   );
 
+  // Workspace.du fires whenever a folder is selected in the browser (the details panel
+  // calls it for disk-usage). Returning an empty tuple-array is enough — the panel just
+  // renders zero size when no entry matches. Pinning it here keeps the strict-mock
+  // contract intact without forcing every spec that selects a folder to opt in.
+  const duOverride = workspaceRpcOverride(
+    "Workspace.du",
+    { result: [[]] },
+  );
+
   // Workspace.get serves two distinct UI flows:
   //   1. Path resolution (`useWorkspacePathResolve`) — must succeed with metadata for any path
   //      that actually exists in `pathItems`, otherwise the workspace browser shows the "Folder
@@ -397,6 +406,7 @@ export function buildWorkspaceOverrides(
     getOverride,
     createOverride,
     updateMetaOverride,
+    duOverride,
     ...(options.extraRpc ?? []),
     getKnownOverride,
     getNotFoundOverride,

@@ -20,6 +20,11 @@ const validPayload = {
 };
 
 describe("variationAnalysisFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = variationAnalysisFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on the empty default payload", () => {
     const result = variationAnalysisFormSchema.safeParse(
       defaultVariationAnalysisFormValues,

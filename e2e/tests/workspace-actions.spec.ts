@@ -4,6 +4,7 @@ import {
   e2eHomePath,
   e2eUsername,
   journeyOverrides,
+  workspaceRpcOverride,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
 
@@ -72,8 +73,9 @@ test.describe("workspace actions", () => {
       overrides: [
         // Single owned file in home. Omitting `userPermission` defaults to "o" via
         // workspaceTuple, which makes the DELETE action (requireWrite) visible.
-        // Workspace.delete itself doesn't have an explicit override here — this test
-        // asserts on the request shape, so the catch-all answers the unmocked POST.
+        // The test asserts on the Workspace.delete request shape, so we pin only
+        // that method explicitly — leaving the catch-all off keeps strict-mode
+        // tripping on any new RPC the action introduces.
         ...buildWorkspaceOverrides({
           pathItems: {
             [e2eHomePath]: [
@@ -86,7 +88,7 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          permissiveCatchall: true,
+          extraRpc: [workspaceRpcOverride("Workspace.delete", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],
@@ -164,9 +166,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          // Workspace.copy itself isn't pinned in the helper; the catch-all answers it
-          // since this test asserts on the request shape, not the post-copy listing.
-          permissiveCatchall: true,
+          // Pin Workspace.copy explicitly. The test asserts on its request shape, and
+          // the explicit override keeps strict-mode active for any unrelated RPC.
+          extraRpc: [workspaceRpcOverride("Workspace.copy", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],
@@ -250,9 +252,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          // Workspace.copy (with move: true) isn't pinned by the helper; the catch-all
-          // responds since this test asserts on request shape, not response handling.
-          permissiveCatchall: true,
+          // Move uses Workspace.copy with move: true. Pin only that method so any
+          // other unexpected RPC trips strict-mode.
+          extraRpc: [workspaceRpcOverride("Workspace.copy", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],
@@ -326,9 +328,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
-          // Workspace.update_metadata isn't pinned by the helper; the catch-all
-          // responds since this test asserts on request shape, not response handling.
-          permissiveCatchall: true,
+          // Pin Workspace.update_metadata explicitly so the test asserts on its
+          // request shape against a real override, not a permissive catch-all.
+          extraRpc: [workspaceRpcOverride("Workspace.update_metadata", { result: [[]] })],
         }),
         ...journeyOverrides,
       ],

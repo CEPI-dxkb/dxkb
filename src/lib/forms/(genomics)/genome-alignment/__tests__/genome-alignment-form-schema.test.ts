@@ -11,6 +11,11 @@ const validPayload = {
 };
 
 describe("genomeAlignmentFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = genomeAlignmentFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on the empty default payload (no genomes, empty paths)", () => {
     const result = genomeAlignmentFormSchema.safeParse(
       defaultGenomeAlignmentFormValues,

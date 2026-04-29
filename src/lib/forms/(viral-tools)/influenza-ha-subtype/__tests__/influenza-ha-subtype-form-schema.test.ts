@@ -11,6 +11,11 @@ const validPayload = {
 };
 
 describe("influenzaHaSubtypeFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = influenzaHaSubtypeFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on the empty default payload", () => {
     const result = influenzaHaSubtypeFormSchema.safeParse(
       defaultInfluenzaHaSubtypeFormValues,

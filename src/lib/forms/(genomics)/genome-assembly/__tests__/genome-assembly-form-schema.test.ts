@@ -19,6 +19,11 @@ const validPayload = {
 };
 
 describe("genomeAssemblyFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = genomeAssemblyFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on the empty default payload (no libraries, empty paths)", () => {
     const result = genomeAssemblyFormSchema.safeParse(
       defaultGenomeAssemblyFormValues,

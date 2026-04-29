@@ -19,6 +19,11 @@ const validPayload = {
 };
 
 describe("viralAssemblyFormSchema", () => {
+  it("safeParse succeeds for a filled-out happy-path payload", () => {
+    const result = viralAssemblyFormSchema.safeParse(validPayload);
+    expect(result.success).toBe(true);
+  });
+
   it("safeParse fails on the empty default payload", () => {
     const result = viralAssemblyFormSchema.safeParse(
       defaultViralAssemblyFormValues,

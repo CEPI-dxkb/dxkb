@@ -137,6 +137,14 @@ interface BuildWorkspaceOverridesOptions {
    * upload specs assert that the listing actually refreshes with the uploaded file.
    */
   reflectUploads?: boolean;
+  /**
+   * When true, append a permissive `{ result: [[]] }` fallback for any `Workspace.*` RPC
+   * the explicit overrides above don't match. Lets older specs avoid declaring every RPC
+   * the page might fire. Default: `false` — matches the strict-mock spirit of journey
+   * overrides so new RPC traffic surfaces as a strict-mode failure rather than being
+   * silently swallowed.
+   */
+  permissiveCatchall?: boolean;
 }
 
 const defaultHomeItems: TupleItem[] = [
@@ -373,7 +381,9 @@ export function buildWorkspaceOverrides(
     body: { error: { code: -32000, message: "Object not found" } },
   };
 
-  // Fallback for any Workspace.* methods we haven't explicitly mocked. Keeps strict happy.
+  // Fallback for any Workspace.* methods we haven't explicitly mocked. Off by default —
+  // turning this on weakens strict-mode by silently swallowing unknown RPCs. Specs that
+  // rely on it should opt in via `permissiveCatchall: true`.
   const workspaceCatchall: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
@@ -390,7 +400,7 @@ export function buildWorkspaceOverrides(
     ...(options.extraRpc ?? []),
     getKnownOverride,
     getNotFoundOverride,
-    workspaceCatchall,
+    ...(options.permissiveCatchall ? [workspaceCatchall] : []),
     // Proxy / preview endpoints the file viewer calls.
     {
       url: /\/api\/workspace\/view\//,

@@ -35,7 +35,13 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "json-summary", "json"],
-      include: ["src/lib/**", "src/hooks/**", "src/contexts/**"],
+      include: [
+        "src/lib/**",
+        "src/hooks/**",
+        "src/contexts/**",
+        "src/app/api/**",
+        "src/app/services/page.tsx",
+      ],
       exclude: [
         "src/**/*.d.ts",
         "src/**/types.ts",
@@ -46,10 +52,10 @@ export default defineConfig({
       // randomly trip on rounding drift. Bump these incrementally as new tests
       // raise the measured numbers.
       thresholds: {
-        lines: 77,
-        statements: 76,
-        functions: 82,
-        branches: 66,
+        lines: 81,
+        statements: 80,
+        functions: 84,
+        branches: 70,
       },
     },
   },

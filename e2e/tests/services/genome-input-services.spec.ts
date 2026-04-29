@@ -63,6 +63,14 @@ test.describe("proteome-comparison submission (genome-id-input family)", () => {
             ],
           },
         },
+        // SingleGenomeSelector mounts on the reference-genome card and may fire its
+        // autocomplete request (`GET /api/services/genome/search?q=&limit=25`) on
+        // initial focus. Without this override the call leaks past strict mode.
+        {
+          url: /\/api\/services\/genome\/search/,
+          method: "GET",
+          body: { results: [] },
+        },
         ...journeyOverrides,
       ],
     });

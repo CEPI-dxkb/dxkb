@@ -53,6 +53,9 @@ test.describe("workspace browse", () => {
             ],
             [`${e2eHomePath}/Datasets`]: nestedItems,
           },
+          // Folder navigation triggers ancillary Workspace.* RPCs (permissions
+          // re-check, metadata fetch) that this spec doesn't pin explicitly.
+          permissiveCatchall: true,
         }),
         ...journeyOverrides,
       ],
@@ -127,7 +130,10 @@ test.describe("workspace browse", () => {
     // contract — a UI that lights up the star locally but never calls the API would fail here.
     await applyBackendMocks(page, {
       overrides: [
-        ...buildWorkspaceOverrides(),
+        // The favorites toggle fires Workspace.create against favorites.json AND a
+        // follow-up Workspace.get to re-read it; the catch-all responds to the latter
+        // since this spec only asserts the create-side request shape.
+        ...buildWorkspaceOverrides({ permissiveCatchall: true }),
         ...journeyOverrides,
       ],
     });

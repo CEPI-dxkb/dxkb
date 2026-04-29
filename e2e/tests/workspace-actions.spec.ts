@@ -72,6 +72,8 @@ test.describe("workspace actions", () => {
       overrides: [
         // Single owned file in home. Omitting `userPermission` defaults to "o" via
         // workspaceTuple, which makes the DELETE action (requireWrite) visible.
+        // Workspace.delete itself doesn't have an explicit override here — this test
+        // asserts on the request shape, so the catch-all answers the unmocked POST.
         ...buildWorkspaceOverrides({
           pathItems: {
             [e2eHomePath]: [
@@ -84,6 +86,7 @@ test.describe("workspace actions", () => {
               },
             ],
           },
+          permissiveCatchall: true,
         }),
         ...journeyOverrides,
       ],
@@ -161,6 +164,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
+          // Workspace.copy itself isn't pinned in the helper; the catch-all answers it
+          // since this test asserts on the request shape, not the post-copy listing.
+          permissiveCatchall: true,
         }),
         ...journeyOverrides,
       ],
@@ -244,6 +250,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
+          // Workspace.copy (with move: true) isn't pinned by the helper; the catch-all
+          // responds since this test asserts on request shape, not response handling.
+          permissiveCatchall: true,
         }),
         ...journeyOverrides,
       ],
@@ -317,6 +326,9 @@ test.describe("workspace actions", () => {
               },
             ],
           },
+          // Workspace.update_metadata isn't pinned by the helper; the catch-all
+          // responds since this test asserts on request shape, not response handling.
+          permissiveCatchall: true,
         }),
         ...journeyOverrides,
       ],

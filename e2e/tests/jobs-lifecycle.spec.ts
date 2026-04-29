@@ -3,8 +3,8 @@ import {
   authSessionOverrides,
   buildJobsOverrides,
   jobsListOverrides,
+  journeyOverrides,
   mockLifecycleJobs,
-  permissiveBackendOverrides,
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 import { JobsListPage } from "../pages";
@@ -14,10 +14,9 @@ test.describe("jobs lifecycle", () => {
   test("list renders all three mocked jobs", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...jobsListOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -32,10 +31,9 @@ test.describe("jobs lifecycle", () => {
   test("filtering by status narrows the rows", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...jobsListOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -53,10 +51,9 @@ test.describe("jobs lifecycle", () => {
   test("selecting a running job surfaces the details panel with its id", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...jobsListOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -73,7 +70,6 @@ test.describe("jobs lifecycle", () => {
   test("expanding Standard Output fetches and renders stdout content", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...buildJobsOverrides({
           jobs: mockLifecycleJobs,
@@ -81,7 +77,7 @@ test.describe("jobs lifecycle", () => {
             "job-running": "Running step 1\nRunning step 2\n",
           },
         }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -117,10 +113,9 @@ test.describe("jobs lifecycle", () => {
 
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...jobsListOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
 
@@ -182,10 +177,9 @@ test.describe("jobs lifecycle", () => {
     let enumerateCalls = 0;
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...buildJobsOverrides({ jobs: mockLifecycleJobs }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     await page.route(

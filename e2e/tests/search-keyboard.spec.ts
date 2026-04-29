@@ -1,8 +1,7 @@
 import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
-  authSessionOverrides,
-  workspaceOverrides,
-  permissiveBackendOverrides,
+  journeyOverrides,
+  workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 
 // The plan called for Cmd/Ctrl+K command-palette coverage, but the only command
@@ -12,12 +11,33 @@ import {
 // keyboard-driven journey: focus → type → Enter → routed to /search?q=…, plus
 // clipboard paste filling the input.
 test.describe("global search (keyboard journey)", () => {
+  // p3.theseed.org/services/data_api/query/ — bulk multi-type Solr query fired by SearchResults on mount.
+  // Returns zero hits for every type so the page renders the ResultsOverview card without errors.
+  const emptyDataApiResponse = Object.fromEntries(
+    [
+      "taxonomy", "genome", "strain", "genome_feature", "sp_gene",
+      "protein_feature", "epitope", "protein_structure", "pathway",
+      "subsystem", "surveillance", "serology", "experiment",
+      "antibiotics", "genome_sequence",
+    ].map((type) => [
+      type,
+      { result: { response: { docs: [], numFound: 0, maxScore: 0, numFoundExact: true } } },
+    ]),
+  );
+
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
-        ...workspaceOverrides,
-        ...permissiveBackendOverrides,
+        // Workspace.get (favorites) fired when /jobs loads the workspace sidebar chrome.
+        // (AppService.enumerate_tasks_filtered is covered by jobsOverrides inside journeyOverrides.)
+        ...workspacePopulatedOverrides,
+        ...journeyOverrides,
+        // p3.theseed.org data_api bulk Solr query — fired by SearchResults when /search mounts.
+        {
+          url: /theseed\.org\/services\/data_api\/query/,
+          method: "POST",
+          body: emptyDataApiResponse,
+        },
       ],
     });
   });
@@ -41,6 +61,15 @@ test.describe("global search (keyboard journey)", () => {
     });
     expect(page.url()).toMatch(/q=influenza/);
     expect(page.url()).toMatch(/searchtype=everything/);
+
+    // Beyond URL navigation, the /search page must actually render its results
+    // region. A regression that breaks SearchResults rendering would still pass
+    // the URL-only assertion above; this guards against that.
+    // CardTitle renders as a <div data-slot="card-title">, not a <h*> element,
+    // so we target the text directly.
+    await expect(
+      page.locator('[data-slot="card-title"]', { hasText: /search results/i }),
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("empty query submission does not navigate", async ({ page }) => {

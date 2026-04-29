@@ -1,10 +1,9 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import {
-  authSessionOverrides,
   buildJobsOverrides,
   buildWorkspaceOverrides,
+  journeyOverrides,
   mockLifecycleJobs,
-  permissiveBackendOverrides,
 } from "../../fixtures/overrides";
 import { JobsListPage, ServiceFormPage } from "../../pages";
 
@@ -58,13 +57,14 @@ test.describe("viral genome tree submission (representative for tree-services fa
     };
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
+        // buildWorkspaceOverrides covers Workspace.ls / Workspace.get / Workspace.list_permissions
+        // for the output-folder selector and the post-submit /jobs workspace sidebar chrome.
         ...buildWorkspaceOverrides(),
         ...buildJobsOverrides({
           jobs: [submittedJob, ...mockLifecycleJobs],
           submitResponse: { job: [submittedJob] },
         }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
 

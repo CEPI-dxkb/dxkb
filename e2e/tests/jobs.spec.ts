@@ -1,19 +1,16 @@
 import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
-  authSessionOverrides,
-  workspaceOverrides,
-  jobsOverrides,
-  permissiveBackendOverrides,
+  journeyOverrides,
+  workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 
 test.describe("jobs page", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
-        ...workspaceOverrides,
-        ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        // Workspace.get (favorites) fired when /jobs page loads the workspace sidebar chrome.
+        ...workspacePopulatedOverrides,
+        ...journeyOverrides,
       ],
     });
   });

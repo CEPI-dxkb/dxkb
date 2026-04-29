@@ -4,7 +4,7 @@ import {
   buildWorkspaceOverrides,
   e2eHomePath,
   e2eUsername,
-  permissiveBackendOverrides,
+  journeyOverrides,
   workspaceEmptyOverrides,
   workspaceErrorOverrides,
   workspacePopulatedOverrides,
@@ -17,9 +17,8 @@ test.describe("workspace browse", () => {
   test("populated listing renders rows for each workspace item", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspacePopulatedOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);
@@ -42,7 +41,6 @@ test.describe("workspace browse", () => {
     ];
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...buildWorkspaceOverrides({
           pathItems: {
             [e2eHomePath]: [
@@ -56,7 +54,7 @@ test.describe("workspace browse", () => {
             [`${e2eHomePath}/Datasets`]: nestedItems,
           },
         }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);
@@ -80,9 +78,8 @@ test.describe("workspace browse", () => {
   test("empty workspace shows the empty-state message", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspaceEmptyOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);
@@ -94,9 +91,8 @@ test.describe("workspace browse", () => {
   test("ls failure surfaces the error alert", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...workspaceErrorOverrides,
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);
@@ -111,11 +107,10 @@ test.describe("workspace browse", () => {
     // the browser and doesn't crash the UI.
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...buildWorkspaceOverrides({
           favorites: [`${e2eHomePath}/Datasets`],
         }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);
@@ -132,9 +127,8 @@ test.describe("workspace browse", () => {
     // contract — a UI that lights up the star locally but never calls the API would fail here.
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
         ...buildWorkspaceOverrides(),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);
@@ -181,7 +175,8 @@ test.describe("workspace browse", () => {
 // `workspace-browse.har`. The auth-shape contract test against
 // `auth-sign-in.har` lives in `auth.spec.ts` — the canonical canary, not
 // duplicated here. See `harOverridesFor` for the rationale on why this
-// spec must NOT layer `permissiveBackendOverrides`.
+// spec must NOT layer `journeyOverrides` or `permissiveBackendOverrides`
+// on top of HAR replay.
 test.describe("workspace browse via recorded HAR replay", () => {
   test("renders the recorded workspace listing", async ({ page }) => {
     await applyBackendMocks(page, {

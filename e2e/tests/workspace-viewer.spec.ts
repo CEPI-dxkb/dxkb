@@ -3,7 +3,7 @@ import {
   authSessionOverrides,
   buildWorkspaceOverrides,
   e2eHomePath,
-  permissiveBackendOverrides,
+  journeyOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
 import { recordedTestUserId } from "../scripts/har-constants";
@@ -48,11 +48,11 @@ test.describe("workspace viewer", () => {
           body: ">seq1\nACGTACGT\n",
           headers: { "Content-Type": "text/plain" },
         },
-        ...authSessionOverrides,
+        // buildWorkspaceOverrides covers Workspace.ls / Workspace.get / Workspace.list_permissions.
         ...buildWorkspaceOverrides({
           pathItems: { [e2eHomePath]: viewerFixtureItems },
         }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
   });

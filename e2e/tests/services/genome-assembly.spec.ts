@@ -3,8 +3,8 @@ import {
   authSessionOverrides,
   buildJobsOverrides,
   buildWorkspaceOverrides,
+  journeyOverrides,
   mockLifecycleJobs,
-  permissiveBackendOverrides,
 } from "../../fixtures/overrides";
 import { JobsListPage, ServiceFormPage } from "../../pages";
 import { harOverridesFor } from "../../scripts/har-overrides";
@@ -49,7 +49,8 @@ test.describe("genome assembly submission", () => {
     };
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
+        // buildWorkspaceOverrides covers Workspace.ls / Workspace.get / Workspace.list_permissions
+        // for the output-folder selector and the post-submit /jobs workspace sidebar chrome.
         ...buildWorkspaceOverrides(),
         // Include the lifecycle fixture jobs PLUS the freshly-submitted one so the post-submit
         // /jobs view renders the new row alongside the existing list.
@@ -57,7 +58,7 @@ test.describe("genome assembly submission", () => {
           jobs: [submittedJob, ...mockLifecycleJobs],
           submitResponse: { job: [submittedJob] },
         }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
 
@@ -117,10 +118,12 @@ test.describe("genome assembly submission", () => {
   test("renders the form heading", async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
+        // buildWorkspaceOverrides covers Workspace.ls / Workspace.get / Workspace.list_permissions
+        // used by the output-folder autocomplete and workspace sidebar.
         ...buildWorkspaceOverrides(),
+        // buildJobsOverrides covers AppService.enumerate_tasks_filtered for the sidebar job count.
         ...buildJobsOverrides(),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const form = new ServiceFormPage(page, /genome assembly/i);

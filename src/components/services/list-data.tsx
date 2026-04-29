@@ -6,12 +6,24 @@ import { DataTable } from "@/components/shared/data-table";
 import { SortingState, RowSelectionState } from "@tanstack/react-table";
 import { useQuery } from "@tanstack/react-query";
 import { noop } from "@/lib/utils";
+import { FilterBar } from "@/components/filterbar/filter-bar";
 
 interface ColumnInfo {
   id: string;
   label: string;
   visible: boolean;
+  facet?: boolean;
+  facet_hidden?: boolean;
 }
+
+interface RawField {
+  field?: string;
+  label?: string;
+  hidden?: boolean;
+  show_in_table?: boolean;
+  facet?: boolean;
+  facet_hidden?: boolean;
+};
 
 interface ListDataProps { 
   q: string; 
@@ -30,7 +42,8 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
   const [internalRowSelection, setInternalRowSelection] = useState<RowSelectionState>({});
   const rowSelection = controlledRowSelection !== undefined ? controlledRowSelection : internalRowSelection;
   const setRowSelection = onRowSelectionChange || setInternalRowSelection;
-  
+  const [filter, setFilter] = useState('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -41,12 +54,14 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
           return;
         }
         setFields(
-          (Object.values(fieldObj) as Record<string, unknown>[])
+          (Object.values(fieldObj) as RawField[])
             .filter((f) => f.show_in_table !== false)
             .map((f) => ({
               id: String(f.field ?? ""),
               label: String(f.label ?? ""),
               visible: !f.hidden,
+              facet: f.facet ?? false,
+              facet_hidden: f.facet_hidden ?? true,
             }))
         );
       } catch (err) {
@@ -54,6 +69,8 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       }
     })();
   }, [resource]);
+
+  const facetFields = fields.filter(f => f.facet);
 
   const widget = {
     id: 'widget-1',
@@ -128,11 +145,18 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       : 'none';
   }, [sorting]);
 
+  const combinedQuery = useMemo(() => {
+    if (!filter || filter === 'false') return cleanQ;
+    if (!cleanQ) return filter;
+
+    return `and(${cleanQ},${filter})`;
+  }, [cleanQ, filter]);
+
   // Fetch metadata (numFound)
   const { data: metaData, isLoading: metaLoading, error: metaError } = useQuery({
-    queryKey: ['genome-meta', resource, cleanQ, searchtype],
+    queryKey: ['genome-meta', resource, combinedQuery, searchtype],
     queryFn: async () => {
-      const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
+      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const res = await fetch(`${baseURL}&limit(1)`, {
         headers: { 'Accept': 'application/solr+json' }
       });
@@ -151,7 +175,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
     queryKey: [
       'genome-full',
       resource,
-      cleanQ,
+      combinedQuery,
       pageIndex,
       sortingKey,
       searchtype,
@@ -167,7 +191,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       const start = pageIndex * pageSize;
       const end = start + pageSize;
 
-      const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
+      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const url = sortParam ? `${baseURL}&sort(${sortParam})` : baseURL;
 
       const res = await fetch(url, {
@@ -223,7 +247,7 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       return;
     }
     try {
-      const baseURL = `${DataAPI}/${resource}/?${cleanQ}`;
+      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const res = await fetch(baseURL, {
         headers: {
           'Content-type': 'application/rqlquery+x-www-form-urlencoded',
@@ -294,13 +318,25 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      <FilterBar
+        facetFields={facetFields}
+        resource={resource}
+        query={combinedQuery}
+        onFilterChange={(rql) => {
+          setFilter(rql);
+          setPageIndex(0);          // ✅ reset pagination
+          setRowSelection({});      // ✅ clear selection
+          onSelectionChange?.([]);  // ✅ clear parent selection
+        }}
+      />
+
       <div className="flex-1 overflow-hidden">
         {!columnVisibility || !fields.length ? (
           <div>Loading...</div>
         ) : (
           <DataTable
             id={widget.id}
-            data={pageData ?? []}
+            data={totalItems === 0 ? [] : (pageData ?? [])}
             columns={widget.columns}
             resource={resource}
             rowSelection={rowSelection}

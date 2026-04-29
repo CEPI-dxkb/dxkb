@@ -798,8 +798,9 @@ export function DataTable({ id: _id, data, columns, totalItems, resource, onSele
                 const pageIndex = table.getState().pagination.pageIndex;
                 const pageSize = table.getState().pagination.pageSize;
                 const totalRows = totalItems; // total from backend
-                const start = pageIndex * pageSize + 1;
-                const end = Math.min(start + data.length - 1, totalRows);
+                const hasResults = totalItems > 0;
+                const start = hasResults ? pageIndex * pageSize + 1 : 0;
+                const end = hasResults ? Math.min(start + data.length - 1, totalRows): 0;
                 return <div>Showing {start}-{end} of {totalRows} results</div>;
               })()}
             </div>

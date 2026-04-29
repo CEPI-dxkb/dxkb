@@ -3,7 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { ListData } from "@/components/services/ListData";
+import { ListData } from "@/components/services/list-data";
 import { WithGenomePanel } from "@/components/layouts/WithGenomePanel";
 
 // ---- Props interface ----

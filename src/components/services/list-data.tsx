@@ -194,8 +194,6 @@ export function ListData({ q, resource, onSelectionChange, rowSelection: control
       const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
       const url = sortParam ? `${baseURL}&sort(${sortParam})` : baseURL;
 
-      console.log("FINAL QUERY STRING SENT TO API:", url);
-      
       const res = await fetch(url, {
         headers: {
           'Content-type': 'application/rqlquery+x-www-form-urlencoded',

@@ -31,11 +31,6 @@ export function buildRql({ selected, keywords }) {
     const kw = keywords.map((k) => {
       const raw = `${k}*`;
       const encoded = encodeRqlValue(raw);
-
-      console.log("KW RAW:", raw);
-      console.log("KW ENCODED:", encoded);
-      console.log("KW FINAL:", `keyword(${encoded})`);
-
       return `keyword(${encoded})`;
     });
 

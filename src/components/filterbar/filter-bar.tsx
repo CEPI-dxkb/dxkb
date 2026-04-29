@@ -49,11 +49,6 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
   // emit filter upward
   useEffect(() => {
     const rql = buildRql({ selected, keywords });
-
-    console.log("KEYWORDS:", keywords);
-    console.log("BUILT RQL:", rql);
-    console.log("DECODED RQL:", decodeURIComponent(rql));
-
     onFilterChange?.(rql);
   }, [selected, keywords]);
 
@@ -70,7 +65,6 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
 
   return (
     <div className="flex flex-col gap-1 p-1 text-sm mt-0 mb-2">

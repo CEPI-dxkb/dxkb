@@ -4,12 +4,11 @@ import {
   workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 
-// The plan called for Cmd/Ctrl+K command-palette coverage, but the only command
-// palette in the repo (`src/components/search/command-search.tsx`) is dead code:
-// it isn't mounted anywhere and binds Cmd+J to placeholder items. The real
-// global search is the navbar `SearchBar` form, so this spec covers its
-// keyboard-driven journey: focus → type → Enter → routed to /search?q=…, plus
-// clipboard paste filling the input.
+// Two complementary keyboard surfaces ship together:
+// - the navbar `SearchBar` form (focus → type → Enter → /search?q=…, plus
+//   clipboard paste filling the input)
+// - the global `<CommandPalette>` mounted in the root layout (Cmd/Ctrl+K
+//   toggles open, arrow keys navigate, Enter routes, Esc closes).
 test.describe("global search (keyboard journey)", () => {
   // p3.theseed.org/services/data_api/query/ — bulk multi-type Solr query fired by SearchResults on mount.
   // Returns zero hits for every type so the page renders the ResultsOverview card without errors.
@@ -120,5 +119,100 @@ test.describe("global search (keyboard journey)", () => {
     await expect(searchInput).not.toBeFocused();
     // Form is still in the DOM after Tab; Esc/blur should not unmount the search bar.
     await expect(searchInput).toBeVisible();
+  });
+});
+
+test.describe("command palette (Cmd+K)", () => {
+  // Command palette is mounted globally in the root layout, so any route
+  // works; /jobs is signed-in and gives us the navbar/auth chrome we'd hit
+  // in real usage.
+  test.beforeEach(async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...workspacePopulatedOverrides,
+        ...journeyOverrides,
+      ],
+    });
+  });
+
+  const modifierKey = process.platform === "darwin" ? "Meta" : "Control";
+
+  test("Cmd/Ctrl+K opens the palette with an accessible name", async ({ page }) => {
+    await page.goto("/jobs");
+
+    await page.keyboard.press(`${modifierKey}+K`);
+
+    const dialog = page.getByRole("dialog", { name: /command palette/i });
+    await expect(dialog).toBeVisible();
+  });
+
+  test("Esc closes the palette", async ({ page }) => {
+    await page.goto("/jobs");
+    await page.keyboard.press(`${modifierKey}+K`);
+    const dialog = page.getByRole("dialog", { name: /command palette/i });
+    await expect(dialog).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+  });
+
+  test("ArrowDown then Enter routes to a navigation item", async ({ page }) => {
+    await page.goto("/jobs");
+    await page.keyboard.press(`${modifierKey}+K`);
+    await expect(
+      page.getByRole("dialog", { name: /command palette/i }),
+    ).toBeVisible();
+
+    // First Navigate item is "Home"; ArrowDown highlights it then Enter selects.
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+
+    await page.waitForURL(/\/$|\/(?:\?.*)?$/, { timeout: 10_000 });
+    expect(new URL(page.url()).pathname).toBe("/");
+  });
+
+  test("typing a query then Enter routes to /search", async ({ page }) => {
+    await page.goto("/jobs");
+    await page.keyboard.press(`${modifierKey}+K`);
+    await expect(
+      page.getByRole("dialog", { name: /command palette/i }),
+    ).toBeVisible();
+
+    await page.keyboard.type("influenza");
+
+    // The "Search for X" item is filtered to the top once the input has text;
+    // pressing Enter selects it and the runSearch handler routes us to /search.
+    await page.keyboard.press("Enter");
+
+    await page.waitForURL(/\/search\?q=influenza(?:&searchtype=[^&]+)?$/, {
+      timeout: 10_000,
+    });
+    expect(page.url()).toMatch(/q=influenza/);
+    expect(page.url()).toMatch(/searchtype=everything/);
+  });
+
+  test("clipboard paste fills the palette input", async ({ page, context, browserName }) => {
+    test.skip(
+      browserName !== "chromium",
+      "Only Chromium accepts Playwright's clipboard-read/clipboard-write permissions; Firefox rejects them as unknown and WebKit's headless clipboard is unreliable",
+    );
+
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/jobs");
+    await page.keyboard.press(`${modifierKey}+K`);
+    await expect(
+      page.getByRole("dialog", { name: /command palette/i }),
+    ).toBeVisible();
+
+    await page.evaluate(async (text) => {
+      await navigator.clipboard.writeText(text);
+    }, "sars-cov-2");
+
+    const pasteShortcut = process.platform === "darwin" ? "Meta+V" : "Control+V";
+    await page.keyboard.press(pasteShortcut);
+
+    // The CommandInput is the focused element after the palette opens.
+    const input = page.locator('[data-slot="command-input"]');
+    await expect(input).toHaveValue("sars-cov-2");
   });
 });

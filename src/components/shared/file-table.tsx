@@ -364,7 +364,6 @@ function DataTableInner<T>(
   return (
     <div
       ref={tableContainerRef}
-      role="grid"
       tabIndex={tabIndex}
       aria-label={ariaLabel}
       className="scrollbar-themed h-full min-h-0 overflow-auto rounded-md border outline-none"

@@ -369,7 +369,7 @@
 }
 
 .service-header a {
-  @apply inline-flex items-center text-blue-500 hover:text-blue-700;
+  @apply inline-flex items-center text-blue-700 hover:text-blue-900;
 }
 
 .service-header-title {
@@ -389,7 +389,7 @@
 }
 
 .service-header-description a {
-  @apply inline-flex items-center text-blue-500 hover:text-blue-700;
+  @apply inline-flex items-center text-blue-700 hover:text-blue-900;
 }
 
 .service-header-tooltip {

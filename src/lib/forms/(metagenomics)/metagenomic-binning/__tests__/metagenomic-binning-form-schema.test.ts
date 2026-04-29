@@ -24,11 +24,25 @@ describe("metagenomicBinningFormSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("safeParse fails on default empty payload (missing libraries when start_with=reads)", () => {
-    const result = metagenomicBinningFormSchema.safeParse(
-      defaultMetagenomicBinningFormValues,
-    );
+  it("safeParse rejects start_with=reads with no libraries even when output fields are filled", () => {
+    // Build a payload that's otherwise valid — non-empty output_path/output_file, valid
+    // assembler/organism — and then strip every library source so the only outstanding
+    // issue is the superRefine "missing libraries" rule. Using the default object would
+    // also trigger output_path / output_file min-length errors and obscure which rule
+    // actually rejected the payload.
+    const result = metagenomicBinningFormSchema.safeParse({
+      ...validPayload,
+      paired_end_libs: [],
+      single_end_libs: [],
+      srr_ids: [],
+    });
     expect(result.success).toBe(false);
+    if (!result.success) {
+      const libIssue = result.error.issues.find((issue) =>
+        issue.path.includes("paired_end_libs"),
+      );
+      expect(libIssue?.message).toMatch(/at least one library/i);
+    }
   });
 
   it("safeParse rejects empty output_path", () => {

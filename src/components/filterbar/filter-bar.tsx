@@ -50,7 +50,7 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
   useEffect(() => {
     const rql = buildRql({ selected, keywords });
     onFilterChange?.(rql);
-  }, [selected, keywords]);
+  }, [selected, keywords, onFilterChange]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

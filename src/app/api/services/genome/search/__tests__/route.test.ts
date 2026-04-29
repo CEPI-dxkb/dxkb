@@ -19,7 +19,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(401);
     expect(await json(res)).toEqual(
@@ -42,7 +42,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "" },
     });
-    await GET(req);
+    await GET(req, {});
 
     expect(capturedUrl).not.toContain("genome_name,*");
     expect(capturedUrl).toContain("or(eq(public,true),eq(public,false))");
@@ -63,7 +63,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test@#$123" },
     });
-    await GET(req);
+    await GET(req, {});
 
     expect(capturedUrl).toContain("*test123*");
   });
@@ -83,7 +83,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "@#$%^" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: [] });
@@ -106,7 +106,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test" },
     });
-    await GET(req1);
+    await GET(req1, {});
     expect(capturedUrls[0]).toContain("limit(25)");
 
     // Below min
@@ -114,7 +114,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test", limit: "0" },
     });
-    await GET(req2);
+    await GET(req2, {});
     expect(capturedUrls[1]).toContain("limit(1)");
 
     // Above max
@@ -122,7 +122,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test", limit: "100" },
     });
-    await GET(req3);
+    await GET(req3, {});
     expect(capturedUrls[2]).toContain("limit(50)");
   });
 
@@ -141,7 +141,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "ecoli" },
     });
-    await GET(req);
+    await GET(req, {});
 
     expect(capturedUrl).toContain("*ecoli*");
   });
@@ -160,7 +160,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "ecoli" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: genomes });
@@ -180,7 +180,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(await json(res)).toEqual({ results: genomes });
   });
@@ -198,7 +198,7 @@ describe("GET /api/services/genome/search", () => {
       url: "http://localhost:3019/api/services/genome/search",
       searchParams: { q: "test" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(503);
     expect(await json(res)).toEqual(

@@ -96,7 +96,7 @@ describe("AppService", () => {
     it("makes GET request with OAuth auth header", async () => {
       mockClient.getAuthToken.mockReturnValue("my-token");
 
-      let capturedRequest: { url: string; headers: Headers } | null = null;
+      let capturedRequest: { url: string; headers: Headers } | undefined;
       server.use(
         http.get(
           "https://p3.theseed.org/services/app_service/task_info/123/stdout",
@@ -115,7 +115,7 @@ describe("AppService", () => {
         output_type: "stdout",
       });
 
-      expect(capturedRequest).not.toBeNull();
+      expect(capturedRequest).toBeDefined();
       expect(capturedRequest?.headers.get("Authorization")).toBe("OAuth my-token");
       expect(result).toBe("stdout content here");
     });

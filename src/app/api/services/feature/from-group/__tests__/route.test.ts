@@ -20,7 +20,7 @@ describe("POST /api/services/feature/from-group", () => {
       method: "POST",
       body: { feature_group_path: "/path/to/group" },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(401);
     expect(await json(res)).toEqual(
@@ -32,7 +32,7 @@ describe("POST /api/services/feature/from-group", () => {
     mockGetAuthToken.mockResolvedValue("token");
 
     const req = mockNextRequest({ method: "POST", body: {} });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: [] });
@@ -45,7 +45,7 @@ describe("POST /api/services/feature/from-group", () => {
       method: "POST",
       body: { feature_group_path: "   " },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: [] });
@@ -67,7 +67,7 @@ describe("POST /api/services/feature/from-group", () => {
       method: "POST",
       body: { feature_group_path: "/user@bvbrc/home/my group" },
     });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain(
       "FeatureGroup(%2Fuser%40bvbrc%2Fhome%2Fmy%20group)",
@@ -92,7 +92,7 @@ describe("POST /api/services/feature/from-group", () => {
       method: "POST",
       body: { feature_group_path: "/user/home/group" },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: features });
@@ -111,7 +111,7 @@ describe("POST /api/services/feature/from-group", () => {
       method: "POST",
       body: { feature_group_path: "/user/home/group" },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(502);
     expect(await json(res)).toEqual(

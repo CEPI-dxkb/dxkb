@@ -16,7 +16,7 @@ describe("POST /api/services/genome/get-all-ids", () => {
     mockGetAuthToken.mockResolvedValue(undefined);
 
     const req = mockNextRequest({ method: "POST", body: {} });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(401);
     expect(await json(res)).toEqual(
@@ -40,7 +40,7 @@ describe("POST /api/services/genome/get-all-ids", () => {
       "http://localhost:3019/api/services/genome/get-all-ids",
       { method: "POST" },
     );
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain("limit(10000)");
   });
@@ -57,7 +57,7 @@ describe("POST /api/services/genome/get-all-ids", () => {
     );
 
     const req = mockNextRequest({ method: "POST", body: { limit: 0 } });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain("limit(1)");
   });
@@ -74,7 +74,7 @@ describe("POST /api/services/genome/get-all-ids", () => {
     );
 
     const req = mockNextRequest({ method: "POST", body: { limit: 99999 } });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain("limit(10000)");
   });
@@ -90,7 +90,7 @@ describe("POST /api/services/genome/get-all-ids", () => {
     );
 
     const req = mockNextRequest({ method: "POST", body: { limit: 10 } });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: genomes });
@@ -106,7 +106,7 @@ describe("POST /api/services/genome/get-all-ids", () => {
     );
 
     const req = mockNextRequest({ method: "POST", body: {} });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(500);
     expect(await json(res)).toEqual(

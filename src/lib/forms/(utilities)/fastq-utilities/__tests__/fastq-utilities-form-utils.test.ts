@@ -70,7 +70,14 @@ describe("transformFastqUtilitiesParams", () => {
   it("maps paired_end_libs with read1 and read2", () => {
     const data = {
       ...baseFormData,
-      paired_end_libs: [{ read1: "/r1.fq", read2: "/r2.fq" }],
+      paired_end_libs: [
+        {
+          _id: "1",
+          _type: "paired" as const,
+          read1: "/r1.fq",
+          read2: "/r2.fq",
+        },
+      ],
     };
     const result = transformFastqUtilitiesParams(data);
 
@@ -82,7 +89,14 @@ describe("transformFastqUtilitiesParams", () => {
   it("maps single_end_libs with read and platform", () => {
     const data = {
       ...baseFormData,
-      single_end_libs: [{ read: "/reads.fq", platform: "illumina" }],
+      single_end_libs: [
+        {
+          _id: "1",
+          _type: "single" as const,
+          read: "/reads.fq",
+          platform: "illumina" as const,
+        },
+      ],
     };
     const result = transformFastqUtilitiesParams(data);
 

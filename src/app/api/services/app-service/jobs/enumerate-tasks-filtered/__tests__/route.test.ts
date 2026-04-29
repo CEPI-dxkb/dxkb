@@ -29,7 +29,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -46,7 +46,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       body: { offset: -1 },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -63,7 +63,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       body: { limit: 1001 },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -80,7 +80,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       body: { sort_field: "invalid_field" },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -95,7 +95,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    await POST(request);
+    await POST(request, {});
 
     expect(mockAppService.enumerateTasksFiltered).toHaveBeenCalledWith({
       offset: 0,
@@ -125,7 +125,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       },
     });
 
-    await POST(request);
+    await POST(request, {});
 
     expect(mockAppService.enumerateTasksFiltered).toHaveBeenCalledWith({
       offset: 50,
@@ -149,7 +149,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -168,7 +168,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
       },
     });
 
-    await POST(request);
+    await POST(request, {});
 
     expect(mockAppService.enumerateTasksFiltered).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -186,7 +186,7 @@ describe("POST /api/services/app-service/jobs/enumerate-tasks-filtered", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(500);

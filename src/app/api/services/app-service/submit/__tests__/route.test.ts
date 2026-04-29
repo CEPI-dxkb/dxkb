@@ -41,7 +41,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_name: "TestApp", app_params: {} },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -58,7 +58,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_params: { output_path: "/test" } },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -73,7 +73,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_name: "TestApp" },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -88,7 +88,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_name: "TestApp", app_params: "not-an-object" },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(400);
@@ -108,7 +108,7 @@ describe("POST /api/services/app-service/submit", () => {
       },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -129,7 +129,7 @@ describe("POST /api/services/app-service/submit", () => {
       },
     });
 
-    await POST(request);
+    await POST(request, {});
 
     expect(mockAppService.submitService).toHaveBeenCalledWith({
       app_name: "BLAST",
@@ -151,7 +151,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_name: "TestApp", app_params: { x: 1 } },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(500);
@@ -175,7 +175,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_name: "TestApp", app_params: { x: 1 } },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(500);
@@ -193,7 +193,7 @@ describe("POST /api/services/app-service/submit", () => {
       body: { app_name: "TestApp", app_params: { x: 1 } },
     });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(500);

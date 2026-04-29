@@ -26,7 +26,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ method: "test" }),
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(500);
     expect(await json(res)).toEqual(
@@ -45,7 +45,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: "not-json{{{",
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(400);
     expect(await json(res)).toEqual(
@@ -62,7 +62,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify("just a string"),
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(400);
     expect(await json(res)).toEqual(
@@ -91,7 +91,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ method: "test" }),
     });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedHeaders?.get("Authorization")).toBe("my-token");
   });
@@ -106,7 +106,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ method: "test" }),
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(401);
     expect(await json(res)).toEqual(
@@ -130,7 +130,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ method: "test" }),
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(400);
     expect(await json(res)).toEqual(
@@ -155,7 +155,7 @@ describe("POST /api/services/minhash", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ method: "lookup", params: {} }),
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual(resultData);

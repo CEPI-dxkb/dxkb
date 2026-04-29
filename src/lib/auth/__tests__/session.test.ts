@@ -51,7 +51,7 @@ describe("serverAuthenticatedFetch", () => {
     const testToken = "un=testuser@bvbrc.org|sig=abc123";
     mockCookieStore.get.mockReturnValue({ value: testToken });
 
-    let capturedRequest: { url: string; headers: Headers } | null = null;
+    let capturedRequest: { url: string; headers: Headers } | undefined;
     server.use(
       http.get("https://api.example.com/data", async ({ request }) => {
         capturedRequest = {
@@ -64,7 +64,7 @@ describe("serverAuthenticatedFetch", () => {
 
     await serverAuthenticatedFetch("https://api.example.com/data");
 
-    expect(capturedRequest).not.toBeNull();
+    expect(capturedRequest).toBeDefined();
     expect(capturedRequest?.headers.get("Authorization")).toBe(testToken);
     expect(capturedRequest?.headers.get("Content-Type")).toBe("application/json");
   });

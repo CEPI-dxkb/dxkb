@@ -17,7 +17,7 @@ describe("GET /api/services/sra-validation", () => {
     const req = mockNextRequest({
       url: "http://localhost:3019/api/services/sra-validation",
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(400);
     expect(await json(res)).toEqual(
@@ -30,7 +30,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "INVALID" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(400);
     expect(await json(res)).toEqual(
@@ -45,7 +45,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "123SRR" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(400);
   });
@@ -63,7 +63,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "SRR123456" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ success: true, xml: xmlText });
@@ -80,7 +80,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "SRR999999" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(400);
     expect(await json(res)).toEqual(
@@ -101,7 +101,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "SRR123456" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(503);
     expect(await json(res)).toEqual(
@@ -120,7 +120,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "SRR123456" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual(
@@ -143,7 +143,7 @@ describe("GET /api/services/sra-validation", () => {
       url: "http://localhost:3019/api/services/sra-validation",
       searchParams: { accession: "SRR123456" },
     });
-    const res = await GET(req);
+    const res = await GET(req, {});
 
     expect(res.status).toBe(500);
   });

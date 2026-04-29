@@ -4,6 +4,7 @@ import { KeywordSearch } from "./keyword-search";
 import { SelectedFilters } from "./selected-filters";
 import { FacetPanel } from "./facet-panel";
 import { SelectedFilter } from "@/types/filters";
+import { Button } from "@/components/ui/button";
 
 interface ColumnField {
   id: string;
@@ -48,6 +49,11 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
   // emit filter upward
   useEffect(() => {
     const rql = buildRql({ selected, keywords });
+
+    console.log("KEYWORDS:", keywords);
+    console.log("BUILT RQL:", rql);
+    console.log("DECODED RQL:", decodeURIComponent(rql));
+
     onFilterChange?.(rql);
   }, [selected, keywords]);
 
@@ -64,6 +70,7 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
 
   return (
     <div className="flex flex-col gap-1 p-1 text-sm mt-0 mb-2">
@@ -91,12 +98,13 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
           {/* FACET DROPDOWN */}
           {showFacets && (
             <div className="relative" ref={facetMenuRef}>
-              <button
-                onClick={() => setFacetMenuOpen((prev) => !prev)}
-                className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700"
-              >
-                Facets ⚙
-              </button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setFacetMenuOpen((prev) => !prev)}
+                    className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700"
+                  >
+                    Facets ⚙
+                  </Button>
 
               {facetMenuOpen && (
                 <div className="absolute right-0 mt-1 w-56 max-h-64 overflow-y-auto bg-gray-800 border border-gray-600 rounded shadow-lg z-[9999]">
@@ -121,7 +129,8 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
           )}
 
           {/* CLEAR ALL */}
-          <button
+          <Button
+            variant="outline"
             onClick={clearAll}
             disabled={selected.length === 0 && keywords.length === 0}
             className={`text-xs px-2 py-1 border rounded whitespace-nowrap ${
@@ -130,16 +139,18 @@ export function FilterBar({ facetFields, onFilterChange, resource, query }: Filt
                 : "border-red-400 text-red-300 hover:bg-red-900"
             }`}          
           >
-            Clear All Filters
-          </button>
+          Clear All Filters
+          </Button>
+
 
           {/* SHOW/HIDE FILTERS */}
-          <button
-            onClick={() => setShowFacets((prev) => !prev)}
-            className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700 whitespace-nowrap"
+            <Button
+              variant="outline"
+              onClick={() => setShowFacets((prev) => !prev)}
+              className="text-xs px-2 py-1 border border-gray-400 rounded hover:bg-gray-700 whitespace-nowrap"
           >
             {showFacets ? "Hide Filters" : "Show Filters"}
-          </button>
+          </Button>
 
         </div>
       </div>

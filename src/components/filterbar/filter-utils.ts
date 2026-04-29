@@ -3,7 +3,7 @@ function encodeRqlField(val: string) {
 }
 
 function encodeRqlValue(val: string) {
-  return encodeURIComponent(`"${val}"`)
+  return encodeURIComponent(`${val}`)
     .replace(/\(/g, "%28")
     .replace(/\)/g, "%29")
     ;
@@ -28,7 +28,17 @@ export function buildRql({ selected, keywords }) {
   });
 
   if (keywords.length) {
-    const kw = keywords.map((k) => `keyword(${encodeRqlValue(k)}*)`);
+    const kw = keywords.map((k) => {
+      const raw = `${k}*`;
+      const encoded = encodeRqlValue(raw);
+
+      console.log("KW RAW:", raw);
+      console.log("KW ENCODED:", encoded);
+      console.log("KW FINAL:", `keyword(${encoded})`);
+
+      return `keyword(${encoded})`;
+    });
+
     parts.push(kw.length === 1 ? kw[0] : `and(${kw.join(",")})`);
   }
 

@@ -67,7 +67,7 @@ describe("createGenomeAnnotationFormValues", () => {
     };
 
     const overrides = {
-      recipe: "viral",
+      recipe: "viral" as const,
       my_label: "new-label",
     };
 

@@ -126,7 +126,7 @@ describe("errorResponse", () => {
 describe("withAuth", () => {
   function makeRequest(
     url = "http://localhost/api/test",
-    init?: RequestInit,
+    init?: ConstructorParameters<typeof NextRequest>[1],
   ): NextRequest {
     return new NextRequest(url, init);
   }
@@ -179,7 +179,7 @@ describe("withAuth", () => {
 describe("withOptionalAuth", () => {
   function makeRequest(
     url = "http://localhost/api/test",
-    init?: RequestInit,
+    init?: ConstructorParameters<typeof NextRequest>[1],
   ): NextRequest {
     return new NextRequest(url, init);
   }
@@ -216,7 +216,7 @@ describe("withOptionalAuth", () => {
 describe("withErrorHandling", () => {
   function makeRequest(
     url = "http://localhost/api/test",
-    init?: RequestInit,
+    init?: ConstructorParameters<typeof NextRequest>[1],
   ): NextRequest {
     return new NextRequest(url, init);
   }

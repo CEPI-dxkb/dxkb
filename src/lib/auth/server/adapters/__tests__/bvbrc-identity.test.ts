@@ -265,7 +265,7 @@ describe("bvbrcIdentity().requestPasswordReset", () => {
 
 describe("bvbrcIdentity().sendVerificationEmail", () => {
   it("sends POST to USER_VERIFICATION_URL with token + user id", async () => {
-    let captured: { auth: string | null; body: unknown } | null = null;
+    let captured: { auth: string | null; body: unknown } | undefined;
     server.use(
       http.post("https://auth.test/verify", async ({ request }) => {
         captured = {

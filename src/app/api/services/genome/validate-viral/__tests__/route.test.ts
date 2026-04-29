@@ -19,7 +19,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["1.1"] },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(401);
     expect(await json(res)).toEqual(
@@ -31,7 +31,7 @@ describe("POST /api/services/genome/validate-viral", () => {
     mockGetAuthToken.mockResolvedValue("token");
 
     const req = mockNextRequest({ method: "POST", body: { genome_ids: [] } });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: [] });
@@ -44,7 +44,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["abc", "xyz"] },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results: [] });
@@ -65,7 +65,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["123.45", "abc", "67.89"] },
     });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain("in(genome_id,(123.45,67.89))");
   });
@@ -85,7 +85,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["1.1"] },
     });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain("select(genome_id,superkingdom,genome_length,contigs)");
   });
@@ -105,7 +105,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["1.1", "2.2", "3.3"] },
     });
-    await POST(req);
+    await POST(req, {});
 
     expect(capturedUrl).toContain("limit(3)");
   });
@@ -126,7 +126,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["1.1"] },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(200);
     expect(await json(res)).toEqual({ results });
@@ -145,7 +145,7 @@ describe("POST /api/services/genome/validate-viral", () => {
       method: "POST",
       body: { genome_ids: ["1.1"] },
     });
-    const res = await POST(req);
+    const res = await POST(req, {});
 
     expect(res.status).toBe(500);
     expect(await json(res)).toEqual(

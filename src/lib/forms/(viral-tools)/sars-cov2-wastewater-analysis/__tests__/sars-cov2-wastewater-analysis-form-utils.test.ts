@@ -335,7 +335,7 @@ describe("getPairedLibraryBuildFn", () => {
         sampleId: "reads_R1",
       }),
     );
-    expect((result.library as Record<string, unknown>).sampleLevelDate).toBeUndefined();
+    expect((result.library as unknown as Record<string, unknown>).sampleLevelDate).toBeUndefined();
   });
 });
 

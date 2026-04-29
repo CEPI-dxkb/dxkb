@@ -29,7 +29,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(401);
@@ -45,7 +45,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -61,7 +61,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
       body: { include_archived: true },
     });
 
-    await POST(request);
+    await POST(request, {});
 
     expect(mockAppService.queryTaskSummaryFiltered).toHaveBeenCalledWith({
       include_archived: true,
@@ -76,7 +76,7 @@ describe("POST /api/services/app-service/jobs/task-summary", () => {
 
     const request = mockNextRequest({ method: "POST", body: {} });
 
-    const response = await POST(request);
+    const response = await POST(request, {});
     const data = await response.json();
 
     expect(response.status).toBe(500);

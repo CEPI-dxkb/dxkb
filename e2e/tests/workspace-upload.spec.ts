@@ -2,7 +2,7 @@ import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
   authSessionOverrides,
   buildWorkspaceOverrides,
-  permissiveBackendOverrides,
+  journeyOverrides,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
 import { recordedTestUserId } from "../scripts/har-constants";
@@ -15,9 +15,9 @@ test.describe("workspace upload", () => {
     // a UI that uploaded successfully but failed to invalidate the listing would still pass.
     await applyBackendMocks(page, {
       overrides: [
-        ...authSessionOverrides,
+        // reflectUploads workspace overrides must come before journeyOverrides (first-match-wins).
         ...buildWorkspaceOverrides({ reflectUploads: true }),
-        ...permissiveBackendOverrides,
+        ...journeyOverrides,
       ],
     });
     const workspace = new WorkspacePage(page);

@@ -1,14 +1,17 @@
 import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
-  authSessionOverrides,
-  workspaceOverrides,
-  permissiveBackendOverrides,
+  journeyOverrides,
+  workspacePopulatedOverrides,
 } from "../fixtures/overrides";
 
 test.describe("workspace (signed in)", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspaceOverrides, ...permissiveBackendOverrides],
+      overrides: [
+        // Workspace.ls / Workspace.get / Workspace.list_permissions fired when loading workspace pages.
+        ...workspacePopulatedOverrides,
+        ...journeyOverrides,
+      ],
     });
   });
 

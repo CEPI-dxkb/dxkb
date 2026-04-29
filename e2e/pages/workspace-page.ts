@@ -66,6 +66,11 @@ export class WorkspacePage {
 
   async openNewFolder(): Promise<void> {
     await this.newFolderButton.click();
+    // Wait for the dialog's title heading specifically — "Create Folder" also
+    // appears as the confirm button, so target the heading role to disambiguate.
+    await expect(
+      this.page.getByRole("dialog").getByRole("heading", { name: /^create folder$/i }),
+    ).toBeVisible();
   }
 
   /** Count the data rows currently rendered (excludes special "parent" row). */

@@ -22,10 +22,15 @@ test.describe("public routes (no auth)", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 
-  test("/services index is publicly accessible", async ({ page }) => {
+  test("/services index renders the services landing page", async ({ page }) => {
     await page.goto("/services");
     await expect(page).toHaveURL(/\/services\/?$/);
-    await expect(page.locator("body")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /services/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Genomics", exact: true }),
+    ).toBeVisible();
   });
 
   test("/workspace/public is publicly accessible", async ({ page }) => {

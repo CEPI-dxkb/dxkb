@@ -30,3 +30,4 @@ export {
   externalCatchallOverrides,
   permissiveBackendOverrides,
 } from "./catchall";
+export { journeyOverrides } from "./journey";

@@ -8,6 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   Star,
   ChevronDown,
+  Command as CommandIcon,
   Menu,
   Search,
   ChevronUp,
@@ -41,6 +42,7 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { SearchBar } from "@/components/search/search-bar";
+import { openCommandPalette } from "@/components/search/command-palette";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/hooks";
@@ -424,6 +426,16 @@ const MobileNavbar = () => {
         </div>
 
         <div className="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-primary-foreground hover:bg-white/15"
+            onClick={openCommandPalette}
+            aria-label="Open command palette"
+            aria-keyshortcuts="Meta+K Control+K"
+          >
+            <CommandIcon size={18} />
+          </Button>
           {!isHome && (
             <Button
               variant="ghost"

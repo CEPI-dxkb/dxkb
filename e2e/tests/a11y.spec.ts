@@ -11,23 +11,15 @@ import {
 // Axe tags we want enforced. WCAG 2.1 AA is the practical bar for the suite.
 const axeTags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
-// Rules with persistent failures across the suite that pre-date axe enforcement.
-// Disable explicitly (rather than blanket-ignoring whole impact levels) so any
-// new failure modes surface immediately. Tighten this list as the underlying
-// issues are fixed.
-//
-// - button-name: navbar SearchBar's <select> trigger and its inner base-ui
-//   button render without an accessible name. Same component appears on every
-//   non-home page, so it shows up everywhere. Fix is a one-line aria-label on
-//   the SelectTrigger in src/components/search/search-bar.tsx.
-// - color-contrast: home statistics tiles, sign-in footer links, and the
-//   genome-assembly help anchors fall below 4.5:1. Theme-token work, not a
-//   spec change.
-// - aria-required-children: WorkspaceDataTable's TanStack virtual scroller
-//   uses role="grid" on a wrapper whose direct children are role="presentation"
-//   rows — axe wants role="row". This is a TanStack Table v8 limitation
-//   (issue tracked upstream).
-const knownBaselineViolations = ["button-name", "color-contrast", "aria-required-children"];
+// All known violations fixed in DXKBCORE-133. Add IDs back here only with
+// linked tickets and a target removal date.
+const knownBaselineViolations: string[] = [
+  // WebKit-only: axe flags Base UI's internal focus-guard <span> elements
+  // (data-base-ui-focus-guard) as ARIA commands without names. The spans are
+  // rendered by @base-ui/react Dialog/Command and are not author-controlled.
+  // Track removal once Base UI adds aria-hidden / role="none" to focus guards.
+  "aria-command-name",
+];
 
 interface AxeRoute {
   name: string;
@@ -42,11 +34,20 @@ const routes: AxeRoute[] = [
     name: "home",
     path: "/",
     unauthenticated: true,
+    prepare: async (page) => {
+      await page.waitForLoadState("networkidle");
+    },
   },
   {
     name: "sign-in",
     path: "/sign-in",
     unauthenticated: true,
+    prepare: async (page) => {
+      // Wait for auth status to resolve so the submit button isn't captured
+      // in its transient disabled (loading) state, which trips contrast checks.
+      await page.waitForLoadState("networkidle");
+      await page.getByRole("button", { name: /sign in/i }).waitFor({ state: "visible" });
+    },
   },
   {
     name: "workspace",
@@ -54,6 +55,9 @@ const routes: AxeRoute[] = [
     prepare: async (page) => {
       await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
       await page.getByPlaceholder(/search files/i).waitFor({ timeout: 10_000 });
+      // Same as sign-in: ensure refresh button finishes its initial spin so
+      // axe doesn't catch it in the disabled (low-contrast) state.
+      await page.waitForLoadState("networkidle");
     },
   },
   {
@@ -71,6 +75,39 @@ const routes: AxeRoute[] = [
     },
   },
 ];
+
+function summarizeViolations(
+  results: { violations: { id: string; impact?: string | null; help: string; nodes: { target: unknown[] }[] }[] },
+  routeName: string,
+) {
+  const blocking = results.violations.filter(
+    (v) => v.impact === "serious" || v.impact === "critical",
+  );
+  const advisory = results.violations.filter(
+    (v) => v.impact !== "serious" && v.impact !== "critical",
+  );
+
+  if (advisory.length > 0) {
+    const summary = advisory
+      .map((v) => `  - [${v.impact ?? "minor"}] ${v.id}: ${v.help} (${v.nodes.length} node${v.nodes.length === 1 ? "" : "s"})`)
+      .join("\n");
+    console.warn(
+      `[a11y] ${routeName}: ${advisory.length} non-blocking violation(s):\n${summary}`,
+    );
+  }
+
+  const blockingSummary = blocking
+    .map((v) => {
+      const targets = v.nodes
+        .slice(0, 3)
+        .map((n) => `      ${n.target.join(" ")}`)
+        .join("\n");
+      return `  - [${v.impact}] ${v.id}: ${v.help}\n${targets}`;
+    })
+    .join("\n");
+
+  return { blocking, blockingSummary };
+}
 
 test.describe("a11y axe sweep", () => {
   for (const route of routes) {
@@ -108,31 +145,10 @@ test.describe("a11y axe sweep", () => {
         .disableRules(knownBaselineViolations);
       const results = await builder.analyze();
 
-      const blocking = results.violations.filter(
-        (v) => v.impact === "serious" || v.impact === "critical",
+      const { blocking, blockingSummary } = summarizeViolations(
+        results,
+        route.name,
       );
-      const advisory = results.violations.filter(
-        (v) => v.impact !== "serious" && v.impact !== "critical",
-      );
-
-      if (advisory.length > 0) {
-        const summary = advisory
-          .map((v) => `  - [${v.impact ?? "minor"}] ${v.id}: ${v.help} (${v.nodes.length} node${v.nodes.length === 1 ? "" : "s"})`)
-          .join("\n");
-        console.warn(
-          `[a11y] ${route.name}: ${advisory.length} non-blocking violation(s):\n${summary}`,
-        );
-      }
-
-      const blockingSummary = blocking
-        .map((v) => {
-          const targets = v.nodes
-            .slice(0, 3)
-            .map((n) => `      ${n.target.join(" ")}`)
-            .join("\n");
-          return `  - [${v.impact}] ${v.id}: ${v.help}\n${targets}`;
-        })
-        .join("\n");
       expect(
         blocking,
         blocking.length === 0
@@ -141,4 +157,42 @@ test.describe("a11y axe sweep", () => {
       ).toEqual([]);
     });
   }
+
+  test("command palette (open) has no serious or critical violations", async ({
+    page,
+  }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...workspaceOverrides,
+        ...jobsOverrides,
+        ...permissiveBackendOverrides,
+      ],
+    });
+    await page.goto("/jobs");
+    await page.waitForLoadState("networkidle");
+
+    const modifierKey = process.platform === "darwin" ? "Meta" : "Control";
+    await page.keyboard.press(`${modifierKey}+K`);
+    await page.getByRole("dialog", { name: /command palette/i }).waitFor({
+      state: "visible",
+      timeout: 10_000,
+    });
+
+    const builder = new AxeBuilder({ page })
+      .withTags(axeTags)
+      .disableRules(knownBaselineViolations);
+    const results = await builder.analyze();
+
+    const { blocking, blockingSummary } = summarizeViolations(
+      results,
+      "command-palette",
+    );
+    expect(
+      blocking,
+      blocking.length === 0
+        ? undefined
+        : `${blocking.length} blocking a11y violation(s) on command palette:\n${blockingSummary}`,
+    ).toEqual([]);
+  });
 });

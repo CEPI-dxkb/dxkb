@@ -60,6 +60,13 @@ describe("SearchBar", () => {
       const form = getForm();
       expect(form.className).toContain("max-w-[1000px]");
     });
+
+    it("exposes an accessible name on the search-type trigger", () => {
+      renderSearchBar();
+      expect(
+        screen.getByRole("combobox", { name: /search type/i }),
+      ).toBeInTheDocument();
+    });
   });
 
   describe("form submission", () => {

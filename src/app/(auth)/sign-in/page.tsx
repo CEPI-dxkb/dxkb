@@ -169,7 +169,7 @@ function SigninForm() {
 
             <Button
               type="submit"
-              className="text-muted-foreground hover:text-foreground w-full transition-all duration-200"
+              className="w-full transition-all duration-200"
               disabled={isLoading}
             >
               {isLoading ? (

@@ -73,7 +73,7 @@ export function WorkspaceToolbar({
           if (value != null) onTypeFilterChange(value);
         }}
       >
-        <SelectTrigger className="w-36 shrink-0">
+        <SelectTrigger aria-label="Filter by type" className="w-36 shrink-0">
           <SelectValue placeholder="All Types" />
         </SelectTrigger>
         <SelectContent>

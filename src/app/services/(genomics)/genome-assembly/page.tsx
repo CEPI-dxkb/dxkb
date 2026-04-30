@@ -271,6 +271,7 @@ export default function GenomeAssemblyPage() {
                     type="button"
                     variant="outline"
                     size="icon"
+                    aria-label="Add paired read library to selected libraries"
                     onClick={handlePairedLibraryAdd}
                     disabled={!pairedRead1 || !pairedRead2}
                   >
@@ -308,6 +309,7 @@ export default function GenomeAssemblyPage() {
                     type="button"
                     variant="outline"
                     size="icon"
+                    aria-label="Add single read library to selected libraries"
                     onClick={handleSingleLibraryAdd}
                     disabled={!singleRead}
                   >
@@ -342,7 +344,7 @@ export default function GenomeAssemblyPage() {
                   Selected Libraries
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger>
+                      <TooltipTrigger aria-label="Selected libraries help">
                         <HelpCircle className="service-card-tooltip-icon" />
                       </TooltipTrigger>
                       <TooltipContent>
@@ -400,7 +402,7 @@ export default function GenomeAssemblyPage() {
                           field.handleChange(value as string)
                         }
                       >
-                        <SelectTrigger className="service-card-select-trigger">
+                        <SelectTrigger aria-label="Assembly strategy" className="service-card-select-trigger">
                           <SelectValue placeholder="Select strategy" />
                         </SelectTrigger>
                         <SelectContent className="service-card-select-content">
@@ -496,7 +498,7 @@ export default function GenomeAssemblyPage() {
                               }
                             }}
                           >
-                            <SelectTrigger className="service-card-select-trigger w-20">
+                            <SelectTrigger aria-label="Genome size unit" className="service-card-select-trigger w-20">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -739,7 +741,7 @@ export default function GenomeAssemblyPage() {
                 Selected Libraries
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger>
+                    <TooltipTrigger aria-label="Selected libraries help">
                       <HelpCircle className="service-card-tooltip-icon" />
                     </TooltipTrigger>
                     <TooltipContent>

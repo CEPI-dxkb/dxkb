@@ -302,7 +302,6 @@ export function WorkspaceMiniBrowser({
     <div className={cn("flex flex-col gap-2", className)}>
       <div
         ref={tableContainerRef}
-        role="grid"
         tabIndex={0}
         aria-label="Workspace destination browser"
         className="scrollbar-themed focus-visible:ring-ring flex h-full min-h-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2"

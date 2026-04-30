@@ -9,6 +9,7 @@ import { Providers } from "./providers";
 import { AuthBoundary } from "@/lib/auth/provider";
 import { auth } from "@/lib/auth/server/instance";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CommandPalette } from "@/components/search/command-palette";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,6 +48,7 @@ export default async function RootLayout({
               <TooltipProvider>
                 {children}
               </TooltipProvider>
+              <CommandPalette />
             </AuthBoundary>
             <ThemeSwitcher />
             <Toaster

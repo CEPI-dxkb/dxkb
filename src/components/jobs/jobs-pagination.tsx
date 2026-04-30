@@ -86,7 +86,7 @@ export function JobsPagination({
             value != null && onPageSizeChange(Number(value))
           }
         >
-          <SelectTrigger className="mr-1 h-7 w-20 text-xs">
+          <SelectTrigger aria-label="Items per page" className="mr-1 h-7 w-20 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="min-w-0!">
@@ -101,6 +101,7 @@ export function JobsPagination({
         </Select>
         <Button
           variant="outline"
+          aria-label="Previous page"
           className="h-9 w-9 rounded-lg p-0"
           onClick={onPrevious}
           disabled={!hasPrevious}
@@ -119,6 +120,8 @@ export function JobsPagination({
             <Button
               key={p}
               variant={p === page ? "default" : "outline"}
+              aria-label={`Page ${p}`}
+              aria-current={p === page ? "page" : undefined}
               className="h-9 w-9 rounded-lg p-0 text-sm"
               onClick={() => onPageChange(p)}
             >
@@ -128,6 +131,7 @@ export function JobsPagination({
         )}
         <Button
           variant="outline"
+          aria-label="Next page"
           className="h-9 w-9 rounded-lg p-0"
           onClick={onNext}
           disabled={!hasNext}

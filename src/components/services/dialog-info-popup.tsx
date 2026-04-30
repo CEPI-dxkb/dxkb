@@ -28,6 +28,7 @@ export function DialogInfoPopup({
             {...triggerProps}
             variant="ghost"
             size="icon"
+            aria-label={`More info: ${title}`}
             className={cn(
               isHeader
                 ? "h-8 w-8 rounded-full p-2 text-primary font-bold"

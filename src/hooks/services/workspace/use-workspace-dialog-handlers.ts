@@ -14,6 +14,11 @@ import {
   getNonEmptyFolderPaths,
   ensureDestinationWriteAccess,
 } from "@/lib/services/workspace/helpers";
+import {
+  findProtectedFolders,
+  protectedFolderToastTitle,
+  formatProtectedFolderToastDescription,
+} from "@/lib/services/workspace/protected-folders";
 import { isFolder } from "@/lib/services/workspace/utils";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { sanitizePathSegment } from "@/lib/utils";
@@ -219,6 +224,14 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       .map((item) => item.path)
       .filter((p): p is string => Boolean(p));
     if (paths.length === 0) {
+      dispatch({ type: "CLOSE" });
+      return;
+    }
+    const protectedPaths = findProtectedFolders(paths);
+    if (protectedPaths.length > 0) {
+      toast.error(protectedFolderToastTitle, {
+        description: formatProtectedFolderToastDescription(protectedPaths),
+      });
       dispatch({ type: "CLOSE" });
       return;
     }

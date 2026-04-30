@@ -15,6 +15,7 @@ import type {
   WorkspaceReadOptions,
 } from "../domain";
 import { WorkspaceApiError, toWorkspaceItem } from "../domain";
+import { assertNoProtectedFolders } from "../protected-folders";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 import type {
   ArchiveRequest,
@@ -284,6 +285,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   }
 
   async delete(paths: string[], options?: DeleteOptions): Promise<void> {
+    assertNoProtectedFolders(paths);
     this.calls.push({ method: "delete", paths, options });
     this.throwIfConfigured("delete");
     for (const path of paths) {

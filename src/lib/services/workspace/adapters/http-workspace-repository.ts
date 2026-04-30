@@ -32,6 +32,7 @@ import {
   parseUploadNode,
 } from "./parsers";
 import { rpc } from "./rpc";
+import { assertNoProtectedFolders } from "../protected-folders";
 
 function getWorkspaceGetPathRaw(
   raw: unknown,
@@ -188,6 +189,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
 
   async delete(paths: string[], options?: DeleteOptions): Promise<void> {
     if (paths.length === 0) return;
+    assertNoProtectedFolders(paths);
     await rpc<unknown>({
       method: "Workspace.delete",
       params: [

@@ -354,6 +354,7 @@ const SraRunAccessionWithValidation = ({
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Add SRA run accession to selected libraries"
                 onClick={handleAdd}
                 disabled={!sraAccession.trim() || disabled || isValidating}
               >

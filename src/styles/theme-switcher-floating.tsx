@@ -42,6 +42,7 @@ export function ThemeSwitcher() {
             <Button
               variant="default"
               size="icon"
+              aria-label="Open theme switcher"
               className="bg-primary hover:bg-foreground border border-accent h-12 w-12 rounded-full shadow-lg transition-all duration-200 hover:shadow-xl"
               onClick={() => setIsOpen(!isOpen)}
             >

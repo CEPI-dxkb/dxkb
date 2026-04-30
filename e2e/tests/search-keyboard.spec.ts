@@ -9,21 +9,29 @@ import {
 //   clipboard paste filling the input)
 // - the global `<CommandPalette>` mounted in the root layout (Cmd/Ctrl+K
 //   toggles open, arrow keys navigate, Enter routes, Esc closes).
-test.describe("global search (keyboard journey)", () => {
-  // p3.theseed.org/services/data_api/query/ — bulk multi-type Solr query fired by SearchResults on mount.
-  // Returns zero hits for every type so the page renders the ResultsOverview card without errors.
-  const emptyDataApiResponse = Object.fromEntries(
-    [
-      "taxonomy", "genome", "strain", "genome_feature", "sp_gene",
-      "protein_feature", "epitope", "protein_structure", "pathway",
-      "subsystem", "surveillance", "serology", "experiment",
-      "antibiotics", "genome_sequence",
-    ].map((type) => [
-      type,
-      { result: { response: { docs: [], numFound: 0, maxScore: 0, numFoundExact: true } } },
-    ]),
-  );
 
+// p3.theseed.org/services/data_api/query/ — bulk multi-type Solr query fired by SearchResults on mount.
+// Returns zero hits for every type so the page renders the ResultsOverview card without errors.
+// Both describe blocks navigate to /search, so this mock has to be in scope for both.
+const emptyDataApiResponse = Object.fromEntries(
+  [
+    "taxonomy", "genome", "strain", "genome_feature", "sp_gene",
+    "protein_feature", "epitope", "protein_structure", "pathway",
+    "subsystem", "surveillance", "serology", "experiment",
+    "antibiotics", "genome_sequence",
+  ].map((type) => [
+    type,
+    { result: { response: { docs: [], numFound: 0, maxScore: 0, numFoundExact: true } } },
+  ]),
+);
+
+const dataApiOverride = {
+  url: /theseed\.org\/services\/data_api\/query/,
+  method: "POST",
+  body: emptyDataApiResponse,
+} as const;
+
+test.describe("global search (keyboard journey)", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
@@ -32,11 +40,7 @@ test.describe("global search (keyboard journey)", () => {
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
         // p3.theseed.org data_api bulk Solr query — fired by SearchResults when /search mounts.
-        {
-          url: /theseed\.org\/services\/data_api\/query/,
-          method: "POST",
-          body: emptyDataApiResponse,
-        },
+        dataApiOverride,
       ],
     });
   });
@@ -125,12 +129,15 @@ test.describe("global search (keyboard journey)", () => {
 test.describe("command palette (Cmd+K)", () => {
   // Command palette is mounted globally in the root layout, so any route
   // works; /jobs is signed-in and gives us the navbar/auth chrome we'd hit
-  // in real usage.
+  // in real usage. The data_api mock is required because the "typing a query
+  // then Enter" test routes to /search, which fires the SearchResults Solr
+  // POST on mount.
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [
         ...workspacePopulatedOverrides,
         ...journeyOverrides,
+        dataApiOverride,
       ],
     });
   });
@@ -163,12 +170,13 @@ test.describe("command palette (Cmd+K)", () => {
       page.getByRole("dialog", { name: /command palette/i }),
     ).toBeVisible();
 
-    // First Navigate item is "Home"; ArrowDown highlights it then Enter selects.
+    // cmdk auto-selects the first item ("Home") on open; ArrowDown advances
+    // to the next item ("Workspace" when signed in) and Enter selects it.
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
 
-    await page.waitForURL(/\/$|\/(?:\?.*)?$/, { timeout: 10_000 });
-    expect(new URL(page.url()).pathname).toBe("/");
+    await page.waitForURL(/\/workspace\//, { timeout: 10_000 });
+    expect(new URL(page.url()).pathname).toMatch(/^\/workspace\//);
   });
 
   test("typing a query then Enter routes to /search", async ({ page }) => {

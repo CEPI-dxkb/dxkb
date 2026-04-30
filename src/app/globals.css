@@ -593,7 +593,7 @@
 }
 
 .footer-header {
-  @apply text-secondary font-bold mt-2 mb-4 md:mb-6;
+  @apply text-white font-bold mt-2 mb-4 md:mb-6;
 }
 
 .footer-header:hover {

@@ -103,7 +103,7 @@ export function JobsToolbar({
             value != null && onServiceFilterChange(value)
           }
         >
-          <SelectTrigger className="w-68">
+          <SelectTrigger aria-label="Filter by service" className="w-68">
             <SelectValue placeholder="Service" />
           </SelectTrigger>
           <SelectContent>
@@ -127,7 +127,7 @@ export function JobsToolbar({
             value != null && onStatusFilterChange(value)
           }
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger aria-label="Filter by status" className="w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -216,6 +216,7 @@ export function JobsToolbar({
           <Button
             variant="outline"
             size="sm"
+            aria-label="Refresh jobs"
             onClick={onRefresh}
             disabled={isRefreshing}
           >

@@ -419,6 +419,8 @@ export function WorkspaceObjectSelector({
           {/* Manual Dropdown Trigger */}
           <Button
             type="button"
+            aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
+            aria-expanded={showDropdown}
             onClick={handleManualDropdownToggle}
             className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 transition-colors"
           >
@@ -519,6 +521,7 @@ export function WorkspaceObjectSelector({
                 {...triggerProps}
                 variant="outline"
                 size="icon"
+                aria-label="Browse workspace"
                 className="shrink-0"
               >
                 <FolderOpen className="h-4 w-4" />

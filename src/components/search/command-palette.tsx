@@ -26,7 +26,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
 
@@ -60,7 +59,8 @@ export function CommandPalette() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "k" && (event.metaKey || event.ctrlKey)) {
+      // Case-insensitive: CapsLock or Playwright's `Meta+K` send key="K".
+      if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         // Reset stale input so reopening always starts clean; setInputValue
         // here runs from an event handler, not an effect body.
@@ -214,8 +214,6 @@ export function CommandPalette() {
               </>
             )}
           </CommandGroup>
-
-          <CommandSeparator />
 
           {Object.entries(serviceItems).map(([key, section]) => (
             <CommandGroup key={key} heading={section.title}>

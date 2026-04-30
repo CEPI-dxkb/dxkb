@@ -74,7 +74,7 @@ const SelectedItemsTable = ({
             {tooltipContent && (
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger>
+                  <TooltipTrigger aria-label={`${title ?? "Field"} help`}>
                     <HelpCircle className="service-card-tooltip-icon mb-2" />
                   </TooltipTrigger>
                   <TooltipContent>{tooltipContent}</TooltipContent>
@@ -92,7 +92,7 @@ const SelectedItemsTable = ({
       >
         <div className="h-full overflow-y-auto rounded-md border">
           {items.length === 0 ? (
-            <div className="text-muted-foreground h-full bg-muted p-4.5 text-center text-sm">
+            <div className="text-foreground h-full bg-muted p-4.5 text-center text-sm">
               {emptyMessage}
             </div>
           ) : (

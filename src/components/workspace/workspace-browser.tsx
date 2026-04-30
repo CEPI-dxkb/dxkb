@@ -11,6 +11,7 @@ import { useWorkspacePanel } from "@/contexts/workspace-panel-context";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
 import { useWorkspacePathResolve } from "@/hooks/services/workspace/use-workspace-path-resolve";
 import { useWorkspaceBrowserDirectory } from "@/hooks/services/workspace/use-workspace-browser-directory";
+import { useEnsureUserWorkspace } from "@/hooks/services/workspace/use-ensure-user-workspace";
 import { useWorkspaceFilteredItems } from "@/hooks/services/workspace/use-workspace-filtered-items";
 import { useWorkspaceSelection } from "@/hooks/services/workspace/use-workspace-selection";
 import { useWorkspaceNavigation } from "@/hooks/services/workspace/use-workspace-navigation";
@@ -78,6 +79,15 @@ export function WorkspaceBrowser({
   const currentUser = user?.username ?? "";
   const fullWorkspaceUsername = workspaceUsername(user);
   const myWorkspaceRoot = fullWorkspaceUsername || currentUser;
+
+  // Matches every URL form that resolves to the signed-in user: short
+  // (`alice`), realm-qualified (`alice@bvbrc`), and any other `${currentUser}@*`
+  // variant. Used for both home-mode workspace bootstrap and shared-mode redirect.
+  const isUrlCurrentUser =
+    username === currentUser ||
+    username === fullWorkspaceUsername ||
+    username === myWorkspaceRoot ||
+    (!!currentUser && username.startsWith(`${currentUser}@`));
 
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
@@ -172,6 +182,19 @@ export function WorkspaceBrowser({
     memberCountByPath,
     currentDirPermissions,
   } = browserDirectory;
+
+  // Path C: when a user lands on their own home and the workspace is missing
+  // (either ls 500s with "User lacks permission" or returns no items at the
+  // root), POST /api/auth/ensure-workspace once and let the cache invalidation
+  // refetch the now-populated directory.
+  const isOwnHome = mode === "home" && isUrlCurrentUser;
+  const homeAppearsEmpty =
+    isOwnHome && path === "" && !isLoading && items.length === 0;
+  useEnsureUserWorkspace({
+    enabled: isOwnHome,
+    listError: error,
+    homeAppearsEmpty,
+  });
 
   const processedItems = useWorkspaceFilteredItems(items, {
     showHiddenFiles: isJobResultView ? true : showHiddenFiles,
@@ -286,11 +309,6 @@ export function WorkspaceBrowser({
   }, [path, mode, resolveQuery.isLoading]);
 
   // Redirect non-owner to their own shared root
-  const isUrlCurrentUser =
-    username === currentUser ||
-    username === fullWorkspaceUsername ||
-    username === myWorkspaceRoot ||
-    (currentUser && username.startsWith(`${currentUser}@`));
   useEffect(() => {
     if (
       isPublic ||

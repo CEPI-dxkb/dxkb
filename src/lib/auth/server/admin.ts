@@ -8,6 +8,9 @@ import type {
 import { ok, fail, forwardError } from "./result";
 import { sessionMaxAgeMs } from "./envelope";
 import { extractRealmFromToken } from "./token";
+import { ensureUserWorkspace } from "@/lib/services/workspace/setup";
+import { createServerWorkspaceRpc } from "@/lib/services/workspace/server-rpc";
+import { getDefaultRealm } from "@/lib/services/workspace/realm";
 import type {
   IdentityProviderPort,
   SessionIdentity,
@@ -128,6 +131,19 @@ export function createAuthAdmin(ports: AuthAdminPorts): AuthAdmin {
     const userId = deriveUserId(input.username, profile?.id);
 
     await session.write(buildSessionIdentity(token, userId, realm));
+
+    try {
+      await ensureUserWorkspace({
+        rpc: createServerWorkspaceRpc(token),
+        userId,
+        realm: realm ?? getDefaultRealm(),
+      });
+    } catch (cause) {
+      console.error("Failed to provision workspace for new user", {
+        userId,
+        cause,
+      });
+    }
 
     return ok({
       ...buildBaseUser(input.username, realm, profile),

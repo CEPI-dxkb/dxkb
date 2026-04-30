@@ -38,4 +38,9 @@ export const authSessionOverrides: JsonOverride[] = [
     method: "POST",
     body: { success: true },
   },
+  {
+    url: "/api/auth/ensure-workspace",
+    method: "POST",
+    body: { success: true, created: [], failures: {} },
+  },
 ];

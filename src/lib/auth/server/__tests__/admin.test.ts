@@ -69,6 +69,40 @@ describe("authAdmin.signIn", () => {
     expect(session.inspect().current?.userId).toBe("alice");
   });
 
+  it("returns roles on the AuthUser when the profile has them", async () => {
+    const { authAdmin } = buildAuthority([
+      {
+        ...makeAccount({ username: "admin" }),
+        profile: makeProfile({ id: "admin", roles: ["admin"] }),
+      },
+    ]);
+
+    const result = await authAdmin.signIn({
+      username: "admin",
+      password: "pw",
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.roles).toEqual(["admin"]);
+  });
+
+  it("returns an empty roles array when the profile has none", async () => {
+    const { authAdmin } = buildAuthority([
+      {
+        ...makeAccount({ username: "alice" }),
+        profile: makeProfile({ id: "alice", roles: undefined }),
+      },
+    ]);
+
+    const result = await authAdmin.signIn({
+      username: "alice",
+      password: "pw",
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.roles).toEqual([]);
+  });
+
   it("validates username/password are required", async () => {
     const { authAdmin } = buildAuthority();
     const result = await authAdmin.signIn({ username: "", password: "" });
@@ -119,6 +153,22 @@ describe("authAdmin.signUp", () => {
     expect(result.data?.email_verified).toBe(false);
     expect(result.data?.username).toBe("bob");
     expect(session.inspect().current?.token).toBe("memory-token:bob");
+  });
+
+  it("returns roles on the AuthUser (empty by default for new accounts)", async () => {
+    const { authAdmin } = buildAuthority();
+
+    const result = await authAdmin.signUp({
+      username: "bob",
+      email: "bob@example.com",
+      first_name: "Bob",
+      last_name: "Smith",
+      password: "pw",
+      password_repeat: "pw",
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.roles).toEqual([]);
   });
 
   it("rejects mismatched passwords", async () => {

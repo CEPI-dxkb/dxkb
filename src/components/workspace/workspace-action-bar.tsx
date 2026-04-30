@@ -5,6 +5,7 @@ import { Spinner } from "@/components/ui/spinner";
 import {TooltipProvider, Tooltip, TooltipTrigger, TooltipContent} from "@/components/ui/tooltip";
 import { Box, Download, Trash2, Pencil, Copy, Move, Star, BookOpen, Type, Share2, type LucideIcon } from "lucide-react";
 
+import { findProtectedFolders } from "@/lib/services/workspace/protected-folders";
 import type { WorkspaceBrowserItem } from "@/types/workspace-browser";
 
 const writePermissions = new Set(["o", "a", "w"]);
@@ -59,6 +60,12 @@ function getSelectionDisabledTooltip(
 ): string | undefined {
   if (action.id === "editType" && selection.some((s) => s.type === "job_result")) {
     return 'Cannot change "job_result" type';
+  }
+  if (action.id === "delete") {
+    const paths = selection.map((s) => s.path).filter((p): p is string => Boolean(p));
+    if (findProtectedFolders(paths).length > 0) {
+      return "This folder is essential to your workspace and cannot be deleted.";
+    }
   }
   return undefined;
 }

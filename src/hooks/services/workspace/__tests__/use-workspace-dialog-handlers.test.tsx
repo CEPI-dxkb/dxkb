@@ -533,4 +533,67 @@ describe("useWorkspaceDialogHandlers", () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: "CLOSE" });
     expect(repo.calls.some((c) => c.method === "copy")).toBe(false);
   });
+
+  it("handleConfirmDelete shows protected-folder toast and skips repository.delete", async () => {
+    const protectedItem = makeItem({
+      name: "Genome Groups",
+      path: "/testuser/home/Genome Groups",
+      type: "folder",
+    });
+    mockActiveDialog.value = {
+      type: "delete",
+      items: [protectedItem],
+      nonEmptyPaths: [],
+    };
+    const repo = new InMemoryWorkspaceRepository();
+
+    const { result } = renderHook(
+      () => useWorkspaceDialogHandlers(defaultOptions()),
+      { wrapper: makeWrapper(repo) },
+    );
+
+    await act(async () => {
+      await result.current.handleConfirmDelete();
+    });
+
+    expect(toast.error).toHaveBeenCalledWith(
+      "Sorry, you can't delete that…",
+      expect.objectContaining({
+        description: expect.stringContaining("Genome Groups"),
+      }),
+    );
+    expect(mockDispatch).toHaveBeenCalledWith({ type: "CLOSE" });
+    expect(repo.calls.some((c) => c.method === "delete")).toBe(false);
+  });
+
+  it("handleConfirmDelete with a mixed selection blocks the entire delete", async () => {
+    const protectedItem = makeItem({
+      name: "home",
+      path: "/testuser/home",
+      type: "folder",
+    });
+    const ordinaryItem = makeItem({
+      name: "My Project",
+      path: "/testuser/home/My Project",
+      type: "folder",
+    });
+    mockActiveDialog.value = {
+      type: "delete",
+      items: [ordinaryItem, protectedItem],
+      nonEmptyPaths: [],
+    };
+    const repo = new InMemoryWorkspaceRepository();
+
+    const { result } = renderHook(
+      () => useWorkspaceDialogHandlers(defaultOptions()),
+      { wrapper: makeWrapper(repo) },
+    );
+
+    await act(async () => {
+      await result.current.handleConfirmDelete();
+    });
+
+    expect(toast.error).toHaveBeenCalled();
+    expect(repo.calls.some((c) => c.method === "delete")).toBe(false);
+  });
 });

@@ -121,4 +121,26 @@ describe("InMemoryWorkspaceRepository", () => {
     expect(meta?.object?.id).toBe("/u/home/second.fa#1");
     expect(rawTuple?.[4]).toBe("/u/home/second.fa#1");
   });
+
+  it("rejects delete of protected folders without recording the call or mutating fixtures", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/alice@bvbrc/home": [
+          { name: "Genome Groups", type: "folder" },
+          { name: "My Project", type: "folder" },
+        ],
+      },
+    });
+
+    await expect(
+      repo.delete(["/alice@bvbrc/home/Genome Groups"]),
+    ).rejects.toMatchObject({
+      name: "ProtectedFolderError",
+      protectedPaths: ["/alice@bvbrc/home/Genome Groups"],
+    });
+
+    expect(repo.calls.some((c) => c.method === "delete")).toBe(false);
+    const remaining = await repo.listDirectory({ path: "/alice@bvbrc/home" });
+    expect(remaining.map((i) => i.name)).toEqual(["Genome Groups", "My Project"]);
+  });
 });

@@ -80,6 +80,15 @@ export function WorkspaceBrowser({
   const fullWorkspaceUsername = workspaceUsername(user);
   const myWorkspaceRoot = fullWorkspaceUsername || currentUser;
 
+  // Matches every URL form that resolves to the signed-in user: short
+  // (`alice`), realm-qualified (`alice@bvbrc`), and any other `${currentUser}@*`
+  // variant. Used for both home-mode workspace bootstrap and shared-mode redirect.
+  const isUrlCurrentUser =
+    username === currentUser ||
+    username === fullWorkspaceUsername ||
+    username === myWorkspaceRoot ||
+    (!!currentUser && username.startsWith(`${currentUser}@`));
+
   const [authChecked, setAuthChecked] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setAuthChecked(true), 800);
@@ -178,7 +187,7 @@ export function WorkspaceBrowser({
   // (either ls 500s with "User lacks permission" or returns no items at the
   // root), POST /api/auth/ensure-workspace once and let the cache invalidation
   // refetch the now-populated directory.
-  const isOwnHome = mode === "home" && username === currentUser;
+  const isOwnHome = mode === "home" && isUrlCurrentUser;
   const homeAppearsEmpty =
     isOwnHome && path === "" && !isLoading && items.length === 0;
   useEnsureUserWorkspace({
@@ -300,11 +309,6 @@ export function WorkspaceBrowser({
   }, [path, mode, resolveQuery.isLoading]);
 
   // Redirect non-owner to their own shared root
-  const isUrlCurrentUser =
-    username === currentUser ||
-    username === fullWorkspaceUsername ||
-    username === myWorkspaceRoot ||
-    (currentUser && username.startsWith(`${currentUser}@`));
   useEffect(() => {
     if (
       isPublic ||

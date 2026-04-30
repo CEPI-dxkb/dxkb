@@ -37,7 +37,7 @@ export function useEnsureUserWorkspace(
   const queryClient = useQueryClient();
   const firedRef = useRef(false);
 
-  const mutation = useMutation({
+  const { mutate } = useMutation({
     mutationFn: async () => {
       const response = await fetch("/api/auth/ensure-workspace", {
         method: "POST",
@@ -56,12 +56,15 @@ export function useEnsureUserWorkspace(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: workspaceQueryKeys.all });
     },
+    onError: () => {
+      firedRef.current = false;
+    },
   });
 
   useEffect(() => {
     if (!enabled || firedRef.current) return;
     if (!shouldFire(listError, homeAppearsEmpty)) return;
     firedRef.current = true;
-    mutation.mutate();
-  }, [enabled, listError, homeAppearsEmpty, mutation]);
+    mutate();
+  }, [enabled, listError, homeAppearsEmpty, mutate]);
 }

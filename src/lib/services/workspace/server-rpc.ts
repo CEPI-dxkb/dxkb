@@ -35,7 +35,10 @@ export function createServerWorkspaceRpc(token: string): WorkspaceRpcPort {
           const parsed = text ? (JSON.parse(text) as JsonRpcEnvelope) : null;
           upstreamMessage = parsed?.error?.message ?? null;
         } catch {
-          upstreamMessage = text || null;
+          // Non-JSON upstream body (HTML error page, stack trace, etc.).
+          // Log server-side for diagnostics but never propagate it — the
+          // thrown message is surfaced through the ensure-workspace API.
+          console.error("Workspace API non-JSON error body:", text);
         }
         throw new Error(
           upstreamMessage ||

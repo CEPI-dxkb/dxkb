@@ -658,6 +658,51 @@ describe("ResourceCollection Genome integration contracts", () => {
     );
   });
 
+  it("rejects all matching Biosets when any lacks an experiment", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    const replace = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ close, opener: window, location: { replace } })),
+    );
+    const exportAll = vi.fn(() =>
+      Promise.resolve({ rows: [{ exp_id: "00042" }, {}] }),
+    );
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      isAllPagesSelected: true,
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: {},
+      selectedIds: [],
+      total: 2,
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+
+    await waitFor(() => {
+      expect(close).toHaveBeenCalledOnce();
+    });
+    expect(replace).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        "Some selected Biosets are not associated with experiments.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("opens the selected Experiment member in a new tab", async () => {
     const user = userEvent.setup();
     const open = vi.fn();

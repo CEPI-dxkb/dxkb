@@ -92,7 +92,15 @@ function ScopedResourceChildCollection({
   });
   let profile: ResourceCollectionProfile<ChildRow>;
   if (suppliedProfile) {
-    profile = { ...suppliedProfile, label, basePredicate: rql };
+    profile = {
+      ...suppliedProfile,
+      label,
+      basePredicate: rql,
+      buildStructuralRql: (state) => {
+        const structuralRql = suppliedProfile.buildStructuralRql?.(state);
+        return structuralRql ? `and(${rql},${structuralRql})` : rql;
+      },
+    };
   } else if (resource === "bioset") {
     profile = {
       ...biosetCollectionProfile,

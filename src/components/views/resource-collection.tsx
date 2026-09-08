@@ -268,10 +268,12 @@ export function ResourceCollection<Row extends DataTableRow>({
         const experimentId = experimentIdFromRow(row);
         return experimentId ? [experimentId] : [];
       });
-      if (experimentIds.length === 0) {
+      if (experimentIds.length !== result.rows.length) {
         resultsWindow.close();
         setBiosetActionError(
-          "No experiments are associated with this selection.",
+          experimentIds.length === 0
+            ? "No experiments are associated with this selection."
+            : "Some selected Biosets are not associated with experiments.",
         );
         return;
       }

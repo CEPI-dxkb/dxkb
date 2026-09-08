@@ -25,6 +25,7 @@ import {
   surveillanceIdFromRow,
   surveillanceListHref,
   taxonomyHref,
+  taxonomyListHref,
 } from "../hrefs";
 import { rqlEq } from "../rql";
 
@@ -32,8 +33,15 @@ describe("taxonomyHref", () => {
   it("builds a taxonomy route from a numeric id", () => {
     expect(taxonomyHref(561)).toBe("/taxonomy/561");
   });
-  it("accepts a string id", () => {
+  it("accepts a string id and builds collection links", () => {
     expect(taxonomyHref("2697049")).toBe("/taxonomy/2697049");
+    expect(taxonomyListHref({ keyword: "Influenza A", taxonId: "10239" })).toBe(
+      "/taxonomy?keyword=Influenza%20A&taxon_id=10239",
+    );
+    expect(taxonomyListHref({ rql: "eq(taxon_rank,species)" })).toBe(
+      "/taxonomy?rql=eq(taxon_rank%2Cspecies)",
+    );
+    expect(() => taxonomyHref("0")).toThrow("Invalid Taxon ID");
   });
 });
 

@@ -13,11 +13,6 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/organisms/viruses",
   useSearchParams: () => new URLSearchParams(),
 }));
-vi.mock("@/components/organisms/taxon-views/taxon-data-panel", () => ({
-  TaxonDataPanel: ({ resource, q }: { resource: string; q: string }) => (
-    <div>{`${resource}:${q}`}</div>
-  ),
-}));
 interface CollectionProps {
   baseRql: string;
 }
@@ -33,6 +28,9 @@ function GenomeResourceCollection({ baseRql }: CollectionProps) {
 vi.mock("@/components/views", () => ({
   FeatureResourceCollection,
   GenomeResourceCollection,
+  ResourceChildCollection: ({ resource, rql }: { resource: string; rql: string }) => (
+    <div>{`${resource}:${rql}`}</div>
+  ),
 }));
 vi.mock("@/components/taxonomy/taxonomy-tree-panel", () => ({
   TaxonomyTreePanel: ({ taxa }: { taxa: { taxonName: string }[] }) => (

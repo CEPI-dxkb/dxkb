@@ -683,13 +683,14 @@ function renderSearchInfoPanel(
         "taxon_rank",
         "other_names",
         "genetic_code",
+        "lineage_ids",
         "lineage_names",
         "parent_id",
         "division",
         "description",
         "genomes",
       ];
-      order = ["Taxon Info"];
+      order = ["Taxon Info", "Lineage"];
       break;
     case "experiment":
       panelTitleField = "exp_name";

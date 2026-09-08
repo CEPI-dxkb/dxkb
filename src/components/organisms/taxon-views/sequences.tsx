@@ -1,13 +1,20 @@
-import { taxonomySequenceRql } from "@/lib/views/child-resources";
+import { ResourceChildCollection } from "@/components/views";
+import {
+  genomeSequenceColumns,
+  taxonomySequenceRql,
+} from "@/lib/views/child-resources";
 import { taxonLineageClause, type TaxonViewScope } from "./scope";
-import { TaxonDataPanel } from "./taxon-data-panel";
 
 export function makeSequencesView({ scope }: { scope: TaxonViewScope }) {
   function SequencesView() {
     return (
-      <TaxonDataPanel
+      <ResourceChildCollection
         resource="genome_sequence"
-        q={taxonomySequenceRql(taxonLineageClause(scope))}
+        label="Sequences"
+        idField="sequence_id"
+        rql={taxonomySequenceRql(taxonLineageClause(scope))}
+        columns={genomeSequenceColumns}
+        defaultSort="sequence_id:asc"
         guideUrl="https://www.bv-brc.org/docs/quick_references/organisms_taxon/sequences.html"
       />
     );

@@ -102,6 +102,14 @@ export default function BlastServicePage() {
           form.setFieldValue("db_precomputed_database", database);
           form.setFieldValue("db_source", resolveDbSource(database));
         }
+        if (Array.isArray(data.db_taxon_list)) {
+          form.setFieldValue(
+            "db_taxon_list",
+            data.db_taxon_list.filter(
+              (taxonId): taxonId is string => typeof taxonId === "string",
+            ),
+          );
+        }
         form.setFieldValue(
           "db_type",
           getCompatibleBlastDatabaseType(

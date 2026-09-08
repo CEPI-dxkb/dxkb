@@ -18,6 +18,8 @@ export const blastService = createServiceDefinition<BlastFormData>({
       "input_fasta_file",
       "input_feature_group",
       "db_type",
+      "db_precomputed_database",
+      "db_source",
       "db_genome_group",
       "db_feature_group",
       "db_taxon_list",

@@ -110,7 +110,7 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
 
   // Match independently of origin because NEXT_PUBLIC_DATA_API is embedded at build
   // time and may point at either the loopback mock or the public API in a local build.
-  const ppiRequest = /\/ppi\//;
+  const ppiRequest = /(?:\/ppi\/|\/api\/data\/ppi(?:\?|$))/;
 
   // buildPpiOverrides (used by the describe block above) always returns the
   // full row set regardless of query — it can't prove filtering actually
@@ -131,6 +131,22 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
       const url = decodeURIComponent(route.request().url());
       const keyword = /keyword\(([^*)]+)\*?\)/.exec(url)?.[1];
       const matchingRows = keyword ? rows.filter((r) => JSON.stringify(r).includes(keyword)) : rows;
+
+      const isGatewayRequest = new URL(route.request().url()).pathname === "/api/data/ppi";
+      if (isGatewayRequest) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            rows: matchingRows,
+            total: matchingRows.length,
+            facets: {},
+            page: 1,
+            pageSize: 200,
+          }),
+        });
+        return;
+      }
 
       if (url.includes("limit(1)")) {
         await route.fulfill({

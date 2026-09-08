@@ -119,8 +119,13 @@ function decodeValue(value: string): string {
   }
 }
 
-function coerceValue(value: string, field: ResourceField): RqlValue {
+function coerceValue(
+  value: string,
+  field: ResourceField,
+  allowWildcard = false,
+): RqlValue {
   const decoded = decodeValue(value);
+  if (decoded === "*" && allowWildcard) return decoded;
   if (field.type === "number") {
     const number = Number(decoded);
     if (!Number.isFinite(number))
@@ -227,7 +232,11 @@ function parseExpression(
   return {
     operator,
     field: fieldName,
-    value: coerceValue(args[1], field),
+    value: coerceValue(
+      args[1],
+      field,
+      operator === "eq" || operator === "ne",
+    ),
   };
 }
 

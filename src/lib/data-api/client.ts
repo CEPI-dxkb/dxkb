@@ -95,6 +95,7 @@ function collectionParams(request: CollectionRequest): URLSearchParams {
   const params = new URLSearchParams({ operation: request.operation });
   if (request.rql) params.set("rql", request.rql);
   if (request.keyword) params.set("keyword", request.keyword);
+  if (request.keywordMode) params.set("keywordMode", request.keywordMode);
   if (request.page) params.set("page", String(request.page));
   if (request.pageSize) params.set("pageSize", String(request.pageSize));
   if (request.sort)

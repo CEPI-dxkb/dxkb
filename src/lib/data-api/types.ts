@@ -3,6 +3,7 @@ import type { z } from "zod";
 export const maxExportRows = 10_000;
 
 export const dataResources = [
+  "taxonomy",
   "genome",
   "genome_feature",
   "epitope",
@@ -15,6 +16,7 @@ export const dataResources = [
   "experiment",
   "bioset",
   "genome_sequence",
+  "sequence_feature",
   "ppi",
 ] as const;
 
@@ -51,6 +53,7 @@ export interface CollectionRequest {
   operation: "collection";
   rql?: string;
   keyword?: string;
+  keywordMode?: "exact" | "prefix";
   page?: number;
   pageSize?: number;
   sort?: DataSort;
@@ -75,6 +78,7 @@ export interface ExportRequest {
   operation: "export";
   rql?: string;
   keyword?: string;
+  keywordMode?: "exact" | "prefix";
   fields: string[];
   limit: number;
   offset?: number;

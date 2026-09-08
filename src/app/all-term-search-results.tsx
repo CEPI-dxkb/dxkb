@@ -33,6 +33,7 @@ import {
   serologyIdFromRow,
   surveillanceHref,
   surveillanceIdFromRow,
+  taxonomyHref,
 } from "@/lib/views/hrefs";
 
 const bvbrcAPI = "https://p3.theseed.org/services/data_api/";
@@ -529,9 +530,16 @@ function SearchResultsContent({ query }: { query: string }) {
                         : typeof doc.pathogen_test_type === "string"
                           ? [doc.pathogen_test_type]
                           : [];
+                      const taxonId =
+                        typeof doc.taxon_id === "string" ||
+                        typeof doc.taxon_id === "number"
+                          ? doc.taxon_id
+                          : null;
                       const content = getFormattedContent(doc, dataType);
                       const href =
-                        dataType === "genome" && genomeId != null
+                        dataType === "taxonomy" && taxonId != null
+                          ? taxonomyHref(taxonId)
+                          : dataType === "genome" && genomeId != null
                           ? genomeHref(genomeId)
                           : dataType === "genome_feature" && featureId
                             ? featureHref(featureId)

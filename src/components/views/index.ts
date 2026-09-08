@@ -11,3 +11,5 @@ export * from "./resource-workspace";
 export * from "./serology-resource-collection";
 export * from "./strain-resource-collection";
 export * from "./surveillance-resource-collection";
+export * from "./taxonomy-resource-collection";
+export * from "./taxonomy-service-chooser";

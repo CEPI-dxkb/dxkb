@@ -20,7 +20,7 @@ describe("mapLegacyViewPath", () => {
       mapLegacyViewPath("/view/TaxonList/", "eq(taxon_lineage_ids,1763)"),
     ).toEqual({
       pathname: "/taxonomy",
-      search: "rql=eq(taxon_lineage_ids%2C1763)",
+      search: "rql=eq(lineage_ids%2C1763)",
     });
   });
   it("preserves a named query param (surveillance)", () => {

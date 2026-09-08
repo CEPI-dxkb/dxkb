@@ -7,6 +7,18 @@ function firstValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
+function taxonomyRedirect(params: SearchParamsRecord, query: string): string {
+  const destination = new URLSearchParams();
+  if (query) destination.set("keyword", query);
+  for (const name of ["rql", "taxon_id", "page", "sort"] as const) {
+    const value = params[name];
+    for (const item of Array.isArray(value) ? value : value ? [value] : []) {
+      destination.append(name, item);
+    }
+  }
+  return `/taxonomy${destination.size ? `?${destination}` : ""}`;
+}
+
 function experimentRedirect(
   params: SearchParamsRecord,
   searchtype: string,
@@ -100,6 +112,9 @@ export default async function GlobalSearch({
   if (searchtype === "experiment" || searchtype === "bioset") {
     redirect(experimentRedirect(params, searchtype, query));
   }
+  if (searchtype === "taxonomy") {
+    redirect(taxonomyRedirect(params, query));
+  }
 
   if (searchtype === "everything") {
     return <SearchResults query={query} />;
@@ -113,7 +128,6 @@ export default async function GlobalSearch({
       "protein_structure",
       "surveillance",
       "serology",
-      "taxonomy",
       "genome_sequence",
       "genome_amr",
     ].includes(searchtype)

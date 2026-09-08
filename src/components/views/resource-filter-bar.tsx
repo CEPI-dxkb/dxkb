@@ -15,6 +15,7 @@ interface ResourceFilterBarProps {
   facets: ResourceFacets;
   definitions: readonly ResourceCollectionFacet[];
   hasExplicitRql?: boolean;
+  keywordPlaceholder?: string;
   onChange: (update: {
     keyword?: string;
     filters: CollectionState["filters"];
@@ -28,6 +29,7 @@ export function ResourceFilterBar({
   facets,
   definitions,
   hasExplicitRql = false,
+  keywordPlaceholder,
   onChange,
 }: ResourceFilterBarProps) {
   const [keywordDraft, setKeywordDraft] = useState(keyword ?? "");
@@ -74,7 +76,11 @@ export function ResourceFilterBar({
     <div className="mt-0 mb-2 flex flex-col gap-1 p-1 text-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-1 flex-col gap-1">
-          <KeywordSearch value={keywordDraft} onChange={setKeywordDraft} />
+          <KeywordSearch
+            value={keywordDraft}
+            onChange={setKeywordDraft}
+            placeholder={keywordPlaceholder}
+          />
           <SelectedFilters
             selected={selected}
             onRemove={(index) => {

@@ -40,7 +40,7 @@ export const searchDescriptors: readonly SearchType[] = [
   {
     id: "taxonomy",
     typeTitle: "Taxa",
-    route: { status: "legacy" },
+    route: { status: "canonical", segment: viewRegistry.taxonomy.segment },
     tabs: { taxonomy: "Taxa" },
     pickerOrder: 9,
     allTermOrder: 0,

@@ -1,4 +1,5 @@
-import { TaxonDataPanel } from "./taxon-data-panel";
+import { ResourceChildCollection } from "@/components/views";
+import { sequenceFeatureColumns } from "@/lib/views/child-resources";
 import type { TaxonViewScope } from "./scope";
 
 // SFVT reads the `sequence_feature` core, which has a taxon_id field, and scopes
@@ -54,7 +55,16 @@ export function makeSfvtView({
     const query = taxonIds.length === 1
       ? `eq(taxon_id,${String(taxonIds[0])})`
       : `in(taxon_id,(${taxonIds.join(",")}))`;
-    return <TaxonDataPanel resource="sequence_feature" q={query} />;
+    return (
+      <ResourceChildCollection
+        resource="sequence_feature"
+        label="Sequence Features"
+        idField="id"
+        rql={query}
+        columns={sequenceFeatureColumns}
+        defaultSort="sf_name:asc"
+      />
+    );
   }
   return SfvtView;
 }

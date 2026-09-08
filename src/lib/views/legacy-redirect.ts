@@ -41,9 +41,12 @@ export function mapLegacyViewPath(pathname: string, rawSearch: string): MappedPa
     }
     const searchParts: string[] = [];
     if (rqlParts.length > 0) {
-      // encodeURIComponent keeps RQL parens literal and only encodes the comma,
-      // which round-trips cleanly and stays readable.
-      searchParts.push(`rql=${encodeURIComponent(rqlParts.join("&"))}`);
+      // TaxonList historically used the Genome lineage field name even though the
+      // Taxonomy endpoint exposes the same relationship as `lineage_ids`.
+      const rql = rqlParts
+        .join("&")
+        .replaceAll("taxon_lineage_ids", segment === "taxonomy" ? "lineage_ids" : "taxon_lineage_ids");
+      searchParts.push(`rql=${encodeURIComponent(rql)}`);
     }
     const namedParams = new URLSearchParams(namedParts.join("&"));
     for (const [name, value] of Object.entries(target.defaultParams ?? {})) {

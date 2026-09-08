@@ -6,7 +6,25 @@ import { escapeRqlValue } from "./rql";
 
 /** Internal taxonomy singular route, e.g. `/taxonomy/561`. */
 export function taxonomyHref(taxonId: number | string): string {
-  return `/taxonomy/${String(taxonId)}`;
+  const id = String(taxonId);
+  if (!/^(?=.*[1-9])\d+$/.test(id)) throw new Error(`Invalid Taxon ID: ${id}`);
+  return `/taxonomy/${encodeURIComponent(id)}`;
+}
+
+/** Canonical Taxonomy collection route. Explicit RQL takes precedence over keyword. */
+export function taxonomyListHref(opts?: {
+  keyword?: string;
+  rql?: string;
+  taxonId?: number | string;
+}): string {
+  const params: string[] = [];
+  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
+  else {
+    if (opts?.keyword) params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
+    if (opts?.taxonId != null)
+      params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
+  }
+  return params.length ? `/taxonomy?${params.join("&")}` : "/taxonomy";
 }
 
 /** Return a navigable Genome ID from an API row, if present. */

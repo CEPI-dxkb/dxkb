@@ -13,30 +13,6 @@ import { makeExperimentsView } from "@/components/organisms/taxon-views/experime
 import { makeInteractionsView } from "@/components/organisms/taxon-views/interactions";
 import { makeSfvtView } from "@/components/organisms/taxon-views/sfvt";
 
-// TaxonDataPanel has complex network + React dependencies; mock it so tests stay
-// focused on the factory guard logic (null taxon → render nothing).
-vi.mock("@/components/organisms/taxon-views/taxon-data-panel", () => ({
-  TaxonDataPanel: ({
-    resource,
-    q,
-    guideUrl,
-    keywordMode,
-  }: {
-    resource: string;
-    q: string;
-    guideUrl?: string;
-    keywordMode?: "server" | "loaded";
-  }) => (
-    <div
-      data-testid="taxon-data-panel"
-      data-resource={resource}
-      data-q={q}
-      data-guide={guideUrl}
-      data-keyword-mode={keywordMode}
-    />
-  ),
-}));
-
 interface FeatureResourceCollectionProps {
   baseRql: string;
   enableRowLinks: boolean;
@@ -62,14 +38,20 @@ vi.mock("@/components/views", () => ({
   ResourceChildCollection: ({
     resource,
     rql,
+    guideUrl,
+    keywordMode,
   }: {
     resource: string;
     rql: string;
+    guideUrl?: string;
+    keywordMode?: "server" | "loaded";
   }) => (
     <div
-      data-testid="resource-child-collection"
+      data-testid={resource === "bioset" ? "resource-child-collection" : "taxon-data-panel"}
       data-resource={resource}
       data-q={rql}
+      data-guide={guideUrl}
+      data-keyword-mode={keywordMode}
     />
   ),
   ExperimentResourceCollection: ({
@@ -265,7 +247,7 @@ describe("makeGenomesView", () => {
 });
 
 describe("makeSequencesView", () => {
-  it("renders TaxonDataPanel with the genome_sequence cross-core join query", () => {
+  it("renders the shared collection with the genome_sequence cross-core join query", () => {
     // The query shape is the key discovery: genome_sequence has no
     // taxon_lineage_ids field, so it must join to the genome core. Assert the
     // join fragments — a test that only checked for "1234" would pass the
@@ -291,7 +273,7 @@ describe("makeSequencesView", () => {
 });
 
 describe("makeProteinStructuresView", () => {
-  it("renders TaxonDataPanel with the protein_structure cross-core join query", () => {
+  it("renders the shared collection with the protein_structure cross-core join query", () => {
     const ProteinStructuresView = makeProteinStructuresView({ scope });
     const { getByTestId } = render(<ProteinStructuresView />);
     const panel = getByTestId("protein-structure-resource-collection");
@@ -508,7 +490,7 @@ describe("composite scope queries", () => {
 });
 
 describe("makeInteractionsView", () => {
-  it("renders TaxonDataPanel with the ppi cross-core join query", () => {
+  it("renders the shared collection with the ppi cross-core join query", () => {
     const InteractionsView = makeInteractionsView({ scope });
     const { getByTestId } = render(<InteractionsView />);
     const panel = getByTestId("taxon-data-panel");

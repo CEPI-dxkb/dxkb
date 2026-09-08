@@ -10,6 +10,7 @@ import { featureCollectionProfile } from "@/lib/feature-view/profile";
 import { genomeCollectionProfile } from "@/lib/genome-view/profile";
 import { strainCollectionProfile } from "@/lib/strain-view/profile";
 import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
+import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { CollectionState } from "@/lib/views/collection-state";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { ResourceCollection } from "../resource-collection";
@@ -114,6 +115,16 @@ vi.mock("@/components/search/search-action-bar", () => ({
         >
           Experiment action
         </button>
+        {(["taxonOverview", "features", "services"] as const).map((action) => (
+          <button
+            key={action}
+            onClick={() =>
+              (props.onAction as ((action: string) => void) | undefined)?.(action)
+            }
+          >
+            {action}
+          </button>
+        ))}
         <button
           onClick={() =>
             (props.onAction as ((action: string) => void) | undefined)?.(
@@ -146,6 +157,10 @@ vi.mock("@/components/detail-panel/info-panel", () => ({
       {selectedRow ? String(selectedRow.genome_name) : null}
     </div>
   ),
+}));
+vi.mock("../taxonomy-service-chooser", () => ({
+  TaxonomyServiceChooser: ({ open, taxonIds }: { open: boolean; taxonIds: string[] }) =>
+    open ? <div data-testid="taxonomy-services">{taxonIds.join(",")}</div> : null,
 }));
 vi.mock("../resource-workspace", () => ({
   ResourceWorkspace: ({
@@ -250,6 +265,73 @@ beforeEach(() => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe("ResourceCollection Taxonomy actions", () => {
+  it("opens canonical member, Genome, Feature, and service destinations", async () => {
+    const user = userEvent.setup();
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: taxonomyRow,
+      rows: [taxonomyRow],
+      selection: { "234": true },
+      selectedIds: ["234"],
+      sorting: [],
+    });
+    const open = vi.fn();
+    vi.stubGlobal("open", open);
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(actionBarProps.enabledActions).toEqual([
+      "services",
+      "taxonOverview",
+      "genomes",
+      "features",
+    ]);
+    await user.click(screen.getByRole("button", { name: "taxonOverview" }));
+    await waitFor(() => {
+      expect(open).toHaveBeenCalledTimes(1);
+    });
+    await user.click(screen.getByRole("button", { name: "Genomes action" }));
+    await waitFor(() => {
+      expect(open).toHaveBeenCalledTimes(2);
+    });
+    await user.click(screen.getByRole("button", { name: "features" }));
+    await waitFor(() => {
+      expect(open).toHaveBeenCalledTimes(3);
+    });
+    expect(open).toHaveBeenNthCalledWith(
+      1,
+      "/taxonomy/234",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(open).toHaveBeenNthCalledWith(
+      2,
+      "/genome?rql=in(taxon_lineage_ids%2C(234))",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(open).toHaveBeenNthCalledWith(
+      3,
+      "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(in(taxon_lineage_ids%2C(234)))%2Ceq(annotation%2CPATRIC))",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(screen.getByTestId("taxonomy-services")).toHaveTextContent("234");
+  });
+});
 
 describe("ResourceCollection Genome integration contracts", () => {
   it("keeps global and taxon-scoped views on the same profile and interaction surface", () => {

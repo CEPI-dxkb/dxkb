@@ -314,6 +314,22 @@ const serologyRows = [
   },
 ];
 
+const taxonomyRows = [
+  {
+    taxon_id: "11520",
+    taxon_name: "Influenza A virus",
+    taxon_rank: "species",
+    other_names: ["Influenza A"],
+    genetic_code: 1,
+    lineage_ids: ["10239", "11308", "11520"],
+    lineage_names: ["Viruses", "Orthornavirae", "Influenza A virus"],
+    parent_id: "11320",
+    division: "Viruses",
+    description: "Influenza A virus taxonomy record",
+    genomes: 42,
+  },
+];
+
 const genomeRows = [
   {
     genome_id: "1282460.2049",
@@ -351,6 +367,26 @@ function genomeDataResponse({ parsedBody }: { parsedBody: unknown }) {
 }
 
 export const apiCatchallOverrides: JsonOverride[] = [
+  {
+    url: /\/api\/data\/taxonomy(?:\?|$)/,
+    method: "GET",
+    body: {
+      rows: taxonomyRows,
+      total: taxonomyRows.length,
+      facets: {
+        taxon_rank: [{ value: "species", count: 1 }],
+        genetic_code: [{ value: 1, count: 1 }],
+        division: [{ value: "Viruses", count: 1 }],
+      },
+      page: 1,
+      pageSize: 200,
+    },
+  },
+  {
+    url: /\/api\/data\/taxonomy(?:\?|$)/,
+    method: "POST",
+    body: { rows: taxonomyRows },
+  },
   {
     url: /\/api\/e2e-mock\/data\/experiment\/(?:\?|$)/,
     method: "GET",

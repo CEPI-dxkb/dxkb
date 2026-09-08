@@ -65,6 +65,11 @@ interface ResourceChildCollectionProps {
   columns?: ResourceCollectionProfile<ChildRow>["columns"];
   defaultSort: string;
   profile?: ResourceCollectionProfile<ChildRow>;
+  guideUrl?: string;
+  keywordMode?: "server" | "loaded";
+  keywordValue?: string;
+  onKeywordChange?: (value: string) => void;
+  keywordPlaceholder?: string;
 }
 
 export function ResourceChildCollection(props: ResourceChildCollectionProps) {
@@ -84,6 +89,11 @@ function ScopedResourceChildCollection({
   columns,
   defaultSort,
   profile: suppliedProfile,
+  guideUrl,
+  keywordMode = "loaded",
+  keywordValue,
+  onKeywordChange,
+  keywordPlaceholder,
 }: ResourceChildCollectionProps) {
   const [state, setState] = useState<CollectionState>({
     filters: {},
@@ -140,6 +150,7 @@ function ScopedResourceChildCollection({
       columns,
       defaultSort,
       basePredicate: rql,
+      guideUrl,
     };
   }
 
@@ -151,6 +162,10 @@ function ScopedResourceChildCollection({
       state={state}
       onStateChange={setState}
       showHeader={false}
+      keywordMode={keywordMode}
+      loadedKeywordValue={keywordValue}
+      onLoadedKeywordChange={onKeywordChange}
+      keywordPlaceholder={keywordPlaceholder}
       onExport={async ({ format, selectedIds, fields, rql: exportRql }) => {
         const selectedFields = fields
           ? [...fields]

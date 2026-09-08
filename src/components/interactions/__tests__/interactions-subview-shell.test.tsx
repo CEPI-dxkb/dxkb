@@ -7,19 +7,17 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 // counter verifies the component instance survives while keyword text is shared
 // separately by the shell.
 let tableMountCount = 0;
-vi.mock("@/components/organisms/taxon-views/taxon-data-panel", () => ({
-  TaxonDataPanel: ({
+vi.mock("@/components/views", () => ({
+  ResourceChildCollection: ({
     resource,
-    q,
+    rql,
     guideUrl,
-    onFilterChange,
     keywordValue,
     onKeywordChange,
   }: {
     resource: string;
-    q: string;
+    rql: string;
     guideUrl?: string;
-    onFilterChange?: (rql: string) => void;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
   }) => {
@@ -30,16 +28,11 @@ vi.mock("@/components/organisms/taxon-views/taxon-data-panel", () => ({
       <div
         data-testid="table-panel"
         data-resource={resource}
-        data-q={q}
+        data-q={rql}
         data-guide={guideUrl}
         data-keyword={keywordValue}
       >
-        <button
-          onClick={() => {
-            onKeywordChange?.("fromTable");
-            onFilterChange?.("keyword(fromTable*)");
-          }}
-        >
+        <button onClick={() => onKeywordChange?.("fromTable")}>
           set-from-table
         </button>
       </div>

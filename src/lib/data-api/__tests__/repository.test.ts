@@ -152,6 +152,28 @@ describe("ServerDataRepository", () => {
     );
   });
 
+  it("supports exact keyword matching for resources with that legacy contract", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
+    const repository = new ServerDataRepository({
+      baseUrl: "https://data.test",
+      fetch: fetcher,
+    });
+
+    await repository.collection("taxonomy", {
+      operation: "collection",
+      keyword: "influenza virus",
+      keywordMode: "exact",
+    });
+
+    const [url] = fetcher.mock.calls[0];
+    expect((url as URL).href).toContain(
+      "and(keyword(influenza),keyword(virus))",
+    );
+    expect((url as URL).href).not.toContain("%2A");
+  });
+
   it("forwards auth and returns null for a missing member", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse([]));
     const repository = new ServerDataRepository({

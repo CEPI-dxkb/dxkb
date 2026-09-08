@@ -4,7 +4,10 @@ import { useState, type ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
-import { SearchActionBar } from "@/components/search/search-action-bar";
+import {
+  SearchActionBar,
+  type SearchActionId,
+} from "@/components/search/search-action-bar";
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
@@ -34,7 +37,15 @@ import {
   genomeIdFromRow,
   genomesHrefFromRow,
   proteinStructureHref,
+  taxonomyHref,
 } from "@/lib/views/hrefs";
+import {
+  maxTaxonomyActionIds,
+  normalizeTaxonIds,
+  taxonomyFeaturesHref,
+  taxonomyGenomesHref,
+} from "@/lib/taxonomy-view";
+import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -55,6 +66,8 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   facets?: readonly ResourceCollectionFacet[];
   rowHref?: (row: Row) => string | undefined;
   rowLinkField?: string;
+  rowLinkFields?: readonly string[];
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 function combinePredicates(...predicates: (string | undefined)[]) {
@@ -94,6 +107,9 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   renderDetail?: (row: Row) => ReactNode;
   showHeader?: boolean;
   keywordMode?: "server" | "loaded" | "refine";
+  loadedKeywordValue?: string;
+  onLoadedKeywordChange?: (value: string) => void;
+  keywordPlaceholder?: string;
   prefetchNextPage?: boolean;
   onExport?: (request: ResourceCollectionExportRequest) => void | Promise<void>;
 }
@@ -108,17 +124,22 @@ export function ResourceCollection<Row extends DataTableRow>({
   renderDetail,
   showHeader = true,
   keywordMode = "server",
+  loadedKeywordValue,
+  onLoadedKeywordChange,
+  keywordPlaceholder,
   prefetchNextPage = false,
   onExport,
 }: ResourceCollectionProps<Row>) {
   const [exportError, setExportError] = useState<string | null>(null);
-  const [biosetActionError, setBiosetActionError] = useState<string | null>(
-    null,
-  );
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);
+  const [isTaxonomyServiceOpen, setIsTaxonomyServiceOpen] = useState(false);
+  const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>([]);
   const [selectedRowsById, setSelectedRowsById] = useState<
     Partial<Record<string, Row>>
   >({});
-  const [loadedKeyword, setLoadedKeyword] = useState("");
+  const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
+  const loadedKeyword = loadedKeywordValue ?? internalLoadedKeyword;
   const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
   const hasLoadedKeyword =
     keywordMode === "loaded" && Boolean(normalizedLoadedKeyword);
@@ -148,6 +169,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     facetFields: profile.facets?.map((facet) => facet.field),
     prefetchNextPage,
     structuralRql,
+    serverKeywordMode: profile.serverKeywordMode,
     state: requestState,
     onStateChange:
       keywordMode === "loaded"
@@ -158,7 +180,9 @@ export function ResourceCollection<Row extends DataTableRow>({
   });
   const columns = profile.columns.map((column) =>
     enableRowLinks &&
-    column.id === (profile.rowLinkField ?? profile.idField) &&
+    (profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField]).includes(
+      column.id,
+    ) &&
     profile.rowHref
       ? {
           ...column,
@@ -227,8 +251,55 @@ export function ResourceCollection<Row extends DataTableRow>({
     collection.selectedIds.length > 0 &&
     !hasCompleteBiosetSelection;
 
+  const resolveSelectedTaxonIds = async (): Promise<string[]> => {
+    if (!collection.isAllPagesSelected) {
+      return normalizeTaxonIds(displayedSelectedIds);
+    }
+    if (collection.total > maxTaxonomyActionIds) {
+      throw new Error(
+        `This action supports at most ${String(maxTaxonomyActionIds)} Taxa. Narrow the selection and try again.`,
+      );
+    }
+    const result = await repository.exportAll("taxonomy", {
+      rql: effectiveRql,
+      keyword: requestState.keyword,
+      keywordMode: profile.serverKeywordMode,
+      fields: ["taxon_id"],
+      sort:
+        state.sort === "unsorted"
+          ? undefined
+          : {
+              field: state.sort.split(":")[0],
+              direction: state.sort.endsWith(":desc") ? "desc" : "asc",
+            },
+    });
+    return normalizeTaxonIds(result.rows.map((row) => row.taxon_id));
+  };
+
+  const runTaxonomyAction = async (actionId: SearchActionId) => {
+    setActionError(null);
+    setLoadingActionIds([actionId]);
+    try {
+      const ids = await resolveSelectedTaxonIds();
+      if (actionId === "taxonOverview" && ids.length === 1) {
+        window.open(taxonomyHref(ids[0]), "_blank", "noopener,noreferrer");
+      } else if (actionId === "genomes") {
+        window.open(taxonomyGenomesHref(ids), "_blank", "noopener,noreferrer");
+      } else if (actionId === "features" && ids.length === 1) {
+        window.open(taxonomyFeaturesHref(ids), "_blank", "noopener,noreferrer");
+      } else if (actionId === "services") {
+        setTaxonomyServiceIds(ids);
+        setIsTaxonomyServiceOpen(true);
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoadingActionIds([]);
+    }
+  };
+
   const openBiosetResults = async () => {
-    setBiosetActionError(null);
+    setActionError(null);
     if (!collection.isAllPagesSelected) {
       window.open(
         biosetResultsHref(selectedBiosetExperimentIds),
@@ -238,14 +309,14 @@ export function ResourceCollection<Row extends DataTableRow>({
       return;
     }
     if (collection.total > maxExportRows) {
-      setBiosetActionError(
+      setActionError(
         `This selection contains ${collection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
       );
       return;
     }
     const resultsWindow = window.open("about:blank", "_blank");
     if (!resultsWindow) {
-      setBiosetActionError(
+      setActionError(
         "Allow pop-ups to open the selected Bioset results.",
       );
       return;
@@ -270,7 +341,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       });
       if (experimentIds.length !== result.rows.length) {
         resultsWindow.close();
-        setBiosetActionError(
+        setActionError(
           experimentIds.length === 0
             ? "No experiments are associated with this selection."
             : "Some selected Biosets are not associated with experiments.",
@@ -280,7 +351,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       resultsWindow.location.replace(biosetResultsHref(experimentIds));
     } catch (error) {
       resultsWindow.close();
-      setBiosetActionError(
+      setActionError(
         error instanceof Error
           ? error.message
           : "The selected Bioset results could not be loaded.",
@@ -326,6 +397,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         : await repository.exportAll(profile.resource, {
             rql: effectiveRql,
             keyword: requestState.keyword,
+            keywordMode: profile.serverKeywordMode,
             fields: hasLoadedKeyword ? allFields : selectedFields,
             sort:
               state.sort === "unsorted"
@@ -433,6 +505,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         facets={collection.facets}
         definitions={profile.facets ?? []}
         hasExplicitRql={Boolean(state.rql)}
+        keywordPlaceholder={keywordPlaceholder}
         onChange={({ keyword, filters, clearRql }) => {
           if (keywordMode === "loaded") {
             const nextLoadedKeyword = keyword ?? "";
@@ -440,7 +513,8 @@ export function ResourceCollection<Row extends DataTableRow>({
               collection.setSelection({});
               collection.setIsAllPagesSelected(false);
             }
-            setLoadedKeyword(nextLoadedKeyword);
+            setInternalLoadedKeyword(nextLoadedKeyword);
+            onLoadedKeywordChange?.(nextLoadedKeyword);
             if (filters === state.filters && !clearRql) return;
           }
           onStateChange({
@@ -467,10 +541,10 @@ export function ResourceCollection<Row extends DataTableRow>({
           <AlertDescription>{exportError}</AlertDescription>
         </Alert>
       )}
-      {biosetActionError && (
+      {actionError && (
         <Alert variant="destructive">
-          <AlertTitle>Could not open Bioset results</AlertTitle>
-          <AlertDescription>{biosetActionError}</AlertDescription>
+          <AlertTitle>Could not complete action</AlertTitle>
+          <AlertDescription>{actionError}</AlertDescription>
         </Alert>
       )}
 
@@ -513,16 +587,19 @@ export function ResourceCollection<Row extends DataTableRow>({
               }
               searchType={profile.resource}
               guideUrl={profile.guideUrl}
-              enabledActions={
-                profile.resource === "strain" && selectedGenomesHref
-                  ? ["genomes"]
-                  : profile.resource === "protein_structure" &&
-                      selectedStructureHref
-                    ? ["structure"]
-                    : hasBiosetSelection
-                      ? ["biosets"]
-                      : undefined
-              }
+               enabledActions={
+                 profile.resource === "taxonomy"
+                   ? ["services", "taxonOverview", "genomes", "features"]
+                   : profile.resource === "strain" && selectedGenomesHref
+                     ? ["genomes"]
+                     : profile.resource === "protein_structure" &&
+                         selectedStructureHref
+                       ? ["structure"]
+                       : hasBiosetSelection
+                         ? ["biosets"]
+                         : undefined
+               }
+               loadingActionIds={loadingActionIds}
               disabledActions={
                 profile.resource === "strain" && !selectedGenomesHref
                   ? { genomes: "No genomes are associated with this strain" }
@@ -547,7 +624,14 @@ export function ResourceCollection<Row extends DataTableRow>({
 
               }
               onAction={(actionId) => {
-                if (actionId === "download") {
+                if (
+                  profile.resource === "taxonomy" &&
+                  ["services", "taxonOverview", "genomes", "features"].includes(
+                    actionId,
+                  )
+                ) {
+                  void runTaxonomyAction(actionId);
+                } else if (actionId === "download") {
                   void exportRows(
                     "csv",
                     displayedSelectedIds,
@@ -661,6 +745,13 @@ export function ResourceCollection<Row extends DataTableRow>({
             isLoading={collection.isInitialLoading}
           />
         </ResourceWorkspace>
+      )}
+      {profile.resource === "taxonomy" && (
+        <TaxonomyServiceChooser
+          open={isTaxonomyServiceOpen}
+          onOpenChange={setIsTaxonomyServiceOpen}
+          taxonIds={taxonomyServiceIds}
+        />
       )}
     </section>
   );

@@ -16,6 +16,19 @@ describe("search descriptors", () => {
     }
   });
 
+  it("routes Taxa searches to the canonical collection", () => {
+    const taxonomy = searchDescriptors.find((item) => item.id === "taxonomy");
+    expect(taxonomy && searchHref(taxonomy, "Influenza A")).toBe(
+      "/taxonomy?keyword=Influenza%20A",
+    );
+    expect(
+      searchTypeForLocation(
+        "/taxonomy",
+        new URLSearchParams({ keyword: "Influenza A" }),
+      ),
+    ).toBe("taxonomy");
+  });
+
   it("routes Feature and Protein searches to canonical Feature state", () => {
     const feature = searchDescriptors.find(
       (item) => item.id === "genome_feature",

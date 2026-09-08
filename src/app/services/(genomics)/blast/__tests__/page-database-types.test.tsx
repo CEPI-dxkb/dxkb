@@ -90,6 +90,26 @@ describe("BLAST page database type transitions", () => {
     expect(databaseType()).toHaveTextContent("Genome sequences (NT)");
   }, 10_000);
 
+  it("prefills a selected Taxon list from the Taxonomy service action", async () => {
+    sessionStorage.setItem(
+      "taxonomy-blast",
+      JSON.stringify({
+        db_precomputed_database: "selTaxon",
+        db_source: "taxon_list",
+        db_taxon_list: ["234", "10239"],
+      }),
+    );
+    window.history.replaceState({}, "", "/?rerun_key=taxonomy-blast");
+
+    render(<BlastServicePage />, { wrapper: Providers });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("combobox", { name: "Database Source" }),
+      ).toHaveTextContent("Search within a taxon");
+    });
+  });
+
   it("normalizes incompatible rerun data and reset restores the complete default combination", async () => {
     sessionStorage.setItem(
       "blast-database-types",

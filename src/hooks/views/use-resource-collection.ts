@@ -24,6 +24,7 @@ export interface UseResourceCollectionOptions {
   facetFields?: readonly string[];
   prefetchNextPage?: boolean;
   structuralRql?: string;
+  serverKeywordMode?: "exact" | "prefix";
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
 }
@@ -61,6 +62,7 @@ export function useResourceCollection<Row extends ResourceRow>({
   facetFields = [],
   prefetchNextPage = false,
   structuralRql,
+  serverKeywordMode,
   state,
   onStateChange,
 }: UseResourceCollectionOptions) {
@@ -86,13 +88,14 @@ export function useResourceCollection<Row extends ResourceRow>({
     () => ({
       rql,
       keyword: state.keyword,
+      keywordMode: serverKeywordMode,
       page: state.page,
       pageSize: resourceCollectionPageSize,
       sort: dataSort(state.sort),
       fields: [...fields],
       facets: [...facetFields],
     }),
-    [facetFields, fields, rql, state.keyword, state.page, state.sort],
+    [facetFields, fields, rql, serverKeywordMode, state.keyword, state.page, state.sort],
   );
 
   const query = useQuery(

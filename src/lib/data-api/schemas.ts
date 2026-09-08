@@ -11,6 +11,20 @@ const optionalTaxonomy = {
     .optional(),
 };
 
+export const taxonomyRecordSchema = z.looseObject({
+  taxon_id: identifier.regex(/^(?=.*[1-9])\d+$/),
+  taxon_name: z.string().optional(),
+  taxon_rank: z.string().optional(),
+  other_names: stringList.optional(),
+  genetic_code: stringOrNumber.optional(),
+  lineage_ids: scalarList.optional(),
+  lineage_names: stringList.optional(),
+  parent_id: stringOrNumber.optional(),
+  division: z.string().optional(),
+  description: z.string().optional(),
+  genomes: stringOrNumber.optional(),
+});
+
 export const genomeRecordSchema = z.looseObject({
   genome_id: identifier,
   genome_name: z.string().optional(),
@@ -151,6 +165,13 @@ export const genomeSequenceRecordSchema = z.looseObject({
   sequence_id: identifier,
   genome_id: z.string().optional(),
   ...optionalTaxonomy,
+});
+
+export const sequenceFeatureRecordSchema = z.looseObject({
+  id: identifier,
+  taxon_id: stringOrNumber.optional(),
+  sf_id: z.string().optional(),
+  sf_name: z.string().optional(),
 });
 
 export const ppiRecordSchema = z.looseObject({

@@ -3,7 +3,9 @@
 import { useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { TaxonDataPanel } from "@/components/organisms/taxon-views/taxon-data-panel";
+import { ResourceChildCollection } from "@/components/views";
+import { interactionColumns } from "@/lib/views/child-resources";
+import { rqlKeyword } from "@/lib/views/rql";
 
 import { InteractionsGraph } from "./interactions-graph";
 
@@ -18,8 +20,10 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
   // Keep table-only state (facets, pagination, sorting, selection) mounted.
   // Only keyword text is shared because both sibling views expose that input.
   // Graph remains lazy-mounted to avoid fetching its full dataset until opened.
-  const [tableFilter, setTableFilter] = useState("");
   const [keywordText, setKeywordText] = useState("");
+  const tableFilter = keywordText.trim()
+    ? rqlKeyword(`${keywordText.trim()}*`)
+    : "";
 
   return (
     <Tabs
@@ -37,13 +41,18 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
         inert={subTab !== "table"}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TaxonDataPanel
+        <ResourceChildCollection
           resource="ppi"
-          q={q}
+          label="Interactions"
+          idField="id"
+          rql={q}
+          columns={interactionColumns}
+          defaultSort="id:asc"
           guideUrl={guideUrl}
-          onFilterChange={setTableFilter}
+          keywordMode="loaded"
           keywordValue={keywordText}
           onKeywordChange={setKeywordText}
+          keywordPlaceholder="Search interaction results..."
         />
       </TabsContent>
       <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">

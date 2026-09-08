@@ -39,7 +39,11 @@ function appendQuery(url: URL, clause: string): void {
 
 function addPredicate(
   url: URL,
-  request: { rql?: string; keyword?: string },
+  request: {
+    rql?: string;
+    keyword?: string;
+    keywordMode?: "exact" | "prefix";
+  },
   resource: DataResource,
 ): void {
   const clauses: string[] = [];
@@ -47,7 +51,10 @@ function addPredicate(
   if (request.keyword) {
     const keywords = request.keyword.trim().split(/\s+/).filter(Boolean);
     const expressions = keywords.map((value) =>
-      serializeRql(resource, { operator: "keyword", value: `${value}*` }),
+      serializeRql(resource, {
+        operator: "keyword",
+        value: request.keywordMode === "exact" ? value : `${value}*`,
+      }),
     );
     if (expressions.length === 1) clauses.push(expressions[0]);
     else if (expressions.length > 1)

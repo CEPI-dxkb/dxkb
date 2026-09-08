@@ -1,13 +1,8 @@
 import type { ViewRegistry, ViewTypeEntry } from "./view-types";
 
-// Field status (see view-types.ts for per-field docs):
-//   Live now — `segment`, `label`, `legacySingular`/`legacyList` (legacyToSegment +
-//   redirects), `singular.idKind` + `singular.defaultTab` (render-singular validation
-//   + tab), `list.defaultTab`, `list.friendlyParams` (rql), and `viewSegments` (proxy).
-//   Deferred — `searchType` (search repoint), `list.endpoint` (data fetch), and
-//   `singular.idParam` (currently unread; the `[xId]` folder name is the source of
-//   truth — removal candidate once the route layout is settled). Keep them as
-//   documented intent, not dead code, until their consumers land.
+// Data-only route metadata shared by canonical links, legacy redirects, search,
+// identifier validation, and collection defaults. Domain query and UI behavior stays
+// in each resource's colocated view module.
 export const viewRegistry = {
   taxonomy: {
     segment: "taxonomy",

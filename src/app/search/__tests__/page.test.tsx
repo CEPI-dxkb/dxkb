@@ -88,15 +88,19 @@ describe("legacy search route", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/experiment?keyword=RNA&tab=biosets");
   });
 
-  it("continues rendering ordinary legacy type searches", async () => {
-    render(
-      await GlobalSearch({
-        searchParams: Promise.resolve({ type: "taxonomy", q: "Escherichia" }),
+  it("redirects legacy Taxa searches and preserves supported collection state", async () => {
+    await expect(
+      GlobalSearch({
+        searchParams: Promise.resolve({
+          type: "taxonomy",
+          q: "Influenza A",
+          taxon_id: ["10239", "11308"],
+          sort: "taxon_name:asc",
+          ignored: "value",
+        }),
       }),
-    );
-    expect(screen.getByTestId("type-search")).toHaveAttribute(
-      "data-search-type",
-      "taxonomy",
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/taxonomy?keyword=Influenza+A&taxon_id=10239&taxon_id=11308&sort=taxon_name%3Aasc",
     );
   });
 

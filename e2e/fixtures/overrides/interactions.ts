@@ -60,6 +60,11 @@ export function buildPpiRows(count: number): MockPpiRow[] {
 /** Build origin-independent PPI count and row overrides for browser requests. */
 export function buildPpiOverrides(rows: MockPpiRow[]): JsonOverride[] {
   return [
+    {
+      url: /api\/data\/ppi/,
+      method: "GET",
+      body: { rows, total: rows.length, facets: {}, page: 1, pageSize: 200 },
+    },
     { url: ppiCountRequest, method: "GET", body: { response: { numFound: rows.length } } },
     { url: ppiRequest, method: "GET", body: rows },
   ];

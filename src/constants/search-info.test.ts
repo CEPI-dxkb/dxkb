@@ -1,6 +1,21 @@
-import { searchDescriptors, searchHref } from "./search-info";
+import {
+  searchDescriptors,
+  searchHref,
+  searchTypeForLocation,
+} from "./search-info";
 
 describe("search descriptors", () => {
+  it("resolves every canonical search destination back to its search type", () => {
+    for (const descriptor of searchDescriptors) {
+      if (descriptor.route.status !== "canonical") continue;
+      const href = new URL(searchHref(descriptor, "sync test"), "https://example.test");
+      expect(
+        searchTypeForLocation(href.pathname, href.searchParams),
+        descriptor.id,
+      ).toBe(descriptor.id);
+    }
+  });
+
   it("routes Feature and Protein searches to canonical Feature state", () => {
     const feature = searchDescriptors.find(
       (item) => item.id === "genome_feature",
@@ -18,6 +33,13 @@ describe("search descriptors", () => {
     const epitope = searchDescriptors.find((item) => item.id === "epitope");
     expect(epitope && searchHref(epitope, "linear peptide")).toBe(
       "/epitope?keyword=linear%20peptide",
+    );
+  });
+
+  it("routes Experiment searches to the canonical collection", () => {
+    const experiment = searchDescriptors.find((item) => item.id === "experiment");
+    expect(experiment && searchHref(experiment, "RNA sequencing")).toBe(
+      "/experiment?keyword=RNA%20sequencing",
     );
   });
 

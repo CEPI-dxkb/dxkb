@@ -170,6 +170,54 @@ const epitopeAssayRows = [
   },
 ];
 
+const experimentRows = [
+  {
+    exp_id: "2000000",
+    study_name: "E2E host response study",
+    study_title: "Host response to viral infection",
+    study_description: "A deterministic experiment fixture.",
+    study_pi: "Ada Scientist",
+    study_institution: "Research Institute",
+    exp_name: "E2E-RNA-1",
+    exp_title: "RNA response experiment",
+    exp_description: "Differential expression after infection.",
+    public_repository: "GEO",
+    public_identifier: "GSE2000000",
+    pmid: "12345678",
+    exp_type: "Transcript Quantification",
+    measurement_technique: "RNA-Seq",
+    organism: ["Middle East respiratory syndrome-related coronavirus"],
+    taxon_id: [1335626],
+    taxon_lineage_ids: [10239, 1335626],
+    strain: ["E2E strain"],
+    treatment_type: ["Infectious Agent"],
+    treatment_name: ["Virus infection"],
+    samples: 6,
+    biosets: 1,
+    genome_id: ["1282460.2049"],
+    date_inserted: "2024-01-01",
+  },
+];
+
+const biosetRows = [
+  {
+    bioset_id: "B-2000000-1",
+    exp_id: "2000000",
+    study_name: "E2E host response study",
+    exp_name: "E2E-RNA-1",
+    exp_title: "RNA response experiment",
+    exp_type: "Transcript Quantification",
+    bioset_name: "Infected versus mock",
+    bioset_description: "Differentially expressed genes.",
+    bioset_type: "Transcriptomics Differential Expression",
+    bioset_criteria: "absolute fold change > 1.5",
+    organism: "Middle East respiratory syndrome-related coronavirus",
+    strain: "E2E strain",
+    entity_count: 88,
+    date_inserted: "2024-01-01",
+  },
+];
+
 const strainRows = [
   {
     id: "strain-backend-901",
@@ -303,6 +351,52 @@ function genomeDataResponse({ parsedBody }: { parsedBody: unknown }) {
 }
 
 export const apiCatchallOverrides: JsonOverride[] = [
+  {
+    url: /\/api\/e2e-mock\/data\/experiment\/(?:\?|$)/,
+    method: "GET",
+    body: {
+      response: { numFound: experimentRows.length, docs: experimentRows },
+    },
+  },
+  {
+    url: /\/api\/data\/bioset(?:\?|$)/,
+    method: "GET",
+    body: {
+      rows: biosetRows,
+      total: biosetRows.length,
+      facets: {
+        bioset_type: [{ value: "Transcriptomics Differential Expression", count: 1 }],
+        organism: [{ value: "Middle East respiratory syndrome-related coronavirus", count: 1 }],
+      },
+      page: 1,
+      pageSize: 200,
+    },
+  },
+  {
+    url: /\/api\/data\/bioset(?:\?|$)/,
+    method: "POST",
+    body: { rows: biosetRows },
+  },
+  {
+    url: /\/api\/data\/experiment(?:\?|$)/,
+    method: "GET",
+    body: {
+      rows: experimentRows,
+      total: experimentRows.length,
+      facets: {
+        exp_type: [{ value: "Transcript Quantification", count: 1 }],
+        measurement_technique: [{ value: "RNA-Seq", count: 1 }],
+        organism: [{ value: "Middle East respiratory syndrome-related coronavirus", count: 1 }],
+      },
+      page: 1,
+      pageSize: 200,
+    },
+  },
+  {
+    url: /\/api\/data\/experiment(?:\?|$)/,
+    method: "POST",
+    body: { rows: experimentRows },
+  },
   {
     url: /\/api\/structure\/PDB\/(?:6VXX|7BV2)\.pdb$/,
     method: "GET",

@@ -23,8 +23,11 @@ import {
   type DataResource,
 } from "@/lib/data-api";
 import {
+  biosetResultsHref,
   epitopeHref,
   epitopeIdFromRow,
+  experimentHref,
+  experimentIdFromRow,
   featureHref,
   featureIdFromRow,
   genomeHref,
@@ -109,6 +112,12 @@ export function ResourceCollection<Row extends DataTableRow>({
   onExport,
 }: ResourceCollectionProps<Row>) {
   const [exportError, setExportError] = useState<string | null>(null);
+  const [biosetActionError, setBiosetActionError] = useState<string | null>(
+    null,
+  );
+  const [selectedRowsById, setSelectedRowsById] = useState<
+    Partial<Record<string, Row>>
+  >({});
   const [loadedKeyword, setLoadedKeyword] = useState("");
   const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
   const hasLoadedKeyword =
@@ -189,6 +198,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   const selectedGenomesHref = genomesHrefFromRow(displayedDetail);
   const selectedFeatureId = featureIdFromRow(displayedDetail);
   const selectedEpitopeId = epitopeIdFromRow(displayedDetail);
+  const selectedExperimentId = experimentIdFromRow(displayedDetail);
   const selectedPdbId = displayedDetail?.pdb_id;
   const selectedStructureHref =
     profile.resource === "protein_structure" &&
@@ -198,21 +208,102 @@ export function ResourceCollection<Row extends DataTableRow>({
   const selectedMemberHref = displayedDetail
     ? profile.rowHref?.(displayedDetail)
     : undefined;
+  const selectedBiosetExperimentIds = collection.selectedIds.flatMap((id) => {
+    const selectedRow =
+      selectedRowsById[id] ??
+      displayedRows.find((row) => String(row[profile.idField]) === id);
+    const experimentId = experimentIdFromRow(selectedRow ?? null);
+    return experimentId ? [experimentId] : [];
+  });
+  const hasCompleteBiosetSelection =
+    selectedBiosetExperimentIds.length > 0 &&
+    selectedBiosetExperimentIds.length === collection.selectedIds.length;
+  const hasBiosetSelection =
+    profile.resource === "bioset" &&
+    (collection.isAllPagesSelected || hasCompleteBiosetSelection);
+  const hasIncompleteBiosetSelection =
+    profile.resource === "bioset" &&
+    !collection.isAllPagesSelected &&
+    collection.selectedIds.length > 0 &&
+    !hasCompleteBiosetSelection;
+
+  const openBiosetResults = async () => {
+    setBiosetActionError(null);
+    if (!collection.isAllPagesSelected) {
+      window.open(
+        biosetResultsHref(selectedBiosetExperimentIds),
+        "_blank",
+        "noopener,noreferrer",
+      );
+      return;
+    }
+    if (collection.total > maxExportRows) {
+      setBiosetActionError(
+        `This selection contains ${collection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
+      );
+      return;
+    }
+    const resultsWindow = window.open("about:blank", "_blank");
+    if (!resultsWindow) {
+      setBiosetActionError(
+        "Allow pop-ups to open the selected Bioset results.",
+      );
+      return;
+    }
+    resultsWindow.opener = null;
+    try {
+      const result = await repository.exportAll(profile.resource, {
+        rql: effectiveRql,
+        keyword: requestState.keyword,
+        fields: ["exp_id"],
+        sort:
+          state.sort === "unsorted"
+            ? undefined
+            : {
+                field: state.sort.split(":")[0],
+                direction: state.sort.endsWith(":desc") ? "desc" : "asc",
+              },
+      });
+      const experimentIds = result.rows.flatMap((row) => {
+        const experimentId = experimentIdFromRow(row);
+        return experimentId ? [experimentId] : [];
+      });
+      if (experimentIds.length !== result.rows.length) {
+        resultsWindow.close();
+        setBiosetActionError(
+          experimentIds.length === 0
+            ? "No experiments are associated with this selection."
+            : "Some selected Biosets are not associated with experiments.",
+        );
+        return;
+      }
+      resultsWindow.location.replace(biosetResultsHref(experimentIds));
+    } catch (error) {
+      resultsWindow.close();
+      setBiosetActionError(
+        error instanceof Error
+          ? error.message
+          : "The selected Bioset results could not be loaded.",
+      );
+    }
+  };
 
   const exportRows = async (
     format: "csv" | "txt",
     selectedIds?: readonly string[],
     fields: readonly string[] | null = null,
+    isAllPagesSelected = false,
   ) => {
     setExportError(null);
-    if (selectedIds && selectedIds.length === 0) return;
-    if (!selectedIds && collection.isRefreshing) {
+    const ids = isAllPagesSelected ? undefined : selectedIds;
+    if (ids && ids.length === 0) return;
+    if (!ids && collection.isRefreshing) {
       setExportError(
         "Wait for the current results to finish loading before exporting.",
       );
       return;
     }
-    if (!selectedIds?.length && collection.total > maxExportRows) {
+    if (!ids?.length && collection.total > maxExportRows) {
       setExportError(
         `This export matches ${collection.total.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,
       );
@@ -220,16 +311,16 @@ export function ResourceCollection<Row extends DataTableRow>({
     }
     try {
       if (onExport) {
-        await onExport({ format, selectedIds, fields, rql: effectiveRql });
+        await onExport({ format, selectedIds: ids, fields, rql: effectiveRql });
         return;
       }
       const selectedFields = fields
         ? [...fields]
         : profile.columns.map((column) => column.id);
       const allFields = profile.columns.map((column) => column.id);
-      const result = selectedIds?.length
+      const result = ids?.length
         ? await repository.selected(profile.resource, {
-            ids: [...selectedIds],
+            ids: [...ids],
             fields: selectedFields,
           })
         : await repository.exportAll(profile.resource, {
@@ -245,7 +336,7 @@ export function ResourceCollection<Row extends DataTableRow>({
                   },
           });
       const exportedRows =
-        hasLoadedKeyword && !selectedIds
+        hasLoadedKeyword && !ids
           ? result.rows.filter((row) =>
               matchesLoadedKeyword(row, normalizedLoadedKeyword),
             )
@@ -376,6 +467,12 @@ export function ResourceCollection<Row extends DataTableRow>({
           <AlertDescription>{exportError}</AlertDescription>
         </Alert>
       )}
+      {biosetActionError && (
+        <Alert variant="destructive">
+          <AlertTitle>Could not open Bioset results</AlertTitle>
+          <AlertDescription>{biosetActionError}</AlertDescription>
+        </Alert>
+      )}
 
       {collection.error ? (
         <Alert variant="destructive">
@@ -422,27 +519,44 @@ export function ResourceCollection<Row extends DataTableRow>({
                   : profile.resource === "protein_structure" &&
                       selectedStructureHref
                     ? ["structure"]
-                    : undefined
+                    : hasBiosetSelection
+                      ? ["biosets"]
+                      : undefined
               }
-               disabledActions={
-                 profile.resource === "strain" && !selectedGenomesHref
-                   ? { genomes: "No genomes are associated with this strain" }
-                   : profile.resource === "protein_structure"
-                     ? {
-                         genome: selectedGenomeId
-                           ? undefined
-                           : "No genome is associated with this structure",
-                         feature: selectedFeatureId
-                           ? undefined
-                           : "No feature is associated with this structure",
-                         structure: selectedStructureHref
-                           ? undefined
-                           : "A structure accession is required",
-                       }
-                     : undefined
-               }
+              disabledActions={
+                profile.resource === "strain" && !selectedGenomesHref
+                  ? { genomes: "No genomes are associated with this strain" }
+                    : profile.resource === "protein_structure"
+                      ? {
+                          genome: selectedGenomeId
+                            ? undefined
+                            : "No genome is associated with this structure",
+                          feature: selectedFeatureId
+                            ? undefined
+                            : "No feature is associated with this structure",
+                          structure: selectedStructureHref
+                            ? undefined
+                            : "A structure accession is required",
+                        }
+                      : hasIncompleteBiosetSelection
+                        ? {
+                            biosets:
+                              "Some selected Biosets are not associated with experiments",
+                          }
+                        : undefined
+
+              }
               onAction={(actionId) => {
-                if (actionId === "genome" && selectedGenomeId) {
+                if (actionId === "download") {
+                  void exportRows(
+                    "csv",
+                    displayedSelectedIds,
+                    null,
+                    collection.isAllPagesSelected,
+                  );
+                } else if (actionId === "biosets" && hasBiosetSelection) {
+                  void openBiosetResults();
+                } else if (actionId === "genome" && selectedGenomeId) {
                   window.open(
                     genomeHref(selectedGenomeId),
                     "_blank",
@@ -469,6 +583,12 @@ export function ResourceCollection<Row extends DataTableRow>({
                 } else if (actionId === "epitope" && selectedEpitopeId) {
                   window.open(
                     epitopeHref(selectedEpitopeId),
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                } else if (actionId === "experiment" && selectedExperimentId) {
+                  window.open(
+                    experimentHref(selectedExperimentId),
                     "_blank",
                     "noopener,noreferrer",
                   );
@@ -517,7 +637,20 @@ export function ResourceCollection<Row extends DataTableRow>({
             }
             onPageChange={collection.setPageIndex}
             onSortingChange={collection.setSorting}
-            onRowSelectionChange={collection.setSelection}
+            onRowSelectionChange={(selection) => {
+              collection.setSelection(selection);
+              setSelectedRowsById((current) => {
+                const next: Record<string, Row> = {};
+                for (const id of Object.keys(selection)) {
+                  const selectedRow =
+                    (displayedRows.find(
+                      (row) => String(row[profile.idField]) === id,
+                    ) as Row | undefined) ?? current[id];
+                  if (selectedRow) next[id] = selectedRow;
+                }
+                return next;
+              });
+            }}
             onDownloadAll={(format, fields) =>
               exportRows(format, undefined, fields)
             }

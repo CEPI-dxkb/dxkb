@@ -4,11 +4,13 @@ import { DataApiError } from "@/lib/data-api/repository";
 import { canonicalFeatureTab, isFeatureId } from "@/lib/feature-view";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
 import { featureHref } from "@/lib/views/hrefs";
+import type { SearchParamsRecord } from "@/lib/views/rql";
+import { canonicalizeMemberTabQuery } from "@/lib/views/search-params";
 import { FeatureMember } from "./feature-member";
 
 interface FeaturePageProps {
   params: Promise<{ featureId: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<SearchParamsRecord>;
 }
 
 async function loadFeature(rawFeatureId: string) {
@@ -55,18 +57,10 @@ export default async function FeaturePage({
   const [{ featureId }, query] = await Promise.all([params, searchParams]);
   const feature = await loadFeature(featureId);
   const activeTab = canonicalFeatureTab(query.tab, feature);
-  const requestedTab = Array.isArray(query.tab) ? query.tab[0] : query.tab;
-  const canonicalTab = activeTab === "overview" ? undefined : activeTab;
-  if (requestedTab !== canonicalTab || Array.isArray(query.tab)) {
-    const next = new URLSearchParams();
-    for (const [name, value] of Object.entries(query)) {
-      if (name === "tab" || value === undefined) continue;
-      for (const item of Array.isArray(value) ? value : [value])
-        next.append(name, item);
-    }
-    if (canonicalTab) next.set("tab", canonicalTab);
+  const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
+  if (canonicalQuery !== null) {
     redirect(
-      `${featureHref(feature.feature_id)}${next.size ? `?${next}` : ""}`,
+      `${featureHref(feature.feature_id)}${canonicalQuery ? `?${canonicalQuery}` : ""}`,
     );
   }
   return <FeatureMember feature={feature} activeTab={activeTab} />;

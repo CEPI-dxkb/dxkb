@@ -8,6 +8,30 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 const dataApi = "https://p3.theseed.org/services/data_api";
 
 describe("SearchResults", () => {
+  it("links Experiment results without coercing digit strings", async () => {
+    server.use(
+      http.post(`${dataApi}/query/`, () =>
+        HttpResponse.json({
+          experiment: {
+            result: {
+              response: {
+                docs: [{ exp_id: "00042", exp_title: "RNA response" }],
+                numFound: 1,
+                maxScore: 1,
+                numFoundExact: true,
+              },
+            },
+          },
+        }),
+      ),
+    );
+    render(<SearchResults query="RNA" />, { wrapper: createQueryClientWrapper() });
+    expect(await screen.findByRole("link", { name: /00042/ })).toHaveAttribute(
+      "href",
+      "/experiment/00042",
+    );
+  });
+
   it("uses pdb_id to distinguish protein structures for the same genome", async () => {
     server.use(
       http.post(`${dataApi}/query/`, () =>

@@ -59,8 +59,7 @@ export function buildGenomeTabs(
     {
       key: "experiments",
       label: "Experiments",
-      enabled: false,
-      disabledReason: "The Experiment view is not yet implemented.",
+      enabled: Boolean(genome.genome_id),
     },
   ];
 }

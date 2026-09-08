@@ -706,7 +706,7 @@ function renderSearchInfoPanel(
         "exp_description",
         "exp_poc",
         "experimenters",
-        "public_repositories",
+        "public_repository",
         "public_identifier",
         "exp_type",
         "measurement_technique",
@@ -736,7 +736,7 @@ function renderSearchInfoPanel(
         "bioset_description",
         "bioset_type",
         "analysis_method",
-        "bioset_criter",
+        "bioset_criteria",
         "result_type",
         "protocol",
         "bioset_result",
@@ -747,7 +747,7 @@ function renderSearchInfoPanel(
         "treatment_amount",
         "treatment_duration",
         "entity_count",
-        "additonal_metadata",
+        "additional_metadata",
       ];
       order = [
         "Experiment Info",

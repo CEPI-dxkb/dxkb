@@ -164,8 +164,8 @@ export const searchDescriptors: readonly SearchType[] = [
   {
     id: "experiment",
     typeTitle: "Experiments",
-    route: { status: "legacy" },
-    tabs: { experiment: "Experiments", bioset: "Biosets" },
+    route: { status: "canonical", segment: viewRegistry.experiment.segment },
+    tabs: { experiment: "Experiments" },
     pickerOrder: 10,
     allTermOrder: 12,
   },
@@ -176,6 +176,36 @@ export const searchDescriptors: readonly SearchType[] = [
     allTermOrder: 13,
   },
 ];
+
+export function searchTypeForLocation(
+  pathname: string,
+  searchParams: Pick<URLSearchParams, "get">,
+): string | undefined {
+  return searchDescriptors
+    .filter(
+      (descriptor) =>
+        descriptor.route.status === "canonical" &&
+        pathname === `/${descriptor.route.segment}`,
+    )
+    .toSorted((left, right) => {
+      const leftParams =
+        left.route.status === "canonical"
+          ? Object.keys(left.route.params ?? {}).length
+          : 0;
+      const rightParams =
+        right.route.status === "canonical"
+          ? Object.keys(right.route.params ?? {}).length
+          : 0;
+      return rightParams - leftParams;
+    })
+    .find(
+      (descriptor) =>
+        descriptor.route.status === "canonical" &&
+        Object.entries(descriptor.route.params ?? {}).every(
+          ([name, value]) => searchParams.get(name) === value,
+        ),
+    )?.id;
+}
 
 export const searchTypes = searchDescriptors
   .filter((descriptor) => descriptor.pickerOrder !== undefined)

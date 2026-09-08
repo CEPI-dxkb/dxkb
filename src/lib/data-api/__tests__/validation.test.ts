@@ -151,6 +151,16 @@ describe("data API contracts", () => {
     ).toThrow();
   });
 
+  it("registers string-preserving Experiment and Bioset contracts", () => {
+    expect(resourceRegistry.experiment.idField).toBe("exp_id");
+    expect(resourceRegistry.experiment.fields.genome_id.cardinality).toBe("multiple");
+    expect(resourceRegistry.experiment.fields.taxon_lineage_ids.cardinality).toBe("multiple");
+    expect(resourceRegistry.experiment.fields.samples.type).toBe("number");
+    expect(resourceRegistry.bioset.idField).toBe("bioset_id");
+    expect(resourceRegistry.bioset.fields.bioset_type.facet).toBe(true);
+    expect(resourceRegistry.bioset.fields.organism.facet).toBe(true);
+  });
+
   it("allows a valid collection and rejects disallowed fields and sorts", () => {
     expect(
       validateDataApiRequest("genome", {

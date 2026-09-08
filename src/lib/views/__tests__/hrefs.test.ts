@@ -3,6 +3,10 @@ import {
   epitopeHref,
   epitopeIdFromRow,
   epitopeListHref,
+  biosetResultsHref,
+  experimentHref,
+  experimentIdFromRow,
+  experimentListHref,
   featureHref,
   featureIdFromRow,
   featureListHref,
@@ -45,6 +49,23 @@ describe("Epitope hrefs", () => {
     expect(
       epitopeListHref({ keyword: "ignored", rql: "eq(epitope_type,B-cell)" }),
     ).toBe("/epitope?rql=eq(epitope_type%2CB-cell)");
+  });
+});
+
+describe("Experiment hrefs", () => {
+  it("preserves digit strings and builds collection routes", () => {
+    expect(experimentIdFromRow({ exp_id: "00042" })).toBe("00042");
+    expect(experimentIdFromRow(null)).toBeNull();
+    expect(experimentHref("00042")).toBe("/experiment/00042");
+    expect(biosetResultsHref(["00042", "51", "00042"])).toBe(
+      "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,51))",
+    );
+    expect(experimentListHref({ keyword: "RNA sequencing", taxonId: 561 })).toBe(
+      "/experiment?keyword=RNA%20sequencing&taxon_id=561",
+    );
+    expect(experimentListHref({ keyword: "ignored", rql: "eq(exp_type,Transcript Quantification)" })).toBe(
+      "/experiment?rql=eq(exp_type%2CTranscript%20Quantification)",
+    );
   });
 });
 

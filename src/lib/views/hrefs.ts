@@ -114,6 +114,44 @@ export function epitopeListHref(opts?: {
   return params.length ? `/epitope?${params.join("&")}` : "/epitope";
 }
 
+/** Return a canonical Experiment ID from an API row, if present. */
+export function experimentIdFromRow(
+  row: Record<string, unknown> | null,
+): string | null {
+  const experimentId = row?.exp_id;
+  return typeof experimentId === "string" || typeof experimentId === "number"
+    ? String(experimentId)
+    : null;
+}
+
+/** Internal Experiment member route. */
+export function experimentHref(experimentId: number | string): string {
+  return `/experiment/${encodeURIComponent(String(experimentId))}`;
+}
+
+/** Legacy Bioset Results view; no canonical V2 result-analysis route exists yet. */
+export function biosetResultsHref(experimentIds: readonly string[]): string {
+  const ids = [...new Set(experimentIds)].map(encodeURIComponent).join(",");
+  return `https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(${ids}))`;
+}
+
+/** Canonical Experiment collection route. Explicit RQL takes precedence. */
+export function experimentListHref(opts?: {
+  keyword?: string;
+  rql?: string;
+  taxonId?: number | string;
+}): string {
+  const params: string[] = [];
+  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
+  else {
+    if (opts?.keyword)
+      params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
+    if (opts?.taxonId != null)
+      params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
+  }
+  return params.length ? `/experiment?${params.join("&")}` : "/experiment";
+}
+
 /** Internal Protein Structure route using the canonical accession query. */
 export function proteinStructureHref(accession: number | string): string {
   return `/protein-structure?accession=${encodeURIComponent(String(accession))}`;

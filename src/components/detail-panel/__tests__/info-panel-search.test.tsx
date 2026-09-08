@@ -132,6 +132,43 @@ describe("InfoPanel — search variant", () => {
       expect(hasDuplicateKeyWarning).toBe(false);
     });
 
+    it("renders corrected Experiment detail fields", () => {
+      render(
+        <InfoPanel
+          selectedIds={["experiment-1"]}
+          activeTab="experiment"
+          selectedRow={{
+            exp_id: "1",
+            exp_name: "Experiment 1",
+            public_repository: "GEO",
+          }}
+        />,
+      );
+
+      expect(screen.getByText("Public Repository")).toBeInTheDocument();
+      expect(screen.getByText("GEO")).toBeInTheDocument();
+    });
+
+    it("renders corrected Bioset detail fields", () => {
+      render(
+        <InfoPanel
+          selectedIds={["bioset-1"]}
+          activeTab="bioset"
+          selectedRow={{
+            bioset_id: "bioset-1",
+            bioset_name: "Bioset 1",
+            bioset_criteria: "adjusted p-value < 0.05",
+            additional_metadata: "curated",
+          }}
+        />,
+      );
+
+      expect(screen.getByText("Criteria")).toBeInTheDocument();
+      expect(screen.getByText("adjusted p-value < 0.05")).toBeInTheDocument();
+      expect(screen.getAllByText("Additional Metadata")).toHaveLength(2);
+      expect(screen.getByText("curated")).toBeInTheDocument();
+    });
+
     it("renders ppi details for a selected interaction row", () => {
       render(
         <InfoPanel

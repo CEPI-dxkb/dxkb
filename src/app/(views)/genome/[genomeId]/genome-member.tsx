@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 import {
   EntityViewShell,
+  ExperimentResourceCollection,
   ProteinStructureResourceCollection,
   ResourceChildCollection,
 } from "@/components/views";
+import { genomeExperimentRql } from "@/lib/experiment-view";
 import {
   buildGenomeTabs,
   genomeInteractionsRql,
@@ -146,6 +148,14 @@ export function GenomeMember({
     content = (
       <ProteinStructureResourceCollection
         baseRql={eq("protein_structure", "genome_id", genome.genome_id)}
+        enableFacets={false}
+        keywordMode="loaded"
+      />
+    );
+  } else if (activeTab === "experiments") {
+    content = (
+      <ExperimentResourceCollection
+        baseRql={genomeExperimentRql(genome.genome_id)}
         enableFacets={false}
         keywordMode="loaded"
       />

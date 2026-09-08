@@ -346,10 +346,21 @@ export const routes: RouteEntry[] = [
   },
   {
     name: "experiment",
-    path: "/experiment",
+    path: "/experiment?keyword=RNA",
     unauthenticated: true,
+    mobile: true,
+    variants: [
+      { nameSuffix: "experiments", path: "/experiment?keyword=RNA" },
+      {
+        nameSuffix: "biosets",
+        path: "/experiment?keyword=influenza&tab=biosets",
+      },
+    ],
     prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
+      await page
+        .getByText(/results/)
+        .first()
+        .waitFor();
     },
   },
   {
@@ -415,8 +426,13 @@ export const routes: RouteEntry[] = [
     name: "experiment-singular",
     path: "/experiment/2000000",
     unauthenticated: true,
+    mobile: true,
+    variants: [
+      { nameSuffix: "overview", path: "/experiment/2000000" },
+      { nameSuffix: "biosets", path: "/experiment/2000000?tab=biosets" },
+    ],
     prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
+      await page.getByRole("heading", { level: 1, name: "2000000" }).waitFor();
     },
   },
 

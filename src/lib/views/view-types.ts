@@ -34,7 +34,7 @@ export interface ViewTypeEntry {
   legacyListAliasParams?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** searchtype id from constants/searchInfo.ts (for the deferred search repoint). */
   searchType?: string;
-  /** Omitted ⇒ list-only type (strain, domains-and-motifs, experiment). */
+  /** Omitted => list-only type (for example, strain and domains-and-motifs). */
   singular?: SingularSpec;
   list: ListSpec;
 }

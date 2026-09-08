@@ -192,8 +192,12 @@ describe("SearchBar", () => {
       });
     });
 
-    it("recognizes the canonical Domains and Motifs route", async () => {
-      mockPathname.current = "/domains-and-motifs";
+    it.each([
+      ["/domains-and-motifs", "Domains and Motifs"],
+      ["/protein-structure", "Protein Structures"],
+      ["/experiment", "Experiments"],
+    ])("recognizes canonical %s route", async (pathname, label) => {
+      mockPathname.current = pathname;
       mockSearchParams.current = new URLSearchParams({ keyword: "DNA kinase" });
 
       renderSearchBar();
@@ -202,7 +206,7 @@ describe("SearchBar", () => {
         expect(screen.getByRole("textbox")).toHaveValue("DNA kinase");
         expect(
           screen.getByRole("combobox", { name: /search type/i }),
-        ).toHaveTextContent("Domains and Motifs");
+        ).toHaveTextContent(label);
       });
     });
 

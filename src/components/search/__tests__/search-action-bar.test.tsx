@@ -267,6 +267,45 @@ describe("SearchActionBar (taxonomy)", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("matches the legacy Bioset actions", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="bioset"
+          guideUrl="https://example.test/guide"
+          enabledActions={["biosets"]}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: /guide/i })).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: /dwnld/i })).not.toBeDisabled();
+      expect(screen.getByRole("button", { name: /services/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /biosets/i })).not.toBeDisabled();
+    });
+
+    it("enables the Experiment action for one selected record", async () => {
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="experiment"
+          onAction={onAction}
+        />,
+      );
+
+      const button = screen.getByRole("button", { name: /^eexpermnt$/i });
+      expect(button).not.toBeDisabled();
+      await userEvent.click(button);
+      expect(onAction).toHaveBeenCalledWith("experiment");
+    });
+
+    it("hides the Experiment action for multiple selections", () => {
+      render(<SearchActionBar selectedCount={2} searchType="experiment" />);
+      expect(
+        screen.queryByRole("button", { name: /^eexpermnt$/i }),
+      ).not.toBeInTheDocument();
+    });
+
     it("enables the Serology action for one selected record", async () => {
       const onAction = vi.fn();
       render(

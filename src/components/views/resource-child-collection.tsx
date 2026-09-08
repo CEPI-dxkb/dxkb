@@ -6,6 +6,7 @@ import {
   featureCollectionProfile,
   type FeatureViewRecord,
 } from "@/lib/feature-view";
+import { biosetCollectionProfile } from "@/lib/experiment-view/profile";
 import {
   proteinFeatureCollectionProfile,
   type ProteinFeatureViewRecord,
@@ -63,6 +64,7 @@ interface ResourceChildCollectionProps {
   rql: string;
   columns?: ResourceCollectionProfile<ChildRow>["columns"];
   defaultSort: string;
+  profile?: ResourceCollectionProfile<ChildRow>;
 }
 
 export function ResourceChildCollection(props: ResourceChildCollectionProps) {
@@ -81,6 +83,7 @@ function ScopedResourceChildCollection({
   rql,
   columns,
   defaultSort,
+  profile: suppliedProfile,
 }: ResourceChildCollectionProps) {
   const [state, setState] = useState<CollectionState>({
     filters: {},
@@ -88,7 +91,27 @@ function ScopedResourceChildCollection({
     sort: defaultSort,
   });
   let profile: ResourceCollectionProfile<ChildRow>;
-  if (resource === "genome_feature") {
+  if (suppliedProfile) {
+    profile = {
+      ...suppliedProfile,
+      label,
+      basePredicate: rql,
+      buildStructuralRql: (state) => {
+        const structuralRql = suppliedProfile.buildStructuralRql?.(state);
+        return structuralRql ? `and(${rql},${structuralRql})` : rql;
+      },
+    };
+  } else if (resource === "bioset") {
+    profile = {
+      ...biosetCollectionProfile,
+      label,
+      basePredicate: rql,
+      buildStructuralRql: (state) => {
+        const facetRql = biosetCollectionProfile.buildStructuralRql?.(state);
+        return facetRql ? `and(${rql},${facetRql})` : rql;
+      },
+    };
+  } else if (resource === "genome_feature") {
     profile = {
       ...featureCollectionProfile,
       label,

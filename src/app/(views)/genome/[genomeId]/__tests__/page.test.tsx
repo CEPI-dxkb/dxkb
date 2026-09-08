@@ -19,6 +19,9 @@ vi.mock("@/components/views", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/components/views")>();
   return {
     ...original,
+    ExperimentResourceCollection: ({ baseRql }: { baseRql: string }) => (
+      <div data-testid="experiment-collection" data-rql={baseRql} />
+    ),
     ResourceChildCollection: ({
       resource,
       idField,
@@ -134,6 +137,19 @@ describe("Genome member route", () => {
       "id",
     );
     expect(screen.getByTestId("resource-collection")).toHaveAttribute(
+      "data-rql",
+      "eq(genome_id,83332.12)",
+    );
+  });
+
+  it("renders experiments with the exact Genome scope", async () => {
+    render(
+      await GenomePage({
+        params: Promise.resolve({ genomeId: "83332.12" }),
+        searchParams: Promise.resolve({ tab: "experiments" }),
+      }),
+    );
+    expect(screen.getByTestId("experiment-collection")).toHaveAttribute(
       "data-rql",
       "eq(genome_id,83332.12)",
     );

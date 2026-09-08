@@ -125,6 +125,52 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
+  it.each([
+    ["unfiltered", ""],
+    ["wildcard", "?eq(exp_id,*)"],
+    ["keyword", "?keyword(RNA*)"],
+  ])(
+    "returns the experiment fixture for a supported %s collection query",
+    async (_name, query) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/data/experiment/${query}`,
+        }),
+        ctx(["data", "experiment"]),
+      );
+
+      await expect(resp.json()).resolves.toMatchObject({
+        response: { numFound: 1, docs: [{ exp_id: "2000000" }] },
+      });
+    },
+  );
+
+  it("returns the experiment fixture for the matching exact member", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/experiment/?eq(exp_id,2000000)",
+      }),
+      ctx(["data", "experiment"]),
+    );
+
+    await expect(resp.json()).resolves.toMatchObject({
+      response: { numFound: 1, docs: [{ exp_id: "2000000" }] },
+    });
+  });
+
+  it("returns zero experiments for an unmatched exact member", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/experiment/?eq(exp_id,9999999)",
+      }),
+      ctx(["data", "experiment"]),
+    );
+
+    await expect(resp.json()).resolves.toEqual({
+      response: { numFound: 0, docs: [] },
+    });
+  });
+
   it("filters ambiguous surveillance fixtures by pathogen test type", async () => {
     const unfilteredResp = await GET(
       mockNextRequest({

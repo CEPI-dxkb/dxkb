@@ -11,6 +11,7 @@ import {
 import {
   BookOpen,
   Copy,
+  Download,
   Settings,
   Group,
   Binary,
@@ -23,6 +24,7 @@ import {
 
 export type SearchActionId =
   | "guide"
+  | "download"
   | "copyRows"
   | "services"
   | "genome"
@@ -76,6 +78,13 @@ const actionConfig: ActionConfig[] = [
     maxSelection: 1,
     // Enabled/disabled per consumer via disabledActions (live in taxon-view,
     // disabled on /search until that page wires a handler).
+  },
+  {
+    id: "download",
+    label: "DWNLD",
+    icon: Download,
+    validSearchTypes: ["bioset"],
+    requiresSelection: true,
   },
   {
     id: "copyRows",
@@ -227,13 +236,13 @@ const actionConfig: ActionConfig[] = [
     letter: "E",
     validSearchTypes: ["experiment"],
     requiresSelection: true,
-    disabledWithTooltip: notReady,
+    maxSelection: 1,
   },
   {
     id: "biosets",
     label: "BIOSETS",
     icon: List,
-    validSearchTypes: ["experiment"],
+    validSearchTypes: ["experiment", "bioset"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },

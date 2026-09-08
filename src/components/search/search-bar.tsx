@@ -12,7 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { searchHref, searchTypes } from "@/constants/search-info";
+import {
+  searchHref,
+  searchTypeForLocation,
+  searchTypes,
+} from "@/constants/search-info";
 import { Input } from "@/components/ui/input";
 
 import { Search } from "lucide-react";
@@ -34,24 +38,7 @@ function extractKeywordQuery(raw: string): string {
 function SearchBarWithParams(props: SearchBarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const canonicalType =
-    pathname === "/genome"
-      ? "genome"
-      : pathname === "/strain"
-        ? "strain"
-        : pathname === "/domains-and-motifs"
-          ? "protein_feature"
-          : pathname === "/feature"
-            ? searchParams.get("filter") === "protein"
-              ? "protein"
-              : "genome_feature"
-            : pathname === "/epitope"
-              ? "epitope"
-              : pathname === "/surveillance"
-                ? "surveillance"
-                : pathname === "/serology"
-                  ? "serology"
-                  : undefined;
+  const canonicalType = searchTypeForLocation(pathname, searchParams);
   const rawQuery =
     (canonicalType ? searchParams.get("keyword") : searchParams.get("q")) ||
     props.initialValue ||

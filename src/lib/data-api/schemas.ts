@@ -136,8 +136,10 @@ export const proteinStructureRecordSchema = z.looseObject({
 });
 
 export const experimentRecordSchema = z.looseObject({
-  exp_id: identifier.regex(/^\d+$/),
-  genome_id: z.string().optional(),
+  exp_id: identifier.regex(/^(?=.*[1-9])\d+$/),
+  genome_id: stringList.optional(),
+  taxon_id: scalarList.optional(),
+  taxon_lineage_ids: scalarList.optional(),
 });
 
 export const biosetRecordSchema = z.looseObject({

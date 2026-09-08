@@ -19,6 +19,8 @@ import {
   searchTypes as searchDescriptors,
 } from "@/constants/search-info";
 import {
+  experimentHref,
+  experimentIdFromRow,
   featureHref,
   featureIdFromRow,
   genomeHref,
@@ -72,6 +74,7 @@ interface TabsRendererProps {
   setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
   setSelectedGenomeId: (id: string | null) => void;
   setSelectedFeatureId: (id: string | null) => void;
+  setSelectedExperimentId: (id: string | null) => void;
   setSelectedStructureHref: (href: string | null) => void;
   setSelectedSurveillanceHref: (href: string | null) => void;
   setSelectedSerologyHref: (href: string | null) => void;
@@ -99,6 +102,7 @@ function TabsRenderer({
   setSelectedIds,
   setSelectedGenomeId,
   setSelectedFeatureId,
+  setSelectedExperimentId,
   setSelectedStructureHref,
   setSelectedSurveillanceHref,
   setSelectedSerologyHref,
@@ -131,6 +135,7 @@ function TabsRenderer({
     setSelectedIds([]);
     setSelectedGenomeId(null);
     setSelectedFeatureId(null);
+    setSelectedExperimentId(null);
     setSelectedStructureHref(null);
     setSelectedSurveillanceHref(null);
     setSelectedSerologyHref(null);
@@ -211,6 +216,7 @@ function TabsRenderer({
             onSelectedRowChange={(row) => {
               setSelectedGenomeId(genomeIdFromRow(row));
               setSelectedFeatureId(featureIdFromRow(row));
+              setSelectedExperimentId(experimentIdFromRow(row));
               const pdbId = row?.pdb_id;
               setSelectedStructureHref(
                 typeof pdbId === "string" || typeof pdbId === "number"
@@ -340,6 +346,9 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
   );
+  const [selectedExperimentId, setSelectedExperimentId] = useState<string | null>(
+    null,
+  );
   const [selectedStructureHref, setSelectedStructureHref] = useState<
     string | null
   >(null);
@@ -362,6 +371,7 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
     setSelectedIds([]);
     setSelectedGenomeId(null);
     setSelectedFeatureId(null);
+    setSelectedExperimentId(null);
     setSelectedStructureHref(null);
     setSelectedSurveillanceHref(null);
     setSelectedSerologyHref(null);
@@ -527,6 +537,15 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
                     "noopener,noreferrer",
                   );
                 } else if (
+                  actionId === "experiment" &&
+                  selectedExperimentId
+                ) {
+                  window.open(
+                    experimentHref(selectedExperimentId),
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                } else if (
                   actionId === "surveillance" &&
                   selectedSurveillanceHref
                 ) {
@@ -569,6 +588,7 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
             setSelectedIds={setSelectedIds}
             setSelectedGenomeId={setSelectedGenomeId}
             setSelectedFeatureId={setSelectedFeatureId}
+            setSelectedExperimentId={setSelectedExperimentId}
             setSelectedStructureHref={setSelectedStructureHref}
             setSelectedSurveillanceHref={setSelectedSurveillanceHref}
             setSelectedSerologyHref={setSelectedSerologyHref}

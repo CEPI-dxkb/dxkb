@@ -9,6 +9,7 @@ export { SettingsPage } from "./settings-page";
 export { TaxonInteractionsPage } from "./taxon-interactions-page";
 export { TaxonPage } from "./taxon-page";
 export { EpitopePage } from "./epitope-page";
+export { ExperimentPage } from "./experiment-page";
 export { SerologyPage } from "./serology-page";
 export { SurveillancePage } from "./surveillance-page";
 export { ResourceCollectionPage } from "./resource-collection-page";

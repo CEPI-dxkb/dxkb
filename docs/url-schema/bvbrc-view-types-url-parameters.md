@@ -313,8 +313,10 @@ href: `/view/Serology/${sel.sample_identifier}?test_type=${encodeURIComponent(se
 
 | Location | Key | Description |
 |---|---|---|
-| Path segment | `experiment_id` | Experiment ID (integer) |
+| Path segment | `experiment_id` | Experiment ID (positive digit string; textual representation is preserved) |
 | Hash | `view_tab` | Active tab name. Default: `overview` |
+
+The canonical routes are `/experiment/{experimentId}` and `/experiment/{experimentId}?tab=biosets`. Biosets remain scoped to their Experiment member and do not have a top-level canonical route.
 
 > **Note:** The viewer file is `Experiment.js` in legacy BV-BRC, but the URL segment is `ExperimentComparison`, not `Experiment`. The bare `Experiment` viewer (workspace-only) has no public URL.
 

@@ -23,6 +23,8 @@ import {
 import {
   epitopeHref,
   epitopeIdFromRow,
+  experimentHref,
+  experimentIdFromRow,
   featureHref,
   featureIdFromRow,
   genomeHref,
@@ -495,6 +497,7 @@ function SearchResultsContent({ query }: { query: string }) {
                         doc.patric_id ??
                         doc.pdb_id ??
                         doc.epitope_id ??
+                        doc.exp_id ??
                         doc.sample_identifier ??
                         doc.taxon_id;
                       const documentKey =
@@ -509,6 +512,7 @@ function SearchResultsContent({ query }: { query: string }) {
                           : null;
                       const featureId = featureIdFromRow(doc);
                       const epitopeId = epitopeIdFromRow(doc);
+                      const experimentId = experimentIdFromRow(doc);
                       const surveillanceId = surveillanceIdFromRow(doc);
                       const serologyId = serologyIdFromRow(doc);
                       const testType =
@@ -533,6 +537,8 @@ function SearchResultsContent({ query }: { query: string }) {
                             ? featureHref(featureId)
                             : dataType === "epitope" && epitopeId
                               ? epitopeHref(epitopeId)
+                              : dataType === "experiment" && experimentId
+                                ? experimentHref(experimentId)
                               : dataType === "protein_structure" &&
                                   (typeof doc.pdb_id === "string" ||
                                     typeof doc.pdb_id === "number")

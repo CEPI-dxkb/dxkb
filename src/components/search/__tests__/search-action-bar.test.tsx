@@ -71,6 +71,49 @@ describe("SearchActionBar (taxonomy)", () => {
     });
   });
 
+  describe("genome sequences", () => {
+    it("matches the legacy sequence actions and availability", async () => {
+      const user = userEvent.setup();
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="genome_sequence"
+          guideUrl="https://example.test/guide"
+          enabledActions={["download", "genome", "features"]}
+          disabledActions={{
+            copyRows: "Coming soon...",
+            services: "Coming soon...",
+            fasta: "Coming soon...",
+            group: "Coming soon...",
+            browser: "Coming soon...",
+          }}
+          onAction={onAction}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /copy/i, enabled: false },
+        { name: /services/i, enabled: false },
+        { name: /^ggenome$/i, enabled: true },
+        { name: /^ffeatures$/i, enabled: true },
+        { name: /fasta/i, enabled: false },
+        { name: /group/i, enabled: false },
+        { name: /browser/i, enabled: false },
+      ];
+
+      for (const action of expectedActions) {
+        const button = screen.getByRole("button", { name: action.name });
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      }
+
+      await user.hover(screen.getByRole("button", { name: /browser/i }));
+      expect(await screen.findAllByText("Coming soon...")).not.toHaveLength(0);
+    });
+  });
+
   describe("ppi (interactions)", () => {
     it("shows COPY, SERVICES, FEATURES, FASTA, and GROUP disabled with the not-ready tooltip", () => {
       render(<SearchActionBar selectedCount={2} searchType="ppi" />);

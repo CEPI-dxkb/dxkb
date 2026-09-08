@@ -19,6 +19,7 @@ import {
   Map,
   Eye,
   List,
+  PanelsTopLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,7 +43,8 @@ export type SearchActionId =
   | "features"
   | "ppiFeatures"
   | "experiment"
-  | "biosets";
+  | "biosets"
+  | "browser";
 
 interface ActionConfig {
   id: SearchActionId;
@@ -83,8 +85,17 @@ const actionConfig: ActionConfig[] = [
     id: "download",
     label: "DWNLD",
     icon: Download,
-    validSearchTypes: ["bioset"],
+    validSearchTypes: ["bioset", "genome_sequence"],
     requiresSelection: true,
+  },
+  {
+    id: "copyRows",
+    label: "COPY ROWS",
+    labelClassName: "text-[9px]",
+    icon: Copy,
+    validSearchTypes: ["genome_sequence"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
   },
   {
     id: "copyRows",
@@ -118,6 +129,7 @@ const actionConfig: ActionConfig[] = [
     letter: "G",
     validSearchTypes: [
       "genome",
+      "genome_sequence",
       "genome_feature",
       "protein_feature",
       "protein_structure",
@@ -138,7 +150,20 @@ const actionConfig: ActionConfig[] = [
     id: "group",
     label: "GROUP",
     icon: Group,
-    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
+    validSearchTypes: [
+      "genome",
+      "strain",
+      "genome_feature",
+      "ppi",
+    ],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
+  {
+    id: "features",
+    label: "FEATURES",
+    letter: "F",
+    validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -166,7 +191,15 @@ const actionConfig: ActionConfig[] = [
     id: "fasta",
     label: "FASTA",
     icon: Binary,
-    validSearchTypes: ["genome_feature", "ppi"],
+    validSearchTypes: ["genome_sequence", "genome_feature", "ppi"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
+  {
+    id: "group",
+    label: "GROUP",
+    icon: Group,
+    validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -243,6 +276,14 @@ const actionConfig: ActionConfig[] = [
     label: "BIOSETS",
     icon: List,
     validSearchTypes: ["experiment", "bioset"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
+  {
+    id: "browser",
+    label: "BROWSER",
+    icon: PanelsTopLeft,
+    validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },

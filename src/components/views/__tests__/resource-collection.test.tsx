@@ -100,6 +100,15 @@ vi.mock("@/components/search/search-action-bar", () => ({
         <button
           onClick={() =>
             (props.onAction as ((action: string) => void) | undefined)?.(
+              "features",
+            )
+          }
+        >
+          Features action
+        </button>
+        <button
+          onClick={() =>
+            (props.onAction as ((action: string) => void) | undefined)?.(
               "surveillance",
             )
           }
@@ -330,6 +339,71 @@ describe("ResourceCollection Taxonomy actions", () => {
 
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(screen.getByTestId("taxonomy-services")).toHaveTextContent("234");
+  });
+});
+
+describe("ResourceCollection sequence actions", () => {
+  it("enables selected-row download and the associated Genome destination", async () => {
+    const user = userEvent.setup();
+    const sequenceRow = {
+      sequence_id: "83332.12.con.0001",
+      genome_id: "83332.12",
+      genome_name: "E. coli fixture",
+    };
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      activeId: sequenceRow.sequence_id,
+      detail: sequenceRow,
+      rows: [sequenceRow],
+      selection: { [sequenceRow.sequence_id]: true },
+      selectedIds: [sequenceRow.sequence_id],
+    });
+    const selected = vi.fn(() => Promise.resolve({ rows: [sequenceRow] }));
+    const open = vi.fn();
+    vi.stubGlobal("open", open);
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "genome_sequence",
+          label: "Sequences",
+          idField: "sequence_id",
+          columns: [
+            { id: "sequence_id", label: "Sequence ID" },
+            { id: "genome_id", label: "Genome ID" },
+          ],
+          defaultSort: "sequence_id:asc",
+        }}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "sequence_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(actionBarProps.enabledActions).toEqual([
+      "download",
+      "genome",
+      "features",
+    ]);
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    expect(selected).toHaveBeenCalledWith("genome_sequence", {
+      ids: [sequenceRow.sequence_id],
+      fields: ["sequence_id", "genome_id"],
+    });
+    await user.click(screen.getByRole("button", { name: "Genome action" }));
+    await user.click(screen.getByRole("button", { name: "Features action" }));
+    expect(open).toHaveBeenNthCalledWith(
+      1,
+      "/genome/83332.12",
+      "_blank",
+      "noopener,noreferrer",
+    );
+    expect(open).toHaveBeenNthCalledWith(
+      2,
+      "/feature?rql=and(eq(sequence_id%2C83332.12.con.0001)%2Ceq(annotation%2CPATRIC)%2Ceq(feature_type%2CCDS))",
+      "_blank",
+      "noopener,noreferrer",
+    );
   });
 });
 

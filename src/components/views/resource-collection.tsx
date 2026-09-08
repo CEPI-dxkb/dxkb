@@ -33,6 +33,7 @@ import {
   experimentIdFromRow,
   featureHref,
   featureIdFromRow,
+  featureListHref,
   genomeHref,
   genomeIdFromRow,
   genomesHrefFromRow,
@@ -221,6 +222,12 @@ export function ResourceCollection<Row extends DataTableRow>({
       : genomeIdFromRow(displayedDetail);
   const selectedGenomesHref = genomesHrefFromRow(displayedDetail);
   const selectedFeatureId = featureIdFromRow(displayedDetail);
+  const sequenceId = displayedDetail?.sequence_id;
+  const selectedSequenceId =
+    profile.resource === "genome_sequence" &&
+    (typeof sequenceId === "string" || typeof sequenceId === "number")
+      ? String(sequenceId)
+      : "";
   const selectedEpitopeId = epitopeIdFromRow(displayedDetail);
   const selectedExperimentId = experimentIdFromRow(displayedDetail);
   const selectedPdbId = displayedDetail?.pdb_id;
@@ -590,7 +597,9 @@ export function ResourceCollection<Row extends DataTableRow>({
                enabledActions={
                  profile.resource === "taxonomy"
                    ? ["services", "taxonOverview", "genomes", "features"]
-                   : profile.resource === "strain" && selectedGenomesHref
+                   : profile.resource === "genome_sequence"
+                     ? ["download", "genome", "features"]
+                     : profile.resource === "strain" && selectedGenomesHref
                      ? ["genomes"]
                      : profile.resource === "protein_structure" &&
                          selectedStructureHref
@@ -615,12 +624,21 @@ export function ResourceCollection<Row extends DataTableRow>({
                             ? undefined
                             : "A structure accession is required",
                         }
-                      : hasIncompleteBiosetSelection
-                        ? {
-                            biosets:
-                              "Some selected Biosets are not associated with experiments",
-                          }
-                        : undefined
+                       : hasIncompleteBiosetSelection
+                         ? {
+                             biosets:
+                               "Some selected Biosets are not associated with experiments",
+                           }
+                         : profile.resource === "genome_sequence"
+                           ? {
+                               copyRows: "Coming soon...",
+                               services: "Coming soon...",
+                               fasta: "Coming soon...",
+                               group: "Coming soon...",
+                               browser: "Coming soon...",
+                             }
+                           : undefined
+
 
               }
               onAction={(actionId) => {
@@ -655,6 +673,14 @@ export function ResourceCollection<Row extends DataTableRow>({
                 } else if (actionId === "feature" && selectedFeatureId) {
                   window.open(
                     featureHref(selectedFeatureId),
+                    "_blank",
+                    "noopener,noreferrer",
+                  );
+                } else if (actionId === "features" && selectedSequenceId) {
+                  window.open(
+                    featureListHref({
+                      rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
+                    }),
                     "_blank",
                     "noopener,noreferrer",
                   );

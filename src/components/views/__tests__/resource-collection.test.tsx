@@ -43,9 +43,11 @@ vi.mock("@/contexts/workspace-repository-context", () => ({
     appendToIdGroup: vi.fn(),
   }),
 }));
-vi.mock("../strain-copy-dialog", () => ({ StrainCopyDialog: () => null }));
-vi.mock("../strain-service-chooser", () => ({
-  StrainServiceChooser: () => null,
+vi.mock("../collection-copy-dialog", () => ({
+  CollectionCopyDialog: () => null,
+}));
+vi.mock("../selection-service-chooser", () => ({
+  SelectionServiceChooser: () => null,
 }));
 vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
   SelectionToGroupDialog: () => null,
@@ -552,6 +554,36 @@ describe("ResourceCollection Genome integration contracts", () => {
       "noopener,noreferrer",
     );
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("enables the shared Genome selection actions and resolves genome IDs from the rows", async () => {
+    const user = userEvent.setup();
+    const selected = vi.fn(() =>
+      Promise.resolve({ rows: [{ genome_id: "83332.12" }] }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      enabledActions: ["copyRows", "services", "group"],
+      disabledActions: undefined,
+    });
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("genome", {
+        ids: ["83332.12"],
+        fields: ["genome_id"],
+      });
+    });
   });
 
   it("enables the Strain Genomes action and opens its canonical Genome list in the same tab", async () => {

@@ -11,21 +11,31 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export type StrainCopyColumnMode = "all" | "visible";
+export type CopyColumnMode = "all" | "visible";
 
-interface StrainCopyDialogProps {
+interface CollectionCopyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Plural collection label, e.g. "Strains" or "Genomes". */
+  label: string;
   selectedCount: number;
   onCopy: (
-    columnMode: StrainCopyColumnMode,
+    columnMode: CopyColumnMode,
     includeHeaders: boolean,
   ) => Promise<void>;
 }
 
 const copyChoices = [
-  { label: "All Columns (with headers)", columnMode: "all", includeHeaders: true },
-  { label: "All Columns (without headers)", columnMode: "all", includeHeaders: false },
+  {
+    label: "All Columns (with headers)",
+    columnMode: "all",
+    includeHeaders: true,
+  },
+  {
+    label: "All Columns (without headers)",
+    columnMode: "all",
+    includeHeaders: false,
+  },
   {
     label: "Selected Columns (with headers)",
     columnMode: "visible",
@@ -38,12 +48,13 @@ const copyChoices = [
   },
 ] as const;
 
-export function StrainCopyDialog({
+export function CollectionCopyDialog({
   open,
   onOpenChange,
+  label,
   selectedCount,
   onCopy,
-}: StrainCopyDialogProps) {
+}: CollectionCopyDialogProps) {
   const [copyingChoice, setCopyingChoice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +66,9 @@ export function StrainCopyDialog({
       onOpenChange(false);
     } catch (copyError) {
       setError(
-        copyError instanceof Error ? copyError.message : "Unable to copy selected strains",
+        copyError instanceof Error
+          ? copyError.message
+          : `Unable to copy selected ${label.toLowerCase()}`,
       );
     } finally {
       setCopyingChoice(null);
@@ -66,10 +79,12 @@ export function StrainCopyDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Copy selected Strains ({selectedCount.toLocaleString()})</DialogTitle>
+          <DialogTitle>
+            Copy selected {label} ({selectedCount.toLocaleString()})
+          </DialogTitle>
           <DialogDescription>
-            Copy the selected rows as tab-separated values. Selected Columns means
-            columns currently visible in the table.
+            Copy the selected rows as tab-separated values. Selected Columns
+            means columns currently visible in the table.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
@@ -84,7 +99,7 @@ export function StrainCopyDialog({
             </Button>
           ))}
         </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? <p className="text-destructive text-sm">{error}</p> : null}
         <DialogFooter showCloseButton />
       </DialogContent>
     </Dialog>

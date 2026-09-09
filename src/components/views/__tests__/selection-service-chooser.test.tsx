@@ -12,19 +12,20 @@ vi.mock("@/contexts/workspace-repository-context", () => ({
 }));
 vi.mock("@/lib/rerun-utility", () => ({ rerunJob: mocks.rerunJob }));
 
-import { StrainServiceChooser } from "../strain-service-chooser";
+import { SelectionServiceChooser } from "../selection-service-chooser";
 
 const genomeIds = ["641501.3", "641501.4"];
 const groupPath = "/alice@bvbrc/home/._tmp_groups/tmp_genome_group_test-uuid";
 
 function renderChooser(
   onOpenChange = vi.fn(),
-  overrides: Partial<ComponentProps<typeof StrainServiceChooser>> = {},
+  overrides: Partial<ComponentProps<typeof SelectionServiceChooser>> = {},
 ) {
   render(
-    <StrainServiceChooser
+    <SelectionServiceChooser
       open
       onOpenChange={onOpenChange}
+      label="Strains"
       genomeIds={genomeIds}
       workspaceUsername="alice@bvbrc"
       {...overrides}
@@ -33,7 +34,7 @@ function renderChooser(
   return onOpenChange;
 }
 
-describe("StrainServiceChooser", () => {
+describe("SelectionServiceChooser", () => {
   beforeEach(() => {
     vi.stubGlobal("crypto", { randomUUID: () => "test-uuid" });
     mocks.createIdGroup.mockReset().mockResolvedValue(undefined);

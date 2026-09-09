@@ -1,25 +1,14 @@
-export const strainCopyMaxRows = 5_000;
-export const strainServicesMaxRows = 100;
-export const strainGenomesMaxRows = 10_000;
-export const strainGroupMaxRows = 10_000;
-export const strainGenomesMaxUrlLength = 8_000;
+import { idsFromRows } from "@/lib/views/collection-selection";
 
+/**
+ * Collect unique Genome IDs from Strain rows. `genome_ids` is a multi-valued field,
+ * so a scalar value is treated as malformed and ignored.
+ */
 export function genomeIdsFromStrains(
   rows: readonly Record<string, unknown>[],
 ): string[] {
-  const genomeIds: string[] = [];
-  const seen = new Set<string>();
-
-  for (const row of rows) {
-    if (!Array.isArray(row.genome_ids)) continue;
-    for (const value of row.genome_ids) {
-      if (typeof value !== "string" && typeof value !== "number") continue;
-      const genomeId = String(value).trim();
-      if (!genomeId || seen.has(genomeId)) continue;
-      seen.add(genomeId);
-      genomeIds.push(genomeId);
-    }
-  }
-
-  return genomeIds;
+  return idsFromRows(
+    rows.filter((row) => Array.isArray(row.genome_ids)),
+    "genome_ids",
+  );
 }

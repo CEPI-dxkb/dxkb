@@ -11,7 +11,11 @@ import {
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
-import { StrainCollectionActions } from "./strain-collection-actions";
+import {
+  CollectionSelectionActions,
+  genomeSelectionActionIds,
+  strainSelectionActionIds,
+} from "./collection-selection-actions";
 import {
   DataTable,
   type DataTableColumn,
@@ -86,8 +90,31 @@ const enabledActionsByResource: Partial<
 > = {
   taxonomy: taxonomyActionIds,
   genome_sequence: ["download", "genome", "features"],
-  // Strain's list lives with StrainCollectionActions, which owns its action bar.
+  // Strain and Genome lists live with CollectionSelectionActions, which owns their bars.
 };
+
+/** Resources whose selection actions resolve to a set of Genome IDs. */
+const selectionActionsConfigByResource = {
+  strain: {
+    searchType: "strain",
+    actionIds: strainSelectionActionIds,
+    genomeIdField: "genome_ids",
+  },
+  genome: {
+    searchType: "genome",
+    actionIds: genomeSelectionActionIds,
+    genomeIdField: "genome_id",
+  },
+} as const satisfies Partial<
+  Record<
+    DataResource,
+    {
+      searchType: "strain" | "genome";
+      actionIds: readonly SearchActionId[];
+      genomeIdField: string;
+    }
+  >
+>;
 
 function combinePredicates(...predicates: (string | undefined)[]) {
   const active = predicates.filter((predicate): predicate is string =>
@@ -288,6 +315,13 @@ export function ResourceCollection<Row extends DataTableRow>({
       ? collection.total
       : collection.selectedIds.length;
 
+  const selectionActionsConfig =
+    profile.resource in selectionActionsConfigByResource
+      ? selectionActionsConfigByResource[
+          profile.resource as keyof typeof selectionActionsConfigByResource
+        ]
+      : undefined;
+
   const resolveActionRows = async (
     fields: readonly string[],
     maxRows: number,
@@ -483,6 +517,64 @@ export function ResourceCollection<Row extends DataTableRow>({
     }
   };
 
+  /** Dispatch for action-bar entries backed by the current selection. */
+  const dispatchAction = (actionId: SearchActionId) => {
+    if (
+      profile.resource === "taxonomy" &&
+      taxonomyActionIds.includes(actionId as (typeof taxonomyActionIds)[number])
+    ) {
+      void runTaxonomyAction(actionId);
+    } else if (actionId === "download") {
+      void exportRows(
+        "csv",
+        displayedSelectedIds,
+        null,
+        collection.isAllPagesSelected,
+      );
+    } else if (actionId === "biosets" && hasBiosetSelection) {
+      void openBiosetResults();
+    } else if (actionId === "genome" && selectedGenomeId) {
+      window.open(
+        genomeHref(selectedGenomeId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "feature" && selectedFeatureId) {
+      window.open(
+        featureHref(selectedFeatureId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "features" && selectedSequenceId) {
+      window.open(
+        featureListHref({
+          rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
+        }),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "structure" && selectedStructureHref) {
+      window.open(selectedStructureHref, "_blank", "noopener,noreferrer");
+    } else if (actionId === "epitope" && selectedEpitopeId) {
+      window.open(
+        epitopeHref(selectedEpitopeId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "experiment" && selectedExperimentId) {
+      window.open(
+        experimentHref(selectedExperimentId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (
+      (actionId === "surveillance" || actionId === "serology") &&
+      selectedMemberHref
+    ) {
+      window.open(selectedMemberHref, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const detailContent = (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="bg-background text-foreground min-h-0 flex-1 overflow-y-auto shadow-md">
@@ -632,8 +724,12 @@ export function ResourceCollection<Row extends DataTableRow>({
                 collection.selectedIds.length > 0
           }
           actionBar={
-            profile.resource === "strain" ? (
-              <StrainCollectionActions
+            selectionActionsConfig ? (
+              <CollectionSelectionActions
+                searchType={selectionActionsConfig.searchType}
+                label={profile.label}
+                actionIds={selectionActionsConfig.actionIds}
+                genomeIdField={selectionActionsConfig.genomeIdField}
                 selectedCount={selectedActionCount}
                 guideUrl={profile.guideUrl}
                 hasNoAssociatedGenomes={knownSingleStrainHasNoGenomes}
@@ -641,6 +737,7 @@ export function ResourceCollection<Row extends DataTableRow>({
                 columnVisibility={columnVisibility}
                 resolveActionRows={resolveActionRows}
                 onError={setActionError}
+                onOtherAction={dispatchAction}
               />
             ) : (
               <SearchActionBar
@@ -683,78 +780,7 @@ export function ResourceCollection<Row extends DataTableRow>({
                         }
                       : undefined
                 }
-                onAction={(actionId) => {
-                  if (
-                    profile.resource === "taxonomy" &&
-                    taxonomyActionIds.includes(
-                      actionId as (typeof taxonomyActionIds)[number],
-                    )
-                  ) {
-                    void runTaxonomyAction(actionId);
-                  } else if (actionId === "download") {
-                    void exportRows(
-                      "csv",
-                      displayedSelectedIds,
-                      null,
-                      collection.isAllPagesSelected,
-                    );
-                  } else if (actionId === "biosets" && hasBiosetSelection) {
-                    void openBiosetResults();
-                  } else if (actionId === "genome" && selectedGenomeId) {
-                    window.open(
-                      genomeHref(selectedGenomeId),
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  } else if (actionId === "feature" && selectedFeatureId) {
-                    window.open(
-                      featureHref(selectedFeatureId),
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  } else if (actionId === "features" && selectedSequenceId) {
-                    window.open(
-                      featureListHref({
-                        rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
-                      }),
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  } else if (
-                    actionId === "structure" &&
-                    selectedStructureHref
-                  ) {
-                    window.open(
-                      selectedStructureHref,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  } else if (actionId === "epitope" && selectedEpitopeId) {
-                    window.open(
-                      epitopeHref(selectedEpitopeId),
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  } else if (
-                    actionId === "experiment" &&
-                    selectedExperimentId
-                  ) {
-                    window.open(
-                      experimentHref(selectedExperimentId),
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  } else if (
-                    (actionId === "surveillance" || actionId === "serology") &&
-                    selectedMemberHref
-                  ) {
-                    window.open(
-                      selectedMemberHref,
-                      "_blank",
-                      "noopener,noreferrer",
-                    );
-                  }
-                }}
+                onAction={dispatchAction}
               />
             )
           }

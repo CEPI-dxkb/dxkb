@@ -39,11 +39,11 @@ vi.mock("@/contexts/workspace-repository-context", () => ({
     appendToIdGroup: vi.fn(),
   }),
 }));
-vi.mock("@/components/views/strain-copy-dialog", () => ({
-  StrainCopyDialog: () => null,
+vi.mock("@/components/views/collection-copy-dialog", () => ({
+  CollectionCopyDialog: () => null,
 }));
-vi.mock("@/components/views/strain-service-chooser", () => ({
-  StrainServiceChooser: () => null,
+vi.mock("@/components/views/selection-service-chooser", () => ({
+  SelectionServiceChooser: () => null,
 }));
 vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
   SelectionToGroupDialog: () => null,

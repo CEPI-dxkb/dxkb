@@ -13,9 +13,11 @@ import {
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { rerunJob } from "@/lib/rerun-utility";
 
-interface StrainServiceChooserProps {
+interface SelectionServiceChooserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Plural label of the collection the selection came from, e.g. "Strains". */
+  label: string;
   genomeIds: readonly string[];
   workspaceUsername?: string;
   onRequireAuthentication?: (serviceHref: string) => void;
@@ -51,13 +53,14 @@ const serviceOptions: readonly ServiceOption[] = [
   },
 ];
 
-export function StrainServiceChooser({
+export function SelectionServiceChooser({
   open,
   onOpenChange,
+  label,
   genomeIds,
   workspaceUsername,
   onRequireAuthentication,
-}: StrainServiceChooserProps) {
+}: SelectionServiceChooserProps) {
   const repository = useWorkspaceRepository("authenticated");
   const [pendingService, setPendingService] = useState<ServiceChoice | null>(
     null,
@@ -142,12 +145,11 @@ export function StrainServiceChooser({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Use selected Strains in a service</DialogTitle>
+          <DialogTitle>Use selected {label} in a service</DialogTitle>
           <DialogDescription>
             Open a supported service with {genomeIds.length.toLocaleString()}{" "}
             genome
-            {genomeIds.length === 1 ? "" : "s"} associated with the selected
-            strains.
+            {genomeIds.length === 1 ? "" : "s"} from the current selection.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">

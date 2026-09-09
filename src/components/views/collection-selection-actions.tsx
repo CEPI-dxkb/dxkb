@@ -18,33 +18,51 @@ import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-ke
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 import { genomesHrefFromIds } from "@/lib/views/hrefs";
 import {
-  genomeIdsFromStrains,
-  strainCopyMaxRows,
-  strainGenomesMaxRows,
-  strainGenomesMaxUrlLength,
-  strainGroupMaxRows,
-  strainServicesMaxRows,
-} from "@/lib/strain-view";
+  idsFromRows,
+  selectionCopyMaxRows,
+  selectionGenomesMaxRows,
+  selectionGenomesMaxUrlLength,
+  selectionGroupMaxRows,
+  selectionServicesMaxRows,
+} from "@/lib/views/collection-selection";
 import { serializeResourceRows } from "./resource-export";
 import {
-  StrainCopyDialog,
-  type StrainCopyColumnMode,
-} from "./strain-copy-dialog";
-import { StrainServiceChooser } from "./strain-service-chooser";
+  CollectionCopyDialog,
+  type CopyColumnMode,
+} from "./collection-copy-dialog";
+import { SelectionServiceChooser } from "./selection-service-chooser";
 
 /** Actions the Strain collection owns. Visibility and dispatch read the same list. */
-export const strainActionIds = [
+export const strainSelectionActionIds = [
   "copyRows",
   "services",
   "genomes",
   "group",
 ] as const satisfies readonly SearchActionId[];
 
-interface StrainCollectionActionsProps {
+/**
+ * Actions the Genome collection owns. `genomes` is absent because the rows already
+ * are the genome list, and `genome` stays with ResourceCollection's member dispatch.
+ */
+export const genomeSelectionActionIds = [
+  "copyRows",
+  "services",
+  "group",
+] as const satisfies readonly SearchActionId[];
+
+interface CollectionSelectionActionsProps {
+  /** Drives which SearchActionBar entries are in scope for this resource. */
+  searchType: "strain" | "genome";
+  /** Plural collection label, e.g. "Strains" or "Genomes". */
+  label: string;
+  /** The subset of actions this component dispatches itself. */
+  actionIds: readonly SearchActionId[];
+  /** Row field the selection's Genome IDs come from. */
+  genomeIdField: string;
   selectedCount: number;
   guideUrl?: string;
-  /** The one selected strain is known to have no genomes, so every action is a dead end. */
-  hasNoAssociatedGenomes: boolean;
+  /** The one selected row is known to have no genomes, so every action is a dead end. */
+  hasNoAssociatedGenomes?: boolean;
   columns: readonly DataTableColumn[];
   columnVisibility: Record<string, boolean>;
   /** Fetch the selected rows (or every matching row) with the supplied fields. */
@@ -54,22 +72,30 @@ interface StrainCollectionActionsProps {
     actionLabel: string,
   ) => Promise<Record<string, unknown>[]>;
   onError: (message: string | null) => void;
+  /** Dispatch for bar entries this component does not own (e.g. GENOME). */
+  onOtherAction?: (actionId: SearchActionId) => void;
 }
 
 /**
- * The Strain collection's action bar and its three dialogs. Kept out of
- * ResourceCollection so the auth, workspace-repository and query-client hooks this
- * behaviour needs mount only on the one resource that uses them.
+ * The action bar and dialogs shared by every collection whose row selection resolves
+ * to a set of Genome IDs (Strains via `genome_ids`, Genomes via `genome_id`). Kept out
+ * of ResourceCollection so the auth, workspace-repository and query-client hooks this
+ * behaviour needs mount only on the resources that use them.
  */
-export function StrainCollectionActions({
+export function CollectionSelectionActions({
+  searchType,
+  label,
+  actionIds,
+  genomeIdField,
   selectedCount,
   guideUrl,
-  hasNoAssociatedGenomes,
+  hasNoAssociatedGenomes = false,
   columns,
   columnVisibility,
   resolveActionRows,
   onError,
-}: StrainCollectionActionsProps) {
+  onOtherAction,
+}: CollectionSelectionActionsProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -83,10 +109,12 @@ export function StrainCollectionActions({
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
+  // "Strains" -> "Strain". Only used for the copied-rows toast.
+  const singularLabel = label.replace(/s$/, "");
 
   const resolveGenomeIds = async (maxRows: number, actionLabel: string) => {
-    const rows = await resolveActionRows(["genome_ids"], maxRows, actionLabel);
-    const ids = genomeIdsFromStrains(rows);
+    const rows = await resolveActionRows([genomeIdField], maxRows, actionLabel);
+    const ids = idsFromRows(rows, genomeIdField);
     if (ids.length === 0) {
       throw new Error("No genomes are associated with this selection.");
     }
@@ -94,6 +122,10 @@ export function StrainCollectionActions({
   };
 
   const runAction = async (actionId: SearchActionId) => {
+    if (!actionIds.includes(actionId)) {
+      onOtherAction?.(actionId);
+      return;
+    }
     onError(null);
     if (actionId === "copyRows") {
       setIsCopyOpen(true);
@@ -103,19 +135,21 @@ export function StrainCollectionActions({
     try {
       if (actionId === "genomes") {
         const href = genomesHrefFromIds(
-          await resolveGenomeIds(strainGenomesMaxRows, "Genomes"),
+          await resolveGenomeIds(selectionGenomesMaxRows, "Genomes"),
         );
-        if (!href || href.length > strainGenomesMaxUrlLength) {
+        if (!href || href.length > selectionGenomesMaxUrlLength) {
           throw new Error(
             "This selection contains too many genome IDs to open safely. Narrow the selection or create a Genome Group.",
           );
         }
         router.push(href);
       } else if (actionId === "services") {
-        setGenomeIds(await resolveGenomeIds(strainServicesMaxRows, "Services"));
+        setGenomeIds(
+          await resolveGenomeIds(selectionServicesMaxRows, "Services"),
+        );
         setIsServiceOpen(true);
       } else if (actionId === "group" && isAuthenticated) {
-        setGenomeIds(await resolveGenomeIds(strainGroupMaxRows, "Group"));
+        setGenomeIds(await resolveGenomeIds(selectionGroupMaxRows, "Group"));
         setIsGroupOpen(true);
       }
     } catch (error) {
@@ -126,30 +160,31 @@ export function StrainCollectionActions({
   };
 
   const copySelectedRows = async (
-    columnMode: StrainCopyColumnMode,
+    columnMode: CopyColumnMode,
     includeHeaders: boolean,
   ) => {
     const fields = columns
       .filter((column) => columnMode === "all" || columnVisibility[column.id])
       .map((column) => column.id);
-    const rows = await resolveActionRows(fields, strainCopyMaxRows, "Copy");
+    const rows = await resolveActionRows(fields, selectionCopyMaxRows, "Copy");
     await navigator.clipboard.writeText(
       serializeResourceRows(rows, columns, fields, "txt", includeHeaders, ";"),
     );
     toast.success(
-      `Copied ${rows.length.toLocaleString()} selected ${rows.length === 1 ? "strain" : "strains"}`,
+      `Copied ${rows.length.toLocaleString()} selected ${(rows.length === 1 ? singularLabel : label).toLowerCase()}`,
     );
   };
 
   const redirect = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const noGenomesReason = `No genomes are associated with this ${singularLabel.toLowerCase()}`;
 
   return (
     <>
       <SearchActionBar
         selectedCount={selectedCount}
-        searchType="strain"
+        searchType={searchType}
         guideUrl={guideUrl}
-        enabledActions={[...strainActionIds]}
+        enabledActions={[...actionIds]}
         loadingActionIds={loadingActionIds}
         actionPopovers={
           isAuthenticated
@@ -180,9 +215,9 @@ export function StrainCollectionActions({
         disabledActions={
           hasNoAssociatedGenomes
             ? {
-                genomes: "No genomes are associated with this strain",
-                services: "No genomes are associated with this strain",
-                group: "No genomes are associated with this strain",
+                genomes: noGenomesReason,
+                services: noGenomesReason,
+                group: noGenomesReason,
               }
             : undefined
         }
@@ -190,15 +225,17 @@ export function StrainCollectionActions({
           void runAction(actionId);
         }}
       />
-      <StrainCopyDialog
+      <CollectionCopyDialog
         open={isCopyOpen}
         onOpenChange={setIsCopyOpen}
+        label={label}
         selectedCount={selectedCount}
         onCopy={copySelectedRows}
       />
-      <StrainServiceChooser
+      <SelectionServiceChooser
         open={isServiceOpen}
         onOpenChange={setIsServiceOpen}
+        label={label}
         genomeIds={genomeIds}
         workspaceUsername={user ? workspaceUsername(user) : undefined}
         onRequireAuthentication={(serviceHref) => {

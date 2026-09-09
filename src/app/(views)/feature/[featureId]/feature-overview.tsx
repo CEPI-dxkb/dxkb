@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { FeatureViewRecord } from "@/lib/feature-view";
 import { genomeHref, taxonomyHref } from "@/lib/views/hrefs";
+import { isTaxonId } from "@/lib/taxonomy-view";
 
 interface FieldProps {
   label: string;
@@ -72,7 +73,7 @@ export function FeatureOverview({ feature }: FeatureOverviewProps) {
     <div className="grid gap-4 pb-6 xl:grid-cols-2">
       <MetadataCard title="Genome and source">
         <LinkField label="Genome" value={feature.genome_name ?? feature.genome_id} href={feature.genome_id ? genomeHref(feature.genome_id) : undefined} />
-        <LinkField label="Taxon ID" value={feature.taxon_id} href={feature.taxon_id != null ? taxonomyHref(feature.taxon_id) : undefined} />
+        <LinkField label="Taxon ID" value={feature.taxon_id} href={isTaxonId(String(feature.taxon_id)) ? taxonomyHref(String(feature.taxon_id)) : undefined} />
         <Field label="Annotation" value={feature.annotation} />
         <Field label="Feature type" value={feature.feature_type} />
       </MetadataCard>

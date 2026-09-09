@@ -29,6 +29,18 @@ export interface CollectionStateUpdate<Sort extends string = string> {
   sort?: Sort;
 }
 
+/**
+ * Convert a `field:direction` collection sort into the data-API sort argument.
+ * `"unsorted"` means "let the endpoint decide", so it maps to undefined.
+ */
+export function dataSort(
+  sort: string,
+): { field: string; direction: "asc" | "desc" } | undefined {
+  if (sort === "unsorted") return undefined;
+  const [field, direction] = sort.split(":");
+  return { field, direction: direction === "desc" ? "desc" : "asc" };
+}
+
 const managedParams = new Set(["keyword", "refine", "rql", "page", "sort"]);
 
 function optionalValue(

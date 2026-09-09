@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Popover,
   PopoverContent,
@@ -15,7 +14,6 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import {
   BookOpen,
   Copy,
@@ -55,7 +53,14 @@ export type SearchActionId =
   | "browser";
 
 interface ActionConfig {
+  /**
+   * Dispatch value and consumer-map key. Several entries share an id with disjoint
+   * validSearchTypes (COPY vs COPY ROWS, FEATURES vs FEATURE); React keys come from
+   * configKey instead so those entries can never collide.
+   */
   id: SearchActionId;
+  /** Unique per entry. Defaults to `id` — only set where an id repeats. */
+  configKey?: string;
   label: string;
   labelClassName?: string;
   icon?: LucideIcon;
@@ -98,6 +103,7 @@ const actionConfig: ActionConfig[] = [
   },
   {
     id: "copyRows",
+    configKey: "copyRows:genome_sequence",
     label: "COPY ROWS",
     labelClassName: "text-[9px]",
     icon: Copy,
@@ -164,6 +170,7 @@ const actionConfig: ActionConfig[] = [
   },
   {
     id: "features",
+    configKey: "features:genome_sequence",
     label: "FEATURES",
     letter: "F",
     validSearchTypes: ["genome_sequence"],
@@ -200,6 +207,7 @@ const actionConfig: ActionConfig[] = [
   },
   {
     id: "group",
+    configKey: "group:genome_sequence",
     label: "GROUP",
     icon: Group,
     validSearchTypes: ["genome_sequence"],
@@ -300,7 +308,7 @@ export interface SearchActionBarProps {
   // /search and the taxon-view, which disable different subsets of the same
   // taxonomy actions.
   disabledActions?: Partial<Record<SearchActionId, string>>;
-  enabledActions?: SearchActionId[];
+  enabledActions?: readonly SearchActionId[];
   loadingActionIds?: SearchActionId[];
   actionPopovers?: Partial<Record<SearchActionId, ReactNode>>;
   onAction?: (actionId: SearchActionId) => void;
@@ -351,6 +359,7 @@ export function SearchActionBar({
     <TooltipProvider>
       <div className="flex flex-col gap-1">
         {visibleActions.map((action) => {
+          const renderKey = action.configKey ?? action.id;
           const Icon = action.icon;
           const showSpinner = isLoading(action.id);
           const disabled = isDisabled(action);
@@ -382,7 +391,7 @@ export function SearchActionBar({
 
           const buttonEl = (
             <Button
-              key={action.id}
+              key={renderKey}
               variant="secondary"
               className="h-15 w-full flex-col gap-1 font-normal"
               disabled={disabled || showSpinner}
@@ -409,19 +418,16 @@ export function SearchActionBar({
 
           if (popoverContent && !disabled) {
             return (
-              <Popover key={action.id}>
+              <Popover key={renderKey}>
                 <PopoverTrigger
                   render={
-                    <button
-                      type="button"
-                      className={cn(
-                        buttonVariants({ variant: "secondary" }),
-                        "h-15 w-full flex-col gap-1 font-normal",
-                      )}
+                    <Button
+                      variant="secondary"
+                      className="h-15 w-full flex-col gap-1 font-normal"
                       disabled={showSpinner}
                     >
                       {actionContent}
-                    </button>
+                    </Button>
                   }
                 />
                 <PopoverContent side="left" align="center">
@@ -432,7 +438,7 @@ export function SearchActionBar({
           }
 
           return tooltipText && disabled ? (
-            <Tooltip key={action.id}>
+            <Tooltip key={renderKey}>
               <TooltipTrigger
                 render={
                   <span className="inline-flex w-full cursor-not-allowed">

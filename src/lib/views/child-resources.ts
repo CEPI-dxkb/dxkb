@@ -52,6 +52,17 @@ export function taxonomySequenceRql(lineageClause: string): string {
   return `and(eq(genome_id,*),genome(and(${lineageClause},ne(genome_status,Deprecated))))`;
 }
 
+/**
+ * Scope a child resource to every genome matching a Genome collection query, with an
+ * optional extra clause on the child itself.
+ */
+export function genomesChildRql(genomeRql: string, extra?: string): string {
+  const relationship = `genome(${genomeRql})`;
+  return extra
+    ? `and(eq(genome_id,*),${relationship},${extra})`
+    : `and(eq(genome_id,*),${relationship})`;
+}
+
 export function genomeInteractionsRql(genomeId: string): string {
   return `and(${eq("ppi", "genome_id_a", genomeId)},${eq("ppi", "evidence", "experimental")})`;
 }

@@ -11,22 +11,6 @@ export function taxonomyHref(taxonId: number | string): string {
   return `/taxonomy/${encodeURIComponent(id)}`;
 }
 
-/** Canonical Taxonomy collection route. Explicit RQL takes precedence over keyword. */
-export function taxonomyListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  taxonId?: number | string;
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else {
-    if (opts?.keyword) params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-    if (opts?.taxonId != null)
-      params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
-  }
-  return params.length ? `/taxonomy?${params.join("&")}` : "/taxonomy";
-}
-
 /** Return a navigable Genome ID from an API row, if present. */
 export function genomeIdFromRow(
   row: Record<string, unknown> | null,
@@ -51,19 +35,6 @@ export function genomesHrefFromIds(
     .map(escapeRqlValue);
   if (genomeIds.length === 0) return null;
   return genomeListHref({ rql: `in(genome_id,(${genomeIds.join(",")}))` });
-}
-
-/** Return the canonical Genome list for all genome IDs associated with a row. */
-export function genomesHrefFromRow(
-  row: Record<string, unknown> | null,
-): string | null {
-  if (!Array.isArray(row?.genome_ids)) return null;
-  return genomesHrefFromIds(
-    row.genome_ids.filter(
-      (id): id is string | number =>
-        typeof id === "string" || typeof id === "number",
-    ),
-  );
 }
 
 /**
@@ -203,7 +174,8 @@ export function proteinStructureListHref(opts?: {
     if (opts?.genomeId != null)
       params.push(`genome_id=${encodeURIComponent(String(opts.genomeId))}`);
   }
-  if (opts?.page != null) params.push(`page=${encodeURIComponent(String(opts.page))}`);
+  if (opts?.page != null)
+    params.push(`page=${encodeURIComponent(String(opts.page))}`);
   if (opts?.sort) params.push(`sort=${encodeURIComponent(opts.sort)}`);
   return params.length
     ? `/protein-structure?${params.join("&")}`

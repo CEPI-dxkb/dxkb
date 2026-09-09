@@ -36,6 +36,7 @@ import {
   ChevronRight,
   Activity,
   Atom,
+  Binary,
   Blocks,
   Database,
   Dna,
@@ -271,6 +272,7 @@ const searchTypeMenuItems = [
     label: "Phylogeny",
     icon: <Network className="size-4" />,
   },
+  { key: "taxonomy", label: "Taxa", icon: <Binary className="size-4" /> },
   { key: "genome", label: "Genomes", icon: <Dna className="size-4" /> },
   {
     key: "genome_amr",

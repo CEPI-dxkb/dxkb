@@ -35,6 +35,7 @@ import {
   surveillanceIdFromRow,
   taxonomyHref,
 } from "@/lib/views/hrefs";
+import { isTaxonId } from "@/lib/taxonomy-view";
 
 const bvbrcAPI = "https://p3.theseed.org/services/data_api/";
 
@@ -537,8 +538,8 @@ function SearchResultsContent({ query }: { query: string }) {
                           : null;
                       const content = getFormattedContent(doc, dataType);
                       const href =
-                        dataType === "taxonomy" && taxonId != null
-                          ? taxonomyHref(taxonId)
+                        dataType === "taxonomy" && isTaxonId(String(taxonId))
+                          ? taxonomyHref(String(taxonId))
                           : dataType === "genome" && genomeId != null
                           ? genomeHref(genomeId)
                           : dataType === "genome_feature" && featureId

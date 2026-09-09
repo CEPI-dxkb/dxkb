@@ -14,7 +14,6 @@ import {
   genomeIdFromRow,
   genomeListHref,
   genomesHrefFromIds,
-  genomesHrefFromRow,
   proteinStructureHref,
   proteinStructureListHref,
   proteinStructurePathHref,
@@ -26,7 +25,6 @@ import {
   surveillanceIdFromRow,
   surveillanceListHref,
   taxonomyHref,
-  taxonomyListHref,
 } from "../hrefs";
 import { rqlEq } from "../rql";
 
@@ -34,14 +32,8 @@ describe("taxonomyHref", () => {
   it("builds a taxonomy route from a numeric id", () => {
     expect(taxonomyHref(561)).toBe("/taxonomy/561");
   });
-  it("accepts a string id and builds collection links", () => {
+  it("accepts a string id and rejects a non-positive id", () => {
     expect(taxonomyHref("2697049")).toBe("/taxonomy/2697049");
-    expect(taxonomyListHref({ keyword: "Influenza A", taxonId: "10239" })).toBe(
-      "/taxonomy?keyword=Influenza%20A&taxon_id=10239",
-    );
-    expect(taxonomyListHref({ rql: "eq(taxon_rank,species)" })).toBe(
-      "/taxonomy?rql=eq(taxon_rank%2Cspecies)",
-    );
     expect(() => taxonomyHref("0")).toThrow("Invalid Taxon ID");
   });
 });
@@ -69,12 +61,15 @@ describe("Experiment hrefs", () => {
     expect(biosetResultsHref(["00042", "51", "00042"])).toBe(
       "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,51))",
     );
-    expect(experimentListHref({ keyword: "RNA sequencing", taxonId: 561 })).toBe(
-      "/experiment?keyword=RNA%20sequencing&taxon_id=561",
-    );
-    expect(experimentListHref({ keyword: "ignored", rql: "eq(exp_type,Transcript Quantification)" })).toBe(
-      "/experiment?rql=eq(exp_type%2CTranscript%20Quantification)",
-    );
+    expect(
+      experimentListHref({ keyword: "RNA sequencing", taxonId: 561 }),
+    ).toBe("/experiment?keyword=RNA%20sequencing&taxon_id=561");
+    expect(
+      experimentListHref({
+        keyword: "ignored",
+        rql: "eq(exp_type,Transcript Quantification)",
+      }),
+    ).toBe("/experiment?rql=eq(exp_type%2CTranscript%20Quantification)");
   });
 });
 
@@ -200,9 +195,6 @@ describe("Strain hrefs", () => {
       "/genome?rql=in(genome_id%2C(641501.3%2Cid%252Cwith%20spaces))",
     );
     expect(genomesHrefFromIds([])).toBeNull();
-    expect(genomesHrefFromRow({ genome_ids: ["641501.3", "641501.3"] })).toBe(
-      "/genome?rql=in(genome_id%2C(641501.3))",
-    );
   });
 
   it("builds list-only collection links with phrase and taxon filters", () => {
@@ -274,21 +266,19 @@ describe("genomeHref", () => {
   });
 });
 
-describe("genomesHrefFromRow", () => {
-  it("builds a canonical list filtered to unique associated Genome IDs", () => {
-    expect(
-      genomesHrefFromRow({ genome_ids: ["11320.1", "11320.2", "11320.1"] }),
-    ).toBe("/genome?rql=in(genome_id%2C(11320.1%2C11320.2))");
+describe("genomesHrefFromIds", () => {
+  it("builds a canonical list filtered to unique Genome IDs", () => {
+    expect(genomesHrefFromIds(["11320.1", "11320.2", "11320.1"])).toBe(
+      "/genome?rql=in(genome_id%2C(11320.1%2C11320.2))",
+    );
   });
 
-  it("returns null when the row has no associated Genome IDs", () => {
-    expect(genomesHrefFromRow({ genome_ids: [] })).toBeNull();
-    expect(genomesHrefFromRow({})).toBeNull();
-    expect(genomesHrefFromRow(null)).toBeNull();
+  it("returns null when there are no Genome IDs", () => {
+    expect(genomesHrefFromIds([])).toBeNull();
   });
 
   it("escapes RQL-special characters in Genome IDs", () => {
-    const href = genomesHrefFromRow({ genome_ids: ["id,1", "id(2)"] });
+    const href = genomesHrefFromIds(["id,1", "id(2)"]);
     expect(
       new URL(href ?? "", "http://localhost").searchParams.get("rql"),
     ).toBe("in(genome_id,(id%2C1,id%282%29))");

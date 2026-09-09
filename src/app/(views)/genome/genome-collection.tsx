@@ -15,13 +15,28 @@ import {
   EntityViewShell,
   GenomeResourceCollection,
   ResourceChildCollection,
+  type EntityViewTab,
 } from "@/components/views";
 import { genomeBaseRql } from "@/lib/genome-view";
 import { proteinStructureCollectionProfile } from "@/lib/protein-structure-view";
-import { genomeSequenceColumns } from "@/lib/views/child-resources";
+import { genomesChildRql } from "@/lib/views/child-resources";
+import { genomeChildCollections } from "./child-tabs";
 import type { CollectionState } from "@/lib/views/collection-state";
 
-const genomeCollectionTabs = [
+type GenomeCollectionTab =
+  | "overview"
+  | "strains"
+  | "genomes"
+  | "sequences"
+  | "features"
+  | "proteins"
+  | "structures"
+  | "domains"
+  | "epitopes"
+  | "surveillance"
+  | "serology";
+
+const genomeCollectionTabs: readonly EntityViewTab<GenomeCollectionTab>[] = [
   {
     key: "overview",
     label: "Overview",
@@ -64,16 +79,7 @@ const genomeCollectionTabs = [
     enabled: false,
     disabledReason: "Multi-genome serology filtering is not yet available.",
   },
-] as const;
-
-type GenomeCollectionTab = (typeof genomeCollectionTabs)[number]["key"];
-
-function relatedGenomeRql(rql: string, extra?: string) {
-  const relationship = `genome(${rql})`;
-  return extra
-    ? `and(eq(genome_id,*),${relationship},${extra})`
-    : `and(eq(genome_id,*),${relationship})`;
-}
+];
 
 export function GenomeCollection({
   initialState,
@@ -82,11 +88,10 @@ export function GenomeCollection({
 }) {
   const searchParams = useSearchParams();
   const requestedTab = searchParams.get("tab");
-  const activeTab = genomeCollectionTabs.some(
-    (tab) => tab.key === requestedTab && !("enabled" in tab),
-  )
-    ? (requestedTab as GenomeCollectionTab)
-    : "genomes";
+  const activeTab =
+    genomeCollectionTabs.find(
+      (tab) => tab.key === requestedTab && tab.enabled !== false,
+    )?.key ?? "genomes";
   const genomeRql = initialState.rql ?? genomeBaseRql(initialState);
   let content = (
     <GenomeResourceCollection
@@ -98,12 +103,8 @@ export function GenomeCollection({
   if (genomeRql && activeTab === "sequences") {
     content = (
       <ResourceChildCollection
-        resource="genome_sequence"
-        label="Sequences"
-        idField="sequence_id"
-        rql={relatedGenomeRql(genomeRql)}
-        columns={genomeSequenceColumns}
-        defaultSort="sequence_id:asc"
+        {...genomeChildCollections.sequences}
+        rql={genomesChildRql(genomeRql)}
         keywordMode="loaded"
       />
     );
@@ -111,38 +112,35 @@ export function GenomeCollection({
     genomeRql &&
     (activeTab === "features" || activeTab === "proteins")
   ) {
-    const featureRql = relatedGenomeRql(
+    const featureRql = genomesChildRql(
       genomeRql,
       activeTab === "proteins" ? "eq(feature_type,CDS)" : undefined,
     );
     content = (
       <ResourceChildCollection
-        resource="genome_feature"
-        label={activeTab === "proteins" ? "Proteins" : "Features"}
-        idField="feature_id"
+        {...genomeChildCollections[activeTab]}
         rql={featureRql}
-        defaultSort="patric_id:asc"
         keywordMode="loaded"
       />
     );
   } else if (genomeRql && activeTab === "domains") {
     content = (
       <ResourceChildCollection
-        resource="protein_feature"
-        label="Domains and Motifs"
-        idField="id"
-        rql={relatedGenomeRql(genomeRql)}
-        defaultSort="unsorted"
+        {...genomeChildCollections.domains}
+        rql={genomesChildRql(genomeRql)}
         keywordMode="loaded"
       />
     );
   } else if (genomeRql && activeTab === "structures") {
+    // Not ProteinStructureResourceCollection (which the member page uses): that
+    // wrapper owns URL collection state, which would collide with this page's own
+    // rql/page/sort params. ResourceChildCollection keeps the tab state local.
     content = (
       <ResourceChildCollection
         resource="protein_structure"
         label="Protein Structures"
         idField="pdb_id"
-        rql={relatedGenomeRql(genomeRql)}
+        rql={genomesChildRql(genomeRql)}
         columns={proteinStructureCollectionProfile.columns}
         defaultSort="unsorted"
         guideUrl={proteinStructureCollectionProfile.guideUrl}

@@ -1,4 +1,4 @@
-import { escapeRqlValue, friendlyParamsToRql, resolveListQuery, rqlEq, rqlKeyword } from "../rql";
+import { escapeRqlValue, rqlEq, rqlKeyword } from "../rql";
 
 describe("escapeRqlValue", () => {
   it("passes plain alphanumeric values through unchanged", () => {
@@ -18,50 +18,5 @@ describe("rqlEq / rqlKeyword", () => {
   });
   it("builds a keyword clause with an escaped value", () => {
     expect(rqlKeyword("flu)")).toBe("keyword(flu%29)");
-  });
-});
-
-describe("friendlyParamsToRql", () => {
-  it("maps keyword to keyword()", () => {
-    expect(friendlyParamsToRql({ keyword: "influenza" }, ["keyword"])).toBe("keyword(influenza)");
-  });
-  it("maps a scalar field to eq()", () => {
-    expect(friendlyParamsToRql({ taxon_id: "1763" }, ["taxon_id"])).toBe("eq(taxon_id,1763)");
-  });
-  it("composes multiple params with and()", () => {
-    const out = friendlyParamsToRql({ keyword: "flu", taxon_id: "1763" }, ["keyword", "taxon_id"]);
-    expect(out).toBe("and(keyword(flu),eq(taxon_id,1763))");
-  });
-  it("ignores params not in the allow-list", () => {
-    expect(friendlyParamsToRql({ evil: "x", keyword: "flu" }, ["keyword"])).toBe("keyword(flu)");
-  });
-  it("returns empty string when nothing matches", () => {
-    expect(friendlyParamsToRql({}, ["keyword"])).toBe("");
-  });
-});
-
-describe("resolveListQuery", () => {
-  it("prefers explicit rql over friendly params", () => {
-    const out = resolveListQuery({ rql: "eq(public,false)", keyword: "flu" }, ["keyword"]);
-    expect(out).toBe("eq(public,false)");
-  });
-  it("falls back to friendly params when no rql", () => {
-    expect(resolveListQuery({ keyword: "flu" }, ["keyword"])).toBe("keyword(flu)");
-  });
-  it("falls back to ?filter= when no rql= (promoted from legacy hash)", () => {
-    expect(resolveListQuery({ filter: 'eq(feature_type,"CDS")' }, ["keyword"])).toBe('eq(feature_type,"CDS")');
-  });
-  it("ignores ?filter= that is not RQL (FeatureList feature-type token, not an RQL expression)", () => {
-    expect(resolveListQuery({ filter: '"CDS"' }, ["keyword"])).toBe("");
-    expect(resolveListQuery({ filter: "CDS" }, ["keyword"])).toBe("");
-  });
-  it("prefers rql= over filter=", () => {
-    expect(resolveListQuery({ rql: "eq(public,false)", filter: "eq(genus,Foo)" }, ["keyword"])).toBe("eq(public,false)");
-  });
-  it("takes the first value when a param repeats", () => {
-    expect(resolveListQuery({ keyword: ["a", "b"] }, ["keyword"])).toBe("keyword(a)");
-  });
-  it("returns empty string for empty input", () => {
-    expect(resolveListQuery({}, ["keyword"])).toBe("");
   });
 });

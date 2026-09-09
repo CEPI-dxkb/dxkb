@@ -1,9 +1,16 @@
 import type { DataTableColumn } from "@/components/shared/data-table";
 
-function exportValue(value: unknown, format: "csv" | "txt"): string {
+/** Download output keeps the legacy "; " separator; strain copy asks for ";". */
+const defaultArraySeparator = "; ";
+
+function exportValue(
+  value: unknown,
+  format: "csv" | "txt",
+  arraySeparator: string,
+): string {
   if (value == null) return "";
   let serialized: string;
-  if (Array.isArray(value)) serialized = value.map(String).join(";");
+  if (Array.isArray(value)) serialized = value.map(String).join(arraySeparator);
   else if (typeof value === "object") serialized = JSON.stringify(value);
   else if (
     typeof value === "string" ||
@@ -17,7 +24,7 @@ function exportValue(value: unknown, format: "csv" | "txt"): string {
   const cleaned = serialized.replace(/\r\n|\n|\r/g, " ");
   if (format === "txt") return cleaned.replaceAll("\t", " ");
   const safe = /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
-  return `"${safe.replaceAll("\"", "\"\"")}"`;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 export function serializeResourceRows(
@@ -26,6 +33,7 @@ export function serializeResourceRows(
   fields: readonly string[],
   format: "csv" | "txt",
   includeHeaders = true,
+  arraySeparator = defaultArraySeparator,
 ): string {
   const separator = format === "csv" ? "," : "\t";
   const headers = fields.map(
@@ -34,7 +42,9 @@ export function serializeResourceRows(
   return [
     ...(includeHeaders ? [headers.join(separator)] : []),
     ...rows.map((row) =>
-      fields.map((field) => exportValue(row[field], format)).join(separator),
+      fields
+        .map((field) => exportValue(row[field], format, arraySeparator))
+        .join(separator),
     ),
   ].join("\n");
 }

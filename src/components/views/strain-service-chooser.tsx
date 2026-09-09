@@ -12,19 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { rerunJob } from "@/lib/rerun-utility";
-import type { WorkspaceRepository } from "@/lib/services/workspace/workspace-repository";
-
-interface CreateIdGroupInput {
-  path: string;
-  name: string;
-  type: "genome_group";
-  idField: "genome_id";
-  ids: string[];
-}
-
-type IdGroupWorkspaceRepository = WorkspaceRepository & {
-  createIdGroup(input: CreateIdGroupInput): Promise<void>;
-};
 
 interface StrainServiceChooserProps {
   open: boolean;
@@ -36,11 +23,33 @@ interface StrainServiceChooserProps {
 
 type ServiceChoice = "blast" | "viral-tree" | "viral-msa";
 
-const serviceHrefs: Record<ServiceChoice, string> = {
-  blast: "/services/blast",
-  "viral-tree": "/services/viral-genome-tree",
-  "viral-msa": "/services/msa-snp-analysis",
-};
+interface ServiceOption {
+  choice: ServiceChoice;
+  href: string;
+  label: string;
+  pendingLabel: string;
+}
+
+const serviceOptions: readonly ServiceOption[] = [
+  {
+    choice: "blast",
+    href: "/services/blast",
+    label: "BLAST",
+    pendingLabel: "Opening BLAST...",
+  },
+  {
+    choice: "viral-tree",
+    href: "/services/viral-genome-tree",
+    label: "Viral Genome Tree",
+    pendingLabel: "Opening Viral Genome Tree...",
+  },
+  {
+    choice: "viral-msa",
+    href: "/services/msa-snp-analysis",
+    label: "Viral MSA",
+    pendingLabel: "Opening Viral MSA...",
+  },
+];
 
 export function StrainServiceChooser({
   open,
@@ -49,9 +58,7 @@ export function StrainServiceChooser({
   workspaceUsername,
   onRequireAuthentication,
 }: StrainServiceChooserProps) {
-  const repository = useWorkspaceRepository(
-    "authenticated",
-  ) as IdGroupWorkspaceRepository;
+  const repository = useWorkspaceRepository("authenticated");
   const [pendingService, setPendingService] = useState<ServiceChoice | null>(
     null,
   );
@@ -71,10 +78,10 @@ export function StrainServiceChooser({
     return `${directoryPath}/${groupName}`;
   };
 
-  const runService = async (service: ServiceChoice) => {
+  const runService = async ({ choice: service, href }: ServiceOption) => {
     if (!workspaceUsername) {
       onOpenChange(false);
-      onRequireAuthentication?.(serviceHrefs[service]);
+      onRequireAuthentication?.(href);
       return;
     }
     setPendingService(service);
@@ -144,25 +151,17 @@ export function StrainServiceChooser({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <Button disabled={disabled} onClick={() => void runService("blast")}>
-            {pendingService === "blast" ? "Opening BLAST..." : "BLAST"}
-          </Button>
-          <Button
-            disabled={disabled}
-            onClick={() => void runService("viral-tree")}
-          >
-            {pendingService === "viral-tree"
-              ? "Opening Viral Genome Tree..."
-              : "Viral Genome Tree"}
-          </Button>
-          <Button
-            disabled={disabled}
-            onClick={() => void runService("viral-msa")}
-          >
-            {pendingService === "viral-msa"
-              ? "Opening Viral MSA..."
-              : "Viral MSA"}
-          </Button>
+          {serviceOptions.map((option) => (
+            <Button
+              key={option.choice}
+              disabled={disabled}
+              onClick={() => void runService(option)}
+            >
+              {pendingService === option.choice
+                ? option.pendingLabel
+                : option.label}
+            </Button>
+          ))}
         </div>
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
         <DialogFooter showCloseButton />

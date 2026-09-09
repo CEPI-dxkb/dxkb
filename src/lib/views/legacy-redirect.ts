@@ -6,11 +6,61 @@ export interface MappedPath {
 }
 
 /**
+ * Rename an RQL field, matching only where the token sits in field position —
+ * preceded by "(", ",", "+" or "-", followed by "," or ")", and outside a quoted
+ * value. A blunt replaceAll over the assembled RQL would also rewrite the token
+ * inside values, turning eq(description,%22taxon_lineage_ids%22) into a different
+ * query. Legacy query strings arrive raw, so quotes appear as either " or %22.
+ */
+function renameRqlField(rql: string, from: string, to: string): string {
+  let result = "";
+  let index = 0;
+  let quote: '"' | "%22" | null = null;
+  while (index < rql.length) {
+    if (quote) {
+      if (rql.startsWith(quote, index)) {
+        result += quote;
+        index += quote.length;
+        quote = null;
+      } else {
+        result += rql[index];
+        index += 1;
+      }
+      continue;
+    }
+    if (rql[index] === '"' || rql.startsWith("%22", index)) {
+      quote = rql[index] === '"' ? '"' : "%22";
+      result += quote;
+      index += quote.length;
+      continue;
+    }
+    const previous = index === 0 ? "(" : rql[index - 1];
+    const nextIndex = index + from.length;
+    if (
+      rql.startsWith(from, index) &&
+      "(,+-".includes(previous) &&
+      nextIndex < rql.length &&
+      ",)".includes(rql[nextIndex])
+    ) {
+      result += to;
+      index += from.length;
+      continue;
+    }
+    result += rql[index];
+    index += 1;
+  }
+  return result;
+}
+
+/**
  * Map a legacy BV-BRC /view/* request (path + raw query string, no leading "?")
  * to the new schema. Returns null if the path is not a mappable /view/* URL.
  * Hash is intentionally NOT handled here (the server cannot read it).
  */
-export function mapLegacyViewPath(pathname: string, rawSearch: string): MappedPath | null {
+export function mapLegacyViewPath(
+  pathname: string,
+  rawSearch: string,
+): MappedPath | null {
   const parts = pathname.split("/").filter(Boolean); // ["view", "Genome", "59201.7581"]
   if (parts.length < 2 || parts[0] !== "view") return null;
 
@@ -43,9 +93,11 @@ export function mapLegacyViewPath(pathname: string, rawSearch: string): MappedPa
     if (rqlParts.length > 0) {
       // TaxonList historically used the Genome lineage field name even though the
       // Taxonomy endpoint exposes the same relationship as `lineage_ids`.
-      const rql = rqlParts
-        .join("&")
-        .replaceAll("taxon_lineage_ids", segment === "taxonomy" ? "lineage_ids" : "taxon_lineage_ids");
+      const joined = rqlParts.join("&");
+      const rql =
+        segment === "taxonomy"
+          ? renameRqlField(joined, "taxon_lineage_ids", "lineage_ids")
+          : joined;
       searchParts.push(`rql=${encodeURIComponent(rql)}`);
     }
     const namedParams = new URLSearchParams(namedParts.join("&"));

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { featureHref, genomeHref, taxonomyHref } from "@/lib/views/hrefs";
+import { isTaxonId } from "@/lib/taxonomy-view";
 import {
   isPdbId,
   resolveProteinStructureSources,
@@ -170,7 +171,9 @@ export function ProteinStructureMember({
                 <span>{values(metadata.organism_name).join(", ")}</span>
               )}
                {metadata.taxon_id != null &&
-                 values(metadata.taxon_id).map((taxonId) => (
+                 values(metadata.taxon_id)
+                   .filter((taxonId) => isTaxonId(taxonId))
+                   .map((taxonId) => (
                    <Link
                      key={taxonId}
                      className="underline underline-offset-4"

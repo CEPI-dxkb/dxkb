@@ -26,14 +26,15 @@ import {
   type GenomeViewRecord,
 } from "@/lib/genome-view";
 import { eq } from "@/lib/data-api";
+import { isTaxonId } from "@/lib/taxonomy-view";
+import { taxonomyHref } from "@/lib/views/hrefs";
 import {
-  featureColumns,
   genomeDomainsRql,
   genomeFeatureRql,
   genomeProteinRql,
-  genomeSequenceColumns,
   interactionColumns,
 } from "@/lib/views/child-resources";
+import { genomeChildCollections } from "../child-tabs";
 import { GenomeOverview } from "./genome-overview";
 
 function lineage(genome: GenomeViewRecord) {
@@ -57,10 +58,10 @@ function lineage(genome: GenomeViewRecord) {
       <span className="text-muted-foreground/50 select-none">»</span>
       {names.map((name, index) => (
         <span key={ids[index] ?? name} className="contents">
-          {ids[index] ? (
+          {isTaxonId(String(ids[index])) ? (
             <Link
               className="text-muted-foreground transition-colors hover:text-foreground"
-              href={`/taxonomy/${encodeURIComponent(String(ids[index]))}`}
+              href={taxonomyHref(String(ids[index]))}
             >
               {name}
             </Link>
@@ -100,12 +101,8 @@ export function GenomeMember({
   if (activeTab === "sequences") {
     content = (
       <ResourceChildCollection
-        resource="genome_sequence"
-        label="Sequences"
-        idField="sequence_id"
+        {...genomeChildCollections.sequences}
         rql={genomeSequenceRql(genome.genome_id)}
-        columns={genomeSequenceColumns}
-        defaultSort="sequence_id:asc"
       />
     );
   } else if (activeTab === "interactions") {
@@ -122,26 +119,19 @@ export function GenomeMember({
   } else if (activeTab === "features" || activeTab === "proteins") {
     content = (
       <ResourceChildCollection
-        resource="genome_feature"
-        label={activeTab === "proteins" ? "Proteins" : "Features"}
-        idField="feature_id"
+        {...genomeChildCollections[activeTab]}
         rql={
           activeTab === "proteins"
             ? genomeProteinRql(genome.genome_id)
             : genomeFeatureRql(genome.genome_id)
         }
-        columns={featureColumns}
-        defaultSort="patric_id:asc"
       />
     );
   } else if (activeTab === "domains") {
     content = (
       <ResourceChildCollection
-        resource="protein_feature"
-        label="Domains and Motifs"
-        idField="id"
+        {...genomeChildCollections.domains}
         rql={genomeDomainsRql(genome.genome_id)}
-        defaultSort="unsorted"
       />
     );
   } else if (activeTab === "structures") {

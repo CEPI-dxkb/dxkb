@@ -1,10 +1,9 @@
 import type { ViewRegistry } from "../view-types";
 import { viewRegistry, viewSegments, legacyToSegment } from "../view-registry";
-import { resolveListQuery } from "../rql";
 
 // Cast to the loose ViewRegistry type so TypeScript treats every entry as
-// ViewTypeEntry (with optional singular/legacySingular) rather than the
-// narrow literal shapes inferred from `satisfies ViewRegistry`.
+// ViewTypeEntry (with optional legacySingular) rather than the narrow literal
+// shapes inferred from `satisfies ViewRegistry`.
 const reg = viewRegistry as ViewRegistry;
 
 describe("viewRegistry", () => {
@@ -18,37 +17,13 @@ describe("viewRegistry", () => {
     }
   });
 
-  it("marks strain and domains-and-motifs as list-only (no singular)", () => {
-    expect(reg.strain.singular).toBeUndefined();
-    expect(reg["domains-and-motifs"].singular).toBeUndefined();
+  it("marks strain and domains-and-motifs as list-only (no legacy singular)", () => {
+    expect(reg.strain.legacySingular).toBeUndefined();
+    expect(reg["domains-and-motifs"].legacySingular).toBeUndefined();
   });
 
-  it("gives experiment an int singular with ExperimentComparison legacy name", () => {
-    expect(reg.experiment.singular?.idKind).toBe("int");
+  it("gives experiment the ExperimentComparison legacy singular name", () => {
     expect(reg.experiment.legacySingular).toBe("ExperimentComparison");
-  });
-
-  it("keeps protein-structure mode parameters out of collection RQL", () => {
-    expect(reg["protein-structure"].singular?.idKind).toBe("none");
-    expect(reg["protein-structure"].list.friendlyParams).toEqual([
-      "keyword",
-      "taxon_id",
-      "genome_id",
-    ]);
-    expect(
-      resolveListQuery(
-        {
-          genome_id: "83332.12",
-          accession: "1ABC",
-          path: "/user/home/model.pdb",
-        },
-        reg["protein-structure"].list.friendlyParams,
-      ),
-    ).toBe("eq(genome_id,83332.12)");
-  });
-
-  it("uses int id kind for taxonomy", () => {
-    expect(reg.taxonomy.singular?.idKind).toBe("int");
   });
 
   it("maps every legacy name to a unique existing segment", () => {

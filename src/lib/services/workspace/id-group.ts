@@ -9,7 +9,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function uniqueIds(ids: readonly string[]): string[] {
+function uniqueIds(ids: readonly string[]): string[] {
   return [...new Set(ids)];
 }
 

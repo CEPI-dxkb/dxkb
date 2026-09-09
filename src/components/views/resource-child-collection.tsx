@@ -11,7 +11,7 @@ import {
   proteinFeatureCollectionProfile,
   type ProteinFeatureViewRecord,
 } from "@/lib/protein-feature-view";
-import type { CollectionState } from "@/lib/views/collection-state";
+import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import {
   ResourceCollection,
   type ResourceCollectionProfile,
@@ -66,6 +66,8 @@ interface ResourceChildCollectionProps {
   defaultSort: string;
   profile?: ResourceCollectionProfile<ChildRow>;
   guideUrl?: string;
+  // Matches ResourceCollection's own default. Pass "loaded" only where the caller
+  // owns the keyword box and wants it to filter the current page client-side.
   keywordMode?: "server" | "loaded";
   keywordValue?: string;
   onKeywordChange?: (value: string) => void;
@@ -90,7 +92,7 @@ function ScopedResourceChildCollection({
   defaultSort,
   profile: suppliedProfile,
   guideUrl,
-  keywordMode = "loaded",
+  keywordMode = "server",
   keywordValue,
   onKeywordChange,
   keywordPlaceholder,
@@ -141,7 +143,9 @@ function ScopedResourceChildCollection({
     };
   } else {
     if (!columns) {
-      throw new Error(`Columns are required for ${resource} child collections.`);
+      throw new Error(
+        `Columns are required for ${resource} child collections.`,
+      );
     }
     profile = {
       resource,
@@ -179,13 +183,7 @@ function ScopedResourceChildCollection({
               rql: exportRql ?? rql,
               keyword: state.keyword,
               fields: selectedFields,
-              sort:
-                state.sort === "unsorted"
-                  ? undefined
-                  : {
-                      field: state.sort.split(":")[0],
-                      direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-                    },
+              sort: dataSort(state.sort),
             });
         saveRows(result.rows, selectedFields, format, label.toLowerCase());
       }}

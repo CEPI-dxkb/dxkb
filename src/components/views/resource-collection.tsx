@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
@@ -13,24 +9,16 @@ import {
   type SearchActionId,
 } from "@/components/search/search-action-bar";
 import { ResourceFilterBar } from "./resource-filter-bar";
-import {
-  downloadResourceExport,
-  serializeResourceRows,
-} from "./resource-export";
+import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
-import {
-  StrainCopyDialog,
-  type StrainCopyColumnMode,
-} from "./strain-copy-dialog";
-import { StrainServiceChooser } from "./strain-service-chooser";
-import { SelectionToGroupDialog } from "@/components/workspace/selection-to-group-dialog";
+import { StrainCollectionActions } from "./strain-collection-actions";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRow,
 } from "@/components/shared/data-table";
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
-import type { CollectionState } from "@/lib/views/collection-state";
+import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import {
@@ -49,29 +37,18 @@ import {
   featureListHref,
   genomeHref,
   genomeIdFromRow,
-  genomesHrefFromIds,
   proteinStructureHref,
   taxonomyHref,
 } from "@/lib/views/hrefs";
 import {
   maxTaxonomyActionIds,
   normalizeTaxonIds,
+  taxonomyActionLimitMessage,
   taxonomyFeaturesHref,
   taxonomyGenomesHref,
 } from "@/lib/taxonomy-view";
 import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
-import {
-  genomeIdsFromStrains,
-  strainCopyMaxRows,
-  strainGenomesMaxRows,
-  strainGenomesMaxUrlLength,
-  strainGroupMaxRows,
-  strainServicesMaxRows,
-} from "@/lib/strain-view";
-import { useAuth } from "@/lib/auth/provider";
-import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
-import { workspaceUsername } from "@/lib/services/workspace/path-utils";
-import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-keys";
+import { genomeIdsFromStrains } from "@/lib/strain-view";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -95,6 +72,22 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   rowLinkFields?: readonly string[];
   serverKeywordMode?: "exact" | "prefix";
 }
+
+/** Actions each resource enables. Read by both visibility and dispatch. */
+const taxonomyActionIds = [
+  "services",
+  "taxonOverview",
+  "genomes",
+  "features",
+] as const satisfies readonly SearchActionId[];
+
+const enabledActionsByResource: Partial<
+  Record<DataResource, readonly SearchActionId[]>
+> = {
+  taxonomy: taxonomyActionIds,
+  genome_sequence: ["download", "genome", "features"],
+  // Strain's list lives with StrainCollectionActions, which owns its action bar.
+};
 
 function combinePredicates(...predicates: (string | undefined)[]) {
   const active = predicates.filter((predicate): predicate is string =>
@@ -156,22 +149,10 @@ export function ResourceCollection<Row extends DataTableRow>({
   prefetchNextPage = false,
   onExport,
 }: ResourceCollectionProps<Row>) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
-  const { user, isAuthenticated } = useAuth();
-  const workspaceRepository = useWorkspaceRepository("authenticated");
   const [exportError, setExportError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);
   const [isTaxonomyServiceOpen, setIsTaxonomyServiceOpen] = useState(false);
-  const [strainActionGenomeIds, setStrainActionGenomeIds] = useState<string[]>(
-    [],
-  );
-  const [isStrainCopyOpen, setIsStrainCopyOpen] = useState(false);
-  const [isStrainServiceOpen, setIsStrainServiceOpen] = useState(false);
-  const [isStrainGroupOpen, setIsStrainGroupOpen] = useState(false);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
@@ -314,7 +295,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   ): Promise<Record<string, unknown>[]> => {
     if (selectedActionCount > maxRows) {
       throw new Error(
-        `${actionLabel} supports at most ${maxRows.toLocaleString()} Strains. Narrow the selection and try again.`,
+        `${actionLabel} supports at most ${maxRows.toLocaleString()} ${profile.label}. Narrow the selection and try again.`,
       );
     }
 
@@ -342,90 +323,9 @@ export function ResourceCollection<Row extends DataTableRow>({
       keyword: requestState.keyword,
       keywordMode: profile.serverKeywordMode,
       fields: selectedFields,
-      sort:
-        state.sort === "unsorted"
-          ? undefined
-          : {
-              field: state.sort.split(":")[0],
-              direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-            },
+      sort: dataSort(state.sort),
     });
     return result.rows;
-  };
-
-  const signInHref = (redirect: string) =>
-    `/sign-in?redirect=${encodeURIComponent(redirect)}`;
-
-  const resolveStrainGenomeIds = async (
-    maxRows: number,
-    actionLabel: string,
-  ) => {
-    const rows = await resolveActionRows(["genome_ids"], maxRows, actionLabel);
-    const genomeIds = genomeIdsFromStrains(rows);
-    if (genomeIds.length === 0) {
-      throw new Error("No genomes are associated with this selection.");
-    }
-    return genomeIds;
-  };
-
-  const runStrainAction = async (actionId: SearchActionId) => {
-    setActionError(null);
-    if (actionId === "copyRows") {
-      setIsStrainCopyOpen(true);
-      return;
-    }
-    setLoadingActionIds([actionId]);
-    try {
-      if (actionId === "genomes") {
-        const genomeIds = await resolveStrainGenomeIds(
-          strainGenomesMaxRows,
-          "Genomes",
-        );
-        const href = genomesHrefFromIds(genomeIds);
-        if (!href || href.length > strainGenomesMaxUrlLength) {
-          throw new Error(
-            "This selection contains too many genome IDs to open safely. Narrow the selection or create a Genome Group.",
-          );
-        }
-        router.push(href);
-      } else if (actionId === "services") {
-        setStrainActionGenomeIds(
-          await resolveStrainGenomeIds(strainServicesMaxRows, "Services"),
-        );
-        setIsStrainServiceOpen(true);
-      } else if (actionId === "group" && isAuthenticated) {
-        setStrainActionGenomeIds(
-          await resolveStrainGenomeIds(strainGroupMaxRows, "Group"),
-        );
-        setIsStrainGroupOpen(true);
-      }
-    } catch (error) {
-      setActionError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setLoadingActionIds([]);
-    }
-  };
-
-  const copySelectedStrains = async (
-    columnMode: StrainCopyColumnMode,
-    includeHeaders: boolean,
-  ) => {
-    const fields = profile.columns
-      .filter((column) => columnMode === "all" || columnVisibility[column.id])
-      .map((column) => column.id);
-    const rows = await resolveActionRows(fields, strainCopyMaxRows, "Copy");
-    await navigator.clipboard.writeText(
-      serializeResourceRows(
-        rows,
-        profile.columns,
-        fields,
-        "txt",
-        includeHeaders,
-      ),
-    );
-    toast.success(
-      `Copied ${rows.length.toLocaleString()} selected ${rows.length === 1 ? "strain" : "strains"}`,
-    );
   };
 
   const resolveSelectedTaxonIds = async (): Promise<string[]> => {
@@ -433,22 +333,14 @@ export function ResourceCollection<Row extends DataTableRow>({
       return normalizeTaxonIds(displayedSelectedIds);
     }
     if (collection.total > maxTaxonomyActionIds) {
-      throw new Error(
-        `This action supports at most ${String(maxTaxonomyActionIds)} Taxa. Narrow the selection and try again.`,
-      );
+      throw new Error(taxonomyActionLimitMessage());
     }
     const result = await repository.exportAll("taxonomy", {
       rql: effectiveRql,
       keyword: requestState.keyword,
       keywordMode: profile.serverKeywordMode,
       fields: ["taxon_id"],
-      sort:
-        state.sort === "unsorted"
-          ? undefined
-          : {
-              field: state.sort.split(":")[0],
-              direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-            },
+      sort: dataSort(state.sort),
     });
     return normalizeTaxonIds(result.rows.map((row) => row.taxon_id));
   };
@@ -502,13 +394,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         rql: effectiveRql,
         keyword: requestState.keyword,
         fields: ["exp_id"],
-        sort:
-          state.sort === "unsorted"
-            ? undefined
-            : {
-                field: state.sort.split(":")[0],
-                direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-              },
+        sort: dataSort(state.sort),
       });
       const experimentIds = result.rows.flatMap((row) => {
         const experimentId = experimentIdFromRow(row);
@@ -574,13 +460,7 @@ export function ResourceCollection<Row extends DataTableRow>({
             keyword: requestState.keyword,
             keywordMode: profile.serverKeywordMode,
             fields: hasLoadedKeyword ? allFields : selectedFields,
-            sort:
-              state.sort === "unsorted"
-                ? undefined
-                : {
-                    field: state.sort.split(":")[0],
-                    direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-                  },
+            sort: dataSort(state.sort),
           });
       const exportedRows =
         hasLoadedKeyword && !ids
@@ -752,67 +632,39 @@ export function ResourceCollection<Row extends DataTableRow>({
                 collection.selectedIds.length > 0
           }
           actionBar={
-            <SearchActionBar
-              selectedCount={
-                hasLoadedKeyword
-                  ? displayedSelectedIds.length
-                  : collection.isAllPagesSelected
-                    ? collection.total
-                    : collection.selectedIds.length
-              }
-              searchType={profile.resource}
-              guideUrl={profile.guideUrl}
-              enabledActions={
-                profile.resource === "taxonomy"
-                  ? ["services", "taxonOverview", "genomes", "features"]
-                  : profile.resource === "genome_sequence"
-                    ? ["download", "genome", "features"]
-                    : profile.resource === "strain"
-                      ? ["copyRows", "services", "genomes", "group"]
-                      : profile.resource === "protein_structure" &&
-                          selectedStructureHref
-                        ? ["structure"]
-                        : hasBiosetSelection
-                          ? ["biosets"]
-                          : undefined
-              }
-              loadingActionIds={loadingActionIds}
-              actionPopovers={
-                profile.resource === "strain" && !isAuthenticated
-                  ? {
-                      group: (
-                        <>
-                          <p className="font-medium">Sign in required</p>
-                          <p className="text-muted-foreground">
-                            Sign in to create or update a Genome Group.
-                          </p>
-                          <Button
-                            className="mt-1 w-full"
-                            size="sm"
-                            nativeButton={false}
-                            render={
-                              <Link
-                                href={signInHref(
-                                  `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`,
-                                )}
-                              />
-                            }
-                          >
-                            Sign In
-                          </Button>
-                        </>
-                      ),
-                    }
-                  : undefined
-              }
-              disabledActions={
-                knownSingleStrainHasNoGenomes
-                  ? {
-                      genomes: "No genomes are associated with this strain",
-                      services: "No genomes are associated with this strain",
-                      group: "No genomes are associated with this strain",
-                    }
-                  : profile.resource === "protein_structure"
+            profile.resource === "strain" ? (
+              <StrainCollectionActions
+                selectedCount={selectedActionCount}
+                guideUrl={profile.guideUrl}
+                hasNoAssociatedGenomes={knownSingleStrainHasNoGenomes}
+                columns={profile.columns}
+                columnVisibility={columnVisibility}
+                resolveActionRows={resolveActionRows}
+                onError={setActionError}
+              />
+            ) : (
+              <SearchActionBar
+                selectedCount={
+                  hasLoadedKeyword
+                    ? displayedSelectedIds.length
+                    : collection.isAllPagesSelected
+                      ? collection.total
+                      : collection.selectedIds.length
+                }
+                searchType={profile.resource}
+                guideUrl={profile.guideUrl}
+                enabledActions={
+                  enabledActionsByResource[profile.resource] ??
+                  (profile.resource === "protein_structure" &&
+                  selectedStructureHref
+                    ? ["structure"]
+                    : hasBiosetSelection
+                      ? ["biosets"]
+                      : undefined)
+                }
+                loadingActionIds={loadingActionIds}
+                disabledActions={
+                  profile.resource === "protein_structure"
                     ? {
                         genome: selectedGenomeId
                           ? undefined
@@ -829,90 +681,82 @@ export function ResourceCollection<Row extends DataTableRow>({
                           biosets:
                             "Some selected Biosets are not associated with experiments",
                         }
-                      : profile.resource === "genome_sequence"
-                        ? {
-                            copyRows: "Coming soon...",
-                            services: "Coming soon...",
-                            fasta: "Coming soon...",
-                            group: "Coming soon...",
-                            browser: "Coming soon...",
-                          }
-                        : undefined
-              }
-              onAction={(actionId) => {
-                if (
-                  profile.resource === "taxonomy" &&
-                  ["services", "taxonOverview", "genomes", "features"].includes(
-                    actionId,
-                  )
-                ) {
-                  void runTaxonomyAction(actionId);
-                } else if (
-                  profile.resource === "strain" &&
-                  ["copyRows", "services", "genomes", "group"].includes(
-                    actionId,
-                  )
-                ) {
-                  void runStrainAction(actionId);
-                } else if (actionId === "download") {
-                  void exportRows(
-                    "csv",
-                    displayedSelectedIds,
-                    null,
-                    collection.isAllPagesSelected,
-                  );
-                } else if (actionId === "biosets" && hasBiosetSelection) {
-                  void openBiosetResults();
-                } else if (actionId === "genome" && selectedGenomeId) {
-                  window.open(
-                    genomeHref(selectedGenomeId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "feature" && selectedFeatureId) {
-                  window.open(
-                    featureHref(selectedFeatureId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "features" && selectedSequenceId) {
-                  window.open(
-                    featureListHref({
-                      rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
-                    }),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "structure" && selectedStructureHref) {
-                  window.open(
-                    selectedStructureHref,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "epitope" && selectedEpitopeId) {
-                  window.open(
-                    epitopeHref(selectedEpitopeId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "experiment" && selectedExperimentId) {
-                  window.open(
-                    experimentHref(selectedExperimentId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (
-                  (actionId === "surveillance" || actionId === "serology") &&
-                  selectedMemberHref
-                ) {
-                  window.open(
-                    selectedMemberHref,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
+                      : undefined
                 }
-              }}
-            />
+                onAction={(actionId) => {
+                  if (
+                    profile.resource === "taxonomy" &&
+                    taxonomyActionIds.includes(
+                      actionId as (typeof taxonomyActionIds)[number],
+                    )
+                  ) {
+                    void runTaxonomyAction(actionId);
+                  } else if (actionId === "download") {
+                    void exportRows(
+                      "csv",
+                      displayedSelectedIds,
+                      null,
+                      collection.isAllPagesSelected,
+                    );
+                  } else if (actionId === "biosets" && hasBiosetSelection) {
+                    void openBiosetResults();
+                  } else if (actionId === "genome" && selectedGenomeId) {
+                    window.open(
+                      genomeHref(selectedGenomeId),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  } else if (actionId === "feature" && selectedFeatureId) {
+                    window.open(
+                      featureHref(selectedFeatureId),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  } else if (actionId === "features" && selectedSequenceId) {
+                    window.open(
+                      featureListHref({
+                        rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
+                      }),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  } else if (
+                    actionId === "structure" &&
+                    selectedStructureHref
+                  ) {
+                    window.open(
+                      selectedStructureHref,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  } else if (actionId === "epitope" && selectedEpitopeId) {
+                    window.open(
+                      epitopeHref(selectedEpitopeId),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  } else if (
+                    actionId === "experiment" &&
+                    selectedExperimentId
+                  ) {
+                    window.open(
+                      experimentHref(selectedExperimentId),
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  } else if (
+                    (actionId === "surveillance" || actionId === "serology") &&
+                    selectedMemberHref
+                  ) {
+                    window.open(
+                      selectedMemberHref,
+                      "_blank",
+                      "noopener,noreferrer",
+                    );
+                  }
+                }}
+              />
+            )
           }
           sidePanel={detailContent}
         >
@@ -977,53 +821,6 @@ export function ResourceCollection<Row extends DataTableRow>({
           onOpenChange={setIsTaxonomyServiceOpen}
           taxonIds={taxonomyServiceIds}
         />
-      )}
-      {profile.resource === "strain" && (
-        <>
-          <StrainCopyDialog
-            open={isStrainCopyOpen}
-            onOpenChange={setIsStrainCopyOpen}
-            selectedCount={selectedActionCount}
-            onCopy={copySelectedStrains}
-          />
-          <StrainServiceChooser
-            open={isStrainServiceOpen}
-            onOpenChange={setIsStrainServiceOpen}
-            genomeIds={strainActionGenomeIds}
-            workspaceUsername={user ? workspaceUsername(user) : undefined}
-            onRequireAuthentication={(serviceHref) => {
-              router.push(serviceHref);
-            }}
-          />
-          {user && (
-            <SelectionToGroupDialog
-              open={isStrainGroupOpen}
-              onOpenChange={setIsStrainGroupOpen}
-              genomeIds={strainActionGenomeIds}
-              defaultFolder={`/${workspaceUsername(user)}/home/Genome Groups`}
-              onCreate={async (folderPath, name) => {
-                await workspaceRepository.createIdGroup({
-                  path: folderPath.replace(/\/$/, ""),
-                  name,
-                  type: "genome_group",
-                  idField: "genome_id",
-                  ids: strainActionGenomeIds,
-                });
-                invalidateWorkspace(queryClient);
-                toast.success(`Created Genome Group ${name}`);
-              }}
-              onAppend={async (path) => {
-                await workspaceRepository.appendToIdGroup({
-                  path,
-                  idField: "genome_id",
-                  ids: strainActionGenomeIds,
-                });
-                invalidateWorkspace(queryClient);
-                toast.success("Updated Genome Group");
-              }}
-            />
-          )}
-        </>
       )}
     </section>
   );

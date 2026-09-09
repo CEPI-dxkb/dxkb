@@ -4,15 +4,18 @@ import { isTaxonId } from "./schema";
 
 export const maxTaxonomyActionIds = 500;
 
+/** Shared wording so the collection resolver and normalizeTaxonIds cannot drift. */
+export function taxonomyActionLimitMessage(): string {
+  return `This action supports at most ${String(maxTaxonomyActionIds)} Taxa. Narrow the selection and try again.`;
+}
+
 export function normalizeTaxonIds(values: readonly unknown[]): string[] {
   const ids = [...new Set(values.map(String))];
   if (ids.some((id) => !isTaxonId(id))) {
     throw new Error("Selected Taxa must have positive integer Taxon IDs.");
   }
   if (ids.length > maxTaxonomyActionIds) {
-    throw new Error(
-      `This action supports at most ${String(maxTaxonomyActionIds)} Taxa. Narrow the selection and try again.`,
-    );
+    throw new Error(taxonomyActionLimitMessage());
   }
   return ids;
 }

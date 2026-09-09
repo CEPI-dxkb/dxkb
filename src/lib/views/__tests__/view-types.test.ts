@@ -1,12 +1,8 @@
 import { isViewSegment, type ViewRegistry } from "../view-types";
 
-// Inline fixture so this task has no dependency on view-registry.ts (created in Task 2).
+// Inline fixture so this test has no dependency on view-registry.ts.
 const fixture = {
-  genome: {
-    segment: "genome",
-    label: "Genome",
-    list: { endpoint: "genome", defaultTab: "genomes", friendlyParams: ["keyword"] },
-  },
+  genome: { segment: "genome" },
 } satisfies ViewRegistry;
 
 describe("isViewSegment", () => {

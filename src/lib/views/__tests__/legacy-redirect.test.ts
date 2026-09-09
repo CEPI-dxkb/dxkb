@@ -23,6 +23,26 @@ describe("mapLegacyViewPath", () => {
       search: "rql=eq(lineage_ids%2C1763)",
     });
   });
+  it("renames the TaxonList lineage field in field position only", () => {
+    expect(
+      mapLegacyViewPath(
+        "/view/TaxonList/",
+        "and(in(taxon_lineage_ids,(1763,562)),eq(description,%22taxon_lineage_ids%22))",
+      ),
+    ).toEqual({
+      pathname: "/taxonomy",
+      search:
+        "rql=and(in(lineage_ids%2C(1763%2C562))%2Ceq(description%2C%2522taxon_lineage_ids%2522))",
+    });
+  });
+  it("leaves the lineage field alone outside the taxonomy segment", () => {
+    expect(
+      mapLegacyViewPath("/view/GenomeList/", "eq(taxon_lineage_ids,1763)"),
+    ).toEqual({
+      pathname: "/genome",
+      search: "rql=eq(taxon_lineage_ids%2C1763)",
+    });
+  });
   it("preserves a named query param (surveillance)", () => {
     expect(
       mapLegacyViewPath(

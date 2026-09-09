@@ -32,6 +32,101 @@ test.describe("taxon strains actions", () => {
     });
   });
 
+  test("keeps compact body-cell padding and only one visible horizontal scroller", async ({
+    page,
+  }) => {
+    const tableRegion = page.getByRole("region", {
+      name: "Strains results table",
+    });
+    const rowCheckbox = page.getByRole("checkbox", {
+      name: "Select row strain-backend-901",
+    });
+    const scalarCell = page
+      .locator('td[data-slot="table-cell"]')
+      .filter({ hasText: "A/California/04/2009" })
+      .first();
+
+    await expect(tableRegion).toBeVisible();
+    await expect(rowCheckbox).toBeVisible();
+    await expect(scalarCell).toBeVisible();
+
+    const baseStyles = await page.evaluate(() => {
+      const checkbox = document.querySelector<HTMLInputElement>(
+        'input[aria-label="Select row strain-backend-901"]',
+      );
+      const scalar = [...document.querySelectorAll("td")].find(
+        (cell) => cell.textContent.trim() === "A/California/04/2009",
+      );
+      if (!checkbox?.parentElement?.parentElement || !scalar) {
+        throw new Error("Expected strain row cells were not rendered");
+      }
+      const selectionStyle = getComputedStyle(checkbox.parentElement.parentElement);
+      const scalarStyle = getComputedStyle(scalar);
+      return {
+        selectionPadding: [
+          selectionStyle.paddingTop,
+          selectionStyle.paddingRight,
+          selectionStyle.paddingBottom,
+          selectionStyle.paddingLeft,
+        ],
+        scalarPadding: [
+          scalarStyle.paddingTop,
+          scalarStyle.paddingRight,
+          scalarStyle.paddingBottom,
+          scalarStyle.paddingLeft,
+        ],
+        scalarOverflowX: scalarStyle.overflowX,
+      };
+    });
+
+    expect(baseStyles.selectionPadding).toEqual(["0px", "0px", "0px", "0px"]);
+    expect(baseStyles.scalarPadding).toEqual(["2px", "2px", "2px", "2px"]);
+    expect(baseStyles.scalarOverflowX).not.toBe("auto");
+
+    await page.getByRole("button", { name: /Columns/ }).click();
+    await page.getByText("Genome IDs", { exact: true }).click();
+    const firstGenomeLink = page.getByRole("link", { name: "641501.3" });
+    await expect(firstGenomeLink).toBeVisible();
+
+    const overflowStyles = await firstGenomeLink.evaluate((link) => {
+      const strip = link.parentElement;
+      const cell = link.closest("td");
+      const region = link.closest<HTMLElement>('[role="region"]');
+      if (!strip || !cell || !region) {
+        throw new Error("Expected linked cell and table scroll region");
+      }
+      const stripStyle = getComputedStyle(strip);
+      const cellStyle = getComputedStyle(cell);
+      const regionStyle = getComputedStyle(region);
+      return {
+        cellPadding: [
+          cellStyle.paddingTop,
+          cellStyle.paddingRight,
+          cellStyle.paddingBottom,
+          cellStyle.paddingLeft,
+        ],
+        stripOverflowX: stripStyle.overflowX,
+        stripScrollbarWidth: stripStyle.scrollbarWidth,
+        regionOverflowX: regionStyle.overflowX,
+        regionCanScroll: region.scrollWidth > region.clientWidth,
+      };
+    });
+
+    expect(overflowStyles.cellPadding).toEqual(["2px", "2px", "2px", "2px"]);
+    expect(overflowStyles.stripOverflowX).toBe("auto");
+    expect(overflowStyles.stripScrollbarWidth).toBe("none");
+    expect(overflowStyles.regionOverflowX).toBe("auto");
+
+    await page.setViewportSize({ width: 640, height: 720 });
+    await expect
+      .poll(() =>
+        tableRegion.evaluate(
+          (region) => region.scrollWidth > region.clientWidth,
+        ),
+      )
+      .toBe(true);
+  });
+
   test("copies selected rows and opens all associated genomes", async ({
     page,
     context,

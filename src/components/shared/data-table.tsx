@@ -275,7 +275,7 @@ function createColumnDefs(columns: DataTableColumn[]) {
         const valueHref = column.valueHref;
         if (valueHref && Array.isArray(rawValue)) {
           return (
-            <span className="flex min-w-0 gap-x-2 overflow-x-auto whitespace-nowrap">
+            <span className="flex min-w-0 scrollbar-none gap-x-2 overflow-x-auto whitespace-nowrap">
               {[...new Set(rawValue.map(String))].map((itemValue) => {
                 return (
                   <Link
@@ -1536,7 +1536,10 @@ function DataTableBody({
             {table.getVisibleLeafColumns().map((col, colIdx) => (
               <TableCell
                 key={col.id}
-                className="flex items-center border border-border px-2 py-0"
+                className={clsx(
+                  "flex items-center border border-border",
+                  col.id === "__select__" ? "p-0" : "p-0.5",
+                )}
                 style={{
                   width: `var(--col-${col.id}-size)`,
                   minWidth: `var(--col-${col.id}-size)`,
@@ -1562,7 +1565,7 @@ function DataTableBody({
         <TableRow className="flex h-6 w-full items-center">
           <TableCell
             colSpan={table.getVisibleLeafColumns().length}
-            className="w-full px-2 py-0 text-left text-muted-foreground"
+            className="w-full p-0.5 text-left text-muted-foreground"
             style={{ justifyContent: "left" }}
           >
             {errorMessage ? (
@@ -1659,7 +1662,7 @@ function DataTableBody({
                             ? ""
                             : "bg-background group-hover:bg-muted",
                         )
-                      : "justify-start py-0.5",
+                      : "justify-start p-0.5",
                   )}
                   style={{
                     width: `var(--col-${cell.column.id}-size)`,
@@ -1723,9 +1726,9 @@ function computeAutoColumnSizes(
 
   // Layout overhead beyond raw glyph width:
   //   Header: th px-2(16) + pr-2(8) + gap when sorted(~8) = 32px
-  //   Cell:   th px-2(16)
+  //   Cell:   td px-0.5(4)
   const headerOverhead = 32;
-  const cellOverhead = 16;
+  const cellOverhead = 4;
 
   for (const col of columns) {
     ctx.font = headerFont;

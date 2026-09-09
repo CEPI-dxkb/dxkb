@@ -15,10 +15,17 @@ import type {
   WorkspaceReadOptions,
 } from "../domain";
 import { WorkspaceApiError } from "../domain";
+import {
+  appendIdGroupContent,
+  createIdGroupContent,
+  parseIdGroupContent,
+} from "../id-group";
 import { assertNoProtectedFolders } from "../protected-folders";
 import type {
+  AppendToIdGroupInput,
   ArchiveRequest,
   ArchiveResult,
+  CreateIdGroupInput,
   UploadNodeRequest,
   UploadNodeResult,
   WorkspaceRepository,
@@ -32,6 +39,8 @@ type CallRecord =
   | { method: "createFolder"; path: string }
   | { method: "createUploadNode"; input: UploadNodeRequest }
   | { method: "saveObject"; path: string; type: string; overwrite?: boolean }
+  | { method: "createIdGroup"; input: CreateIdGroupInput }
+  | { method: "appendToIdGroup"; input: AppendToIdGroupInput }
   | { method: "delete"; paths: string[]; options?: DeleteOptions }
   | { method: "copy"; input: CopyInput }
   | { method: "updateObjectType"; path: string; newType: string }
@@ -50,6 +59,8 @@ export interface InMemoryFixtureItem {
   timestamp?: number;
   userPermission?: string;
   globalPermission?: string;
+  userMeta?: Record<string, unknown>;
+  content?: unknown;
 }
 
 export interface InMemoryFixtures {
@@ -90,7 +101,7 @@ function toBrowserItem(
     linkReference: "",
     ownerId: fixture.ownerId ?? "test-user@bvbrc",
     size: fixture.size ?? 0,
-    userMeta: {},
+    userMeta: fixture.userMeta ?? {},
     autoMeta: {},
     permissions: {
       user: fixture.userPermission ?? "o",
@@ -120,7 +131,7 @@ function toGetTuple(
     `${parentWithSlash}${fixture.name}#${String(index)}`,
     fixture.ownerId ?? "test-user@bvbrc",
     fixture.size ?? 0,
-    {},
+    fixture.userMeta ?? {},
     {},
   ];
 }
@@ -223,11 +234,28 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     });
   }
 
-  getRaw(paths: string[]): Promise<unknown> {
+  getRaw(paths: string[], options?: WorkspaceReadOptions): Promise<unknown> {
     return this.run(() => {
       this.calls.push({ method: "getRaw", paths });
       this.throwIfConfigured("getRaw");
-      return this.buildMetadata(paths).map((m) => m.raw);
+      if (options?.metadataOnly !== false) {
+        return this.buildMetadata(paths).map((metadata) => metadata.raw);
+      }
+      return [
+        paths.map((path) => {
+          const normalized = normalize(path);
+          const parent = normalize(
+            normalized.slice(0, normalized.lastIndexOf("/")) || "/",
+          );
+          const siblings = this.directories[parent] ?? [];
+          const name = normalized.split("/").filter(Boolean).pop() ?? "";
+          const index = siblings.findIndex((item) => item.name === name);
+          const fixture = index >= 0 ? siblings[index] : null;
+          return fixture
+            ? [toGetTuple(parent, fixture, index), fixture.content ?? null]
+            : [];
+        }),
+      ];
     });
   }
 
@@ -275,6 +303,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     type: string;
     content: string;
     overwrite?: boolean;
+    meta?: Record<string, unknown>;
   }): Promise<void> {
     return this.run(() => {
       this.calls.push({
@@ -298,11 +327,71 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
           { error: { code: -32603 } },
         );
       }
+      const fixture = {
+        name,
+        type: input.type,
+        userMeta: input.meta ?? {},
+        content: input.content,
+      };
       if (existing >= 0) {
-        children[existing] = { name, type: input.type };
+        children[existing] = { ...children[existing], ...fixture };
       } else {
-        children.push({ name, type: input.type });
+        children.push(fixture);
       }
+      this.directories[parent] = children;
+    });
+  }
+
+  createIdGroup(input: CreateIdGroupInput): Promise<void> {
+    return this.run(() => {
+      this.calls.push({ method: "createIdGroup", input });
+      this.throwIfConfigured("createIdGroup");
+      const path = `${input.path.replace(/\/+$/, "")}/${input.name}`;
+      const normalized = normalize(path);
+      const parent = normalize(
+        normalized.slice(0, normalized.lastIndexOf("/")) || "/",
+      );
+      const children = this.directories[parent] ?? [];
+      if (children.some((item) => item.name === input.name)) {
+        throw new WorkspaceApiError(
+          `Cannot overwrite ${normalized}`,
+          "Workspace.create",
+          { error: { code: -32603 } },
+        );
+      }
+      children.push({
+        name: input.name,
+        type: input.type,
+        userMeta: {},
+        content: JSON.stringify(
+          createIdGroupContent(input.name, input.idField, input.ids),
+        ),
+      });
+      this.directories[parent] = children;
+    });
+  }
+
+  appendToIdGroup(input: AppendToIdGroupInput): Promise<void> {
+    return this.run(() => {
+      this.calls.push({ method: "appendToIdGroup", input });
+      this.throwIfConfigured("appendToIdGroup");
+      const normalized = normalize(input.path);
+      const parent = normalize(
+        normalized.slice(0, normalized.lastIndexOf("/")) || "/",
+      );
+      const name = normalized.split("/").filter(Boolean).pop() ?? "";
+      const children = this.directories[parent] ?? [];
+      const index = children.findIndex((item) => item.name === name);
+      if (index < 0) {
+        throw new Error(`Workspace ID group not found: ${normalized}`);
+      }
+      const item = children[index];
+      const content = appendIdGroupContent(
+        parseIdGroupContent(item.content),
+        input.idField,
+        input.ids,
+      );
+      children[index] = { ...item, content: JSON.stringify(content) };
       this.directories[parent] = children;
     });
   }

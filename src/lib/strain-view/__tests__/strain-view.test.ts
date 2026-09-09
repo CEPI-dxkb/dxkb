@@ -1,4 +1,5 @@
 import {
+  genomeIdsFromStrains,
   parseStrainCollectionState,
   strainCollectionProfile,
   strainStructuralRql,
@@ -76,6 +77,17 @@ describe("Strain view contracts", () => {
     expect(() => parseStrainCollectionState({ rql: "sort(+strain)" })).toThrow(
       "Transport operator",
     );
+  });
+
+  it("extracts unique associated genome IDs in first-seen order", () => {
+    expect(
+      genomeIdsFromStrains([
+        { genome_ids: [" 641501.3 ", 641501.4, "641501.3", ""] },
+        { genome_ids: null },
+        { genome_ids: [false, {}, "641501.5"] },
+      ]),
+    ).toEqual(["641501.3", "641501.4", "641501.5"]);
+    expect(genomeIdsFromStrains([{ genome_ids: "641501.3" }, {}])).toEqual([]);
   });
 
   it("validates multivalue accessions while retaining extra fields", () => {

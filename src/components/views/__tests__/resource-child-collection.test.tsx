@@ -21,6 +21,34 @@ const {
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/experiment/1",
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+vi.mock("@/lib/auth/provider", () => ({
+  useAuth: () => ({ user: null, isAuthenticated: false }),
+}));
+vi.mock("@/contexts/workspace-repository-context", () => ({
+  useWorkspaceRepository: () => ({
+    createIdGroup: vi.fn(),
+    appendToIdGroup: vi.fn(),
+  }),
+}));
+vi.mock("@/components/views/strain-copy-dialog", () => ({
+  StrainCopyDialog: () => null,
+}));
+vi.mock("@/components/views/strain-service-chooser", () => ({
+  StrainServiceChooser: () => null,
+}));
+vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
+  SelectionToGroupDialog: () => null,
+}));
+
 vi.mock("@/lib/data-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/data-api")>()),
   DataRepository: class {

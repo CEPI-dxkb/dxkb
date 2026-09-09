@@ -214,18 +214,58 @@ describe("SearchActionBar (taxonomy)", () => {
       expect(onAction).toHaveBeenCalledWith("genomes");
     });
 
-    it("hides the single-strain Genomes action for multiple selections", () => {
+    it("enables the Strain actions for multiple selections", () => {
       render(
         <SearchActionBar
           selectedCount={2}
           searchType="strain"
-          enabledActions={["genomes"]}
+          enabledActions={["copyRows", "services", "genomes", "group"]}
         />,
       );
 
       expect(
-        screen.queryByRole("button", { name: /^ggenomes$/i }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("button", { name: /^copy$/i }),
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /^services$/i }),
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /^ggenomes$/i }),
+      ).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /^group$/i }),
+      ).not.toBeDisabled();
+    });
+
+    it("opens action-specific popover content without firing the action", async () => {
+      const onAction = vi.fn();
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+
+      try {
+        render(
+          <SearchActionBar
+            selectedCount={1}
+            searchType="strain"
+            enabledActions={["group"]}
+            actionPopovers={{ group: <p>Sign in required</p> }}
+            onAction={onAction}
+          />,
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: /group/i }));
+
+        expect(screen.getByText("Sign in required")).toBeInTheDocument();
+        expect(onAction).not.toHaveBeenCalled();
+        expect(
+          consoleError.mock.calls.some(([message]) =>
+            String(message).includes("Base UI: A component that acts as a button"),
+          ),
+        ).toBe(false);
+      } finally {
+        consoleError.mockRestore();
+      }
     });
 
     it("honors an explicit disable when an enabled action has no target", () => {
@@ -234,11 +274,15 @@ describe("SearchActionBar (taxonomy)", () => {
           selectedCount={1}
           searchType="strain"
           enabledActions={["genomes"]}
-          disabledActions={{ genomes: "No genomes are associated with this strain" }}
+          disabledActions={{
+            genomes: "No genomes are associated with this strain",
+          }}
         />,
       );
 
-      expect(screen.getByRole("button", { name: /^ggenomes$/i })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /^ggenomes$/i }),
+      ).toBeDisabled();
     });
 
     it("enables the Genome action for one selected genome", async () => {
@@ -323,7 +367,9 @@ describe("SearchActionBar (taxonomy)", () => {
       expect(screen.getByRole("button", { name: /guide/i })).not.toBeDisabled();
       expect(screen.getByRole("button", { name: /dwnld/i })).not.toBeDisabled();
       expect(screen.getByRole("button", { name: /services/i })).toBeDisabled();
-      expect(screen.getByRole("button", { name: /biosets/i })).not.toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: /biosets/i }),
+      ).not.toBeDisabled();
     });
 
     it("enables the Experiment action for one selected record", async () => {

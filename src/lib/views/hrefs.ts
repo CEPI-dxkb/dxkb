@@ -42,19 +42,28 @@ export function genomeHref(genomeId: number | string): string {
   return `/genome/${encodeURIComponent(String(genomeId))}`;
 }
 
+/** Return the canonical Genome list for the supplied genome IDs. */
+export function genomesHrefFromIds(
+  values: readonly (string | number)[],
+): string | null {
+  const genomeIds = [...new Set(values.map(String).map((id) => id.trim()))]
+    .filter(Boolean)
+    .map(escapeRqlValue);
+  if (genomeIds.length === 0) return null;
+  return genomeListHref({ rql: `in(genome_id,(${genomeIds.join(",")}))` });
+}
+
 /** Return the canonical Genome list for all genome IDs associated with a row. */
 export function genomesHrefFromRow(
   row: Record<string, unknown> | null,
 ): string | null {
   if (!Array.isArray(row?.genome_ids)) return null;
-  const genomeIds = [...new Set(row.genome_ids)]
-    .filter(
+  return genomesHrefFromIds(
+    row.genome_ids.filter(
       (id): id is string | number =>
         typeof id === "string" || typeof id === "number",
-    )
-    .map((id) => escapeRqlValue(String(id)));
-  if (genomeIds.length === 0) return null;
-  return genomeListHref({ rql: `in(genome_id,(${genomeIds.join(",")}))` });
+    ),
+  );
 }
 
 /**

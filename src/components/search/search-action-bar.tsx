@@ -1,6 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
   TooltipProvider,
@@ -8,6 +15,7 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import {
   BookOpen,
   Copy,
@@ -150,12 +158,7 @@ const actionConfig: ActionConfig[] = [
     id: "group",
     label: "GROUP",
     icon: Group,
-    validSearchTypes: [
-      "genome",
-      "strain",
-      "genome_feature",
-      "ppi",
-    ],
+    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -299,6 +302,7 @@ export interface SearchActionBarProps {
   disabledActions?: Partial<Record<SearchActionId, string>>;
   enabledActions?: SearchActionId[];
   loadingActionIds?: SearchActionId[];
+  actionPopovers?: Partial<Record<SearchActionId, ReactNode>>;
   onAction?: (actionId: SearchActionId) => void;
 }
 
@@ -309,6 +313,7 @@ export function SearchActionBar({
   disabledActions,
   enabledActions,
   loadingActionIds,
+  actionPopovers,
   onAction,
 }: SearchActionBarProps) {
   const visibleActions = actionConfig.filter((action) => {
@@ -325,11 +330,9 @@ export function SearchActionBar({
     if (action.requiresSelection && selectedCount === 0) {
       return false;
     }
-    // Strains resolve genomes from one selected row; taxonomy supports aggregates.
     if (
-      (action.maxSelection !== undefined &&
-        selectedCount > action.maxSelection) ||
-      (action.id === "genomes" && searchType === "strain" && selectedCount > 1)
+      action.maxSelection !== undefined &&
+      selectedCount > action.maxSelection
     ) {
       return false;
     }
@@ -353,22 +356,9 @@ export function SearchActionBar({
           const disabled = isDisabled(action);
           const tooltipText =
             disabledActions?.[action.id] ?? action.disabledWithTooltip;
-
-          const buttonEl = (
-            <Button
-              key={action.id}
-              variant="secondary"
-              className="h-15 w-full flex-col gap-1 font-normal"
-              disabled={disabled}
-              onClick={() => {
-                if (action.id === "guide") {
-                  if (guideUrl)
-                    window.open(guideUrl, "_blank", "noopener,noreferrer");
-                } else {
-                  onAction?.(action.id);
-                }
-              }}
-            >
+          const popoverContent = actionPopovers?.[action.id];
+          const actionContent = (
+            <>
               {showSpinner ? (
                 <Spinner className="size-4 shrink-0" />
               ) : action.letter ? (
@@ -387,8 +377,59 @@ export function SearchActionBar({
                   </span>
                 ))}
               </span>
+            </>
+          );
+
+          const buttonEl = (
+            <Button
+              key={action.id}
+              variant="secondary"
+              className="h-15 w-full flex-col gap-1 font-normal"
+              disabled={disabled || showSpinner}
+              onClick={
+                popoverContent
+                  ? undefined
+                  : () => {
+                      if (action.id === "guide") {
+                        if (guideUrl)
+                          window.open(
+                            guideUrl,
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                      } else {
+                        onAction?.(action.id);
+                      }
+                    }
+              }
+            >
+              {actionContent}
             </Button>
           );
+
+          if (popoverContent && !disabled) {
+            return (
+              <Popover key={action.id}>
+                <PopoverTrigger
+                  render={
+                    <button
+                      type="button"
+                      className={cn(
+                        buttonVariants({ variant: "secondary" }),
+                        "h-15 w-full flex-col gap-1 font-normal",
+                      )}
+                      disabled={showSpinner}
+                    >
+                      {actionContent}
+                    </button>
+                  }
+                />
+                <PopoverContent side="left" align="center">
+                  {popoverContent}
+                </PopoverContent>
+              </Popover>
+            );
+          }
 
           return tooltipText && disabled ? (
             <Tooltip key={action.id}>

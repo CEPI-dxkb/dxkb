@@ -21,6 +21,80 @@ const strainApi500: JsonOverride = {
 // false and the Strains tab is disabled, so the ListData component never mounts.
 const INFLUENZA_TAXON_ID = "11520";
 
+test.describe("taxon strains actions", () => {
+  test.beforeEach(async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [...permissiveBackendOverrides],
+    });
+    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await expect(page.getByText("A/California/04/2009").first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test("copies selected rows and opens all associated genomes", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page
+      .getByRole("checkbox", { name: /select all rows on this page/i })
+      .click();
+
+    await page.getByRole("button", { name: /^copy$/i }).click();
+    await page
+      .getByRole("button", { name: "Selected Columns (with headers)" })
+      .click();
+    const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clipboard).toContain("Species\tStrain\tSegment Count");
+    expect(clipboard).toContain("A/California/04/2009");
+    expect(clipboard).not.toContain("Genome IDs");
+    expect(clipboard).not.toContain("641501.3");
+
+    await page
+      .getByRole("complementary")
+      .getByRole("button", { name: /genomes/i })
+      .click();
+    await expect(page).toHaveURL(
+      /\/genome\?rql=in\(genome_id%2C\(641501\.3%2C641501\.4%2C641501\.5\)\)/,
+    );
+    await expect(page.getByRole("button", { name: "Sequences" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Features" })).toBeVisible();
+  });
+
+  test("defers sign-in until a service is selected", async ({ page }) => {
+    await page
+      .getByRole("checkbox", { name: "Select row strain-backend-901" })
+      .click();
+    await page
+      .getByRole("complementary")
+      .getByRole("button", { name: /^services$/i })
+      .click();
+
+    await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await page.getByRole("button", { name: "BLAST" }).click();
+    await expect(page).toHaveURL(/\/sign-in\?redirect=%2Fservices%2Fblast/);
+  });
+
+  test("prompts signed-out users to sign in for Group without leaving the page", async ({
+    page,
+  }) => {
+    await page
+      .getByRole("checkbox", { name: "Select row strain-backend-901" })
+      .click();
+    await page.getByRole("button", { name: /^group$/i }).click();
+
+    await expect(page.getByText("Sign in required")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Sign In" }).last(),
+    ).toHaveAttribute(
+      "href",
+      `/sign-in?redirect=${encodeURIComponent(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`)}`,
+    );
+    await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+  });
+});
+
 test.describe("taxon strains tab: data API error handling", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {

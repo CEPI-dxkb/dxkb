@@ -25,8 +25,35 @@ const { push, downloadResourceExport, useResourceCollection } = vi.hoisted(
 let dataTableProps: Record<string, unknown>;
 let actionBarProps: Record<string, unknown>;
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
-vi.mock("../resource-export", () => ({ downloadResourceExport }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+  usePathname: () => "/taxonomy/2955291",
+  useSearchParams: () => new URLSearchParams("tab=strains"),
+}));
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
+  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+}));
+vi.mock("@/lib/auth/provider", () => ({
+  useAuth: () => ({ user: null, isAuthenticated: false }),
+}));
+vi.mock("@/contexts/workspace-repository-context", () => ({
+  useWorkspaceRepository: () => ({
+    createIdGroup: vi.fn(),
+    appendToIdGroup: vi.fn(),
+  }),
+}));
+vi.mock("../strain-copy-dialog", () => ({ StrainCopyDialog: () => null }));
+vi.mock("../strain-service-chooser", () => ({
+  StrainServiceChooser: () => null,
+}));
+vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
+  SelectionToGroupDialog: () => null,
+}));
+vi.mock("../resource-export", () => ({
+  downloadResourceExport,
+  serializeResourceRows: vi.fn(),
+}));
 vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
@@ -128,7 +155,9 @@ vi.mock("@/components/search/search-action-bar", () => ({
           <button
             key={action}
             onClick={() =>
-              (props.onAction as ((action: string) => void) | undefined)?.(action)
+              (props.onAction as ((action: string) => void) | undefined)?.(
+                action,
+              )
             }
           >
             {action}
@@ -168,8 +197,16 @@ vi.mock("@/components/detail-panel/info-panel", () => ({
   ),
 }));
 vi.mock("../taxonomy-service-chooser", () => ({
-  TaxonomyServiceChooser: ({ open, taxonIds }: { open: boolean; taxonIds: string[] }) =>
-    open ? <div data-testid="taxonomy-services">{taxonIds.join(",")}</div> : null,
+  TaxonomyServiceChooser: ({
+    open,
+    taxonIds,
+  }: {
+    open: boolean;
+    taxonIds: string[];
+  }) =>
+    open ? (
+      <div data-testid="taxonomy-services">{taxonIds.join(",")}</div>
+    ) : null,
 }));
 vi.mock("../resource-workspace", () => ({
   ResourceWorkspace: ({
@@ -517,33 +554,40 @@ describe("ResourceCollection Genome integration contracts", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("enables the Strain Genomes action and opens its canonical Genome list", async () => {
+  it("enables the Strain Genomes action and opens its canonical Genome list in the same tab", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
-    vi.stubGlobal("open", open);
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
-      activeId: "strain-row-1",
-      detail: {
-        id: "strain-row-1",
-        strain: "A/fixture/2025",
-        genome_ids: ["11320.1", "11320.2", "11320.1"],
-      },
+      activeId: null,
+      detail: null,
       rows: [
         {
           id: "strain-row-1",
           strain: "A/fixture/2025",
-          genome_ids: ["11320.1", "11320.2", "11320.1"],
+          genome_ids: ["11320.1", "11320.2"],
+        },
+        {
+          id: "strain-row-2",
+          strain: "A/fixture/2026",
+          genome_ids: ["11320.2", "11320.3"],
         },
       ],
-      selection: { "strain-row-1": true },
-      selectedIds: ["strain-row-1"],
+      selection: { "strain-row-1": true, "strain-row-2": true },
+      selectedIds: ["strain-row-1", "strain-row-2"],
     });
 
+    const strainRepository = repository(
+      Promise.resolve({
+        rows: [
+          { genome_ids: ["11320.1", "11320.2"] },
+          { genome_ids: ["11320.2", "11320.3"] },
+        ],
+      }),
+    );
     render(
       <ResourceCollection
         profile={strainCollectionProfile}
-        repository={repository()}
+        repository={strainRepository}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
         showHeader={false}
@@ -551,16 +595,13 @@ describe("ResourceCollection Genome integration contracts", () => {
     );
 
     expect(actionBarProps).toMatchObject({
-      enabledActions: ["genomes"],
+      enabledActions: ["copyRows", "services", "genomes", "group"],
       disabledActions: undefined,
     });
     await user.click(screen.getByRole("button", { name: "Genomes action" }));
-    expect(open).toHaveBeenCalledWith(
-      "/genome?rql=in(genome_id%2C(11320.1%2C11320.2))",
-      "_blank",
-      "noopener,noreferrer",
+    expect(push).toHaveBeenCalledWith(
+      "/genome?rql=in(genome_id%2C(11320.1%2C11320.2%2C11320.3))",
     );
-    expect(push).not.toHaveBeenCalled();
   });
 
   it("keeps the Strain Genomes action disabled without associated genomes", () => {
@@ -584,9 +625,11 @@ describe("ResourceCollection Genome integration contracts", () => {
     );
 
     expect(actionBarProps).toMatchObject({
-      enabledActions: undefined,
+      enabledActions: ["copyRows", "services", "genomes", "group"],
       disabledActions: {
         genomes: "No genomes are associated with this strain",
+        services: "No genomes are associated with this strain",
+        group: "No genomes are associated with this strain",
       },
     });
   });
@@ -802,8 +845,7 @@ describe("ResourceCollection Genome integration contracts", () => {
     expect(actionBarProps).toMatchObject({ enabledActions: ["biosets"] });
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(exportAll).toHaveBeenCalledWith("bioset", {
-      rql:
-        'and(eq(exp_id,*),and(or(eq(bioset_type,"Differential%20Expression"),eq(bioset_type,"Pathway%20Analysis")),eq(organism,"Escherichia%20coli")))',
+      rql: 'and(eq(exp_id,*),and(or(eq(bioset_type,"Differential%20Expression"),eq(bioset_type,"Pathway%20Analysis")),eq(organism,"Escherichia%20coli")))',
       keyword: "expression",
       fields: ["exp_id"],
       sort: { field: "bioset_id", direction: "asc" },

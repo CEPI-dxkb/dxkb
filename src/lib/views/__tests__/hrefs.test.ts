@@ -13,6 +13,7 @@ import {
   genomeHref,
   genomeIdFromRow,
   genomeListHref,
+  genomesHrefFromIds,
   genomesHrefFromRow,
   proteinStructureHref,
   proteinStructureListHref,
@@ -194,6 +195,16 @@ describe("Domains and Motifs hrefs", () => {
 });
 
 describe("Strain hrefs", () => {
+  it("builds a canonical Genome list from multiple IDs", () => {
+    expect(genomesHrefFromIds(["641501.3", "id,with spaces", "641501.3"])).toBe(
+      "/genome?rql=in(genome_id%2C(641501.3%2Cid%252Cwith%20spaces))",
+    );
+    expect(genomesHrefFromIds([])).toBeNull();
+    expect(genomesHrefFromRow({ genome_ids: ["641501.3", "641501.3"] })).toBe(
+      "/genome?rql=in(genome_id%2C(641501.3))",
+    );
+  });
+
   it("builds list-only collection links with phrase and taxon filters", () => {
     expect(strainListHref()).toBe("/strain");
     expect(

@@ -15,9 +15,16 @@ import type {
   WorkspaceReadOptions,
 } from "../domain";
 import { parseWorkspaceGetSingle } from "../helpers";
+import {
+  appendIdGroupContent,
+  createIdGroupContent,
+  parseIdGroupContent,
+} from "../id-group";
 import type {
+  AppendToIdGroupInput,
   ArchiveRequest,
   ArchiveResult,
+  CreateIdGroupInput,
   UploadNodeRequest,
   UploadNodeResult,
   WorkspaceRepository,
@@ -40,6 +47,36 @@ function getWorkspaceGetPathRaw(
   if (!Array.isArray(pathResults)) return null;
   const objectsAtPath: unknown = pathResults[pathIndex];
   return Array.isArray(objectsAtPath) ? objectsAtPath : null;
+}
+
+function parseIdGroupEntry(raw: unknown): {
+  type: string;
+  meta: Record<string, unknown>;
+  content: ReturnType<typeof parseIdGroupContent>;
+} {
+  const entry = getWorkspaceGetPathRaw(raw, 0);
+  if (!entry || !Array.isArray(entry[0])) {
+    throw new Error("Workspace.get returned an invalid ID group response");
+  }
+
+  const metadata: unknown[] = entry[0];
+  const type: unknown = metadata[1];
+  const meta: unknown = metadata[7];
+  if (typeof type !== "string") {
+    throw new Error("Workspace.get returned ID group metadata without a type");
+  }
+  if (
+    meta !== undefined &&
+    (typeof meta !== "object" || meta === null || Array.isArray(meta))
+  ) {
+    throw new Error("Workspace.get returned invalid ID group metadata");
+  }
+
+  return {
+    type,
+    meta: (meta as Record<string, unknown> | undefined) ?? {},
+    content: parseIdGroupContent(entry[1]),
+  };
 }
 
 export interface HttpWorkspaceRepositoryOptions {
@@ -180,6 +217,34 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
       ],
       baseUrl: this.baseUrl,
       allowMissingResult: true,
+    });
+  }
+
+  async createIdGroup(input: CreateIdGroupInput): Promise<void> {
+    const path = `${input.path.replace(/\/+$/, "")}/${input.name}`;
+    await this.saveObject({
+      path,
+      type: input.type,
+      content: JSON.stringify(
+        createIdGroupContent(input.name, input.idField, input.ids),
+      ),
+    });
+  }
+
+  async appendToIdGroup(input: AppendToIdGroupInput): Promise<void> {
+    const raw = await this.getRaw([input.path], { metadataOnly: false });
+    const existing = parseIdGroupEntry(raw);
+    const content = appendIdGroupContent(
+      existing.content,
+      input.idField,
+      input.ids,
+    );
+    await this.saveObject({
+      path: input.path,
+      type: existing.type,
+      content: JSON.stringify(content),
+      overwrite: true,
+      meta: existing.meta,
     });
   }
 

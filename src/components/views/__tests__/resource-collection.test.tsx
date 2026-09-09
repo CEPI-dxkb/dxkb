@@ -326,13 +326,13 @@ describe("ResourceCollection Taxonomy actions", () => {
     );
     expect(open).toHaveBeenNthCalledWith(
       2,
-      "/genome?rql=in(taxon_lineage_ids%2C(234))",
+      "/genome?rql=and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated))",
       "_blank",
       "noopener,noreferrer",
     );
     expect(open).toHaveBeenNthCalledWith(
       3,
-      "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(in(taxon_lineage_ids%2C(234)))%2Ceq(annotation%2CPATRIC))",
+      "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated)))%2Ceq(annotation%2CPATRIC))",
       "_blank",
       "noopener,noreferrer",
     );

@@ -1,6 +1,7 @@
 import {
   buildFeatureTabs,
   canonicalFeatureTab,
+  featureBaseRql,
   featureCollectionProfile,
   featureStructuralRql,
   featureViewRecordSchema,
@@ -27,6 +28,21 @@ describe("Feature view contracts", () => {
     expect(recentGenomeFeatureRql).toBe(
       "and(eq(genome_id,*),genome(and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))))",
     );
+    expect(
+      featureBaseRql({ keyword: "", filters: {}, page: 1, sort: "unsorted" }),
+    ).toBe(recentGenomeFeatureRql);
+  });
+
+  it("does not restrict an explicit RQL query to recently completed genomes", () => {
+    expect(
+      featureBaseRql({
+        keyword: "",
+        filters: {},
+        page: 1,
+        sort: "unsorted",
+        rql: "and(eq(genome_id,*),genome(eq(taxon_lineage_ids,120577)))",
+      }),
+    ).toBeUndefined();
   });
 
   it("accepts canonical and alternate complex identifiers", () => {

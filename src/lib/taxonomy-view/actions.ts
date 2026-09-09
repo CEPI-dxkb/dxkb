@@ -23,8 +23,9 @@ function lineageRql(resource: "genome" | "genome_feature", ids: string[]) {
     field: "taxon_lineage_ids",
     values: ids,
   });
-  if (resource === "genome") return lineage;
-  return `and(eq(genome_id,*),genome(${lineage}),eq(annotation,PATRIC))`;
+  const activeGenomes = `and(${lineage},ne(genome_status,Deprecated))`;
+  if (resource === "genome") return activeGenomes;
+  return `and(eq(genome_id,*),genome(${activeGenomes}),eq(annotation,PATRIC))`;
 }
 
 export function taxonomyGenomesHref(values: readonly unknown[]): string {

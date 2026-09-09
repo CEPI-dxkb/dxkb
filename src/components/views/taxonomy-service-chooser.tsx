@@ -16,12 +16,14 @@ interface TaxonomyServiceChooserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   taxonIds: readonly string[];
+  hasSelectableServices?: boolean;
 }
 
 export function TaxonomyServiceChooser({
   open,
   onOpenChange,
   taxonIds,
+  hasSelectableServices = true,
 }: TaxonomyServiceChooserProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -33,14 +35,20 @@ export function TaxonomyServiceChooser({
             Taxon {taxonIds.length === 1 ? "ID" : "IDs"} prefilled.
           </DialogDescription>
         </DialogHeader>
-        <Button
-          onClick={() => {
-            rerunJob(taxonomyBlastPrefill(taxonIds), "Homology");
-            onOpenChange(false);
-          }}
-        >
-          BLAST against selected Taxa
-        </Button>
+        {hasSelectableServices ? (
+          <Button
+            onClick={() => {
+              rerunJob(taxonomyBlastPrefill(taxonIds), "Homology");
+              onOpenChange(false);
+            }}
+          >
+            BLAST against selected Taxa
+          </Button>
+        ) : (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No selectable services
+          </p>
+        )}
         <DialogFooter showCloseButton />
       </DialogContent>
     </Dialog>

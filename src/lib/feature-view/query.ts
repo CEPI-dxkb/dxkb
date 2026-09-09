@@ -15,6 +15,10 @@ export const featureSorts = (Object.values(genomeFeatureFields) as DataField[])
 export const recentGenomeFeatureRql =
   "and(eq(genome_id,*),genome(and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))))";
 
+export function featureBaseRql(state: CollectionState): string | undefined {
+  return state.rql ? undefined : recentGenomeFeatureRql;
+}
+
 export const featureCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...featureSorts],

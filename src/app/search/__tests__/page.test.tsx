@@ -104,6 +104,25 @@ describe("legacy search route", () => {
     );
   });
 
+  it("preserves every canonical Taxa filter through the redirect", async () => {
+    await expect(
+      GlobalSearch({
+        searchParams: Promise.resolve({
+          type: "taxonomy",
+          q: "influenza",
+          taxon_rank: ["species", "genus"],
+          genetic_code: "1",
+          division: "Viruses",
+          refine: "H5N1",
+          page: "2",
+          ignored: "value",
+        }),
+      }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/taxonomy?keyword=influenza&taxon_rank=species&taxon_rank=genus&genetic_code=1&division=Viruses&refine=H5N1&page=2",
+    );
+  });
+
   it("continues rendering everything searches", async () => {
     render(
       await GlobalSearch({

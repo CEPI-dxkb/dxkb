@@ -5,12 +5,32 @@ export interface MappedPath {
   search: string;
 }
 
+/** Comparison operators whose first argument is a field name. */
+const rqlFieldOperators = ["eq", "ne", "lt", "le", "gt", "ge", "in"] as const;
+const fieldArgumentPattern = new RegExp(
+  `(?:^|[(,])(?:${rqlFieldOperators.join("|")})\\($`,
+);
+/** Legacy sort keys carry a direction prefix, e.g. `sort(+field,-other)`. */
+const sortKeyPattern = /[(,][+-]$/;
+
 /**
- * Rename an RQL field, matching only where the token sits in field position —
- * preceded by "(", ",", "+" or "-", followed by "," or ")", and outside a quoted
- * value. A blunt replaceAll over the assembled RQL would also rewrite the token
- * inside values, turning eq(description,%22taxon_lineage_ids%22) into a different
- * query. Legacy query strings arrive raw, so quotes appear as either " or %22.
+ * True when the token starting at `index` is the field argument of a comparison
+ * operator, or a legacy sort key. Adjacent delimiters alone cannot tell those apart
+ * from a value: `(` and `,` equally precede fields, scalar values and list members,
+ * so `keyword(taxon_lineage_ids)` and `eq(taxon_name,taxon_lineage_ids)` must be
+ * left alone.
+ */
+function isFieldPosition(rql: string, index: number): boolean {
+  const before = rql.slice(0, index);
+  return sortKeyPattern.test(before) || fieldArgumentPattern.test(before);
+}
+
+/**
+ * Rename an RQL field, matching only where the token sits in field position and
+ * outside a quoted value. A blunt replaceAll over the assembled RQL would also
+ * rewrite the token inside values, turning eq(description,%22taxon_lineage_ids%22)
+ * into a different query. Legacy query strings arrive raw, so quotes appear as
+ * either " or %22.
  */
 function renameRqlField(rql: string, from: string, to: string): string {
   let result = "";
@@ -34,13 +54,12 @@ function renameRqlField(rql: string, from: string, to: string): string {
       index += quote.length;
       continue;
     }
-    const previous = index === 0 ? "(" : rql[index - 1];
     const nextIndex = index + from.length;
     if (
       rql.startsWith(from, index) &&
-      "(,+-".includes(previous) &&
       nextIndex < rql.length &&
-      ",)".includes(rql[nextIndex])
+      ",)".includes(rql[nextIndex]) &&
+      isFieldPosition(rql, index)
     ) {
       result += to;
       index += from.length;

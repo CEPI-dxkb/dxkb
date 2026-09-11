@@ -127,10 +127,12 @@ test.describe("taxon strains actions", () => {
       .toBe(true);
   });
 
-  test("copies selected rows and opens all associated genomes", async ({
-    page,
-    context,
-  }) => {
+  test("copies selected rows", async ({ page, context, browserName }) => {
+    test.skip(
+      browserName !== "chromium",
+      "Only Chromium accepts Playwright's clipboard-read/clipboard-write permissions; Firefox rejects them as unknown and WebKit's headless clipboard is unreliable",
+    );
+
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await page
       .getByRole("checkbox", { name: /select all rows on this page/i })
@@ -145,6 +147,14 @@ test.describe("taxon strains actions", () => {
     expect(clipboard).toContain("A/California/04/2009");
     expect(clipboard).not.toContain("Genome IDs");
     expect(clipboard).not.toContain("641501.3");
+  });
+
+  // Unguarded: the associated-Genome navigation is plain routing, so every browser
+  // keeps this coverage even though the clipboard assertions above are Chromium-only.
+  test("opens all associated genomes", async ({ page }) => {
+    await page
+      .getByRole("checkbox", { name: /select all rows on this page/i })
+      .click();
 
     await page
       .getByRole("complementary")
@@ -157,7 +167,10 @@ test.describe("taxon strains actions", () => {
     await expect(page.getByRole("button", { name: "Features" })).toBeVisible();
   });
 
-  test("defers sign-in until a service is selected", async ({ page }) => {
+  test("keeps the selection when a signed-out user launches BLAST", async ({
+    page,
+    context,
+  }) => {
     await page
       .getByRole("checkbox", { name: "Select row strain-backend-901" })
       .click();
@@ -167,8 +180,26 @@ test.describe("taxon strains actions", () => {
       .click();
 
     await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    // Direct BLAST needs no workspace object, so it carries the selected Genome IDs
+    // into the service tab and lets the protected route handle sign-in. Redirecting
+    // from here instead discarded the selection.
+    const serviceTab = context.waitForEvent("page");
     await page.getByRole("button", { name: "BLAST" }).click();
-    await expect(page).toHaveURL(/\/sign-in\?redirect=%2Fservices%2Fblast/);
+    const opened = await serviceTab;
+    // The protected service route sends a signed-out user through sign-in, but the
+    // rerun key survives the round trip, so the prefill is still there afterwards.
+    await expect(opened).toHaveURL(
+      /\/sign-in\?redirect=%2Fservices%2Fblast%3Frerun_key%3D/,
+    );
+    const rerunKey =
+      new URL(opened.url()).searchParams
+        .get("redirect")
+        ?.match(/rerun_key=([^&]+)/)?.[1] ?? "";
+    expect(rerunKey).not.toBe("");
+    expect(
+      await opened.evaluate((key) => sessionStorage.getItem(key), rerunKey),
+    ).toContain("641501.3");
+    await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
   });
 
   test("prompts signed-out users to sign in for Group without leaving the page", async ({
@@ -180,8 +211,10 @@ test.describe("taxon strains actions", () => {
     await page.getByRole("button", { name: /^group$/i }).click();
 
     await expect(page.getByText("Sign in required")).toBeVisible();
+    // The popover's Sign In is a Button rendered as an anchor, so it carries
+    // role="button" rather than role="link".
     await expect(
-      page.getByRole("link", { name: "Sign In" }).last(),
+      page.getByRole("dialog").getByRole("button", { name: "Sign In" }),
     ).toHaveAttribute(
       "href",
       `/sign-in?redirect=${encodeURIComponent(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`)}`,

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
@@ -108,6 +108,20 @@ describe("BLAST page database type transitions", () => {
         screen.getByRole("combobox", { name: "Database Source" }),
       ).toHaveTextContent("Search within a taxon");
     });
+
+    // The point of the prefill: both Taxon IDs are visible and removable, not just
+    // the database source that implies them.
+    const selectedTaxa = await screen.findByRole("list", {
+      name: "Selected taxa",
+    });
+    expect(
+      within(selectedTaxa)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["234", "10239"]);
+    expect(
+      screen.getByRole("button", { name: "Remove taxon 234" }),
+    ).toBeInTheDocument();
   });
 
   it("normalizes incompatible rerun data and reset restores the complete default combination", async () => {

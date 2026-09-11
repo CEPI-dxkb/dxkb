@@ -3,6 +3,26 @@ import userEvent from "@testing-library/user-event";
 
 import { SearchActionBar, notReady } from "../search-action-bar";
 
+interface ExpectedAction {
+  name: RegExp;
+  enabled: boolean;
+}
+
+/**
+ * Assert the bar rendered exactly these buttons, in this order, with these
+ * enabled states. The cases that deliberately assert neither order nor count keep
+ * looping over `screen.getByRole` themselves instead of calling this.
+ */
+function expectActionButtons(expected: readonly ExpectedAction[]) {
+  const buttons = screen.getAllByRole("button");
+  expect(buttons).toHaveLength(expected.length);
+  expected.forEach((action, index) => {
+    const button = buttons[index];
+    expect(button).toHaveAccessibleName(action.name);
+    expect(button).toHaveProperty("disabled", !action.enabled);
+  });
+}
+
 describe("SearchActionBar (taxonomy)", () => {
   describe("maxSelection", () => {
     it("shows single-select-only actions when exactly one row is selected", () => {
@@ -105,6 +125,39 @@ describe("SearchActionBar (taxonomy)", () => {
       expect(await screen.findAllByText(notReady)).not.toHaveLength(0);
     });
 
+    it("shows the sequence FEATURES action for one selected row", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="genome_sequence"
+          enabledActions={["copyRows", "services", "group", "features"]}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: /^ffeatures$/i }),
+      ).not.toBeDisabled();
+    });
+
+    it("hides the sequence FEATURES action above one selected row", () => {
+      render(
+        <SearchActionBar
+          selectedCount={2}
+          searchType="genome_sequence"
+          enabledActions={["copyRows", "services", "group", "features"]}
+        />,
+      );
+
+      // FEATURES resolves from the one displayed detail row's sequence_id, so it is
+      // maxSelection:1 -> hidden on multi. COPY ROWS has no bound and stays.
+      expect(
+        screen.queryByRole("button", { name: /^ffeatures$/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /copy rows/i }),
+      ).toBeInTheDocument();
+    });
+
     it("keeps the sequence actions disabled where the consumer has no handler", () => {
       render(
         <SearchActionBar
@@ -145,13 +198,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /group/i, enabled: true },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
   });
 
@@ -175,13 +222,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /variant\s*types/i, enabled: false },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
 
     it("does not fire onAction for the disabled VARIANT TYPES button", async () => {
@@ -220,13 +261,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /^eepitope$/i, enabled: true },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
 
     it("hides the single-row Epitope action for multiple selections", () => {
@@ -267,13 +302,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /group/i, enabled: true },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
 
     it("does not fire onAction for the disabled interaction FASTA button", async () => {
@@ -311,13 +340,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /^sserology$/i, enabled: true },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
   });
 
@@ -342,13 +365,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /^map$/i, enabled: false },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
 
     it("does not fire onAction for the disabled MAP button", async () => {
@@ -388,13 +405,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /biosets/i, enabled: false },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
 
     it("matches the taxon-view bioset actions, their order and availability", () => {
@@ -414,13 +425,7 @@ describe("SearchActionBar (taxonomy)", () => {
         { name: /biosets/i, enabled: true },
       ];
 
-      const buttons = screen.getAllByRole("button");
-      expect(buttons).toHaveLength(expectedActions.length);
-      expectedActions.forEach((action, index) => {
-        const button = buttons[index];
-        expect(button).toHaveAccessibleName(action.name);
-        expect(button).toHaveProperty("disabled", !action.enabled);
-      });
+      expectActionButtons(expectedActions);
     });
 
     it("does not fire onAction for the disabled experiment BIOSETS button", async () => {
@@ -614,7 +619,9 @@ describe("SearchActionBar (taxonomy)", () => {
         expect(onAction).not.toHaveBeenCalled();
         expect(
           consoleError.mock.calls.some(([message]) =>
-            String(message).includes("Base UI: A component that acts as a button"),
+            String(message).includes(
+              "Base UI: A component that acts as a button",
+            ),
           ),
         ).toBe(false);
       } finally {

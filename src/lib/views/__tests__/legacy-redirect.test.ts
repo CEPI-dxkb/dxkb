@@ -35,6 +35,42 @@ describe("mapLegacyViewPath", () => {
         "rql=and(in(lineage_ids%2C(1763%2C562))%2Ceq(description%2C%2522taxon_lineage_ids%2522))",
     });
   });
+  it("leaves the lineage field alone in value position", () => {
+    // A bare token is a value here, not a field, so renaming it would change the query.
+    expect(
+      mapLegacyViewPath("/view/TaxonList/", "keyword(taxon_lineage_ids)"),
+    ).toEqual({
+      pathname: "/taxonomy",
+      search: "rql=keyword(taxon_lineage_ids)",
+    });
+    expect(
+      mapLegacyViewPath("/view/TaxonList/", "eq(taxon_name,taxon_lineage_ids)"),
+    ).toEqual({
+      pathname: "/taxonomy",
+      search: "rql=eq(taxon_name%2Ctaxon_lineage_ids)",
+    });
+    expect(
+      mapLegacyViewPath(
+        "/view/TaxonList/",
+        "in(taxon_name,(taxon_lineage_ids,foo))",
+      ),
+    ).toEqual({
+      pathname: "/taxonomy",
+      search: "rql=in(taxon_name%2C(taxon_lineage_ids%2Cfoo))",
+    });
+  });
+  it("renames the lineage field nested inside logical expressions", () => {
+    expect(
+      mapLegacyViewPath(
+        "/view/TaxonList/",
+        "and(or(eq(taxon_lineage_ids,1763),ne(taxon_lineage_ids,562)),sort(+taxon_lineage_ids))",
+      ),
+    ).toEqual({
+      pathname: "/taxonomy",
+      search:
+        "rql=and(or(eq(lineage_ids%2C1763)%2Cne(lineage_ids%2C562))%2Csort(%2Blineage_ids))",
+    });
+  });
   it("leaves the lineage field alone outside the taxonomy segment", () => {
     expect(
       mapLegacyViewPath("/view/GenomeList/", "eq(taxon_lineage_ids,1763)"),

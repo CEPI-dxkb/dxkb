@@ -12,11 +12,13 @@ import { ResourceCollection } from "./resource-collection";
 
 const repository = new DataRepository();
 
+interface TaxonomyResourceCollectionProps {
+  initialState: CollectionState;
+}
+
 export function TaxonomyResourceCollection({
   initialState,
-}: {
-  initialState: CollectionState;
-}) {
+}: TaxonomyResourceCollectionProps) {
   const [, setState] = useCollectionUrlState(taxonomyCollectionOptions);
   return (
     <ResourceCollection<TaxonomyViewRecord>

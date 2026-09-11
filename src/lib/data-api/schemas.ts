@@ -11,8 +11,21 @@ const optionalTaxonomy = {
     .optional(),
 };
 
+/**
+ * The Data API returns `taxon_id` as a number (the resource registry types it as one),
+ * while the app's routes and selections carry canonical positive-integer strings.
+ * Accept either on the wire and normalize to a string, so one numeric row cannot fail
+ * the whole response in `parseRows`.
+ */
+const taxonIdentifier = z
+  .union([z.string(), z.number().int().positive()])
+  .transform(String)
+  .refine((value) => /^(?=.*[1-9])\d+$/.test(value), {
+    message: "taxon_id must be a positive integer",
+  });
+
 export const taxonomyRecordSchema = z.looseObject({
-  taxon_id: identifier.regex(/^(?=.*[1-9])\d+$/),
+  taxon_id: taxonIdentifier,
   taxon_name: z.string().optional(),
   taxon_rank: z.string().optional(),
   other_names: stringList.optional(),

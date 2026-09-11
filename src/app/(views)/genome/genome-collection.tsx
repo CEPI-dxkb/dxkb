@@ -17,9 +17,12 @@ import {
   ResourceChildCollection,
   type EntityViewTab,
 } from "@/components/views";
-import { genomeBaseRql } from "@/lib/genome-view";
-import { proteinStructureCollectionProfile } from "@/lib/protein-structure-view";
-import { genomesChildRql } from "@/lib/views/child-resources";
+import { genomeBaseRql, genomeStructuralRql } from "@/lib/genome-view";
+import {
+  genomesChildRql,
+  proteinFeatureRql,
+} from "@/lib/views/child-resources";
+import { rqlAnd, rqlKeyword } from "@/lib/views/rql";
 import { genomeChildCollections } from "./child-tabs";
 import type { CollectionState } from "@/lib/views/collection-state";
 
@@ -92,7 +95,21 @@ export function GenomeCollection({
     genomeCollectionTabs.find(
       (tab) => tab.key === requestedTab && tab.enabled !== false,
     )?.key ?? "genomes";
-  const genomeRql = initialState.rql ?? genomeBaseRql(initialState);
+  // Same composition order ResourceCollection uses for the Genomes tab itself
+  // (base scope, structural filters, active refinement, then explicit RQL), so a
+  // child tab shows exactly the children of the genomes listed on that tab.
+  // `initialState.keyword` is deliberately left out: `keyword` is a separate
+  // request field rather than an RQL clause, and ResourceChildCollection starts
+  // from fresh local state, so there is no keyword to carry into a child request.
+  const genomeScope = [
+    genomeBaseRql(initialState),
+    genomeStructuralRql(initialState),
+    initialState.refine?.trim()
+      ? rqlKeyword(initialState.refine.trim())
+      : undefined,
+    initialState.rql,
+  ].filter((clause): clause is string => Boolean(clause));
+  const genomeRql = genomeScope.length > 0 ? rqlAnd(...genomeScope) : undefined;
   let content = (
     <GenomeResourceCollection
       baseRql={genomeBaseRql(initialState)}
@@ -105,7 +122,7 @@ export function GenomeCollection({
       <ResourceChildCollection
         {...genomeChildCollections.sequences}
         rql={genomesChildRql(genomeRql)}
-        keywordMode="loaded"
+        keywordMode="server"
       />
     );
   } else if (
@@ -114,13 +131,15 @@ export function GenomeCollection({
   ) {
     const featureRql = genomesChildRql(
       genomeRql,
-      activeTab === "proteins" ? "eq(feature_type,CDS)" : undefined,
+      // Shared with the member Proteins view and the Feature list's
+      // `filter=protein`, so all three mean the same thing by "protein".
+      activeTab === "proteins" ? proteinFeatureRql : undefined,
     );
     content = (
       <ResourceChildCollection
         {...genomeChildCollections[activeTab]}
         rql={featureRql}
-        keywordMode="loaded"
+        keywordMode="server"
       />
     );
   } else if (genomeRql && activeTab === "domains") {
@@ -128,23 +147,23 @@ export function GenomeCollection({
       <ResourceChildCollection
         {...genomeChildCollections.domains}
         rql={genomesChildRql(genomeRql)}
-        keywordMode="loaded"
+        keywordMode="server"
       />
     );
   } else if (genomeRql && activeTab === "structures") {
     // Not ProteinStructureResourceCollection (which the member page uses): that
     // wrapper owns URL collection state, which would collide with this page's own
-    // rql/page/sort params. ResourceChildCollection keeps the tab state local.
+    // rql/page/sort params. ResourceChildCollection keeps the tab state local and
+    // supplies the canonical protein-structure profile (columns, detail fields,
+    // facets and row links) from its own `protein_structure` branch.
     content = (
       <ResourceChildCollection
         resource="protein_structure"
         label="Protein Structures"
         idField="pdb_id"
         rql={genomesChildRql(genomeRql)}
-        columns={proteinStructureCollectionProfile.columns}
         defaultSort="unsorted"
-        guideUrl={proteinStructureCollectionProfile.guideUrl}
-        keywordMode="loaded"
+        keywordMode="server"
       />
     );
   }

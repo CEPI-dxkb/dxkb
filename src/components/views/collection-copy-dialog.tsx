@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,21 +57,42 @@ export function CollectionCopyDialog({
 }: CollectionCopyDialogProps) {
   const [copyingChoice, setCopyingChoice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastOpen, setLastOpen] = useState(open);
+  /**
+   * Identifies the current dialog session so a copy that resolves after the dialog
+   * was closed cannot close, error, or unblock a later session.
+   */
+  const sessionRef = useRef(0);
+  useEffect(() => {
+    // Every open/close transition — including one driven by the parent — ends the
+    // previous session, so any copy still in flight is no longer current.
+    sessionRef.current += 1;
+  }, [open]);
+
+  // Each opening starts with clean local state rather than the last session's error.
+  if (lastOpen !== open) {
+    setLastOpen(open);
+    setCopyingChoice(null);
+    setError(null);
+  }
 
   const handleCopy = async (choice: (typeof copyChoices)[number]) => {
+    const session = sessionRef.current;
     setCopyingChoice(choice.label);
     setError(null);
     try {
       await onCopy(choice.columnMode, choice.includeHeaders);
+      if (session !== sessionRef.current) return;
       onOpenChange(false);
     } catch (copyError) {
+      if (session !== sessionRef.current) return;
       setError(
         copyError instanceof Error
           ? copyError.message
           : `Unable to copy selected ${label.toLowerCase()}`,
       );
     } finally {
-      setCopyingChoice(null);
+      if (session === sessionRef.current) setCopyingChoice(null);
     }
   };
 
@@ -99,7 +120,11 @@ export function CollectionCopyDialog({
             </Button>
           ))}
         </div>
-        {error ? <p className="text-destructive text-sm">{error}</p> : null}
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         <DialogFooter showCloseButton />
       </DialogContent>
     </Dialog>

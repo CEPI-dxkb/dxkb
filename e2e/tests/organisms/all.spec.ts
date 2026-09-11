@@ -9,12 +9,6 @@ test.describe("all organisms landing page", () => {
     await applyBackendMocks(page, {
       overrides: [
         {
-          url: /\/api\/e2e-mock\/data\/taxonomy\/\?/,
-          method: "GET",
-          body: [],
-          headers: { "Content-Range": "items 0-0/0" },
-        },
-        {
           url: /\/api\/e2e-mock\/data\/genome\/\?.*limit\(1\)$/,
           method: "GET",
           body: [],

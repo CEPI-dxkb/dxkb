@@ -187,6 +187,14 @@ describe("InMemoryWorkspaceRepository", () => {
       "appendToIdGroup",
       "getRaw",
     ]);
+    // The read options are part of the call history so a content read (rather than a
+    // metadata-only read) can be asserted.
+    expect(repo.calls.at(-1)).toEqual(
+      expect.objectContaining({
+        method: "getRaw",
+        options: { metadataOnly: false },
+      }),
+    );
   });
 
   it("preserves unrelated ID lists, content fields, and metadata on append", async () => {

@@ -21,13 +21,29 @@ export function createIdGroupContent(
   return { name, id_list: { [idField]: uniqueIds(ids) } };
 }
 
+/**
+ * Older ID groups store their content as base64-encoded JSON; the legacy reader in
+ * `src/lib/services/genome.ts` still decodes that representation. Accept it here so
+ * such a group can be read and appended to. Throws when `raw` is neither valid
+ * base64 nor decodes to JSON, so the caller can report the original parse failure.
+ */
+function decodeLegacyBase64Json(raw: string): unknown {
+  const binary = atob(raw.trim());
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+}
+
 export function parseIdGroupContent(raw: unknown): IdGroupContent {
   let parsed = raw;
   if (typeof raw === "string") {
     try {
       parsed = JSON.parse(raw) as unknown;
     } catch {
-      throw new Error("Workspace ID group contains invalid JSON content");
+      try {
+        parsed = decodeLegacyBase64Json(raw);
+      } catch {
+        throw new Error("Workspace ID group contains invalid JSON content");
+      }
     }
   }
 

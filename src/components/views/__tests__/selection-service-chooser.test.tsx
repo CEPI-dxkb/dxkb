@@ -3,12 +3,16 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mocks = vi.hoisted(() => ({
+  createFolder: vi.fn(),
   createIdGroup: vi.fn(),
   rerunJob: vi.fn(),
 }));
 
 vi.mock("@/contexts/workspace-repository-context", () => ({
-  useWorkspaceRepository: vi.fn(() => ({ createIdGroup: mocks.createIdGroup })),
+  useWorkspaceRepository: vi.fn(() => ({
+    createFolder: mocks.createFolder,
+    createIdGroup: mocks.createIdGroup,
+  })),
 }));
 vi.mock("@/lib/rerun-utility", () => ({ rerunJob: mocks.rerunJob }));
 
@@ -37,6 +41,7 @@ function renderChooser(
 describe("SelectionServiceChooser", () => {
   beforeEach(() => {
     vi.stubGlobal("crypto", { randomUUID: () => "test-uuid" });
+    mocks.createFolder.mockReset().mockResolvedValue(undefined);
     mocks.createIdGroup.mockReset().mockResolvedValue(undefined);
     mocks.rerunJob.mockReset();
   });
@@ -61,7 +66,7 @@ describe("SelectionServiceChooser", () => {
     }
   });
 
-  it("requests authentication for the selected service when signed out", async () => {
+  it("keeps the selected genomes for direct BLAST when signed out", async () => {
     const onOpenChange = vi.fn();
     const onRequireAuthentication = vi.fn();
     renderChooser(onOpenChange, {
@@ -71,9 +76,78 @@ describe("SelectionServiceChooser", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "BLAST" }));
 
-    expect(onRequireAuthentication).toHaveBeenCalledWith("/services/blast");
+    // Direct BLAST writes no workspace object, so the IDs travel in the rerun
+    // payload and the protected service route handles sign-in itself. Redirecting
+    // here instead dropped the selection.
+    expect(mocks.rerunJob).toHaveBeenCalledWith(
+      expect.objectContaining({ db_genome_list: genomeIds }),
+      "Homology",
+    );
+    expect(onRequireAuthentication).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("requests authentication for group-backed services when signed out", async () => {
+    const onOpenChange = vi.fn();
+    const onRequireAuthentication = vi.fn();
+    renderChooser(onOpenChange, {
+      workspaceUsername: undefined,
+      onRequireAuthentication,
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(onRequireAuthentication).toHaveBeenCalledWith(
+      "/services/viral-genome-tree",
+    );
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(mocks.createFolder).not.toHaveBeenCalled();
+    expect(mocks.createIdGroup).not.toHaveBeenCalled();
     expect(mocks.rerunJob).not.toHaveBeenCalled();
+  });
+
+  it("creates the hidden temporary-group folder before writing the group", async () => {
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(mocks.createFolder).toHaveBeenCalledWith(
+      "/alice@bvbrc/home/._tmp_groups",
+    );
+    expect(mocks.createIdGroup).toHaveBeenCalled();
+  });
+
+  it("still writes the group when the folder already exists", async () => {
+    mocks.createFolder.mockRejectedValue(new Error("Object already exists"));
+    const onOpenChange = renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(mocks.createIdGroup).toHaveBeenCalled();
+    expect(mocks.rerunJob).toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("reports the original error when the group write fails", async () => {
+    mocks.createFolder.mockRejectedValue(new Error("Object already exists"));
+    mocks.createIdGroup.mockRejectedValue(
+      new Error("_ERROR_User lacks permission"),
+    );
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(
+      await screen.findByText("_ERROR_User lacks permission"),
+    ).toBeInTheDocument();
   });
 
   it("opens BLAST with selected genomes without creating a group", async () => {

@@ -11,11 +11,13 @@ import type { ResourceCollectionProfile } from "../resource-collection";
 
 const {
   exportAll,
+  selected,
   resourceCollectionProfile,
   useRealResourceCollection,
   useResourceCollection,
 } = vi.hoisted(() => ({
   exportAll: vi.fn().mockResolvedValue({ rows: [] }),
+  selected: vi.fn().mockResolvedValue({ rows: [] }),
   resourceCollectionProfile: vi.fn(),
   useRealResourceCollection: { current: false },
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
@@ -53,6 +55,7 @@ vi.mock("@/lib/data-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/data-api")>()),
   DataRepository: class {
     exportAll = exportAll;
+    selected = selected;
   },
 }));
 
@@ -122,6 +125,31 @@ vi.mock("../resource-collection", async (importOriginal) => {
           >
             Export all
           </button>
+          <button
+            onClick={() =>
+              void props.onExport?.({
+                format: "csv",
+                fields: ["pdb_id"],
+                rql: "eq(genome_id,83332.12)",
+                loadedKeyword: "influenza",
+              })
+            }
+          >
+            Export all with keyword
+          </button>
+          <button
+            onClick={() =>
+              void props.onExport?.({
+                format: "csv",
+                selectedIds: ["1ABC"],
+                fields: ["pdb_id"],
+                rql: "eq(genome_id,83332.12)",
+                loadedKeyword: "influenza",
+              })
+            }
+          >
+            Export selected with keyword
+          </button>
         </div>
       );
     },
@@ -136,6 +164,8 @@ const changedState = {
 
 beforeEach(() => {
   useRealResourceCollection.current = false;
+  exportAll.mockClear();
+  selected.mockClear();
   vi.stubGlobal("URL", {
     ...URL,
     createObjectURL: vi.fn(() => "blob:test"),
@@ -309,6 +339,109 @@ describe("ResourceChildCollection scope changes", () => {
     expect(screen.getByTestId("collection-state")).toHaveTextContent(
       JSON.stringify({ filters: {}, page: 1, sort: "patric_id:asc" }),
     );
+  });
+
+  it("supplies the canonical protein-structure profile to its child tab", () => {
+    render(
+      <ResourceChildCollection
+        resource="protein_structure"
+        label="Protein Structures"
+        idField="pdb_id"
+        rql="eq(genome_id,83332.12)"
+        defaultSort="unsorted"
+      />,
+    );
+
+    const profile = resourceCollectionProfile.mock.lastCall?.[0] as
+      | ResourceCollectionProfile<Record<string, unknown>>
+      | undefined;
+    // Passing only `columns` used to drop these, so PDB links, the detail panel and
+    // the facets disappeared from the multi-genome Protein Structures tab.
+    expect(profile?.detailFields?.length).toBeGreaterThan(0);
+    expect(profile?.facets?.length).toBeGreaterThan(0);
+    expect(profile?.rowLinkField).toBe("pdb_id");
+    expect(profile?.rowHref?.({ pdb_id: "1ABC" })).toBe(
+      "/protein-structure?accession=1ABC",
+    );
+    expect(profile?.basePredicate).toBe("eq(genome_id,83332.12)");
+    // A facet click stays inside the parent scope instead of replacing it.
+    expect(
+      profile?.buildStructuralRql?.({
+        filters: { method: ["X-Ray"] },
+        page: 1,
+        sort: "unsorted",
+      }),
+    ).toContain("eq(genome_id,83332.12)");
+  });
+
+  it("filters a download-all export by the active loaded keyword", async () => {
+    exportAll.mockResolvedValueOnce({
+      rows: [
+        { pdb_id: "1ABC", title: "Influenza A polymerase" },
+        { pdb_id: "2DEF", title: "Unrelated structure" },
+      ],
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+
+    render(
+      <ResourceChildCollection
+        resource="protein_structure"
+        label="Protein Structures"
+        idField="pdb_id"
+        rql="eq(genome_id,83332.12)"
+        defaultSort="unsorted"
+        keywordMode="loaded"
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export all with keyword" }),
+    );
+
+    // Every profile column is requested so the keyword can be matched against
+    // fields the export itself does not include.
+    await waitFor(() => {
+      expect(exportAll).toHaveBeenCalledWith(
+        "protein_structure",
+        expect.objectContaining({ rql: "eq(genome_id,83332.12)" }),
+      );
+    });
+    const request = exportAll.mock.lastCall?.[1] as
+      | { fields: string[] }
+      | undefined;
+    expect(request?.fields).toContain("pdb_id");
+    expect(request?.fields).toContain("title");
+    expect(request?.fields.length).toBeGreaterThan(1);
+    expect(click).toHaveBeenCalled();
+    click.mockRestore();
+  });
+
+  it("leaves a selected-ID export unfiltered", async () => {
+    selected.mockResolvedValueOnce({ rows: [{ pdb_id: "1ABC" }] });
+    render(
+      <ResourceChildCollection
+        resource="protein_structure"
+        label="Protein Structures"
+        idField="pdb_id"
+        rql="eq(genome_id,83332.12)"
+        defaultSort="unsorted"
+        keywordMode="loaded"
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Export selected with keyword" }),
+    );
+
+    // Selected IDs are already exact, so the keyword must not narrow them further
+    // and only the requested fields are fetched.
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("protein_structure", {
+        ids: ["1ABC"],
+        fields: ["pdb_id"],
+      });
+    });
+    expect(exportAll).not.toHaveBeenCalled();
   });
 
   it("omits sorting when exporting an unsorted child collection", async () => {

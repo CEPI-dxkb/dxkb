@@ -7,6 +7,8 @@ import type {
 
 const maxRqlLength = 8_000;
 const maxDepth = 12;
+/** The Data API rejects an `in(...)` clause with more than this many values. */
+export const maxRqlInValues = 500;
 const operators = new Set([
   "and",
   "or",
@@ -221,8 +223,10 @@ function parseExpression(
       throw new DataApiValidationError("in values must be parenthesized.");
     }
     const values = splitArguments(args[1].slice(1, -1));
-    if (values.length === 0 || values.length > 500)
-      throw new DataApiValidationError("in requires 1 to 500 values.");
+    if (values.length === 0 || values.length > maxRqlInValues)
+      throw new DataApiValidationError(
+        `in requires 1 to ${maxRqlInValues.toLocaleString()} values.`,
+      );
     return {
       operator,
       field: fieldName,
@@ -300,8 +304,13 @@ export function serializeRql(
       );
     const field = fields[expression.field];
     assertFieldOperator(resource, expression.field, field, expression.operator);
-    if (expression.values.length === 0 || expression.values.length > 500)
-      throw new DataApiValidationError("in requires 1 to 500 values.");
+    if (
+      expression.values.length === 0 ||
+      expression.values.length > maxRqlInValues
+    )
+      throw new DataApiValidationError(
+        `in requires 1 to ${maxRqlInValues.toLocaleString()} values.`,
+      );
     return `in(${expression.field},(${expression.values.map((value) => serializeValue(value, field)).join(",")}))`;
   }
   const comparison = expression as RqlComparison;

@@ -15,9 +15,10 @@ interface GenomeChildCollection {
  * RQL scope and keyword mode differ between the two pages, so resource identity,
  * label, id field, sort and columns are defined once here.
  *
- * `genome_feature` and `protein_feature` deliberately carry no columns —
- * ResourceChildCollection substitutes the resource's own collection profile and
- * ignores any columns prop for those two.
+ * `genome_feature`, `protein_feature` and `protein_structure` deliberately carry no
+ * columns — ResourceChildCollection substitutes the resource's own collection profile
+ * (columns, detail fields, facets and row links) and ignores any columns prop for
+ * those three.
  */
 export const genomeChildCollections = {
   sequences: {

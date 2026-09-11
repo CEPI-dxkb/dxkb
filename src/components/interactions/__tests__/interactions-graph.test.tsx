@@ -52,15 +52,15 @@ describe("InteractionsGraph filter combination", () => {
       <InteractionsGraph
         taxonId={943}
         q="eq(evidence,experimental)"
-        tableFilter="keyword(groEL*)"
-        keywordValue="groEL"
+        tableFilter="eq(category,PPI)"
+        keywordValue=""
         onKeywordChange={vi.fn()}
       />,
     );
 
     expect(useInteractions).toHaveBeenCalledWith(
       943,
-      "and(eq(evidence,experimental),keyword(groEL*))",
+      "and(eq(evidence,experimental),eq(category,PPI))",
     );
   });
 
@@ -69,7 +69,42 @@ describe("InteractionsGraph filter combination", () => {
       <InteractionsGraph
         taxonId={943}
         q="eq(evidence,experimental)#view_tab=interactions"
-        tableFilter="keyword(groEL*)"
+        tableFilter="eq(category,PPI)"
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    expect(useInteractions).toHaveBeenCalledWith(
+      943,
+      "and(eq(evidence,experimental),eq(category,PPI))",
+    );
+  });
+
+  it("encodes the shared keyword as one wildcard clause per term", () => {
+    render(
+      <InteractionsGraph
+        taxonId={943}
+        q="eq(evidence,experimental)"
+        keywordValue="  groEL   dnaK "
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    // One clause per term, not one clause for the whole string: a single
+    // keyword(groEL dnaK*) clause matches nothing the table would show.
+    expect(useInteractions).toHaveBeenCalledWith(
+      943,
+      "and(eq(evidence,experimental),and(keyword(groEL*),keyword(dnaK*)))",
+    );
+  });
+
+  it("applies the keyword once alongside an unrelated table filter", () => {
+    render(
+      <InteractionsGraph
+        taxonId={943}
+        q="eq(evidence,experimental)"
+        tableFilter="eq(category,PPI)"
         keywordValue="groEL"
         onKeywordChange={vi.fn()}
       />,
@@ -77,7 +112,7 @@ describe("InteractionsGraph filter combination", () => {
 
     expect(useInteractions).toHaveBeenCalledWith(
       943,
-      "and(eq(evidence,experimental),keyword(groEL*))",
+      "and(eq(evidence,experimental),eq(category,PPI),keyword(groEL*))",
     );
   });
 
@@ -120,7 +155,6 @@ describe("InteractionsGraph filter combination", () => {
       <InteractionsGraph
         taxonId={943}
         q="eq(evidence,experimental)"
-        tableFilter="keyword(groEL*)"
         keywordValue="groEL"
         onKeywordChange={onKeywordChange}
       />,
@@ -131,6 +165,7 @@ describe("InteractionsGraph filter combination", () => {
       { target: { value: "dnaK" } },
     );
 
+    // The owner holds the keyword; the query still carries exactly one clause for it.
     expect(onKeywordChange).toHaveBeenLastCalledWith("dnaK");
     expect(useInteractions).toHaveBeenLastCalledWith(
       943,

@@ -73,7 +73,7 @@ function getGroupNameError(name: string): string | null {
   const sanitizedName = sanitizePathSegment(name);
   if (!sanitizedName) return "Enter a group name.";
   if (sanitizedName === "." || sanitizedName === "..") {
-    return "Group name cannot be . or ...";
+    return 'Group name cannot be "." or "..".';
   }
   if (sanitizedName.includes("/")) {
     return "Group name cannot contain a slash.";

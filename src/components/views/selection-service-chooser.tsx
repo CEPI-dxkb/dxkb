@@ -132,6 +132,15 @@ export function SelectionServiceChooser({
     if (!workspaceUsername) throw new Error("Sign in to use this service.");
     const directoryPath = `/${workspaceUsername}/home/._tmp_groups`;
     const groupName = `tmp_${kind}_group_${crypto.randomUUID()}`;
+    // Nothing provisions this hidden folder at first workspace access and the group
+    // write does not create parents, so create it here. Workspace folder creation is
+    // idempotent for an existing directory (see `ensureUserWorkspace`); if it fails
+    // for any other reason the group write below reports the real error.
+    try {
+      await repository.createFolder(directoryPath);
+    } catch {
+      // Already there, or a failure the group write will surface with its own message.
+    }
     await repository.createIdGroup({
       path: directoryPath,
       name: groupName,
@@ -143,20 +152,21 @@ export function SelectionServiceChooser({
     return `${directoryPath}/${groupName}`;
   };
 
+  const reportServiceError = (serviceError: unknown) => {
+    setError(
+      serviceError instanceof Error
+        ? serviceError.message
+        : "Unable to open the selected service",
+    );
+  };
+
   const runService = async ({ choice: service, href }: ServiceOption) => {
-    if (service === "feature-blast") {
-      setIsChoosingBlastSource(true);
-      return;
-    }
-    if (!workspaceUsername) {
-      onOpenChange(false);
-      onRequireAuthentication?.(href);
-      return;
-    }
-    setPendingService(service);
-    setError(null);
-    try {
-      if (service === "blast") {
+    // Direct BLAST carries the selected IDs in its rerun payload and writes no
+    // workspace object, so it runs signed out too: the protected service route
+    // redirects through sign-in with `rerun_key` intact.
+    if (service === "blast") {
+      setError(null);
+      try {
         rerunJob(
           {
             blast_program: "blastn",
@@ -167,7 +177,27 @@ export function SelectionServiceChooser({
           },
           "Homology",
         );
-      } else {
+        onOpenChange(false);
+      } catch (serviceError) {
+        reportServiceError(serviceError);
+      }
+      return;
+    }
+    // Every remaining service writes a temporary workspace group first, so the
+    // authentication decision comes before any further choice.
+    if (!workspaceUsername) {
+      onOpenChange(false);
+      onRequireAuthentication?.(href);
+      return;
+    }
+    if (service === "feature-blast") {
+      setIsChoosingBlastSource(true);
+      return;
+    }
+    setPendingService(service);
+    setError(null);
+    try {
+      {
         const groupPath = await createTemporaryGroup();
         if (service === "viral-tree") {
           rerunJob(
@@ -233,11 +263,7 @@ export function SelectionServiceChooser({
       setIsChoosingBlastSource(false);
       onOpenChange(false);
     } catch (serviceError) {
-      setError(
-        serviceError instanceof Error
-          ? serviceError.message
-          : "Unable to open the selected service",
-      );
+      reportServiceError(serviceError);
     } finally {
       setPendingService(null);
     }

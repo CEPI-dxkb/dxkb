@@ -367,6 +367,23 @@ function genomeDataResponse({ parsedBody }: { parsedBody: unknown }) {
 }
 
 export const apiCatchallOverrides: JsonOverride[] = [
+  // The Taxa Tree (src/components/taxonomy/use-taxon-children.ts) calls the Data API
+  // directly via NEXT_PUBLIC_DATA_API — the loopback /api/e2e-mock/data mock — not the
+  // same-origin gateway below, and needs a different envelope: a bare array plus a
+  // Content-Range total and a facet_counts header (fetchTaxonChildCounts throws when
+  // facet_counts is missing). Empty so any page containing a tree renders; specs that
+  // need real nodes prepend their own content-bearing overrides, which win under
+  // first-match ordering (see e2e/tests/taxonomy-tree.spec.ts).
+  {
+    url: /\/api\/e2e-mock\/data\/taxonomy\/\?/,
+    method: "GET",
+    body: [],
+    headers: {
+      "Content-Range": "items 0-0/0",
+      facet_counts: JSON.stringify({ facet_fields: { parent_id: [] } }),
+      "Access-Control-Expose-Headers": "facet_counts, Content-Range",
+    },
+  },
   {
     url: /\/api\/data\/taxonomy(?:\?|$)/,
     method: "GET",

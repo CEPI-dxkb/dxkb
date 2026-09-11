@@ -372,7 +372,11 @@ describe("ResourceCollection Taxonomy actions", () => {
       selectedIds: ["234"],
       sorting: [],
     });
-    const open = vi.fn();
+    // The tab is reserved synchronously on click and navigated once IDs resolve, so
+    // an all-pages selection's export cannot get the popup blocked.
+    const replace = vi.fn();
+    const close = vi.fn();
+    const open = vi.fn(() => ({ opener: window, location: { replace }, close }));
     vi.stubGlobal("open", open);
 
     render(
@@ -392,37 +396,172 @@ describe("ResourceCollection Taxonomy actions", () => {
     ]);
     await user.click(screen.getByRole("button", { name: "taxonOverview" }));
     await waitFor(() => {
-      expect(open).toHaveBeenCalledTimes(1);
+      expect(replace).toHaveBeenCalledTimes(1);
     });
     await user.click(screen.getByRole("button", { name: "Genomes action" }));
     await waitFor(() => {
-      expect(open).toHaveBeenCalledTimes(2);
+      expect(replace).toHaveBeenCalledTimes(2);
     });
     await user.click(screen.getByRole("button", { name: "features" }));
     await waitFor(() => {
-      expect(open).toHaveBeenCalledTimes(3);
+      expect(replace).toHaveBeenCalledTimes(3);
     });
-    expect(open).toHaveBeenNthCalledWith(
-      1,
-      "/taxonomy/234",
-      "_blank",
-      "noopener,noreferrer",
-    );
-    expect(open).toHaveBeenNthCalledWith(
+    expect(open).toHaveBeenCalledTimes(3);
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(replace).toHaveBeenNthCalledWith(1, "/taxonomy/234");
+    expect(replace).toHaveBeenNthCalledWith(
       2,
       "/genome?rql=and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated))",
-      "_blank",
-      "noopener,noreferrer",
     );
-    expect(open).toHaveBeenNthCalledWith(
+    expect(replace).toHaveBeenNthCalledWith(
       3,
       "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated)))%2Ceq(annotation%2CPATRIC))",
-      "_blank",
-      "noopener,noreferrer",
     );
+    expect(close).not.toHaveBeenCalled();
 
+    // SERVICES opens an in-page dialog, so it must not reserve a tab.
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(screen.getByTestId("taxonomy-services")).toHaveTextContent("234");
+    expect(open).toHaveBeenCalledTimes(3);
+  });
+
+  it("reports a blocked pop-up instead of silently doing nothing", async () => {
+    const user = userEvent.setup();
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: taxonomyRow,
+      rows: [taxonomyRow],
+      selection: { "234": true },
+      selectedIds: ["234"],
+      sorting: [],
+    });
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => null),
+    );
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Genomes action" }));
+    expect(
+      await screen.findByText("Allow pop-ups to open the selected Taxa."),
+    ).toBeInTheDocument();
+  });
+
+  it("rejects a second Taxonomy action while the first is still resolving", async () => {
+    const user = userEvent.setup();
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: taxonomyRow,
+      rows: [taxonomyRow],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 3,
+      sorting: [],
+    });
+    let resolveExport: ((value: { rows: { taxon_id: string }[] }) => void) | undefined;
+    const exportAll = vi.fn(
+      () =>
+        new Promise<{ rows: { taxon_id: string }[] }>((resolve) => {
+          resolveExport = resolve;
+        }),
+    );
+    const replace = vi.fn();
+    const open = vi.fn(() => ({
+      opener: window,
+      location: { replace },
+      close: vi.fn(),
+    }));
+    vi.stubGlobal("open", open);
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+            exportAll,
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Genomes action" }));
+    // SERVICES would otherwise overwrite the IDs the first action is resolving.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(exportAll).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveExport?.({ rows: [{ taxon_id: "234" }] });
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledTimes(1);
+    });
+
+    // The guard releases once the first action settles.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(exportAll).toHaveBeenCalledTimes(2);
+  });
+
+  it("closes the reserved tab and keeps the original error when ID resolution fails", async () => {
+    const user = userEvent.setup();
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: taxonomyRow,
+      rows: [taxonomyRow],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 3,
+      sorting: [],
+    });
+    const replace = vi.fn();
+    const close = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ opener: window, location: { replace }, close })),
+    );
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+            exportAll: vi.fn(() =>
+              Promise.reject(new Error("Taxonomy export failed upstream")),
+            ),
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Genomes action" }));
+    expect(
+      await screen.findByText("Taxonomy export failed upstream"),
+    ).toBeInTheDocument();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
   });
 });
 

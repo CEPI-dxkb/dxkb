@@ -299,6 +299,24 @@ describe("genomesHrefFromIds", () => {
       new URL(href ?? "", "http://localhost").searchParams.get("rql"),
     ).toBe("in(genome_id,(id%2C1,id%282%29))");
   });
+
+  it("accepts the Data API's maximum in(...) value count", () => {
+    const ids = Array.from({ length: 500 }, (_value, index) => `1.${String(index)}`);
+    expect(genomesHrefFromIds(ids)).toContain("in(genome_id%2C(1.0%2C");
+  });
+
+  it("returns null above the Data API's in(...) value limit", () => {
+    const ids = Array.from({ length: 501 }, (_value, index) => `1.${String(index)}`);
+    expect(genomesHrefFromIds(ids)).toBeNull();
+    expect(featuresHrefFromIds(ids)).toBeNull();
+  });
+
+  it("counts unique IDs against the limit, not raw values", () => {
+    const ids = Array.from({ length: 501 }, (_value, index) =>
+      index === 500 ? "1.0" : `1.${String(index)}`,
+    );
+    expect(genomesHrefFromIds(ids)).not.toBeNull();
+  });
 });
 
 describe("genomeListHref", () => {

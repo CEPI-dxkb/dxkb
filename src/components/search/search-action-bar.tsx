@@ -56,8 +56,8 @@ export type SearchActionId =
 
 interface ActionConfig {
   /**
-   * Dispatch value and consumer-map key. Several entries share an id with disjoint
-   * validSearchTypes (COPY vs COPY ROWS, FEATURES vs FEATURE); React keys come from
+   * Dispatch value and consumer-map key. Three ids appear twice with disjoint
+   * validSearchTypes (`copyRows`, `features` and `group`); React keys come from
    * configKey instead so those entries can never collide.
    */
   id: SearchActionId;
@@ -203,6 +203,9 @@ const actionConfig: ActionConfig[] = [
     letter: "F",
     validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
+    // ResourceCollection dispatches this from the displayed detail row's
+    // `sequence_id`, so it only has an answer for a single-row selection.
+    maxSelection: 1,
     disabledWithTooltip: notReady,
   },
   {

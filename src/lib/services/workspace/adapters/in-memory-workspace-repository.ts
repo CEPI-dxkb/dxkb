@@ -34,7 +34,7 @@ import type {
 type CallRecord =
   | { method: "listDirectory"; input: ListDirectoryInput }
   | { method: "getMetadata"; paths: string[]; options?: WorkspaceReadOptions }
-  | { method: "getRaw"; paths: string[] }
+  | { method: "getRaw"; paths: string[]; options?: WorkspaceReadOptions }
   | { method: "listPermissions"; paths: string[] }
   | { method: "createFolder"; path: string }
   | { method: "createUploadNode"; input: UploadNodeRequest }
@@ -236,7 +236,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   getRaw(paths: string[], options?: WorkspaceReadOptions): Promise<unknown> {
     return this.run(() => {
-      this.calls.push({ method: "getRaw", paths });
+      this.calls.push({ method: "getRaw", paths, options });
       this.throwIfConfigured("getRaw");
       if (options?.metadataOnly !== false) {
         return this.buildMetadata(paths).map((metadata) => metadata.raw);

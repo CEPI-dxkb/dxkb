@@ -36,8 +36,21 @@ export function genomeFeatureRql(
     : genome;
 }
 
+/**
+ * What "protein" means for a Feature query: annotated CDS and mat-peptide rows. The
+ * member Proteins view, the Feature list's `filter=protein` and the multi-genome
+ * Proteins tab all have to mean the same thing, so they share these clauses.
+ */
+const proteinFeatureClauses = [
+  `or(${eq("genome_feature", "feature_type", "CDS")},${eq("genome_feature", "feature_type", "mat_peptide")})`,
+  eq("genome_feature", "annotation", "PATRIC"),
+];
+
+/** `proteinFeatureClauses` as one `and(...)` clause. */
+export const proteinFeatureRql = `and(${proteinFeatureClauses.join(",")})`;
+
 export function genomeProteinRql(genomeId: string): string {
-  return `and(${eq("genome_feature", "genome_id", genomeId)},or(${eq("genome_feature", "feature_type", "CDS")},${eq("genome_feature", "feature_type", "mat_peptide")}),${eq("genome_feature", "annotation", "PATRIC")})`;
+  return `and(${eq("genome_feature", "genome_id", genomeId)},${proteinFeatureClauses.join(",")})`;
 }
 
 export function featureInteractionsRql(featureId: string): string {

@@ -6,6 +6,7 @@ import {
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
+import { proteinFeatureRql } from "@/lib/views/child-resources";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 
 export const featureSorts = (Object.values(genomeFeatureFields) as DataField[])
@@ -60,9 +61,7 @@ export function featureStructuralRql(
     ? state.filters.filter[0]
     : undefined;
   if (filter === "protein") {
-    clauses.push(
-      `and(or(${eq("genome_feature", "feature_type", "CDS")},${eq("genome_feature", "feature_type", "mat_peptide")}),${eq("genome_feature", "annotation", "PATRIC")})`,
-    );
+    clauses.push(proteinFeatureRql);
   } else if (filter) {
     clauses.push(eq("genome_feature", "feature_type", filter));
   }

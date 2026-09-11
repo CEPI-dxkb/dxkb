@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
@@ -281,7 +281,13 @@ function combinePredicates(...predicates: (string | undefined)[]) {
   return `and(${active.join(",")})`;
 }
 
-function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
+/**
+ * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
+ * or array-valued field of a row. Exported so a custom exporter can filter the rows
+ * it fetches the same way the table filters the rows it shows. `keyword` must already
+ * be trimmed and lower-cased.
+ */
+export function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
   return Object.values(row).some((value) => {
     const values = Array.isArray(value) ? value : [value];
     return values.some((item) =>
@@ -297,6 +303,13 @@ export interface ResourceCollectionExportRequest {
   selectedIds?: readonly string[];
   fields: readonly string[] | null;
   rql?: string;
+  /**
+   * Active loaded-mode keyword, trimmed and lower-cased, for a "download all" export.
+   * In loaded mode the keyword never reaches the request (it filters the loaded page
+   * client-side), so an exporter that ignores this downloads the unfiltered scope.
+   * Absent for selected-ID exports, which are already exact.
+   */
+  loadedKeyword?: string;
 }
 
 export interface ResourceCollectionProps<Row extends DataTableRow> {
@@ -336,6 +349,12 @@ export function ResourceCollection<Row extends DataTableRow>({
   const [actionError, setActionError] = useState<string | null>(null);
   const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);
   const [isTaxonomyServiceOpen, setIsTaxonomyServiceOpen] = useState(false);
+  /**
+   * The Taxonomy action currently resolving IDs. Overlapping runs would let the
+   * first one's cleanup clear the second one's spinner, and a later SERVICES
+   * resolution would replace the IDs an already-open chooser is working with.
+   */
+  const pendingTaxonomyActionRef = useRef<SearchActionId | null>(null);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
@@ -562,22 +581,53 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   const runTaxonomyAction = async (actionId: SearchActionId) => {
     setActionError(null);
+    if (pendingTaxonomyActionRef.current) return;
+    if (actionId === "services") {
+      // Opens an in-page dialog, so there is no tab to reserve.
+      pendingTaxonomyActionRef.current = actionId;
+      setLoadingActionIds([actionId]);
+      try {
+        setTaxonomyServiceIds(await resolveSelectedTaxonIds());
+        setIsTaxonomyServiceOpen(true);
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : String(error));
+      } finally {
+        pendingTaxonomyActionRef.current = null;
+        setLoadingActionIds([]);
+      }
+      return;
+    }
+    // Resolving an all-pages selection needs a network round-trip, after which
+    // browsers no longer treat window.open as user-initiated and block it. Reserve
+    // the tab inside the click and navigate it once the IDs are known.
+    const resultsWindow = window.open("about:blank", "_blank");
+    if (!resultsWindow) {
+      setActionError(`Allow pop-ups to open the selected ${profile.label}.`);
+      return;
+    }
+    resultsWindow.opener = null;
+    pendingTaxonomyActionRef.current = actionId;
     setLoadingActionIds([actionId]);
     try {
       const ids = await resolveSelectedTaxonIds();
-      if (actionId === "taxonOverview" && ids.length === 1) {
-        window.open(taxonomyHref(ids[0]), "_blank", "noopener,noreferrer");
-      } else if (actionId === "genomes") {
-        window.open(taxonomyGenomesHref(ids), "_blank", "noopener,noreferrer");
-      } else if (actionId === "features" && ids.length === 1) {
-        window.open(taxonomyFeaturesHref(ids), "_blank", "noopener,noreferrer");
-      } else if (actionId === "services") {
-        setTaxonomyServiceIds(ids);
-        setIsTaxonomyServiceOpen(true);
+      const href =
+        actionId === "taxonOverview" && ids.length === 1
+          ? taxonomyHref(ids[0])
+          : actionId === "genomes"
+            ? taxonomyGenomesHref(ids)
+            : actionId === "features" && ids.length === 1
+              ? taxonomyFeaturesHref(ids)
+              : null;
+      if (!href) {
+        resultsWindow.close();
+        return;
       }
+      resultsWindow.location.replace(href);
     } catch (error) {
+      resultsWindow.close();
       setActionError(error instanceof Error ? error.message : String(error));
     } finally {
+      pendingTaxonomyActionRef.current = null;
       setLoadingActionIds([]);
     }
   };
@@ -658,7 +708,14 @@ export function ResourceCollection<Row extends DataTableRow>({
     }
     try {
       if (onExport) {
-        await onExport({ format, selectedIds: ids, fields, rql: effectiveRql });
+        await onExport({
+          format,
+          selectedIds: ids,
+          fields,
+          rql: effectiveRql,
+          loadedKeyword:
+            hasLoadedKeyword && !ids ? normalizedLoadedKeyword : undefined,
+        });
         return;
       }
       const selectedFields = fields

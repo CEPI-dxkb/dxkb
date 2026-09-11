@@ -105,21 +105,17 @@ describe("InteractionsSubviewShell", () => {
     expect(screen.getByTestId("table-panel").parentElement).not.toHaveAttribute("inert");
   });
 
-  it("passes the table's current filter into the graph subview as tableFilter (bug #1)", () => {
+  it("hands the graph the keyword text, not a second RQL clause for it (bug #1)", () => {
     render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
 
     fireEvent.click(screen.getByText("set-from-table"));
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-table-filter", "keyword(fromTable*)");
-  });
-
-  it("starts the graph subview with an empty tableFilter before any table filtering", () => {
-    render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
-
-    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-table-filter", "");
+    // The graph owns keyword encoding (one wildcard clause per term). A keyword-only
+    // tableFilter here produced a second, differently-encoded clause.
+    const graph = screen.getByTestId("graph-panel");
+    expect(graph).toHaveAttribute("data-keyword", "fromTable");
+    expect(graph).not.toHaveAttribute("data-table-filter");
   });
 
   it("shares keyword text between Table and Graph in both directions", () => {

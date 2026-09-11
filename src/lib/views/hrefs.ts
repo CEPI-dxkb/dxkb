@@ -2,7 +2,25 @@
 // query encoding here so callers do not hand-build strings (and re-derive encoding
 // rules) at each site.
 
+import { maxRqlInValues } from "@/lib/data-api/rql";
 import { escapeRqlValue } from "./rql";
+
+/**
+ * Build an `in(field,(...))` clause from a selection's raw ID values, trimming and
+ * de-duplicating first. Returns `null` when nothing usable is left, or when the set
+ * exceeds the Data API's `in(...)` ceiling — the destination would reject the query,
+ * and truncating would silently drop rows the user selected.
+ */
+function idListRql(
+  field: string,
+  values: readonly (string | number)[],
+): string | null {
+  const ids = [...new Set(values.map(String).map((id) => id.trim()))]
+    .filter(Boolean)
+    .map(escapeRqlValue);
+  if (ids.length === 0 || ids.length > maxRqlInValues) return null;
+  return `in(${field},(${ids.join(",")}))`;
+}
 
 /** Internal taxonomy singular route, e.g. `/taxonomy/561`. */
 export function taxonomyHref(taxonId: number | string): string {
@@ -30,11 +48,8 @@ export function genomeHref(genomeId: number | string): string {
 export function genomesHrefFromIds(
   values: readonly (string | number)[],
 ): string | null {
-  const genomeIds = [...new Set(values.map(String).map((id) => id.trim()))]
-    .filter(Boolean)
-    .map(escapeRqlValue);
-  if (genomeIds.length === 0) return null;
-  return genomeListHref({ rql: `in(genome_id,(${genomeIds.join(",")}))` });
+  const rql = idListRql("genome_id", values);
+  return rql ? genomeListHref({ rql }) : null;
 }
 
 /**
@@ -75,11 +90,8 @@ export function featureHref(featureId: number | string): string {
 export function featuresHrefFromIds(
   values: readonly (string | number)[],
 ): string | null {
-  const featureIds = [...new Set(values.map(String).map((id) => id.trim()))]
-    .filter(Boolean)
-    .map(escapeRqlValue);
-  if (featureIds.length === 0) return null;
-  return featureListHref({ rql: `in(feature_id,(${featureIds.join(",")}))` });
+  const rql = idListRql("feature_id", values);
+  return rql ? featureListHref({ rql }) : null;
 }
 
 export function featureListHref(opts?: {

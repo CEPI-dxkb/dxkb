@@ -1,16 +1,31 @@
 import { redirect } from "next/navigation";
 import { TypeSearch } from "@/app/search/typesearch";
 import { SearchResults } from "@/app/all-term-search-results";
+import { taxonomyCollectionOptions } from "@/lib/taxonomy-view/query";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 
 function firstValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
+/**
+ * Collection state the canonical Taxa route understands, so the permanent redirect
+ * cannot drop a user's filters. Derived from the parser's own friendly filters
+ * (`taxon_id`, `taxon_rank`, `genetic_code`, `division`) plus the managed keys, so
+ * adding a filter there cannot silently break this migration.
+ */
+const taxonomyRedirectParams = [
+  "rql",
+  ...(taxonomyCollectionOptions.friendlyFilters ?? []),
+  "refine",
+  "page",
+  "sort",
+] as const;
+
 function taxonomyRedirect(params: SearchParamsRecord, query: string): string {
   const destination = new URLSearchParams();
   if (query) destination.set("keyword", query);
-  for (const name of ["rql", "taxon_id", "page", "sort"] as const) {
+  for (const name of taxonomyRedirectParams) {
     const value = params[name];
     for (const item of Array.isArray(value) ? value : value ? [value] : []) {
       destination.append(name, item);

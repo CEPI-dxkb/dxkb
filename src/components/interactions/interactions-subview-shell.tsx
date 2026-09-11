@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ResourceChildCollection } from "@/components/views";
 import { interactionColumns } from "@/lib/views/child-resources";
-import { rqlKeyword } from "@/lib/views/rql";
 
 import { InteractionsGraph } from "./interactions-graph";
 
@@ -21,9 +20,6 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
   // Only keyword text is shared because both sibling views expose that input.
   // Graph remains lazy-mounted to avoid fetching its full dataset until opened.
   const [keywordText, setKeywordText] = useState("");
-  const tableFilter = keywordText.trim()
-    ? rqlKeyword(`${keywordText.trim()}*`)
-    : "";
 
   return (
     <Tabs
@@ -56,10 +52,16 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
         />
       </TabsContent>
       <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
+        {/*
+          The keyword is passed as text, not as RQL: the graph turns it into one
+          wildcard clause per whitespace-separated term. Building a second
+          whole-string clause here produced an extra, differently-encoded predicate
+          that the graph could not deduplicate, so multi-term searches returned
+          fewer graph results than table rows.
+        */}
         <InteractionsGraph
           taxonId={taxonId}
           q={q}
-          tableFilter={tableFilter}
           keywordValue={keywordText}
           onKeywordChange={setKeywordText}
         />

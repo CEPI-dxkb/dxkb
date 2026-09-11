@@ -4,7 +4,11 @@ import { Binary } from "lucide-react";
 import { EntityViewShell, TaxonomyResourceCollection } from "@/components/views";
 import type { CollectionState } from "@/lib/views/collection-state";
 
-export function TaxonomyCollection({ initialState }: { initialState: CollectionState }) {
+interface TaxonomyCollectionProps {
+  initialState: CollectionState;
+}
+
+export function TaxonomyCollection({ initialState }: TaxonomyCollectionProps) {
   return (
     <EntityViewShell
       viewLabel="Taxonomy View"

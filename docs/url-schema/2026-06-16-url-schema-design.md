@@ -230,13 +230,15 @@ Each is a single loop over `viewRegistry`:
 ### 4.1 Shared Data API contract
 
 Production views use `src/lib/data-api/` through the same-origin
-`/api/data/[resource]` gateway. Supported resources are `genome`, `genome_feature`,
-`epitope`, `epitope_assay`, `surveillance`, `serology`, `strain`, `protein_feature`,
-`protein_structure`, `experiment`, `bioset`, `genome_sequence`, and `ppi`.
+`/api/data/[resource]` gateway. Supported resources are `taxonomy`, `genome`,
+`genome_feature`, `epitope`, `epitope_assay`, `surveillance`, `serology`, `strain`,
+`protein_feature`, `protein_structure`, `experiment`, `bioset`, `genome_sequence`,
+`sequence_feature`, and `ppi`.
 
 The resource registry owns each stable ID and any permitted alternate member identifiers:
-`genome_id`, `feature_id` (alternate `patric_id`), `epitope_id`, `assay_id`, `id`, `id`,
-`id`, `id`, `pdb_id`, `exp_id`, `bioset_id`, `sequence_id`, and `id`, respectively.
+`taxon_id`, `genome_id`, `feature_id` (alternate `patric_id`), `epitope_id`, `assay_id`,
+`id`, `id`, `id`, `id`, `pdb_id`, `exp_id`, `bioset_id`, `sequence_id`, `id`, and `id`,
+respectively.
 Surveillance additionally permits `sample_identifier` and multivalued
 `pathogen_test_type`; Serology permits `sample_identifier` and scalar `test_type` for
 compound member lookup. An `eq()` clause is a backend match predicate and does not imply
@@ -358,9 +360,13 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
 
 - `/genome` is a Genome collection backed by the `genome` resource. It supports
   `keyword`, `taxon_id` (mapped to `taxon_lineage_ids`), `rql`, `page`, and validated `sort`.
-  For explicit Genome RQL selections it also exposes the legacy GenomeList tab set, with
-  supported related-resource tabs scoped through the selected Genome query and unsupported
-  tabs capability-gated.
+  It always exposes the legacy GenomeList tab set; supported related-resource tabs are
+  scoped through the *effective* Genome predicate and unsupported tabs are
+  capability-gated. The effective predicate is the explicit `?rql=` when one is present;
+  otherwise it is the implicit recent scope
+  (`and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))`) combined with any
+  friendly structural filters. An explicit `rql` replaces that implicit scope rather than
+  narrowing it.
 - `/genome/{genomeId}` validates and fetches the exact `genome_id`, renders the member
   overview, and owns explicit member-tab composition.
 - Genome member tabs are Overview, Genome Browser, Sequences, Features, Proteins, Protein

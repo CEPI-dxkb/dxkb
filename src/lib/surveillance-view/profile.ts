@@ -38,6 +38,8 @@ export const surveillanceCollectionProfile: ResourceCollectionProfile<Surveillan
     detailFields: surveillanceDetailFields,
     defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
+    guideUrl:
+      "https://www.bv-brc.org/docs/quick_references/organisms_taxon/surveillance_data.html",
     buildStructuralRql: surveillanceStructuralRql,
     facets: surveillanceFacets,
     rowHref: (row) =>

@@ -18,18 +18,56 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WorkspaceMiniBrowser } from "./workspace-mini-browser";
 import { WorkspaceObjectSelector } from "./workspace-object-selector";
+import type { WorkspaceSelectorPreset } from "./workspace-selector-presets";
 import { sanitizePathSegment } from "@/lib/services/workspace/path-utils";
+
+/** The two ID group kinds a row selection can produce. */
+export type SelectionGroupKind = "genome" | "feature";
 
 export interface SelectionToGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  genomeIds: readonly string[];
+  ids: readonly string[];
+  /** Genome Groups hold `genome_id`s, Feature Groups hold `feature_id`s. */
+  groupKind?: SelectionGroupKind;
   defaultFolder: string;
   onCreate: (folderPath: string, name: string) => Promise<void>;
   onAppend: (path: string) => Promise<void>;
 }
 
 type GroupMode = "new" | "existing";
+
+const groupCopy = {
+  genome: {
+    title: "Add Genomes to Group",
+    singular: "genome",
+    plural: "genomes",
+    groupLabel: "Genome group",
+    namePlaceholder: "My Genome Group",
+    searchPlaceholder: "Search genome groups...",
+    preset: "genomeGroup",
+  },
+  feature: {
+    title: "Add Features to Group",
+    singular: "feature",
+    plural: "features",
+    groupLabel: "Feature group",
+    namePlaceholder: "My Feature Group",
+    searchPlaceholder: "Search feature groups...",
+    preset: "featureGroup",
+  },
+} as const satisfies Record<
+  SelectionGroupKind,
+  {
+    title: string;
+    singular: string;
+    plural: string;
+    groupLabel: string;
+    namePlaceholder: string;
+    searchPlaceholder: string;
+    preset: WorkspaceSelectorPreset;
+  }
+>;
 
 function getGroupNameError(name: string): string | null {
   const sanitizedName = sanitizePathSegment(name);
@@ -44,12 +82,14 @@ function getGroupNameError(name: string): string | null {
 }
 
 function SelectionToGroupForm({
-  genomeIds,
+  ids,
+  groupKind = "genome",
   defaultFolder,
   onOpenChange,
   onCreate,
   onAppend,
 }: Omit<SelectionToGroupDialogProps, "open">) {
+  const copy = groupCopy[groupKind];
   const [mode, setMode] = useState<GroupMode>("new");
   const [folderPath, setFolderPath] = useState(defaultFolder);
   const workspaceRoot =
@@ -62,7 +102,7 @@ function SelectionToGroupForm({
   const groupNameError = getGroupNameError(groupName);
   const canSubmit =
     !isSubmitting &&
-    genomeIds.length > 0 &&
+    ids.length > 0 &&
     (mode === "new"
       ? folderPath.trim().length > 0 && groupNameError === null
       : existingGroupPath.length > 0);
@@ -82,21 +122,21 @@ function SelectionToGroupForm({
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "Unable to update the genome group.",
+          : `Unable to update the ${groupKind} group.`,
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const genomeLabel = genomeIds.length === 1 ? "genome" : "genomes";
+  const selectionLabel = ids.length === 1 ? copy.singular : copy.plural;
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Add Genomes to Group</DialogTitle>
+        <DialogTitle>{copy.title}</DialogTitle>
         <DialogDescription>
-          {genomeIds.length.toLocaleString()} selected {genomeLabel}
+          {ids.length.toLocaleString()} selected {selectionLabel}
         </DialogDescription>
       </DialogHeader>
 
@@ -159,7 +199,7 @@ function SelectionToGroupForm({
                 aria-describedby={
                   groupNameError ? "selection-group-name-error" : undefined
                 }
-                placeholder="My Genome Group"
+                placeholder={copy.namePlaceholder}
               />
               {groupName.length > 0 && groupNameError ? (
                 <p
@@ -174,12 +214,12 @@ function SelectionToGroupForm({
         </TabsContent>
 
         <TabsContent value="existing" className="grid gap-2 pt-2">
-          <Label htmlFor="selection-existing-group">Genome group</Label>
+          <Label htmlFor="selection-existing-group">{copy.groupLabel}</Label>
           <WorkspaceObjectSelector
             id="selection-existing-group"
-            preset="genomeGroup"
+            preset={copy.preset}
             value={existingGroupPath}
-            placeholder="Search genome groups..."
+            placeholder={copy.searchPlaceholder}
             onSelectedObjectChange={(object) => {
               setExistingGroupPath(object?.path ?? "");
               setError(null);
@@ -230,7 +270,8 @@ function SelectionToGroupForm({
 export function SelectionToGroupDialog({
   open,
   onOpenChange,
-  genomeIds,
+  ids,
+  groupKind = "genome",
   defaultFolder,
   onCreate,
   onAppend,
@@ -239,7 +280,8 @@ export function SelectionToGroupDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-2xl">
         <SelectionToGroupForm
-          genomeIds={genomeIds}
+          ids={ids}
+          groupKind={groupKind}
           defaultFolder={defaultFolder}
           onOpenChange={onOpenChange}
           onCreate={onCreate}

@@ -68,6 +68,20 @@ export function featureHref(featureId: number | string): string {
 }
 
 /** Canonical Feature list route. Explicit RQL takes precedence over keyword. */
+/**
+ * Feature list route for an explicit ID set — the Interactions tab's FEATURES action,
+ * which pools both interactors of every selected row. Mirrors `genomesHrefFromIds`.
+ */
+export function featuresHrefFromIds(
+  values: readonly (string | number)[],
+): string | null {
+  const featureIds = [...new Set(values.map(String).map((id) => id.trim()))]
+    .filter(Boolean)
+    .map(escapeRqlValue);
+  if (featureIds.length === 0) return null;
+  return featureListHref({ rql: `in(feature_id,(${featureIds.join(",")}))` });
+}
+
 export function featureListHref(opts?: {
   keyword?: string;
   rql?: string;

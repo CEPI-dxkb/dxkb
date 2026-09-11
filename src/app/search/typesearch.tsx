@@ -500,6 +500,8 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
               // handler); /search has no handler yet, so keep it disabled here.
               disabledActions={{
                 taxonOverview: notReady,
+                // Exports live with the collection views; /search has no handler yet.
+                download: notReady,
                 genome:
                   activeTab === "protein_structure" && selectedGenomeId === null
                     ? "No genome is associated with this structure."

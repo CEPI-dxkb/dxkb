@@ -15,6 +15,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import {
+  AlignJustify,
   BookOpen,
   Copy,
   Download,
@@ -42,6 +43,7 @@ export type SearchActionId =
   | "idMap"
   | "epitope"
   | "structure"
+  | "variantTypes"
   | "surveillance"
   | "map"
   | "serology"
@@ -75,6 +77,7 @@ interface ActionConfig {
 
 export const notReady = "Coming soon, still under construction";
 
+/** Rendered top to bottom in this order, which follows the legacy action bar. */
 const actionConfig: ActionConfig[] = [
   {
     id: "guide",
@@ -98,16 +101,28 @@ const actionConfig: ActionConfig[] = [
     id: "download",
     label: "DWNLD",
     icon: Download,
-    validSearchTypes: ["bioset", "genome_sequence"],
+    validSearchTypes: [
+      "bioset",
+      "epitope",
+      "experiment",
+      "genome_feature",
+      "genome_sequence",
+      "protein_feature",
+      "protein_structure",
+      "ppi",
+      "sequence_feature",
+      "serology",
+      "surveillance",
+    ],
     requiresSelection: true,
   },
   {
     id: "copyRows",
-    configKey: "copyRows:genome_sequence",
+    configKey: "copyRows:rows",
     label: "COPY ROWS",
     labelClassName: "text-[9px]",
     icon: Copy,
-    validSearchTypes: ["genome_sequence"],
+    validSearchTypes: ["genome_sequence", "sequence_feature"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -138,6 +153,27 @@ const actionConfig: ActionConfig[] = [
     disabledWithTooltip: notReady,
   },
   {
+    id: "feature",
+    label: "FEATURE",
+    letter: "F",
+    validSearchTypes: [
+      "genome_feature",
+      "protein_feature",
+      "protein_structure",
+    ],
+    requiresSelection: true,
+    maxSelection: 1,
+  },
+  {
+    id: "variantTypes",
+    label: "VARIANT\nTYPES",
+    icon: AlignJustify,
+    validSearchTypes: ["sequence_feature"],
+    requiresSelection: true,
+    maxSelection: 1,
+    disabledWithTooltip: notReady,
+  },
+  {
     id: "genome",
     label: "GENOME",
     letter: "G",
@@ -161,14 +197,6 @@ const actionConfig: ActionConfig[] = [
     disabledWithTooltip: notReady,
   },
   {
-    id: "group",
-    label: "GROUP",
-    icon: Group,
-    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
-    requiresSelection: true,
-    disabledWithTooltip: notReady,
-  },
-  {
     id: "features",
     configKey: "features:genome_sequence",
     label: "FEATURES",
@@ -176,18 +204,6 @@ const actionConfig: ActionConfig[] = [
     validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
-  },
-  {
-    id: "feature",
-    label: "FEATURE",
-    letter: "F",
-    validSearchTypes: [
-      "genome_feature",
-      "protein_feature",
-      "protein_structure",
-    ],
-    requiresSelection: true,
-    maxSelection: 1,
   },
   {
     id: "ppiFeatures",
@@ -219,6 +235,14 @@ const actionConfig: ActionConfig[] = [
     label: "ID MAP",
     icon: ArrowRightLeft,
     validSearchTypes: ["genome_feature"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
+  {
+    id: "group",
+    label: "GROUP",
+    icon: Group,
+    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -275,7 +299,7 @@ const actionConfig: ActionConfig[] = [
   },
   {
     id: "experiment",
-    label: "EXPERMNT",
+    label: "EXPRMNT",
     labelClassName: "text-[10px]",
     letter: "E",
     validSearchTypes: ["experiment"],

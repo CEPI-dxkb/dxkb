@@ -13,9 +13,15 @@ import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
 import {
   CollectionSelectionActions,
+  copyAndServicesSelectionActionIds,
+  featureSelectionActionIds,
+  interactionSelectionActionIds,
   genomeSelectionActionIds,
+  sequenceSelectionActionIds,
+  servicesOnlySelectionActionIds,
   strainSelectionActionIds,
 } from "./collection-selection-actions";
+import type { SelectionServiceKind } from "./selection-service-chooser";
 import {
   DataTable,
   type DataTableColumn,
@@ -89,29 +95,179 @@ const enabledActionsByResource: Partial<
   Record<DataResource, readonly SearchActionId[]>
 > = {
   taxonomy: taxonomyActionIds,
-  genome_sequence: ["download", "genome", "features"],
-  // Strain and Genome lists live with CollectionSelectionActions, which owns their bars.
+  // Every resource in selectionActionsConfigByResource lives with
+  // CollectionSelectionActions instead, which owns its bar.
 };
 
-/** Resources whose selection actions resolve to a set of Genome IDs. */
+/**
+ * Resources whose selection actions live with `CollectionSelectionActions`.
+ * `idField` names the row field SERVICES, GENOMES and GROUP resolve from and `idKind`
+ * says what it holds, so both are inert where `hasSelectableServices` is false and no
+ * ID-backed action is owned. `extraEnabledActionIds` lists entries this component
+ * dispatches but the shared config disables by default.
+ */
 const selectionActionsConfigByResource = {
   strain: {
     searchType: "strain",
     actionIds: strainSelectionActionIds,
-    genomeIdField: "genome_ids",
+    extraEnabledActionIds: [],
+    idField: "genome_ids",
+    idKind: "genome",
+    singularLabel: "Strain",
+    hasSelectableServices: true,
   },
   genome: {
     searchType: "genome",
     actionIds: genomeSelectionActionIds,
-    genomeIdField: "genome_id",
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "Genome",
+    hasSelectableServices: true,
+  },
+  genome_feature: {
+    searchType: "genome_feature",
+    actionIds: featureSelectionActionIds,
+    // DWNLD, FEATURE and GENOME are enabled by default; FASTA and ID MAP stay
+    // disabled until a later PR wires them.
+    extraEnabledActionIds: [],
+    idField: "feature_id",
+    idKind: "feature",
+    singularLabel: "Feature",
+    hasSelectableServices: true,
+  },
+  genome_sequence: {
+    searchType: "genome_sequence",
+    actionIds: sequenceSelectionActionIds,
+    // DWNLD and GENOME are enabled by default; FEATURES is not, and FASTA and Browser
+    // stay disabled until a later PR wires them.
+    extraEnabledActionIds: ["features"],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "Sequence",
+    hasSelectableServices: true,
+  },
+  protein_feature: {
+    searchType: "protein_feature",
+    actionIds: copyAndServicesSelectionActionIds,
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    // "Domains and Motifs" has no plural suffix to strip.
+    singularLabel: "Domain or Motif",
+    hasSelectableServices: false,
+  },
+  protein_structure: {
+    searchType: "protein_structure",
+    actionIds: copyAndServicesSelectionActionIds,
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "Protein Structure",
+    hasSelectableServices: false,
+  },
+  sequence_feature: {
+    searchType: "sequence_feature",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD is enabled by default; VARIANT TYPES stays disabled until a later PR
+    // wires it.
+    extraEnabledActionIds: [],
+    idField: "id",
+    idKind: "genome",
+    singularLabel: "Sequence Feature",
+    hasSelectableServices: false,
+  },
+  epitope: {
+    searchType: "epitope",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD and EPITOPE are enabled by default.
+    extraEnabledActionIds: [],
+    idField: "epitope_id",
+    idKind: "genome",
+    singularLabel: "Epitope",
+    hasSelectableServices: false,
+  },
+  serology: {
+    searchType: "serology",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD and SEROLOGY are enabled by default.
+    extraEnabledActionIds: [],
+    idField: "id",
+    idKind: "genome",
+    // "Serology" is already the singular the copied-rows toast wants.
+    singularLabel: "Serology",
+    hasSelectableServices: false,
+  },
+  surveillance: {
+    searchType: "surveillance",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD and SRVLNCE are enabled by default; MAP stays disabled until a later
+    // PR wires it.
+    extraEnabledActionIds: [],
+    idField: "id",
+    idKind: "genome",
+    // "Surveillance" is already the singular the copied-rows toast wants.
+    singularLabel: "Surveillance",
+    hasSelectableServices: false,
+  },
+  ppi: {
+    searchType: "ppi",
+    actionIds: interactionSelectionActionIds,
+    // DWNLD is enabled by default; FASTA stays disabled until a later PR wires it.
+    extraEnabledActionIds: [],
+    // One Interaction row names two interactors, and legacy's FEATURES and GROUP both
+    // pool them.
+    idField: ["feature_id_a", "feature_id_b"],
+    idKind: "feature",
+    singularLabel: "Interaction",
+    hasSelectableServices: false,
+  },
+  experiment: {
+    searchType: "experiment",
+    actionIds: servicesOnlySelectionActionIds,
+    // DWNLD and EXPRMNT are enabled by default; BIOSETS stays disabled until a
+    // later PR wires the experiment-side gene list.
+    extraEnabledActionIds: [],
+    idField: "exp_id",
+    idKind: "genome",
+    singularLabel: "Experiment",
+    hasSelectableServices: false,
+  },
+  bioset: {
+    searchType: "bioset",
+    actionIds: servicesOnlySelectionActionIds,
+    // DWNLD is enabled by default; BIOSETS is dispatched by this collection even
+    // though the shared config disables it.
+    extraEnabledActionIds: ["biosets"],
+    idField: "bioset_id",
+    idKind: "genome",
+    singularLabel: "Bioset",
+    hasSelectableServices: false,
   },
 } as const satisfies Partial<
   Record<
     DataResource,
     {
-      searchType: "strain" | "genome";
+      searchType:
+        | "strain"
+        | "genome"
+        | "genome_feature"
+        | "genome_sequence"
+        | "protein_feature"
+        | "protein_structure"
+        | "sequence_feature"
+        | "epitope"
+        | "serology"
+        | "surveillance"
+        | "ppi"
+        | "experiment"
+        | "bioset";
       actionIds: readonly SearchActionId[];
-      genomeIdField: string;
+      extraEnabledActionIds: readonly SearchActionId[];
+      idField: string | readonly string[];
+      idKind: SelectionServiceKind;
+      singularLabel: string;
+      hasSelectableServices: boolean;
     }
   >
 >;
@@ -321,6 +477,31 @@ export function ResourceCollection<Row extends DataTableRow>({
           profile.resource as keyof typeof selectionActionsConfigByResource
         ]
       : undefined;
+
+  /**
+   * Reasons a collection's own rows cannot reach an action it otherwise dispatches:
+   * structure rows only reach the Genome, Feature and Structure members they carry,
+   * and Bioset rows need an experiment behind every selected row.
+   */
+  const collectionDisabledActions =
+    profile.resource === "protein_structure"
+      ? {
+          genome: selectedGenomeId
+            ? undefined
+            : "No genome is associated with this structure",
+          feature: selectedFeatureId
+            ? undefined
+            : "No feature is associated with this structure",
+          structure: selectedStructureHref
+            ? undefined
+            : "A structure accession is required",
+        }
+      : hasIncompleteBiosetSelection
+        ? {
+            biosets:
+              "Some selected Biosets are not associated with experiments",
+          }
+        : undefined;
 
   const resolveActionRows = async (
     fields: readonly string[],
@@ -728,11 +909,20 @@ export function ResourceCollection<Row extends DataTableRow>({
               <CollectionSelectionActions
                 searchType={selectionActionsConfig.searchType}
                 label={profile.label}
+                singularLabel={selectionActionsConfig.singularLabel}
                 actionIds={selectionActionsConfig.actionIds}
-                genomeIdField={selectionActionsConfig.genomeIdField}
+                extraEnabledActionIds={
+                  selectionActionsConfig.extraEnabledActionIds
+                }
+                idField={selectionActionsConfig.idField}
+                idKind={selectionActionsConfig.idKind}
                 selectedCount={selectedActionCount}
                 guideUrl={profile.guideUrl}
                 hasNoAssociatedGenomes={knownSingleStrainHasNoGenomes}
+                disabledActions={collectionDisabledActions}
+                hasSelectableServices={
+                  selectionActionsConfig.hasSelectableServices
+                }
                 columns={profile.columns}
                 columnVisibility={columnVisibility}
                 resolveActionRows={resolveActionRows}
@@ -752,33 +942,16 @@ export function ResourceCollection<Row extends DataTableRow>({
                 guideUrl={profile.guideUrl}
                 enabledActions={
                   enabledActionsByResource[profile.resource] ??
-                  (profile.resource === "protein_structure" &&
-                  selectedStructureHref
-                    ? ["structure"]
-                    : hasBiosetSelection
-                      ? ["biosets"]
-                      : undefined)
+                  (hasBiosetSelection ? ["biosets"] : undefined)
                 }
                 loadingActionIds={loadingActionIds}
                 disabledActions={
-                  profile.resource === "protein_structure"
+                  hasIncompleteBiosetSelection
                     ? {
-                        genome: selectedGenomeId
-                          ? undefined
-                          : "No genome is associated with this structure",
-                        feature: selectedFeatureId
-                          ? undefined
-                          : "No feature is associated with this structure",
-                        structure: selectedStructureHref
-                          ? undefined
-                          : "A structure accession is required",
+                        biosets:
+                          "Some selected Biosets are not associated with experiments",
                       }
-                    : hasIncompleteBiosetSelection
-                      ? {
-                          biosets:
-                            "Some selected Biosets are not associated with experiments",
-                        }
-                      : undefined
+                    : undefined
                 }
                 onAction={dispatchAction}
               />

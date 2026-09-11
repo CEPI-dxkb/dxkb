@@ -13,17 +13,35 @@ import {
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { rerunJob } from "@/lib/rerun-utility";
 
+/** Which ID kind the selection resolved to, and so which services accept it. */
+export type SelectionServiceKind = "genome" | "feature";
+
 interface SelectionServiceChooserProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Plural label of the collection the selection came from, e.g. "Strains". */
   label: string;
-  genomeIds: readonly string[];
+  ids: readonly string[];
+  /** Genome IDs by default; Feature collections resolve `feature_id`s instead. */
+  kind?: SelectionServiceKind;
   workspaceUsername?: string;
   onRequireAuthentication?: (serviceHref: string) => void;
+  /**
+   * False for collections no service accepts yet. Matches the Taxa Tree chooser:
+   * the dialog still opens, it just reports that there is nothing to run.
+   */
+  hasSelectableServices?: boolean;
 }
 
-type ServiceChoice = "blast" | "viral-tree" | "viral-msa";
+type ServiceChoice =
+  | "blast"
+  | "viral-tree"
+  | "viral-msa"
+  | "feature-blast"
+  | "feature-blast-query"
+  | "feature-blast-database"
+  | "gene-tree"
+  | "ha-subtype";
 
 interface ServiceOption {
   choice: ServiceChoice;
@@ -32,7 +50,7 @@ interface ServiceOption {
   pendingLabel: string;
 }
 
-const serviceOptions: readonly ServiceOption[] = [
+const genomeServiceOptions: readonly ServiceOption[] = [
   {
     choice: "blast",
     href: "/services/blast",
@@ -53,35 +71,83 @@ const serviceOptions: readonly ServiceOption[] = [
   },
 ];
 
+const featureServiceOptions: readonly ServiceOption[] = [
+  {
+    choice: "feature-blast",
+    href: "/services/blast",
+    label: "BLAST",
+    pendingLabel: "Opening BLAST...",
+  },
+  {
+    choice: "gene-tree",
+    href: "/services/gene-protein-tree",
+    label: "Gene Tree",
+    pendingLabel: "Opening Gene Tree...",
+  },
+  {
+    choice: "ha-subtype",
+    href: "/services/influenza-ha-subtype",
+    label: "HA Subtype Numbering Conversion",
+    pendingLabel: "Opening HA Subtype Numbering Conversion...",
+  },
+];
+
+/**
+ * BLAST can take a Feature Group either way, so legacy asks which side of the
+ * search the selection belongs on before it opens the form.
+ */
+const featureBlastSourceOptions: readonly ServiceOption[] = [
+  {
+    choice: "feature-blast-query",
+    href: "/services/blast",
+    label: "Query",
+    pendingLabel: "Opening BLAST...",
+  },
+  {
+    choice: "feature-blast-database",
+    href: "/services/blast",
+    label: "Source",
+    pendingLabel: "Opening BLAST...",
+  },
+];
+
 export function SelectionServiceChooser({
   open,
   onOpenChange,
   label,
-  genomeIds,
+  ids,
+  kind = "genome",
   workspaceUsername,
   onRequireAuthentication,
+  hasSelectableServices = true,
 }: SelectionServiceChooserProps) {
   const repository = useWorkspaceRepository("authenticated");
   const [pendingService, setPendingService] = useState<ServiceChoice | null>(
     null,
   );
+  const [isChoosingBlastSource, setIsChoosingBlastSource] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createTemporaryGenomeGroup = async () => {
+  const createTemporaryGroup = async () => {
     if (!workspaceUsername) throw new Error("Sign in to use this service.");
     const directoryPath = `/${workspaceUsername}/home/._tmp_groups`;
-    const groupName = `tmp_genome_group_${crypto.randomUUID()}`;
+    const groupName = `tmp_${kind}_group_${crypto.randomUUID()}`;
     await repository.createIdGroup({
       path: directoryPath,
       name: groupName,
-      type: "genome_group",
-      idField: "genome_id",
-      ids: [...genomeIds],
+      ...(kind === "feature"
+        ? { type: "feature_group" as const, idField: "feature_id" as const }
+        : { type: "genome_group" as const, idField: "genome_id" as const }),
+      ids: [...ids],
     });
     return `${directoryPath}/${groupName}`;
   };
 
   const runService = async ({ choice: service, href }: ServiceOption) => {
+    if (service === "feature-blast") {
+      setIsChoosingBlastSource(true);
+      return;
+    }
     if (!workspaceUsername) {
       onOpenChange(false);
       onRequireAuthentication?.(href);
@@ -97,12 +163,12 @@ export function SelectionServiceChooser({
             db_type: "fna",
             db_source: "genome_list",
             db_precomputed_database: "selGenome",
-            db_genome_list: [...genomeIds],
+            db_genome_list: [...ids],
           },
           "Homology",
         );
       } else {
-        const groupPath = await createTemporaryGenomeGroup();
+        const groupPath = await createTemporaryGroup();
         if (service === "viral-tree") {
           rerunJob(
             {
@@ -111,7 +177,7 @@ export function SelectionServiceChooser({
             },
             "GeneTree",
           );
-        } else {
+        } else if (service === "viral-msa") {
           rerunJob(
             {
               input_status: "unaligned",
@@ -125,8 +191,46 @@ export function SelectionServiceChooser({
             },
             "MSA",
           );
+        } else if (service === "feature-blast-query") {
+          rerunJob(
+            {
+              blast_program: "blastn",
+              db_type: "fna",
+              input_source: "feature_group",
+              input_feature_group: groupPath,
+              db_precomputed_database: "bacteria-archaea",
+            },
+            "Homology",
+          );
+        } else if (service === "feature-blast-database") {
+          rerunJob(
+            {
+              blast_program: "blastn",
+              db_type: "fna",
+              db_precomputed_database: "selFeatureGroup",
+              db_feature_group: groupPath,
+            },
+            "Homology",
+          );
+        } else if (service === "gene-tree") {
+          rerunJob(
+            {
+              tree_type: "gene",
+              sequences: [{ type: "feature_group", filename: groupPath }],
+            },
+            "GeneTree",
+          );
+        } else {
+          rerunJob(
+            {
+              input_source: "feature_group",
+              input_feature_group: groupPath,
+            },
+            "HASubtypeNumberingConversion",
+          );
         }
       }
+      setIsChoosingBlastSource(false);
       onOpenChange(false);
     } catch (serviceError) {
       setError(
@@ -139,32 +243,68 @@ export function SelectionServiceChooser({
     }
   };
 
-  const disabled = pendingService !== null || genomeIds.length === 0;
+  const disabled = pendingService !== null || ids.length === 0;
+  const options = isChoosingBlastSource
+    ? featureBlastSourceOptions
+    : kind === "feature"
+      ? featureServiceOptions
+      : genomeServiceOptions;
+  const idLabel = kind === "feature" ? "feature" : "genome";
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setIsChoosingBlastSource(false);
+        onOpenChange(nextOpen);
+      }}
+    >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Use selected {label} in a service</DialogTitle>
+          <DialogTitle>
+            {isChoosingBlastSource
+              ? "Select the BLAST source"
+              : `Use selected ${label} in a service`}
+          </DialogTitle>
           <DialogDescription>
-            Open a supported service with {genomeIds.length.toLocaleString()}{" "}
-            genome
-            {genomeIds.length === 1 ? "" : "s"} from the current selection.
+            {!hasSelectableServices
+              ? // `label` is always plural, so no article — "a Epitopes" was wrong.
+                `Services that accept ${label} are not available yet.`
+              : isChoosingBlastSource
+                ? "Search with the selection as the query, or search against it as the source database."
+                : `Open a supported service with ${ids.length.toLocaleString()} ${idLabel}${ids.length === 1 ? "" : "s"} from the current selection.`}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-2">
-          {serviceOptions.map((option) => (
-            <Button
-              key={option.choice}
-              disabled={disabled}
-              onClick={() => void runService(option)}
-            >
-              {pendingService === option.choice
-                ? option.pendingLabel
-                : option.label}
-            </Button>
-          ))}
-        </div>
+        {hasSelectableServices ? (
+          <div className="grid gap-2">
+            {options.map((option) => (
+              <Button
+                key={option.choice}
+                disabled={disabled}
+                onClick={() => void runService(option)}
+              >
+                {pendingService === option.choice
+                  ? option.pendingLabel
+                  : option.label}
+              </Button>
+            ))}
+            {isChoosingBlastSource ? (
+              <Button
+                variant="outline"
+                disabled={disabled}
+                onClick={() => {
+                  setIsChoosingBlastSource(false);
+                }}
+              >
+                Back
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No selectable services
+          </p>
+        )}
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
         <DialogFooter showCloseButton />
       </DialogContent>

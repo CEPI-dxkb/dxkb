@@ -26,7 +26,7 @@ function renderChooser(
       open
       onOpenChange={onOpenChange}
       label="Strains"
-      genomeIds={genomeIds}
+      ids={genomeIds}
       workspaceUsername="alice@bvbrc"
       {...overrides}
     />,
@@ -42,6 +42,24 @@ describe("SelectionServiceChooser", () => {
   });
 
   afterEach(() => vi.unstubAllGlobals());
+
+  it("reports that no service accepts the selection", () => {
+    renderChooser(vi.fn(), {
+      label: "Protein Structures",
+      ids: [],
+      hasSelectableServices: false,
+    });
+
+    expect(screen.getByText("No selectable services")).toBeVisible();
+    expect(
+      screen.getByText(
+        "Services that accept Protein Structures are not available yet.",
+      ),
+    ).toBeVisible();
+    for (const name of ["BLAST", "Viral Genome Tree", "Viral MSA"]) {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    }
+  });
 
   it("requests authentication for the selected service when signed out", async () => {
     const onOpenChange = vi.fn();
@@ -125,6 +143,111 @@ describe("SelectionServiceChooser", () => {
       },
       "MSA",
     );
+  });
+
+  describe("feature selections", () => {
+    const featureIds = ["PATRIC.83332.12.NC_000962.CDS.1.1524.fwd"];
+    const featureGroupPath =
+      "/alice@bvbrc/home/._tmp_groups/tmp_feature_group_test-uuid";
+
+    function renderFeatureChooser() {
+      return renderChooser(vi.fn(), {
+        label: "Features",
+        ids: featureIds,
+        kind: "feature",
+      });
+    }
+
+    it("offers the legacy feature services", () => {
+      renderFeatureChooser();
+
+      for (const name of [
+        "BLAST",
+        "Gene Tree",
+        "HA Subtype Numbering Conversion",
+      ]) {
+        expect(screen.getByRole("button", { name })).toBeVisible();
+      }
+      for (const name of ["Viral Genome Tree", "Viral MSA"]) {
+        expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+      }
+    });
+
+    it("asks which side of BLAST the selection belongs on", async () => {
+      renderFeatureChooser();
+
+      await userEvent.click(screen.getByRole("button", { name: "BLAST" }));
+      expect(screen.getByText("Select the BLAST source")).toBeVisible();
+      expect(mocks.createIdGroup).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole("button", { name: "Query" }));
+      expect(mocks.createIdGroup).toHaveBeenCalledWith({
+        path: "/alice@bvbrc/home/._tmp_groups",
+        name: "tmp_feature_group_test-uuid",
+        type: "feature_group",
+        idField: "feature_id",
+        ids: featureIds,
+      });
+      expect(mocks.rerunJob).toHaveBeenCalledWith(
+        {
+          blast_program: "blastn",
+          db_type: "fna",
+          input_source: "feature_group",
+          input_feature_group: featureGroupPath,
+          db_precomputed_database: "bacteria-archaea",
+        },
+        "Homology",
+      );
+    });
+
+    it("searches against the selection when BLAST uses it as the source", async () => {
+      renderFeatureChooser();
+
+      await userEvent.click(screen.getByRole("button", { name: "BLAST" }));
+      await userEvent.click(screen.getByRole("button", { name: "Source" }));
+
+      expect(mocks.rerunJob).toHaveBeenCalledWith(
+        {
+          blast_program: "blastn",
+          db_type: "fna",
+          db_precomputed_database: "selFeatureGroup",
+          db_feature_group: featureGroupPath,
+        },
+        "Homology",
+      );
+    });
+
+    it("creates a temporary feature group and opens Gene Tree", async () => {
+      renderFeatureChooser();
+
+      await userEvent.click(screen.getByRole("button", { name: "Gene Tree" }));
+
+      expect(mocks.rerunJob).toHaveBeenCalledWith(
+        {
+          tree_type: "gene",
+          sequences: [{ type: "feature_group", filename: featureGroupPath }],
+        },
+        "GeneTree",
+      );
+    });
+
+    it("creates a temporary feature group and opens HA Subtype Numbering Conversion", async () => {
+      renderFeatureChooser();
+
+      await userEvent.click(
+        screen.getByRole("button", {
+          name: "HA Subtype Numbering Conversion",
+        }),
+      );
+
+      expect(mocks.rerunJob).toHaveBeenCalledWith(
+        {
+          input_source: "feature_group",
+          input_feature_group: featureGroupPath,
+        },
+        "HASubtypeNumberingConversion",
+      );
+    });
   });
 
   it("preserves a workspace error and does not open a service", async () => {

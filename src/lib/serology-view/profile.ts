@@ -38,6 +38,8 @@ export const serologyCollectionProfile: ResourceCollectionProfile<SerologyViewRe
     detailFields: serologyDetailFields,
     defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
+    guideUrl:
+      "https://www.bv-brc.org/docs/quick_references/organisms_taxon/serology_data.html",
     buildStructuralRql: serologyStructuralRql,
     facets: serologyFacets,
     rowHref: (row) => serologyHref(row.sample_identifier, row.test_type),

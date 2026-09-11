@@ -72,35 +72,27 @@ describe("SearchActionBar (taxonomy)", () => {
   });
 
   describe("genome sequences", () => {
-    it("matches the legacy sequence actions and availability", async () => {
+    it("matches the taxon-view sequence actions and availability", async () => {
       const user = userEvent.setup();
-      const onAction = vi.fn();
       render(
         <SearchActionBar
           selectedCount={1}
           searchType="genome_sequence"
           guideUrl="https://example.test/guide"
-          enabledActions={["download", "genome", "features"]}
-          disabledActions={{
-            copyRows: "Coming soon...",
-            services: "Coming soon...",
-            fasta: "Coming soon...",
-            group: "Coming soon...",
-            browser: "Coming soon...",
-          }}
-          onAction={onAction}
+          enabledActions={["copyRows", "services", "group", "features"]}
         />,
       );
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
         { name: /dwnld/i, enabled: true },
-        { name: /copy/i, enabled: false },
-        { name: /services/i, enabled: false },
+        { name: /copy/i, enabled: true },
+        { name: /services/i, enabled: true },
         { name: /^ggenome$/i, enabled: true },
         { name: /^ffeatures$/i, enabled: true },
+        { name: /group/i, enabled: true },
+        // FASTA and Browser wait on a later PR.
         { name: /fasta/i, enabled: false },
-        { name: /group/i, enabled: false },
         { name: /browser/i, enabled: false },
       ];
 
@@ -110,7 +102,369 @@ describe("SearchActionBar (taxonomy)", () => {
       }
 
       await user.hover(screen.getByRole("button", { name: /browser/i }));
-      expect(await screen.findAllByText("Coming soon...")).not.toHaveLength(0);
+      expect(await screen.findAllByText(notReady)).not.toHaveLength(0);
+    });
+
+    it("keeps the sequence actions disabled where the consumer has no handler", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="genome_sequence"
+          guideUrl="https://example.test/guide"
+        />,
+      );
+
+      for (const name of [/copy/i, /services/i, /^ffeatures$/i, /group/i]) {
+        expect(screen.getByRole("button", { name })).toBeDisabled();
+      }
+    });
+  });
+
+  describe("genome features", () => {
+    it("matches the taxon-view feature actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="genome_feature"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services", "group"]}
+        />,
+      );
+
+      // Legacy order, minus SUBSYSTEMS and PATHWAYS which DXKB does not carry.
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^ffeature$/i, enabled: true },
+        { name: /^ggenome$/i, enabled: true },
+        // FASTA and ID MAP wait on a later PR.
+        { name: /fasta/i, enabled: false },
+        { name: /id map/i, enabled: false },
+        { name: /group/i, enabled: true },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+  });
+
+  describe("sequence features (SFVT)", () => {
+    it("matches the taxon-view SFVT actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="sequence_feature"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /copy rows/i, enabled: true },
+        { name: /services/i, enabled: true },
+        // VARIANT TYPES waits on a later PR.
+        { name: /variant\s*types/i, enabled: false },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+
+    it("does not fire onAction for the disabled VARIANT TYPES button", async () => {
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="sequence_feature"
+          onAction={onAction}
+        />,
+      );
+
+      await userEvent.click(
+        screen.getByRole("button", { name: /variant\s*types/i }),
+      );
+      expect(onAction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("epitopes", () => {
+    it("matches the taxon-view epitope actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="epitope"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^eepitope$/i, enabled: true },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+
+    it("hides the single-row Epitope action for multiple selections", () => {
+      render(
+        <SearchActionBar
+          selectedCount={2}
+          searchType="epitope"
+          enabledActions={["copyRows", "services"]}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /^eepitope$/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /dwnld/i })).toBeEnabled();
+    });
+  });
+
+  describe("interactions", () => {
+    it("matches the taxon-view interaction actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={2}
+          searchType="ppi"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services", "ppiFeatures", "group"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^ffeatures$/i, enabled: true },
+        // FASTA waits on a later PR.
+        { name: /fasta/i, enabled: false },
+        { name: /group/i, enabled: true },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+
+    it("does not fire onAction for the disabled interaction FASTA button", async () => {
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={2}
+          searchType="ppi"
+          enabledActions={["copyRows", "services", "ppiFeatures", "group"]}
+          onAction={onAction}
+        />,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: /fasta/i }));
+      expect(onAction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("serology", () => {
+    it("matches the taxon-view serology actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="serology"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^sserology$/i, enabled: true },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+  });
+
+  describe("surveillance", () => {
+    it("matches the taxon-view surveillance actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="surveillance"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^ssrvlnce$/i, enabled: true },
+        // MAP waits on a later PR.
+        { name: /^map$/i, enabled: false },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+
+    it("does not fire onAction for the disabled MAP button", async () => {
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="surveillance"
+          enabledActions={["copyRows", "services"]}
+          onAction={onAction}
+        />,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: /^map$/i }));
+      expect(onAction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("experiments", () => {
+    it("matches the taxon-view experiment actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="experiment"
+          guideUrl="https://example.test/guide"
+          enabledActions={["services"]}
+        />,
+      );
+
+      // Legacy leaves COPY ROWS out of the experiment container.
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^eexprmnt$/i, enabled: true },
+        // BIOSETS waits on a later PR.
+        { name: /biosets/i, enabled: false },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+
+    it("matches the taxon-view bioset actions, their order and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="bioset"
+          guideUrl="https://example.test/guide"
+          enabledActions={["services", "biosets"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /biosets/i, enabled: true },
+      ];
+
+      const buttons = screen.getAllByRole("button");
+      expect(buttons).toHaveLength(expectedActions.length);
+      expectedActions.forEach((action, index) => {
+        const button = buttons[index];
+        expect(button).toHaveAccessibleName(action.name);
+        expect(button).toHaveProperty("disabled", !action.enabled);
+      });
+    });
+
+    it("does not fire onAction for the disabled experiment BIOSETS button", async () => {
+      const onAction = vi.fn();
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="experiment"
+          enabledActions={["services"]}
+          onAction={onAction}
+        />,
+      );
+
+      await userEvent.click(screen.getByRole("button", { name: /biosets/i }));
+      expect(onAction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("protein structures", () => {
+    it("matches the taxon-view structure actions and availability", () => {
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="protein_structure"
+          guideUrl="https://example.test/guide"
+          enabledActions={["copyRows", "services"]}
+        />,
+      );
+
+      const expectedActions = [
+        { name: /guide/i, enabled: true },
+        { name: /dwnld/i, enabled: true },
+        { name: /^copy$/i, enabled: true },
+        { name: /services/i, enabled: true },
+        { name: /^ggenome$/i, enabled: true },
+        { name: /^ffeature$/i, enabled: true },
+        { name: /^sstructure$/i, enabled: true },
+      ];
+
+      for (const action of expectedActions) {
+        expect(
+          screen.getByRole("button", { name: action.name }),
+        ).toHaveProperty("disabled", !action.enabled);
+      }
     });
   });
 
@@ -354,24 +708,6 @@ describe("SearchActionBar (taxonomy)", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("matches the legacy Bioset actions", () => {
-      render(
-        <SearchActionBar
-          selectedCount={1}
-          searchType="bioset"
-          guideUrl="https://example.test/guide"
-          enabledActions={["biosets"]}
-        />,
-      );
-
-      expect(screen.getByRole("button", { name: /guide/i })).not.toBeDisabled();
-      expect(screen.getByRole("button", { name: /dwnld/i })).not.toBeDisabled();
-      expect(screen.getByRole("button", { name: /services/i })).toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: /biosets/i }),
-      ).not.toBeDisabled();
-    });
-
     it("enables the Experiment action for one selected record", async () => {
       const onAction = vi.fn();
       render(
@@ -382,7 +718,7 @@ describe("SearchActionBar (taxonomy)", () => {
         />,
       );
 
-      const button = screen.getByRole("button", { name: /^eexpermnt$/i });
+      const button = screen.getByRole("button", { name: /^eexprmnt$/i });
       expect(button).not.toBeDisabled();
       await userEvent.click(button);
       expect(onAction).toHaveBeenCalledWith("experiment");
@@ -391,7 +727,7 @@ describe("SearchActionBar (taxonomy)", () => {
     it("hides the Experiment action for multiple selections", () => {
       render(<SearchActionBar selectedCount={2} searchType="experiment" />);
       expect(
-        screen.queryByRole("button", { name: /^eexpermnt$/i }),
+        screen.queryByRole("button", { name: /^eexprmnt$/i }),
       ).not.toBeInTheDocument();
     });
 

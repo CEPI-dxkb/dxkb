@@ -8,7 +8,10 @@ import {
 } from "@/lib/experiment-view/profile";
 import { featureCollectionProfile } from "@/lib/feature-view/profile";
 import { genomeCollectionProfile } from "@/lib/genome-view/profile";
+import { proteinFeatureCollectionProfile } from "@/lib/protein-feature-view/profile";
+import { proteinStructureCollectionProfile } from "@/lib/protein-structure-view/profile";
 import { strainCollectionProfile } from "@/lib/strain-view/profile";
+import { serologyCollectionProfile } from "@/lib/serology-view/profile";
 import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
 import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { CollectionState } from "@/lib/views/collection-state";
@@ -47,7 +50,22 @@ vi.mock("../collection-copy-dialog", () => ({
   CollectionCopyDialog: () => null,
 }));
 vi.mock("../selection-service-chooser", () => ({
-  SelectionServiceChooser: () => null,
+  SelectionServiceChooser: ({
+    open,
+    kind = "genome",
+    hasSelectableServices = true,
+  }: {
+    open: boolean;
+    kind?: "genome" | "feature";
+    hasSelectableServices?: boolean;
+  }) =>
+    open ? (
+      <div data-testid="selection-services" data-kind={kind}>
+        {hasSelectableServices
+          ? "Selectable services"
+          : "No selectable services"}
+      </div>
+    ) : null,
 }));
 vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
   SelectionToGroupDialog: () => null,
@@ -177,11 +195,38 @@ vi.mock("@/components/search/search-action-bar", () => ({
         <button
           onClick={() =>
             (props.onAction as ((action: string) => void) | undefined)?.(
+              "structure",
+            )
+          }
+        >
+          Structure action
+        </button>
+        <button
+          onClick={() =>
+            (props.onAction as ((action: string) => void) | undefined)?.(
               "biosets",
             )
           }
         >
           Biosets action
+        </button>
+        <button
+          onClick={() =>
+            (props.onAction as ((action: string) => void) | undefined)?.(
+              "epitope",
+            )
+          }
+        >
+          Epitope action
+        </button>
+        <button
+          onClick={() =>
+            (props.onAction as ((action: string) => void) | undefined)?.(
+              "ppiFeatures",
+            )
+          }
+        >
+          Interaction features action
         </button>
       </div>
     );
@@ -389,7 +434,7 @@ describe("ResourceCollection sequence actions", () => {
       genome_id: "83332.12",
       genome_name: "E. coli fixture",
     };
-    useResourceCollection.mockReturnValueOnce({
+    useResourceCollection.mockReturnValue({
       ...collectionResult(),
       activeId: sequenceRow.sequence_id,
       detail: sequenceRow,
@@ -419,11 +464,12 @@ describe("ResourceCollection sequence actions", () => {
       />,
     );
 
-    expect(actionBarProps.enabledActions).toEqual([
-      "download",
-      "genome",
-      "features",
-    ]);
+    expect(actionBarProps).toMatchObject({
+      searchType: "genome_sequence",
+      // FEATURES is enabled alongside the owned actions; FASTA and Browser are not.
+      enabledActions: ["copyRows", "services", "group", "features"],
+      disabledActions: undefined,
+    });
     await user.click(screen.getByRole("button", { name: "Download action" }));
     expect(selected).toHaveBeenCalledWith("genome_sequence", {
       ids: [sequenceRow.sequence_id],
@@ -443,6 +489,50 @@ describe("ResourceCollection sequence actions", () => {
       "_blank",
       "noopener,noreferrer",
     );
+  });
+
+  it("resolves the selected Sequences' Genome IDs for the SERVICES chooser", async () => {
+    const user = userEvent.setup();
+    const sequenceRow = {
+      sequence_id: "83332.12.con.0001",
+      genome_id: "83332.12",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [sequenceRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: sequenceRow.sequence_id,
+      detail: sequenceRow,
+      rows: [sequenceRow],
+      selection: { [sequenceRow.sequence_id]: true },
+      selectedIds: [sequenceRow.sequence_id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "genome_sequence",
+          label: "Sequences",
+          idField: "sequence_id",
+          columns: [
+            { id: "sequence_id", label: "Sequence ID" },
+            { id: "genome_id", label: "Genome ID" },
+          ],
+          defaultSort: "sequence_id:asc",
+        }}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "sequence_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("genome_sequence", {
+        ids: [sequenceRow.sequence_id],
+        fields: ["genome_id"],
+      });
+    });
+    expect(await screen.findByText("Selectable services")).toBeVisible();
   });
 });
 
@@ -586,6 +676,341 @@ describe("ResourceCollection Genome integration contracts", () => {
     });
   });
 
+  it("enables COPY ROWS, DWNLD and an empty SERVICES chooser for Sequence Features", async () => {
+    const user = userEvent.setup();
+    const sequenceFeatureRow = {
+      id: "sfvt-row-1",
+      sf_name: "HA1-1",
+      sf_id: "SFVT-0001",
+    };
+    const selected = vi.fn(() =>
+      Promise.resolve({ rows: [sequenceFeatureRow] }),
+    );
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: sequenceFeatureRow.id,
+      detail: sequenceFeatureRow,
+      rows: [sequenceFeatureRow],
+      selection: { [sequenceFeatureRow.id]: true },
+      selectedIds: [sequenceFeatureRow.id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "sequence_feature",
+          label: "Sequence Features",
+          idField: "id",
+          columns: [
+            { id: "sf_name", label: "Name" },
+            { id: "sf_id", label: "SFVT ID" },
+          ],
+          defaultSort: "sf_name:asc",
+        }}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "sf_name:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "sequence_feature",
+      enabledActions: ["copyRows", "services"],
+      disabledActions: undefined,
+    });
+
+    // Legacy runs no service from this tab, so SERVICES resolves nothing.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("sequence_feature", {
+        ids: [sequenceFeatureRow.id],
+        fields: ["sf_name", "sf_id"],
+      });
+    });
+  });
+
+  it("enables COPY, DWNLD and an empty SERVICES chooser for Epitopes", async () => {
+    const user = userEvent.setup();
+    const open = vi.fn();
+    vi.stubGlobal("open", open);
+    const epitopeRow = {
+      epitope_id: "15/780",
+      epitope_sequence: "DRDLQTGGI",
+      host_name: "Homo sapiens",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [epitopeRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: epitopeRow.epitope_id,
+      detail: epitopeRow,
+      rows: [epitopeRow],
+      selection: { [epitopeRow.epitope_id]: true },
+      selectedIds: [epitopeRow.epitope_id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "epitope",
+          label: "Epitopes",
+          idField: "epitope_id",
+          columns: [
+            { id: "epitope_sequence", label: "Epitope Sequence" },
+            { id: "host_name", label: "Host" },
+          ],
+          defaultSort: "unsorted",
+        }}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "epitope",
+      enabledActions: ["copyRows", "services"],
+      disabledActions: undefined,
+    });
+
+    // Legacy errors with "Missing or invalid type for Services" on this tab, so
+    // SERVICES opens the chooser without resolving anything.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Epitope action" }));
+    expect(open).toHaveBeenCalledWith(
+      "/epitope/15%2F780",
+      "_blank",
+      "noopener,noreferrer",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("epitope", {
+        ids: [epitopeRow.epitope_id],
+        fields: ["epitope_sequence", "host_name"],
+      });
+    });
+  });
+
+  it("resolves Feature IDs for the SERVICES chooser and the Feature Group", async () => {
+    const user = userEvent.setup();
+    const featureRow = {
+      feature_id: "canonical-feature",
+      patric_id: "fig|83332.12.peg.1",
+      genome_id: "83332.12",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [featureRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: featureRow.feature_id,
+      detail: featureRow,
+      rows: [featureRow],
+      selection: { [featureRow.feature_id]: true },
+      selectedIds: [featureRow.feature_id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={featureCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "genome_feature",
+      // FASTA and ID MAP stay on their not-ready tooltip.
+      enabledActions: ["copyRows", "services", "group"],
+      disabledActions: undefined,
+    });
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("genome_feature", {
+        ids: [featureRow.feature_id],
+        fields: ["feature_id"],
+      });
+    });
+    expect(await screen.findByTestId("selection-services")).toHaveAttribute(
+      "data-kind",
+      "feature",
+    );
+  });
+
+  it("enables COPY ROWS and an empty SERVICES chooser for Domains and Motifs", async () => {
+    const user = userEvent.setup();
+    const featureRow = {
+      id: "97bffc25",
+      genome_id: "568815.3",
+      patric_id: "fig|568815.3.peg.6",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [featureRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "97bffc25",
+      detail: featureRow,
+      rows: [featureRow],
+      selection: { "97bffc25": true },
+      selectedIds: ["97bffc25"],
+    });
+
+    render(
+      <ResourceCollection
+        profile={proteinFeatureCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "protein_feature",
+      enabledActions: ["copyRows", "services"],
+      disabledActions: undefined,
+    });
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("protein_feature", {
+        ids: ["97bffc25"],
+        fields: proteinFeatureCollectionProfile.columns.map(
+          (column) => column.id,
+        ),
+      });
+    });
+  });
+
+  it("enables COPY ROWS and an empty SERVICES chooser for Protein Structures", async () => {
+    const user = userEvent.setup();
+    const structureRow = {
+      pdb_id: "AF-A0A502BNJ0-F1",
+      genome_id: "215590.7",
+      patric_id: "fig|215590.7.peg.2721",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [structureRow] }));
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      activeId: "AF-A0A502BNJ0-F1",
+      detail: structureRow,
+      rows: [structureRow],
+      selection: { "AF-A0A502BNJ0-F1": true },
+      selectedIds: ["AF-A0A502BNJ0-F1"],
+    });
+    const open = vi.fn();
+    vi.stubGlobal("open", open);
+
+    render(
+      <ResourceCollection
+        profile={proteinStructureCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      enabledActions: ["copyRows", "services"],
+      disabledActions: {
+        genome: undefined,
+        feature: undefined,
+        structure: undefined,
+      },
+    });
+
+    // No service accepts structures, so SERVICES reports it without resolving rows.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Structure action" }));
+    expect(open).toHaveBeenCalledWith(
+      "/protein-structure?accession=AF-A0A502BNJ0-F1",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  });
+
+  it("exports the selected Protein Structures from the Download action", async () => {
+    const user = userEvent.setup();
+    const structureRow = { pdb_id: "1ABC", genome_id: "215590.7" };
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      activeId: "1ABC",
+      detail: structureRow,
+      rows: [structureRow],
+      selection: { "1ABC": true },
+      selectedIds: ["1ABC"],
+    });
+
+    render(
+      <ResourceCollection
+        profile={proteinStructureCollectionProfile}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(downloadResourceExport).toHaveBeenCalledWith(
+        "protein_structure",
+        [row],
+        proteinStructureCollectionProfile.columns,
+        proteinStructureCollectionProfile.columns.map((column) => column.id),
+        "csv",
+      );
+    });
+  });
+
+  it("keeps the Protein Structure member actions disabled without their identifiers", () => {
+    const structureRow = { title: "Structure without identifiers" };
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      activeId: "structure-without-ids",
+      detail: structureRow,
+      rows: [structureRow],
+      selection: { "structure-without-ids": true },
+      selectedIds: ["structure-without-ids"],
+    });
+
+    render(
+      <ResourceCollection
+        profile={proteinStructureCollectionProfile}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      enabledActions: ["copyRows", "services"],
+      disabledActions: {
+        genome: "No genome is associated with this structure",
+        feature: "No feature is associated with this structure",
+        structure: "A structure accession is required",
+      },
+    });
+  });
+
   it("enables the Strain Genomes action and opens its canonical Genome list in the same tab", async () => {
     const user = userEvent.setup();
     useResourceCollection.mockReturnValueOnce({
@@ -703,7 +1128,7 @@ describe("ResourceCollection Genome integration contracts", () => {
     );
 
     expect(actionBarProps).toMatchObject({
-      enabledActions: ["biosets"],
+      enabledActions: ["services", "biosets"],
       guideUrl: "https://example.test/guide",
     });
     await user.click(screen.getByRole("button", { name: "Download action" }));
@@ -749,7 +1174,7 @@ describe("ResourceCollection Genome integration contracts", () => {
     );
 
     expect(actionBarProps).toMatchObject({
-      enabledActions: undefined,
+      enabledActions: ["services", "biosets"],
       disabledActions: {
         biosets: "Some selected Biosets are not associated with experiments",
       },
@@ -826,7 +1251,9 @@ describe("ResourceCollection Genome integration contracts", () => {
       });
     });
 
-    expect(actionBarProps).toMatchObject({ enabledActions: ["biosets"] });
+    expect(actionBarProps).toMatchObject({
+      enabledActions: ["services", "biosets"],
+    });
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(selected).not.toHaveBeenCalled();
     expect(open).toHaveBeenCalledWith(
@@ -874,7 +1301,9 @@ describe("ResourceCollection Genome integration contracts", () => {
       />,
     );
 
-    expect(actionBarProps).toMatchObject({ enabledActions: ["biosets"] });
+    expect(actionBarProps).toMatchObject({
+      enabledActions: ["services", "biosets"],
+    });
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(exportAll).toHaveBeenCalledWith("bioset", {
       rql: 'and(eq(exp_id,*),and(or(eq(bioset_type,"Differential%20Expression"),eq(bioset_type,"Pathway%20Analysis")),eq(organism,"Escherichia%20coli")))',
@@ -931,6 +1360,50 @@ describe("ResourceCollection Genome integration contracts", () => {
         "Some selected Biosets are not associated with experiments.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("enables DWNLD and an empty SERVICES chooser for Experiments", async () => {
+    const user = userEvent.setup();
+    const experimentRow = { exp_id: "00042", exp_title: "Fixture experiment" };
+    const selected = vi.fn(() => Promise.resolve({ rows: [experimentRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: experimentRow.exp_id,
+      detail: experimentRow,
+      rows: [experimentRow],
+      selection: { [experimentRow.exp_id]: true },
+      selectedIds: [experimentRow.exp_id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={experimentCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    // Legacy leaves COPY ROWS out of the experiment container and runs no service
+    // from it, so SERVICES is the only owned action and it resolves nothing.
+    expect(actionBarProps).toMatchObject({
+      searchType: "experiment",
+      enabledActions: ["services"],
+      disabledActions: undefined,
+    });
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith(
+        "experiment",
+        expect.objectContaining({ ids: [experimentRow.exp_id] }),
+      );
+    });
   });
 
   it("opens the selected Experiment member in a new tab", async () => {
@@ -1004,6 +1477,162 @@ describe("ResourceCollection Genome integration contracts", () => {
       "noopener,noreferrer",
     );
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("enables COPY, DWNLD and an empty SERVICES chooser for Surveillance", async () => {
+    const user = userEvent.setup();
+    const surveillanceRow = {
+      id: "surveillance-backend-901",
+      sample_identifier: "sample/1",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [surveillanceRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: surveillanceRow.id,
+      detail: surveillanceRow,
+      rows: [surveillanceRow],
+      selection: { [surveillanceRow.id]: true },
+      selectedIds: [surveillanceRow.id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={surveillanceCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "surveillance",
+      enabledActions: ["copyRows", "services"],
+      disabledActions: undefined,
+      guideUrl: surveillanceCollectionProfile.guideUrl,
+    });
+
+    // Legacy errors with "Missing or invalid type for Services" on this tab, so
+    // SERVICES opens the chooser without resolving anything.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith(
+        "surveillance",
+        expect.objectContaining({ ids: [surveillanceRow.id] }),
+      );
+    });
+  });
+
+  it("pools both interactors for the Interaction FEATURES action", async () => {
+    const user = userEvent.setup();
+    const interactionRows = [
+      { id: "ppi-1", feature_id_a: "feature-a1", feature_id_b: "feature-b1" },
+      { id: "ppi-2", feature_id_a: "feature-a2", feature_id_b: "feature-a1" },
+    ];
+    const selected = vi.fn(() => Promise.resolve({ rows: interactionRows }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "ppi-1",
+      detail: interactionRows[0],
+      rows: interactionRows,
+      selection: { "ppi-1": true, "ppi-2": true },
+      selectedIds: ["ppi-1", "ppi-2"],
+    });
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "ppi",
+          label: "Interactions",
+          idField: "id",
+          columns: [
+            { id: "feature_id_a", label: "Interactor A" },
+            { id: "feature_id_b", label: "Interactor B" },
+          ],
+          defaultSort: "id:asc",
+        }}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "id:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "ppi",
+      enabledActions: ["copyRows", "services", "ppiFeatures", "group"],
+      disabledActions: undefined,
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Interaction features action" }),
+    );
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith("ppi", {
+        ids: ["ppi-1", "ppi-2"],
+        fields: ["feature_id_a", "feature_id_b"],
+      });
+    });
+    // Legacy pools feature_id_a and feature_id_b across every selected row.
+    expect(push).toHaveBeenCalledWith(
+      "/feature?rql=in(feature_id%2C(feature-a1%2Cfeature-b1%2Cfeature-a2))",
+    );
+
+    // Legacy errors with "Missing or invalid type for Services" on this tab.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+  });
+
+  it("enables COPY, DWNLD and an empty SERVICES chooser for Serology", async () => {
+    const user = userEvent.setup();
+    const serologyRow = {
+      id: "serology-backend-77",
+      sample_identifier: "sample/7",
+    };
+    const selected = vi.fn(() => Promise.resolve({ rows: [serologyRow] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: serologyRow.id,
+      detail: serologyRow,
+      rows: [serologyRow],
+      selection: { [serologyRow.id]: true },
+      selectedIds: [serologyRow.id],
+    });
+
+    render(
+      <ResourceCollection
+        profile={serologyCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(actionBarProps).toMatchObject({
+      searchType: "serology",
+      enabledActions: ["copyRows", "services"],
+      disabledActions: undefined,
+      guideUrl: serologyCollectionProfile.guideUrl,
+    });
+
+    // Legacy errors with "Missing or invalid type for Services" on this tab, so
+    // SERVICES opens the chooser without resolving anything.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("No selectable services")).toBeVisible();
+    expect(selected).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Download action" }));
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledWith(
+        "serology",
+        expect.objectContaining({ ids: [serologyRow.id] }),
+      );
+    });
   });
 
   it("opens the selected Surveillance member with its test type", async () => {

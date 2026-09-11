@@ -58,7 +58,7 @@ function renderDialog(
   const props: ComponentProps<typeof SelectionToGroupDialog> = {
     open: true,
     onOpenChange: vi.fn(),
-    genomeIds: ["1", "2"],
+    ids: ["1", "2"],
     defaultFolder: "/user/home",
     onCreate: vi.fn().mockResolvedValue(undefined),
     onAppend: vi.fn().mockResolvedValue(undefined),
@@ -97,7 +97,7 @@ describe("SelectionToGroupDialog", () => {
   });
 
   it("appends to the selected genome group path", async () => {
-    const props = renderDialog({ genomeIds: ["1"] });
+    const props = renderDialog({ ids: ["1"] });
 
     await userEvent.click(screen.getByRole("tab", { name: "Existing Group" }));
     const selector = screen.getByLabelText("Genome group");
@@ -109,6 +109,19 @@ describe("SelectionToGroupDialog", () => {
 
     expect(props.onAppend).toHaveBeenCalledWith("/user/home/existing");
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("targets Feature Groups for a feature selection", async () => {
+    renderDialog({ ids: ["fig|83332.12.peg.1"], groupKind: "feature" });
+
+    expect(screen.getByText("Add Features to Group")).toBeInTheDocument();
+    expect(screen.getByText("1 selected feature")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Existing Group" }));
+    expect(screen.getByLabelText("Feature group")).toHaveAttribute(
+      "data-preset",
+      "featureGroup",
+    );
   });
 
   it("shows loading state and preserves callback errors", async () => {
@@ -139,7 +152,7 @@ describe("SelectionToGroupDialog", () => {
   });
 
   it("disables submission when no genomes are selected", async () => {
-    renderDialog({ genomeIds: [] });
+    renderDialog({ ids: [] });
 
     await userEvent.type(screen.getByLabelText("Group name"), "Empty Group");
 

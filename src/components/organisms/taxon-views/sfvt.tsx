@@ -63,6 +63,7 @@ export function makeSfvtView({
         rql={query}
         columns={sequenceFeatureColumns}
         defaultSort="sf_name:asc"
+        guideUrl="https://www.bv-brc.org/docs/quick_references/organisms_taxon/sfvt.html"
       />
     );
   }

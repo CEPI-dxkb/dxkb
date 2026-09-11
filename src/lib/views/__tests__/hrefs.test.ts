@@ -13,6 +13,7 @@ import {
   genomeHref,
   genomeIdFromRow,
   genomeListHref,
+  featuresHrefFromIds,
   genomesHrefFromIds,
   proteinStructureHref,
   proteinStructureListHref,
@@ -186,6 +187,21 @@ describe("Domains and Motifs hrefs", () => {
         rql: "eq(source,InterPro)",
       }),
     ).toBe("/domains-and-motifs?rql=eq(source%2CInterPro)");
+  });
+});
+
+describe("Interaction hrefs", () => {
+  it("builds a canonical Feature list from pooled interactor IDs", () => {
+    expect(
+      featuresHrefFromIds([
+        "PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd",
+        "PATRIC.224914.16.NZ_GG703779.CDS.873651.874052.fwd",
+        "PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd",
+      ]),
+    ).toBe(
+      "/feature?rql=in(feature_id%2C(PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd%2CPATRIC.224914.16.NZ_GG703779.CDS.873651.874052.fwd))",
+    );
+    expect(featuresHrefFromIds([])).toBeNull();
   });
 });
 

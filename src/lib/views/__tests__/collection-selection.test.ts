@@ -22,6 +22,18 @@ describe("idsFromRows", () => {
     ).toEqual(["11320.1", "11320.2", "11320.3"]);
   });
 
+  it("pools both Interaction interactor columns in row order", () => {
+    expect(
+      idsFromRows(
+        [
+          { feature_id_a: "feature-a1", feature_id_b: "feature-b1" },
+          { feature_id_a: "feature-a2", feature_id_b: "feature-a1" },
+        ],
+        ["feature_id_a", "feature_id_b"],
+      ),
+    ).toEqual(["feature-a1", "feature-b1", "feature-a2"]);
+  });
+
   it("skips rows missing the field and non-scalar entries", () => {
     expect(
       idsFromRows(

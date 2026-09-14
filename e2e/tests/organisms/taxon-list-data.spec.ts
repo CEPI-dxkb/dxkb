@@ -142,6 +142,7 @@ test.describe("taxon strains actions", () => {
     await page
       .getByRole("button", { name: "Selected Columns (with headers)" })
       .click();
+    await expect(page.getByText("Copied 2 selected strains")).toBeVisible();
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toContain("Species\tStrain\tSegment Count");
     expect(clipboard).toContain("A/California/04/2009");

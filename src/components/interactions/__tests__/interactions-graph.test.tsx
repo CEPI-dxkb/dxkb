@@ -2,14 +2,22 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { InteractionsGraph } from "../interactions-graph";
-import { useInteractions } from "@/lib/interactions/use-interactions";
+import {
+  interactionsGraphRowLimit,
+  useInteractions,
+  type InteractionsGraphData,
+} from "@/lib/interactions/use-interactions";
 import type { PpiRecord } from "@/lib/interactions/types";
 
 // InteractionsGraph only reaches SigmaCanvas (WebGL, untestable in jsdom —
 // see docs/architecture.md / testing.md canvas exclusion) once useInteractions
-// resolves with rows. Mocking it pending keeps the component on its "Loading
-// interactions…" branch, which is enough to observe what query it built.
-vi.mock("@/lib/interactions/use-interactions", () => ({
+// resolves with rows. Mocking it pending keeps the component on its loading
+// branch, which is enough to observe what query it asked for. The hook's own
+// request shape is covered over MSW in lib/interactions/__tests__.
+vi.mock("@/lib/interactions/use-interactions", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/lib/interactions/use-interactions")
+  >()),
   useInteractions: vi.fn(() => ({
     data: undefined,
     isPending: true,
@@ -36,6 +44,24 @@ const graphRows: PpiRecord[] = [
   },
 ];
 
+function resolved(data: InteractionsGraphData) {
+  vi.mocked(useInteractions).mockReturnValue({
+    data,
+    isPending: false,
+    isError: false,
+    error: null,
+  } as unknown as ReturnType<typeof useInteractions>);
+}
+
+function failed(error: Error) {
+  vi.mocked(useInteractions).mockReturnValue({
+    data: undefined,
+    isPending: false,
+    isError: true,
+    error,
+  } as unknown as ReturnType<typeof useInteractions>);
+}
+
 class ResizeObserverStub {
   observe = vi.fn();
   unobserve = vi.fn();
@@ -46,115 +72,30 @@ vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 vi.stubGlobal("scrollTo", vi.fn());
 Element.prototype.scrollIntoView = vi.fn();
 
-describe("InteractionsGraph filter combination", () => {
-  it("combines the base query with the table's filter via and() (bug #1)", () => {
+describe("InteractionsGraph query inputs", () => {
+  it("passes the scope predicate and the shared keyword through untouched", () => {
     render(
       <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)"
-        tableFilter="eq(category,PPI)"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
-    );
-
-    expect(useInteractions).toHaveBeenCalledWith(
-      943,
-      "and(eq(evidence,experimental),eq(category,PPI))",
-    );
-  });
-
-  it("strips the base query's URL fragment before combining a table filter", () => {
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)#view_tab=interactions"
-        tableFilter="eq(category,PPI)"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
-    );
-
-    expect(useInteractions).toHaveBeenCalledWith(
-      943,
-      "and(eq(evidence,experimental),eq(category,PPI))",
-    );
-  });
-
-  it("encodes the shared keyword as one wildcard clause per term", () => {
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)"
+        rql="eq(evidence,experimental)"
         keywordValue="  groEL   dnaK "
         onKeywordChange={vi.fn()}
       />,
     );
 
-    // One clause per term, not one clause for the whole string: a single
-    // keyword(groEL dnaK*) clause matches nothing the table would show.
+    // The graph no longer encodes the keyword into RQL itself. That local
+    // encoding was a second, differently-escaped clause for the same text as
+    // the table's, which is how one input came to mean two datasets.
     expect(useInteractions).toHaveBeenCalledWith(
-      943,
-      "and(eq(evidence,experimental),and(keyword(groEL*),keyword(dnaK*)))",
-    );
-  });
-
-  it("applies the keyword once alongside an unrelated table filter", () => {
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)"
-        tableFilter="eq(category,PPI)"
-        keywordValue="groEL"
-        onKeywordChange={vi.fn()}
-      />,
-    );
-
-    expect(useInteractions).toHaveBeenCalledWith(
-      943,
-      "and(eq(evidence,experimental),eq(category,PPI),keyword(groEL*))",
-    );
-  });
-
-  it("uses the bare base query when the table has no active filter", () => {
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)"
-        tableFilter=""
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
-    );
-
-    expect(useInteractions).toHaveBeenCalledWith(
-      943,
       "eq(evidence,experimental)",
+      "  groEL   dnaK ",
     );
   });
 
-  it("uses the bare base query when tableFilter is omitted entirely", () => {
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)"
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
-    );
-
-    expect(useInteractions).toHaveBeenCalledWith(
-      943,
-      "eq(evidence,experimental)",
-    );
-  });
-
-  it("reports graph keyword edits to the shared owner without duplicating the current keyword query", () => {
+  it("reports keyword edits to the shared owner rather than re-querying on its own", () => {
     const onKeywordChange = vi.fn();
     render(
       <InteractionsGraph
-        taxonId={943}
-        q="eq(evidence,experimental)"
+        rql="eq(evidence,experimental)"
         keywordValue="groEL"
         onKeywordChange={onKeywordChange}
       />,
@@ -165,52 +106,22 @@ describe("InteractionsGraph filter combination", () => {
       { target: { value: "dnaK" } },
     );
 
-    // The owner holds the keyword; the query still carries exactly one clause for it.
+    // The owner holds the keyword, so the query still reflects the current one.
     expect(onKeywordChange).toHaveBeenLastCalledWith("dnaK");
     expect(useInteractions).toHaveBeenLastCalledWith(
-      943,
-      "and(eq(evidence,experimental),keyword(groEL*))",
+      "eq(evidence,experimental)",
+      "groEL",
     );
-  });
-
-  it("preserves table facet filters while reporting graph keyword edits", () => {
-    const onKeywordChange = vi.fn();
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q=""
-        tableFilter="eq(category,PPI)"
-        keywordValue=""
-        onKeywordChange={onKeywordChange}
-      />,
-    );
-
-    fireEvent.change(
-      screen.getByPlaceholderText("Search interaction results..."),
-      { target: { value: "dnaK" } },
-    );
-
-    expect(onKeywordChange).toHaveBeenLastCalledWith("dnaK");
-    expect(useInteractions).toHaveBeenLastCalledWith(943, "eq(category,PPI)");
   });
 });
 
 // The mock above holds useInteractions on `isPending`, so this exercises the
 // real loading branch and guards its wiring: a regression that swaps the
 // skeleton back for a blank/centered-text state (the pre-skeleton behavior)
-// makes the spinner disappear and fails here. The query-combination suite above
-// runs in the same pending state but only asserts the query — it would not
-// notice the loading UI reverting.
+// makes the spinner disappear and fails here.
 describe("InteractionsGraph loading state", () => {
   it("renders the loading skeleton while the query is pending", () => {
-    render(
-      <InteractionsGraph
-        taxonId={943}
-        q=""
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
-    );
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
     // Skeleton's Spinner is the single role=status loading announcement.
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -221,23 +132,27 @@ describe("InteractionsGraph loading state", () => {
   });
 });
 
+describe("InteractionsGraph error state", () => {
+  it("renders the query's real error message instead of unmounting the subview", () => {
+    failed(new Error("DATA_API_URL is not configured."));
+
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(
+      screen.getByText("DATA_API_URL is not configured."),
+    ).toBeInTheDocument();
+    // The keyword box survives the error, so the search can still be cleared.
+    expect(
+      screen.getByPlaceholderText("Search interaction results..."),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("InteractionsGraph empty state", () => {
   it("preserves the graph workspace and replaces only the canvas content", () => {
-    vi.mocked(useInteractions).mockReturnValue({
-      data: [],
-      isPending: false,
-      isError: false,
-      error: null,
-    } as unknown as ReturnType<typeof useInteractions>);
+    resolved({ rows: [], isTruncated: false });
 
-    render(
-      <InteractionsGraph
-        taxonId={776}
-        q=""
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
-    );
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
 
     expect(screen.getByText("Microbial protein")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sub-Graph" })).toBeInTheDocument();
@@ -248,40 +163,45 @@ describe("InteractionsGraph empty state", () => {
   });
 });
 
+describe("InteractionsGraph row ceiling", () => {
+  it("says the graph is showing only the first page of an over-limit result", () => {
+    resolved({ rows: graphRows, isTruncated: true });
+
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(
+      screen.getByText(
+        `Showing the first ${interactionsGraphRowLimit.toLocaleString()} interactions`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "use the Table subview to see them all",
+    );
+  });
+
+  it("stays quiet when every matching interaction is drawn", () => {
+    resolved({ rows: graphRows, isTruncated: false });
+
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
 describe("InteractionsGraph data changes", () => {
   it("disables export when a ready populated graph becomes empty", async () => {
-    vi.mocked(useInteractions).mockReturnValue({
-      data: graphRows,
-      isPending: false,
-      isError: false,
-      error: null,
-    } as ReturnType<typeof useInteractions>);
+    resolved({ rows: graphRows, isTruncated: false });
 
     const { rerender } = render(
-      <InteractionsGraph
-        taxonId={943}
-        q=""
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
+      <InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />,
     );
 
     fireEvent.click(await screen.findByTestId("sigma-canvas"));
     expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
 
-    vi.mocked(useInteractions).mockReturnValue({
-      data: [],
-      isPending: false,
-      isError: false,
-      error: null,
-    } as unknown as ReturnType<typeof useInteractions>);
+    resolved({ rows: [], isTruncated: false });
     rerender(
-      <InteractionsGraph
-        taxonId={943}
-        q=""
-        keywordValue=""
-        onKeywordChange={vi.fn()}
-      />,
+      <InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />,
     );
 
     expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
@@ -289,18 +209,11 @@ describe("InteractionsGraph data changes", () => {
 
   it("clears stale selection and active presets when the query data changes", async () => {
     const user = userEvent.setup();
-    vi.mocked(useInteractions).mockReturnValue({
-      data: graphRows,
-      isPending: false,
-      isError: false,
-      error: null,
-    } as ReturnType<typeof useInteractions>);
+    resolved({ rows: graphRows, isTruncated: false });
 
     const { rerender } = render(
       <InteractionsGraph
-        taxonId={943}
-        q=""
-        tableFilter="keyword(geneA*)"
+        rql=""
         keywordValue="geneA"
         onKeywordChange={vi.fn()}
       />,
@@ -316,8 +229,8 @@ describe("InteractionsGraph data changes", () => {
       screen.getByRole("button", { name: "Most Connected Hub" }),
     ).toBeInTheDocument();
 
-    vi.mocked(useInteractions).mockReturnValue({
-      data: [
+    resolved({
+      rows: [
         {
           ...graphRows[0],
           id: "edge-2",
@@ -325,15 +238,11 @@ describe("InteractionsGraph data changes", () => {
           gene_a: "geneC",
         },
       ],
-      isPending: false,
-      isError: false,
-      error: null,
-    } as ReturnType<typeof useInteractions>);
+      isTruncated: false,
+    });
     rerender(
       <InteractionsGraph
-        taxonId={943}
-        q=""
-        tableFilter="keyword(geneC*)"
+        rql=""
         keywordValue="geneC"
         onKeywordChange={vi.fn()}
       />,

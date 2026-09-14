@@ -9,17 +9,24 @@ import { interactionColumns } from "@/lib/views/child-resources";
 import { InteractionsGraph } from "./interactions-graph";
 
 interface InteractionsSubviewShellProps {
-  taxonId: number;
-  q: string;
+  rql: string;
   guideUrl?: string;
 }
 
-export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsSubviewShellProps) {
+export function InteractionsSubviewShell({
+  rql,
+  guideUrl,
+}: InteractionsSubviewShellProps) {
   const [subTab, setSubTab] = useState<"table" | "graph">("table");
   // Keep table-only state (facets, pagination, sorting, selection) mounted.
   // Only keyword text is shared because both sibling views expose that input.
   // Graph remains lazy-mounted to avoid fetching its full dataset until opened.
   const [keywordText, setKeywordText] = useState("");
+  // One predicate for two representations of the same data. The fragment is
+  // stripped once, here, so the Table's and the Graph's requests carry byte-equal
+  // RQL, and the keyword goes to both as a request predicate — a server-side
+  // search whose result set does not depend on which view asked for it.
+  const scopedRql = rql.split("#")[0];
 
   return (
     <Tabs
@@ -41,27 +48,18 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
           resource="ppi"
           label="Interactions"
           idField="id"
-          rql={q}
+          rql={scopedRql}
           columns={interactionColumns}
           defaultSort="id:asc"
           guideUrl={guideUrl}
-          keywordMode="loaded"
           keywordValue={keywordText}
           onKeywordChange={setKeywordText}
           keywordPlaceholder="Search interaction results..."
         />
       </TabsContent>
       <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
-        {/*
-          The keyword is passed as text, not as RQL: the graph turns it into one
-          wildcard clause per whitespace-separated term. Building a second
-          whole-string clause here produced an extra, differently-encoded predicate
-          that the graph could not deduplicate, so multi-term searches returned
-          fewer graph results than table rows.
-        */}
         <InteractionsGraph
-          taxonId={taxonId}
-          q={q}
+          rql={scopedRql}
           keywordValue={keywordText}
           onKeywordChange={setKeywordText}
         />

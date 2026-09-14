@@ -140,7 +140,15 @@ async function execute(
     const publicMember = validated.operation === "member" && !session;
     const baseUrl =
       process.env.DATA_API_URL ?? process.env.NEXT_PUBLIC_DATA_API;
-    if (!baseUrl) throw new Error("DATA_API_URL is not configured.");
+    // A DataApiError instead of a bare throw: the catch-all below replaces the
+    // message with a generic one, so a misconfigured deployment reached clients
+    // as "The data service request failed." with nothing to act on.
+    if (!baseUrl)
+      throw new DataApiError(
+        "DATA_API_URL is not configured.",
+        500,
+        "not_configured",
+      );
     const repository = new ServerDataRepository({
       baseUrl,
       token: session?.token,

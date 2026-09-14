@@ -68,6 +68,10 @@ export function buildPpiOverrides(rows: MockPpiRow[]): JsonOverride[] {
       method: "GET",
       body: { rows, total: rows.length, facets: {}, page: 1, pageSize: 200 },
     },
+    // The Graph reads its dataset through the gateway's bulk-row POST now, not by
+    // fetching NEXT_PUBLIC_DATA_API itself, so it shares the Table's auth,
+    // validation and error contract. That envelope is rows-only.
+    { url: /api\/data\/ppi/, method: "POST", body: { rows } },
     { url: ppiRequest, method: "GET", body: rows },
   ];
 }

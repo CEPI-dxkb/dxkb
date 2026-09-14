@@ -1,3 +1,5 @@
+import type { Request as PlaywrightRequest } from "@playwright/test";
+
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import { buildPpiRows, buildPpiOverrides, permissiveBackendOverrides } from "../../fixtures/overrides";
 import { TaxonInteractionsPage } from "../../pages";
@@ -84,7 +86,7 @@ test.describe("taxon interactions tab", () => {
   });
 });
 
-// ─── Filter sync between Table and Graph subviews ────────────────────────────
+// ─── Keyword sync between Table and Graph subviews ───────────────────────────
 // Regression: filter state lived only inside ListData (src/components/services/
 // list-data.tsx), local to the Table subview. Switching to Graph never saw it
 // (bug #1). Root cause of bug #3 runs deeper than a missing prop: FilterBar
@@ -94,14 +96,16 @@ test.describe("taxon interactions tab", () => {
 // subtree remounts — and base-ui's Tabs.Panel unmounts inactive panels by
 // default (keepMounted: false), remounting Table's FilterBar on every
 // switch-back. Fix: `keepMounted` on the Table panel only (interactions-
-// subview-shell.tsx) so Table's own state survives untouched; the shell reads
-// Table's current filter read-only (onFilterChange, notify-only — see
-// list-data.tsx's third filter mode) and passes it into Graph as `tableFilter`,
-// which Graph combines with its own independent keyword box (bug #2) — see
-// interactions-graph.tsx and its unit tests for the query-combination
-// coverage. This spec exercises the real cross-tab DOM mount/unmount and
-// actual FilterBar remount behavior that jsdom unit tests (which mock
-// TaxonDataPanel/InteractionsGraph) can't faithfully reproduce.
+// subview-shell.tsx) so Table's own state survives untouched, with the shell
+// owning the one keyword both views edit.
+//
+// The shared keyword is now a *request* predicate on both sides: the shell
+// hands the same `rql` and keyword text to the Table's collection request and
+// to the Graph's bulk-row request, both through the Data API gateway. It used
+// to filter only the Table's loaded 200-row page while running a real backend
+// query for the Graph, so one input could stand for two datasets. This spec
+// exercises the real cross-tab DOM mount/unmount and actual FilterBar remount
+// behavior that jsdom unit tests can't faithfully reproduce.
 test.describe("taxon interactions tab: filter sync between Table and Graph", () => {
   // Second row's interactor differs from the first (fig|224914.16.peg.600 vs .601) —
   // filtering to "peg.600" narrows from all rows to exactly one, giving an
@@ -114,41 +118,62 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
 
   // buildPpiOverrides (used by the describe block above) always returns the
   // full row set regardless of query — it can't prove filtering actually
-  // narrows anything. This route inspects the request URL for a
-  // `keyword(<text>*)` clause (the shape buildRql produces — filter-utils.ts —
-  // for both the table's FilterBar and the graph's own keyword box) and
-  // serves only rows whose serialized fields contain that text, so the same
-  // mock validates bugs #1, #2, and #3 regardless of which UI element wrote
-  // the keyword. Mirrors the query-aware epitope-facet mock in
+  // narrows anything. This route reads the keyword out of whichever request
+  // carries it and serves only rows whose serialized fields contain that text,
+  // so the same mock validates bugs #1, #2, and #3 regardless of which UI
+  // element wrote the keyword. Mirrors the query-aware epitope-facet mock in
   // taxon-list-data.spec.ts.
+  //
+  // Both views reach the gateway at /api/data/ppi: the Table with a collection
+  // GET whose `keyword` is a query parameter, the Graph with a bulk-row POST
+  // whose `keyword` is a body field. Reading them apart is the point — a
+  // regression that puts one view back on its own predicate shows up as one of
+  // the two requests missing the keyword entirely.
+  function keywordFrom(request: PlaywrightRequest): string | undefined {
+    const url = new URL(request.url());
+    if (url.pathname === "/api/data/ppi") {
+      if (request.method() === "POST") {
+        const body = request.postDataJSON() as { keyword?: string } | null;
+        return body?.keyword;
+      }
+      return url.searchParams.get("keyword") ?? undefined;
+    }
+    // Upstream RQL keeps the legacy keyword(<text>*) clause shape.
+    return /keyword\(([^*)]+)\*?\)/.exec(decodeURIComponent(request.url()))?.[1];
+  }
+
   async function setupFilterableInteractionsPage(
     page: Parameters<typeof applyBackendMocks>[0],
   ): Promise<TaxonInteractionsPage> {
     await applyBackendMocks(page, { overrides: [...permissiveBackendOverrides] });
 
     await page.route(ppiRequest, async (route) => {
-      if (route.request().method() !== "GET") return route.fallback();
-      const url = decodeURIComponent(route.request().url());
-      const keyword = /keyword\(([^*)]+)\*?\)/.exec(url)?.[1];
+      const request = route.request();
+      const isGatewayRequest = new URL(request.url()).pathname === "/api/data/ppi";
+      if (!isGatewayRequest && request.method() !== "GET") return route.fallback();
+      const keyword = keywordFrom(request);
       const matchingRows = keyword ? rows.filter((r) => JSON.stringify(r).includes(keyword)) : rows;
 
-      const isGatewayRequest = new URL(route.request().url()).pathname === "/api/data/ppi";
       if (isGatewayRequest) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({
-            rows: matchingRows,
-            total: matchingRows.length,
-            facets: {},
-            page: 1,
-            pageSize: 200,
-          }),
+          body: JSON.stringify(
+            request.method() === "POST"
+              ? { rows: matchingRows }
+              : {
+                  rows: matchingRows,
+                  total: matchingRows.length,
+                  facets: {},
+                  page: 1,
+                  pageSize: 200,
+                },
+          ),
         });
         return;
       }
 
-      if (url.includes("limit(1)")) {
+      if (decodeURIComponent(request.url()).includes("limit(1)")) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",

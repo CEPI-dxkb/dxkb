@@ -138,6 +138,18 @@ vi.mock("../resource-collection", async (importOriginal) => {
             Export all with keyword
           </button>
           <button
+            onClick={() => {
+              props.onStateChange({
+                filters: {},
+                page: 1,
+                sort: "id:asc",
+                keyword: "dnaK",
+              });
+            }}
+          >
+            Search the server
+          </button>
+          <button
             onClick={() =>
               void props.onExport?.({
                 format: "csv",
@@ -183,6 +195,57 @@ async function changeCollectionState() {
     JSON.stringify(changedState),
   );
 }
+
+const interactionsChildProps = {
+  resource: "ppi",
+  label: "Interactions",
+  idField: "id",
+  rql: "eq(evidence,experimental)",
+  columns: [{ id: "id", label: "ID" }],
+  defaultSort: "id:asc",
+} as const;
+
+describe("ResourceChildCollection controlled server keyword", () => {
+  it("puts the owner's keyword on the request state", () => {
+    render(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        keywordValue="groEL"
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    // A caller sharing one keyword box with a sibling view (the Interactions
+    // Graph) needs that text to be a request predicate, not a filter over the
+    // page already loaded — otherwise the two views answer the same input with
+    // different datasets.
+    expect(screen.getByTestId("collection-state")).toHaveTextContent(
+      '"keyword":"groEL"',
+    );
+  });
+
+  it("reports keyword edits to the owner and keeps none of its own", async () => {
+    const onKeywordChange = vi.fn();
+    render(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        keywordValue=""
+        onKeywordChange={onKeywordChange}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Search the server" }),
+    );
+
+    expect(onKeywordChange).toHaveBeenCalledWith("dnaK");
+    // Nothing kept locally: the owner's value is the single source, so the
+    // sibling view can never be one edit behind.
+    expect(screen.getByTestId("collection-state")).not.toHaveTextContent(
+      '"keyword"',
+    );
+  });
+});
 
 describe("ResourceChildCollection scope changes", () => {
   it("keeps a filtered Bioset collection scoped to its experiment", () => {

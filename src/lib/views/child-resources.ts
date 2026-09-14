@@ -76,10 +76,24 @@ export function genomesChildRql(genomeRql: string, extra?: string): string {
     : `and(eq(genome_id,*),${relationship})`;
 }
 
+/**
+ * A PPI row does not say which endpoint carries the scoped organism. The A and B
+ * sides have identical field shapes, `toGraph` classifies each independently as
+ * host or microbial, and `featureInteractionsRql` above already matches a scoped
+ * feature on either endpoint — so the genome that feature belongs to can be on
+ * either endpoint too. Match both, or the tab drops every row filed B-side.
+ */
 export function genomeInteractionsRql(genomeId: string): string {
-  return `and(${eq("ppi", "genome_id_a", genomeId)},${eq("ppi", "evidence", "experimental")})`;
+  return `and(or(${eq("ppi", "genome_id_a", genomeId)},${eq("ppi", "genome_id_b", genomeId)}),${eq("ppi", "evidence", "experimental")})`;
 }
 
+/**
+ * Taxonomy scoping stays A-side only, unlike its Feature and Genome siblings: it
+ * resolves a lineage through the Genome relationship join, and the Data API RQL
+ * contract accepts only `to(genome_id_a)` for `ppi` (`src/lib/data-api/rql.ts`,
+ * locked by `src/lib/data-api/__tests__/rql.test.ts`). There is no B-side join to
+ * `or` with, so widening this needs a contract change, not a predicate change.
+ */
 export function taxonomyInteractionsRql(lineageClause: string): string {
   return `and(eq(genome_id_a,*),genome(to(genome_id_a),and(${lineageClause},ne(genome_status,Deprecated))),eq(evidence,experimental))`;
 }

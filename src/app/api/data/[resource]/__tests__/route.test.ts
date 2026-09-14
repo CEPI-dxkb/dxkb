@@ -118,6 +118,27 @@ describe("data gateway route", () => {
     });
   });
 
+  it("names the missing configuration instead of the generic failure", async () => {
+    delete process.env.DATA_API_URL;
+    delete process.env.NEXT_PUBLIC_DATA_API;
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/data/ppi?operation=collection", {
+        headers: { "x-forwarded-for": "203.0.113.27" },
+      }),
+      context("ppi"),
+    );
+
+    // A misconfigured deployment used to reach the client as "The data service
+    // request failed." from the catch-all, with nothing to act on. Clients
+    // render whatever `error` says, so it has to stay the real reason.
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      error: "DATA_API_URL is not configured.",
+      code: "not_configured",
+    });
+  });
+
   it("accepts bounded selected-row POST requests", async () => {
     global.fetch = vi
       .fn<typeof fetch>()

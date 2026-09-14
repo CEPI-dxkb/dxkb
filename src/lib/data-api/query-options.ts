@@ -1,6 +1,11 @@
 import { keepPreviousData, queryOptions } from "@tanstack/react-query";
 import { DataRepository } from "./client";
-import type { CollectionRequest, DataResource, MemberRequest } from "./types";
+import type {
+  CollectionRequest,
+  DataResource,
+  ExportRequest,
+  MemberRequest,
+} from "./types";
 
 export const dataQueryKeys = {
   all: ["data-api"] as const,
@@ -12,6 +17,11 @@ export const dataQueryKeys = {
   ) => [...dataQueryKeys.resource(resource), "collection", request] as const,
   member: (resource: DataResource, request: Omit<MemberRequest, "operation">) =>
     [...dataQueryKeys.resource(resource), "member", request] as const,
+  // Bulk row reads (the Interactions graph asks for its whole dataset in one
+  // request). Keyed on the full request like its siblings, so a changed
+  // predicate, projection or limit cannot serve a previous answer.
+  export: (resource: DataResource, request: Omit<ExportRequest, "operation">) =>
+    [...dataQueryKeys.resource(resource), "export", request] as const,
 };
 
 export function collectionQueryOptions<

@@ -91,6 +91,13 @@ interface ResourceChildCollectionProps {
   // Matches ResourceCollection's own default. Pass "loaded" only where the caller
   // owns the keyword box and wants it to filter the current page client-side.
   keywordMode?: "server" | "loaded";
+  /**
+   * Controlled keyword text, for a caller that shares one keyword box with a
+   * sibling view (the Interactions shell shares it with the Graph). In the
+   * default "server" mode this text is a request predicate, so it is fed into
+   * the collection state rather than used as a client-side filter, and edits are
+   * reported back out instead of being kept here.
+   */
   keywordValue?: string;
   onKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
@@ -124,6 +131,23 @@ function ScopedResourceChildCollection({
     page: 1,
     sort: defaultSort,
   });
+  const isControlledServerKeyword =
+    keywordMode === "server" && keywordValue !== undefined;
+  // The controlled text is the single source of truth, so the local state never
+  // holds a keyword of its own that could disagree with the sibling view's.
+  const effectiveState = isControlledServerKeyword
+    ? { ...state, keyword: keywordValue || undefined }
+    : state;
+  const handleStateChange = (next: CollectionState) => {
+    if (!isControlledServerKeyword) {
+      setState(next);
+      return;
+    }
+    if ((next.keyword ?? "") !== (effectiveState.keyword ?? "")) {
+      onKeywordChange?.(next.keyword ?? "");
+    }
+    setState({ ...next, keyword: undefined });
+  };
   let profile: ResourceCollectionProfile<ChildRow>;
   if (suppliedProfile) {
     profile = {
@@ -207,12 +231,14 @@ function ScopedResourceChildCollection({
     <ResourceCollection
       profile={profile}
       repository={repository}
-      state={state}
-      onStateChange={setState}
+      state={effectiveState}
+      onStateChange={handleStateChange}
       showHeader={false}
       keywordMode={keywordMode}
-      loadedKeywordValue={keywordValue}
-      onLoadedKeywordChange={onKeywordChange}
+      loadedKeywordValue={keywordMode === "loaded" ? keywordValue : undefined}
+      onLoadedKeywordChange={
+        keywordMode === "loaded" ? onKeywordChange : undefined
+      }
       keywordPlaceholder={keywordPlaceholder}
       onExport={async ({
         format,
@@ -237,11 +263,11 @@ function ScopedResourceChildCollection({
         // requested export fields; the rows are projected back down afterwards.
         const result = await repository.exportAll(resource, {
           rql: exportRql ?? rql,
-          keyword: state.keyword,
+          keyword: effectiveState.keyword,
           fields: loadedKeyword
             ? exportColumns.map((column) => column.id)
             : selectedFields,
-          sort: dataSort(state.sort),
+          sort: dataSort(effectiveState.sort),
         });
         const rows = loadedKeyword
           ? result.rows.filter((row) => matchesLoadedKeyword(row, loadedKeyword))

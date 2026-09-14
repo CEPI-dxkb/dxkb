@@ -5,9 +5,7 @@ import { ArrowLeft, Cuboid } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { safeDecode } from "@/lib/url";
-import type { StructureSource } from "@/lib/protein-structure-view/source";
-import { getProxyUrl } from "@/components/workspace/file-viewer/file-viewer-registry";
+import { buildWorkspaceStructureSource } from "@/lib/protein-structure-view/source";
 import { StructureSourceViewer } from "@/components/workspace/file-viewer/viewers/structure-source-viewer";
 import type { MolstarLayoutSpec } from "@/components/workspace/file-viewer/viewers/use-molstar-plugin";
 
@@ -21,17 +19,13 @@ const fullLayout: MolstarLayoutSpec = {
 };
 
 export default function StructureViewerPage({ params }: StructurePageProps) {
+  // `path` segments come from a catch-all route param, which Next.js has
+  // already percent-decoded once per segment — do not decode again here.
   const { path } = use(params);
-  const filePath = path ? `/${path.map(safeDecode).join("/")}` : "";
-  const fileName = filePath.split("/").filter(Boolean).pop() ?? "";
-  const source: StructureSource = {
-    url: filePath ? getProxyUrl(filePath) : "",
-    format: "pdb",
-    label: fileName,
-    kind: "workspace",
-  };
+  const filePath = path?.join("/") ?? "";
+  const source = filePath ? buildWorkspaceStructureSource(filePath) : undefined;
 
-  if (!filePath) {
+  if (!source) {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         No file path provided.
@@ -59,7 +53,7 @@ export default function StructureViewerPage({ params }: StructurePageProps) {
         <Separator orientation="vertical" className="h-5" />
         <div className="flex items-center gap-2 overflow-hidden">
           <Cuboid className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate text-sm font-medium">{fileName}</span>
+          <span className="truncate text-sm font-medium">{source.label}</span>
         </div>
       </div>
 

@@ -5,8 +5,14 @@ export type CompoundSampleQuery = Record<string, string | string[] | undefined>;
 
 type FoundLookup = { status: "unique" } | { status: "ambiguous" };
 
+/**
+ * `sampleId` comes from a page's dynamic route `params`, which Next.js has
+ * already percent-decoded once. Treat it as the final decoded value — do not
+ * decode again, or a literal `%25`/`%2F` in an identifier resolves to a
+ * different sample than the one named.
+ */
 export async function loadCompoundSamplePage<TFound extends FoundLookup>(
-  rawSampleId: string,
+  sampleId: string,
   discriminator: string | undefined,
   options: {
     isSampleId: (sampleId: string) => boolean;
@@ -16,13 +22,6 @@ export async function loadCompoundSamplePage<TFound extends FoundLookup>(
     ) => Promise<TFound | { status: "not-found" }>;
   },
 ): Promise<{ sampleId: string; result: TFound }> {
-  let sampleId: string;
-
-  try {
-    sampleId = decodeURIComponent(rawSampleId);
-  } catch {
-    notFound();
-  }
   if (!options.isSampleId(sampleId)) notFound();
 
   try {

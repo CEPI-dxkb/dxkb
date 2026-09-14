@@ -31,7 +31,10 @@ const record = {
 };
 
 function props(
-  sampleId = "sample%2F1",
+  // Next.js decodes the `[sampleId]` route param once before the page ever
+  // sees it, so a sample identifier containing a literal slash arrives here
+  // as "sample/1" — not as the "sample%2F1" it was encoded to in the URL.
+  sampleId = "sample/1",
   query: Record<string, string | string[] | undefined> = {},
 ) {
   return {
@@ -46,10 +49,10 @@ describe("Surveillance member page", () => {
     mocks.getSurveillance.mockResolvedValue({ status: "unique", record });
   });
 
-  it("decodes the sample ID, passes a scalar test type, and renders grouped data", async () => {
+  it("accepts the pre-decoded sample ID, passes a scalar test type, and renders grouped data", async () => {
     render(
       await SurveillancePage(
-        props("sample%2F1", { pathogen_test_type: "RAT/antigen" }),
+        props("sample/1", { pathogen_test_type: "RAT/antigen" }),
       ),
     );
 
@@ -105,7 +108,7 @@ describe("Surveillance member page", () => {
   it("canonicalizes repeated discriminator and tab parameters", async () => {
     await expect(
       SurveillancePage(
-        props("sample%2F1", {
+        props("sample/1", {
           pathogen_test_type: ["PCR", "RAT"],
           tab: "overview",
           source: "legacy",
@@ -117,8 +120,22 @@ describe("Surveillance member page", () => {
     expect(mocks.getSurveillance).toHaveBeenCalledWith("sample/1", undefined);
   });
 
+  it("preserves a sample ID containing literal percent text instead of decoding it again", async () => {
+    // If this were decoded a second time, "%2F" would become a real "/" and
+    // "sample%2Fone" would resolve to a different (nonexistent) identifier.
+    render(await SurveillancePage(props("sample%2Fone")));
+
+    expect(mocks.getSurveillance).toHaveBeenCalledWith(
+      "sample%2Fone",
+      undefined,
+    );
+    await expect(
+      generateMetadata(props("sample%2Fone")),
+    ).resolves.toMatchObject({ title: "sample%2Fone | Surveillance" });
+  });
+
   it("uses notFound for malformed, absent, and inaccessible records", async () => {
-    await expect(SurveillancePage(props("%E0%A4%A"))).rejects.toThrow(
+    await expect(SurveillancePage(props(""))).rejects.toThrow(
       "NEXT_NOT_FOUND",
     );
     mocks.getSurveillance.mockResolvedValueOnce({ status: "not-found" });

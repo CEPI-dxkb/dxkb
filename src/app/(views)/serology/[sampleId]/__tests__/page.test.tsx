@@ -71,7 +71,9 @@ describe("Serology member page", () => {
       status: "ambiguous",
       testTypes: ["ELISA/IgG test", "Western blot"],
     });
-    render(await SerologyPage(props("sample%2F1")));
+    // Next.js decodes the `[sampleId]` route param once, so a sample
+    // identifier containing a literal slash arrives here as "sample/1".
+    render(await SerologyPage(props("sample/1")));
 
     expect(
       screen.getByRole("heading", { name: "Choose a serology test" }),
@@ -97,10 +99,24 @@ describe("Serology member page", () => {
     expect(mocks.getSerology).toHaveBeenCalledWith("000123", undefined);
   });
 
-  it("uses notFound for malformed, absent, and inaccessible records", async () => {
-    await expect(SerologyPage(props("%E0%A4%A"))).rejects.toThrow(
-      "NEXT_NOT_FOUND",
+  it("preserves a sample ID containing literal percent text instead of decoding it again", async () => {
+    // If this were decoded a second time, "%2F" would become a real "/" and
+    // "sample%2Fone" would resolve to a different (nonexistent) identifier.
+    render(
+      await SerologyPage(props("sample%2Fone", { test_type: "ELISA/IgG test" })),
     );
+
+    expect(mocks.getSerology).toHaveBeenCalledWith(
+      "sample%2Fone",
+      "ELISA/IgG test",
+    );
+    await expect(
+      generateMetadata(props("sample%2Fone")),
+    ).resolves.toMatchObject({ title: "sample%2Fone | Serology" });
+  });
+
+  it("uses notFound for malformed, absent, and inaccessible records", async () => {
+    await expect(SerologyPage(props(""))).rejects.toThrow("NEXT_NOT_FOUND");
     mocks.getSerology.mockResolvedValueOnce({ status: "not-found" });
     await expect(SerologyPage(props())).rejects.toThrow("NEXT_NOT_FOUND");
     mocks.getSerology.mockRejectedValueOnce(new DataApiError("Forbidden", 403));

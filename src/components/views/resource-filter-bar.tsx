@@ -2,7 +2,10 @@
 
 import { useEffect, useEffectEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { KeywordSearch } from "@/components/filterbar/keyword-search";
+import {
+  KeywordSearch,
+  keywordDebounceMs,
+} from "@/components/filterbar/keyword-search";
 import { FacetColumn } from "@/components/filterbar/facet-column";
 import { SelectedFilters } from "@/components/filterbar/selected-filters";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
@@ -62,7 +65,7 @@ export function ResourceFilterBar({
     if (keywordDraft === (keyword ?? "")) return;
     const timeout = setTimeout(() => {
       commitKeyword(keywordDraft);
-    }, 300);
+    }, keywordDebounceMs);
     return () => {
       clearTimeout(timeout);
     };

@@ -1,9 +1,9 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 
 import { InteractionsSubviewShell } from "../interactions-subview-shell";
@@ -85,6 +85,13 @@ const beyondFirstPageInteractor = allRows[beyondFirstPageIndex].interactor_a;
 interface Predicate {
   rql?: string;
   keyword?: string;
+  /**
+   * Selects exact vs prefix matching in the repository, so the two views have to
+   * agree on it as well as on the text. `undefined` for `ppi` today (no
+   * `serverKeywordMode` on the profile) — captured so that a profile which sets
+   * one cannot make the views diverge on matching semantics unnoticed.
+   */
+  keywordMode?: string;
 }
 
 const tablePredicates: Predicate[] = [];
@@ -99,16 +106,6 @@ function matching(keyword: string | undefined) {
   );
 }
 
-function wrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-    >
-      {children}
-    </QueryClientProvider>
-  );
-}
-
 beforeEach(() => {
   tablePredicates.length = 0;
   graphPredicates.length = 0;
@@ -116,7 +113,11 @@ beforeEach(() => {
     http.get("/api/data/ppi", ({ request }) => {
       const params = new URL(request.url).searchParams;
       const keyword = params.get("keyword") ?? undefined;
-      tablePredicates.push({ rql: params.get("rql") ?? undefined, keyword });
+      tablePredicates.push({
+        rql: params.get("rql") ?? undefined,
+        keyword,
+        keywordMode: params.get("keywordMode") ?? undefined,
+      });
       const rows = matching(keyword);
       const page = Number(params.get("page") ?? "1");
       const size = Number(params.get("pageSize") ?? resourceCollectionPageSize);
@@ -132,9 +133,14 @@ beforeEach(() => {
       const body = (await request.json()) as {
         rql?: string;
         keyword?: string;
+        keywordMode?: string;
         limit: number;
       };
-      graphPredicates.push({ rql: body.rql, keyword: body.keyword });
+      graphPredicates.push({
+        rql: body.rql,
+        keyword: body.keyword,
+        keywordMode: body.keywordMode,
+      });
       return HttpResponse.json({
         rows: matching(body.keyword).slice(0, body.limit),
       });
@@ -164,7 +170,7 @@ async function searchInTable(user: ReturnType<typeof userEvent.setup>, text: str
 describe("Interactions Table and Graph share one dataset", () => {
   it("issues equivalent predicates from both views for the same keyword", async () => {
     const user = userEvent.setup();
-    render(<InteractionsSubviewShell rql={scopeRql} />, { wrapper });
+    render(<InteractionsSubviewShell rql={scopeRql} />, { wrapper: createQueryClientWrapper() });
 
     await waitFor(() => { expect(tablePredicates).toHaveLength(1); });
     await searchInTable(user, "peg.601");
@@ -178,13 +184,50 @@ describe("Interactions Table and Graph share one dataset", () => {
     expect(graphPredicates.at(-1)).toEqual({
       rql: scopeRql,
       keyword: "peg.601",
+      keywordMode: undefined,
     });
     expect(tablePredicates.at(-1)).toEqual(graphPredicates.at(-1));
   });
 
+  it("issues one request per view for a whole typing burst in the Graph's box", async () => {
+    // delay: null dispatches the keystrokes without waiting between them, so the
+    // burst lands well inside the debounce window the way real typing does.
+    const user = userEvent.setup({ delay: null });
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => { expect(tablePredicates).toHaveLength(1); });
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => { expect(graphPredicates).toHaveLength(1); });
+
+    const tableRequestsBefore = tablePredicates.length;
+    const graphRequestsBefore = graphPredicates.length;
+
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "peg.601",
+    );
+
+    await waitFor(() => {
+      expect(graphPredicates.at(-1)?.keyword).toBe("peg.601");
+    });
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
+    });
+
+    // One request each, not one per character. The keyword is a request
+    // predicate for both views now, and the Table panel stays mounted behind
+    // the Graph tab, so an undebounced box amplified a 7-character search into
+    // 7 graph requests plus 7 collection requests against the gateway's
+    // per-IP rate limit.
+    expect(graphPredicates.length - graphRequestsBefore).toBe(1);
+    expect(tablePredicates.length - tableRequestsBefore).toBe(1);
+  });
+
   it("shows a match that exists only beyond the Table's first page in both views", async () => {
     const user = userEvent.setup();
-    render(<InteractionsSubviewShell rql={scopeRql} />, { wrapper });
+    render(<InteractionsSubviewShell rql={scopeRql} />, { wrapper: createQueryClientWrapper() });
 
     // The match is on page two of the unfiltered scope, so it is absent until
     // the keyword reaches the backend.

@@ -91,7 +91,7 @@ describe("InteractionsGraph query inputs", () => {
     );
   });
 
-  it("reports keyword edits to the shared owner rather than re-querying on its own", () => {
+  it("reports keyword edits to the shared owner rather than re-querying on its own", async () => {
     const onKeywordChange = vi.fn();
     render(
       <InteractionsGraph
@@ -106,8 +106,15 @@ describe("InteractionsGraph query inputs", () => {
       { target: { value: "dnaK" } },
     );
 
-    // The owner holds the keyword, so the query still reflects the current one.
-    expect(onKeywordChange).toHaveBeenLastCalledWith("dnaK");
+    // The owner holds the keyword, and the toolbar debounces before handing it
+    // over, so the query keeps asking for the committed one meanwhile.
+    expect(useInteractions).toHaveBeenLastCalledWith(
+      "eq(evidence,experimental)",
+      "groEL",
+    );
+    await waitFor(() => {
+      expect(onKeywordChange).toHaveBeenLastCalledWith("dnaK");
+    });
     expect(useInteractions).toHaveBeenLastCalledWith(
       "eq(evidence,experimental)",
       "groEL",

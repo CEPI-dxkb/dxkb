@@ -97,16 +97,20 @@ describe("interaction scoping predicates", () => {
   });
 
   it("keeps Taxonomy scoping on the only Genome join the data contract accepts", () => {
-    // Taxonomy resolves a lineage through the Genome relationship join, and the
-    // contract accepts `to(genome_id_a)` alone for ppi — see the PPI Genome
-    // relationship case in src/lib/data-api/__tests__/rql.test.ts. This
-    // predicate is therefore A-side only, and symmetry here needs a contract
-    // change rather than a wider predicate.
+    // Taxonomy resolves a lineage through the Genome relationship join rather
+    // than through interactor fields, and the contract allowlists a single join
+    // target for ppi. So this predicate is A-side only by necessity, not by
+    // assumption: symmetry needs a contract change, not a wider predicate.
     const rql = taxonomyInteractionsRql("eq(taxon_lineage_ids,561)");
 
-    // Contract-valid (the gateway re-encodes the `*` wildcard, so this is not a
-    // byte-identical round trip) and A-side by necessity, not by assumption.
+    // Contract-valid as written (the gateway re-encodes the `*` wildcard, so
+    // this is not a byte-identical round trip)...
     expect(() => validateRql("ppi", rql)).not.toThrow();
-    expect(rql).toContain("genome(to(genome_id_a)");
+    // ...and the B-side counterpart of the very same predicate is rejected. The
+    // blocker is the join-target allowlist alone — the parser is happy to nest
+    // or combine `genome(...)` joins otherwise.
+    expect(() =>
+      validateRql("ppi", rql.replace("genome_id_a)", "genome_id_b)")),
+    ).toThrow(/genome_id_a/);
   });
 });

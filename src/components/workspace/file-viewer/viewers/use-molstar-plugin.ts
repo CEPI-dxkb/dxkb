@@ -20,6 +20,25 @@ export interface UseMolstarPluginResult {
   resetError: () => void;
 }
 
+interface MolstarPluginHandle {
+  dispose: (opts?: object) => void;
+}
+
+/**
+ * Disposes a Mol* plugin instance defensively. `dispose()` can throw on a
+ * partially-initialised plugin (e.g. one that failed mid-download); logging
+ * and swallowing that failure — rather than letting it propagate — ensures a
+ * broken disposal never masks the original error that triggered it.
+ */
+function disposePlugin(plugin: MolstarPluginHandle | null): void {
+  if (!plugin) return;
+  try {
+    plugin.dispose();
+  } catch (disposeError) {
+    console.error("Failed to dispose Mol* plugin", disposeError);
+  }
+}
+
 /**
  * Shared hook that initialises a Mol* plugin inside the given container,
  * loads a resolved structure source, and keeps the WebGL canvas in sync with
@@ -33,7 +52,7 @@ export function useMolstarPlugin(
   layout: MolstarLayoutSpec,
 ): UseMolstarPluginResult {
   const containerRef = useRef<HTMLDivElement>(null);
-  const pluginRef = useRef<{ dispose: (opts?: object) => void } | null>(null);
+  const pluginRef = useRef<MolstarPluginHandle | null>(null);
   const [status, setStatus] = useState<ViewerStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string>();
   const [retryCount, setRetryCount] = useState(0);
@@ -85,7 +104,7 @@ export function useMolstarPlugin(
         });
 
         if (isDisposed()) {
-          plugin.dispose();
+          disposePlugin(plugin);
           return;
         }
 
@@ -110,6 +129,14 @@ export function useMolstarPlugin(
         setStatus("ready");
       } catch (err) {
         if (isDisposed()) return;
+        // A failure here can follow a successful plugin creation (download /
+        // parse / preset failed). Dispose immediately so the scarce WebGL
+        // context is released while the error screen is shown rather than
+        // held until a retry or unmount. Clearing the ref afterwards makes
+        // the final effect cleanup below a no-op for this instance, so the
+        // two paths can never double-dispose the same plugin.
+        disposePlugin(pluginRef.current);
+        pluginRef.current = null;
         setErrorMessage(
           err instanceof Error ? err.message : "Failed to load structure",
         );
@@ -120,8 +147,12 @@ export function useMolstarPlugin(
     void init();
 
     return () => {
+      // Setting `disposed` before disposing means a concurrent async
+      // continuation of `init()` (e.g. a download that rejects after
+      // unmount) will see `isDisposed()` as true and skip its own dispose,
+      // so the plugin is only ever disposed once.
       lifecycle.disposed = true;
-      pluginRef.current?.dispose();
+      disposePlugin(pluginRef.current);
       pluginRef.current = null;
     };
   }, [

@@ -207,6 +207,67 @@ describe("StructureViewer", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
+  it("disposes the plugin immediately when the download fails, before the terminal error renders", async () => {
+    // Plugin creation succeeds (WebGL context allocated); the failure
+    // happens afterwards, in the download step.
+    mockDownload.mockRejectedValueOnce(new Error("Network unavailable"));
+
+    render(
+      <StructureViewer
+        filePath="/user@bvbrc/home/model.pdb"
+        fileName="model.pdb"
+      />,
+    );
+
+    // By the time the terminal error is on screen, the plugin (and its
+    // WebGL context) must already be disposed — not merely disposed later
+    // on retry or unmount.
+    await waitFor(() => {
+      expect(screen.getByText("Network unavailable")).toBeInTheDocument();
+      expect(mockDispose).toHaveBeenCalledTimes(1);
+    });
+
+    // No further disposal should happen once the error state has settled.
+    expect(mockDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not double-dispose when unmounted while the download is still pending", async () => {
+    let rejectDownload: ((err: Error) => void) | undefined;
+    mockDownload.mockImplementationOnce(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectDownload = reject;
+        }),
+    );
+
+    const { unmount } = render(
+      <StructureViewer
+        filePath="/user@bvbrc/home/model.pdb"
+        fileName="model.pdb"
+      />,
+    );
+
+    // Wait until the plugin has been created and the (still-pending)
+    // download has been kicked off.
+    await waitFor(() => {
+      expect(mockDownload).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    // The effect cleanup disposes the plugin exactly once on unmount.
+    expect(mockDispose).toHaveBeenCalledTimes(1);
+
+    // The in-flight download now rejects *after* unmount. The async
+    // catch's own disposal must see the lifecycle as already disposed and
+    // skip disposing again — asserting on the call count (not just "no
+    // throw") is what actually proves the race is closed.
+    rejectDownload?.(new Error("Network unavailable"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockDispose).toHaveBeenCalledTimes(1);
+  });
+
   it("wraps content in ExpandableViewerWrapper with filename as title", () => {
     render(
       <StructureViewer

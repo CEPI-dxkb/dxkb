@@ -110,6 +110,12 @@ export function TaxIDSelector({
       // When not disabled but value changes externally (e.g., from taxon name selector),
       // update searchQuery only if it doesn't match (to avoid overriding active typing)
       setSearchQuery(String(value.taxon_id));
+    } else if (
+      !value &&
+      prevValue &&
+      searchQuery === String(prevValue.taxon_id)
+    ) {
+      setSearchQuery("");
     }
   }
 

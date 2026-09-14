@@ -229,6 +229,22 @@ describe("GenomeCollection", () => {
     );
   });
 
+  it("keeps the canonical keyword in the child resource scope", () => {
+    searchParams.current = new URLSearchParams(
+      "keyword=Escherichia%20coli&tab=sequences",
+    );
+
+    render(
+      <GenomeCollection
+        initialState={{ ...initialState, keyword: "Escherichia coli" }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe(
+      "and(eq(genome_id,*),genome(and(keyword(Escherichia coli),in(genome_id,(1.1,1.2)))))",
+    );
+  });
+
   it("keeps the active refinement alongside the recent-genomes default", () => {
     searchParams.current = new URLSearchParams("refine=coli&tab=sequences");
 

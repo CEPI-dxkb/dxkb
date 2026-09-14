@@ -133,13 +133,17 @@ export function SelectionServiceChooser({
     const directoryPath = `/${workspaceUsername}/home/._tmp_groups`;
     const groupName = `tmp_${kind}_group_${crypto.randomUUID()}`;
     // Nothing provisions this hidden folder at first workspace access and the group
-    // write does not create parents, so create it here. Workspace folder creation is
-    // idempotent for an existing directory (see `ensureUserWorkspace`); if it fails
-    // for any other reason the group write below reports the real error.
+    // write does not create parents, so create it here. An existing directory is the
+    // only expected failure; all other errors must reach the chooser unchanged.
     try {
       await repository.createFolder(directoryPath);
-    } catch {
-      // Already there, or a failure the group write will surface with its own message.
+    } catch (folderError) {
+      if (
+        !(folderError instanceof Error) ||
+        !/\balready exists\b/i.test(folderError.message)
+      ) {
+        throw folderError;
+      }
     }
     await repository.createIdGroup({
       path: directoryPath,

@@ -5,6 +5,7 @@ import {
   type JsonOverride,
 } from "../../mocks/backends";
 import { permissiveBackendOverrides } from "../../fixtures/overrides";
+import { TaxonPage } from "../../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -19,14 +20,14 @@ const strainApi500: JsonOverride = {
 // Taxon 11520 = Influenza A virus (Orthomyxoviridae). hasStrains predicate requires
 // "Orthomyxoviridae" in lineage_names — bacteria like taxon 234 (Brucella) evaluate
 // false and the Strains tab is disabled, so the ListData component never mounts.
-const INFLUENZA_TAXON_ID = "11520";
+const influenzaTaxonId = "11520";
 
 test.describe("taxon strains actions", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
       overrides: [...permissiveBackendOverrides],
     });
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=strains`);
     await expect(page.getByText("A/California/04/2009").first()).toBeVisible({
       timeout: 10_000,
     });
@@ -133,10 +134,9 @@ test.describe("taxon strains actions", () => {
       "Only Chromium accepts Playwright's clipboard-read/clipboard-write permissions; Firefox rejects them as unknown and WebKit's headless clipboard is unreliable",
     );
 
+    const taxon = new TaxonPage(page);
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page
-      .getByRole("checkbox", { name: /select all rows on this page/i })
-      .click();
+    await taxon.selectAllRowsOnPage();
 
     await page.getByRole("button", { name: /^copy$/i }).click();
     await page
@@ -152,14 +152,10 @@ test.describe("taxon strains actions", () => {
   // Unguarded: the associated-Genome navigation is plain routing, so every browser
   // keeps this coverage even though the clipboard assertions above are Chromium-only.
   test("opens all associated genomes", async ({ page }) => {
-    await page
-      .getByRole("checkbox", { name: /select all rows on this page/i })
-      .click();
+    const taxon = new TaxonPage(page);
+    await taxon.selectAllRowsOnPage();
+    await taxon.openAssociatedGenomes();
 
-    await page
-      .getByRole("complementary")
-      .getByRole("button", { name: /genomes/i })
-      .click();
     await expect(page).toHaveURL(
       /\/genome\?rql=in\(genome_id%2C\(641501\.3%2C641501\.4%2C641501\.5\)\)/,
     );
@@ -179,7 +175,7 @@ test.describe("taxon strains actions", () => {
       .getByRole("button", { name: /^services$/i })
       .click();
 
-    await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
     // Direct BLAST needs no workspace object, so it carries the selected Genome IDs
     // into the service tab and lets the protected route handle sign-in. Redirecting
     // from here instead discarded the selection.
@@ -199,7 +195,7 @@ test.describe("taxon strains actions", () => {
     expect(
       await opened.evaluate((key) => sessionStorage.getItem(key), rerunKey),
     ).toContain("641501.3");
-    await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
   });
 
   test("prompts signed-out users to sign in for Group without leaving the page", async ({
@@ -217,9 +213,9 @@ test.describe("taxon strains actions", () => {
       page.getByRole("dialog").getByRole("button", { name: "Sign In" }),
     ).toHaveAttribute(
       "href",
-      `/sign-in?redirect=${encodeURIComponent(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`)}`,
+      `/sign-in?redirect=${encodeURIComponent(`/taxonomy/${influenzaTaxonId}?tab=strains`)}`,
     );
-    await expect(page).toHaveURL(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
   });
 });
 
@@ -233,7 +229,7 @@ test.describe("taxon strains tab: data API error handling", () => {
   test("shows the original API error and keeps the taxon shell visible", async ({
     page,
   }) => {
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=strains`);
 
     await expect(page.getByText(/Internal Server Error/)).toBeVisible({
       timeout: 10_000,
@@ -500,7 +496,7 @@ test.describe("taxon collection tabs: local keyword filtering", () => {
         });
       }
 
-      await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=${tab}`);
+      await page.goto(`/taxonomy/${influenzaTaxonId}?tab=${tab}`);
       await expect(page.getByText(rowText).first()).toBeVisible({
         timeout: 10_000,
       });
@@ -514,7 +510,7 @@ test.describe("taxon collection tabs: local keyword filtering", () => {
         }),
       ).toHaveValue("");
       await expect(page).toHaveURL(
-        `/taxonomy/${INFLUENZA_TAXON_ID}?tab=${tab}`,
+        `/taxonomy/${influenzaTaxonId}?tab=${tab}`,
       );
       expect(collectionRequests).toHaveLength(requestCount);
     });
@@ -534,7 +530,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
         collectionRequests.push(request.url());
     });
 
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=epitopes`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=epitopes`);
     await expect(page.getByText("Hemagglutinin").first()).toBeVisible({
       timeout: 10_000,
     });
@@ -548,7 +544,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
       }),
     ).toHaveValue("");
     await expect(page).toHaveURL(
-      `/taxonomy/${INFLUENZA_TAXON_ID}?tab=epitopes`,
+      `/taxonomy/${influenzaTaxonId}?tab=epitopes`,
     );
     expect(collectionRequests).toHaveLength(requestCount);
   });
@@ -595,7 +591,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
       });
     });
 
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=epitopes`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=epitopes`);
     await expect(page.getByText("SEQ0")).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: "Show Filters" }).click();

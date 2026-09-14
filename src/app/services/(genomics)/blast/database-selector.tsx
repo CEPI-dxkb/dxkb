@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSelector } from "@tanstack/react-store";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
@@ -21,14 +22,26 @@ import type { BlastForm } from "./page";
  */
 function TaxonListField({ form }: { form: BlastForm }) {
   const [pendingTaxon, setPendingTaxon] = useState<TaxonomyItem | null>(null);
+  const taxonIds = useSelector(
+    form.store,
+    (state) => state.values.db_taxon_list ?? [],
+  );
+
+  const selectedTaxon =
+    pendingTaxon && taxonIds.includes(String(pendingTaxon.taxon_id))
+      ? pendingTaxon
+      : null;
+  if (pendingTaxon && !selectedTaxon) {
+    setPendingTaxon(null);
+  }
+
   return (
     <form.Field name="db_taxon_list">
       {(field) => {
-        const taxonIds = field.state.value ?? [];
         return (
           <FieldItem>
             <TaxIDSelector
-              value={pendingTaxon}
+              value={selectedTaxon}
               onChange={(item) => {
                 setPendingTaxon(item);
                 if (!item) return;

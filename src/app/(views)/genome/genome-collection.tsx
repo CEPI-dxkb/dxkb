@@ -95,15 +95,14 @@ export function GenomeCollection({
     genomeCollectionTabs.find(
       (tab) => tab.key === requestedTab && tab.enabled !== false,
     )?.key ?? "genomes";
-  // Same composition order ResourceCollection uses for the Genomes tab itself
-  // (base scope, structural filters, active refinement, then explicit RQL), so a
-  // child tab shows exactly the children of the genomes listed on that tab.
-  // `initialState.keyword` is deliberately left out: `keyword` is a separate
-  // request field rather than an RQL clause, and ResourceChildCollection starts
-  // from fresh local state, so there is no keyword to carry into a child request.
+  // Match the Genomes tab's effective query so child tabs stay scoped to exactly
+  // the genomes currently listed, including URL-owned keyword and refinement text.
   const genomeScope = [
     genomeBaseRql(initialState),
     genomeStructuralRql(initialState),
+    initialState.keyword?.trim()
+      ? rqlKeyword(initialState.keyword.trim())
+      : undefined,
     initialState.refine?.trim()
       ? rqlKeyword(initialState.refine.trim())
       : undefined,

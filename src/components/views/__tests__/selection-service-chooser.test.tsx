@@ -134,6 +134,23 @@ describe("SelectionServiceChooser", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("reports a folder creation failure without attempting the group write", async () => {
+    mocks.createFolder.mockRejectedValue(
+      new Error("_ERROR_User lacks permission to create folder"),
+    );
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(
+      await screen.findByText("_ERROR_User lacks permission to create folder"),
+    ).toBeInTheDocument();
+    expect(mocks.createIdGroup).not.toHaveBeenCalled();
+    expect(mocks.rerunJob).not.toHaveBeenCalled();
+  });
+
   it("reports the original error when the group write fails", async () => {
     mocks.createFolder.mockRejectedValue(new Error("Object already exists"));
     mocks.createIdGroup.mockRejectedValue(

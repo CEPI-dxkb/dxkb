@@ -374,9 +374,19 @@ describe("ResourceCollection Taxonomy actions", () => {
     });
     // The tab is reserved synchronously on click and navigated once IDs resolve, so
     // an all-pages selection's export cannot get the popup blocked.
-    const replace = vi.fn();
     const close = vi.fn();
-    const open = vi.fn(() => ({ opener: window, location: { replace }, close }));
+    const links: {
+      href: string;
+      target: string;
+      rel: string;
+      click: ReturnType<typeof vi.fn>;
+    }[] = [];
+    const createElement = vi.fn(() => {
+      const link = { href: "", target: "", rel: "", click: vi.fn() };
+      links.push(link);
+      return link;
+    });
+    const open = vi.fn(() => ({ opener: window, document: { createElement }, close }));
     vi.stubGlobal("open", open);
 
     render(
@@ -396,27 +406,29 @@ describe("ResourceCollection Taxonomy actions", () => {
     ]);
     await user.click(screen.getByRole("button", { name: "taxonOverview" }));
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledTimes(1);
+      expect(links).toHaveLength(1);
     });
     await user.click(screen.getByRole("button", { name: "Genomes action" }));
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledTimes(2);
+      expect(links).toHaveLength(2);
     });
     await user.click(screen.getByRole("button", { name: "features" }));
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledTimes(3);
+      expect(links).toHaveLength(3);
     });
     expect(open).toHaveBeenCalledTimes(3);
     expect(open).toHaveBeenCalledWith("about:blank", "_blank");
-    expect(replace).toHaveBeenNthCalledWith(1, "/taxonomy/234");
-    expect(replace).toHaveBeenNthCalledWith(
-      2,
+    expect(links.map(({ href }) => href)).toEqual([
+      "/taxonomy/234",
       "/genome?rql=and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated))",
-    );
-    expect(replace).toHaveBeenNthCalledWith(
-      3,
       "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated)))%2Ceq(annotation%2CPATRIC))",
-    );
+    ]);
+    expect(links.map(({ target, rel }) => ({ target, rel }))).toEqual([
+      { target: "_self", rel: "noreferrer" },
+      { target: "_self", rel: "noreferrer" },
+      { target: "_self", rel: "noreferrer" },
+    ]);
+    expect(links.every((link) => link.click.mock.calls.length === 1)).toBe(true);
     expect(close).not.toHaveBeenCalled();
 
     // SERVICES opens an in-page dialog, so it must not reserve a tab.
@@ -478,10 +490,16 @@ describe("ResourceCollection Taxonomy actions", () => {
           resolveExport = resolve;
         }),
     );
-    const replace = vi.fn();
+    const click = vi.fn();
+    const createElement = vi.fn(() => ({
+      href: "",
+      target: "",
+      rel: "",
+      click,
+    }));
     const open = vi.fn(() => ({
       opener: window,
-      location: { replace },
+      document: { createElement },
       close: vi.fn(),
     }));
     vi.stubGlobal("open", open);
@@ -511,7 +529,7 @@ describe("ResourceCollection Taxonomy actions", () => {
       await Promise.resolve();
     });
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledTimes(1);
+      expect(click).toHaveBeenCalledTimes(1);
     });
 
     // The guard releases once the first action settles.

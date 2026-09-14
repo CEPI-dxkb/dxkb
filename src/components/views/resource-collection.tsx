@@ -622,7 +622,11 @@ export function ResourceCollection<Row extends DataTableRow>({
         resultsWindow.close();
         return;
       }
-      resultsWindow.location.replace(href);
+      const link = resultsWindow.document.createElement("a");
+      link.href = href;
+      link.target = "_self";
+      link.rel = "noreferrer";
+      link.click();
     } catch (error) {
       resultsWindow.close();
       setActionError(error instanceof Error ? error.message : String(error));

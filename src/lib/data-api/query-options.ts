@@ -29,13 +29,15 @@ export function collectionQueryOptions<
   });
 }
 
-export function memberQueryOptions(
+export function memberQueryOptions<
+  Row extends Record<string, unknown> = Record<string, unknown>,
+>(
   repository: DataRepository,
   resource: DataResource,
   request: Omit<MemberRequest, "operation">,
 ) {
   return queryOptions({
     queryKey: dataQueryKeys.member(resource, request),
-    queryFn: ({ signal }) => repository.member(resource, request, signal),
+    queryFn: ({ signal }) => repository.member<Row>(resource, request, signal),
   });
 }

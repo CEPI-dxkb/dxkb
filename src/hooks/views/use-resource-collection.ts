@@ -9,6 +9,7 @@ import {
   type DataRepository,
   type DataResource,
   type FacetBucket,
+  memberQueryOptions,
 } from "@/lib/data-api";
 import { noop } from "@/lib/utils";
 import { resourceCollectionPageSize } from "./collection-state";
@@ -128,13 +129,11 @@ export function useResourceCollection<Row extends ResourceRow>({
     !isAllPagesSelected && selectedIds.length === 1 ? selectedIds[0] : null;
 
   const detailQuery = useQuery({
-    queryKey: ["resource-detail", resource, idField, activeId],
-    queryFn: ({ signal }) =>
-      repository.member<Row>(
-        resource,
-        { id: activeId ?? "", idField, fields: [...detailFields] },
-        signal,
-      ),
+    ...memberQueryOptions<Row>(repository, resource, {
+      id: activeId ?? "",
+      idField,
+      fields: [...detailFields],
+    }),
     enabled: activeId !== null,
   });
   const activeSort = dataSort(state.sort);

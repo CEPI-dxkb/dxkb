@@ -342,4 +342,77 @@ describe("useResourceCollection", () => {
       expect.any(AbortSignal),
     );
   });
+
+  it("issues a fresh request when the detail projection changes for the same selected ID", async () => {
+    const data = repository();
+    const member = vi.spyOn(data, "member").mockImplementation(
+      (_resource, request) =>
+        Promise.resolve({
+          row: request.fields?.includes("host_name")
+            ? {
+                genome_id: "100.1",
+                genome_name: "Projected detail",
+                host_name: "Human",
+              }
+            : { genome_id: "100.1", genome_name: "Projected detail" },
+        }),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const queryWrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+
+    const { result, rerender } = renderHook(
+      ({ detailFields }: { detailFields: readonly string[] }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          detailFields,
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      {
+        wrapper: queryWrapper,
+        initialProps: {
+          detailFields: ["genome_id", "genome_name"] as readonly string[],
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.setSelection({ "100.1": true });
+    });
+    await waitFor(() => {
+      expect(result.current.detail).toMatchObject({
+        genome_name: "Projected detail",
+      });
+    });
+    expect(result.current.detail).not.toHaveProperty("host_name");
+    expect(member).toHaveBeenCalledTimes(1);
+
+    // Same selected ID, but a view requesting a wider detail projection —
+    // must not be served the previous view's incompletely-projected record.
+    rerender({ detailFields: ["genome_id", "genome_name", "host_name"] });
+
+    await waitFor(() => {
+      expect(result.current.detail).toMatchObject({ host_name: "Human" });
+    });
+    expect(member).toHaveBeenCalledTimes(2);
+    expect(member).toHaveBeenLastCalledWith(
+      "genome",
+      {
+        id: "100.1",
+        idField: "genome_id",
+        fields: ["genome_id", "genome_name", "host_name"],
+      },
+      expect.any(AbortSignal),
+    );
+  });
 });

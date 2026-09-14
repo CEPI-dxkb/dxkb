@@ -478,17 +478,21 @@ describe("ServerDataRepository", () => {
       },
     );
 
-    it("still treats an empty array as a legitimate empty result", async () => {
+    it("still treats an empty array as a legitimate empty collection", async () => {
       server.use(http.get(genomeUrl, () => HttpResponse.json([])));
       await expect(
         repository().collection("genome", { operation: "collection" }),
       ).resolves.toMatchObject({ rows: [], total: 0 });
+    });
 
+    it("still treats an empty array as a legitimate missing member", async () => {
       server.use(http.get(genomeUrl, () => HttpResponse.json([])));
       await expect(
         repository().member("genome", { operation: "member", id: "1.1" }),
       ).resolves.toEqual({ row: null });
+    });
 
+    it("still treats an empty array as a legitimate empty export", async () => {
       server.use(http.get(genomeUrl, () => HttpResponse.json([])));
       await expect(
         repository().export("genome", {

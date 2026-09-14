@@ -231,7 +231,17 @@ function parseExpression(
     // string still decodes to a real "" value, consistent with decodeValue()
     // elsewhere in this file (e.g. eq(field,"") already yields "").
     const values = rawValues.trim() === "" ? [] : splitArguments(rawValues);
-    if (values.length === 0 || values.length > maxRqlInValues)
+    // A blank slot embedded between commas — in(field,(1,,3)) — or a stray
+    // leading/trailing comma — in(field,(1,3,)) or in(field,(,1,3)) —
+    // survives splitArguments as an unquoted "" element instead of reducing
+    // the argument count, so it must be rejected the same way as a fully
+    // blank interior. A *quoted* empty string element is the two-character
+    // string `""`, not an empty string, so it is unaffected by this check.
+    if (
+      values.length === 0 ||
+      values.length > maxRqlInValues ||
+      values.some((value) => value === "")
+    )
       throw new DataApiValidationError(
         `in requires 1 to ${maxRqlInValues.toLocaleString()} values.`,
       );

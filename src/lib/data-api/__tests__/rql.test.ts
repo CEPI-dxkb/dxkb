@@ -170,6 +170,37 @@ describe("typed RQL", () => {
       );
     });
 
+    // A blank slot embedded between commas survives splitArguments as an
+    // unquoted "" element rather than reducing the argument count, so the
+    // "at least one value" length check alone can't catch it — a 3-element
+    // list with a hole in the middle still has length 3.
+    it("rejects an embedded blank element on a string field", () => {
+      expect(() => parseRql("genome", "in(genome_id,(1.1,,2.2))")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
+    // The numeric case the brief calls out explicitly: without this check,
+    // coerceValue's Number("") for the phantom blank slot is 0 (not NaN), so
+    // in(genome_length,(1,,3)) would silently become [1, 0, 3].
+    it("rejects an embedded blank element on a numeric field", () => {
+      expect(() => parseRql("genome", "in(genome_length,(1,,3))")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
+    it("rejects a leading stray comma", () => {
+      expect(() => parseRql("genome", "in(genome_id,(,1,2))")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
+    it("rejects a trailing stray comma", () => {
+      expect(() => parseRql("genome", "in(genome_id,(1,2,))")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
     // Documented contract: a *quoted* empty string is a deliberate value,
     // not an empty list — consistent with decodeValue() elsewhere in this
     // parser, where eq(field,"") already decodes to the empty string rather
@@ -180,6 +211,17 @@ describe("typed RQL", () => {
         operator: "in",
         field: "genome_id",
         values: [""],
+      });
+    });
+
+    // The embedded-blank rejection above must not over-reject: a quoted
+    // empty string mixed in with real values is a 2-character `""` token,
+    // never the bare "" the rejection targets, so it survives untouched.
+    it("keeps a quoted empty string when mixed with other values", () => {
+      expect(parseRql("genome", 'in(genome_id,(1.1,"",2.2))')).toEqual({
+        operator: "in",
+        field: "genome_id",
+        values: ["1.1", "", "2.2"],
       });
     });
   });

@@ -282,6 +282,28 @@ function combinePredicates(...predicates: (string | undefined)[]) {
 }
 
 /**
+ * Presentation cap for export error messages. Upstream/auth/validation
+ * failures can carry long diagnostic payloads; truncate rather than replace
+ * them so the actionable part of the original message still reaches the
+ * user (see repository guidance: never swap a real error for a generic one).
+ */
+const maxExportErrorMessageLength = 300;
+
+/**
+ * Fallback shown for non-`Error` rejections, and for an `Error` whose
+ * message is empty or whitespace-only — an empty `exportError` string would
+ * be falsy and suppress the alert entirely (see the `{exportError && (...)}`
+ * render guard), so it must never be set.
+ */
+const genericExportErrorMessage =
+  "The requested export could not be created. Please try again.";
+
+function formatExportErrorMessage(message: string): string {
+  if (message.length <= maxExportErrorMessageLength) return message;
+  return `${message.slice(0, maxExportErrorMessageLength).trimEnd()}…`;
+}
+
+/**
  * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
  * or array-valued field of a row. Exported so a custom exporter can filter the rows
  * it fetches the same way the table filters the rows it shows. `keyword` must already
@@ -754,7 +776,9 @@ export function ResourceCollection<Row extends DataTableRow>({
     } catch (error) {
       console.error("Resource export failed:", error);
       setExportError(
-        "The requested export could not be created. Please try again.",
+        error instanceof Error && error.message.trim()
+          ? formatExportErrorMessage(error.message)
+          : genericExportErrorMessage,
       );
     }
   };

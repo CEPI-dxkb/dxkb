@@ -2434,12 +2434,151 @@ describe("ResourceCollection Genome integration contracts", () => {
     });
   });
 
-  it("makes export failures visible without exposing diagnostics", async () => {
+  it("surfaces the repository's export error message for an all-matching export", async () => {
     const error = new Error("Genome export service unavailable");
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
     const data = repository(Promise.reject(error));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText("Genome export service unavailable"),
+      ).toBeVisible(),
+    );
+    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
+    expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("surfaces the repository's export error message for a selected-rows export", async () => {
+    const error = new Error("Selected genome export rejected: rate limited");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const data = repository(Promise.reject(error));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadSelected as (
+          format: "csv",
+          ids: string[],
+          fields: string[],
+        ) => Promise<void>
+      )("csv", ["83332.12"], ["genome_name"]);
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText("Selected genome export rejected: rate limited"),
+      ).toBeVisible(),
+    );
+    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
+    expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("surfaces a delegated onExport error message for an all-matching export", async () => {
+    const error = new Error("Authentication expired, please sign in again");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const onExport = vi.fn(() => Promise.reject(error));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+        onExport={onExport}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText("Authentication expired, please sign in again"),
+      ).toBeVisible(),
+    );
+    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
+    expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("surfaces a delegated onExport error message for a selected-rows export", async () => {
+    const error = new Error("Validation failed: unknown field requested");
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const onExport = vi.fn(() => Promise.reject(error));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+        onExport={onExport}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadSelected as (
+          format: "csv",
+          ids: string[],
+          fields: string[],
+        ) => Promise<void>
+      )("csv", ["83332.12"], ["genome_name"]);
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByText("Validation failed: unknown field requested"),
+      ).toBeVisible(),
+    );
+    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
+    expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("falls back to a generic message when an export rejects with a non-Error value", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const exportAll = vi.fn().mockRejectedValueOnce("upstream socket reset");
+    const data = {
+      exportAll,
+      selected: vi.fn(),
+    } as unknown as DataRepository;
     render(
       <ResourceCollection
         profile={genomeCollectionProfile}
@@ -2466,9 +2605,179 @@ describe("ResourceCollection Genome integration contracts", () => {
       ).toBeVisible(),
     );
     expect(
-      screen.queryByText("Genome export service unavailable"),
+      screen.queryByText("upstream socket reset"),
     ).not.toBeInTheDocument();
-    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
+    expect(consoleError).toHaveBeenCalledWith(
+      "Resource export failed:",
+      "upstream socket reset",
+    );
     expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("falls back to a generic message when an Error's message is empty", async () => {
+    // An empty exportError string is falsy, so the `{exportError && (...)}`
+    // render guard would suppress the alert entirely if this fell through
+    // to formatExportErrorMessage("") instead of the generic fallback.
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const data = repository(Promise.reject(new Error()));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "The requested export could not be created. Please try again.",
+        ),
+      ).toBeVisible(),
+    );
+    expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("falls back to a generic message when an Error's message is whitespace-only", async () => {
+    // Treated the same as an empty message: whitespace alone is no more
+    // actionable to the user than nothing, and would still collapse to a
+    // visually-empty (or invisible, depending on the Alert's whitespace
+    // handling) alert if surfaced as-is.
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const data = repository(Promise.reject(new Error("   ")));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "The requested export could not be created. Please try again.",
+        ),
+      ).toBeVisible(),
+    );
+    expect(screen.getByText("Could not export genomes")).toBeVisible();
+  });
+
+  it("truncates an export error message that exceeds the presentation limit", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const longMessage = `Upstream failure: ${"x".repeat(400)}`;
+    const data = repository(Promise.reject(new Error(longMessage)));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    // Longer than the 300-character presentation limit, so it must be cut
+    // down with an ellipsis rather than shown in full or replaced entirely.
+    const expectedTruncated = `${longMessage.slice(0, 300)}…`;
+    await waitFor(() =>
+      expect(screen.getByText(expectedTruncated)).toBeVisible(),
+    );
+    expect(screen.queryByText(longMessage)).not.toBeInTheDocument();
+  });
+
+  it("leaves an export error message under the presentation limit untouched", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // Under the 300-character limit: must reach the user byte-for-byte, with
+    // no truncation ellipsis appended.
+    const normalMessage = "Upstream failure: connection reset by peer";
+    const data = repository(Promise.reject(new Error(normalMessage)));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(normalMessage)).toBeVisible(),
+    );
+  });
+
+  it("does not truncate an export error message exactly at the presentation limit", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    // Exactly 300 characters: the `<=` boundary in formatExportErrorMessage
+    // must treat this as "fits" and leave it untouched, with no ellipsis.
+    const boundaryMessage = "x".repeat(300);
+    expect(boundaryMessage).toHaveLength(300);
+    const data = repository(Promise.reject(new Error(boundaryMessage)));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(boundaryMessage)).toBeVisible(),
+    );
+    expect(
+      screen.queryByText(`${boundaryMessage}…`),
+    ).not.toBeInTheDocument();
   });
 });

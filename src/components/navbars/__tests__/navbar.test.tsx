@@ -44,6 +44,7 @@ describe("Navbar", () => {
     ["/feature", "Features"],
     ["/epitope", "Epitopes"],
     ["/surveillance", "Surveillance"],
+    ["/taxonomy", "Taxa"],
   ])(
     "hydrates the navbar from a canonical %s search",
     (pathname, searchType) => {
@@ -62,7 +63,7 @@ describe("Navbar", () => {
     },
   );
 
-  it("does not treat a Taxonomy collection keyword as a navbar search", () => {
+  it("does not treat a Taxonomy member keyword as a navbar search", () => {
     navigation.pathname = "/taxonomy/234";
     const queryClient = new QueryClient();
     render(

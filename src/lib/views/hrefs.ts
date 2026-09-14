@@ -2,11 +2,31 @@
 // query encoding here so callers do not hand-build strings (and re-derive encoding
 // rules) at each site.
 
+import { maxRqlInValues } from "@/lib/data-api/rql";
 import { escapeRqlValue } from "./rql";
+
+/**
+ * Build an `in(field,(...))` clause from a selection's raw ID values, trimming and
+ * de-duplicating first. Returns `null` when nothing usable is left, or when the set
+ * exceeds the Data API's `in(...)` ceiling — the destination would reject the query,
+ * and truncating would silently drop rows the user selected.
+ */
+function idListRql(
+  field: string,
+  values: readonly (string | number)[],
+): string | null {
+  const ids = [...new Set(values.map(String).map((id) => id.trim()))]
+    .filter(Boolean)
+    .map(escapeRqlValue);
+  if (ids.length === 0 || ids.length > maxRqlInValues) return null;
+  return `in(${field},(${ids.join(",")}))`;
+}
 
 /** Internal taxonomy singular route, e.g. `/taxonomy/561`. */
 export function taxonomyHref(taxonId: number | string): string {
-  return `/taxonomy/${String(taxonId)}`;
+  const id = String(taxonId);
+  if (!/^(?=.*[1-9])\d+$/.test(id)) throw new Error(`Invalid Taxon ID: ${id}`);
+  return `/taxonomy/${encodeURIComponent(id)}`;
 }
 
 /** Return a navigable Genome ID from an API row, if present. */
@@ -24,19 +44,12 @@ export function genomeHref(genomeId: number | string): string {
   return `/genome/${encodeURIComponent(String(genomeId))}`;
 }
 
-/** Return the canonical Genome list for all genome IDs associated with a row. */
-export function genomesHrefFromRow(
-  row: Record<string, unknown> | null,
+/** Return the canonical Genome list for the supplied genome IDs. */
+export function genomesHrefFromIds(
+  values: readonly (string | number)[],
 ): string | null {
-  if (!Array.isArray(row?.genome_ids)) return null;
-  const genomeIds = [...new Set(row.genome_ids)]
-    .filter(
-      (id): id is string | number =>
-        typeof id === "string" || typeof id === "number",
-    )
-    .map((id) => escapeRqlValue(String(id)));
-  if (genomeIds.length === 0) return null;
-  return genomeListHref({ rql: `in(genome_id,(${genomeIds.join(",")}))` });
+  const rql = idListRql("genome_id", values);
+  return rql ? genomeListHref({ rql }) : null;
 }
 
 /**
@@ -70,6 +83,17 @@ export function featureHref(featureId: number | string): string {
 }
 
 /** Canonical Feature list route. Explicit RQL takes precedence over keyword. */
+/**
+ * Feature list route for an explicit ID set — the Interactions tab's FEATURES action,
+ * which pools both interactors of every selected row. Mirrors `genomesHrefFromIds`.
+ */
+export function featuresHrefFromIds(
+  values: readonly (string | number)[],
+): string | null {
+  const rql = idListRql("feature_id", values);
+  return rql ? featureListHref({ rql }) : null;
+}
+
 export function featureListHref(opts?: {
   keyword?: string;
   rql?: string;
@@ -176,7 +200,8 @@ export function proteinStructureListHref(opts?: {
     if (opts?.genomeId != null)
       params.push(`genome_id=${encodeURIComponent(String(opts.genomeId))}`);
   }
-  if (opts?.page != null) params.push(`page=${encodeURIComponent(String(opts.page))}`);
+  if (opts?.page != null)
+    params.push(`page=${encodeURIComponent(String(opts.page))}`);
   if (opts?.sort) params.push(`sort=${encodeURIComponent(opts.sort)}`);
   return params.length
     ? `/protein-structure?${params.join("&")}`

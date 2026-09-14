@@ -71,6 +71,7 @@ beforeAll(() => {
 beforeEach(() => {
   mockPush.mockClear();
   treePropsSpy.mockClear();
+  vi.restoreAllMocks();
 });
 
 const taxon = {
@@ -103,7 +104,29 @@ describe("TaxonomyTreePanel", () => {
     expect(mockPush).toHaveBeenCalledWith("/taxonomy/234?tab=overview");
   });
 
-  it("hides Taxon Overview when multiple rows are selected", async () => {
+  it("navigates to the selected taxon's Genomes and Features tabs", async () => {
+    render(<TaxonomyTreePanel taxa={[taxon]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "select-one" }));
+    await userEvent.click(screen.getByRole("button", { name: /^ggenomes$/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^ffeatures$/i }));
+
+    expect(mockPush).toHaveBeenNthCalledWith(1, "/taxonomy/234?tab=genomes");
+    expect(mockPush).toHaveBeenNthCalledWith(2, "/taxonomy/234?tab=features");
+  });
+
+  it("opens Services and reports that none are selectable", async () => {
+    render(<TaxonomyTreePanel taxa={[taxon]} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "select-one" }));
+    await userEvent.click(screen.getByRole("button", { name: /services/i }));
+
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "No selectable services",
+    );
+  });
+
+  it("hides single-row actions when multiple rows are selected", async () => {
     render(<TaxonomyTreePanel taxa={[taxon]} />);
 
     await userEvent.click(screen.getByRole("button", { name: "select-two" }));
@@ -111,5 +134,10 @@ describe("TaxonomyTreePanel", () => {
     expect(
       screen.queryByRole("button", { name: /taxon\s*overview/i }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^ffeatures$/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^ggenomes$/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /services/i })).toBeEnabled();
   });
 });

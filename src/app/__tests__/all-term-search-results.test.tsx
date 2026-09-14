@@ -8,6 +8,31 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 const dataApi = "https://p3.theseed.org/services/data_api";
 
 describe("SearchResults", () => {
+  it("links Taxonomy results to canonical members", async () => {
+    server.use(
+      http.post(`${dataApi}/query/`, () =>
+        HttpResponse.json({
+          taxonomy: {
+            result: {
+              response: {
+                docs: [{ taxon_id: "11520", taxon_name: "Influenza A virus", genomes: 42 }],
+                numFound: 1,
+                maxScore: 1,
+                numFoundExact: true,
+              },
+            },
+          },
+        }),
+      ),
+    );
+    render(<SearchResults query="influenza" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    expect(
+      await screen.findByRole("link", { name: /Influenza A virus/ }),
+    ).toHaveAttribute("href", "/taxonomy/11520");
+  });
+
   it("links Experiment results without coercing digit strings", async () => {
     server.use(
       http.post(`${dataApi}/query/`, () =>

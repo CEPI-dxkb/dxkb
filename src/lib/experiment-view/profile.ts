@@ -54,7 +54,7 @@ export const experimentCollectionProfile: ResourceCollectionProfile<ExperimentVi
     defaultSort: "unsorted",
     basePredicate: "eq(exp_id,*)",
     guideUrl:
-      "https://www.bv-brc.org/docs/quick_references/organisms_taxon/experiments.html",
+      "https://www.bv-brc.org/docs/quick_references/organisms_taxon/experiments_comparisons_tables.html",
     buildStructuralRql: experimentStructuralRql,
     facets: experimentFacets,
     rowHref: (row) => experimentHref(row.exp_id),
@@ -73,6 +73,6 @@ export const biosetCollectionProfile: ResourceCollectionProfile<
   basePredicate: "eq(bioset_id,*)",
   buildStructuralRql: biosetStructuralRql,
   guideUrl:
-    "https://www.bv-brc.org/docs/quick_references/organisms_taxon/experiments.html",
+    "https://www.bv-brc.org/docs/quick_references/organisms_taxon/experiments_comparisons_tables.html",
   facets: biosetFacets,
 };

@@ -10,8 +10,10 @@ import { ppiFields } from "@/constants/datafields/ppi";
 import { proteinFeatureFields } from "@/constants/datafields/protein_feature";
 import { proteinStructureFields } from "@/constants/datafields/protein_structure";
 import { serologyFields } from "@/constants/datafields/serology";
+import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
 import { strainFields } from "@/constants/datafields/strain";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
+import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import {
   biosetRecordSchema,
   epitopeAssayRecordSchema,
@@ -24,8 +26,10 @@ import {
   proteinFeatureRecordSchema,
   proteinStructureRecordSchema,
   serologyRecordSchema,
+  sequenceFeatureRecordSchema,
   strainRecordSchema,
   surveillanceRecordSchema,
+  taxonomyRecordSchema,
 } from "./schemas";
 import type {
   DataResource,
@@ -36,6 +40,7 @@ import type {
 } from "./types";
 
 const ids: Record<DataResource, string> = {
+  taxonomy: "taxon_id",
   genome: "genome_id",
   genome_feature: "feature_id",
   epitope: "epitope_id",
@@ -48,6 +53,7 @@ const ids: Record<DataResource, string> = {
   experiment: "exp_id",
   bioset: "bioset_id",
   genome_sequence: "sequence_id",
+  sequence_feature: "id",
   ppi: "id",
 };
 
@@ -58,6 +64,7 @@ const alternateIdentifiers: Partial<Record<DataResource, readonly string[]>> = {
 };
 
 const sourceFields: Partial<Record<DataResource, DataFieldMap>> = {
+  taxonomy: taxonomyFields,
   genome: genomeFields,
   genome_feature: genomeFeatureFields,
   epitope: epitopeFields,
@@ -70,6 +77,7 @@ const sourceFields: Partial<Record<DataResource, DataFieldMap>> = {
   experiment: experimentFields,
   bioset: biosetFields,
   genome_sequence: genomeSequenceFields,
+  sequence_feature: sequenceFeatureFields,
   ppi: ppiFields,
 };
 
@@ -102,6 +110,9 @@ const numericFields = new Set([
   "bcell_assays",
   "tcell_assays",
   "mhc_assays",
+  "genetic_code",
+  "parent_id",
+  "genomes",
 ]);
 const booleanFields = new Set(["public", "reference_genome"]);
 const dateFields = new Set([
@@ -119,6 +130,7 @@ const dateFields = new Set([
 ]);
 const phraseFields = new Set(["strain", "pathogen_test_type"]);
 const multipleFields: Partial<Record<DataResource, ReadonlySet<string>>> = {
+  taxonomy: new Set(["other_names", "lineage_ids", "lineage_names"]),
   epitope: new Set(["assay_results", "host_name", "taxon_lineage_ids"]),
   surveillance: new Set(["pathogen_test_type", "taxon_lineage_ids"]),
   serology: new Set(["taxon_lineage_ids"]),
@@ -176,6 +188,7 @@ const orderedOperators = [
 ] as const satisfies readonly RqlFieldOperator[];
 
 const schemas: Record<DataResource, ResourceDefinition["schema"]> = {
+  taxonomy: taxonomyRecordSchema,
   genome: genomeRecordSchema,
   genome_feature: genomeFeatureRecordSchema,
   epitope: epitopeRecordSchema,
@@ -188,6 +201,7 @@ const schemas: Record<DataResource, ResourceDefinition["schema"]> = {
   experiment: experimentRecordSchema,
   bioset: biosetRecordSchema,
   genome_sequence: genomeSequenceRecordSchema,
+  sequence_feature: sequenceFeatureRecordSchema,
   ppi: ppiRecordSchema,
 };
 

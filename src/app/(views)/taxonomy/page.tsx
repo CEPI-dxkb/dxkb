@@ -1,5 +1,21 @@
-import { makeListPage } from "@/lib/views/page-factory";
-import { viewRegistry } from "@/lib/views/view-registry";
+import { Suspense } from "react";
+import { parseTaxonomyCollectionState } from "@/lib/taxonomy-view";
+import type { SearchParamsRecord } from "@/lib/views/rql";
+import TaxonomyLoading from "./loading";
+import { TaxonomyCollection } from "./taxonomy-collection";
 
-export const dynamic = "force-dynamic";
-export default makeListPage(viewRegistry.taxonomy);
+interface TaxonomyCollectionPageProps {
+  searchParams: Promise<SearchParamsRecord>;
+}
+
+export default async function TaxonomyCollectionPage({
+  searchParams,
+}: TaxonomyCollectionPageProps) {
+  const state = parseTaxonomyCollectionState(await searchParams);
+  const queryKey = JSON.stringify([state.keyword, state.rql, state.filters]);
+  return (
+    <Suspense fallback={<TaxonomyLoading />}>
+      <TaxonomyCollection key={queryKey} initialState={state} />
+    </Suspense>
+  );
+}

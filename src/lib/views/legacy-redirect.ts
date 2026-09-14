@@ -5,12 +5,81 @@ export interface MappedPath {
   search: string;
 }
 
+/** Comparison operators whose first argument is a field name. */
+const rqlFieldOperators = ["eq", "ne", "lt", "le", "gt", "ge", "in"] as const;
+const fieldArgumentPattern = new RegExp(
+  `(?:^|[(,])(?:${rqlFieldOperators.join("|")})\\($`,
+);
+/** Legacy sort keys carry a direction prefix, e.g. `sort(+field,-other)`. */
+const sortKeyPattern = /[(,][+-]$/;
+
+/**
+ * True when the token starting at `index` is the field argument of a comparison
+ * operator, or a legacy sort key. Adjacent delimiters alone cannot tell those apart
+ * from a value: `(` and `,` equally precede fields, scalar values and list members,
+ * so `keyword(taxon_lineage_ids)` and `eq(taxon_name,taxon_lineage_ids)` must be
+ * left alone.
+ */
+function isFieldPosition(rql: string, index: number): boolean {
+  const before = rql.slice(0, index);
+  return sortKeyPattern.test(before) || fieldArgumentPattern.test(before);
+}
+
+/**
+ * Rename an RQL field, matching only where the token sits in field position and
+ * outside a quoted value. A blunt replaceAll over the assembled RQL would also
+ * rewrite the token inside values, turning eq(description,%22taxon_lineage_ids%22)
+ * into a different query. Legacy query strings arrive raw, so quotes appear as
+ * either " or %22.
+ */
+function renameRqlField(rql: string, from: string, to: string): string {
+  let result = "";
+  let index = 0;
+  let quote: '"' | "%22" | null = null;
+  while (index < rql.length) {
+    if (quote) {
+      if (rql.startsWith(quote, index)) {
+        result += quote;
+        index += quote.length;
+        quote = null;
+      } else {
+        result += rql[index];
+        index += 1;
+      }
+      continue;
+    }
+    if (rql[index] === '"' || rql.startsWith("%22", index)) {
+      quote = rql[index] === '"' ? '"' : "%22";
+      result += quote;
+      index += quote.length;
+      continue;
+    }
+    const nextIndex = index + from.length;
+    if (
+      rql.startsWith(from, index) &&
+      nextIndex < rql.length &&
+      ",)".includes(rql[nextIndex]) &&
+      isFieldPosition(rql, index)
+    ) {
+      result += to;
+      index += from.length;
+      continue;
+    }
+    result += rql[index];
+    index += 1;
+  }
+  return result;
+}
+
 /**
  * Map a legacy BV-BRC /view/* request (path + raw query string, no leading "?")
  * to the new schema. Returns null if the path is not a mappable /view/* URL.
  * Hash is intentionally NOT handled here (the server cannot read it).
  */
-export function mapLegacyViewPath(pathname: string, rawSearch: string): MappedPath | null {
+export function mapLegacyViewPath(
+  pathname: string,
+  rawSearch: string,
+): MappedPath | null {
   const parts = pathname.split("/").filter(Boolean); // ["view", "Genome", "59201.7581"]
   if (parts.length < 2 || parts[0] !== "view") return null;
 
@@ -41,9 +110,14 @@ export function mapLegacyViewPath(pathname: string, rawSearch: string): MappedPa
     }
     const searchParts: string[] = [];
     if (rqlParts.length > 0) {
-      // encodeURIComponent keeps RQL parens literal and only encodes the comma,
-      // which round-trips cleanly and stays readable.
-      searchParts.push(`rql=${encodeURIComponent(rqlParts.join("&"))}`);
+      // TaxonList historically used the Genome lineage field name even though the
+      // Taxonomy endpoint exposes the same relationship as `lineage_ids`.
+      const joined = rqlParts.join("&");
+      const rql =
+        segment === "taxonomy"
+          ? renameRqlField(joined, "taxon_lineage_ids", "lineage_ids")
+          : joined;
+      searchParts.push(`rql=${encodeURIComponent(rql)}`);
     }
     const namedParams = new URLSearchParams(namedParts.join("&"));
     for (const [name, value] of Object.entries(target.defaultParams ?? {})) {

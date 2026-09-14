@@ -79,6 +79,15 @@ describe("typed RQL", () => {
     expect(() => validateRql("genome", rql)).toThrow(/not allowed/);
   });
 
+  it("accepts wildcard equality for numeric fields", () => {
+    expect(validateRql("taxonomy", "eq(taxon_id,*)")).toBe(
+      "eq(taxon_id,%2A)",
+    );
+    expect(() => validateRql("taxonomy", "gt(taxon_id,*)")).toThrow(
+      /numeric value is invalid/i,
+    );
+  });
+
   it("enforces each field's allowed operators", () => {
     expect(() => validateRql("genome", "gt(genome_id,1.1)")).toThrow(
       /Operator gt is not allowed/,

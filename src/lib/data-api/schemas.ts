@@ -11,6 +11,33 @@ const optionalTaxonomy = {
     .optional(),
 };
 
+/**
+ * The Data API returns `taxon_id` as a number (the resource registry types it as one),
+ * while the app's routes and selections carry canonical positive-integer strings.
+ * Accept either on the wire and normalize to a string, so one numeric row cannot fail
+ * the whole response in `parseRows`.
+ */
+const taxonIdentifier = z
+  .union([z.string(), z.number().int().positive()])
+  .transform(String)
+  .refine((value) => /^(?=.*[1-9])\d+$/.test(value), {
+    message: "taxon_id must be a positive integer",
+  });
+
+export const taxonomyRecordSchema = z.looseObject({
+  taxon_id: taxonIdentifier,
+  taxon_name: z.string().optional(),
+  taxon_rank: z.string().optional(),
+  other_names: stringList.optional(),
+  genetic_code: stringOrNumber.optional(),
+  lineage_ids: scalarList.optional(),
+  lineage_names: stringList.optional(),
+  parent_id: stringOrNumber.optional(),
+  division: z.string().optional(),
+  description: z.string().optional(),
+  genomes: stringOrNumber.optional(),
+});
+
 export const genomeRecordSchema = z.looseObject({
   genome_id: identifier,
   genome_name: z.string().optional(),
@@ -151,6 +178,13 @@ export const genomeSequenceRecordSchema = z.looseObject({
   sequence_id: identifier,
   genome_id: z.string().optional(),
   ...optionalTaxonomy,
+});
+
+export const sequenceFeatureRecordSchema = z.looseObject({
+  id: identifier,
+  taxon_id: stringOrNumber.optional(),
+  sf_id: z.string().optional(),
+  sf_name: z.string().optional(),
 });
 
 export const ppiRecordSchema = z.looseObject({

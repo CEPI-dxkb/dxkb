@@ -7,10 +7,11 @@ import { ResourceWorkspace } from "@/components/views/resource-workspace";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
 import {
   SearchActionBar,
-  notReady,
   type SearchActionId,
 } from "@/components/search/search-action-bar";
+import { TaxonomyServiceChooser } from "@/components/views/taxonomy-service-chooser";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
+import { taxonomyGenomesHref } from "@/lib/taxonomy-view";
 
 import { TaxonomyTree } from "./taxonomy-tree";
 import type { TaxonRecord } from "./taxon-tree-types";
@@ -32,13 +33,23 @@ interface TaxonomyTreePanelProps {
 export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
   const router = useRouter();
   const [selectedRows, setSelectedRows] = useState<TaxonRecord[]>([]);
+  const [isServiceChooserOpen, setIsServiceChooserOpen] = useState(false);
   const singleRow = selectedRows.length === 1 ? selectedRows[0] : null;
+  const selectedTaxonIds = selectedRows.map((row) => String(row.taxon_id));
 
   function handleAction(actionId: SearchActionId) {
-    // Only taxonOverview is live; the rest are disabled in the bar (see
-    // disabledActions / module notReady) so they never reach here.
     if (actionId === "taxonOverview" && singleRow) {
       router.push(`/taxonomy/${String(singleRow.taxon_id)}?tab=overview`);
+    } else if (actionId === "genomes") {
+      router.push(
+        singleRow
+          ? `/taxonomy/${String(singleRow.taxon_id)}?tab=genomes`
+          : taxonomyGenomesHref(selectedTaxonIds),
+      );
+    } else if (actionId === "features" && singleRow) {
+      router.push(`/taxonomy/${String(singleRow.taxon_id)}?tab=features`);
+    } else if (actionId === "services") {
+      setIsServiceChooserOpen(true);
     }
   }
 
@@ -54,9 +65,7 @@ export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
           selectedCount={selectedRows.length}
           searchType="taxonomy"
           guideUrl={taxonomyGuideUrl}
-          // Genomes + Features routing lands later; show them disabled for now.
-          // Services stays disabled via its module-level notReady flag.
-          disabledActions={{ genomes: notReady, features: notReady }}
+          enabledActions={["services", "genomes", "features"]}
           onAction={handleAction}
         />
       }
@@ -70,6 +79,12 @@ export function TaxonomyTreePanel({ taxa }: TaxonomyTreePanelProps) {
       }
     >
       <TaxonomyTree rootTaxa={taxa} onSelect={setSelectedRows} />
+      <TaxonomyServiceChooser
+        open={isServiceChooserOpen}
+        onOpenChange={setIsServiceChooserOpen}
+        taxonIds={selectedTaxonIds}
+        hasSelectableServices={false}
+      />
     </ResourceWorkspace>
   );
 }

@@ -5,6 +5,7 @@ import {
   type JsonOverride,
 } from "../../mocks/backends";
 import { permissiveBackendOverrides } from "../../fixtures/overrides";
+import { TaxonPage } from "../../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -19,7 +20,205 @@ const strainApi500: JsonOverride = {
 // Taxon 11520 = Influenza A virus (Orthomyxoviridae). hasStrains predicate requires
 // "Orthomyxoviridae" in lineage_names — bacteria like taxon 234 (Brucella) evaluate
 // false and the Strains tab is disabled, so the ListData component never mounts.
-const INFLUENZA_TAXON_ID = "11520";
+const influenzaTaxonId = "11520";
+
+test.describe("taxon strains actions", () => {
+  test.beforeEach(async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [...permissiveBackendOverrides],
+    });
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=strains`);
+    await expect(page.getByText("A/California/04/2009").first()).toBeVisible({
+      timeout: 10_000,
+    });
+  });
+
+  test("keeps compact body-cell padding and only one visible horizontal scroller", async ({
+    page,
+  }) => {
+    const tableRegion = page.getByRole("region", {
+      name: "Strains results table",
+    });
+    const rowCheckbox = page.getByRole("checkbox", {
+      name: "Select row strain-backend-901",
+    });
+    const scalarCell = page
+      .locator('td[data-slot="table-cell"]')
+      .filter({ hasText: "A/California/04/2009" })
+      .first();
+
+    await expect(tableRegion).toBeVisible();
+    await expect(rowCheckbox).toBeVisible();
+    await expect(scalarCell).toBeVisible();
+
+    const baseStyles = await page.evaluate(() => {
+      const checkbox = document.querySelector<HTMLInputElement>(
+        'input[aria-label="Select row strain-backend-901"]',
+      );
+      const scalar = [...document.querySelectorAll("td")].find(
+        (cell) => cell.textContent.trim() === "A/California/04/2009",
+      );
+      if (!checkbox?.parentElement?.parentElement || !scalar) {
+        throw new Error("Expected strain row cells were not rendered");
+      }
+      const selectionStyle = getComputedStyle(checkbox.parentElement.parentElement);
+      const scalarStyle = getComputedStyle(scalar);
+      return {
+        selectionPadding: [
+          selectionStyle.paddingTop,
+          selectionStyle.paddingRight,
+          selectionStyle.paddingBottom,
+          selectionStyle.paddingLeft,
+        ],
+        scalarPadding: [
+          scalarStyle.paddingTop,
+          scalarStyle.paddingRight,
+          scalarStyle.paddingBottom,
+          scalarStyle.paddingLeft,
+        ],
+        scalarOverflowX: scalarStyle.overflowX,
+      };
+    });
+
+    expect(baseStyles.selectionPadding).toEqual(["0px", "0px", "0px", "0px"]);
+    expect(baseStyles.scalarPadding).toEqual(["2px", "2px", "2px", "2px"]);
+    expect(baseStyles.scalarOverflowX).not.toBe("auto");
+
+    await page.getByRole("button", { name: /Columns/ }).click();
+    await page.getByText("Genome IDs", { exact: true }).click();
+    const firstGenomeLink = page.getByRole("link", { name: "641501.3" });
+    await expect(firstGenomeLink).toBeVisible();
+
+    const overflowStyles = await firstGenomeLink.evaluate((link) => {
+      const strip = link.parentElement;
+      const cell = link.closest("td");
+      const region = link.closest<HTMLElement>('[role="region"]');
+      if (!strip || !cell || !region) {
+        throw new Error("Expected linked cell and table scroll region");
+      }
+      const stripStyle = getComputedStyle(strip);
+      const cellStyle = getComputedStyle(cell);
+      const regionStyle = getComputedStyle(region);
+      return {
+        cellPadding: [
+          cellStyle.paddingTop,
+          cellStyle.paddingRight,
+          cellStyle.paddingBottom,
+          cellStyle.paddingLeft,
+        ],
+        stripOverflowX: stripStyle.overflowX,
+        stripScrollbarWidth: stripStyle.scrollbarWidth,
+        regionOverflowX: regionStyle.overflowX,
+        regionCanScroll: region.scrollWidth > region.clientWidth,
+      };
+    });
+
+    expect(overflowStyles.cellPadding).toEqual(["2px", "2px", "2px", "2px"]);
+    expect(overflowStyles.stripOverflowX).toBe("auto");
+    expect(overflowStyles.stripScrollbarWidth).toBe("none");
+    expect(overflowStyles.regionOverflowX).toBe("auto");
+
+    await page.setViewportSize({ width: 640, height: 720 });
+    await expect
+      .poll(() =>
+        tableRegion.evaluate(
+          (region) => region.scrollWidth > region.clientWidth,
+        ),
+      )
+      .toBe(true);
+  });
+
+  test("copies selected rows", async ({ page, context, browserName }) => {
+    test.skip(
+      browserName !== "chromium",
+      "Only Chromium accepts Playwright's clipboard-read/clipboard-write permissions; Firefox rejects them as unknown and WebKit's headless clipboard is unreliable",
+    );
+
+    const taxon = new TaxonPage(page);
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await taxon.selectAllRowsOnPage();
+
+    await page.getByRole("button", { name: /^copy$/i }).click();
+    await page
+      .getByRole("button", { name: "Selected Columns (with headers)" })
+      .click();
+    await expect(page.getByText("Copied 2 selected strains")).toBeVisible();
+    const clipboard = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clipboard).toContain("Species\tStrain\tSegment Count");
+    expect(clipboard).toContain("A/California/04/2009");
+    expect(clipboard).not.toContain("Genome IDs");
+    expect(clipboard).not.toContain("641501.3");
+  });
+
+  // Unguarded: the associated-Genome navigation is plain routing, so every browser
+  // keeps this coverage even though the clipboard assertions above are Chromium-only.
+  test("opens all associated genomes", async ({ page }) => {
+    const taxon = new TaxonPage(page);
+    await taxon.selectAllRowsOnPage();
+    await taxon.openAssociatedGenomes();
+
+    await expect(page).toHaveURL(
+      /\/genome\?rql=in\(genome_id%2C\(641501\.3%2C641501\.4%2C641501\.5\)\)/,
+    );
+    await expect(page.getByRole("button", { name: "Sequences" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Features" })).toBeVisible();
+  });
+
+  test("keeps the selection when a signed-out user launches BLAST", async ({
+    page,
+    context,
+  }) => {
+    await page
+      .getByRole("checkbox", { name: "Select row strain-backend-901" })
+      .click();
+    await page
+      .getByRole("complementary")
+      .getByRole("button", { name: /^services$/i })
+      .click();
+
+    await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
+    // Direct BLAST needs no workspace object, so it carries the selected Genome IDs
+    // into the service tab and lets the protected route handle sign-in. Redirecting
+    // from here instead discarded the selection.
+    const serviceTab = context.waitForEvent("page");
+    await page.getByRole("button", { name: "BLAST" }).click();
+    const opened = await serviceTab;
+    // The protected service route sends a signed-out user through sign-in, but the
+    // rerun key survives the round trip, so the prefill is still there afterwards.
+    await expect(opened).toHaveURL(
+      /\/sign-in\?redirect=%2Fservices%2Fblast%3Frerun_key%3D/,
+    );
+    const rerunKey =
+      new URL(opened.url()).searchParams
+        .get("redirect")
+        ?.match(/rerun_key=([^&]+)/)?.[1] ?? "";
+    expect(rerunKey).not.toBe("");
+    expect(
+      await opened.evaluate((key) => sessionStorage.getItem(key), rerunKey),
+    ).toContain("641501.3");
+    await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
+  });
+
+  test("prompts signed-out users to sign in for Group without leaving the page", async ({
+    page,
+  }) => {
+    await page
+      .getByRole("checkbox", { name: "Select row strain-backend-901" })
+      .click();
+    await page.getByRole("button", { name: /^group$/i }).click();
+
+    await expect(page.getByText("Sign in required")).toBeVisible();
+    // The popover's Sign In is a Button rendered as an anchor, so it carries
+    // role="button" rather than role="link".
+    await expect(
+      page.getByRole("dialog").getByRole("button", { name: "Sign In" }),
+    ).toHaveAttribute(
+      "href",
+      `/sign-in?redirect=${encodeURIComponent(`/taxonomy/${influenzaTaxonId}?tab=strains`)}`,
+    );
+    await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
+  });
+});
 
 test.describe("taxon strains tab: data API error handling", () => {
   test.beforeEach(async ({ page }) => {
@@ -31,7 +230,7 @@ test.describe("taxon strains tab: data API error handling", () => {
   test("shows the original API error and keeps the taxon shell visible", async ({
     page,
   }) => {
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=strains`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=strains`);
 
     await expect(page.getByText(/Internal Server Error/)).toBeVisible({
       timeout: 10_000,
@@ -298,7 +497,7 @@ test.describe("taxon collection tabs: local keyword filtering", () => {
         });
       }
 
-      await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=${tab}`);
+      await page.goto(`/taxonomy/${influenzaTaxonId}?tab=${tab}`);
       await expect(page.getByText(rowText).first()).toBeVisible({
         timeout: 10_000,
       });
@@ -312,7 +511,7 @@ test.describe("taxon collection tabs: local keyword filtering", () => {
         }),
       ).toHaveValue("");
       await expect(page).toHaveURL(
-        `/taxonomy/${INFLUENZA_TAXON_ID}?tab=${tab}`,
+        `/taxonomy/${influenzaTaxonId}?tab=${tab}`,
       );
       expect(collectionRequests).toHaveLength(requestCount);
     });
@@ -332,7 +531,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
         collectionRequests.push(request.url());
     });
 
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=epitopes`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=epitopes`);
     await expect(page.getByText("Hemagglutinin").first()).toBeVisible({
       timeout: 10_000,
     });
@@ -346,7 +545,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
       }),
     ).toHaveValue("");
     await expect(page).toHaveURL(
-      `/taxonomy/${INFLUENZA_TAXON_ID}?tab=epitopes`,
+      `/taxonomy/${influenzaTaxonId}?tab=epitopes`,
     );
     expect(collectionRequests).toHaveLength(requestCount);
   });
@@ -393,7 +592,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
       });
     });
 
-    await page.goto(`/taxonomy/${INFLUENZA_TAXON_ID}?tab=epitopes`);
+    await page.goto(`/taxonomy/${influenzaTaxonId}?tab=epitopes`);
     await expect(page.getByText("SEQ0")).toBeVisible({ timeout: 10_000 });
 
     await page.getByRole("button", { name: "Show Filters" }).click();

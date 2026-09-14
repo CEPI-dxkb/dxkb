@@ -270,8 +270,11 @@ export const routes: RouteEntry[] = [
     name: "taxonomy-list",
     path: "/taxonomy",
     unauthenticated: true,
+    mobile: true,
     prepare: async (page) => {
       await page.waitForLoadState("networkidle");
+      await page.getByRole("heading", { level: 1, name: "Taxa" }).waitFor();
+      await page.getByRole("row", { name: /Select row 11520/ }).waitFor();
     },
   },
   {

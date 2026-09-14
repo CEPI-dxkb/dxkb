@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EpitopeViewRecord } from "@/lib/epitope-view";
 import { taxonomyHref } from "@/lib/views/hrefs";
+import { isTaxonId } from "@/lib/taxonomy-view";
 
 interface FieldProps {
   label: string;
@@ -50,7 +51,7 @@ export function EpitopeOverview({ epitope }: EpitopeOverviewProps) {
       </MetadataCard>
       <MetadataCard title="Organism and protein">
         <Field label="Organism" value={epitope.organism} />
-        {epitope.taxon_id != null && <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Taxon ID</dt><dd className="mt-0.5"><Link className="text-primary underline" href={taxonomyHref(epitope.taxon_id)}>{display(epitope.taxon_id)}</Link></dd></div>}
+        {isTaxonId(String(epitope.taxon_id)) && <div><dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">Taxon ID</dt><dd className="mt-0.5"><Link className="text-primary underline" href={taxonomyHref(String(epitope.taxon_id))}>{display(epitope.taxon_id)}</Link></dd></div>}
         <Field label="Protein name" value={epitope.protein_name} />
         <Field label="Protein ID" value={epitope.protein_id} />
         <Field label="Protein accession" value={epitope.protein_accession} />

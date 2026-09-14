@@ -88,15 +88,38 @@ describe("legacy search route", () => {
     ).rejects.toThrow("NEXT_REDIRECT:/experiment?keyword=RNA&tab=biosets");
   });
 
-  it("continues rendering ordinary legacy type searches", async () => {
-    render(
-      await GlobalSearch({
-        searchParams: Promise.resolve({ type: "taxonomy", q: "Escherichia" }),
+  it("redirects legacy Taxa searches and preserves supported collection state", async () => {
+    await expect(
+      GlobalSearch({
+        searchParams: Promise.resolve({
+          type: "taxonomy",
+          q: "Influenza A",
+          taxon_id: ["10239", "11308"],
+          sort: "taxon_name:asc",
+          ignored: "value",
+        }),
       }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/taxonomy?keyword=Influenza+A&taxon_id=10239&taxon_id=11308&sort=taxon_name%3Aasc",
     );
-    expect(screen.getByTestId("type-search")).toHaveAttribute(
-      "data-search-type",
-      "taxonomy",
+  });
+
+  it("preserves every canonical Taxa filter through the redirect", async () => {
+    await expect(
+      GlobalSearch({
+        searchParams: Promise.resolve({
+          type: "taxonomy",
+          q: "influenza",
+          taxon_rank: ["species", "genus"],
+          genetic_code: "1",
+          division: "Viruses",
+          refine: "H5N1",
+          page: "2",
+          ignored: "value",
+        }),
+      }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:/taxonomy?keyword=influenza&taxon_rank=species&taxon_rank=genus&genetic_code=1&division=Viruses&refine=H5N1&page=2",
     );
   });
 

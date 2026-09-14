@@ -1,20 +1,34 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
-import { SearchActionBar } from "@/components/search/search-action-bar";
+import {
+  SearchActionBar,
+  type SearchActionId,
+} from "@/components/search/search-action-bar";
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
+import {
+  CollectionSelectionActions,
+  copyAndServicesSelectionActionIds,
+  featureSelectionActionIds,
+  interactionSelectionActionIds,
+  genomeSelectionActionIds,
+  sequenceSelectionActionIds,
+  servicesOnlySelectionActionIds,
+  strainSelectionActionIds,
+} from "./collection-selection-actions";
+import type { SelectionServiceKind } from "./selection-service-chooser";
 import {
   DataTable,
   type DataTableColumn,
   type DataTableRow,
 } from "@/components/shared/data-table";
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
-import type { CollectionState } from "@/lib/views/collection-state";
+import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import {
@@ -30,11 +44,21 @@ import {
   experimentIdFromRow,
   featureHref,
   featureIdFromRow,
+  featureListHref,
   genomeHref,
   genomeIdFromRow,
-  genomesHrefFromRow,
   proteinStructureHref,
+  taxonomyHref,
 } from "@/lib/views/hrefs";
+import {
+  maxTaxonomyActionIds,
+  normalizeTaxonIds,
+  taxonomyActionLimitMessage,
+  taxonomyFeaturesHref,
+  taxonomyGenomesHref,
+} from "@/lib/taxonomy-view";
+import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
+import { genomeIdsFromStrains } from "@/lib/strain-view";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -55,7 +79,198 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   facets?: readonly ResourceCollectionFacet[];
   rowHref?: (row: Row) => string | undefined;
   rowLinkField?: string;
+  rowLinkFields?: readonly string[];
+  serverKeywordMode?: "exact" | "prefix";
 }
+
+/** Actions each resource enables. Read by both visibility and dispatch. */
+const taxonomyActionIds = [
+  "services",
+  "taxonOverview",
+  "genomes",
+  "features",
+] as const satisfies readonly SearchActionId[];
+
+const enabledActionsByResource: Partial<
+  Record<DataResource, readonly SearchActionId[]>
+> = {
+  taxonomy: taxonomyActionIds,
+  // Every resource in selectionActionsConfigByResource lives with
+  // CollectionSelectionActions instead, which owns its bar.
+};
+
+/**
+ * Resources whose selection actions live with `CollectionSelectionActions`.
+ * `idField` names the row field SERVICES, GENOMES and GROUP resolve from and `idKind`
+ * says what it holds, so both are inert where `hasSelectableServices` is false and no
+ * ID-backed action is owned. `extraEnabledActionIds` lists entries this component
+ * dispatches but the shared config disables by default.
+ */
+const selectionActionsConfigByResource = {
+  strain: {
+    searchType: "strain",
+    actionIds: strainSelectionActionIds,
+    extraEnabledActionIds: [],
+    idField: "genome_ids",
+    idKind: "genome",
+    singularLabel: "Strain",
+    hasSelectableServices: true,
+  },
+  genome: {
+    searchType: "genome",
+    actionIds: genomeSelectionActionIds,
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "Genome",
+    hasSelectableServices: true,
+  },
+  genome_feature: {
+    searchType: "genome_feature",
+    actionIds: featureSelectionActionIds,
+    // DWNLD, FEATURE and GENOME are enabled by default; FASTA and ID MAP stay
+    // disabled until a later PR wires them.
+    extraEnabledActionIds: [],
+    idField: "feature_id",
+    idKind: "feature",
+    singularLabel: "Feature",
+    hasSelectableServices: true,
+  },
+  genome_sequence: {
+    searchType: "genome_sequence",
+    actionIds: sequenceSelectionActionIds,
+    // DWNLD and GENOME are enabled by default; FEATURES is not, and FASTA and Browser
+    // stay disabled until a later PR wires them.
+    extraEnabledActionIds: ["features"],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "Sequence",
+    hasSelectableServices: true,
+  },
+  protein_feature: {
+    searchType: "protein_feature",
+    actionIds: copyAndServicesSelectionActionIds,
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    // "Domains and Motifs" has no plural suffix to strip.
+    singularLabel: "Domain or Motif",
+    hasSelectableServices: false,
+  },
+  protein_structure: {
+    searchType: "protein_structure",
+    actionIds: copyAndServicesSelectionActionIds,
+    extraEnabledActionIds: [],
+    idField: "genome_id",
+    idKind: "genome",
+    singularLabel: "Protein Structure",
+    hasSelectableServices: false,
+  },
+  sequence_feature: {
+    searchType: "sequence_feature",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD is enabled by default; VARIANT TYPES stays disabled until a later PR
+    // wires it.
+    extraEnabledActionIds: [],
+    idField: "id",
+    idKind: "genome",
+    singularLabel: "Sequence Feature",
+    hasSelectableServices: false,
+  },
+  epitope: {
+    searchType: "epitope",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD and EPITOPE are enabled by default.
+    extraEnabledActionIds: [],
+    idField: "epitope_id",
+    idKind: "genome",
+    singularLabel: "Epitope",
+    hasSelectableServices: false,
+  },
+  serology: {
+    searchType: "serology",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD and SEROLOGY are enabled by default.
+    extraEnabledActionIds: [],
+    idField: "id",
+    idKind: "genome",
+    // "Serology" is already the singular the copied-rows toast wants.
+    singularLabel: "Serology",
+    hasSelectableServices: false,
+  },
+  surveillance: {
+    searchType: "surveillance",
+    actionIds: copyAndServicesSelectionActionIds,
+    // DWNLD and SRVLNCE are enabled by default; MAP stays disabled until a later
+    // PR wires it.
+    extraEnabledActionIds: [],
+    idField: "id",
+    idKind: "genome",
+    // "Surveillance" is already the singular the copied-rows toast wants.
+    singularLabel: "Surveillance",
+    hasSelectableServices: false,
+  },
+  ppi: {
+    searchType: "ppi",
+    actionIds: interactionSelectionActionIds,
+    // DWNLD is enabled by default; FASTA stays disabled until a later PR wires it.
+    extraEnabledActionIds: [],
+    // One Interaction row names two interactors, and legacy's FEATURES and GROUP both
+    // pool them.
+    idField: ["feature_id_a", "feature_id_b"],
+    idKind: "feature",
+    singularLabel: "Interaction",
+    hasSelectableServices: false,
+  },
+  experiment: {
+    searchType: "experiment",
+    actionIds: servicesOnlySelectionActionIds,
+    // DWNLD and EXPRMNT are enabled by default; BIOSETS stays disabled until a
+    // later PR wires the experiment-side gene list.
+    extraEnabledActionIds: [],
+    idField: "exp_id",
+    idKind: "genome",
+    singularLabel: "Experiment",
+    hasSelectableServices: false,
+  },
+  bioset: {
+    searchType: "bioset",
+    actionIds: servicesOnlySelectionActionIds,
+    // DWNLD is enabled by default; BIOSETS is dispatched by this collection even
+    // though the shared config disables it.
+    extraEnabledActionIds: ["biosets"],
+    idField: "bioset_id",
+    idKind: "genome",
+    singularLabel: "Bioset",
+    hasSelectableServices: false,
+  },
+} as const satisfies Partial<
+  Record<
+    DataResource,
+    {
+      searchType:
+        | "strain"
+        | "genome"
+        | "genome_feature"
+        | "genome_sequence"
+        | "protein_feature"
+        | "protein_structure"
+        | "sequence_feature"
+        | "epitope"
+        | "serology"
+        | "surveillance"
+        | "ppi"
+        | "experiment"
+        | "bioset";
+      actionIds: readonly SearchActionId[];
+      extraEnabledActionIds: readonly SearchActionId[];
+      idField: string | readonly string[];
+      idKind: SelectionServiceKind;
+      singularLabel: string;
+      hasSelectableServices: boolean;
+    }
+  >
+>;
 
 function combinePredicates(...predicates: (string | undefined)[]) {
   const active = predicates.filter((predicate): predicate is string =>
@@ -66,7 +281,13 @@ function combinePredicates(...predicates: (string | undefined)[]) {
   return `and(${active.join(",")})`;
 }
 
-function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
+/**
+ * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
+ * or array-valued field of a row. Exported so a custom exporter can filter the rows
+ * it fetches the same way the table filters the rows it shows. `keyword` must already
+ * be trimmed and lower-cased.
+ */
+export function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
   return Object.values(row).some((value) => {
     const values = Array.isArray(value) ? value : [value];
     return values.some((item) =>
@@ -82,6 +303,13 @@ export interface ResourceCollectionExportRequest {
   selectedIds?: readonly string[];
   fields: readonly string[] | null;
   rql?: string;
+  /**
+   * Active loaded-mode keyword, trimmed and lower-cased, for a "download all" export.
+   * In loaded mode the keyword never reaches the request (it filters the loaded page
+   * client-side), so an exporter that ignores this downloads the unfiltered scope.
+   * Absent for selected-ID exports, which are already exact.
+   */
+  loadedKeyword?: string;
 }
 
 export interface ResourceCollectionProps<Row extends DataTableRow> {
@@ -94,6 +322,9 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   renderDetail?: (row: Row) => ReactNode;
   showHeader?: boolean;
   keywordMode?: "server" | "loaded" | "refine";
+  loadedKeywordValue?: string;
+  onLoadedKeywordChange?: (value: string) => void;
+  keywordPlaceholder?: string;
   prefetchNextPage?: boolean;
   onExport?: (request: ResourceCollectionExportRequest) => void | Promise<void>;
 }
@@ -108,17 +339,30 @@ export function ResourceCollection<Row extends DataTableRow>({
   renderDetail,
   showHeader = true,
   keywordMode = "server",
+  loadedKeywordValue,
+  onLoadedKeywordChange,
+  keywordPlaceholder,
   prefetchNextPage = false,
   onExport,
 }: ResourceCollectionProps<Row>) {
   const [exportError, setExportError] = useState<string | null>(null);
-  const [biosetActionError, setBiosetActionError] = useState<string | null>(
-    null,
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);
+  const [isTaxonomyServiceOpen, setIsTaxonomyServiceOpen] = useState(false);
+  /**
+   * The Taxonomy action currently resolving IDs. Overlapping runs would let the
+   * first one's cleanup clear the second one's spinner, and a later SERVICES
+   * resolution would replace the IDs an already-open chooser is working with.
+   */
+  const pendingTaxonomyActionRef = useRef<SearchActionId | null>(null);
+  const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
+    [],
   );
   const [selectedRowsById, setSelectedRowsById] = useState<
     Partial<Record<string, Row>>
   >({});
-  const [loadedKeyword, setLoadedKeyword] = useState("");
+  const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
+  const loadedKeyword = loadedKeywordValue ?? internalLoadedKeyword;
   const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
   const hasLoadedKeyword =
     keywordMode === "loaded" && Boolean(normalizedLoadedKeyword);
@@ -148,6 +392,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     facetFields: profile.facets?.map((facet) => facet.field),
     prefetchNextPage,
     structuralRql,
+    serverKeywordMode: profile.serverKeywordMode,
     state: requestState,
     onStateChange:
       keywordMode === "loaded"
@@ -158,7 +403,9 @@ export function ResourceCollection<Row extends DataTableRow>({
   });
   const columns = profile.columns.map((column) =>
     enableRowLinks &&
-    column.id === (profile.rowLinkField ?? profile.idField) &&
+    (
+      profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField]
+    ).includes(column.id) &&
     profile.rowHref
       ? {
           ...column,
@@ -195,8 +442,18 @@ export function ResourceCollection<Row extends DataTableRow>({
         ? collection.activeId
         : null
       : genomeIdFromRow(displayedDetail);
-  const selectedGenomesHref = genomesHrefFromRow(displayedDetail);
+  const knownSingleStrainHasNoGenomes =
+    profile.resource === "strain" &&
+    displayedSelectedIds.length === 1 &&
+    displayedDetail !== null &&
+    genomeIdsFromStrains([displayedDetail]).length === 0;
   const selectedFeatureId = featureIdFromRow(displayedDetail);
+  const sequenceId = displayedDetail?.sequence_id;
+  const selectedSequenceId =
+    profile.resource === "genome_sequence" &&
+    (typeof sequenceId === "string" || typeof sequenceId === "number")
+      ? String(sequenceId)
+      : "";
   const selectedEpitopeId = epitopeIdFromRow(displayedDetail);
   const selectedExperimentId = experimentIdFromRow(displayedDetail);
   const selectedPdbId = displayedDetail?.pdb_id;
@@ -227,8 +484,160 @@ export function ResourceCollection<Row extends DataTableRow>({
     collection.selectedIds.length > 0 &&
     !hasCompleteBiosetSelection;
 
+  const selectedActionCount = hasLoadedKeyword
+    ? displayedSelectedIds.length
+    : collection.isAllPagesSelected
+      ? collection.total
+      : collection.selectedIds.length;
+
+  const selectionActionsConfig =
+    profile.resource in selectionActionsConfigByResource
+      ? selectionActionsConfigByResource[
+          profile.resource as keyof typeof selectionActionsConfigByResource
+        ]
+      : undefined;
+
+  /**
+   * Reasons a collection's own rows cannot reach an action it otherwise dispatches:
+   * structure rows only reach the Genome, Feature and Structure members they carry,
+   * and Bioset rows need an experiment behind every selected row.
+   */
+  const collectionDisabledActions =
+    profile.resource === "protein_structure"
+      ? {
+          genome: selectedGenomeId
+            ? undefined
+            : "No genome is associated with this structure",
+          feature: selectedFeatureId
+            ? undefined
+            : "No feature is associated with this structure",
+          structure: selectedStructureHref
+            ? undefined
+            : "A structure accession is required",
+        }
+      : hasIncompleteBiosetSelection
+        ? {
+            biosets:
+              "Some selected Biosets are not associated with experiments",
+          }
+        : undefined;
+
+  const resolveActionRows = async (
+    fields: readonly string[],
+    maxRows: number,
+    actionLabel: string,
+  ): Promise<Record<string, unknown>[]> => {
+    if (selectedActionCount > maxRows) {
+      throw new Error(
+        `${actionLabel} supports at most ${maxRows.toLocaleString()} ${profile.label}. Narrow the selection and try again.`,
+      );
+    }
+
+    const selectedFields = [...fields];
+    if (!collection.isAllPagesSelected || hasLoadedKeyword) {
+      const ids = [...displayedSelectedIds];
+      const rows: Record<string, unknown>[] = [];
+      for (let offset = 0; offset < ids.length; offset += 500) {
+        const result = await repository.selected(profile.resource, {
+          ids: ids.slice(offset, offset + 500),
+          fields: selectedFields,
+        });
+        rows.push(...result.rows);
+      }
+      return rows;
+    }
+
+    if (collection.isRefreshing) {
+      throw new Error(
+        "Wait for the current results to finish loading and try again.",
+      );
+    }
+    const result = await repository.exportAll(profile.resource, {
+      rql: effectiveRql,
+      keyword: requestState.keyword,
+      keywordMode: profile.serverKeywordMode,
+      fields: selectedFields,
+      sort: dataSort(state.sort),
+    });
+    return result.rows;
+  };
+
+  const resolveSelectedTaxonIds = async (): Promise<string[]> => {
+    if (!collection.isAllPagesSelected) {
+      return normalizeTaxonIds(displayedSelectedIds);
+    }
+    if (collection.total > maxTaxonomyActionIds) {
+      throw new Error(taxonomyActionLimitMessage());
+    }
+    const result = await repository.exportAll("taxonomy", {
+      rql: effectiveRql,
+      keyword: requestState.keyword,
+      keywordMode: profile.serverKeywordMode,
+      fields: ["taxon_id"],
+      sort: dataSort(state.sort),
+    });
+    return normalizeTaxonIds(result.rows.map((row) => row.taxon_id));
+  };
+
+  const runTaxonomyAction = async (actionId: SearchActionId) => {
+    setActionError(null);
+    if (pendingTaxonomyActionRef.current) return;
+    if (actionId === "services") {
+      // Opens an in-page dialog, so there is no tab to reserve.
+      pendingTaxonomyActionRef.current = actionId;
+      setLoadingActionIds([actionId]);
+      try {
+        setTaxonomyServiceIds(await resolveSelectedTaxonIds());
+        setIsTaxonomyServiceOpen(true);
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : String(error));
+      } finally {
+        pendingTaxonomyActionRef.current = null;
+        setLoadingActionIds([]);
+      }
+      return;
+    }
+    // Resolving an all-pages selection needs a network round-trip, after which
+    // browsers no longer treat window.open as user-initiated and block it. Reserve
+    // the tab inside the click and navigate it once the IDs are known.
+    const resultsWindow = window.open("about:blank", "_blank");
+    if (!resultsWindow) {
+      setActionError(`Allow pop-ups to open the selected ${profile.label}.`);
+      return;
+    }
+    resultsWindow.opener = null;
+    pendingTaxonomyActionRef.current = actionId;
+    setLoadingActionIds([actionId]);
+    try {
+      const ids = await resolveSelectedTaxonIds();
+      const href =
+        actionId === "taxonOverview" && ids.length === 1
+          ? taxonomyHref(ids[0])
+          : actionId === "genomes"
+            ? taxonomyGenomesHref(ids)
+            : actionId === "features" && ids.length === 1
+              ? taxonomyFeaturesHref(ids)
+              : null;
+      if (!href) {
+        resultsWindow.close();
+        return;
+      }
+      const link = resultsWindow.document.createElement("a");
+      link.href = href;
+      link.target = "_self";
+      link.rel = "noreferrer";
+      link.click();
+    } catch (error) {
+      resultsWindow.close();
+      setActionError(error instanceof Error ? error.message : String(error));
+    } finally {
+      pendingTaxonomyActionRef.current = null;
+      setLoadingActionIds([]);
+    }
+  };
+
   const openBiosetResults = async () => {
-    setBiosetActionError(null);
+    setActionError(null);
     if (!collection.isAllPagesSelected) {
       window.open(
         biosetResultsHref(selectedBiosetExperimentIds),
@@ -238,16 +647,14 @@ export function ResourceCollection<Row extends DataTableRow>({
       return;
     }
     if (collection.total > maxExportRows) {
-      setBiosetActionError(
+      setActionError(
         `This selection contains ${collection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
       );
       return;
     }
     const resultsWindow = window.open("about:blank", "_blank");
     if (!resultsWindow) {
-      setBiosetActionError(
-        "Allow pop-ups to open the selected Bioset results.",
-      );
+      setActionError("Allow pop-ups to open the selected Bioset results.");
       return;
     }
     resultsWindow.opener = null;
@@ -256,13 +663,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         rql: effectiveRql,
         keyword: requestState.keyword,
         fields: ["exp_id"],
-        sort:
-          state.sort === "unsorted"
-            ? undefined
-            : {
-                field: state.sort.split(":")[0],
-                direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-              },
+        sort: dataSort(state.sort),
       });
       const experimentIds = result.rows.flatMap((row) => {
         const experimentId = experimentIdFromRow(row);
@@ -270,7 +671,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       });
       if (experimentIds.length !== result.rows.length) {
         resultsWindow.close();
-        setBiosetActionError(
+        setActionError(
           experimentIds.length === 0
             ? "No experiments are associated with this selection."
             : "Some selected Biosets are not associated with experiments.",
@@ -280,7 +681,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       resultsWindow.location.replace(biosetResultsHref(experimentIds));
     } catch (error) {
       resultsWindow.close();
-      setBiosetActionError(
+      setActionError(
         error instanceof Error
           ? error.message
           : "The selected Bioset results could not be loaded.",
@@ -311,7 +712,14 @@ export function ResourceCollection<Row extends DataTableRow>({
     }
     try {
       if (onExport) {
-        await onExport({ format, selectedIds: ids, fields, rql: effectiveRql });
+        await onExport({
+          format,
+          selectedIds: ids,
+          fields,
+          rql: effectiveRql,
+          loadedKeyword:
+            hasLoadedKeyword && !ids ? normalizedLoadedKeyword : undefined,
+        });
         return;
       }
       const selectedFields = fields
@@ -326,14 +734,9 @@ export function ResourceCollection<Row extends DataTableRow>({
         : await repository.exportAll(profile.resource, {
             rql: effectiveRql,
             keyword: requestState.keyword,
+            keywordMode: profile.serverKeywordMode,
             fields: hasLoadedKeyword ? allFields : selectedFields,
-            sort:
-              state.sort === "unsorted"
-                ? undefined
-                : {
-                    field: state.sort.split(":")[0],
-                    direction: state.sort.endsWith(":desc") ? "desc" : "asc",
-                  },
+            sort: dataSort(state.sort),
           });
       const exportedRows =
         hasLoadedKeyword && !ids
@@ -356,9 +759,67 @@ export function ResourceCollection<Row extends DataTableRow>({
     }
   };
 
+  /** Dispatch for action-bar entries backed by the current selection. */
+  const dispatchAction = (actionId: SearchActionId) => {
+    if (
+      profile.resource === "taxonomy" &&
+      taxonomyActionIds.includes(actionId as (typeof taxonomyActionIds)[number])
+    ) {
+      void runTaxonomyAction(actionId);
+    } else if (actionId === "download") {
+      void exportRows(
+        "csv",
+        displayedSelectedIds,
+        null,
+        collection.isAllPagesSelected,
+      );
+    } else if (actionId === "biosets" && hasBiosetSelection) {
+      void openBiosetResults();
+    } else if (actionId === "genome" && selectedGenomeId) {
+      window.open(
+        genomeHref(selectedGenomeId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "feature" && selectedFeatureId) {
+      window.open(
+        featureHref(selectedFeatureId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "features" && selectedSequenceId) {
+      window.open(
+        featureListHref({
+          rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
+        }),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "structure" && selectedStructureHref) {
+      window.open(selectedStructureHref, "_blank", "noopener,noreferrer");
+    } else if (actionId === "epitope" && selectedEpitopeId) {
+      window.open(
+        epitopeHref(selectedEpitopeId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (actionId === "experiment" && selectedExperimentId) {
+      window.open(
+        experimentHref(selectedExperimentId),
+        "_blank",
+        "noopener,noreferrer",
+      );
+    } else if (
+      (actionId === "surveillance" || actionId === "serology") &&
+      selectedMemberHref
+    ) {
+      window.open(selectedMemberHref, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const detailContent = (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto bg-background text-foreground shadow-md">
+      <div className="bg-background text-foreground min-h-0 flex-1 overflow-y-auto shadow-md">
         {collection.detailError ? (
           <Alert variant="destructive" className="m-4">
             <AlertTitle>Could not load record details</AlertTitle>
@@ -404,13 +865,13 @@ export function ResourceCollection<Row extends DataTableRow>({
             >
               {profile.label}
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Browse {profile.label.toLowerCase()} records.
             </p>
           </div>
           {profile.guideUrl && (
             <a
-              className="text-sm text-primary underline underline-offset-2"
+              className="text-primary text-sm underline underline-offset-2"
               href={profile.guideUrl}
               target="_blank"
               rel="noreferrer"
@@ -433,6 +894,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         facets={collection.facets}
         definitions={profile.facets ?? []}
         hasExplicitRql={Boolean(state.rql)}
+        keywordPlaceholder={keywordPlaceholder}
         onChange={({ keyword, filters, clearRql }) => {
           if (keywordMode === "loaded") {
             const nextLoadedKeyword = keyword ?? "";
@@ -440,7 +902,8 @@ export function ResourceCollection<Row extends DataTableRow>({
               collection.setSelection({});
               collection.setIsAllPagesSelected(false);
             }
-            setLoadedKeyword(nextLoadedKeyword);
+            setInternalLoadedKeyword(nextLoadedKeyword);
+            onLoadedKeywordChange?.(nextLoadedKeyword);
             if (filters === state.filters && !clearRql) return;
           }
           onStateChange({
@@ -467,10 +930,10 @@ export function ResourceCollection<Row extends DataTableRow>({
           <AlertDescription>{exportError}</AlertDescription>
         </Alert>
       )}
-      {biosetActionError && (
+      {actionError && (
         <Alert variant="destructive">
-          <AlertTitle>Could not open Bioset results</AlertTitle>
-          <AlertDescription>{biosetActionError}</AlertDescription>
+          <AlertTitle>Could not complete action</AlertTitle>
+          <AlertDescription>{actionError}</AlertDescription>
         </Alert>
       )}
 
@@ -503,107 +966,57 @@ export function ResourceCollection<Row extends DataTableRow>({
                 collection.selectedIds.length > 0
           }
           actionBar={
-            <SearchActionBar
-              selectedCount={
-                hasLoadedKeyword
-                  ? displayedSelectedIds.length
-                  : collection.isAllPagesSelected
-                    ? collection.total
-                    : collection.selectedIds.length
-              }
-              searchType={profile.resource}
-              guideUrl={profile.guideUrl}
-              enabledActions={
-                profile.resource === "strain" && selectedGenomesHref
-                  ? ["genomes"]
-                  : profile.resource === "protein_structure" &&
-                      selectedStructureHref
-                    ? ["structure"]
-                    : hasBiosetSelection
-                      ? ["biosets"]
-                      : undefined
-              }
-              disabledActions={
-                profile.resource === "strain" && !selectedGenomesHref
-                  ? { genomes: "No genomes are associated with this strain" }
-                    : profile.resource === "protein_structure"
-                      ? {
-                          genome: selectedGenomeId
-                            ? undefined
-                            : "No genome is associated with this structure",
-                          feature: selectedFeatureId
-                            ? undefined
-                            : "No feature is associated with this structure",
-                          structure: selectedStructureHref
-                            ? undefined
-                            : "A structure accession is required",
-                        }
-                      : hasIncompleteBiosetSelection
-                        ? {
-                            biosets:
-                              "Some selected Biosets are not associated with experiments",
-                          }
-                        : undefined
-
-              }
-              onAction={(actionId) => {
-                if (actionId === "download") {
-                  void exportRows(
-                    "csv",
-                    displayedSelectedIds,
-                    null,
-                    collection.isAllPagesSelected,
-                  );
-                } else if (actionId === "biosets" && hasBiosetSelection) {
-                  void openBiosetResults();
-                } else if (actionId === "genome" && selectedGenomeId) {
-                  window.open(
-                    genomeHref(selectedGenomeId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "genomes" && selectedGenomesHref) {
-                  window.open(
-                    selectedGenomesHref,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "feature" && selectedFeatureId) {
-                  window.open(
-                    featureHref(selectedFeatureId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "structure" && selectedStructureHref) {
-                  window.open(
-                    selectedStructureHref,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "epitope" && selectedEpitopeId) {
-                  window.open(
-                    epitopeHref(selectedEpitopeId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (actionId === "experiment" && selectedExperimentId) {
-                  window.open(
-                    experimentHref(selectedExperimentId),
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
-                } else if (
-                  (actionId === "surveillance" || actionId === "serology") &&
-                  selectedMemberHref
-                ) {
-                  window.open(
-                    selectedMemberHref,
-                    "_blank",
-                    "noopener,noreferrer",
-                  );
+            selectionActionsConfig ? (
+              <CollectionSelectionActions
+                searchType={selectionActionsConfig.searchType}
+                label={profile.label}
+                singularLabel={selectionActionsConfig.singularLabel}
+                actionIds={selectionActionsConfig.actionIds}
+                extraEnabledActionIds={
+                  selectionActionsConfig.extraEnabledActionIds
                 }
-              }}
-            />
+                idField={selectionActionsConfig.idField}
+                idKind={selectionActionsConfig.idKind}
+                selectedCount={selectedActionCount}
+                guideUrl={profile.guideUrl}
+                hasNoAssociatedGenomes={knownSingleStrainHasNoGenomes}
+                disabledActions={collectionDisabledActions}
+                hasSelectableServices={
+                  selectionActionsConfig.hasSelectableServices
+                }
+                columns={profile.columns}
+                columnVisibility={columnVisibility}
+                resolveActionRows={resolveActionRows}
+                onError={setActionError}
+                onOtherAction={dispatchAction}
+              />
+            ) : (
+              <SearchActionBar
+                selectedCount={
+                  hasLoadedKeyword
+                    ? displayedSelectedIds.length
+                    : collection.isAllPagesSelected
+                      ? collection.total
+                      : collection.selectedIds.length
+                }
+                searchType={profile.resource}
+                guideUrl={profile.guideUrl}
+                enabledActions={
+                  enabledActionsByResource[profile.resource] ??
+                  (hasBiosetSelection ? ["biosets"] : undefined)
+                }
+                loadingActionIds={loadingActionIds}
+                disabledActions={
+                  hasIncompleteBiosetSelection
+                    ? {
+                        biosets:
+                          "Some selected Biosets are not associated with experiments",
+                      }
+                    : undefined
+                }
+                onAction={dispatchAction}
+              />
+            )
           }
           sidePanel={detailContent}
         >
@@ -661,6 +1074,13 @@ export function ResourceCollection<Row extends DataTableRow>({
             isLoading={collection.isInitialLoading}
           />
         </ResourceWorkspace>
+      )}
+      {profile.resource === "taxonomy" && (
+        <TaxonomyServiceChooser
+          open={isTaxonomyServiceOpen}
+          onOpenChange={setIsTaxonomyServiceOpen}
+          taxonIds={taxonomyServiceIds}
+        />
       )}
     </section>
   );

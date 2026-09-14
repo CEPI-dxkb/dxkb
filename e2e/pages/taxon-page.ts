@@ -27,4 +27,17 @@ export class TaxonPage {
   rowCell(text: string): Locator {
     return this.page.getByText(text);
   }
+
+  async selectAllRowsOnPage(): Promise<void> {
+    await this.page
+      .getByRole("checkbox", { name: /select all rows on this page/i })
+      .click();
+  }
+
+  async openAssociatedGenomes(): Promise<void> {
+    await this.page
+      .getByRole("complementary")
+      .getByRole("button", { name: /genomes/i })
+      .click();
+  }
 }

@@ -47,7 +47,11 @@ const emptySelection: GraphSelection = { nodes: [], edges: [] };
 interface InteractionsGraphProps {
   taxonId: number;
   q: string;
-  /** The Table subtab's current RQL filter, including the shared keyword. */
+  /**
+   * Extra RQL predicate to intersect with `q`, e.g. a facet selection. The shared
+   * keyword is NOT passed here — it arrives as `keywordValue` and is encoded once,
+   * below, so the graph cannot end up with two clauses for the same text.
+   */
   tableFilter?: string;
   keywordValue: string;
   onKeywordChange: (value: string) => void;
@@ -63,13 +67,11 @@ export function InteractionsGraph({
   const cleanQ = q.split("#")[0];
   const keywordFilter = buildRql({
     selected: [],
-    keywords: keywordValue.split(" ").filter(Boolean),
+    keywords: keywordValue.trim().split(/\s+/).filter(Boolean),
   });
-  const parts = [
-    cleanQ,
-    tableFilter,
-    tableFilter?.includes(keywordFilter) ? "" : keywordFilter,
-  ].filter((part): part is string => Boolean(part) && part !== "false");
+  const parts = [cleanQ, tableFilter, keywordFilter].filter(
+    (part): part is string => Boolean(part) && part !== "false",
+  );
   const combinedQuery =
     parts.length === 0
       ? ""

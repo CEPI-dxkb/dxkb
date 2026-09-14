@@ -72,18 +72,18 @@ explicitly with `notFound()` instead (see §2.4).
 
 ### 2.4 The 10 segments
 
-| segment              | singular route                   | list route            | entity id                                | id kind | legacy singular / list                  |
-| -------------------- | -------------------------------- | --------------------- | ---------------------------------------- | ------- | --------------------------------------- |
-| `taxonomy`           | `/taxonomy/{taxonId}`            | `/taxonomy`           | NCBI taxon id                            | int     | Taxonomy / TaxonList                    |
-| `genome`             | `/genome/{genomeId}`             | `/genome`             | BV-BRC genome id (`59201.7581`)          | string  | Genome / GenomeList                     |
-| `feature`            | `/feature/{featureId}`           | `/feature`            | PATRIC feature id                        | string  | Feature, Protein / FeatureList, ProteinList |
-| `epitope`            | `/epitope/{epitopeId}`           | `/epitope`            | epitope id                               | string  | Epitope / EpitopeList                   |
-| `surveillance`       | `/surveillance/{sampleId}`       | `/surveillance`       | sample identifier                        | string  | Surveillance / SurveillanceList         |
-| `serology`           | `/serology/{sampleId}`           | `/serology`           | sample identifier                        | string  | Serology / SerologyList                 |
-| `strain`             | — (none)                         | `/strain`             | —                                        | —       | — / StrainList                          |
+| segment              | singular route                   | list route            | entity id                                | id kind | legacy singular / list                        |
+| -------------------- | -------------------------------- | --------------------- | ---------------------------------------- | ------- | --------------------------------------------- |
+| `taxonomy`           | `/taxonomy/{taxonId}`            | `/taxonomy`           | NCBI taxon id                            | int     | Taxonomy / TaxonList                          |
+| `genome`             | `/genome/{genomeId}`             | `/genome`             | BV-BRC genome id (`59201.7581`)          | string  | Genome / GenomeList                           |
+| `feature`            | `/feature/{featureId}`           | `/feature`            | PATRIC feature id                        | string  | Feature, Protein / FeatureList, ProteinList   |
+| `epitope`            | `/epitope/{epitopeId}`           | `/epitope`            | epitope id                               | string  | Epitope / EpitopeList                         |
+| `surveillance`       | `/surveillance/{sampleId}`       | `/surveillance`       | sample identifier                        | string  | Surveillance / SurveillanceList               |
+| `serology`           | `/serology/{sampleId}`           | `/serology`           | sample identifier                        | string  | Serology / SerologyList                       |
+| `strain`             | — (none)                         | `/strain`             | —                                        | —       | — / StrainList                                |
 | `domains-and-motifs` | — (none)                         | `/domains-and-motifs` | —                                        | —       | — / DomainsAndMotifsList, ProteinFeaturesList |
-| `protein-structure`  | `/protein-structure?accession=…` | `/protein-structure`  | accession or workspace path (no path id) | none    | ProteinStructure / ProteinStructureList |
-| `experiment`         | `/experiment/{experimentId}`     | `/experiment`         | experiment id                            | int     | ExperimentComparison / ExperimentList   |
+| `protein-structure`  | `/protein-structure?accession=…` | `/protein-structure`  | accession or workspace path (no path id) | none    | ProteinStructure / ProteinStructureList       |
+| `experiment`         | `/experiment/{experimentId}`     | `/experiment`         | experiment id                            | int     | ExperimentComparison / ExperimentList         |
 
 \* Legacy singular uses `ExperimentComparison` as the URL segment (not `Experiment`). The bare `Experiment` viewer is workspace-only with no public URL. Both singular and list routes are scaffolded.
 
@@ -230,13 +230,15 @@ Each is a single loop over `viewRegistry`:
 ### 4.1 Shared Data API contract
 
 Production views use `src/lib/data-api/` through the same-origin
-`/api/data/[resource]` gateway. Supported resources are `genome`, `genome_feature`,
-`epitope`, `epitope_assay`, `surveillance`, `serology`, `strain`, `protein_feature`,
-`protein_structure`, `experiment`, `bioset`, `genome_sequence`, and `ppi`.
+`/api/data/[resource]` gateway. Supported resources are `taxonomy`, `genome`,
+`genome_feature`, `epitope`, `epitope_assay`, `surveillance`, `serology`, `strain`,
+`protein_feature`, `protein_structure`, `experiment`, `bioset`, `genome_sequence`,
+`sequence_feature`, and `ppi`.
 
 The resource registry owns each stable ID and any permitted alternate member identifiers:
-`genome_id`, `feature_id` (alternate `patric_id`), `epitope_id`, `assay_id`, `id`, `id`,
-`id`, `id`, `pdb_id`, `exp_id`, `bioset_id`, `sequence_id`, and `id`, respectively.
+`taxon_id`, `genome_id`, `feature_id` (alternate `patric_id`), `epitope_id`, `assay_id`,
+`id`, `id`, `id`, `id`, `pdb_id`, `exp_id`, `bioset_id`, `sequence_id`, `id`, and `id`,
+respectively.
 Surveillance additionally permits `sample_identifier` and multivalued
 `pathogen_test_type`; Serology permits `sample_identifier` and scalar `test_type` for
 compound member lookup. An `eq()` clause is a backend match predicate and does not imply
@@ -356,9 +358,15 @@ and tabs close to the route.
 
 Genome Phase 1 replaces both scaffold handlers with explicit routes:
 
-- `/genome` is a focused Genome collection backed by the `genome` resource. It supports
-  `keyword`, `taxon_id` (mapped to `taxon_lineage_ids`), `rql`, `page`, and validated `sort`;
-  it is not the legacy multi-resource GenomeList tab strip.
+- `/genome` is a Genome collection backed by the `genome` resource. It supports
+  `keyword`, `taxon_id` (mapped to `taxon_lineage_ids`), `rql`, `page`, and validated `sort`.
+  It always exposes the legacy GenomeList tab set; supported related-resource tabs are
+  scoped through the *effective* Genome predicate and unsupported tabs are
+  capability-gated. The effective predicate is the explicit `?rql=` when one is present;
+  otherwise it is the implicit recent scope
+  (`and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))`) combined with any
+  friendly structural filters. An explicit `rql` replaces that implicit scope rather than
+  narrowing it.
 - `/genome/{genomeId}` validates and fetches the exact `genome_id`, renders the member
   overview, and owns explicit member-tab composition.
 - Genome member tabs are Overview, Genome Browser, Sequences, Features, Proteins, Protein
@@ -529,7 +537,7 @@ These shipped files (commits from 2026-06-15) must be updated for the `view` →
 
 | Decision              | Choice                                                                                                                                                                |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Deliverable           | Schema + routing skeleton for all view types, plus subsequent production phases through Protein Structures Phase 8                                                   |
+| Deliverable           | Schema + routing skeleton for all view types, plus subsequent production phases through Protein Structures Phase 8                                                    |
 | List ↔ singular       | Combined: bare segment = list, `+id` = singular → **10 segments**                                                                                                     |
 | Segment casing        | lowercase kebab-case                                                                                                                                                  |
 | Tab param             | `?tab=` (query, server-readable), migrated from `?view=`                                                                                                              |

@@ -3,7 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
-import type { CollectionState } from "@/lib/views/collection-state";
+import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import {
   collectionQueryOptions,
   type DataRepository,
@@ -24,6 +24,7 @@ export interface UseResourceCollectionOptions {
   facetFields?: readonly string[];
   prefetchNextPage?: boolean;
   structuralRql?: string;
+  serverKeywordMode?: "exact" | "prefix";
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
 }
@@ -43,15 +44,6 @@ function combineRql(...parts: (string | undefined)[]) {
   return `and(${predicates.join(",")})`;
 }
 
-function dataSort(sort: string) {
-  if (sort === "unsorted") return undefined;
-  const [field, direction] = sort.split(":");
-  return {
-    field,
-    direction: direction === "desc" ? ("desc" as const) : ("asc" as const),
-  };
-}
-
 export function useResourceCollection<Row extends ResourceRow>({
   repository,
   resource,
@@ -61,6 +53,7 @@ export function useResourceCollection<Row extends ResourceRow>({
   facetFields = [],
   prefetchNextPage = false,
   structuralRql,
+  serverKeywordMode,
   state,
   onStateChange,
 }: UseResourceCollectionOptions) {
@@ -86,13 +79,22 @@ export function useResourceCollection<Row extends ResourceRow>({
     () => ({
       rql,
       keyword: state.keyword,
+      keywordMode: serverKeywordMode,
       page: state.page,
       pageSize: resourceCollectionPageSize,
       sort: dataSort(state.sort),
       fields: [...fields],
       facets: [...facetFields],
     }),
-    [facetFields, fields, rql, state.keyword, state.page, state.sort],
+    [
+      facetFields,
+      fields,
+      rql,
+      serverKeywordMode,
+      state.keyword,
+      state.page,
+      state.sort,
+    ],
   );
 
   const query = useQuery(

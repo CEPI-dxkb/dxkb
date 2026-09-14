@@ -155,6 +155,130 @@ describe("InMemoryWorkspaceRepository", () => {
     expect(rawTuple[4]).toBe("/u/home/second.fa#1");
   });
 
+  it("creates, reads, and appends legacy-compatible ID group content", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: { "/u/home/Genome Groups": [] },
+    });
+
+    await repo.createIdGroup({
+      path: "/u/home/Genome Groups",
+      name: "selected",
+      type: "genome_group",
+      idField: "genome_id",
+      ids: ["g1", "g2", "g1"],
+    });
+    await repo.appendToIdGroup({
+      path: "/u/home/Genome Groups/selected",
+      idField: "genome_id",
+      ids: ["g2", "g3", "g3"],
+    });
+
+    const raw = (await repo.getRaw(["/u/home/Genome Groups/selected"], {
+      metadataOnly: false,
+    })) as unknown[][][];
+    const entry = raw[0][0];
+    expect((entry[0] as unknown[])[1]).toBe("genome_group");
+    expect(JSON.parse(entry[1] as string)).toEqual({
+      name: "selected",
+      id_list: { genome_id: ["g1", "g2", "g3"] },
+    });
+    expect(repo.calls.map((call) => call.method)).toEqual([
+      "createIdGroup",
+      "appendToIdGroup",
+      "getRaw",
+    ]);
+    // The read options are part of the call history so a content read (rather than a
+    // metadata-only read) can be asserted.
+    expect(repo.calls.at(-1)).toEqual(
+      expect.objectContaining({
+        method: "getRaw",
+        options: { metadataOnly: false },
+      }),
+    );
+  });
+
+  it("preserves unrelated ID lists, content fields, and metadata on append", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/u/home/Genome Groups": [
+          {
+            name: "selected",
+            type: "genome_group",
+            userMeta: { description: "keep me" },
+            content: JSON.stringify({
+              name: "selected",
+              color: "blue",
+              id_list: { genome_id: ["g1"], feature_id: ["f1"] },
+            }),
+          },
+        ],
+      },
+    });
+
+    await repo.appendToIdGroup({
+      path: "/u/home/Genome Groups/selected",
+      idField: "genome_id",
+      ids: ["g2"],
+    });
+
+    const raw = (await repo.getRaw(["/u/home/Genome Groups/selected"], {
+      metadataOnly: false,
+    })) as unknown[][][];
+    const entry = raw[0][0];
+    expect((entry[0] as unknown[])[7]).toEqual({ description: "keep me" });
+    expect(JSON.parse(entry[1] as string)).toEqual({
+      name: "selected",
+      color: "blue",
+      id_list: { genome_id: ["g1", "g2"], feature_id: ["f1"] },
+    });
+  });
+
+  it("rejects create overwrite and malformed append without mutating content", async () => {
+    const malformed = JSON.stringify({ id_list: { genome_id: "g1" } });
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/groups": [
+          { name: "existing", type: "genome_group", content: malformed },
+        ],
+      },
+    });
+
+    await expect(
+      repo.createIdGroup({
+        path: "/groups",
+        name: "existing",
+        type: "genome_group",
+        idField: "genome_id",
+        ids: ["g2"],
+      }),
+    ).rejects.toBeInstanceOf(WorkspaceApiError);
+    await expect(
+      repo.appendToIdGroup({
+        path: "/groups/existing",
+        idField: "genome_id",
+        ids: ["g2"],
+      }),
+    ).rejects.toThrow("id_list.genome_id must be a string array");
+
+    const raw = (await repo.getRaw(["/groups/existing"], {
+      metadataOnly: false,
+    })) as unknown[][][];
+    expect(raw[0][0][1]).toBe(malformed);
+  });
+
+  it("allows ID group operation error injection", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      errors: { appendToIdGroup: new Error("append failed") },
+    });
+    await expect(
+      repo.appendToIdGroup({
+        path: "/groups/missing",
+        idField: "genome_id",
+        ids: ["g1"],
+      }),
+    ).rejects.toThrow("append failed");
+  });
+
   it("rejects delete of protected folders without recording the call or mutating fixtures", async () => {
     const repo = new InMemoryWorkspaceRepository({
       directories: {
@@ -174,6 +298,9 @@ describe("InMemoryWorkspaceRepository", () => {
 
     expect(repo.calls.some((c) => c.method === "delete")).toBe(false);
     const remaining = await repo.listDirectory({ path: "/alice@bvbrc/home" });
-    expect(remaining.map((i) => i.name)).toEqual(["Genome Groups", "My Project"]);
+    expect(remaining.map((i) => i.name)).toEqual([
+      "Genome Groups",
+      "My Project",
+    ]);
   });
 });

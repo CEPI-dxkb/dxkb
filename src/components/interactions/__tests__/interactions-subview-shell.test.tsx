@@ -7,19 +7,17 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 // counter verifies the component instance survives while keyword text is shared
 // separately by the shell.
 let tableMountCount = 0;
-vi.mock("@/components/organisms/taxon-views/taxon-data-panel", () => ({
-  TaxonDataPanel: ({
+vi.mock("@/components/views", () => ({
+  ResourceChildCollection: ({
     resource,
-    q,
+    rql,
     guideUrl,
-    onFilterChange,
     keywordValue,
     onKeywordChange,
   }: {
     resource: string;
-    q: string;
+    rql: string;
     guideUrl?: string;
-    onFilterChange?: (rql: string) => void;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
   }) => {
@@ -30,16 +28,11 @@ vi.mock("@/components/organisms/taxon-views/taxon-data-panel", () => ({
       <div
         data-testid="table-panel"
         data-resource={resource}
-        data-q={q}
+        data-q={rql}
         data-guide={guideUrl}
         data-keyword={keywordValue}
       >
-        <button
-          onClick={() => {
-            onKeywordChange?.("fromTable");
-            onFilterChange?.("keyword(fromTable*)");
-          }}
-        >
+        <button onClick={() => onKeywordChange?.("fromTable")}>
           set-from-table
         </button>
       </div>
@@ -112,21 +105,17 @@ describe("InteractionsSubviewShell", () => {
     expect(screen.getByTestId("table-panel").parentElement).not.toHaveAttribute("inert");
   });
 
-  it("passes the table's current filter into the graph subview as tableFilter (bug #1)", () => {
+  it("hands the graph the keyword text, not a second RQL clause for it (bug #1)", () => {
     render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
 
     fireEvent.click(screen.getByText("set-from-table"));
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-table-filter", "keyword(fromTable*)");
-  });
-
-  it("starts the graph subview with an empty tableFilter before any table filtering", () => {
-    render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
-
-    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-table-filter", "");
+    // The graph owns keyword encoding (one wildcard clause per term). A keyword-only
+    // tableFilter here produced a second, differently-encoded clause.
+    const graph = screen.getByTestId("graph-panel");
+    expect(graph).toHaveAttribute("data-keyword", "fromTable");
+    expect(graph).not.toHaveAttribute("data-table-filter");
   });
 
   it("shares keyword text between Table and Graph in both directions", () => {

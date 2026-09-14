@@ -1,6 +1,7 @@
 import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
 import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
+import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
 import type { DataFieldMap } from "@/constants/datafields/types";
 import { eq } from "@/lib/data-api";
 
@@ -15,6 +16,7 @@ function tableColumns(fields: DataFieldMap) {
 export const featureColumns = tableColumns(genomeFeatureFields);
 export const genomeSequenceColumns = tableColumns(genomeSequenceFields);
 export const interactionColumns = tableColumns(ppiFields);
+export const sequenceFeatureColumns = tableColumns(sequenceFeatureFields);
 
 export function featureDomainsRql(featureId: string): string {
   return eq("protein_feature", "feature_id", featureId);
@@ -34,8 +36,21 @@ export function genomeFeatureRql(
     : genome;
 }
 
+/**
+ * What "protein" means for a Feature query: annotated CDS and mat-peptide rows. The
+ * member Proteins view, the Feature list's `filter=protein` and the multi-genome
+ * Proteins tab all have to mean the same thing, so they share these clauses.
+ */
+const proteinFeatureClauses = [
+  `or(${eq("genome_feature", "feature_type", "CDS")},${eq("genome_feature", "feature_type", "mat_peptide")})`,
+  eq("genome_feature", "annotation", "PATRIC"),
+];
+
+/** `proteinFeatureClauses` as one `and(...)` clause. */
+export const proteinFeatureRql = `and(${proteinFeatureClauses.join(",")})`;
+
 export function genomeProteinRql(genomeId: string): string {
-  return `and(${eq("genome_feature", "genome_id", genomeId)},or(${eq("genome_feature", "feature_type", "CDS")},${eq("genome_feature", "feature_type", "mat_peptide")}),${eq("genome_feature", "annotation", "PATRIC")})`;
+  return `and(${eq("genome_feature", "genome_id", genomeId)},${proteinFeatureClauses.join(",")})`;
 }
 
 export function featureInteractionsRql(featureId: string): string {
@@ -48,6 +63,17 @@ export function genomeSequenceRql(genomeId: string): string {
 
 export function taxonomySequenceRql(lineageClause: string): string {
   return `and(eq(genome_id,*),genome(and(${lineageClause},ne(genome_status,Deprecated))))`;
+}
+
+/**
+ * Scope a child resource to every genome matching a Genome collection query, with an
+ * optional extra clause on the child itself.
+ */
+export function genomesChildRql(genomeRql: string, extra?: string): string {
+  const relationship = `genome(${genomeRql})`;
+  return extra
+    ? `and(eq(genome_id,*),${relationship},${extra})`
+    : `and(eq(genome_id,*),${relationship})`;
 }
 
 export function genomeInteractionsRql(genomeId: string): string {

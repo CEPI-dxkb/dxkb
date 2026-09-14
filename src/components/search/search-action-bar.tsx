@@ -1,6 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
   TooltipProvider,
@@ -9,6 +15,7 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import {
+  AlignJustify,
   BookOpen,
   Copy,
   Download,
@@ -19,6 +26,7 @@ import {
   Map,
   Eye,
   List,
+  PanelsTopLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +43,7 @@ export type SearchActionId =
   | "idMap"
   | "epitope"
   | "structure"
+  | "variantTypes"
   | "surveillance"
   | "map"
   | "serology"
@@ -42,10 +51,18 @@ export type SearchActionId =
   | "features"
   | "ppiFeatures"
   | "experiment"
-  | "biosets";
+  | "biosets"
+  | "browser";
 
 interface ActionConfig {
+  /**
+   * Dispatch value and consumer-map key. Three ids appear twice with disjoint
+   * validSearchTypes (`copyRows`, `features` and `group`); React keys come from
+   * configKey instead so those entries can never collide.
+   */
   id: SearchActionId;
+  /** Unique per entry. Defaults to `id` — only set where an id repeats. */
+  configKey?: string;
   label: string;
   labelClassName?: string;
   icon?: LucideIcon;
@@ -60,6 +77,7 @@ interface ActionConfig {
 
 export const notReady = "Coming soon, still under construction";
 
+/** Rendered top to bottom in this order, which follows the legacy action bar. */
 const actionConfig: ActionConfig[] = [
   {
     id: "guide",
@@ -83,8 +101,30 @@ const actionConfig: ActionConfig[] = [
     id: "download",
     label: "DWNLD",
     icon: Download,
-    validSearchTypes: ["bioset"],
+    validSearchTypes: [
+      "bioset",
+      "epitope",
+      "experiment",
+      "genome_feature",
+      "genome_sequence",
+      "protein_feature",
+      "protein_structure",
+      "ppi",
+      "sequence_feature",
+      "serology",
+      "surveillance",
+    ],
     requiresSelection: true,
+  },
+  {
+    id: "copyRows",
+    configKey: "copyRows:rows",
+    label: "COPY ROWS",
+    labelClassName: "text-[9px]",
+    icon: Copy,
+    validSearchTypes: ["genome_sequence", "sequence_feature"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
   },
   {
     id: "copyRows",
@@ -113,11 +153,33 @@ const actionConfig: ActionConfig[] = [
     disabledWithTooltip: notReady,
   },
   {
+    id: "feature",
+    label: "FEATURE",
+    letter: "F",
+    validSearchTypes: [
+      "genome_feature",
+      "protein_feature",
+      "protein_structure",
+    ],
+    requiresSelection: true,
+    maxSelection: 1,
+  },
+  {
+    id: "variantTypes",
+    label: "VARIANT\nTYPES",
+    icon: AlignJustify,
+    validSearchTypes: ["sequence_feature"],
+    requiresSelection: true,
+    maxSelection: 1,
+    disabledWithTooltip: notReady,
+  },
+  {
     id: "genome",
     label: "GENOME",
     letter: "G",
     validSearchTypes: [
       "genome",
+      "genome_sequence",
       "genome_feature",
       "protein_feature",
       "protein_structure",
@@ -135,24 +197,16 @@ const actionConfig: ActionConfig[] = [
     disabledWithTooltip: notReady,
   },
   {
-    id: "group",
-    label: "GROUP",
-    icon: Group,
-    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
-    requiresSelection: true,
-    disabledWithTooltip: notReady,
-  },
-  {
-    id: "feature",
-    label: "FEATURE",
+    id: "features",
+    configKey: "features:genome_sequence",
+    label: "FEATURES",
     letter: "F",
-    validSearchTypes: [
-      "genome_feature",
-      "protein_feature",
-      "protein_structure",
-    ],
+    validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
+    // ResourceCollection dispatches this from the displayed detail row's
+    // `sequence_id`, so it only has an answer for a single-row selection.
     maxSelection: 1,
+    disabledWithTooltip: notReady,
   },
   {
     id: "ppiFeatures",
@@ -166,7 +220,16 @@ const actionConfig: ActionConfig[] = [
     id: "fasta",
     label: "FASTA",
     icon: Binary,
-    validSearchTypes: ["genome_feature", "ppi"],
+    validSearchTypes: ["genome_sequence", "genome_feature", "ppi"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
+  {
+    id: "group",
+    configKey: "group:genome_sequence",
+    label: "GROUP",
+    icon: Group,
+    validSearchTypes: ["genome_sequence"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -175,6 +238,14 @@ const actionConfig: ActionConfig[] = [
     label: "ID MAP",
     icon: ArrowRightLeft,
     validSearchTypes: ["genome_feature"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
+  {
+    id: "group",
+    label: "GROUP",
+    icon: Group,
+    validSearchTypes: ["genome", "strain", "genome_feature", "ppi"],
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
@@ -231,7 +302,7 @@ const actionConfig: ActionConfig[] = [
   },
   {
     id: "experiment",
-    label: "EXPERMNT",
+    label: "EXPRMNT",
     labelClassName: "text-[10px]",
     letter: "E",
     validSearchTypes: ["experiment"],
@@ -246,6 +317,14 @@ const actionConfig: ActionConfig[] = [
     requiresSelection: true,
     disabledWithTooltip: notReady,
   },
+  {
+    id: "browser",
+    label: "BROWSER",
+    icon: PanelsTopLeft,
+    validSearchTypes: ["genome_sequence"],
+    requiresSelection: true,
+    disabledWithTooltip: notReady,
+  },
 ];
 
 export interface SearchActionBarProps {
@@ -256,8 +335,9 @@ export interface SearchActionBarProps {
   // /search and the taxon-view, which disable different subsets of the same
   // taxonomy actions.
   disabledActions?: Partial<Record<SearchActionId, string>>;
-  enabledActions?: SearchActionId[];
+  enabledActions?: readonly SearchActionId[];
   loadingActionIds?: SearchActionId[];
+  actionPopovers?: Partial<Record<SearchActionId, ReactNode>>;
   onAction?: (actionId: SearchActionId) => void;
 }
 
@@ -268,6 +348,7 @@ export function SearchActionBar({
   disabledActions,
   enabledActions,
   loadingActionIds,
+  actionPopovers,
   onAction,
 }: SearchActionBarProps) {
   const visibleActions = actionConfig.filter((action) => {
@@ -284,11 +365,9 @@ export function SearchActionBar({
     if (action.requiresSelection && selectedCount === 0) {
       return false;
     }
-    // Strains resolve genomes from one selected row; taxonomy supports aggregates.
     if (
-      (action.maxSelection !== undefined &&
-        selectedCount > action.maxSelection) ||
-      (action.id === "genomes" && searchType === "strain" && selectedCount > 1)
+      action.maxSelection !== undefined &&
+      selectedCount > action.maxSelection
     ) {
       return false;
     }
@@ -307,27 +386,15 @@ export function SearchActionBar({
     <TooltipProvider>
       <div className="flex flex-col gap-1">
         {visibleActions.map((action) => {
+          const renderKey = action.configKey ?? action.id;
           const Icon = action.icon;
           const showSpinner = isLoading(action.id);
           const disabled = isDisabled(action);
           const tooltipText =
             disabledActions?.[action.id] ?? action.disabledWithTooltip;
-
-          const buttonEl = (
-            <Button
-              key={action.id}
-              variant="secondary"
-              className="h-15 w-full flex-col gap-1 font-normal"
-              disabled={disabled}
-              onClick={() => {
-                if (action.id === "guide") {
-                  if (guideUrl)
-                    window.open(guideUrl, "_blank", "noopener,noreferrer");
-                } else {
-                  onAction?.(action.id);
-                }
-              }}
-            >
+          const popoverContent = actionPopovers?.[action.id];
+          const actionContent = (
+            <>
               {showSpinner ? (
                 <Spinner className="size-4 shrink-0" />
               ) : action.letter ? (
@@ -346,11 +413,59 @@ export function SearchActionBar({
                   </span>
                 ))}
               </span>
+            </>
+          );
+
+          const buttonEl = (
+            <Button
+              key={renderKey}
+              variant="secondary"
+              className="h-15 w-full flex-col gap-1 font-normal"
+              disabled={disabled || showSpinner}
+              onClick={
+                popoverContent
+                  ? undefined
+                  : () => {
+                      if (action.id === "guide") {
+                        if (guideUrl)
+                          window.open(
+                            guideUrl,
+                            "_blank",
+                            "noopener,noreferrer",
+                          );
+                      } else {
+                        onAction?.(action.id);
+                      }
+                    }
+              }
+            >
+              {actionContent}
             </Button>
           );
 
+          if (popoverContent && !disabled) {
+            return (
+              <Popover key={renderKey}>
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="secondary"
+                      className="h-15 w-full flex-col gap-1 font-normal"
+                      disabled={showSpinner}
+                    >
+                      {actionContent}
+                    </Button>
+                  }
+                />
+                <PopoverContent side="left" align="center">
+                  {popoverContent}
+                </PopoverContent>
+              </Popover>
+            );
+          }
+
           return tooltipText && disabled ? (
-            <Tooltip key={action.id}>
+            <Tooltip key={renderKey}>
               <TooltipTrigger
                 render={
                   <span className="inline-flex w-full cursor-not-allowed">

@@ -46,6 +46,20 @@ const e2eDeterministicCounts: Record<string, number> = {
   ppi: 4358,
 };
 
+const taxonomyRecordFixture = {
+  taxon_id: "11520",
+  taxon_name: "Influenza A virus",
+  taxon_rank: "species",
+  other_names: ["Influenza A"],
+  genetic_code: 1,
+  lineage_ids: ["10239", "11308", "11520"],
+  lineage_names: ["Viruses", "Orthornavirae", "Influenza A virus"],
+  parent_id: "11320",
+  division: "Viruses",
+  description: "Influenza A virus taxonomy record",
+  genomes: 42,
+};
+
 const proteinStructureRecordFixtures = [
   {
     pdb_id: "6VXX",
@@ -230,6 +244,25 @@ function maybeSolrCount(
   if (segments[0] !== "data" || segments.length < 2) return null;
   const core = segments[1];
   const query = decodeURIComponent(new URL(request.url).search);
+  if (core === "taxonomy") {
+    const taxonId = query.match(/eq\(taxon_id,([^)&]+)\)/)?.[1];
+    const matchesKeyword = query.includes("keyword(influenza)");
+    const docs =
+      taxonId === "*" || taxonId === taxonomyRecordFixture.taxon_id || matchesKeyword
+        ? [taxonomyRecordFixture]
+        : [];
+    if (request.headers.get("accept") === "application/json") return docs;
+    return {
+      response: { numFound: docs.length, docs },
+      facet_counts: {
+        facet_fields: {
+          taxon_rank: ["species", docs.length],
+          genetic_code: [1, docs.length],
+          division: ["Viruses", docs.length],
+        },
+      },
+    };
+  }
   if (core === "serology") {
     const isAmbiguous = query.includes(
       "eq(sample_identifier,ambiguous-serology)",

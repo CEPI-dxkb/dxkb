@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
@@ -89,6 +89,40 @@ describe("BLAST page database type transitions", () => {
     await user.click(screen.getByRole("radio", { name: /^blastn /i }));
     expect(databaseType()).toHaveTextContent("Genome sequences (NT)");
   }, 10_000);
+
+  it("prefills a selected Taxon list from the Taxonomy service action", async () => {
+    sessionStorage.setItem(
+      "taxonomy-blast",
+      JSON.stringify({
+        db_precomputed_database: "selTaxon",
+        db_source: "taxon_list",
+        db_taxon_list: ["234", "10239"],
+      }),
+    );
+    window.history.replaceState({}, "", "/?rerun_key=taxonomy-blast");
+
+    render(<BlastServicePage />, { wrapper: Providers });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("combobox", { name: "Database Source" }),
+      ).toHaveTextContent("Search within a taxon");
+    });
+
+    // The point of the prefill: both Taxon IDs are visible and removable, not just
+    // the database source that implies them.
+    const selectedTaxa = await screen.findByRole("list", {
+      name: "Selected taxa",
+    });
+    expect(
+      within(selectedTaxa)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual(["234", "10239"]);
+    expect(
+      screen.getByRole("button", { name: "Remove taxon 234" }),
+    ).toBeInTheDocument();
+  });
 
   it("normalizes incompatible rerun data and reset restores the complete default combination", async () => {
     sessionStorage.setItem(

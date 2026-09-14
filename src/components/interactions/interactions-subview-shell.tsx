@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { TaxonDataPanel } from "@/components/organisms/taxon-views/taxon-data-panel";
+import { ResourceChildCollection } from "@/components/views";
+import { interactionColumns } from "@/lib/views/child-resources";
 
 import { InteractionsGraph } from "./interactions-graph";
 
@@ -18,7 +19,6 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
   // Keep table-only state (facets, pagination, sorting, selection) mounted.
   // Only keyword text is shared because both sibling views expose that input.
   // Graph remains lazy-mounted to avoid fetching its full dataset until opened.
-  const [tableFilter, setTableFilter] = useState("");
   const [keywordText, setKeywordText] = useState("");
 
   return (
@@ -37,20 +37,31 @@ export function InteractionsSubviewShell({ taxonId, q, guideUrl }: InteractionsS
         inert={subTab !== "table"}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TaxonDataPanel
+        <ResourceChildCollection
           resource="ppi"
-          q={q}
+          label="Interactions"
+          idField="id"
+          rql={q}
+          columns={interactionColumns}
+          defaultSort="id:asc"
           guideUrl={guideUrl}
-          onFilterChange={setTableFilter}
+          keywordMode="loaded"
           keywordValue={keywordText}
           onKeywordChange={setKeywordText}
+          keywordPlaceholder="Search interaction results..."
         />
       </TabsContent>
       <TabsContent value="graph" className="flex min-h-0 flex-1 flex-col">
+        {/*
+          The keyword is passed as text, not as RQL: the graph turns it into one
+          wildcard clause per whitespace-separated term. Building a second
+          whole-string clause here produced an extra, differently-encoded predicate
+          that the graph could not deduplicate, so multi-term searches returned
+          fewer graph results than table rows.
+        */}
         <InteractionsGraph
           taxonId={taxonId}
           q={q}
-          tableFilter={tableFilter}
           keywordValue={keywordText}
           onKeywordChange={setKeywordText}
         />

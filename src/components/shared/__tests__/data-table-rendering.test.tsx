@@ -121,11 +121,54 @@ describe("DataTable shared view seams", () => {
       "min-w-0",
       "overflow-x-auto",
       "whitespace-nowrap",
+      "scrollbar-none",
     );
     expect(linkStrip).not.toHaveClass("flex-wrap");
-    expect(screen.getByRole("link", { name: "100.1" })).toHaveClass(
-      "shrink-0",
+    const firstLink = screen.getByRole("link", { name: "100.1" });
+    expect(firstLink).toHaveClass("shrink-0");
+    expect(firstLink.closest("td")).toHaveClass("p-0.5");
+  });
+
+  it("uses compact padding without making scalar cells nested scroll regions", () => {
+    render(
+      <DataTable
+        id="compact-scalar-cell"
+        data={[{ id: "strain-1", accession: "100/2" }]}
+        columns={[
+          {
+            id: "accession",
+            label: "Accession",
+            valueHref: "https://example.test/{value}",
+          },
+        ]}
+        totalItems={1}
+        resource="strain"
+        idField="id"
+      />,
     );
+
+    const cell = screen.getByRole("link", { name: "100/2" }).closest("td");
+    expect(cell).toHaveClass("p-0.5");
+    expect(cell).not.toHaveClass("overflow-x-auto", "scrollbar-none");
+  });
+
+  it("keeps selection cells padding-free", () => {
+    render(
+      <DataTable
+        id="compact-selection-cell"
+        data={[{ id: "strain-1", accession: "100/2" }]}
+        columns={[{ id: "accession", label: "Accession" }]}
+        totalItems={1}
+        resource="strain"
+        idField="id"
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select row strain-1",
+    });
+    expect(checkbox.closest("td")).toHaveClass("p-0");
+    expect(checkbox.closest("td")).not.toHaveClass("p-0.5");
   });
 
   it("renders a scalar value using its value link template", () => {
@@ -459,7 +502,28 @@ describe("DataTable Showing display during loading", () => {
       />,
     );
 
-    expect(screen.getByText("No results")).toBeInTheDocument();
+    const emptyState = screen.getByText("No results");
+    expect(emptyState).toBeInTheDocument();
+    expect(emptyState.closest("td")).toHaveClass("p-0.5");
+  });
+
+  it("uses compact padding for loading cells while preserving the selection cell", () => {
+    const { container } = render(
+      <DataTable
+        id="loading-cell-padding"
+        data={[]}
+        columns={columns}
+        totalItems={200}
+        resource="strain"
+        isLoading={true}
+      />,
+    );
+
+    const firstSkeletonRow = container.querySelector("tbody tr");
+    const cells = firstSkeletonRow?.querySelectorAll("td");
+    expect(cells).toHaveLength(2);
+    expect(cells?.[0]).toHaveClass("p-0");
+    expect(cells?.[1]).toHaveClass("p-0.5");
   });
 
   it("shows expected page range when isLoading=true and data is empty", () => {
@@ -643,7 +707,9 @@ describe("DataTable empty state", () => {
         errorMessage="Error: Failed to fetch metadata (500 Internal Server Error)"
       />,
     );
-    expect(screen.getByText(/Failed to fetch metadata/)).toBeInTheDocument();
+    const error = screen.getByText(/Failed to fetch metadata/);
+    expect(error).toBeInTheDocument();
+    expect(error.closest("td")).toHaveClass("p-0.5");
     expect(screen.queryByText("No results")).not.toBeInTheDocument();
   });
 

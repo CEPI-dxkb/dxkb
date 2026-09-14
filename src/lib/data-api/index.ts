@@ -26,8 +26,10 @@ export {
   proteinFeatureRecordSchema,
   proteinStructureRecordSchema,
   serologyRecordSchema,
+  sequenceFeatureRecordSchema,
   strainRecordSchema,
   surveillanceRecordSchema,
+  taxonomyRecordSchema,
 } from "./schemas";
 export { maxExportRows } from "./types";
 export type * from "./types";

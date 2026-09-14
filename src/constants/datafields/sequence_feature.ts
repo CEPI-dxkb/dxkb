@@ -6,6 +6,20 @@ import type { DataFieldMap } from "./types";
 // (~2.2M rows, no taxon field) and inflated the tab count 350x.
 // Columns mirror legacy SFVTGrid.
 export const sequenceFeatureFields = {
+  id: {
+    label: "Record ID",
+    field: "id",
+    hidden: true,
+    group: "Sequence Feature",
+    show_in_table: false,
+  },
+  taxon_id: {
+    label: "Taxon ID",
+    field: "taxon_id",
+    hidden: true,
+    group: "Sequence Feature",
+    show_in_table: false,
+  },
   sf_name: {
     label: "Sequence Feature (SF) Name",
     field: "sf_name",

@@ -13,7 +13,8 @@ import {
   genomeHref,
   genomeIdFromRow,
   genomeListHref,
-  genomesHrefFromRow,
+  featuresHrefFromIds,
+  genomesHrefFromIds,
   proteinStructureHref,
   proteinStructureListHref,
   proteinStructurePathHref,
@@ -32,8 +33,9 @@ describe("taxonomyHref", () => {
   it("builds a taxonomy route from a numeric id", () => {
     expect(taxonomyHref(561)).toBe("/taxonomy/561");
   });
-  it("accepts a string id", () => {
+  it("accepts a string id and rejects a non-positive id", () => {
     expect(taxonomyHref("2697049")).toBe("/taxonomy/2697049");
+    expect(() => taxonomyHref("0")).toThrow("Invalid Taxon ID");
   });
 });
 
@@ -60,12 +62,15 @@ describe("Experiment hrefs", () => {
     expect(biosetResultsHref(["00042", "51", "00042"])).toBe(
       "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,51))",
     );
-    expect(experimentListHref({ keyword: "RNA sequencing", taxonId: 561 })).toBe(
-      "/experiment?keyword=RNA%20sequencing&taxon_id=561",
-    );
-    expect(experimentListHref({ keyword: "ignored", rql: "eq(exp_type,Transcript Quantification)" })).toBe(
-      "/experiment?rql=eq(exp_type%2CTranscript%20Quantification)",
-    );
+    expect(
+      experimentListHref({ keyword: "RNA sequencing", taxonId: 561 }),
+    ).toBe("/experiment?keyword=RNA%20sequencing&taxon_id=561");
+    expect(
+      experimentListHref({
+        keyword: "ignored",
+        rql: "eq(exp_type,Transcript Quantification)",
+      }),
+    ).toBe("/experiment?rql=eq(exp_type%2CTranscript%20Quantification)");
   });
 });
 
@@ -185,7 +190,29 @@ describe("Domains and Motifs hrefs", () => {
   });
 });
 
+describe("Interaction hrefs", () => {
+  it("builds a canonical Feature list from pooled interactor IDs", () => {
+    expect(
+      featuresHrefFromIds([
+        "PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd",
+        "PATRIC.224914.16.NZ_GG703779.CDS.873651.874052.fwd",
+        "PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd",
+      ]),
+    ).toBe(
+      "/feature?rql=in(feature_id%2C(PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd%2CPATRIC.224914.16.NZ_GG703779.CDS.873651.874052.fwd))",
+    );
+    expect(featuresHrefFromIds([])).toBeNull();
+  });
+});
+
 describe("Strain hrefs", () => {
+  it("builds a canonical Genome list from multiple IDs", () => {
+    expect(genomesHrefFromIds(["641501.3", "id,with spaces", "641501.3"])).toBe(
+      "/genome?rql=in(genome_id%2C(641501.3%2Cid%252Cwith%20spaces))",
+    );
+    expect(genomesHrefFromIds([])).toBeNull();
+  });
+
   it("builds list-only collection links with phrase and taxon filters", () => {
     expect(strainListHref()).toBe("/strain");
     expect(
@@ -255,24 +282,40 @@ describe("genomeHref", () => {
   });
 });
 
-describe("genomesHrefFromRow", () => {
-  it("builds a canonical list filtered to unique associated Genome IDs", () => {
-    expect(
-      genomesHrefFromRow({ genome_ids: ["11320.1", "11320.2", "11320.1"] }),
-    ).toBe("/genome?rql=in(genome_id%2C(11320.1%2C11320.2))");
+describe("genomesHrefFromIds", () => {
+  it("builds a canonical list filtered to unique Genome IDs", () => {
+    expect(genomesHrefFromIds(["11320.1", "11320.2", "11320.1"])).toBe(
+      "/genome?rql=in(genome_id%2C(11320.1%2C11320.2))",
+    );
   });
 
-  it("returns null when the row has no associated Genome IDs", () => {
-    expect(genomesHrefFromRow({ genome_ids: [] })).toBeNull();
-    expect(genomesHrefFromRow({})).toBeNull();
-    expect(genomesHrefFromRow(null)).toBeNull();
+  it("returns null when there are no Genome IDs", () => {
+    expect(genomesHrefFromIds([])).toBeNull();
   });
 
   it("escapes RQL-special characters in Genome IDs", () => {
-    const href = genomesHrefFromRow({ genome_ids: ["id,1", "id(2)"] });
+    const href = genomesHrefFromIds(["id,1", "id(2)"]);
     expect(
       new URL(href ?? "", "http://localhost").searchParams.get("rql"),
     ).toBe("in(genome_id,(id%2C1,id%282%29))");
+  });
+
+  it("accepts the Data API's maximum in(...) value count", () => {
+    const ids = Array.from({ length: 500 }, (_value, index) => `1.${String(index)}`);
+    expect(genomesHrefFromIds(ids)).toContain("in(genome_id%2C(1.0%2C");
+  });
+
+  it("returns null above the Data API's in(...) value limit", () => {
+    const ids = Array.from({ length: 501 }, (_value, index) => `1.${String(index)}`);
+    expect(genomesHrefFromIds(ids)).toBeNull();
+    expect(featuresHrefFromIds(ids)).toBeNull();
+  });
+
+  it("counts unique IDs against the limit, not raw values", () => {
+    const ids = Array.from({ length: 501 }, (_value, index) =>
+      index === 500 ? "1.0" : `1.${String(index)}`,
+    );
+    expect(genomesHrefFromIds(ids)).not.toBeNull();
   });
 });
 

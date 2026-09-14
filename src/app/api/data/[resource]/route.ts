@@ -49,6 +49,14 @@ function parseSort(value: string | null): DataSort | undefined {
   return { field: match[1], direction: match[2] as "asc" | "desc" };
 }
 
+function parseKeywordMode(value: string | null): "exact" | "prefix" | undefined {
+  if (value === null) return undefined;
+  if (value !== "exact" && value !== "prefix") {
+    throw new DataApiValidationError("Keyword mode must be exact or prefix.");
+  }
+  return value;
+}
+
 function parsePositiveInteger(value: string | null): number | undefined {
   if (value === null) return undefined;
   if (!/^\d+$/.test(value))
@@ -79,6 +87,7 @@ function parseGetRequest(request: NextRequest): DataApiRequest {
     operation,
     rql: params.get("rql") ?? undefined,
     keyword: params.get("keyword") ?? undefined,
+    keywordMode: parseKeywordMode(params.get("keywordMode")),
     page: parsePositiveInteger(params.get("page")),
     pageSize: parsePositiveInteger(params.get("pageSize")),
     sort: parseSort(params.get("sort")),

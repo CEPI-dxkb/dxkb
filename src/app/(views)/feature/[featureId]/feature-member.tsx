@@ -26,6 +26,7 @@ import {
   interactionColumns,
 } from "@/lib/views/child-resources";
 import { genomeHref, taxonomyHref } from "@/lib/views/hrefs";
+import { isTaxonId } from "@/lib/taxonomy-view";
 import { FeatureOverview } from "./feature-overview";
 
 const featureTabIcons: Record<FeatureTab, ReactNode> = {
@@ -58,12 +59,12 @@ function breadcrumbs(feature: FeatureViewRecord) {
           </Link>
         </>
       )}
-      {feature.taxon_id != null && (
+      {isTaxonId(String(feature.taxon_id)) && (
         <>
           <span className="text-muted-foreground/50">»</span>
           <Link
             className="text-muted-foreground hover:text-foreground"
-            href={taxonomyHref(feature.taxon_id)}
+            href={taxonomyHref(String(feature.taxon_id))}
           >
             Taxonomy {feature.taxon_id}
           </Link>

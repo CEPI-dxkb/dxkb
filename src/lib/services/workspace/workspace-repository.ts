@@ -38,6 +38,21 @@ export interface UploadNodeResult {
   linkReference: string;
 }
 
+export type CreateIdGroupInput = {
+  path: string;
+  name: string;
+  ids: string[];
+} & (
+  | { type: "genome_group"; idField: "genome_id" }
+  | { type: "feature_group"; idField: "feature_id" }
+);
+
+export interface AppendToIdGroupInput {
+  path: string;
+  idField: "genome_id" | "feature_id";
+  ids: string[];
+}
+
 export interface WorkspaceRepository {
   /** List objects under a directory path. */
   listDirectory(input: ListDirectoryInput): Promise<WorkspaceItem[]>;
@@ -68,6 +83,12 @@ export interface WorkspaceRepository {
     overwrite?: boolean;
     meta?: Record<string, unknown>;
   }): Promise<void>;
+
+  /** Create a legacy-compatible genome or feature ID group. */
+  createIdGroup(input: CreateIdGroupInput): Promise<void>;
+
+  /** Append unique IDs while preserving the group's content and metadata. */
+  appendToIdGroup(input: AppendToIdGroupInput): Promise<void>;
 
   /** Delete one or more full paths. */
   delete(paths: string[], options?: DeleteOptions): Promise<void>;

@@ -11,6 +11,7 @@ import {
   serologyRecordSchema,
   strainRecordSchema,
   surveillanceRecordSchema,
+  taxonomyRecordSchema,
 } from "../schemas";
 import {
   maxExportRows,
@@ -28,6 +29,23 @@ describe("data API contracts", () => {
       expect(definition.fields[definition.idField].selectable).toBe(true);
       expect(() => definition.schema.parse({})).toThrow();
     }
+  });
+
+  it("registers Taxonomy with string identities and multivalue lineage fields", () => {
+    expect(resourceRegistry.taxonomy.idField).toBe("taxon_id");
+    expect(resourceRegistry.taxonomy.fields.taxon_rank.facet).toBe(true);
+    expect(resourceRegistry.taxonomy.fields.genomes.type).toBe("number");
+    for (const field of ["other_names", "lineage_ids", "lineage_names"]) {
+      expect(resourceRegistry.taxonomy.fields[field].cardinality).toBe("multiple");
+      expect(resourceRegistry.taxonomy.fields[field].sortable).toBe(false);
+    }
+    expect(
+      taxonomyRecordSchema.parse({
+        taxon_id: "11520",
+        taxon_name: "Influenza A virus",
+        lineage_ids: [10239, "11308", "11520"],
+      }),
+    ).toMatchObject({ taxon_id: "11520" });
   });
 
   it("records compound sample field cardinality explicitly", () => {

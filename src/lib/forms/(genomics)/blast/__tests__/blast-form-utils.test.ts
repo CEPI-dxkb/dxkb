@@ -211,10 +211,10 @@ describe("transformBlastParams", () => {
     const data = {
       ...baseData,
       db_precomputed_database: "selTaxon",
-      db_taxon_list: ["taxon1"],
+      db_taxon_list: ["234", "10239"],
     };
     const result = transformBlastParams(data);
-    expect(result.db_taxon_list).toEqual(["taxon1"]);
+    expect(result.db_taxon_list).toEqual(["234", "10239"]);
   });
 
   it("includes db_fasta_file when db_precomputed_database is selFasta", () => {

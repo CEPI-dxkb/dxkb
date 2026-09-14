@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
-import { safeDecode } from "@/lib/url";
 
 /**
  * Build a safe Content-Disposition header value.
@@ -30,8 +29,14 @@ export interface ResolvedDownload {
   contentType: string;
 }
 
+/**
+ * `segments` come from a catch-all route's `params.path`, which Next.js has
+ * already percent-decoded once per segment — do not decode again here, or a
+ * literal `%2F` in a file name becomes a real `/`, splitting one segment
+ * into two and resolving a different (nonexistent) workspace path.
+ */
 export function buildWorkspacePath(segments: string[]): string {
-  return "/" + segments.map((s) => safeDecode(s)).join("/");
+  return "/" + segments.join("/");
 }
 
 /**
@@ -107,8 +112,7 @@ export async function resolveWorkspaceDownload(
     );
   }
 
-  const lastSegment = segments[segments.length - 1] ?? "download";
-  const filename = safeDecode(lastSegment);
+  const filename = segments[segments.length - 1] ?? "download";
   const contentType = getMimeType(filename);
 
   return { shockResponse, filename, contentType };

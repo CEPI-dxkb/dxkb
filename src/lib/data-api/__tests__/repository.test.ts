@@ -1,4 +1,6 @@
+import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
+import { server } from "@/test-helpers/msw-server";
 import { ServerDataRepository } from "../repository";
 
 function jsonResponse(value: unknown, init?: ResponseInit): Response {
@@ -402,5 +404,99 @@ describe("ServerDataRepository", () => {
         next: { revalidate: 300 },
       }),
     );
+  });
+
+  // These use MSW (real network-level interception via global fetch) rather
+  // than an injected fetcher, so `response.json()` runs against a genuine
+  // HTTP response — exercising the actual parse-failure-to-null path in
+  // `request()`, not a stand-in for it.
+  describe("normalizeRows rejects malformed successful responses", () => {
+    const genomeUrl = "https://data.test/genome/";
+
+    function repository(): ServerDataRepository {
+      return new ServerDataRepository({ baseUrl: "https://data.test" });
+    }
+
+    const malformedBodies: [string, () => Response][] = [
+      [
+        "unparseable JSON (the request layer maps the parse failure to null)",
+        () =>
+          new HttpResponse("<html>not json</html>", {
+            headers: { "Content-Type": "application/json" },
+          }),
+      ],
+      ["a JSON null body", () => HttpResponse.json(null)],
+      ["a bare JSON string", () => HttpResponse.json("unexpected")],
+      ["a bare JSON number", () => HttpResponse.json(42)],
+      ["a bare JSON boolean", () => HttpResponse.json(false)],
+      [
+        "an unknown object envelope",
+        () => HttpResponse.json({ mystery: "shape" }),
+      ],
+    ];
+
+    it.each(malformedBodies)(
+      "rejects a collection request when the body is %s",
+      async (_label, makeResponse) => {
+        server.use(http.get(genomeUrl, () => makeResponse()));
+        await expect(
+          repository().collection("genome", { operation: "collection" }),
+        ).rejects.toMatchObject({
+          name: "DataApiError",
+          code: "malformed_response",
+        });
+      },
+    );
+
+    it.each(malformedBodies)(
+      "rejects a member request when the body is %s",
+      async (_label, makeResponse) => {
+        server.use(http.get(genomeUrl, () => makeResponse()));
+        await expect(
+          repository().member("genome", { operation: "member", id: "1.1" }),
+        ).rejects.toMatchObject({
+          name: "DataApiError",
+          code: "malformed_response",
+        });
+      },
+    );
+
+    it.each(malformedBodies)(
+      "rejects an export request when the body is %s",
+      async (_label, makeResponse) => {
+        server.use(http.get(genomeUrl, () => makeResponse()));
+        await expect(
+          repository().export("genome", {
+            operation: "export",
+            fields: ["genome_id"],
+            limit: 10,
+          }),
+        ).rejects.toMatchObject({
+          name: "DataApiError",
+          code: "malformed_response",
+        });
+      },
+    );
+
+    it("still treats an empty array as a legitimate empty result", async () => {
+      server.use(http.get(genomeUrl, () => HttpResponse.json([])));
+      await expect(
+        repository().collection("genome", { operation: "collection" }),
+      ).resolves.toMatchObject({ rows: [], total: 0 });
+
+      server.use(http.get(genomeUrl, () => HttpResponse.json([])));
+      await expect(
+        repository().member("genome", { operation: "member", id: "1.1" }),
+      ).resolves.toEqual({ row: null });
+
+      server.use(http.get(genomeUrl, () => HttpResponse.json([])));
+      await expect(
+        repository().export("genome", {
+          operation: "export",
+          fields: ["genome_id"],
+          limit: 10,
+        }),
+      ).resolves.toEqual({ rows: [] });
+    });
   });
 });

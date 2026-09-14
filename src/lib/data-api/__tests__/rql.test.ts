@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { eq, parseRql, serializeRql, validateRql } from "../rql";
+import {
+  eq,
+  maxRqlInValues,
+  parseRql,
+  serializeRql,
+  validateRql,
+} from "../rql";
+import type { RqlIn } from "../rql";
 
 describe("typed RQL", () => {
   it("round-trips structural predicates and field types", () => {
@@ -108,5 +115,72 @@ describe("typed RQL", () => {
     expect(() => validateRql("genome", "eq(genome_id,x")).toThrow(/Malformed/);
     const nested = `${"not(".repeat(14)}eq(genome_id,x)${")".repeat(14)}`;
     expect(() => validateRql("genome", nested)).toThrow(/too deep/);
+  });
+
+  describe("in(...) argument-list validation", () => {
+    it("accepts a single value", () => {
+      expect(parseRql("genome", "in(genome_id,(83332.12))")).toEqual({
+        operator: "in",
+        field: "genome_id",
+        values: ["83332.12"],
+      });
+    });
+
+    it(`accepts the ${maxRqlInValues.toLocaleString()}-value boundary`, () => {
+      const values = Array.from({ length: maxRqlInValues }, (_, i) =>
+        String(i),
+      );
+      const rql = `in(genome_id,(${values.join(",")}))`;
+      const parsed = parseRql("genome", rql) as RqlIn;
+      expect(parsed.values).toHaveLength(maxRqlInValues);
+      expect(parsed.values[0]).toBe("0");
+      expect(parsed.values.at(-1)).toBe(String(maxRqlInValues - 1));
+    });
+
+    it(`rejects ${(maxRqlInValues + 1).toLocaleString()} values`, () => {
+      const values = Array.from({ length: maxRqlInValues + 1 }, (_, i) =>
+        String(i),
+      );
+      const rql = `in(genome_id,(${values.join(",")}))`;
+      expect(() => parseRql("genome", rql)).toThrow(/1 to 500 values/);
+    });
+
+    // splitArguments("") returns [""] (it always emits at least one part),
+    // so an empty in(...) argument list used to be indistinguishable from a
+    // single empty-string value and would pass the "at least one value"
+    // check below with a phantom "" entry.
+    it("rejects an empty argument list on a string field", () => {
+      expect(() => parseRql("genome", "in(genome_id,())")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
+    // On a numeric field the same phantom "" value was worse: coerceValue
+    // calls Number(""), which is 0 (not NaN), so in(genome_length,()) used
+    // to silently become in(genome_length,(0)) instead of being rejected.
+    it("rejects an empty argument list on a numeric field", () => {
+      expect(() => parseRql("genome", "in(genome_length,())")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
+    it("rejects a whitespace-only argument list", () => {
+      expect(() => parseRql("genome", "in(genome_id,(   ))")).toThrow(
+        /1 to 500 values/,
+      );
+    });
+
+    // Documented contract: a *quoted* empty string is a deliberate value,
+    // not an empty list — consistent with decodeValue() elsewhere in this
+    // parser, where eq(field,"") already decodes to the empty string rather
+    // than being rejected. Only a bare, unquoted empty interior means "no
+    // values".
+    it("treats a quoted empty string as one explicit value, not an empty list", () => {
+      expect(parseRql("genome", 'in(genome_id,(""))')).toEqual({
+        operator: "in",
+        field: "genome_id",
+        values: [""],
+      });
+    });
   });
 });

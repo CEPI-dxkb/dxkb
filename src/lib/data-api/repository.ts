@@ -162,7 +162,17 @@ function upstreamMessage(payload: unknown, status: number): string {
 
 function normalizeRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
+  if (!payload || typeof payload !== "object") {
+    // A successful response whose body is `null`, a bare string/number/
+    // boolean, or unparseable JSON (the request layer maps a JSON parse
+    // failure to `null`) is an upstream protocol failure, not an empty
+    // result — surface it instead of caching/rendering a fake "no results".
+    throw new DataApiError(
+      "Malformed data service response.",
+      502,
+      "malformed_response",
+    );
+  }
   const object = payload as {
     response?: unknown;
     items?: unknown;

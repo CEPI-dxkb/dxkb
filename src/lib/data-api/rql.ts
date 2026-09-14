@@ -222,7 +222,15 @@ function parseExpression(
     if (!args[1].startsWith("(") || !args[1].endsWith(")")) {
       throw new DataApiValidationError("in values must be parenthesized.");
     }
-    const values = splitArguments(args[1].slice(1, -1));
+    const rawValues = args[1].slice(1, -1);
+    // `splitArguments` always returns at least one part (even for an empty
+    // string), so an empty argument list — in(field,()) — would otherwise be
+    // indistinguishable from a single quoted empty string — in(field,("")) —
+    // and pass the "at least one value" check below with a phantom "" value.
+    // Treat a blank (unquoted) interior as zero values; a quoted empty
+    // string still decodes to a real "" value, consistent with decodeValue()
+    // elsewhere in this file (e.g. eq(field,"") already yields "").
+    const values = rawValues.trim() === "" ? [] : splitArguments(rawValues);
     if (values.length === 0 || values.length > maxRqlInValues)
       throw new DataApiValidationError(
         `in requires 1 to ${maxRqlInValues.toLocaleString()} values.`,

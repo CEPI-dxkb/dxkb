@@ -114,12 +114,16 @@ export function downloadLoadedResourceRows({
   format,
   visibleColumns,
   fields,
+  // Defaults to "all" so the existing handleDownloadAll call site keeps
+  // today's `${resource}-all.${format}` filename unchanged.
+  variant = "all",
 }: {
   resource: string;
   rows: readonly Record<string, unknown>[];
   format: "csv" | "txt";
   visibleColumns: string[] | null;
   fields: ColumnInfo[];
+  variant?: "all" | "selected";
 }): void {
   const requestedColumns =
     visibleColumns !== null ? visibleColumns : fields.map((field) => field.id);
@@ -136,7 +140,7 @@ export function downloadLoadedResourceRows({
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = objectUrl;
-  link.download = `${resource}-all.${format}`;
+  link.download = `${resource}-${variant}.${format}`;
   link.click();
   URL.revokeObjectURL(objectUrl);
 }

@@ -55,6 +55,11 @@ export function downloadResourceExport(
   columns: readonly DataTableColumn[],
   fields: readonly string[],
   format: "csv" | "txt",
+  // Defaults to "all" so every existing caller (e.g. resource-collection.tsx,
+  // for both its all-rows and selected-rows exports) keeps today's filename.
+  // Plan item 14 owns unifying parent/child collection export filenames —
+  // this default must not pre-empt that decision.
+  variant: "all" | "selected" = "all",
 ) {
   const content = serializeResourceRows(rows, columns, fields, format);
   const url = URL.createObjectURL(
@@ -62,7 +67,10 @@ export function downloadResourceExport(
   );
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `${resource}.${format}`;
+  anchor.download =
+    variant === "selected"
+      ? `${resource}-selected.${format}`
+      : `${resource}.${format}`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

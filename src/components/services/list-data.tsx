@@ -5,10 +5,12 @@ import { useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/shared/data-table";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { noop } from "@/lib/utils";
+import { formatUserFacingErrorMessage, noop } from "@/lib/utils";
 import { getIdField } from "@/constants/resources";
 import { detailPanelQueryKey } from "@/components/genome/genome-detail-panel-utils";
 import { FilterBar } from "@/components/filterbar/filter-bar";
+import { DataRepository, isDataResource } from "@/lib/data-api";
+import { downloadResourceExport } from "@/components/views/resource-export";
 import {
   deriveTableFields,
   downloadLoadedResourceRows,
@@ -17,6 +19,12 @@ import {
   isSameResourceQuery,
   resourceFields,
 } from "./list-data-utils";
+
+// The sanctioned browser-side Data API entrypoint (`/api/data/<resource>`) for the
+// "download selected rows" export. Stateless wrapper around fetch, so a single
+// module-level instance is the established pattern (see e.g.
+// genome-resource-collection.tsx, use-interactions.ts).
+const dataRepository = new DataRepository();
 
 // Stable empty-rows reference so DataTable's memoized body comparator (prev.data === next.data)
 // isn't defeated by a fresh [] on every render when there are no results.
@@ -448,6 +456,85 @@ function useListData({
     }
   }
 
+  // Selected-row export goes through the Data API repository (`/api/data/<resource>`),
+  // never a direct fetch to the backend, for any resource the repository recognizes.
+  // Rows come back in whatever order the upstream service returns them, so they're
+  // re-sorted to match `ids` — the order the caller (and the user's selection)
+  // presented them in — before serializing.
+  //
+  // Order-preservation caveat (applies to every branch below, and applied equally to
+  // the DataTable-internal `selectedItemsOrder` Map this replaced): `ids` ultimately
+  // comes from `Object.keys(rowSelection)` in handleRowSelectionChange above. Plain
+  // JS objects enumerate keys that look like canonical array indices (e.g. "0", "5")
+  // in ascending numeric order *before* any insertion-ordered string keys, regardless
+  // of click order. This is a pre-existing, inherent quirk of object key enumeration,
+  // not something introduced or fixed here.
+  async function handleDownloadSelected(
+    format: "csv" | "txt",
+    ids: string[],
+    visibleColumns: string[] | null,
+  ): Promise<void> {
+    if (ids.length === 0) return;
+
+    if (!isDataResource(resource)) {
+      // Resources outside the Data API repository (currently just genome_amr) have
+      // no server-side "selected" read to fall back to — but the rows a user can
+      // select are, by construction, already loaded on the client (DataTable only
+      // lets you select rows it rendered). Export directly from what's already
+      // loaded instead of gating the feature off. This is narrower than the
+      // repository path: it only covers the currently-loaded page(s), so a
+      // selected id no longer present in `displayedRows` is simply omitted rather
+      // than fabricated or treated as a failure.
+      const orderById = new Map(ids.map((id, index) => [id, index]));
+      const selectedLoadedRows = displayedRows
+        .filter((row) => orderById.has(String(row[idField])))
+        .sort(
+          (a, b) =>
+            (orderById.get(String(a[idField])) ?? Number.MAX_VALUE) -
+            (orderById.get(String(b[idField])) ?? Number.MAX_VALUE),
+        );
+      downloadLoadedResourceRows({
+        resource,
+        rows: selectedLoadedRows,
+        format,
+        visibleColumns,
+        fields,
+        variant: "selected",
+      });
+      return;
+    }
+
+    try {
+      const selectedFields = visibleColumns ?? fields.map((field) => field.id);
+      const result = await dataRepository.selected(resource, {
+        ids,
+        fields: selectedFields,
+      });
+      const orderById = new Map(ids.map((id, index) => [id, index]));
+      const orderedRows = [...result.rows].sort(
+        (a, b) =>
+          (orderById.get(String(a[idField])) ?? Number.MAX_VALUE) -
+          (orderById.get(String(b[idField])) ?? Number.MAX_VALUE),
+      );
+      downloadResourceExport(
+        resource,
+        orderedRows,
+        fields,
+        selectedFields,
+        format,
+        "selected",
+      );
+    } catch (error) {
+      console.error("Download selected failed:", error);
+      alert(
+        formatUserFacingErrorMessage(
+          error,
+          "Failed to download selected results. See console for details.",
+        ),
+      );
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <span ref={notifyTotalItems} hidden />
@@ -493,6 +580,7 @@ function useListData({
           isAllPagesSelected={isAllPagesSelected}
           onAllPagesSelectionChange={handleAllPagesSelectionChange}
           onDownloadAll={handleDownloadAll}
+          onDownloadSelected={handleDownloadSelected}
           isLoading={metaLoading || dataLoading || isPlaceholderData}
           selectedIds={selectedIds ?? []}
         />

@@ -473,11 +473,6 @@ function useDataTableContent(
       ? controlledRowSelection
       : internalRowSelection;
 
-  // Store the original order of selected items to maintain consistency
-  const [selectedItemsOrder, setSelectedItemsOrder] = useState<
-    Map<string, number>
-  >(new Map());
-
   // Pagination state: support both controlled (via pageIndex/pageSize props)
   // and uncontrolled usage. If parent provides pageIndex/pageSize we treat
   // pagination as controlled for that value; otherwise we keep internal state
@@ -615,22 +610,6 @@ function useDataTableContent(
       if (isAllPagesSelected) {
         onAllPagesSelectionChange?.(false);
       }
-
-      // Update the order map for selected items
-      const newOrderMap = new Map(selectedItemsOrder);
-      Object.keys(newSelection).forEach((rowId) => {
-        if (!selectedItemsOrder.has(rowId)) {
-          newOrderMap.set(rowId, newOrderMap.size);
-        }
-      });
-      // Prune IDs absent from newSelection (handles replace-style setRowSelection
-      // where old ids are simply omitted rather than set to false)
-      for (const rowId of [...newOrderMap.keys()]) {
-        if (!(rowId in newSelection)) {
-          newOrderMap.delete(rowId);
-        }
-      }
-      setSelectedItemsOrder(newOrderMap);
 
       // If controlled, call the parent handler
       if (onRowSelectionChange) {
@@ -917,71 +896,7 @@ function useDataTableContent(
             selectedIds ?? [],
             onlyVisibleColumns ? selectedColumnIds : null,
           );
-          return;
         }
-
-        const idFilter = (selectedIds ?? [])
-          .map((id) => `eq(${idField},${id})`)
-          .join(",");
-
-        const query = `or(${idFilter})`;
-
-        const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
-
-        await fetch(`${DataAPI ?? ""}/${resource}/`, {
-          method: "POST",
-          headers: {
-            "Content-type": "application/rqlquery+x-www-form-urlencoded",
-            Accept: "application/json",
-            Range: `items=0-${String((selectedIds ?? []).length)}`,
-            "X-Range": `items=0-${String((selectedIds ?? []).length)}`,
-          },
-          body: query,
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error("Failed to fetch selected rows");
-            return res.json();
-          })
-          .then((data: unknown) => {
-            type RowBag = Record<string, unknown>;
-            interface ResponseShape {
-              items?: RowBag[];
-              response?: RowBag[];
-              rows?: RowBag[];
-            }
-            const rowsArray: RowBag[] = Array.isArray(data)
-              ? (data as RowBag[])
-              : ((data as ResponseShape).items ??
-                (data as ResponseShape).response ??
-                (data as ResponseShape).rows ??
-                []);
-
-            // Sort the rows based on the original selection order
-            const sortedRows = rowsArray.sort((a, b) => {
-              const aId = String(a[idField]);
-              const bId = String(b[idField]);
-              const aOrder = selectedItemsOrder.get(aId) ?? Number.MAX_VALUE;
-              const bOrder = selectedItemsOrder.get(bId) ?? Number.MAX_VALUE;
-              return aOrder - bOrder;
-            });
-
-            const content = [
-              headers.join(","),
-              ...sortedRows.map((row) =>
-                visibleCols
-                  .map((col) => {
-                    return csvExportValue(row[col.id]);
-                  })
-                  .join(","),
-              ),
-            ].join("\n");
-
-            downloadFile(`${resource}-selected.${format}`, content);
-          })
-          .catch((err: unknown) => {
-            console.error("Download selected failed:", err);
-          });
-
         return;
       }
 
@@ -1005,6 +920,16 @@ function useDataTableContent(
       setDownloadingButton(null);
     }
   };
+
+  // "Download Selected" is only meaningful when something can actually fulfil
+  // it: a caller-supplied onDownloadSelected, or (when every page is selected)
+  // onDownloadAll, which handleDownload routes that case to instead. Without
+  // this gate the buttons would render for a caller that wires selectedIds
+  // but not onDownloadSelected, and clicking them would silently no-op now
+  // that DataTable no longer has a built-in export fallback.
+  const canDownloadSelected =
+    Boolean(onDownloadSelected) ||
+    (isAllPagesSelected && Boolean(onDownloadAll));
 
   // Now that all the setup is done, let's render the table!
   return (
@@ -1121,37 +1046,38 @@ function useDataTableContent(
               )}
             </Button>
 
-            {/* These next two only show up if rows are selected */}
-            {((selectedIds?.length ?? 0) > 0 || isAllPagesSelected) && (
-              <>
-                <Button
-                  onClick={() => {
-                    void handleDownload("csv", true);
-                  }}
-                  className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                  disabled={downloadingButton !== null}
-                >
-                  {downloadingButton === "csv-selected" ? (
-                    <span className="text-red-600">Downloading...</span>
-                  ) : (
-                    "Download Selected (CSV)"
-                  )}
-                </Button>
-                <Button
-                  onClick={() => {
-                    void handleDownload("txt", true);
-                  }}
-                  className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                  disabled={downloadingButton !== null}
-                >
-                  {downloadingButton === "txt-selected" ? (
-                    <span className="text-red-600">Downloading...</span>
-                  ) : (
-                    "Download Selected (TXT)"
-                  )}
-                </Button>
-              </>
-            )}
+            {/* These next two only show up if rows are selected and something can export them */}
+            {((selectedIds?.length ?? 0) > 0 || isAllPagesSelected) &&
+              canDownloadSelected && (
+                <>
+                  <Button
+                    onClick={() => {
+                      void handleDownload("csv", true);
+                    }}
+                    className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    disabled={downloadingButton !== null}
+                  >
+                    {downloadingButton === "csv-selected" ? (
+                      <span className="text-red-600">Downloading...</span>
+                    ) : (
+                      "Download Selected (CSV)"
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      void handleDownload("txt", true);
+                    }}
+                    className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    disabled={downloadingButton !== null}
+                  >
+                    {downloadingButton === "txt-selected" ? (
+                      <span className="text-red-600">Downloading...</span>
+                    ) : (
+                      "Download Selected (TXT)"
+                    )}
+                  </Button>
+                </>
+              )}
 
             <label className="ml-4 flex items-center text-xs text-foreground">
               <input

@@ -15,10 +15,9 @@ import {
   proteinStructureCollectionProfile,
   type ProteinStructureViewRecord,
 } from "@/lib/protein-structure-view";
-import { dataSort, type CollectionState } from "@/lib/views/collection-state";
+import type { CollectionState } from "@/lib/views/collection-state";
 import {
   ResourceCollection,
-  matchesLoadedKeyword,
   type ResourceCollectionProfile,
 } from "./resource-collection";
 
@@ -40,43 +39,6 @@ function scopedStructuralRql(
     const structuralRql = buildStructuralRql?.(state);
     return structuralRql ? `and(${rql},${structuralRql})` : rql;
   };
-}
-
-function saveRows(
-  rows: readonly ChildRow[],
-  fields: readonly string[],
-  format: "csv" | "txt",
-  name: string,
-) {
-  const separator = format === "csv" ? "," : "\t";
-  const value = (input: unknown) => {
-    const text = Array.isArray(input)
-      ? input.map(String).join("; ")
-      : typeof input === "string" ||
-          typeof input === "number" ||
-          typeof input === "boolean" ||
-          typeof input === "bigint"
-        ? String(input)
-        : input == null
-          ? ""
-          : JSON.stringify(input);
-    const cleaned = text.replace(/\r\n|\n|\r/g, " ");
-    if (format === "txt") return cleaned.replaceAll("\t", " ");
-    const safe = /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
-    return `"${safe.replaceAll('"', '""')}"`;
-  };
-  const body = [
-    fields.join(separator),
-    ...rows.map((row) =>
-      fields.map((field) => value(row[field])).join(separator),
-    ),
-  ].join("\n");
-  const url = URL.createObjectURL(new Blob([body]));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `${name}.${format}`;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 interface ResourceChildCollectionProps {
@@ -176,6 +138,7 @@ function ScopedResourceChildCollection({
         rql,
         suppliedProfile.buildStructuralRql,
       ),
+      exportFileName: label.toLowerCase(),
     };
   } else if (resource === "bioset") {
     profile = {
@@ -186,6 +149,7 @@ function ScopedResourceChildCollection({
         rql,
         biosetCollectionProfile.buildStructuralRql,
       ),
+      exportFileName: label.toLowerCase(),
     };
   } else if (resource === "genome_feature") {
     profile = {
@@ -198,6 +162,7 @@ function ScopedResourceChildCollection({
       ),
       rowHref: (row) =>
         featureCollectionProfile.rowHref?.(row as FeatureViewRecord),
+      exportFileName: label.toLowerCase(),
     };
   } else if (resource === "protein_feature") {
     profile = {
@@ -212,6 +177,7 @@ function ScopedResourceChildCollection({
         proteinFeatureCollectionProfile.rowHref?.(
           row as ProteinFeatureViewRecord,
         ),
+      exportFileName: label.toLowerCase(),
     };
   } else if (resource === "protein_structure") {
     profile = {
@@ -226,6 +192,7 @@ function ScopedResourceChildCollection({
         proteinStructureCollectionProfile.rowHref?.(
           row as ProteinStructureViewRecord,
         ),
+      exportFileName: label.toLowerCase(),
     };
   } else {
     if (!columns) {
@@ -241,10 +208,10 @@ function ScopedResourceChildCollection({
       defaultSort,
       basePredicate: rql,
       guideUrl,
+      exportFileName: label.toLowerCase(),
     };
   }
 
-  const exportColumns = profile.columns;
   return (
     <ResourceCollection
       profile={profile}
@@ -258,40 +225,6 @@ function ScopedResourceChildCollection({
         keywordMode === "loaded" ? onKeywordChange : undefined
       }
       keywordPlaceholder={keywordPlaceholder}
-      onExport={async ({
-        format,
-        selectedIds,
-        fields,
-        rql: exportRql,
-        loadedKeyword,
-      }) => {
-        const selectedFields = fields
-          ? [...fields]
-          : exportColumns.map((column) => column.id);
-        if (selectedIds?.length) {
-          const result = await repository.selected(resource, {
-            ids: [...selectedIds],
-            fields: selectedFields,
-          });
-          saveRows(result.rows, selectedFields, format, label.toLowerCase());
-          return;
-        }
-        // A loaded-mode keyword filters rows client-side, so it never reaches the
-        // request. Matching it here needs every profile column, not just the
-        // requested export fields; the rows are projected back down afterwards.
-        const result = await repository.exportAll(resource, {
-          rql: exportRql ?? rql,
-          keyword: effectiveState.keyword,
-          fields: loadedKeyword
-            ? exportColumns.map((column) => column.id)
-            : selectedFields,
-          sort: dataSort(effectiveState.sort),
-        });
-        const rows = loadedKeyword
-          ? result.rows.filter((row) => matchesLoadedKeyword(row, loadedKeyword))
-          : result.rows;
-        saveRows(rows, selectedFields, format, label.toLowerCase());
-      }}
     />
   );
 }

@@ -1914,6 +1914,109 @@ describe("ResourceCollection Genome integration contracts", () => {
     );
   });
 
+  it("propagates a profile's non-default server keyword mode to exportAll", async () => {
+    // Plan item 14: `ResourceChildCollection` builds its profile by spreading a
+    // canonical (or supplied) profile, so a `serverKeywordMode` that profile
+    // defines has to survive the spread and reach the same `exportAll` call the
+    // parent uses — a second, divergent export implementation is exactly what
+    // let the child silently drop this field before.
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, serverKeywordMode: "exact" }}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    expect(exportAll).toHaveBeenCalledWith(
+      "genome",
+      expect.objectContaining({ keywordMode: "exact" }),
+    );
+  });
+
+  it("defaults to the prefix keyword contract when a profile leaves serverKeywordMode unset", async () => {
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    // `undefined` here is not "forgot to pass a mode" — the Data API repository
+    // (src/lib/data-api/repository.ts) treats anything other than "exact" as a
+    // prefix search (it appends `*`), so leaving `serverKeywordMode` unset
+    // deliberately keeps the default prefix contract.
+    expect(exportAll).toHaveBeenCalledWith(
+      "genome",
+      expect.objectContaining({ keywordMode: undefined }),
+    );
+  });
+
+  it("names an export after a profile's exportFileName instead of the resource", async () => {
+    // The one sanctioned override point (plan item 14): `ResourceChildCollection`
+    // sets this to the tab label so a child export keeps its old, label-based
+    // filename instead of silently switching to the shared resource id.
+    const data = repository();
+    render(
+      <ResourceCollection
+        profile={{
+          ...genomeCollectionProfile,
+          exportFileName: "related genomes",
+        }}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    expect(downloadResourceExport).toHaveBeenCalledWith(
+      "genome",
+      [row],
+      genomeCollectionProfile.columns,
+      genomeCollectionProfile.columns.map((column) => column.id),
+      "csv",
+      "all",
+      "related genomes",
+    );
+  });
+
   it("preserves backend order when exporting an unsorted collection", async () => {
     const data = repository();
     const exportAll = vi.spyOn(data, "exportAll");
@@ -2403,17 +2506,17 @@ describe("ResourceCollection Genome integration contracts", () => {
     expect(dataTableProps).toMatchObject({ data: [], totalItems: 0 });
   });
 
-  it("passes the effective RQL to delegated exports", async () => {
-    const onExport = vi.fn();
+  it("passes the effective RQL to exportAll, including any explicit state.rql", async () => {
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
     render(
       <ResourceCollection
         profile={genomeCollectionProfile}
-        repository={repository()}
+        repository={data}
         state={{ ...state, rql: "eq(genome_id,83332.12)" }}
         onStateChange={vi.fn()}
         baseRql="eq(taxon_lineage_ids,561)"
         showHeader={false}
-        onExport={onExport}
       />,
     );
 
@@ -2426,12 +2529,12 @@ describe("ResourceCollection Genome integration contracts", () => {
       )("csv", null);
     });
 
-    expect(onExport).toHaveBeenCalledWith({
-      format: "csv",
-      selectedIds: undefined,
-      fields: null,
-      rql: "and(and(eq(taxon_lineage_ids,561),eq(genome_id,*)),eq(genome_id,83332.12))",
-    });
+    expect(exportAll).toHaveBeenCalledWith(
+      "genome",
+      expect.objectContaining({
+        rql: "and(and(eq(taxon_lineage_ids,561),eq(genome_id,*)),eq(genome_id,83332.12))",
+      }),
+    );
   });
 
   it("surfaces the repository's export error message for an all-matching export", async () => {
@@ -2495,75 +2598,6 @@ describe("ResourceCollection Genome integration contracts", () => {
     await waitFor(() =>
       expect(
         screen.getByText("Selected genome export rejected: rate limited"),
-      ).toBeVisible(),
-    );
-    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
-    expect(screen.getByText("Could not export genomes")).toBeVisible();
-  });
-
-  it("surfaces a delegated onExport error message for an all-matching export", async () => {
-    const error = new Error("Authentication expired, please sign in again");
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-    const onExport = vi.fn(() => Promise.reject(error));
-    render(
-      <ResourceCollection
-        profile={genomeCollectionProfile}
-        repository={repository()}
-        state={state}
-        onStateChange={vi.fn()}
-        showHeader={false}
-        onExport={onExport}
-      />,
-    );
-
-    await act(async () => {
-      await (
-        dataTableProps.onDownloadAll as (
-          format: "csv",
-          fields: null,
-        ) => Promise<void>
-      )("csv", null);
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByText("Authentication expired, please sign in again"),
-      ).toBeVisible(),
-    );
-    expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);
-    expect(screen.getByText("Could not export genomes")).toBeVisible();
-  });
-
-  it("surfaces a delegated onExport error message for a selected-rows export", async () => {
-    const error = new Error("Validation failed: unknown field requested");
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-    const onExport = vi.fn(() => Promise.reject(error));
-    render(
-      <ResourceCollection
-        profile={genomeCollectionProfile}
-        repository={repository()}
-        state={state}
-        onStateChange={vi.fn()}
-        showHeader={false}
-        onExport={onExport}
-      />,
-    );
-
-    await act(async () => {
-      await (
-        dataTableProps.onDownloadSelected as (
-          format: "csv",
-          ids: string[],
-          fields: string[],
-        ) => Promise<void>
-      )("csv", ["83332.12"], ["genome_name"]);
-    });
-    await waitFor(() =>
-      expect(
-        screen.getByText("Validation failed: unknown field requested"),
       ).toBeVisible(),
     );
     expect(consoleError).toHaveBeenCalledWith("Resource export failed:", error);

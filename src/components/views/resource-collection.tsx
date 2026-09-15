@@ -82,6 +82,12 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   rowLinkField?: string;
   rowLinkFields?: readonly string[];
   serverKeywordMode?: "exact" | "prefix";
+  /**
+   * Overrides the export filename's base segment (otherwise `resource`).
+   * `ResourceChildCollection` sets this to the tab's label so a child tab's
+   * export stays named after the tab instead of the shared resource id.
+   */
+  exportFileName?: string;
 }
 
 /** Actions each resource enables. Read by both visibility and dispatch. */
@@ -315,20 +321,6 @@ export function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
   });
 }
 
-export interface ResourceCollectionExportRequest {
-  format: "csv" | "txt";
-  selectedIds?: readonly string[];
-  fields: readonly string[] | null;
-  rql?: string;
-  /**
-   * Active loaded-mode keyword, trimmed and lower-cased, for a "download all" export.
-   * In loaded mode the keyword never reaches the request (it filters the loaded page
-   * client-side), so an exporter that ignores this downloads the unfiltered scope.
-   * Absent for selected-ID exports, which are already exact.
-   */
-  loadedKeyword?: string;
-}
-
 export interface ResourceCollectionProps<Row extends DataTableRow> {
   profile: ResourceCollectionProfile<Row>;
   repository: DataRepository;
@@ -343,7 +335,6 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   onLoadedKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
   prefetchNextPage?: boolean;
-  onExport?: (request: ResourceCollectionExportRequest) => void | Promise<void>;
 }
 
 export function ResourceCollection<Row extends DataTableRow>({
@@ -360,7 +351,6 @@ export function ResourceCollection<Row extends DataTableRow>({
   onLoadedKeywordChange,
   keywordPlaceholder,
   prefetchNextPage = false,
-  onExport,
 }: ResourceCollectionProps<Row>) {
   const [exportError, setExportError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -732,17 +722,6 @@ export function ResourceCollection<Row extends DataTableRow>({
       return;
     }
     try {
-      if (onExport) {
-        await onExport({
-          format,
-          selectedIds: ids,
-          fields,
-          rql: effectiveRql,
-          loadedKeyword:
-            hasLoadedKeyword && !ids ? normalizedLoadedKeyword : undefined,
-        });
-        return;
-      }
       const selectedFields = fields
         ? [...fields]
         : profile.columns.map((column) => column.id);
@@ -765,13 +744,25 @@ export function ResourceCollection<Row extends DataTableRow>({
               matchesLoadedKeyword(row, normalizedLoadedKeyword),
             )
           : result.rows;
-      downloadResourceExport(
-        profile.resource,
-        exportedRows,
-        profile.columns,
-        selectedFields,
-        format,
-      );
+      if (profile.exportFileName) {
+        downloadResourceExport(
+          profile.resource,
+          exportedRows,
+          profile.columns,
+          selectedFields,
+          format,
+          "all",
+          profile.exportFileName,
+        );
+      } else {
+        downloadResourceExport(
+          profile.resource,
+          exportedRows,
+          profile.columns,
+          selectedFields,
+          format,
+        );
+      }
     } catch (error) {
       console.error("Resource export failed:", error);
       setExportError(

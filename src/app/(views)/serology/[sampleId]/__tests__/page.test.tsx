@@ -115,15 +115,25 @@ describe("Serology member page", () => {
     ).resolves.toMatchObject({ title: "sample%2Fone | Serology" });
   });
 
-  it("uses notFound for malformed, absent, and inaccessible records", async () => {
+  it("uses notFound only for the absent-record sentinel and an upstream 404", async () => {
     await expect(SerologyPage(props(""))).rejects.toThrow("NEXT_NOT_FOUND");
     mocks.getSerology.mockResolvedValueOnce({ status: "not-found" });
     await expect(SerologyPage(props())).rejects.toThrow("NEXT_NOT_FOUND");
-    mocks.getSerology.mockRejectedValueOnce(new DataApiError("Forbidden", 403));
+    mocks.getSerology.mockRejectedValueOnce(
+      new DataApiError("Record not found upstream", 404),
+    );
     await expect(SerologyPage(props())).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
-  it("preserves upstream errors", async () => {
+  it("preserves upstream authentication, authorization, and service errors instead of disguising them as not-found", async () => {
+    mocks.getSerology.mockRejectedValueOnce(
+      new DataApiError("Session token expired", 401),
+    );
+    await expect(SerologyPage(props())).rejects.toThrow(
+      "Session token expired",
+    );
+    mocks.getSerology.mockRejectedValueOnce(new DataApiError("Forbidden", 403));
+    await expect(SerologyPage(props())).rejects.toThrow("Forbidden");
     mocks.getSerology.mockRejectedValueOnce(
       new DataApiError("Serology backend unavailable", 503),
     );

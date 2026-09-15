@@ -134,19 +134,29 @@ describe("Surveillance member page", () => {
     ).resolves.toMatchObject({ title: "sample%2Fone | Surveillance" });
   });
 
-  it("uses notFound for malformed, absent, and inaccessible records", async () => {
+  it("uses notFound only for the absent-record sentinel and an upstream 404", async () => {
     await expect(SurveillancePage(props(""))).rejects.toThrow(
       "NEXT_NOT_FOUND",
     );
     mocks.getSurveillance.mockResolvedValueOnce({ status: "not-found" });
     await expect(SurveillancePage(props())).rejects.toThrow("NEXT_NOT_FOUND");
     mocks.getSurveillance.mockRejectedValueOnce(
-      new DataApiError("Forbidden", 403),
+      new DataApiError("Record not found upstream", 404),
     );
     await expect(SurveillancePage(props())).rejects.toThrow("NEXT_NOT_FOUND");
   });
 
-  it("preserves upstream errors", async () => {
+  it("preserves upstream authentication, authorization, and service errors instead of disguising them as not-found", async () => {
+    mocks.getSurveillance.mockRejectedValueOnce(
+      new DataApiError("Session token expired", 401),
+    );
+    await expect(SurveillancePage(props())).rejects.toThrow(
+      "Session token expired",
+    );
+    mocks.getSurveillance.mockRejectedValueOnce(
+      new DataApiError("Forbidden", 403),
+    );
+    await expect(SurveillancePage(props())).rejects.toThrow("Forbidden");
     mocks.getSurveillance.mockRejectedValueOnce(
       new DataApiError("Surveillance backend unavailable", 503),
     );

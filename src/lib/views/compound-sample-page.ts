@@ -29,8 +29,7 @@ export async function loadCompoundSamplePage<TFound extends FoundLookup>(
     if (result.status === "not-found") notFound();
     return { sampleId, result };
   } catch (error) {
-    if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
-      notFound();
+    if (error instanceof DataApiError && error.status === 404) notFound();
     throw error;
   }
 }

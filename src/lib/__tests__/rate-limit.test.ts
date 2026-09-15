@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { rateLimit, clientIp, hasRateLimitBucket } from "@/lib/rate-limit";
 
 describe("rateLimit", () => {
   beforeEach(() => {
@@ -34,6 +34,25 @@ describe("rateLimit", () => {
     rateLimit(a, 1, 1000);
     expect(rateLimit(a, 1, 1000).allowed).toBe(false);
     expect(rateLimit(b, 1, 1000).allowed).toBe(true);
+  });
+
+  it("prunes expired buckets once the map grows large, instead of retaining every key forever", () => {
+    const target = "prune-target";
+    rateLimit(target, 1, 1000);
+    expect(hasRateLimitBucket(target)).toBe(true);
+
+    // Expire the target's window without touching it again.
+    vi.advanceTimersByTime(1001);
+
+    // Grow the map past the internal prune threshold with fresh (still valid)
+    // keys. This forces rateLimit's opportunistic sweep to run at least once,
+    // which should find and evict the now-expired target bucket rather than
+    // leaving it tracked for the life of the process.
+    for (let i = 0; i < 1_000; i++) {
+      rateLimit(`prune-filler-${String(i)}`, 5, 60_000);
+    }
+
+    expect(hasRateLimitBucket(target)).toBe(false);
   });
 });
 

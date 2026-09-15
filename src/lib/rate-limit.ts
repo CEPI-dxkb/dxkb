@@ -25,6 +25,20 @@ export interface RateLimitResult {
 const buckets = new Map<string, WindowState>();
 
 /**
+ * Once the bucket map holds at least this many entries, `rateLimit` sweeps
+ * out expired ones before recording a new hit. Keeps a long-lived process
+ * from retaining one entry per distinct key forever (e.g. one per client IP
+ * ever seen), while skipping sweep cost while the map is small.
+ */
+const pruneThreshold = 1_000;
+
+function pruneExpiredBuckets(now: number): void {
+  for (const [key, state] of buckets) {
+    if (now >= state.resetAt) buckets.delete(key);
+  }
+}
+
+/**
  * Records a hit for `key` and reports whether it is within the allowed budget.
  *
  * @param key    Identifier to bucket by (e.g. client IP + route).
@@ -37,6 +51,7 @@ export function rateLimit(
   windowMs: number,
 ): RateLimitResult {
   const now = Date.now();
+  if (buckets.size >= pruneThreshold) pruneExpiredBuckets(now);
   const existing = buckets.get(key);
 
   if (!existing || now >= existing.resetAt) {
@@ -55,6 +70,15 @@ export function rateLimit(
     remaining: limit - existing.count,
     resetAt: existing.resetAt,
   };
+}
+
+/**
+ * Whether `key` currently has a tracked bucket. Exposed for tests that verify
+ * expired buckets get pruned rather than retained for the life of the
+ * process.
+ */
+export function hasRateLimitBucket(key: string): boolean {
+  return buckets.has(key);
 }
 
 /**

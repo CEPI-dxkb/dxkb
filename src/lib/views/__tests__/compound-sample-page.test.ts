@@ -1,3 +1,10 @@
+// See src/lib/phylogeny/__tests__/dataset-store.test.ts: `server-only` throws
+// unconditionally outside Next's bundler, so any test importing a module
+// gated by it (this file imports the real `getSurveillance`/`getSerology`,
+// which now pull in `@/lib/data-api/server-repository`) neutralizes the
+// guard.
+vi.mock("server-only", () => ({}));
+
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { setTestSession } from "@/test-helpers/api-route-helpers";

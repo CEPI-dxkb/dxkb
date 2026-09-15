@@ -1,5 +1,3 @@
-import { epitopeFields } from "@/constants/datafields/epitope";
-import type { DataField } from "@/constants/datafields/types";
 import { eq, validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
@@ -8,19 +6,14 @@ import {
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { structuralFilterRql } from "@/lib/views/structural-rql";
+import { epitopeMetadata } from "./fields";
 
-export const epitopeSorts = (Object.values(epitopeFields) as DataField[])
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
-
-const facetFields = (Object.values(epitopeFields) as DataField[])
-  .filter((field) => field.facet)
-  .map((field) => field.field);
+export const epitopeSorts = epitopeMetadata.sorts;
 
 export const epitopeCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...epitopeSorts],
-  friendlyFilters: ["taxon_id", ...facetFields],
+  friendlyFilters: ["taxon_id", ...epitopeMetadata.facetFields],
 };
 
 export function parseEpitopeCollectionState(

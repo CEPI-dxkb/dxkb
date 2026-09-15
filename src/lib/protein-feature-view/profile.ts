@@ -1,42 +1,12 @@
-import type { DataTableColumn } from "@/components/shared/data-table";
 import type { ResourceCollectionProfile } from "@/components/views";
-import { proteinFeatureFields } from "@/constants/datafields/protein_feature";
-import type { DataField } from "@/constants/datafields/types";
 import { featureHref } from "@/lib/views/hrefs";
+import { proteinFeatureMetadata } from "./fields";
 import { proteinFeatureStructuralRql } from "./query";
 import type { ProteinFeatureViewRecord } from "./schema";
 
-function tableColumn(definition: DataField): DataTableColumn {
-  return {
-    id: definition.field,
-    label: definition.label,
-    visible: !definition.hidden,
-    sortable: definition.sortable ?? true,
-    fallbackValue:
-      definition.field === "patric_id"
-        ? function (row) {
-            return row.feature_id;
-          }
-        : undefined,
-    valueHref: definition.link,
-  };
-}
-
-const fields: DataField[] = Object.values(proteinFeatureFields);
-
-export const proteinFeatureColumns = fields
-  .filter((field) => field.show_in_table !== false)
-  .map(tableColumn);
-export const proteinFeatureDetailFields = [
-  ...new Set(fields.map((field) => field.field)),
-];
-export const proteinFeatureFacets = fields
-  .filter((field) => field.facet)
-  .map((field) => ({
-    field: field.field,
-    label: field.label,
-    initiallyVisible: field.facet_hidden !== true,
-  }));
+export const proteinFeatureColumns = proteinFeatureMetadata.columns;
+export const proteinFeatureDetailFields = proteinFeatureMetadata.detailFields;
+export const proteinFeatureFacets = proteinFeatureMetadata.facets;
 
 export const proteinFeatureCollectionProfile: ResourceCollectionProfile<ProteinFeatureViewRecord> =
   {

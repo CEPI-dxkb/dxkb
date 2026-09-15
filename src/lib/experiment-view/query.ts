@@ -1,5 +1,3 @@
-import { experimentFields } from "@/constants/datafields/experiment";
-import type { DataField } from "@/constants/datafields/types";
 import { eq, serializeRql, validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
@@ -8,19 +6,14 @@ import {
 } from "@/lib/views/collection-state";
 import { rqlKeyword, type SearchParamsRecord } from "@/lib/views/rql";
 import { structuralFilterRql } from "@/lib/views/structural-rql";
+import { experimentMetadata } from "./fields";
 
-export const experimentSorts = (Object.values(experimentFields) as DataField[])
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
-
-const facetFields = (Object.values(experimentFields) as DataField[])
-  .filter((field) => field.facet)
-  .map((field) => field.field);
+export const experimentSorts = experimentMetadata.sorts;
 
 export const experimentCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...experimentSorts],
-  friendlyFilters: ["taxon_id", ...facetFields],
+  friendlyFilters: ["taxon_id", ...experimentMetadata.facetFields],
   filterFieldMap: { taxon_id: "taxon_lineage_ids" },
 };
 

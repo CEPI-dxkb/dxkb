@@ -7,12 +7,9 @@ import {
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { structuralFilterRql } from "@/lib/views/structural-rql";
 
-import { genomeFields } from "@/constants/datafields/genome";
-import type { DataField } from "@/constants/datafields/types";
+import { genomeMetadata } from "./fields";
 
-export const genomeSorts = (Object.values(genomeFields) as DataField[])
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
+export const genomeSorts = genomeMetadata.sorts;
 
 export type GenomeSort = string;
 

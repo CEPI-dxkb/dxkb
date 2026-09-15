@@ -1,5 +1,3 @@
-import { strainFields } from "@/constants/datafields/strain";
-import type { DataField } from "@/constants/datafields/types";
 import { validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
@@ -8,44 +6,14 @@ import {
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { structuralFilterRql } from "@/lib/views/structural-rql";
+import { strainMetadata } from "./fields";
 
-const fields: DataField[] = Object.values(strainFields);
-const multipleFields = new Set([
-  "taxon_lineage_ids",
-  "taxon_lineage_names",
-  "genome_ids",
-  "genbank_accessions",
-  "1_pb2",
-  "2_pb1",
-  "3_pa",
-  "4_ha",
-  "5_np",
-  "6_na",
-  "7_mp",
-  "8_ns",
-  "s",
-  "m",
-  "l",
-  "other_segments",
-]);
-
-export const strainSorts = fields
-  .filter(
-    (field) =>
-      field.show_in_table !== false &&
-      field.sortable !== false &&
-      !multipleFields.has(field.field),
-  )
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
-
-const facetFields = fields
-  .filter((field) => field.facet)
-  .map((field) => field.field);
+export const strainSorts = strainMetadata.sorts;
 
 export const strainCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...strainSorts],
-  friendlyFilters: ["taxon_id", "strain", ...facetFields],
+  friendlyFilters: ["taxon_id", "strain", ...strainMetadata.facetFields],
 };
 
 export function parseStrainCollectionState(

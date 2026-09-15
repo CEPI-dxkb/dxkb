@@ -1,48 +1,15 @@
-import type { DataTableColumn } from "@/components/shared/data-table";
 import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
-import { biosetFields } from "@/constants/datafields/bioset";
-import { experimentFields } from "@/constants/datafields/experiment";
-import type { DataField } from "@/constants/datafields/types";
 import { experimentHref } from "@/lib/views/hrefs";
+import { biosetMetadata, experimentMetadata } from "./fields";
 import { biosetStructuralRql, experimentStructuralRql } from "./query";
 import type { ExperimentViewRecord } from "./schema";
 
-function tableColumn(definition: DataField): DataTableColumn {
-  return {
-    id: definition.field,
-    label: definition.label,
-    visible: !definition.hidden,
-    sortable: definition.sortable ?? true,
-  };
-}
-
-function deriveProfileFields(fieldMap: Record<string, DataField>) {
-  const fields = Object.values(fieldMap);
-
-  return {
-    columns: fields
-      .filter((field) => field.show_in_table !== false)
-      .map(tableColumn),
-    detailFields: fields.map((field) => field.field),
-    facets: fields
-      .filter((field) => field.facet && field.facet_hidden !== true)
-      .map((field) => ({
-        field: field.field,
-        label: field.label,
-        initiallyVisible: true,
-      })),
-  };
-}
-
-const experimentProfileFields = deriveProfileFields(experimentFields);
-const biosetProfileFields = deriveProfileFields(biosetFields);
-
-export const experimentColumns = experimentProfileFields.columns;
-export const experimentDetailFields = experimentProfileFields.detailFields;
-export const experimentFacets = experimentProfileFields.facets;
-export const biosetColumns = biosetProfileFields.columns;
-export const biosetDetailFields = biosetProfileFields.detailFields;
-export const biosetFacets = biosetProfileFields.facets;
+export const experimentColumns = experimentMetadata.columns;
+export const experimentDetailFields = experimentMetadata.detailFields;
+export const experimentFacets = experimentMetadata.facets;
+export const biosetColumns = biosetMetadata.columns;
+export const biosetDetailFields = biosetMetadata.detailFields;
+export const biosetFacets = biosetMetadata.facets;
 
 export const experimentCollectionProfile: ResourceCollectionProfile<ExperimentViewRecord> =
   {

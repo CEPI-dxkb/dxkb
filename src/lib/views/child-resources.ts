@@ -2,21 +2,29 @@ import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
 import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
 import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
-import type { DataFieldMap } from "@/constants/datafields/types";
 import { eq } from "@/lib/data-api";
+import { deriveFieldMetadata } from "./field-metadata";
 
-function tableColumns(fields: DataFieldMap) {
-  return Object.values(fields).flatMap((field) =>
-    field.show_in_table === false
-      ? []
-      : [{ id: field.field, label: field.label, visible: !field.hidden }],
-  );
-}
-
-export const featureColumns = tableColumns(genomeFeatureFields);
-export const genomeSequenceColumns = tableColumns(genomeSequenceFields);
-export const interactionColumns = tableColumns(ppiFields);
-export const sequenceFeatureColumns = tableColumns(sequenceFeatureFields);
+/**
+ * Child tabs run through the same metadata pass as the top-level collections, so a child
+ * column carries the registry's sortability too. Before that, child columns omitted
+ * `sortable` entirely, which `DataTable` reads as "sortable" — a header for a field the
+ * Data API rejects. Child tabs hold their sort in component state rather than the URL, so
+ * they consume `columns` only; the other three derived outputs stay unused here.
+ */
+export const featureColumns = deriveFieldMetadata(genomeFeatureFields, {
+  resource: "genome_feature",
+}).columns;
+export const genomeSequenceColumns = deriveFieldMetadata(genomeSequenceFields, {
+  resource: "genome_sequence",
+}).columns;
+export const interactionColumns = deriveFieldMetadata(ppiFields, {
+  resource: "ppi",
+}).columns;
+export const sequenceFeatureColumns = deriveFieldMetadata(
+  sequenceFeatureFields,
+  { resource: "sequence_feature" },
+).columns;
 
 export function featureDomainsRql(featureId: string): string {
   return eq("protein_feature", "feature_id", featureId);

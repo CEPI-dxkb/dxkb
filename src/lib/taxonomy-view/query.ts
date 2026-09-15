@@ -1,5 +1,3 @@
-import { taxonomyFields } from "@/constants/datafields/taxonomy";
-import type { DataField } from "@/constants/datafields/types";
 import { validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
@@ -8,10 +6,9 @@ import {
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { structuralFilterRql } from "@/lib/views/structural-rql";
+import { taxonomyMetadata } from "./fields";
 
-export const taxonomySorts = (Object.values(taxonomyFields) as DataField[])
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
+export const taxonomySorts = taxonomyMetadata.sorts;
 
 export const taxonomyCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",

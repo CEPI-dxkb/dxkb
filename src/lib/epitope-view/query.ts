@@ -7,6 +7,7 @@ import {
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import { structuralFilterRql } from "@/lib/views/structural-rql";
 
 export const epitopeSorts = (Object.values(epitopeFields) as DataField[])
   .filter((field) => field.show_in_table !== false && field.sortable !== false)
@@ -30,19 +31,16 @@ export function parseEpitopeCollectionState(
   return state;
 }
 
+const epitopeStructuralFieldMap: Readonly<Record<string, string>> = {
+  taxon_id: "taxon_lineage_ids",
+};
+
 export function epitopeStructuralRql(
   state: CollectionState,
 ): string | undefined {
-  if (state.rql) return undefined;
-  const clauses = Object.entries(state.filters).flatMap(([field, selected]) => {
-    const backendField = field === "taxon_id" ? "taxon_lineage_ids" : field;
-    const predicates = selected.map((value) => eq("epitope", backendField, value));
-    return predicates.length === 0
-      ? []
-      : [predicates.length === 1 ? predicates[0] : `or(${predicates.join(",")})`];
+  return structuralFilterRql("epitope", state, {
+    fieldMap: epitopeStructuralFieldMap,
   });
-  if (clauses.length === 0) return undefined;
-  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
 }
 
 export function epitopeAssayRql(epitopeId: string): string {

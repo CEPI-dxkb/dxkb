@@ -1,12 +1,13 @@
 import { strainFields } from "@/constants/datafields/strain";
 import type { DataField } from "@/constants/datafields/types";
-import { eq, validateRql } from "@/lib/data-api";
+import { validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import { structuralFilterRql } from "@/lib/views/structural-rql";
 
 const fields: DataField[] = Object.values(strainFields);
 const multipleFields = new Set([
@@ -55,23 +56,14 @@ export function parseStrainCollectionState(
   return state;
 }
 
+const strainStructuralFieldMap: Readonly<Record<string, string>> = {
+  taxon_id: "taxon_lineage_ids",
+};
+
 export function strainStructuralRql(
   state: CollectionState,
 ): string | undefined {
-  if (state.rql) return undefined;
-  const clauses = Object.entries(state.filters).flatMap(([field, selected]) => {
-    const backendField = field === "taxon_id" ? "taxon_lineage_ids" : field;
-    const predicates = selected.map((value) =>
-      eq("strain", backendField, value),
-    );
-    return predicates.length === 0
-      ? []
-      : [
-          predicates.length === 1
-            ? predicates[0]
-            : `or(${predicates.join(",")})`,
-        ];
+  return structuralFilterRql("strain", state, {
+    fieldMap: strainStructuralFieldMap,
   });
-  if (clauses.length === 0) return undefined;
-  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
 }

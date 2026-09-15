@@ -1,10 +1,11 @@
-import { eq, validateRql } from "@/lib/data-api";
+import { validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import { structuralFilterRql } from "@/lib/views/structural-rql";
 
 import { genomeFields } from "@/constants/datafields/genome";
 import type { DataField } from "@/constants/datafields/types";
@@ -44,30 +45,25 @@ export function parseGenomeCollectionState(
   return state;
 }
 
+// Genome's remap table is total and authoritative: a friendly filter name
+// absent from it is dropped rather than forwarded, so a future friendly
+// filter can't reach the backend under its raw name before this table is
+// updated. Every other structural-filter module passes unmapped names
+// through unchanged (see structuralFilterRql's `unknownFilters` option).
+const genomeStructuralFieldMap: Readonly<Record<string, string>> = {
+  taxon_id: "taxon_lineage_ids",
+  genome_status: "genome_status",
+  genome_quality: "genome_quality",
+  collection_year: "collection_year",
+  isolation_country: "isolation_country",
+  host_common_name: "host_common_name",
+};
+
 export function genomeStructuralRql(
   state: CollectionState,
 ): string | undefined {
-  if (state.rql) return undefined;
-  const fields: Record<string, string> = {
-    taxon_id: "taxon_lineage_ids",
-    genome_status: "genome_status",
-    genome_quality: "genome_quality",
-    collection_year: "collection_year",
-    isolation_country: "isolation_country",
-    host_common_name: "host_common_name",
-  };
-  const clauses = Object.entries(state.filters).flatMap(
-    ([name, selectedValues]) => {
-      const field = fields[name];
-      if (!field) return [];
-      const predicates = selectedValues.map((value) =>
-        eq("genome", field, value),
-      );
-      return predicates.length === 1
-        ? predicates
-        : [`or(${predicates.join(",")})`];
-    },
-  );
-  if (clauses.length === 0) return undefined;
-  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+  return structuralFilterRql("genome", state, {
+    fieldMap: genomeStructuralFieldMap,
+    unknownFilters: "drop",
+  });
 }

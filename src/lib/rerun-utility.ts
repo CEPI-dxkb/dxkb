@@ -61,13 +61,63 @@ function generateKey(length = 8): string {
 }
 
 /**
- * Stores job parameters in sessionStorage and opens the
- * corresponding service form page in a new tab with a ?rerun_key= query param.
+ * Shown when the browser refuses the service tab. Covers both a pop-up blocker
+ * rejecting the tab and a reserved tab the user closed before the launch resolved.
+ */
+export const rerunPopupBlockedMessage =
+  "Unable to open the service tab. Allow pop-ups for this site, then try again.";
+
+/**
+ * Outcome of a launch, so a caller can keep its own UI open and report the failure
+ * instead of assuming the tab opened. `blockedPopup` is returned rather than
+ * toasted because both service choosers show it inline, next to the retry button.
+ */
+export type RerunLaunchResult =
+  | { status: "opened" }
+  | { status: "blockedPopup"; message: string }
+  | { status: "unsupportedService"; message: string };
+
+export interface RerunJobOptions {
+  /**
+   * A tab already opened by `reserveRerunWindow()`. Pass it whenever the launch had
+   * to await work first — see that function for why.
+   */
+  resultWindow?: Window;
+}
+
+/**
+ * Opens a blank tab for a launch that cannot navigate yet. Must be called
+ * synchronously inside the click handler, before any `await`: browsers reject
+ * `window.open` once the call no longer runs in the task the user's gesture
+ * started. Returns null when a pop-up blocker refused the tab, which lets the
+ * caller fail before it writes anything that would then be orphaned.
+ */
+export function reserveRerunWindow(): Window | null {
+  return window.open("", "_blank");
+}
+
+/**
+ * Closes a reserved tab after a failed launch. The close error is discarded on
+ * purpose: cleanup must never replace the launch failure the user needs to see.
+ */
+export function closeRerunWindow(reserved: Window | null | undefined): void {
+  try {
+    reserved?.close();
+  } catch {
+    // Deliberately ignored — the caller still reports the original failure.
+  }
+}
+
+/**
+ * Stores job parameters in sessionStorage and opens the corresponding service form
+ * page in a new tab with a ?rerun_key= query param. Pass `resultWindow` to navigate
+ * a tab reserved with `reserveRerunWindow()` instead of opening one here.
  */
 export function rerunJob(
   parameters: Record<string, unknown>,
   serviceId: string,
-): void {
+  { resultWindow }: RerunJobOptions = {},
+): RerunLaunchResult {
   // Resolve route — GeneTree is special: tree_type determines the route
   let route: string | undefined;
 
@@ -82,17 +132,39 @@ export function rerunJob(
   }
 
   if (!route) {
-    toast.error(`The ${serviceId} service is not currently supported in DXKB`);
-    return;
+    const message = `The ${serviceId} service is not currently supported in DXKB`;
+    toast.error(message);
+    return { status: "unsupportedService", message };
   }
 
   const key = generateKey();
+  const url = `${route}?rerun_key=${key}`;
+
+  if (resultWindow) {
+    if (resultWindow.closed) {
+      return { status: "blockedPopup", message: rerunPopupBlockedMessage };
+    }
+    // The reserved tab cloned this tab's sessionStorage when it opened, so a write
+    // here would never reach it. Write into the tab's own storage instead; it
+    // survives the same-origin navigation below.
+    resultWindow.sessionStorage.setItem(key, JSON.stringify(parameters));
+    resultWindow.location.replace(url);
+    resultWindow.opener = null;
+    return { status: "opened" };
+  }
+
   sessionStorage.setItem(key, JSON.stringify(parameters));
 
   // The new tab needs an opener while it is created so the browser copies this
   // tab's sessionStorage. Sever the reference immediately after that copy.
-  const rerunWindow = window.open(`${route}?rerun_key=${key}`, "_blank");
-  if (rerunWindow) rerunWindow.opener = null;
+  const rerunWindow = window.open(url, "_blank");
+  if (!rerunWindow) {
+    // Nothing will ever read the payload, so do not strand it in sessionStorage.
+    sessionStorage.removeItem(key);
+    return { status: "blockedPopup", message: rerunPopupBlockedMessage };
+  }
+  rerunWindow.opener = null;
+  return { status: "opened" };
 }
 
 /**

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +26,15 @@ export function TaxonomyServiceChooser({
   taxonIds,
   hasSelectableServices = true,
 }: TaxonomyServiceChooserProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [lastOpen, setLastOpen] = useState(open);
+
+  // Each opening starts without the previous session's error.
+  if (lastOpen !== open) {
+    setLastOpen(open);
+    setError(null);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -38,7 +48,17 @@ export function TaxonomyServiceChooser({
         {hasSelectableServices ? (
           <Button
             onClick={() => {
-              rerunJob(taxonomyBlastPrefill(taxonIds), "Homology");
+              // The launch is synchronous, so there is no tab to reserve — but a
+              // pop-up blocker can still refuse it, and closing the dialog then
+              // reported a success that never happened.
+              const launch = rerunJob(
+                taxonomyBlastPrefill(taxonIds),
+                "Homology",
+              );
+              if (launch.status !== "opened") {
+                setError(launch.message);
+                return;
+              }
               onOpenChange(false);
             }}
           >
@@ -49,6 +69,11 @@ export function TaxonomyServiceChooser({
             No selectable services
           </p>
         )}
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
         <DialogFooter showCloseButton />
       </DialogContent>
     </Dialog>

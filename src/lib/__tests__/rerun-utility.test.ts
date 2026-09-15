@@ -4,7 +4,10 @@ import {
   buildPairedLibraries,
   buildSingleLibraries,
   buildSraLibraries,
+  closeRerunWindow,
   rerunJob,
+  rerunPopupBlockedMessage,
+  reserveRerunWindow,
 } from "@/lib/rerun-utility";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -227,12 +230,18 @@ describe("buildSraLibraries", () => {
 
 describe("rerunJob", () => {
   let mockSetItem: ReturnType<typeof vi.fn>;
+  let mockRemoveItem: ReturnType<typeof vi.fn>;
   let mockOpen: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockSetItem = vi.fn();
+    mockRemoveItem = vi.fn();
     mockOpen = vi.fn();
-    vi.stubGlobal("sessionStorage", { setItem: mockSetItem, getItem: vi.fn() });
+    vi.stubGlobal("sessionStorage", {
+      setItem: mockSetItem,
+      removeItem: mockRemoveItem,
+      getItem: vi.fn(),
+    });
     vi.stubGlobal("window", { open: mockOpen });
     // Mock crypto.randomUUID for deterministic key generation
     vi.stubGlobal("crypto", { randomUUID: () => "12345678-abcd-efgh-ijkl-mnopqrstuvwx" });
@@ -243,7 +252,7 @@ describe("rerunJob", () => {
     const rerunWindow = { opener: window };
     mockOpen.mockReturnValue(rerunWindow);
 
-    rerunJob(params, "GenomeAssembly2");
+    const result = rerunJob(params, "GenomeAssembly2");
 
     expect(mockSetItem).toHaveBeenCalledWith(
       "12345678",
@@ -254,17 +263,105 @@ describe("rerunJob", () => {
       "_blank",
     );
     expect(rerunWindow.opener).toBeNull();
+    expect(result).toEqual({ status: "opened" });
   });
 
   it("shows toast error for unsupported service", async () => {
     const { toast } = await import("sonner");
-    rerunJob({}, "UnsupportedService");
+    const result = rerunJob({}, "UnsupportedService");
 
     expect(toast.error).toHaveBeenCalledWith(
       "The UnsupportedService service is not currently supported in DXKB",
     );
+    expect(result).toEqual({
+      status: "unsupportedService",
+      message:
+        "The UnsupportedService service is not currently supported in DXKB",
+    });
     expect(mockSetItem).not.toHaveBeenCalled();
     expect(mockOpen).not.toHaveBeenCalled();
+  });
+
+  it("reports a blocked pop-up and strands no payload behind it", async () => {
+    const { toast } = await import("sonner");
+    mockOpen.mockReturnValue(null);
+
+    const result = rerunJob({ genome_id: "123" }, "GenomeAssembly2");
+
+    expect(result).toEqual({
+      status: "blockedPopup",
+      message: rerunPopupBlockedMessage,
+    });
+    // Nothing will ever read the key, so it must not linger in sessionStorage.
+    expect(mockRemoveItem).toHaveBeenCalledWith("12345678");
+    // The choosers show this inline next to their retry button instead.
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("navigates a reserved tab and writes the payload into its own storage", () => {
+    const setItem = vi.fn();
+    const replace = vi.fn();
+    const resultWindow = {
+      closed: false,
+      opener: window,
+      sessionStorage: { setItem },
+      location: { replace },
+    } as unknown as Window;
+
+    const params = { genome_id: "123" };
+    const result = rerunJob(params, "GenomeAssembly2", { resultWindow });
+
+    // The reserved tab cloned this tab's storage when it opened, so writing here
+    // would never reach it.
+    expect(mockSetItem).not.toHaveBeenCalled();
+    expect(setItem).toHaveBeenCalledWith("12345678", JSON.stringify(params));
+    expect(replace).toHaveBeenCalledWith(
+      "/services/genome-assembly?rerun_key=12345678",
+    );
+    expect(resultWindow.opener).toBeNull();
+    expect(mockOpen).not.toHaveBeenCalled();
+    expect(result).toEqual({ status: "opened" });
+  });
+
+  it("reports a reserved tab the user closed before the launch resolved", () => {
+    const setItem = vi.fn();
+    const resultWindow = {
+      closed: true,
+      sessionStorage: { setItem },
+    } as unknown as Window;
+
+    const result = rerunJob({}, "GenomeAssembly2", { resultWindow });
+
+    expect(result).toEqual({
+      status: "blockedPopup",
+      message: rerunPopupBlockedMessage,
+    });
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it("reserves a blank tab, and reports refusal as null", () => {
+    const reserved = {};
+    mockOpen.mockReturnValue(reserved);
+    expect(reserveRerunWindow()).toBe(reserved);
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+
+    mockOpen.mockReturnValue(null);
+    expect(reserveRerunWindow()).toBeNull();
+  });
+
+  it("swallows a close failure so the launch error still reaches the user", () => {
+    const close = vi.fn();
+    closeRerunWindow({ close } as unknown as Window);
+    expect(close).toHaveBeenCalled();
+
+    closeRerunWindow(null);
+    expect(() => {
+      closeRerunWindow({
+        close: () => {
+          throw new Error("close failed");
+        },
+      } as unknown as Window);
+    }).not.toThrow();
   });
 
   it("routes GeneTree with viral_genome tree_type to viral-genome-tree", () => {

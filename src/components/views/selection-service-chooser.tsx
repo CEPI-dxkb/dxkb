@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +12,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
-import { rerunJob } from "@/lib/rerun-utility";
+import {
+  closeRerunWindow,
+  rerunJob,
+  rerunPopupBlockedMessage,
+  reserveRerunWindow,
+} from "@/lib/rerun-utility";
 
 /** Which ID kind the selection resolved to, and so which services accept it. */
 export type SelectionServiceKind = "genome" | "feature";
@@ -25,7 +31,11 @@ interface SelectionServiceChooserProps {
   /** Genome IDs by default; Feature collections resolve `feature_id`s instead. */
   kind?: SelectionServiceKind;
   workspaceUsername?: string;
-  onRequireAuthentication?: (serviceHref: string) => void;
+  /**
+   * Where a signed-out user goes to sign in. The dialog only offers it once a
+   * group-backed service has been asked for, and never navigates there itself.
+   */
+  signInHref?: string;
   /**
    * False for collections no service accepts yet. Matches the Taxa Tree chooser:
    * the dialog still opens, it just reports that there is nothing to run.
@@ -45,7 +55,6 @@ type ServiceChoice =
 
 interface ServiceOption {
   choice: ServiceChoice;
-  href: string;
   label: string;
   pendingLabel: string;
 }
@@ -53,19 +62,16 @@ interface ServiceOption {
 const genomeServiceOptions: readonly ServiceOption[] = [
   {
     choice: "blast",
-    href: "/services/blast",
     label: "BLAST",
     pendingLabel: "Opening BLAST...",
   },
   {
     choice: "viral-tree",
-    href: "/services/viral-genome-tree",
     label: "Viral Genome Tree",
     pendingLabel: "Opening Viral Genome Tree...",
   },
   {
     choice: "viral-msa",
-    href: "/services/msa-snp-analysis",
     label: "Viral MSA",
     pendingLabel: "Opening Viral MSA...",
   },
@@ -74,19 +80,16 @@ const genomeServiceOptions: readonly ServiceOption[] = [
 const featureServiceOptions: readonly ServiceOption[] = [
   {
     choice: "feature-blast",
-    href: "/services/blast",
     label: "BLAST",
     pendingLabel: "Opening BLAST...",
   },
   {
     choice: "gene-tree",
-    href: "/services/gene-protein-tree",
     label: "Gene Tree",
     pendingLabel: "Opening Gene Tree...",
   },
   {
     choice: "ha-subtype",
-    href: "/services/influenza-ha-subtype",
     label: "HA Subtype Numbering Conversion",
     pendingLabel: "Opening HA Subtype Numbering Conversion...",
   },
@@ -99,17 +102,101 @@ const featureServiceOptions: readonly ServiceOption[] = [
 const featureBlastSourceOptions: readonly ServiceOption[] = [
   {
     choice: "feature-blast-query",
-    href: "/services/blast",
     label: "Query",
     pendingLabel: "Opening BLAST...",
   },
   {
     choice: "feature-blast-database",
-    href: "/services/blast",
     label: "Source",
     pendingLabel: "Opening BLAST...",
   },
 ];
+
+/** The choices that need a temporary workspace group before they can launch. */
+type GroupBackedChoice = Exclude<ServiceChoice, "blast" | "feature-blast">;
+
+/**
+ * Sign-in is reported here rather than by navigating to the service form: leaving
+ * the collection discards the row selection, and the form then opens unprefilled.
+ */
+const signInRequiredMessage =
+  "Sign in to use this service. Your selection is kept here, so you can try again once you are signed in.";
+
+const genericServiceErrorMessage = "Unable to open the selected service";
+
+/** Why the last attempt failed, and whether signing in is what unblocks it. */
+interface ServiceFailure {
+  message: string;
+  needsSignIn?: boolean;
+}
+
+/** The rerun payload and service ID each group-backed choice launches with. */
+function groupServiceLaunch(
+  service: GroupBackedChoice,
+  groupPath: string,
+): { parameters: Record<string, unknown>; serviceId: string } {
+  switch (service) {
+    case "viral-tree":
+      return {
+        parameters: {
+          tree_type: "viral_genome",
+          sequences: [{ type: "genome_group", filename: groupPath }],
+        },
+        serviceId: "GeneTree",
+      };
+    case "viral-msa":
+      return {
+        parameters: {
+          input_status: "unaligned",
+          input_type: "input_genomegroup",
+          select_genomegroup: [groupPath],
+          ref_type: "none",
+          aligner: "Mafft",
+          fasta_keyboard_input: "",
+          alphabet: "dna",
+          ref_string: "",
+        },
+        serviceId: "MSA",
+      };
+    case "feature-blast-query":
+      return {
+        parameters: {
+          blast_program: "blastn",
+          db_type: "fna",
+          input_source: "feature_group",
+          input_feature_group: groupPath,
+          db_precomputed_database: "bacteria-archaea",
+        },
+        serviceId: "Homology",
+      };
+    case "feature-blast-database":
+      return {
+        parameters: {
+          blast_program: "blastn",
+          db_type: "fna",
+          db_precomputed_database: "selFeatureGroup",
+          db_feature_group: groupPath,
+        },
+        serviceId: "Homology",
+      };
+    case "gene-tree":
+      return {
+        parameters: {
+          tree_type: "gene",
+          sequences: [{ type: "feature_group", filename: groupPath }],
+        },
+        serviceId: "GeneTree",
+      };
+    case "ha-subtype":
+      return {
+        parameters: {
+          input_source: "feature_group",
+          input_feature_group: groupPath,
+        },
+        serviceId: "HASubtypeNumberingConversion",
+      };
+  }
+}
 
 export function SelectionServiceChooser({
   open,
@@ -118,7 +205,7 @@ export function SelectionServiceChooser({
   ids,
   kind = "genome",
   workspaceUsername,
-  onRequireAuthentication,
+  signInHref,
   hasSelectableServices = true,
 }: SelectionServiceChooserProps) {
   const repository = useWorkspaceRepository("authenticated");
@@ -126,10 +213,29 @@ export function SelectionServiceChooser({
     null,
   );
   const [isChoosingBlastSource, setIsChoosingBlastSource] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ServiceFailure | null>(null);
+  const [lastOpen, setLastOpen] = useState(open);
+  /**
+   * Identifies the current dialog session so a launch that resolves after the dialog
+   * was closed cannot open a service, report an error, or close a later session.
+   */
+  const sessionRef = useRef(0);
+  useEffect(() => {
+    // Every open/close transition — including one driven by the parent — ends the
+    // previous session, so any launch still in flight is no longer current.
+    sessionRef.current += 1;
+  }, [open]);
+
+  // Each opening starts on the service list, with no subflow or error left over.
+  if (lastOpen !== open) {
+    setLastOpen(open);
+    setPendingService(null);
+    setIsChoosingBlastSource(false);
+    setFailure(null);
+  }
 
   const createTemporaryGroup = async () => {
-    if (!workspaceUsername) throw new Error("Sign in to use this service.");
+    if (!workspaceUsername) throw new Error(signInRequiredMessage);
     const directoryPath = `/${workspaceUsername}/home/._tmp_groups`;
     const groupName = `tmp_${kind}_group_${crypto.randomUUID()}`;
     // Nothing provisions this hidden folder at first workspace access and the group
@@ -157,21 +263,23 @@ export function SelectionServiceChooser({
   };
 
   const reportServiceError = (serviceError: unknown) => {
-    setError(
-      serviceError instanceof Error
-        ? serviceError.message
-        : "Unable to open the selected service",
-    );
+    setFailure({
+      message:
+        serviceError instanceof Error
+          ? serviceError.message
+          : genericServiceErrorMessage,
+    });
   };
 
-  const runService = async ({ choice: service, href }: ServiceOption) => {
+  const runService = async ({ choice: service }: ServiceOption) => {
+    const session = sessionRef.current;
     // Direct BLAST carries the selected IDs in its rerun payload and writes no
     // workspace object, so it runs signed out too: the protected service route
     // redirects through sign-in with `rerun_key` intact.
     if (service === "blast") {
-      setError(null);
+      setFailure(null);
       try {
-        rerunJob(
+        const launch = rerunJob(
           {
             blast_program: "blastn",
             db_type: "fna",
@@ -181,6 +289,10 @@ export function SelectionServiceChooser({
           },
           "Homology",
         );
+        if (launch.status !== "opened") {
+          setFailure({ message: launch.message });
+          return;
+        }
         onOpenChange(false);
       } catch (serviceError) {
         reportServiceError(serviceError);
@@ -188,88 +300,48 @@ export function SelectionServiceChooser({
       return;
     }
     // Every remaining service writes a temporary workspace group first, so the
-    // authentication decision comes before any further choice.
+    // authentication decision comes before any further choice. The dialog stays
+    // open on the current collection, which is what keeps the selection alive for
+    // a retry — navigating to the service form would discard it.
     if (!workspaceUsername) {
-      onOpenChange(false);
-      onRequireAuthentication?.(href);
+      setFailure({ message: signInRequiredMessage, needsSignIn: true });
       return;
     }
     if (service === "feature-blast") {
       setIsChoosingBlastSource(true);
       return;
     }
+    setFailure(null);
+    // Reserve the tab inside this click, before the first `await`: a pop-up blocker
+    // rejects `window.open` once the gesture's task has finished. Failing here also
+    // means the group is never written, so nothing is left orphaned behind it.
+    const resultWindow = reserveRerunWindow();
+    if (!resultWindow) {
+      setFailure({ message: rerunPopupBlockedMessage });
+      return;
+    }
     setPendingService(service);
-    setError(null);
     try {
-      {
-        const groupPath = await createTemporaryGroup();
-        if (service === "viral-tree") {
-          rerunJob(
-            {
-              tree_type: "viral_genome",
-              sequences: [{ type: "genome_group", filename: groupPath }],
-            },
-            "GeneTree",
-          );
-        } else if (service === "viral-msa") {
-          rerunJob(
-            {
-              input_status: "unaligned",
-              input_type: "input_genomegroup",
-              select_genomegroup: [groupPath],
-              ref_type: "none",
-              aligner: "Mafft",
-              fasta_keyboard_input: "",
-              alphabet: "dna",
-              ref_string: "",
-            },
-            "MSA",
-          );
-        } else if (service === "feature-blast-query") {
-          rerunJob(
-            {
-              blast_program: "blastn",
-              db_type: "fna",
-              input_source: "feature_group",
-              input_feature_group: groupPath,
-              db_precomputed_database: "bacteria-archaea",
-            },
-            "Homology",
-          );
-        } else if (service === "feature-blast-database") {
-          rerunJob(
-            {
-              blast_program: "blastn",
-              db_type: "fna",
-              db_precomputed_database: "selFeatureGroup",
-              db_feature_group: groupPath,
-            },
-            "Homology",
-          );
-        } else if (service === "gene-tree") {
-          rerunJob(
-            {
-              tree_type: "gene",
-              sequences: [{ type: "feature_group", filename: groupPath }],
-            },
-            "GeneTree",
-          );
-        } else {
-          rerunJob(
-            {
-              input_source: "feature_group",
-              input_feature_group: groupPath,
-            },
-            "HASubtypeNumberingConversion",
-          );
-        }
+      const groupPath = await createTemporaryGroup();
+      if (session !== sessionRef.current) {
+        closeRerunWindow(resultWindow);
+        return;
+      }
+      const { parameters, serviceId } = groupServiceLaunch(service, groupPath);
+      const launch = rerunJob(parameters, serviceId, { resultWindow });
+      if (launch.status !== "opened") {
+        closeRerunWindow(resultWindow);
+        setFailure({ message: launch.message });
+        return;
       }
       setIsChoosingBlastSource(false);
       onOpenChange(false);
     } catch (serviceError) {
+      closeRerunWindow(resultWindow);
+      if (session !== sessionRef.current) return;
       reportServiceError(serviceError);
     } finally {
-      setPendingService(null);
+      if (session === sessionRef.current) setPendingService(null);
     }
   };
 
@@ -282,13 +354,7 @@ export function SelectionServiceChooser({
   const idLabel = kind === "feature" ? "feature" : "genome";
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) setIsChoosingBlastSource(false);
-        onOpenChange(nextOpen);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
@@ -335,7 +401,22 @@ export function SelectionServiceChooser({
             No selectable services
           </p>
         )}
-        {error ? <p className="text-destructive text-sm">{error}</p> : null}
+        {failure ? (
+          <div className="grid gap-2">
+            <p role="alert" className="text-sm text-destructive">
+              {failure.message}
+            </p>
+            {failure.needsSignIn && signInHref ? (
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link href={signInHref} />}
+              >
+                Sign In
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <DialogFooter showCloseButton />
       </DialogContent>
     </Dialog>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,10 @@ function SelectionToGroupForm({
   onOpenChange,
   onCreate,
   onAppend,
-}: Omit<SelectionToGroupDialogProps, "open">) {
+  sessionRef,
+}: Omit<SelectionToGroupDialogProps, "open"> & {
+  sessionRef: RefObject<number>;
+}) {
   const copy = groupCopy[groupKind];
   const [mode, setMode] = useState<GroupMode>("new");
   const [folderPath, setFolderPath] = useState(defaultFolder);
@@ -109,6 +112,7 @@ function SelectionToGroupForm({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+    const session = sessionRef.current;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -117,15 +121,17 @@ function SelectionToGroupForm({
       } else {
         await onAppend(existingGroupPath);
       }
+      if (session !== sessionRef.current) return;
       onOpenChange(false);
     } catch (submitError) {
+      if (session !== sessionRef.current) return;
       setError(
         submitError instanceof Error
           ? submitError.message
           : `Unable to update the ${groupKind} group.`,
       );
     } finally {
-      setIsSubmitting(false);
+      if (session === sessionRef.current) setIsSubmitting(false);
     }
   };
 
@@ -276,6 +282,18 @@ export function SelectionToGroupDialog({
   onCreate,
   onAppend,
 }: SelectionToGroupDialogProps) {
+  /**
+   * Identifies the current dialog session so a create or append that resolves after
+   * the dialog was closed cannot close, error, or unblock a later session. The form
+   * unmounts with the popup, so the token has to live out here to outlast it.
+   */
+  const sessionRef = useRef(0);
+  useEffect(() => {
+    // Every open/close transition — including one driven by the parent — ends the
+    // previous session, so any submission still in flight is no longer current.
+    sessionRef.current += 1;
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-2xl">
@@ -286,6 +304,7 @@ export function SelectionToGroupDialog({
           onOpenChange={onOpenChange}
           onCreate={onCreate}
           onAppend={onAppend}
+          sessionRef={sessionRef}
         />
       </DialogContent>
     </Dialog>

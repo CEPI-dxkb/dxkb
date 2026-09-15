@@ -53,13 +53,17 @@ function resolved(data: InteractionsGraphData) {
   } as unknown as ReturnType<typeof useInteractions>);
 }
 
+/** Returns the query's `refetch` spy so a retry affordance can be observed. */
 function failed(error: Error) {
+  const refetch = vi.fn();
   vi.mocked(useInteractions).mockReturnValue({
     data: undefined,
     isPending: false,
     isError: true,
     error,
+    refetch,
   } as unknown as ReturnType<typeof useInteractions>);
+  return refetch;
 }
 
 class ResizeObserverStub {
@@ -151,6 +155,30 @@ describe("InteractionsGraph error state", () => {
     // The keyword box survives the error, so the search can still be cleared.
     expect(
       screen.getByPlaceholderText("Search interaction results..."),
+    ).toBeInTheDocument();
+  });
+
+  it("re-issues the query from a Retry button, like the Table subview does", async () => {
+    // A transient gateway 502 is recoverable, and the Table subview's load
+    // error already offers a retry for the same failure class — without one
+    // here, switching tabs was the only way back.
+    const refetch = failed(new Error("Bad gateway"));
+
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(screen.getByText("Could not load interactions")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to readable text when the query fails with an empty Error", () => {
+    failed(new Error("   "));
+
+    render(<InteractionsGraph rql="" keywordValue="" onKeywordChange={vi.fn()} />);
+
+    expect(
+      screen.getByText("Failed to load interactions."),
     ).toBeInTheDocument();
   });
 });

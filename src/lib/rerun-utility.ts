@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import type { Library } from "@/types/services";
 import {
   getPairedLibraryId,
@@ -73,12 +72,20 @@ export const rerunWindowClosedMessage =
 
 /**
  * Outcome of a launch, so a caller can keep its own UI open and report the failure
- * instead of assuming the tab opened. `blockedPopup` is returned rather than
- * toasted because both service choosers show it inline, next to the retry button.
+ * instead of assuming the tab opened.
+ *
+ * Every failure is reported by the caller and never from here: the choosers show
+ * theirs inline next to a retry button, the jobs list toasts, and a status that
+ * both toasted itself *and* returned its message got double-reported by whichever
+ * caller rendered `message`. The status also has to match the message it carries —
+ * `windowClosed` is separate from `blockedPopup` because "allow pop-ups" is the
+ * wrong advice for a tab the user closed, and a caller branching on the status
+ * would otherwise give it.
  */
 export type RerunLaunchResult =
   | { status: "opened" }
   | { status: "blockedPopup"; message: string }
+  | { status: "windowClosed"; message: string }
   | { status: "unsupportedService"; message: string };
 
 export interface RerunJobOptions {
@@ -136,9 +143,10 @@ export function rerunJob(
   }
 
   if (!route) {
-    const message = `The ${serviceId} service is not currently supported in DXKB`;
-    toast.error(message);
-    return { status: "unsupportedService", message };
+    return {
+      status: "unsupportedService",
+      message: `The ${serviceId} service is not currently supported in DXKB`,
+    };
   }
 
   const key = generateKey();
@@ -146,7 +154,7 @@ export function rerunJob(
 
   if (resultWindow) {
     if (resultWindow.closed) {
-      return { status: "blockedPopup", message: rerunWindowClosedMessage };
+      return { status: "windowClosed", message: rerunWindowClosedMessage };
     }
     // The reserved tab cloned this tab's sessionStorage when it opened, so a write
     // here would never reach it. Write into the tab's own storage instead; it

@@ -60,9 +60,10 @@ The core four (Lint, Typecheck, Build, Test) must pass before merging. `pnpm typ
 - `msw-server.ts` — Shared MSW server (see "Mocking HTTP Requests with MSW" below).
 - `api-route-helpers.ts`:
   - `mockNextRequest({ method, url, body, headers, searchParams })` — Build a `NextRequest` for route handler tests. Use this instead of `new Request(...)` or hand-rolling Next internals.
-  - `createQueryClientWrapper()` — `QueryClientProvider` wrapper (with `retry: false`) for `renderHook` and React tests that touch TanStack Query.
   - `makeRouteContext(id)` — Build the `{ params: Promise<…> }` second argument for App Router route handlers.
   - `json(res)` — Tiny `res.json()` shorthand.
+- `react.ts`:
+  - `createQueryClientWrapper()` — `QueryClientProvider` wrapper (with `retry: false`) for `renderHook` and React tests that touch TanStack Query.
 
 See `src/app/api/auth/profile/__tests__/route.test.ts` for a representative usage.
 

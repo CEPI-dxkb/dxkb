@@ -28,7 +28,10 @@ vi.mock("@/lib/rerun-utility", async (importOriginal) => ({
   reserveRerunWindow: mocks.reserveRerunWindow,
 }));
 
-import { rerunPopupBlockedMessage } from "@/lib/rerun-utility";
+import {
+  rerunPopupBlockedMessage,
+  rerunWindowClosedMessage,
+} from "@/lib/rerun-utility";
 import { SelectionServiceChooser } from "../selection-service-chooser";
 
 const genomeIds = ["641501.3", "641501.4"];
@@ -702,5 +705,68 @@ describe("SelectionServiceChooser", () => {
       expect(screen.queryByText("Select the BLAST source")).toBeNull();
       expect(screen.getByRole("button", { name: "Gene Tree" })).toBeVisible();
     });
+  });
+});
+
+describe("SelectionServiceChooser failure presentation", () => {
+  beforeEach(() => {
+    vi.stubGlobal("crypto", { randomUUID: () => "test-uuid" });
+    reservedWindows = [];
+    mocks.createFolder.mockReset().mockResolvedValue(undefined);
+    mocks.createIdGroup.mockReset().mockResolvedValue(undefined);
+    mocks.rerunJob.mockReset().mockReturnValue({ status: "opened" });
+    mocks.reserveRerunWindow.mockReset().mockImplementation(reserveFakeWindow);
+    mocks.refresh.mockReset();
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("falls back to a readable message when the failure is an Error with no message", async () => {
+    // The alert renders on the `failure` object, not on its text, so an empty
+    // message painted a bordered destructive region with nothing in it —
+    // announced to a screen reader as an empty alert.
+    mocks.createIdGroup.mockRejectedValue(new Error("   "));
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to open the selected service",
+    );
+  });
+
+  it("falls back to a readable message when the failure is not an Error", async () => {
+    mocks.createIdGroup.mockRejectedValue({ status: 500 });
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Unable to open the selected service",
+    );
+  });
+
+  it("reports a reserved tab the user closed with the closed-tab advice", async () => {
+    // `windowClosed` is its own status: telling the user to allow pop-ups would
+    // be the wrong fix for a tab they closed themselves.
+    mocks.rerunJob.mockReturnValue({
+      status: "windowClosed",
+      message: rerunWindowClosedMessage,
+    });
+    const onOpenChange = renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      rerunWindowClosedMessage,
+    );
+    expect(reservedWindows[0].close).toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

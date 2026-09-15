@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import {
   closeRerunWindow,
   rerunJob,
@@ -123,6 +124,12 @@ type GroupBackedChoice = Exclude<ServiceChoice, "blast" | "feature-blast">;
 const signInRequiredMessage =
   "Sign in to use this service. Your selection is kept here — sign in, then come back to this tab and try again.";
 
+/**
+ * Fallback for a non-`Error` rejection, and for an `Error` whose message is
+ * empty or whitespace-only: `failure` is an object, so the render guard below
+ * would still paint a bordered destructive `role="alert"` around no text at all
+ * — announced to a screen reader as an empty alert.
+ */
 const genericServiceErrorMessage = "Unable to open the selected service";
 
 /** Why the last attempt failed, and whether signing in is what unblocks it. */
@@ -287,10 +294,10 @@ export function SelectionServiceChooser({
 
   const reportServiceError = (serviceError: unknown) => {
     setFailure({
-      message:
-        serviceError instanceof Error
-          ? serviceError.message
-          : genericServiceErrorMessage,
+      message: formatUserFacingErrorMessage(
+        serviceError,
+        genericServiceErrorMessage,
+      ),
     });
   };
 

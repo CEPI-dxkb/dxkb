@@ -133,6 +133,24 @@ function ScopedResourceChildCollection({
   });
   const isControlledServerKeyword =
     keywordMode === "server" && keywordValue !== undefined;
+  /**
+   * A new keyword is a new result set, so the page index it was paged into no
+   * longer means anything — page 3 of an unfiltered scope is routinely past the
+   * end of the filtered one, which shows an empty table under a pager still
+   * reading 3. `ResourceCollection` resets the page when its *own* keyword box
+   * commits, but a keyword arriving as a prop (the sibling view's box committed)
+   * never passes through `handleStateChange`, so this is the only place that
+   * observes the transition. Render-phase update, like `GraphToolbar` and
+   * `ResourceFilterBar`: the stale page is corrected before it can be requested.
+   */
+  const [previousKeywordValue, setPreviousKeywordValue] =
+    useState(keywordValue);
+  if (isControlledServerKeyword && previousKeywordValue !== keywordValue) {
+    setPreviousKeywordValue(keywordValue);
+    setState((current) =>
+      current.page === 1 ? current : { ...current, page: 1 },
+    );
+  }
   // The controlled text is the single source of truth, so the local state never
   // holds a keyword of its own that could disagree with the sibling view's.
   const effectiveState = isControlledServerKeyword

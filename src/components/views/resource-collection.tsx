@@ -30,6 +30,7 @@ import {
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import {
   maxExportRows,
@@ -282,26 +283,20 @@ function combinePredicates(...predicates: (string | undefined)[]) {
 }
 
 /**
- * Presentation cap for export error messages. Upstream/auth/validation
- * failures can carry long diagnostic payloads; truncate rather than replace
- * them so the actionable part of the original message still reaches the
- * user (see repository guidance: never swap a real error for a generic one).
- */
-const maxExportErrorMessageLength = 300;
-
-/**
- * Fallback shown for non-`Error` rejections, and for an `Error` whose
- * message is empty or whitespace-only — an empty `exportError` string would
- * be falsy and suppress the alert entirely (see the `{exportError && (...)}`
- * render guard), so it must never be set.
+ * Per-sink fallbacks for `formatUserFacingErrorMessage`, used for a non-`Error`
+ * rejection and for an `Error` whose message is empty or whitespace-only. The
+ * shared helper owns the emptiness, non-`Error` and length decisions; only the
+ * wording — which names what actually failed — is decided here.
+ *
+ * An empty string would be falsy and suppress the `{exportError && (...)}` /
+ * `{actionError && (...)}` render guards entirely, so none of these may be blank.
  */
 const genericExportErrorMessage =
   "The requested export could not be created. Please try again.";
-
-function formatExportErrorMessage(message: string): string {
-  if (message.length <= maxExportErrorMessageLength) return message;
-  return `${message.slice(0, maxExportErrorMessageLength).trimEnd()}…`;
-}
+const genericActionErrorMessage =
+  "The requested action could not be completed. Please try again.";
+const genericCollectionErrorMessage =
+  "The requested records could not be loaded. Please try again.";
 
 /**
  * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
@@ -612,7 +607,9 @@ export function ResourceCollection<Row extends DataTableRow>({
         setTaxonomyServiceIds(await resolveSelectedTaxonIds());
         setIsTaxonomyServiceOpen(true);
       } catch (error) {
-        setActionError(error instanceof Error ? error.message : String(error));
+        setActionError(
+          formatUserFacingErrorMessage(error, genericActionErrorMessage),
+        );
       } finally {
         pendingTaxonomyActionRef.current = null;
         setLoadingActionIds([]);
@@ -651,7 +648,9 @@ export function ResourceCollection<Row extends DataTableRow>({
       link.click();
     } catch (error) {
       resultsWindow.close();
-      setActionError(error instanceof Error ? error.message : String(error));
+      setActionError(
+        formatUserFacingErrorMessage(error, genericActionErrorMessage),
+      );
     } finally {
       pendingTaxonomyActionRef.current = null;
       setLoadingActionIds([]);
@@ -776,9 +775,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     } catch (error) {
       console.error("Resource export failed:", error);
       setExportError(
-        error instanceof Error && error.message.trim()
-          ? formatExportErrorMessage(error.message)
-          : genericExportErrorMessage,
+        formatUserFacingErrorMessage(error, genericExportErrorMessage),
       );
     }
   };
@@ -966,9 +963,10 @@ export function ResourceCollection<Row extends DataTableRow>({
           <AlertTitle>Could not load {profile.label.toLowerCase()}</AlertTitle>
           <AlertDescription>
             <p>
-              {collection.error instanceof Error
-                ? collection.error.message
-                : String(collection.error)}
+              {formatUserFacingErrorMessage(
+                collection.error,
+                genericCollectionErrorMessage,
+              )}
             </p>
             <Button
               variant="outline"

@@ -2781,3 +2781,147 @@ describe("ResourceCollection Genome integration contracts", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+// The export sink above already had these two cases; the collection-load and
+// action sinks did not, and each rendered its own thing for them — an empty
+// `<p>` inside a visible destructive alert, or `String(error)`'s
+// "[object Object]". All three now route through one shared formatter, so these
+// assert the shared contract at each sink that shows it.
+describe("ResourceCollection error presentation", () => {
+  it("falls back to a readable message when the collection load fails with an empty Error", () => {
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      error: new Error("   "),
+    });
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    // The alert renders on the `error` object, so a blank message left a
+    // bordered destructive region with no text in it for a screen reader.
+    expect(screen.getByText("Could not load genomes")).toBeVisible();
+    expect(
+      screen.getByText(
+        "The requested records could not be loaded. Please try again.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeVisible();
+  });
+
+  it("falls back to a readable message when the collection load rejects with a non-Error", () => {
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      error: { status: 502 } as unknown as Error,
+    });
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "The requested records could not be loaded. Please try again.",
+      ),
+    ).toBeVisible();
+    // `String(error)` used to put this in front of the user.
+    expect(screen.queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
+  it("falls back to a readable message when an action fails with an empty Error", async () => {
+    const user = userEvent.setup();
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: taxonomyRow,
+      rows: [taxonomyRow],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 3,
+      sorting: [],
+    });
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+            exportAll: vi.fn(() => Promise.reject(new Error(" "))),
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    // The in-page services dialog path, so no tab is reserved.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(
+      await screen.findByText(
+        "The requested action could not be completed. Please try again.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Could not complete action")).toBeVisible();
+  });
+
+  it("falls back to a readable message when an action rejects with a non-Error", async () => {
+    const user = userEvent.setup();
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: taxonomyRow,
+      rows: [taxonomyRow],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 3,
+      sorting: [],
+    });
+    const close = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ opener: window, location: { replace: vi.fn() }, close })),
+    );
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+            // A rejected string, not an Error — the shape a thrown response
+            // body or a non-Error library rejection arrives in.
+            exportAll: vi.fn().mockRejectedValue("gateway reset"),
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Genomes action" }));
+    expect(
+      await screen.findByText(
+        "The requested action could not be completed. Please try again.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("gateway reset")).not.toBeInTheDocument();
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+});

@@ -121,6 +121,9 @@ describe("data gateway route", () => {
   it("names the missing configuration instead of the generic failure", async () => {
     delete process.env.DATA_API_URL;
     delete process.env.NEXT_PUBLIC_DATA_API;
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
 
     const response = await GET(
       new NextRequest("http://localhost/api/data/ppi?operation=collection", {
@@ -130,13 +133,18 @@ describe("data gateway route", () => {
     );
 
     // A misconfigured deployment used to reach the client as "The data service
-    // request failed." from the catch-all, with nothing to act on. Clients
-    // render whatever `error` says, so it has to stay the real reason.
+    // request failed." from the catch-all, with nothing to act on. It now gets
+    // its own stable message and `not_configured` code — distinct enough to act
+    // on — while the env var name that names the actual fix goes to the
+    // operator's log instead of to every unauthenticated caller.
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toEqual({
-      error: "DATA_API_URL is not configured.",
+      error: "The data service is not configured for this deployment.",
       code: "not_configured",
     });
+    expect(consoleError).toHaveBeenCalledWith(
+      "Data API gateway is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
+    );
   });
 
   it("accepts bounded selected-row POST requests", async () => {

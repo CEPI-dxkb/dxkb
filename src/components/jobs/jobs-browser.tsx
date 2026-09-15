@@ -341,10 +341,11 @@ function useJobsBrowser() {
         handleDoubleClick(job);
         break;
       case "rerun": {
-        // A pop-up blocker refusing the tab would otherwise look like a rerun that
-        // opened; an unsupported service already reports itself from `rerunJob`.
+        // Every failure — a pop-up blocker refusing the tab, an unsupported
+        // service — would otherwise look like a rerun that opened. `rerunJob`
+        // reports nothing itself, so the toast has to cover all of them.
         const launch = rerunJob(job.parameters, job.app);
-        if (launch.status === "blockedPopup") toast.error(launch.message);
+        if (launch.status !== "opened") toast.error(launch.message);
         break;
       }
       case "show":

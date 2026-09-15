@@ -20,29 +20,47 @@ vi.mock("../sigma/sigma-canvas", () => ({
   SigmaCanvas: () => <div data-testid="sigma-canvas" />,
 }));
 vi.mock("@/components/shared/data-table", () => ({
+  // The real pager is inside TanStack Virtual's DataTable, which has no working
+  // geometry in jsdom. Paging is still part of the request the Table issues, so
+  // the mock keeps a minimal pager: what page it is showing, and a way forward.
   DataTable: ({
     data,
     columns,
+    pageIndex,
+    onPageChange,
   }: {
     data: Record<string, unknown>[];
     columns: { id: string }[];
+    pageIndex: number;
+    onPageChange: (next: number) => void;
   }) => (
-    <table>
-      <tbody>
-        {data.map((row, index) => (
-          <tr key={index}>
-            {columns.map((column) => {
-              const value = row[column.id];
-              return (
-                <td key={column.id}>
-                  {typeof value === "string" ? value : ""}
-                </td>
-              );
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div>
+      <p>{`Showing page ${String(pageIndex + 1)}`}</p>
+      <button
+        type="button"
+        onClick={() => {
+          onPageChange(pageIndex + 1);
+        }}
+      >
+        Next page
+      </button>
+      <table>
+        <tbody>
+          {data.map((row, index) => (
+            <tr key={index}>
+              {columns.map((column) => {
+                const value = row[column.id];
+                return (
+                  <td key={column.id}>
+                    {typeof value === "string" ? value : ""}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   ),
 }));
 vi.mock("@/components/views/resource-workspace", () => ({
@@ -96,6 +114,13 @@ interface Predicate {
 
 const tablePredicates: Predicate[] = [];
 const graphPredicates: Predicate[] = [];
+/**
+ * The page each Table request asked for, pushed in lockstep with
+ * `tablePredicates`, so index -1 is the same request in both. Kept out of
+ * `Predicate` because the Graph fetches its whole dataset at once and has no
+ * page of its own — the two views' predicates have to stay directly comparable.
+ */
+const tablePages: number[] = [];
 
 /** Server-side keyword search, the way the gateway applies it: prefix per term. */
 function matching(keyword: string | undefined) {
@@ -109,6 +134,7 @@ function matching(keyword: string | undefined) {
 beforeEach(() => {
   tablePredicates.length = 0;
   graphPredicates.length = 0;
+  tablePages.length = 0;
   server.use(
     http.get("/api/data/ppi", ({ request }) => {
       const params = new URL(request.url).searchParams;
@@ -120,6 +146,7 @@ beforeEach(() => {
       });
       const rows = matching(keyword);
       const page = Number(params.get("page") ?? "1");
+      tablePages.push(page);
       const size = Number(params.get("pageSize") ?? resourceCollectionPageSize);
       return HttpResponse.json({
         rows: rows.slice((page - 1) * size, page * size),
@@ -254,5 +281,43 @@ describe("Interactions Table and Graph share one dataset", () => {
       ).toBeInTheDocument();
     });
     expect(graphPredicates.at(-1)?.keyword).toBe(beyondFirstPageInteractor);
+  });
+});
+
+describe("Interactions Table paging follows the shared keyword", () => {
+  it("restarts the Table at page 1 when the keyword arrives from the Graph's box", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+
+    await user.click(tablePanel().getByRole("button", { name: "Next page" }));
+    await waitFor(() => {
+      expect(tablePages.at(-1)).toBe(2);
+    });
+
+    // The Table panel stays mounted behind the Graph tab, so it keeps paging
+    // state — and its keyword box never sees this edit.
+    await user.click(screen.getByRole("tab", { name: "Graph" }));
+    await waitFor(() => {
+      expect(graphPredicates).toHaveLength(1);
+    });
+
+    await user.type(
+      graphPanel().getByPlaceholderText("Search interaction results..."),
+      "peg.601",
+    );
+
+    await waitFor(() => {
+      expect(tablePredicates.at(-1)?.keyword).toBe("peg.601");
+    });
+    // A new keyword is a new result set — one row here, so page 2 is past its
+    // end. Refetching the old page index showed an empty table under a pager
+    // still reading 2, while the Graph showed the match.
+    expect(tablePages.at(-1)).toBe(1);
   });
 });

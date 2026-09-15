@@ -267,18 +267,18 @@ describe("rerunJob", () => {
     expect(result).toEqual({ status: "opened" });
   });
 
-  it("shows toast error for unsupported service", async () => {
+  it("returns an unsupported service to the caller without reporting it itself", async () => {
     const { toast } = await import("sonner");
     const result = rerunJob({}, "UnsupportedService");
 
-    expect(toast.error).toHaveBeenCalledWith(
-      "The UnsupportedService service is not currently supported in DXKB",
-    );
     expect(result).toEqual({
       status: "unsupportedService",
       message:
         "The UnsupportedService service is not currently supported in DXKB",
     });
+    // It used to toast *and* return the message, so a caller that rendered
+    // `launch.message` inline reported the same failure twice.
+    expect(toast.error).not.toHaveBeenCalled();
     expect(mockSetItem).not.toHaveBeenCalled();
     expect(mockOpen).not.toHaveBeenCalled();
   });
@@ -333,9 +333,11 @@ describe("rerunJob", () => {
 
     const result = rerunJob({}, "GenomeAssembly2", { resultWindow });
 
-    // Telling the user to allow pop-ups would be wrong advice for a tab they closed.
+    // Telling the user to allow pop-ups would be wrong advice for a tab they
+    // closed, so the status has to say which happened rather than carrying the
+    // closed-tab message under the `blockedPopup` discriminant.
     expect(result).toEqual({
-      status: "blockedPopup",
+      status: "windowClosed",
       message: rerunWindowClosedMessage,
     });
     expect(result).not.toEqual(

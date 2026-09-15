@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   interactionsGraphRowLimit,
   useInteractions,
@@ -15,6 +16,7 @@ import {
   selectSubgraphs,
 } from "@/lib/interactions/graph-selections";
 import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type {
   GEdge,
   GNode,
@@ -66,7 +68,7 @@ export function InteractionsGraph({
   keywordValue,
   onKeywordChange,
 }: InteractionsGraphProps) {
-  const { data, isPending, isError, error } = useInteractions(
+  const { data, isPending, isError, error, refetch } = useInteractions(
     rql,
     keywordValue,
   );
@@ -122,11 +124,30 @@ export function InteractionsGraph({
     return (
       <div className="flex h-full min-h-0 flex-col">
         {toolbar}
-        <div className="flex flex-1 items-center justify-center text-sm text-destructive">
-          {error instanceof Error
-            ? error.message
-            : "Failed to load interactions."}
-        </div>
+        {/* Same shape, wording and retry affordance as the Table subview's load
+            error (`ResourceCollection`): a gateway 502 is transient for both
+            views, and leaving only this one without a retry made a tab switch
+            the sole way back. */}
+        <Alert variant="destructive">
+          <AlertTitle>Could not load interactions</AlertTitle>
+          <AlertDescription>
+            <p>
+              {formatUserFacingErrorMessage(
+                error,
+                "Failed to load interactions.",
+              )}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void refetch();
+              }}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

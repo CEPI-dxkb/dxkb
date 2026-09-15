@@ -15,6 +15,15 @@ import {
 const rateLimitMax = 120;
 const rateLimitWindowMs = 60_000;
 
+/**
+ * Client-facing text for a deployment with no Data API base URL. Stable and
+ * distinct from the catch-all's "The data service request failed." so the two
+ * failures stay tellable apart, without echoing a server env var name to
+ * unauthenticated callers.
+ */
+const dataApiNotConfiguredMessage =
+  "The data service is not configured for this deployment.";
+
 function errorResponse(error: unknown): NextResponse {
   if (error instanceof DataApiValidationError) {
     return NextResponse.json(
@@ -142,13 +151,21 @@ async function execute(
       process.env.DATA_API_URL ?? process.env.NEXT_PUBLIC_DATA_API;
     // A DataApiError instead of a bare throw: the catch-all below replaces the
     // message with a generic one, so a misconfigured deployment reached clients
-    // as "The data service request failed." with nothing to act on.
-    if (!baseUrl)
+    // as "The data service request failed." with nothing to act on. The
+    // actionable detail is the env var name, which belongs in the operator's
+    // log rather than in a response any caller — signed in or not — can read;
+    // the distinct `not_configured` code is what tells a client this is a
+    // deployment problem and not a failed request.
+    if (!baseUrl) {
+      console.error(
+        "Data API gateway is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
+      );
       throw new DataApiError(
-        "DATA_API_URL is not configured.",
+        dataApiNotConfiguredMessage,
         500,
         "not_configured",
       );
+    }
     const repository = new ServerDataRepository({
       baseUrl,
       token: session?.token,

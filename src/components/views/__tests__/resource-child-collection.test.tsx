@@ -245,6 +245,63 @@ describe("ResourceChildCollection controlled server keyword", () => {
       '"keyword"',
     );
   });
+
+  it("restarts at page 1 when the owner's keyword changes", async () => {
+    const { rerender } = render(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        keywordValue=""
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    await changeCollectionState();
+
+    rerender(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        keywordValue="groEL"
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    // A keyword arriving as a prop never passes through `onStateChange`, so
+    // nothing else in the stack (no clamp in `useResourceCollection`, none in
+    // `ResourceCollection`) could notice the page it was paged into is now past
+    // the end of a smaller result set.
+    const collectionState = screen.getByTestId("collection-state");
+    expect(collectionState).toHaveTextContent('"page":1');
+    expect(collectionState).toHaveTextContent('"keyword":"groEL"');
+  });
+
+  it("leaves paging alone when the shared keyword filters client-side", async () => {
+    // "loaded" mode is a filter over the rows already fetched, not a request
+    // predicate, so the page it is filtering stays meaningful. Only the
+    // controlled *server* keyword path resets it.
+    const { rerender } = render(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        keywordMode="loaded"
+        keywordValue="a"
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    await changeCollectionState();
+
+    rerender(
+      <ResourceChildCollection
+        {...interactionsChildProps}
+        keywordMode="loaded"
+        keywordValue="b"
+        onKeywordChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("collection-state")).toHaveTextContent(
+      '"page":4',
+    );
+  });
 });
 
 describe("ResourceChildCollection scope changes", () => {

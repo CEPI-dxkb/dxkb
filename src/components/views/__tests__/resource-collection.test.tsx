@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DataRepository } from "@/lib/data-api";
+import type { DataRepository, DataResource } from "@/lib/data-api";
 import {
   biosetCollectionProfile,
   experimentCollectionProfile,
@@ -2957,5 +2957,526 @@ describe("ResourceCollection error presentation", () => {
     ).toBeVisible();
     expect(screen.queryByText("gateway reset")).not.toBeInTheDocument();
     expect(close).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The action surface each resource exposes, at the four selection states the bar
+ * distinguishes: nothing selected, one row, several rows, and every matching row.
+ * `useResourceCollectionActions` owns this table now, so adding a resource extends this
+ * matrix instead of the shell's generic query, export and table code.
+ *
+ * Which entries are in scope is a property of the resource; only the count and the
+ * download route change with the selection. Both are asserted for every resource so
+ * a config entry cannot silently stop reaching the bar.
+ */
+const actionMatrixFixtures: {
+  resource: DataResource;
+  label: string;
+  idField: string;
+  rows: Record<string, unknown>[];
+  enabledActions: string[];
+  disabledActions?: Record<string, string | undefined>;
+}[] = [
+  {
+    resource: "taxonomy",
+    label: "Taxa",
+    idField: "taxon_id",
+    rows: [
+      { taxon_id: "234", taxon_name: "Brucella" },
+      { taxon_id: "235", taxon_name: "Brucella suis" },
+    ],
+    enabledActions: ["services", "taxonOverview", "genomes", "features"],
+  },
+  {
+    resource: "strain",
+    label: "Strains",
+    idField: "id",
+    rows: [
+      { id: "strain-1", genome_ids: ["83332.12"] },
+      { id: "strain-2", genome_ids: ["83332.13"] },
+    ],
+    enabledActions: ["copyRows", "services", "genomes", "group"],
+  },
+  {
+    resource: "genome",
+    label: "Genomes",
+    idField: "genome_id",
+    rows: [{ genome_id: "83332.12" }, { genome_id: "83332.13" }],
+    enabledActions: ["copyRows", "services", "group"],
+  },
+  {
+    resource: "genome_feature",
+    label: "Features",
+    idField: "feature_id",
+    rows: [{ feature_id: "PATRIC.1" }, { feature_id: "PATRIC.2" }],
+    enabledActions: ["copyRows", "services", "group"],
+  },
+  {
+    resource: "genome_sequence",
+    label: "Sequences",
+    idField: "sequence_id",
+    rows: [
+      { sequence_id: "83332.12.con.0001", genome_id: "83332.12" },
+      { sequence_id: "83332.12.con.0002", genome_id: "83332.12" },
+    ],
+    enabledActions: ["copyRows", "services", "group", "features"],
+  },
+  {
+    resource: "protein_feature",
+    label: "Domains and Motifs",
+    idField: "id",
+    rows: [
+      { id: "pf-1", genome_id: "83332.12" },
+      { id: "pf-2", genome_id: "83332.13" },
+    ],
+    enabledActions: ["copyRows", "services"],
+  },
+  {
+    resource: "protein_structure",
+    label: "Protein Structures",
+    idField: "pdb_id",
+    rows: [
+      { pdb_id: "1ABC", genome_id: "83332.12", feature_id: "PATRIC.1" },
+      { pdb_id: "2ABC", genome_id: "83332.13", feature_id: "PATRIC.2" },
+    ],
+    enabledActions: ["copyRows", "services"],
+    // Present with no reason: the structure's members are all reachable, but the
+    // policy still reports on all three entries it owns.
+    disabledActions: {
+      genome: undefined,
+      feature: undefined,
+      structure: undefined,
+    },
+  },
+  {
+    resource: "sequence_feature",
+    label: "Sequence Features",
+    idField: "id",
+    rows: [{ id: "sfvt-1" }, { id: "sfvt-2" }],
+    enabledActions: ["copyRows", "services"],
+  },
+  {
+    resource: "epitope",
+    label: "Epitopes",
+    idField: "epitope_id",
+    rows: [{ epitope_id: "EPI-1" }, { epitope_id: "EPI-2" }],
+    enabledActions: ["copyRows", "services"],
+  },
+  {
+    resource: "serology",
+    label: "Serology",
+    idField: "id",
+    rows: [{ id: "sero-1" }, { id: "sero-2" }],
+    enabledActions: ["copyRows", "services"],
+  },
+  {
+    resource: "surveillance",
+    label: "Surveillance",
+    idField: "id",
+    rows: [{ id: "surv-1" }, { id: "surv-2" }],
+    enabledActions: ["copyRows", "services"],
+  },
+  {
+    resource: "ppi",
+    label: "Interactions",
+    idField: "id",
+    rows: [
+      { id: "ppi-1", feature_id_a: "A1", feature_id_b: "B1" },
+      { id: "ppi-2", feature_id_a: "A2", feature_id_b: "B2" },
+    ],
+    enabledActions: ["copyRows", "services", "ppiFeatures", "group"],
+  },
+  {
+    resource: "experiment",
+    label: "Experiments",
+    idField: "exp_id",
+    rows: [{ exp_id: "00042" }, { exp_id: "00051" }],
+    enabledActions: ["services"],
+  },
+  {
+    resource: "bioset",
+    label: "Biosets",
+    idField: "bioset_id",
+    rows: [
+      { bioset_id: "bioset-1", exp_id: "00042" },
+      { bioset_id: "bioset-2", exp_id: "00051" },
+    ],
+    enabledActions: ["services", "biosets"],
+  },
+];
+
+/** Rows matching the query, so an all-pages selection reports a count of its own. */
+const actionMatrixTotal = 7;
+
+describe.each(actionMatrixFixtures)(
+  "useResourceCollectionActions $resource selection states",
+  ({ resource, label, idField, rows, enabledActions, disabledActions }) => {
+    const ids = rows.map((row) => String(row[idField]));
+    const selectionStates = [
+      { name: "no selection", selectedIds: [], isAllPagesSelected: false, count: 0 },
+      { name: "one row", selectedIds: [ids[0]], isAllPagesSelected: false, count: 1 },
+      { name: "several rows", selectedIds: ids, isAllPagesSelected: false, count: 2 },
+      {
+        name: "every matching row",
+        selectedIds: [],
+        isAllPagesSelected: true,
+        count: actionMatrixTotal,
+      },
+    ];
+
+    it.each(selectionStates)(
+      "reports the $name action surface and download route",
+      async ({ selectedIds, isAllPagesSelected, count }) => {
+        const user = userEvent.setup();
+        const exportAll = vi.fn(() => Promise.resolve({ rows }));
+        const selected = vi.fn(() => Promise.resolve({ rows }));
+        useResourceCollection.mockReturnValue({
+          ...collectionResult(),
+          activeId: ids[0],
+          detail: rows[0],
+          rows,
+          selection: Object.fromEntries(
+            selectedIds.map((id) => [id, true as const]),
+          ),
+          selectedIds,
+          isAllPagesSelected,
+          total: actionMatrixTotal,
+          sorting: [],
+        });
+
+        render(
+          <ResourceCollection
+            profile={{
+              resource,
+              label,
+              idField,
+              columns: Object.keys(rows[0]).map((id) => ({ id, label: id })),
+              defaultSort: `${idField}:asc`,
+            }}
+            repository={
+              { exportAll, selected } as unknown as DataRepository
+            }
+            state={{ filters: {}, page: 1, sort: `${idField}:asc` }}
+            onStateChange={vi.fn()}
+            showHeader={false}
+          />,
+        );
+
+        expect(actionBarProps).toMatchObject({
+          searchType: resource,
+          selectedCount: count,
+          enabledActions,
+        });
+        // Strict: the protein-structure policy reports keys with no reason, and
+        // `toEqual` would treat that object as equal to `undefined`.
+        expect(actionBarProps.disabledActions).toStrictEqual(disabledActions);
+
+        await user.click(screen.getByRole("button", { name: "Download action" }));
+        if (count === 0) {
+          // An empty selection has nothing to export, so neither request is made.
+          expect(selected).not.toHaveBeenCalled();
+          expect(exportAll).not.toHaveBeenCalled();
+          return;
+        }
+        if (isAllPagesSelected) {
+          await waitFor(() => {
+            expect(exportAll).toHaveBeenCalledWith(
+              resource,
+              expect.objectContaining({ sort: { field: idField, direction: "asc" } }),
+            );
+          });
+          expect(selected).not.toHaveBeenCalled();
+          return;
+        }
+        await waitFor(() => {
+          expect(selected).toHaveBeenCalledWith(
+            resource,
+            expect.objectContaining({ ids: selectedIds }),
+          );
+        });
+        expect(exportAll).not.toHaveBeenCalled();
+      },
+    );
+  },
+);
+
+describe("useResourceCollectionActions resolution races", () => {
+  it("reports a blocked pop-up for all-matching Bioset results without requesting rows", async () => {
+    const user = userEvent.setup();
+    const exportAll = vi.fn(() => Promise.resolve({ rows: [] }));
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 2,
+    });
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => null),
+    );
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+    expect(
+      await screen.findByText(
+        "Allow pop-ups to open the selected Bioset results.",
+      ),
+    ).toBeVisible();
+    // The tab is reserved before anything is fetched, so a blocked pop-up costs
+    // nothing.
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("navigates the reserved Bioset tab with the IDs it resolved, not a later selection", async () => {
+    const user = userEvent.setup();
+    const replace = vi.fn();
+    const close = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ opener: window, location: { replace }, close })),
+    );
+    let resolveExport:
+      | ((value: { rows: { exp_id: string }[] }) => void)
+      | undefined;
+    const exportAll = vi.fn(
+      () =>
+        new Promise<{ rows: { exp_id: string }[] }>((resolve) => {
+          resolveExport = resolve;
+        }),
+    );
+    const allPages = {
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 2,
+    };
+    useResourceCollection.mockReturnValue(allPages);
+
+    const view = render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+    expect(exportAll).toHaveBeenCalledTimes(1);
+
+    // The user narrows the selection while the resolution is still in flight.
+    useResourceCollection.mockReturnValue({
+      ...allPages,
+      isAllPagesSelected: false,
+      rows: [{ bioset_id: "bioset-9", exp_id: "00099" }],
+      selection: { "bioset-9": true },
+      selectedIds: ["bioset-9"],
+    });
+    view.rerender(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await act(async () => {
+      resolveExport?.({ rows: [{ exp_id: "00042" }] });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(
+        "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
+      );
+    });
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+    expect(screen.queryByText("Could not complete action")).not.toBeInTheDocument();
+  });
+
+  it("opens the Taxonomy chooser on the IDs it resolved, not a later selection", async () => {
+    const user = userEvent.setup();
+    let resolveExport:
+      | ((value: { rows: { taxon_id: string }[] }) => void)
+      | undefined;
+    const exportAll = vi.fn(
+      () =>
+        new Promise<{ rows: { taxon_id: string }[] }>((resolve) => {
+          resolveExport = resolve;
+        }),
+    );
+    const allPages = {
+      ...collectionResult(),
+      activeId: "234",
+      detail: { taxon_id: "234", taxon_name: "Brucella" },
+      rows: [{ taxon_id: "234", taxon_name: "Brucella" }],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 2,
+      sorting: [],
+    };
+    useResourceCollection.mockReturnValue(allPages);
+
+    const view = render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            exportAll,
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(exportAll).toHaveBeenCalledTimes(1);
+
+    useResourceCollection.mockReturnValue({
+      ...allPages,
+      isAllPagesSelected: false,
+      selection: { "999": true },
+      selectedIds: ["999"],
+    });
+    view.rerender(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            exportAll,
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    // The overlap guard is a ref inside the actions boundary, so a re-render
+    // driven by the selection change does not release it. Without the guard the
+    // narrowed selection needs no request and would open the chooser on "999"
+    // straight away, replacing the IDs the first run is still resolving.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(exportAll).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolveExport?.({ rows: [{ taxon_id: "234" }, { taxon_id: "235" }] });
+      await Promise.resolve();
+    });
+
+    expect(await screen.findByTestId("taxonomy-services")).toHaveTextContent(
+      "234,235",
+    );
+  });
+});
+
+describe("useResourceCollectionActions error integration", () => {
+  it("returns an owned action's failure to the collection shell and clears it on the next run", async () => {
+    const user = userEvent.setup();
+    const selected = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Data service is unavailable (503)"))
+      .mockResolvedValue({ rows: [{ genome_id: "83332.12" }] });
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      rows: [{ genome_id: "83332.12" }],
+    });
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={state}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    // SERVICES is dispatched by CollectionSelectionActions, so its failure has to
+    // cross both the actions boundary and the shell to be seen at all.
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByText("Could not complete action")).toBeVisible();
+    // The repository's own message reaches the user rather than a generic one.
+    expect(
+      screen.getByText("Data service is unavailable (503)"),
+    ).toBeVisible();
+    expect(screen.queryByTestId("selection-services")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(await screen.findByTestId("selection-services")).toBeVisible();
+    expect(
+      screen.queryByText("Could not complete action"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the Bioset failure even when its Error carries an empty message", async () => {
+    const user = userEvent.setup();
+    const close = vi.fn();
+    const replace = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ opener: window, location: { replace }, close })),
+    );
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 2,
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={
+          {
+            exportAll: vi.fn(() => Promise.reject(new Error(""))),
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+        showHeader={false}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+    // This sink used to pass `error.message` straight through, so an empty message
+    // reached the shell as a falsy string and its `{actionError && (...)}` guard
+    // rendered nothing at all: a closed tab and no reason for it.
+    expect(await screen.findByText("Could not complete action")).toBeVisible();
+    expect(
+      screen.getByText("The selected Bioset results could not be loaded."),
+    ).toBeVisible();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(replace).not.toHaveBeenCalled();
   });
 });

@@ -60,12 +60,16 @@ function generateKey(length = 8): string {
   return crypto.randomUUID().replace(/-/g, "").substring(0, length);
 }
 
-/**
- * Shown when the browser refuses the service tab. Covers both a pop-up blocker
- * rejecting the tab and a reserved tab the user closed before the launch resolved.
- */
+/** Shown when a pop-up blocker refuses the service tab. */
 export const rerunPopupBlockedMessage =
   "Unable to open the service tab. Allow pop-ups for this site, then try again.";
+
+/**
+ * Shown when the reserved tab is gone by the time the launch resolves — most often
+ * because the user closed it. Changing the pop-up setting would not help here.
+ */
+export const rerunWindowClosedMessage =
+  "The service tab was closed before the form could open. Try again.";
 
 /**
  * Outcome of a launch, so a caller can keep its own UI open and report the failure
@@ -142,7 +146,7 @@ export function rerunJob(
 
   if (resultWindow) {
     if (resultWindow.closed) {
-      return { status: "blockedPopup", message: rerunPopupBlockedMessage };
+      return { status: "blockedPopup", message: rerunWindowClosedMessage };
     }
     // The reserved tab cloned this tab's sessionStorage when it opened, so a write
     // here would never reach it. Write into the tab's own storage instead; it

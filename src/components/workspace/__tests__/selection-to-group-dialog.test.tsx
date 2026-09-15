@@ -204,13 +204,30 @@ describe("SelectionToGroupDialog", () => {
       );
       props.reopen();
 
+      // Pin what reopening produced: the popup is not kept mounted, so this is a
+      // brand-new form back on the New Group tab — not the one that submitted.
+      expect(screen.getByRole("tab", { name: "New Group" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "Create Group" })).toBeVisible();
+
       await act(async () => {
         append.reject(new Error("Group already exists"));
         await append.promise.catch(() => undefined);
       });
 
+      // The new session is untouched by the old one's rejection, and still usable.
       expect(screen.queryByText("Group already exists")).toBeNull();
       expect(props.onOpenChange).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText("Group name"), {
+        target: { value: "Second Try" },
+      });
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create Group" }),
+      );
+      expect(props.onCreate).toHaveBeenCalledWith("/user/home", "Second Try");
+      expect(props.onOpenChange).toHaveBeenCalledWith(false);
     });
   });
 });

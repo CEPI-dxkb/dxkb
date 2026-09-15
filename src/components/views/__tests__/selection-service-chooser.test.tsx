@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mocks = vi.hoisted(() => ({
@@ -7,6 +7,12 @@ const mocks = vi.hoisted(() => ({
   createIdGroup: vi.fn(),
   rerunJob: vi.fn(),
   reserveRerunWindow: vi.fn(),
+  refresh: vi.fn(),
+}));
+
+// The shared setup mock has no `refresh`, which is the only router call here.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: mocks.refresh }),
 }));
 
 vi.mock("@/contexts/workspace-repository-context", () => ({
@@ -29,7 +35,8 @@ const genomeIds = ["641501.3", "641501.4"];
 const groupPath = "/alice@bvbrc/home/._tmp_groups/tmp_genome_group_test-uuid";
 const signInHref = "/sign-in?redirect=%2Fsearch%3Fq%3Dflu";
 const signInMessage =
-  "Sign in to use this service. Your selection is kept here, so you can try again once you are signed in.";
+  "Sign in to use this service. Your selection is kept here — sign in, then come back to this tab and try again.";
+const signInButtonName = "Sign In (opens a new tab)";
 
 interface FakeWindow {
   close: ReturnType<typeof vi.fn>;
@@ -58,6 +65,7 @@ function chooserProps(
     label: "Strains",
     ids: genomeIds,
     workspaceUsername: "alice@bvbrc",
+    signInHref,
     ...overrides,
   };
 }
@@ -78,6 +86,7 @@ describe("SelectionServiceChooser", () => {
     mocks.createIdGroup.mockReset().mockResolvedValue(undefined);
     mocks.rerunJob.mockReset().mockReturnValue({ status: "opened" });
     mocks.reserveRerunWindow.mockReset().mockImplementation(reserveFakeWindow);
+    mocks.refresh.mockReset();
   });
 
   afterEach(() => vi.unstubAllGlobals());
@@ -116,7 +125,7 @@ describe("SelectionServiceChooser", () => {
       expect.objectContaining({ db_genome_list: genomeIds }),
       "Homology",
     );
-    expect(screen.queryByRole("button", { name: "Sign In" })).toBeNull();
+    expect(screen.queryByRole("button", { name: signInButtonName })).toBeNull();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -135,10 +144,10 @@ describe("SelectionServiceChooser", () => {
     // selection, so the form opened unprefilled after sign-in.
     expect(screen.getByRole("alert")).toHaveTextContent(signInMessage);
     // Rendered through `Button render={<Link/>}`, so the anchor carries role="button".
-    expect(screen.getByRole("button", { name: "Sign In" })).toHaveAttribute(
-      "href",
-      signInHref,
-    );
+    const signInButton = screen.getByRole("button", { name: signInButtonName });
+    expect(signInButton).toHaveAttribute("href", signInHref);
+    // A new tab is what keeps this tab — and the selection behind it — mounted.
+    expect(signInButton).toHaveAttribute("target", "_blank");
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(mocks.reserveRerunWindow).not.toHaveBeenCalled();
     expect(mocks.createFolder).not.toHaveBeenCalled();
@@ -400,14 +409,11 @@ describe("SelectionServiceChooser", () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
-  it("launches with the same selection once the user has signed in", async () => {
+  it("refreshes the session on return, then launches with the same selection", async () => {
     const onOpenChange = vi.fn();
     const { rerender } = render(
       <SelectionServiceChooser
-        {...chooserProps(onOpenChange, {
-          workspaceUsername: undefined,
-          signInHref,
-        })}
+        {...chooserProps(onOpenChange, { workspaceUsername: undefined })}
       />,
     );
 
@@ -416,11 +422,19 @@ describe("SelectionServiceChooser", () => {
     );
     expect(screen.getByRole("alert")).toHaveTextContent(signInMessage);
 
-    // The dialog never closed and never navigated, so the collection behind it
-    // still holds the same rows: the retry runs on the original selection.
+    // Sign-in happens on the tab the link opened, so this tab only learns about the
+    // new session when it is focused again.
+    expect(mocks.refresh).not.toHaveBeenCalled();
+    fireEvent.focus(window);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+
+    // What that refresh produces: a re-derived server user, with every client
+    // component — including the collection holding the selection — still mounted.
     rerender(
-      <SelectionServiceChooser {...chooserProps(onOpenChange, { signInHref })} />,
+      <SelectionServiceChooser {...chooserProps(onOpenChange)} />,
     );
+    expect(screen.queryByRole("alert")).toBeNull();
+
     await userEvent.click(
       screen.getByRole("button", { name: "Viral Genome Tree" }),
     );
@@ -528,6 +542,66 @@ describe("SelectionServiceChooser", () => {
     expect(
       await screen.findByText("_ERROR_User lacks permission"),
     ).toBeInTheDocument();
+  });
+
+  it("only listens for a return while the sign-in prompt is showing", async () => {
+    const onOpenChange = vi.fn();
+    const { rerender } = render(
+      <SelectionServiceChooser
+        {...chooserProps(onOpenChange, { workspaceUsername: undefined })}
+      />,
+    );
+
+    // No prompt yet, so a focused tab has nothing to re-check.
+    fireEvent.focus(window);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+    fireEvent.focus(window);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+
+    // Closing clears the prompt, which is what releases the listener again.
+    rerender(
+      <SelectionServiceChooser
+        {...chooserProps(onOpenChange, {
+          workspaceUsername: undefined,
+          open: false,
+        })}
+      />,
+    );
+    fireEvent.focus(window);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a stale failure on both sides of the BLAST source subflow", async () => {
+    mocks.reserveRerunWindow.mockReturnValue(null);
+    const featureOverrides = {
+      label: "Features",
+      ids: ["PATRIC.83332.12.NC_000962.CDS.1.1524.fwd"],
+      kind: "feature" as const,
+    };
+    render(
+      <SelectionServiceChooser {...chooserProps(vi.fn(), featureOverrides)} />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Gene Tree" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      rerunPopupBlockedMessage,
+    );
+
+    // Entering the subflow is a new question; the previous answer's error is stale.
+    await userEvent.click(screen.getByRole("button", { name: "BLAST" }));
+    expect(screen.getByText("Select the BLAST source")).toBeVisible();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Query" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      rerunPopupBlockedMessage,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   describe("reopened dialog sessions", () => {

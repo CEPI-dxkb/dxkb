@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,10 +33,10 @@ interface SelectionServiceChooserProps {
   kind?: SelectionServiceKind;
   workspaceUsername?: string;
   /**
-   * Where a signed-out user goes to sign in. The dialog only offers it once a
-   * group-backed service has been asked for, and never navigates there itself.
+   * Where a signed-out user goes to sign in, opened in a new tab so this tab — and
+   * with it the row selection behind the dialog — stays mounted.
    */
-  signInHref?: string;
+  signInHref: string;
   /**
    * False for collections no service accepts yet. Matches the Taxa Tree chooser:
    * the dialog still opens, it just reports that there is nothing to run.
@@ -120,7 +121,7 @@ type GroupBackedChoice = Exclude<ServiceChoice, "blast" | "feature-blast">;
  * the collection discards the row selection, and the form then opens unprefilled.
  */
 const signInRequiredMessage =
-  "Sign in to use this service. Your selection is kept here, so you can try again once you are signed in.";
+  "Sign in to use this service. Your selection is kept here — sign in, then come back to this tab and try again.";
 
 const genericServiceErrorMessage = "Unable to open the selected service";
 
@@ -209,6 +210,7 @@ export function SelectionServiceChooser({
   hasSelectableServices = true,
 }: SelectionServiceChooserProps) {
   const repository = useWorkspaceRepository("authenticated");
+  const router = useRouter();
   const [pendingService, setPendingService] = useState<ServiceChoice | null>(
     null,
   );
@@ -234,9 +236,30 @@ export function SelectionServiceChooser({
     setFailure(null);
   }
 
-  const createTemporaryGroup = async () => {
-    if (!workspaceUsername) throw new Error(signInRequiredMessage);
-    const directoryPath = `/${workspaceUsername}/home/._tmp_groups`;
+  const needsSignIn = failure?.needsSignIn === true;
+  // The refreshed session answers the prompt, so it must not linger — and clearing
+  // it is what releases the focus listener below.
+  if (needsSignIn && workspaceUsername) setFailure(null);
+
+  useEffect(() => {
+    if (!needsSignIn) return;
+    // The session is a cookie, so signing in on another tab is invisible to this one
+    // until its Server Components run again. `router.refresh()` re-derives the user
+    // without remounting any client component, which is what lets the selection
+    // behind this dialog survive until the retry.
+    const refreshSession = () => {
+      router.refresh();
+    };
+    window.addEventListener("focus", refreshSession);
+    return () => {
+      window.removeEventListener("focus", refreshSession);
+    };
+  }, [needsSignIn, router]);
+
+  // Takes the username as an argument so the signed-in check stays at the one call
+  // site that can act on it, rather than throwing a message with no Sign In button.
+  const createTemporaryGroup = async (username: string) => {
+    const directoryPath = `/${username}/home/._tmp_groups`;
     const groupName = `tmp_${kind}_group_${crypto.randomUUID()}`;
     // Nothing provisions this hidden folder at first workspace access and the group
     // write does not create parents, so create it here. An existing directory is the
@@ -308,6 +331,7 @@ export function SelectionServiceChooser({
       return;
     }
     if (service === "feature-blast") {
+      setFailure(null);
       setIsChoosingBlastSource(true);
       return;
     }
@@ -322,7 +346,7 @@ export function SelectionServiceChooser({
     }
     setPendingService(service);
     try {
-      const groupPath = await createTemporaryGroup();
+      const groupPath = await createTemporaryGroup(workspaceUsername);
       if (session !== sessionRef.current) {
         closeRerunWindow(resultWindow);
         return;
@@ -389,6 +413,7 @@ export function SelectionServiceChooser({
                 variant="outline"
                 disabled={disabled}
                 onClick={() => {
+                  setFailure(null);
                   setIsChoosingBlastSource(false);
                 }}
               >
@@ -406,13 +431,15 @@ export function SelectionServiceChooser({
             <p role="alert" className="text-sm text-destructive">
               {failure.message}
             </p>
-            {failure.needsSignIn && signInHref ? (
+            {failure.needsSignIn ? (
               <Button
                 variant="outline"
                 nativeButton={false}
-                render={<Link href={signInHref} />}
+                render={
+                  <Link href={signInHref} target="_blank" rel="noopener" />
+                }
               >
-                Sign In
+                Sign In (opens a new tab)
               </Button>
             ) : null}
           </div>

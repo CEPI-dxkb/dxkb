@@ -7,6 +7,7 @@ import {
   closeRerunWindow,
   rerunJob,
   rerunPopupBlockedMessage,
+  rerunWindowClosedMessage,
   reserveRerunWindow,
 } from "@/lib/rerun-utility";
 
@@ -332,10 +333,14 @@ describe("rerunJob", () => {
 
     const result = rerunJob({}, "GenomeAssembly2", { resultWindow });
 
+    // Telling the user to allow pop-ups would be wrong advice for a tab they closed.
     expect(result).toEqual({
       status: "blockedPopup",
-      message: rerunPopupBlockedMessage,
+      message: rerunWindowClosedMessage,
     });
+    expect(result).not.toEqual(
+      expect.objectContaining({ message: rerunPopupBlockedMessage }),
+    );
     expect(setItem).not.toHaveBeenCalled();
   });
 

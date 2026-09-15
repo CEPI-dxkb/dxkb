@@ -91,7 +91,7 @@ export function FacetPanel({
 
   if (error) {
     return (
-      <div className="flex max-h-30 items-center rounded bg-gray-800 p-2 text-[11px] text-gray-400">
+      <div className="flex max-h-30 items-center rounded bg-background p-2 text-[11px] text-muted-foreground">
         Facets unavailable
       </div>
     );
@@ -99,14 +99,14 @@ export function FacetPanel({
 
   if (isLoading) {
     return (
-      <div className="flex max-h-30 gap-3 overflow-auto rounded bg-gray-800 p-2 text-[11px]">
+      <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-[11px]">
         {visibleFields.map((field) => (
           <div key={field.id} className="shrink-0">
-            <Skeleton className="mb-2 h-3 w-24 bg-gray-600" />
+            <Skeleton className="mb-2 h-3 w-24" />
             <div className="flex flex-col gap-1">
-              <Skeleton className="h-3.5 w-32 bg-gray-700" />
-              <Skeleton className="h-3.5 w-24 bg-gray-700" />
-              <Skeleton className="h-3.5 w-28 bg-gray-700" />
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3.5 w-28" />
             </div>
           </div>
         ))}
@@ -115,7 +115,7 @@ export function FacetPanel({
   }
 
   return (
-    <div className="flex max-h-30 gap-3 overflow-auto rounded bg-gray-800 p-2 text-[11px]">
+    <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-[11px]">
       {visibleFields.map((field) => (
         <FacetColumn
           key={field.id}

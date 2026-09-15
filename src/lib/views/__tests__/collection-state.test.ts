@@ -1,9 +1,13 @@
 import {
   canonicalizeCollectionSearchParams,
   canonicalizeCollectionState,
+  collectionManagedParamNames,
   collectionStateToRql,
   parseCollectionState,
+  replaceCollectionSearchParams,
   serializeCollectionState,
+  toSearchParamsRecord,
+  unionCollectionManagedParamNames,
   updateCollectionSearchParams,
   type CollectionStateOptions,
 } from "../collection-state";
@@ -231,5 +235,166 @@ describe("collection URL state", () => {
         options,
       ),
     ).toThrow("Invalid collection page");
+  });
+});
+
+describe("replaceCollectionSearchParams", () => {
+  it("preserves the caller-supplied page even when the query shape changes", () => {
+    // Unlike updateCollectionSearchParams, a full-state replacement must not
+    // reset pagination — the caller already owns the complete next state.
+    const merged = replaceCollectionSearchParams(
+      { page: "9", tab: "genomes" },
+      { keyword: "flu", filters: {}, page: 5, sort: "relevance" },
+      options,
+    );
+    expect(merged.get("page")).toBe("5");
+    expect(merged.get("keyword")).toBe("flu");
+    expect(merged.get("tab")).toBe("genomes");
+  });
+
+  it("preserves repeated unrelated parameters", () => {
+    const merged = replaceCollectionSearchParams(
+      { page: "1", sort: "relevance", tab: "genomes", keep: ["a", "b"] },
+      { filters: {}, page: 1, sort: "relevance" },
+      options,
+    );
+    expect(merged.toString()).toBe("tab=genomes&keep=a&keep=b");
+  });
+
+  it("clears a consumed legacy filter on replacement", () => {
+    const legacyOptions = {
+      ...options,
+      legacyRqlFilter: true,
+    } satisfies CollectionStateOptions;
+    const merged = replaceCollectionSearchParams(
+      { filter: "eq(public,true)", tab: "details" },
+      { rql: "eq(public,false)", filters: {}, page: 1, sort: "relevance" },
+      legacyOptions,
+    );
+    expect(merged.has("filter")).toBe(false);
+    expect(merged.get("rql")).toBe("eq(public,false)");
+    expect(merged.get("tab")).toBe("details");
+  });
+
+  it("preserves an unconsumed legacy filter on replacement", () => {
+    const legacyOptions = {
+      ...options,
+      legacyRqlFilter: true,
+    } satisfies CollectionStateOptions;
+    const merged = replaceCollectionSearchParams(
+      { filter: "protein", tab: "details" },
+      { filters: {}, page: 2, sort: "relevance" },
+      legacyOptions,
+    );
+    expect(merged.get("filter")).toBe("protein");
+    expect(merged.get("page")).toBe("2");
+    expect(merged.get("tab")).toBe("details");
+  });
+});
+
+describe("collectionManagedParamNames", () => {
+  it("returns the fixed managed keys plus this view's friendly filters", () => {
+    expect([...collectionManagedParamNames({}, options)].sort()).toEqual(
+      ["keyword", "refine", "rql", "page", "sort", "taxon_id", "host"].sort(),
+    );
+  });
+
+  it("includes filter only while it is being consumed as legacy RQL", () => {
+    const legacyOptions = {
+      ...options,
+      legacyRqlFilter: true,
+    } satisfies CollectionStateOptions;
+    expect(
+      collectionManagedParamNames(
+        { filter: "eq(public,true)" },
+        legacyOptions,
+      ).has("filter"),
+    ).toBe(true);
+    expect(
+      collectionManagedParamNames({ filter: "protein" }, legacyOptions).has(
+        "filter",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("unionCollectionManagedParamNames", () => {
+  const strainLikeOptions = {
+    defaultSort: "unsorted",
+    sortAllowlist: ["unsorted"] as const,
+    friendlyFilters: ["strain_status"],
+  } satisfies CollectionStateOptions<"unsorted">;
+
+  const surveillanceLikeOptions = {
+    defaultSort: "unsorted",
+    sortAllowlist: ["unsorted"] as const,
+    friendlyFilters: ["pathogen_test_result"],
+  } satisfies CollectionStateOptions<"unsorted">;
+
+  const legacyLikeOptions = {
+    defaultSort: "unsorted",
+    sortAllowlist: ["unsorted"] as const,
+    friendlyFilters: ["feature_id"],
+    legacyRqlFilter: true,
+  } satisfies CollectionStateOptions<"unsorted">;
+
+  it("unions friendly filters from every participating view with the fixed managed keys, including refine", () => {
+    const union = unionCollectionManagedParamNames({}, [
+      options,
+      strainLikeOptions,
+      surveillanceLikeOptions,
+    ]);
+    expect([...union].sort()).toEqual(
+      [
+        "keyword",
+        "refine",
+        "rql",
+        "page",
+        "sort",
+        "taxon_id",
+        "host",
+        "strain_status",
+        "pathogen_test_result",
+      ].sort(),
+    );
+  });
+
+  it("includes the legacy filter key only for a view currently consuming it", () => {
+    const consumed = unionCollectionManagedParamNames(
+      { filter: "eq(public,true)" },
+      [options, legacyLikeOptions],
+    );
+    expect(consumed.has("filter")).toBe(true);
+
+    const unconsumed = unionCollectionManagedParamNames(
+      { filter: "protein" },
+      [options, legacyLikeOptions],
+    );
+    expect(unconsumed.has("filter")).toBe(false);
+  });
+
+  it("leaves genuinely unrelated parameter names out of the union", () => {
+    const union = unionCollectionManagedParamNames({}, [
+      options,
+      strainLikeOptions,
+    ]);
+    expect(union.has("tab")).toBe(false);
+    expect(union.has("view")).toBe(false);
+    expect(union.has("utm_source")).toBe(false);
+  });
+
+  it("clears every participating view's stray state on a cross-tab transition while preserving unrelated params", () => {
+    // Mirrors what the organism landing shell does on a tab switch: compute
+    // the union across every tab's options, then delete those names from the
+    // current URL — regardless of which tab actually owns each value.
+    const params = new URLSearchParams(
+      "taxon_id=123&strain_status=active&pathogen_test_result=positive&refine=N034&tab=strains&utm_source=email",
+    );
+    const union = unionCollectionManagedParamNames(
+      toSearchParamsRecord(params),
+      [options, strainLikeOptions, surveillanceLikeOptions],
+    );
+    for (const name of union) params.delete(name);
+    expect(params.toString()).toBe("tab=strains&utm_source=email");
   });
 });

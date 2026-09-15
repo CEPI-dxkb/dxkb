@@ -8,20 +8,10 @@ import type {
 } from "@/lib/views/collection-state";
 import {
   canonicalizeCollectionSearchParams,
-  consumesLegacyRqlFilter,
   parseCollectionState,
-  serializeCollectionState,
+  replaceCollectionSearchParams,
+  toSearchParamsRecord,
 } from "@/lib/views/collection-state";
-import type { SearchParamsRecord } from "@/lib/views/rql";
-
-function searchParamsRecord(params: URLSearchParams): SearchParamsRecord {
-  const result: SearchParamsRecord = {};
-  for (const key of new Set(params.keys())) {
-    const selected = params.getAll(key);
-    result[key] = selected.length === 1 ? selected[0] : selected;
-  }
-  return result;
-}
 
 export function useCollectionUrlState<Sort extends string>(
   options: CollectionStateOptions<Sort>,
@@ -29,28 +19,13 @@ export function useCollectionUrlState<Sort extends string>(
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const current = searchParamsRecord(
+  const current = toSearchParamsRecord(
     new URLSearchParams(searchParams.toString()),
   );
   const state = parseCollectionState(current, options);
 
   const setState = (next: CollectionState<Sort>) => {
-    const collectionParams = serializeCollectionState(next, options);
-    const merged = new URLSearchParams(searchParams.toString());
-    for (const name of [
-      "keyword",
-      "refine",
-      "rql",
-      "page",
-      "sort",
-      ...(options.friendlyFilters ?? []),
-      ...(consumesLegacyRqlFilter(current, options) ? ["filter"] : []),
-    ]) {
-      merged.delete(name);
-    }
-    collectionParams.forEach((value, name) => {
-      merged.append(name, value);
-    });
+    const merged = replaceCollectionSearchParams(current, next, options);
     router.push(merged.size ? `${pathname}?${merged}` : pathname, {
       scroll: false,
     });

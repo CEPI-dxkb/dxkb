@@ -195,6 +195,28 @@ export function canonicalizeCollectionSearchParams<Sort extends string>(
   );
 }
 
+/**
+ * Replace the URL-owned collection state wholesale, preserving unrelated
+ * parameters. Unlike `updateCollectionSearchParams`, this never resets
+ * pagination: the caller supplies the complete next state (including
+ * `page`), so there is no incremental "did the query shape change" question
+ * to answer. Keeping replacement and incremental update as separate
+ * functions is deliberate — folding them into one behind a flag is how the
+ * pagination-reset rule and the replacement rule got confused with each
+ * other before.
+ */
+export function replaceCollectionSearchParams<Sort extends string>(
+  params: SearchParamsRecord,
+  next: CollectionState<Sort>,
+  options: CollectionStateOptions<Sort>,
+): URLSearchParams {
+  return mergeWithUnrelatedParams(
+    params,
+    serializeCollectionState(next, options),
+    options,
+  );
+}
+
 /** Apply a collection-state update, resetting pagination when query shape changes. */
 export function updateCollectionSearchParams<Sort extends string>(
   params: SearchParamsRecord,
@@ -257,17 +279,67 @@ function sameFilters(
   );
 }
 
+/**
+ * Parameter names a single collection view owns and may clear: the fixed
+ * managed keys, this view's own friendly filters, and — only when `params`
+ * is currently consuming a legacy `filter=<rql>` URL under these options —
+ * `filter` itself. This is the sole definition of "managed" for a view; both
+ * canonicalization/incremental-update and full-state replacement go through
+ * it via `mergeWithUnrelatedParams`.
+ */
+export function collectionManagedParamNames<Sort extends string>(
+  params: SearchParamsRecord,
+  options: CollectionStateOptions<Sort>,
+): Set<string> {
+  return new Set([
+    ...managedParams,
+    ...(options.friendlyFilters ?? []),
+    ...(consumesLegacyRqlFilter(params, options) ? ["filter"] : []),
+  ]);
+}
+
+/**
+ * Union of managed parameter names across several collection views' options,
+ * each evaluated against the same source params. For a surface where more
+ * than one view's URL state can coexist (e.g. an organism landing page's
+ * tabs), this is the set of parameters that must be cleared together so
+ * stale state from any participating view cannot survive a navigation that
+ * doesn't belong to it — and can't silently reactivate if the destination
+ * view happens to recognize the same key.
+ */
+export function unionCollectionManagedParamNames(
+  params: SearchParamsRecord,
+  optionsList: readonly CollectionStateOptions[],
+): Set<string> {
+  const union = new Set<string>();
+  for (const options of optionsList) {
+    for (const name of collectionManagedParamNames(params, options)) {
+      union.add(name);
+    }
+  }
+  return union;
+}
+
+/** Convert a `URLSearchParams` into the plain record shape the parsers
+ * expect, collapsing single-value entries and preserving repeats as arrays. */
+export function toSearchParamsRecord(
+  params: URLSearchParams,
+): SearchParamsRecord {
+  const result: SearchParamsRecord = {};
+  for (const key of new Set(params.keys())) {
+    const selected = params.getAll(key);
+    result[key] = selected.length === 1 ? selected[0] : selected;
+  }
+  return result;
+}
+
 function mergeWithUnrelatedParams<Sort extends string>(
   source: SearchParamsRecord,
   collectionParams: URLSearchParams,
   options: CollectionStateOptions<Sort>,
 ): URLSearchParams {
   const result = new URLSearchParams();
-  const managed = new Set([
-    ...managedParams,
-    ...(options.friendlyFilters ?? []),
-    ...(consumesLegacyRqlFilter(source, options) ? ["filter"] : []),
-  ]);
+  const managed = collectionManagedParamNames(source, options);
   for (const [name, value] of Object.entries(source)) {
     if (managed.has(name) || value === undefined) continue;
     for (const item of Array.isArray(value) ? value : [value])

@@ -102,4 +102,29 @@ describe("view collection state exports", () => {
       { scroll: false },
     );
   });
+
+  it("delegates full-state replacement to the pure module without resetting pagination", () => {
+    // A smoke test that setState no longer reimplements the managed-key merge
+    // inline: it goes through replaceCollectionSearchParams, which (unlike
+    // the incremental update path) never resets page — the caller already
+    // owns the complete next state, including an explicit page far from 1.
+    navigation.searchParams = new URLSearchParams(
+      "page=9&tab=details&keep=a&keep=b",
+    );
+    const { result } = renderHook(() => useCollectionUrlState(options));
+
+    act(() => {
+      result.current[1]({
+        keyword: "flu",
+        filters: { host: ["human"] },
+        page: 5,
+        sort: "year:desc",
+      });
+    });
+
+    expect(navigation.push).toHaveBeenCalledWith(
+      "/protein-feature?tab=details&keep=a&keep=b&keyword=flu&host=human&page=5&sort=year%3Adesc",
+      { scroll: false },
+    );
+  });
 });

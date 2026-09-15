@@ -1,4 +1,9 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  OverviewCard,
+  OverviewField,
+  formatOverviewValue,
+  isOverviewValueAvailable,
+} from "@/components/views";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
 import {
   formatCoordinates,
@@ -34,25 +39,10 @@ interface SurveillanceOverviewProps {
 }
 
 function displayValue(field: string, value: unknown): string | null {
-  if (value == null || value === "") return null;
-  if (Array.isArray(value)) {
-    const values = value.filter(
-      (item): item is string | number | boolean | bigint =>
-        ["string", "number", "boolean", "bigint"].includes(typeof item),
-    );
-    return values.length > 0 ? values.map(String).join(", ") : null;
-  }
-  if (dateFields.has(field) && typeof value === "string")
+  if (dateFields.has(field) && typeof value === "string" && value !== "")
     return formatSourceDate(value);
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint"
-  ) {
-    return String(value);
-  }
-  return null;
+  if (!isOverviewValueAvailable(value)) return null;
+  return formatOverviewValue(value);
 }
 
 export function SurveillanceOverview({
@@ -85,29 +75,19 @@ export function SurveillanceOverview({
         }
 
         return (
-          <Card key={title}>
-            <CardHeader>
-              <CardTitle>{title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {values.length > 0 ? (
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  {values.map(({ field, label, value }) => (
-                    <div key={field}>
-                      <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        {label}
-                      </dt>
-                      <dd className="mt-0.5 wrap-break-word">{value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No data available.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+          <OverviewCard key={title} title={title}>
+            {values.length > 0 ? (
+              <dl className="grid gap-4 sm:grid-cols-2">
+                {values.map(({ field, label, value }) => (
+                  <OverviewField key={field} label={label} value={value} />
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No data available.
+              </p>
+            )}
+          </OverviewCard>
         );
       })}
     </div>

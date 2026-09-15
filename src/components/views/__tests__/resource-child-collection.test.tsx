@@ -12,6 +12,7 @@ import {
   ResourceCollection,
   type ResourceCollectionProfile,
 } from "../resource-collection";
+import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
 const {
   exportAll,
@@ -202,32 +203,7 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 /** Minimal, valid `useResourceCollection` return value for a real-render export test. */
-function realCollectionResult(
-  overrides: Partial<ReturnType<typeof useResourceCollectionHook>> = {},
-): ReturnType<typeof useResourceCollectionHook> {
-  return {
-    activeId: null,
-    detail: null,
-    detailError: null,
-    facets: {},
-    isAllPagesSelected: false,
-    isDetailLoading: false,
-    isInitialLoading: false,
-    isRefreshing: false,
-    error: null,
-    refetch: vi.fn(),
-    rows: [],
-    selection: {},
-    selectedIds: [],
-    sorting: [],
-    total: 0,
-    setIsAllPagesSelected: vi.fn(),
-    setSelection: vi.fn(),
-    setPageIndex: vi.fn(),
-    setSorting: vi.fn(),
-    ...overrides,
-  };
-}
+const realCollectionResult = createResourceCollectionResult;
 
 /**
  * Captures the Blob and filename `downloadResourceExport` hands to the DOM, the

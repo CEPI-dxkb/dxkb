@@ -303,93 +303,44 @@ describe("ListData selected export: failure visibility", () => {
   });
 });
 
-describe("ListData selected export: resources outside the Data API repository", () => {
-  // genome_amr has a ListData tab (see typesearch.tsx / search-info.ts) but is
-  // not a registered DataResource, so the Data API repository can't serve a
-  // "selected rows" read for it. Rather than reintroduce a raw-fetch bypass or
-  // drop the feature, ListData exports directly from the rows already loaded
-  // on the client for resources outside isDataResource — the rows a user can
-  // select are, by construction, already loaded (DataTable only lets you
-  // select rows it rendered).
-  function stubLoadedGenomeAmr(rows: Record<string, unknown>[]) {
+describe("ListData selected export: AMR phenotypes", () => {
+  // genome_amr used to be the one list resource outside the Data API registry,
+  // so its selected export fell back to serializing whatever rows happened to
+  // be loaded — a narrower promise than every other resource made. It is a
+  // registered resource now, so it takes the same repository path, and a
+  // selected id that is not on the currently loaded page is still exported.
+  it("exports selected AMR rows through the repository, including ids not on the loaded page", async () => {
+    const user = userEvent.setup();
+    let body: unknown;
     server.use(
-      http.get(`${dataApi}/genome_amr/`, ({ request }) =>
-        request.url.includes("limit(1)")
-          ? HttpResponse.json({ response: { numFound: rows.length } })
-          : HttpResponse.json(rows),
-      ),
+      http.post("/api/data/genome_amr", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({
+          rows: [
+            { id: "amr-2", antibiotic: "ampicillin" },
+            { id: "amr-1", antibiotic: "gentamicin" },
+          ],
+        });
+      }),
     );
-  }
-
-  it("exports selected loaded rows in selection order, with CSV delimiter and formula protection", async () => {
-    const user = userEvent.setup();
-    stubLoadedGenomeAmr([
-      { id: "2.2", genome_name: "Second" },
-      { id: "1.1", genome_name: "=cmd|' /C calc'!A0" },
-    ]);
     const download = spyOnDownload();
 
-    render(
-      <ListData resource="genome_amr" q="" selectedIds={["1.1", "2.2"]} />,
-      { wrapper: createQueryClientWrapper() },
-    );
+    renderListData("genome_amr", ["amr-1", "amr-2"]);
 
     await user.click(
       await screen.findByRole("button", { name: /Download Selected \(CSV\)/i }),
     );
 
     const content = await download.text();
-    expect(content).toContain(",");
-    // Formula-injection protection applies here too, even though this path
-    // never touches the network.
-    expect(content).toContain(`"'=cmd|' /C calc'!A0"`);
-    const lines = (content ?? "").trim().split("\n");
-    // Selection order was ["1.1", "2.2"]; the loaded rows arrived in the
-    // opposite order, so this also proves the re-sort happens on this path.
-    const firstRowIndex = lines.findIndex((line) => line.includes("cmd|"));
-    const secondRowIndex = lines.findIndex((line) => line.includes("Second"));
-    expect(firstRowIndex).toBeGreaterThan(-1);
-    expect(secondRowIndex).toBeGreaterThan(-1);
-    expect(firstRowIndex).toBeLessThan(secondRowIndex);
-  });
-
-  it("omits a selected id that isn't among the currently loaded rows, without failing the export", async () => {
-    const user = userEvent.setup();
-    stubLoadedGenomeAmr([{ id: "1.1", genome_name: "Loaded" }]);
-    const download = spyOnDownload();
-
-    render(
-      <ListData
-        resource="genome_amr"
-        q=""
-        selectedIds={["1.1", "not-loaded"]}
-      />,
-      { wrapper: createQueryClientWrapper() },
-    );
-
-    await user.click(
-      await screen.findByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-
-    const content = await download.text();
-    expect(content).toContain("Loaded");
-    // No fabricated row for the id that wasn't loaded, and no thrown error.
-    expect(content).not.toContain("not-loaded");
-  });
-
-  it("names the downloaded file with a -selected marker, not the -all name handleDownloadAll uses", async () => {
-    const user = userEvent.setup();
-    stubLoadedGenomeAmr([{ id: "1.1", genome_name: "A" }]);
-    const download = spyOnDownload();
-
-    render(<ListData resource="genome_amr" q="" selectedIds={["1.1"]} />, {
-      wrapper: createQueryClientWrapper(),
+    expect(body).toMatchObject({
+      operation: "selected",
+      ids: ["amr-1", "amr-2"],
     });
-
-    await user.click(
-      await screen.findByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-
+    const lines = (content ?? "").trim().split("\n");
+    // Re-sorted into selection order, not response order.
+    expect(
+      lines.findIndex((line) => line.includes("gentamicin")),
+    ).toBeLessThan(lines.findIndex((line) => line.includes("ampicillin")));
     expect(await download.filename()).toBe("genome_amr-selected.csv");
   });
 });

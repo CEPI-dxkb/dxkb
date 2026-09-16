@@ -5,6 +5,7 @@ export const maxExportRows = 10_000;
 export const dataResources = [
   "taxonomy",
   "genome",
+  "genome_amr",
   "genome_feature",
   "epitope",
   "epitope_assay",

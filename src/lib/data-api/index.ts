@@ -15,6 +15,7 @@ export {
   epitopeAssayRecordSchema,
   epitopeRecordSchema,
   experimentRecordSchema,
+  genomeAmrRecordSchema,
   genomeFeatureRecordSchema,
   genomeRecordSchema,
   genomeSequenceRecordSchema,

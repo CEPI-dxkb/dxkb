@@ -48,6 +48,25 @@ export const genomeRecordSchema = z.looseObject({
   patric_cds: stringOrNumber.optional(),
 });
 
+/**
+ * AMR phenotype rows. `id` is the genome_amr core's own document identifier
+ * (the same field `src/constants/resources.ts` already keys the legacy table
+ * on); every other column is optional because the legacy Search table projects
+ * a wide, mostly-sparse field list. `pmid` arrives as a list on rows that cite
+ * more than one publication, so it is accepted as either shape.
+ */
+export const genomeAmrRecordSchema = z.looseObject({
+  id: identifier,
+  genome_id: z.string().optional(),
+  genome_name: z.string().optional(),
+  antibiotic: z.string().optional(),
+  resistant_phenotype: z.string().optional(),
+  measurement_value: stringOrNumber.optional(),
+  evidence: z.string().optional(),
+  pmid: scalarList.optional(),
+  ...optionalTaxonomy,
+});
+
 export const genomeFeatureRecordSchema = z.looseObject({
   feature_id: identifier,
   patric_id: z.string().optional(),

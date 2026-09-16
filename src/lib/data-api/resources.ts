@@ -4,6 +4,7 @@ import { epitopeFields } from "@/constants/datafields/epitope";
 import { epitopeAssayFields } from "@/constants/datafields/epitope_assay";
 import { experimentFields } from "@/constants/datafields/experiment";
 import { genomeFields } from "@/constants/datafields/genome";
+import { genomeAmrFields } from "@/constants/datafields/genome_amr";
 import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
 import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
@@ -19,6 +20,7 @@ import {
   epitopeAssayRecordSchema,
   epitopeRecordSchema,
   experimentRecordSchema,
+  genomeAmrRecordSchema,
   genomeFeatureRecordSchema,
   genomeRecordSchema,
   genomeSequenceRecordSchema,
@@ -42,6 +44,7 @@ import type {
 const ids: Record<DataResource, string> = {
   taxonomy: "taxon_id",
   genome: "genome_id",
+  genome_amr: "id",
   genome_feature: "feature_id",
   epitope: "epitope_id",
   epitope_assay: "assay_id",
@@ -66,6 +69,7 @@ const alternateIdentifiers: Partial<Record<DataResource, readonly string[]>> = {
 const sourceFields: Partial<Record<DataResource, DataFieldMap>> = {
   taxonomy: taxonomyFields,
   genome: genomeFields,
+  genome_amr: genomeAmrFields,
   genome_feature: genomeFeatureFields,
   epitope: epitopeFields,
   epitope_assay: epitopeAssayFields,
@@ -131,6 +135,11 @@ const dateFields = new Set([
 const phraseFields = new Set(["strain", "pathogen_test_type"]);
 const multipleFields: Partial<Record<DataResource, ReadonlySet<string>>> = {
   taxonomy: new Set(["other_names", "lineage_ids", "lineage_names"]),
+  // An AMR row cites every publication supporting the phenotype, so `pmid`
+  // arrives as a list. Declaring it `multiple` is also what keeps the legacy
+  // Search table from offering a server sort on it, which Solr rejects for a
+  // multi-valued field.
+  genome_amr: new Set(["pmid"]),
   epitope: new Set(["assay_results", "host_name", "taxon_lineage_ids"]),
   surveillance: new Set(["pathogen_test_type", "taxon_lineage_ids"]),
   serology: new Set(["taxon_lineage_ids"]),
@@ -190,6 +199,7 @@ const orderedOperators = [
 const schemas: Record<DataResource, ResourceDefinition["schema"]> = {
   taxonomy: taxonomyRecordSchema,
   genome: genomeRecordSchema,
+  genome_amr: genomeAmrRecordSchema,
   genome_feature: genomeFeatureRecordSchema,
   epitope: epitopeRecordSchema,
   epitope_assay: epitopeAssayRecordSchema,

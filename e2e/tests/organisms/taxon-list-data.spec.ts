@@ -439,15 +439,19 @@ test.describe("taxon domains-and-motifs: Download Selected sends POST not GET", 
 });
 
 // ─── Facet click regression: multi-word eq() values must be quoted ───────────
-// Regression: buildRql() (src/components/filterbar/filter-utils.ts) built eq()
-// clauses with unquoted values. Solr string fields (e.g. epitope_type) split an
-// unquoted multi-word value into separate ANDed terms —
-// `eq(epitope_type,Linear peptide)` becomes `epitope_type:Linear AND
-// epitope_type:peptide`, matching nothing — so clicking any multi-word facet
-// value hung the table at "Showing 0-0 of 0 results" forever. Fix: quote eq()
-// values. buildRql() is shared by every resource's FilterBar (genome, strain,
-// epitope, surveillance, ...), so this one test on the epitope tab exercises
-// the fix for all views — the bug and the fix live in one shared function.
+// Regression: a facet click built an eq() clause with an unquoted value. Solr
+// string fields (e.g. epitope_type) split an unquoted multi-word value into
+// separate ANDed terms — `eq(epitope_type,Linear peptide)` becomes
+// `epitope_type:Linear AND epitope_type:peptide`, matching nothing — so
+// clicking any multi-word facet value hung the table at
+// "Showing 0-0 of 0 results" forever.
+//
+// The quoting now happens in exactly one place for every view: `serializeValue`
+// in src/lib/data-api/rql.ts, which the gateway applies to a structural filter
+// (this tab, via ResourceFilterBar) and to a raw `rql` string alike (the legacy
+// /search list, whose `buildRql` deliberately sends values unquoted). This tab
+// is the ResourceFilterBar side; filter-utils.test.ts pairs the legacy side
+// with the same serializer.
 const epitopeGateway = /\/api\/data\/epitope(?:\?|$)/;
 
 function buildEpitopeRows(count: number, epitopeType: string) {

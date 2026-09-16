@@ -406,6 +406,148 @@ describe("ServerDataRepository", () => {
     );
   });
 
+  // `operation: "selected"` is the selected-row export path. It used to live in
+  // DataTable as a hand-built raw GET against NEXT_PUBLIC_DATA_API; plan item 20A
+  // deleted that fallback and routed the behaviour through here, so these four
+  // cases are the successors to the ones deleted with it — including the named
+  // ERR_FAILED regression guard, which is why the request must be a POST with the
+  // predicate in the body rather than a GET with it in the URL.
+  //
+  // MSW rather than an injected fetcher: the assertions are about the request on
+  // the wire (method, body, Range header), so they have to be read off a real
+  // Request.
+  describe("selected-row export (rows)", () => {
+    function repository(): ServerDataRepository {
+      return new ServerDataRepository({ baseUrl: "https://data.test" });
+    }
+
+    interface CapturedRequest {
+      method: string;
+      url: string;
+      body: string;
+      range: string | null;
+      contentType: string | null;
+    }
+
+    /** Capture the single upstream request `selected` makes for `resource`. */
+    function captureSelected(
+      resource: string,
+      rows: Record<string, unknown>[] | { items: Record<string, unknown>[] },
+    ): CapturedRequest {
+      const captured: CapturedRequest = {
+        method: "",
+        url: "",
+        body: "",
+        range: null,
+        contentType: null,
+      };
+      server.use(
+        http.post(`https://data.test/${resource}/`, async ({ request }) => {
+          captured.method = request.method;
+          captured.url = request.url;
+          captured.body = await request.text();
+          captured.range = request.headers.get("Range");
+          captured.contentType = request.headers.get("Content-Type");
+          return HttpResponse.json(rows);
+        }),
+      );
+      return captured;
+    }
+
+    it("POSTs the id predicate in the body, keyed off the registry idField", async () => {
+      // genome's idField is genome_id, not the literal "id" — the deleted
+      // DataTable fallback got this from a per-resource table of its own.
+      const captured = captureSelected("genome", [
+        { genome_id: "1234.1", genome_name: "One" },
+      ]);
+
+      await expect(
+        repository().execute("genome", {
+          operation: "selected",
+          ids: ["1234.1"],
+          fields: ["genome_name"],
+        }),
+      ).resolves.toEqual({
+        rows: [{ genome_id: "1234.1", genome_name: "One" }],
+      });
+
+      expect(captured.method).toBe("POST");
+      expect(captured.body).toBe("in(genome_id,(1234.1))");
+      expect(captured.contentType).toBe(
+        "application/rqlquery+x-www-form-urlencoded",
+      );
+      // The predicate must not also travel in the URL — that is the shape that
+      // blew the length limit.
+      expect(captured.url).not.toContain("in(genome_id");
+    });
+
+    it("uses each resource's own idField rather than a shared one", async () => {
+      const captured = captureSelected("protein_feature", [
+        { id: "aaaa-0001", source: "Pfam" },
+      ]);
+
+      await repository().execute("protein_feature", {
+        operation: "selected",
+        ids: ["aaaa-0001", "aaaa-0002"],
+      });
+
+      expect(captured.body).toBe("in(id,(aaaa-0001,aaaa-0002))");
+    });
+
+    it("sets the Range header to the selected count, not the page size", async () => {
+      const captured = captureSelected("protein_feature", [
+        { id: "aaaa-0001" },
+        { id: "aaaa-0002" },
+      ]);
+
+      await repository().execute("protein_feature", {
+        operation: "selected",
+        ids: ["aaaa-0001", "aaaa-0002"],
+      });
+
+      expect(captured.range).toBe("items=0-2");
+    });
+
+    it("accepts an {items:[...]} envelope as well as a bare array", async () => {
+      const captured = captureSelected("protein_feature", {
+        items: [{ id: "aaaa-0001", source: "Pfam" }],
+      });
+
+      await expect(
+        repository().execute("protein_feature", {
+          operation: "selected",
+          ids: ["aaaa-0001"],
+        }),
+      ).resolves.toEqual({ rows: [{ id: "aaaa-0001", source: "Pfam" }] });
+      expect(captured.method).toBe("POST");
+    });
+
+    it("regression: 200 selected ids travel intact in the POST body", async () => {
+      // The GET-with-RQL-in-the-URL shape this replaced exceeded browser and
+      // server URL limits at this volume and failed with net::ERR_FAILED.
+      const ids = Array.from(
+        { length: 200 },
+        (_, index) => `id-${String(index).padStart(4, "0")}`,
+      );
+      const captured = captureSelected(
+        "protein_feature",
+        ids.map((id) => ({ id })),
+      );
+
+      const result = await repository().execute("protein_feature", {
+        operation: "selected",
+        ids,
+      });
+
+      expect(captured.body.startsWith("in(id,(")).toBe(true);
+      expect(captured.body).toContain("id-0000");
+      expect(captured.body).toContain("id-0199");
+      expect(captured.url).not.toContain("id-0199");
+      expect(captured.range).toBe("items=0-200");
+      expect(result).toEqual({ rows: ids.map((id) => ({ id })) });
+    });
+  });
+
   // These use MSW (real network-level interception via global fetch) rather
   // than an injected fetcher, so `response.json()` runs against a genuine
   // HTTP response — exercising the actual parse-failure-to-null path in

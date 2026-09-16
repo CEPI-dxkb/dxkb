@@ -4,6 +4,17 @@
  * with its own panel background. These tests guard that all three branches —
  * and the FacetColumn markup nested inside the loaded one — use theme tokens
  * rather than hardcoded gray-* / text-white utility classes.
+ *
+ * KNOWN ARCHITECTURAL VIOLATION, not a sanctioned pattern: `FacetPanel` is a
+ * `"use client"` component that reads `NEXT_PUBLIC_DATA_API` and raw-`fetch`es the
+ * upstream Data API (`facet-panel.tsx`), which `AGENTS.md` forbids — every backend
+ * call belongs behind the `/api/data/[resource]` gateway. The env var set below and
+ * the MSW handlers for `${dataApi}/genome/` exist only to drive the component as it
+ * is *today*, so these theme-token assertions can run at all. Nothing here asserts
+ * that the upstream call is correct, and no new test should. Migrating the component
+ * off the env var and onto the gateway is tracked separately (whole-branch review
+ * F10 / the Search+filterbar Data API migration follow-up); when it lands, delete
+ * the `beforeEach`/`afterEach` env plumbing and point the handlers at the gateway.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";

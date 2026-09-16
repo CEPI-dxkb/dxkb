@@ -1,70 +1,50 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { TypeSearch } from "@/app/search/typesearch";
 import { SearchResults } from "@/app/all-term-search-results";
-import { taxonomyCollectionOptions } from "@/lib/taxonomy-view/query";
+import {
+  firstSearchParamValue,
+  resolveLegacySearch,
+} from "@/app/search/search-type-routing";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 
-function firstValue(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
+/** Overview with nothing to search for yet. */
+function SearchPrompt() {
+  return (
+    <div className="p-6 text-sm text-muted-foreground">
+      Enter a search term to search across every BV-BRC data type.
+    </div>
+  );
 }
 
 /**
- * Collection state the canonical Taxa route understands, so the permanent redirect
- * cannot drop a user's filters. Derived from the parser's own friendly filters
- * (`taxon_id`, `taxon_rank`, `genetic_code`, `division`) plus the managed keys, so
- * adding a filter there cannot silently break this migration.
+ * A legacy `type=` value this app has no view for (Specialty Genes, Pathways,
+ * Subsystems, Antibiotics, or a typo). The all-data-types results are the only
+ * honest destination we can offer for the phrase that was searched.
  */
-const taxonomyRedirectParams = [
-  "rql",
-  ...(taxonomyCollectionOptions.friendlyFilters ?? []),
-  "refine",
-  "page",
-  "sort",
-] as const;
-
-function taxonomyRedirect(params: SearchParamsRecord, query: string): string {
-  const destination = new URLSearchParams();
-  if (query) destination.set("keyword", query);
-  for (const name of taxonomyRedirectParams) {
-    const value = params[name];
-    for (const item of Array.isArray(value) ? value : value ? [value] : []) {
-      destination.append(name, item);
-    }
-  }
-  return `/taxonomy${destination.size ? `?${destination}` : ""}`;
-}
-
-function experimentRedirect(
-  params: SearchParamsRecord,
-  searchtype: string,
-  query: string,
-): string {
-  const destination = new URLSearchParams();
-  const tabs = Array.isArray(params.tab) ? params.tab : [params.tab];
-  const biosetsRequested =
-    searchtype === "bioset" ||
-    tabs.includes("bioset") ||
-    tabs.includes("biosets");
-
-  for (const [name, value] of Object.entries(params)) {
-    if (name === "type" || value === undefined) continue;
-    if (name === "tab" && biosetsRequested) {
-      destination.set("tab", "biosets");
-      continue;
-    }
-    if (name === "q") {
-      destination.set("keyword", query);
-      continue;
-    }
-    for (const item of Array.isArray(value) ? value : [value]) {
-      destination.append(name, item);
-    }
-  }
-  if (biosetsRequested && !destination.has("tab")) {
-    destination.set("tab", "biosets");
-  }
-
-  return `/experiment${destination.size ? `?${destination}` : ""}`;
+function UnsupportedSearchType({
+  searchtype,
+  keyword,
+}: {
+  searchtype: string;
+  keyword: string;
+}) {
+  return (
+    <div className="space-y-2 p-6 text-sm text-muted-foreground">
+      <p>There is no search view for &ldquo;{searchtype}&rdquo;.</p>
+      {keyword ? (
+        <p>
+          <Link
+            className="underline underline-offset-4"
+            href={`/search?type=everything&q=${encodeURIComponent(keyword)}`}
+          >
+            Search all data types for &ldquo;{keyword}&rdquo;
+          </Link>{" "}
+          instead.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export default async function GlobalSearch({
@@ -73,8 +53,7 @@ export default async function GlobalSearch({
   searchParams: Promise<SearchParamsRecord>;
 }) {
   const params = await searchParams;
-  const keyword = firstValue(params.q);
-  const searchtype = firstValue(params.type);
+  const keyword = firstSearchParamValue(params.q);
 
   // The first step is to get the search phrase in a friendly format.
   // This requires a handful of replacements to make sure we don't break the API
@@ -123,32 +102,25 @@ export default async function GlobalSearch({
     query = keywords.join(" ");
   }
 
-  // Now that we have the entire query formatted properly, let's figure out where to send it...
-  if (searchtype === "experiment" || searchtype === "bioset") {
-    redirect(experimentRedirect(params, searchtype, query));
-  }
-  if (searchtype === "taxonomy") {
-    redirect(taxonomyRedirect(params, query));
-  }
-
-  if (searchtype === "everything") {
-    return <SearchResults query={query} />;
-  } else if (
-    [
-      "genome",
-      "strain",
-      "genome_feature",
-      "protein_feature",
-      "epitope",
-      "protein_structure",
-      "surveillance",
-      "serology",
-      "genome_sequence",
-      "genome_amr",
-    ].includes(searchtype)
-  ) {
-    return <TypeSearch q={query} searchtype={searchtype} />;
-  } else {
-    return <div>Fallback search</div>;
+  // Now that we have the entire query formatted properly, let's figure out where
+  // to send it. Every legacy type resolves through the descriptors, so marking a
+  // descriptor canonical is all it takes to redirect its legacy URL.
+  const target = resolveLegacySearch(params, query);
+  switch (target.kind) {
+    case "redirect":
+      return redirect(target.href);
+    case "allTypes":
+      return <SearchResults query={query} />;
+    case "typeSearch":
+      return <TypeSearch q={query} searchtype={target.searchtype} />;
+    case "prompt":
+      return <SearchPrompt />;
+    case "unsupported":
+      return (
+        <UnsupportedSearchType
+          searchtype={target.searchtype}
+          keyword={keyword}
+        />
+      );
   }
 }

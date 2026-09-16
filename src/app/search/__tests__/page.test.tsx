@@ -123,6 +123,59 @@ describe("legacy search route", () => {
     );
   });
 
+  it("redirects a canonical type that used to render the legacy list", async () => {
+    await expect(
+      GlobalSearch({
+        searchParams: Promise.resolve({ type: "genome", q: "Escherichia" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT:/genome?keyword=Escherichia");
+  });
+
+  it.each(["genome_sequence", "genome_amr"])(
+    "still renders the legacy type search for %s",
+    async (type) => {
+      render(
+        await GlobalSearch({
+          searchParams: Promise.resolve({ type, q: "Escherichia" }),
+        }),
+      );
+      expect(screen.getByTestId("type-search")).toHaveAttribute(
+        "data-search-type",
+        type,
+      );
+      expect(mocks.redirect).not.toHaveBeenCalled();
+    },
+  );
+
+  it("prompts for a search term when Overview has no query", async () => {
+    render(await GlobalSearch({ searchParams: Promise.resolve({}) }));
+    expect(screen.getByText(/enter a search term/i)).toBeInTheDocument();
+  });
+
+  it("offers the all-types results for a type with no view", async () => {
+    render(
+      await GlobalSearch({
+        searchParams: Promise.resolve({ type: "pathway", q: "Escherichia" }),
+      }),
+    );
+    expect(screen.getByText(/no search view for/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /search all data types/i }),
+    ).toHaveAttribute("href", "/search?type=everything&q=Escherichia");
+  });
+
+  it("resolves Overview with a query to the all-types results", async () => {
+    render(
+      await GlobalSearch({
+        searchParams: Promise.resolve({ q: "Escherichia" }),
+      }),
+    );
+    expect(screen.getByTestId("all-results")).toHaveAttribute(
+      "data-query",
+      "Escherichia",
+    );
+  });
+
   it("continues rendering everything searches", async () => {
     render(
       await GlobalSearch({

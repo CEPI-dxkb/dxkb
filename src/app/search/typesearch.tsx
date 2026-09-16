@@ -14,9 +14,9 @@ import {
 import { VerticalMenu } from "@/components/ui/vertical-menu";
 import { Button } from "@/components/ui/button";
 import {
+  searchDescriptors,
   searchHref,
   searchTabsByType,
-  searchTypes as searchDescriptors,
 } from "@/constants/search-info";
 import {
   experimentHref,
@@ -37,18 +37,13 @@ import {
   Activity,
   Atom,
   Binary,
-  Blocks,
   Database,
   Dna,
   Eye,
   FlaskConical,
   Globe,
-  Layers,
   ListTree,
-  Microscope,
-  Network,
   Puzzle,
-  Route,
   Share2,
   ShieldCheck,
   Waypoints,
@@ -265,13 +260,15 @@ function TabsRenderer({
   );
 }
 
-const searchTypeMenuItems = [
-  { key: "overview", label: "Overview", icon: <Blocks className="size-4" /> },
-  {
-    key: "phylogeny",
-    label: "Phylogeny",
-    icon: <Network className="size-4" />,
-  },
+/**
+ * The legacy left-hand type menu. Every entry must have a destination: a
+ * canonical route (via its descriptor) or a legacy tab group this component can
+ * render. Overview, Phylogeny, Specialty Genes, Pathways, and Subsystems used to
+ * sit here with no destination at all and resolved to a literal fallback screen;
+ * they are out until something implements them. Their descriptors stay in
+ * `search-info.ts` because the all-data-types result page still queries them.
+ */
+export const searchTypeMenuItems = [
   { key: "taxonomy", label: "Taxa", icon: <Binary className="size-4" /> },
   { key: "genome", label: "Genomes", icon: <Dna className="size-4" /> },
   {
@@ -296,23 +293,12 @@ const searchTypeMenuItems = [
     icon: <Waypoints className="size-4" />,
   },
   {
-    key: "sp_gene",
-    label: "Specialty Genes",
-    icon: <Microscope className="size-4" />,
-  },
-  {
     key: "protein_feature",
     label: "Domains and Motifs",
     icon: <Puzzle className="size-4" />,
   },
   { key: "epitope", label: "Epitopes", icon: <Activity className="size-4" /> },
   { key: "strain", label: "Strains", icon: <Share2 className="size-4" /> },
-  { key: "pathway", label: "Pathways", icon: <Route className="size-4" /> },
-  {
-    key: "subsystem",
-    label: "Subsystems",
-    icon: <Layers className="size-4" />,
-  },
   {
     key: "surveillance",
     label: "Surveillance",
@@ -410,9 +396,9 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/experiments_comparisons_tables.html",
   };
 
-  // The active top-level group: overview when no type is set, otherwise match
-  // the urlType directly or find which group contains it as a sub-tab.
-  let activeGroup = "overview";
+  // The active top-level group: none when no type is set, otherwise match the
+  // urlType directly or find which group contains it as a sub-tab.
+  let activeGroup = "";
   if (urlType && urlType !== "everything") {
     const directGroup = searchTypeMenuItems.find(
       (item) => item.key === urlType,
@@ -430,24 +416,19 @@ export function TypeSearch({ q, searchtype }: TypeSearchProps) {
     label: item.label,
     isActive: item.key === activeGroup,
     onClick: () => {
-      const params = new URLSearchParams();
-      if (item.key === "overview") {
-        if (urlQ) params.set("q", urlQ);
-        router.push(
-          `/search${params.toString() ? `?${params.toString()}` : ""}`,
-        );
-      } else {
-        const descriptor = searchDescriptors.find(
-          (searchType) => searchType.id === item.key,
-        );
-        if (descriptor?.route.status === "canonical") {
-          router.push(searchHref(descriptor, urlQ));
-          return;
-        }
-        params.set("type", item.key);
-        if (urlQ) params.set("q", urlQ);
-        router.push(`/search?${params.toString()}`);
+      // Canonical types go straight to their own route; the legacy types left
+      // in this menu stay on `/search`, where `page.tsx` renders them here.
+      const descriptor = searchDescriptors.find(
+        (searchType) => searchType.id === item.key,
+      );
+      if (descriptor?.route.status === "canonical") {
+        router.push(searchHref(descriptor, urlQ));
+        return;
       }
+      const params = new URLSearchParams();
+      params.set("type", item.key);
+      if (urlQ) params.set("q", urlQ);
+      router.push(`/search?${params.toString()}`);
     },
   }));
 

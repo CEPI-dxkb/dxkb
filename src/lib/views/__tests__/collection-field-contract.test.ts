@@ -435,8 +435,9 @@ describe("profile column adapters", () => {
     expect(columns.get("1_pb2")?.valueHref).toBe(
       "https://www.ncbi.nlm.nih.gov/nuccore/{value}",
     );
-    // A metadata link always wins over the fallback.
-    expect(columns.get("taxon_id")?.valueHref).toBe("/view/Taxonomy/{value}");
+    // A metadata link always wins over the fallback. Item 20B canonicalized
+    // this from the stale `/view/Taxonomy/{value}` onto `/taxonomy/{value}`.
+    expect(columns.get("taxon_id")?.valueHref).toBe("/taxonomy/{value}");
     expect(columns.get("genome_ids")?.valueHref).toBe("/genome/{value}");
     expect(columns.get("species")?.valueHref).toBeUndefined();
   });

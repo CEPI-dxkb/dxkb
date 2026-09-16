@@ -493,7 +493,7 @@ export const genomeFields = {
         field: 'contigs',
         hidden: true,
         group: 'Genome Statistics',
-        link: 'https://www.dxkb.org/view/Genome/{genome_id}?activeTab=sequences',
+        link: '/genome/{genome_id}?tab=sequences',
         facet: false, 
         facet_hidden: true, 
         search: true 

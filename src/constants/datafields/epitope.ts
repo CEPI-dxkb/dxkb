@@ -44,7 +44,7 @@ export const epitopeFields = {
         field: 'taxon_id', 
         hidden: true,
         group: 'Epitope Info',
-        link: '/view/Taxonomy/{value}', 
+        link: '/taxonomy/{value}',
         facet: false, 
         facet_hidden: true, 
         search: true  

@@ -17,9 +17,8 @@ import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import type { DataResource } from "@/lib/data-api";
 import { ListData } from "../list-data";
-
-const dataApi = "https://test-bvbrc-api.example.com";
 
 beforeAll(() => {
   global.ResizeObserver = class ResizeObserver {
@@ -29,32 +28,31 @@ beforeAll(() => {
   };
 });
 
-beforeEach(() => {
-  process.env.NEXT_PUBLIC_DATA_API = dataApi;
-});
-
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_DATA_API;
   vi.restoreAllMocks();
 });
 
-// ListData always issues its own list-fetch straight to NEXT_PUBLIC_DATA_API on
-// mount (out of scope for this task — see item-20A-report.md). None of these
-// tests exercise that path or need any rows loaded to exercise the "Download
-// Selected" buttons (their visibility depends only on the selectedIds prop),
-// so stub it to an empty, non-prefetching result.
-function stubListFetch(resource: string) {
+// ListData issues its own page read on mount. None of these tests exercise that
+// path or need rows loaded to reach the "Download Selected" buttons (their
+// visibility depends only on the selectedIds prop), so stub it to an empty,
+// non-prefetching result. It shares the gateway path with the POST export
+// below, which is why the GET handler is registered separately.
+function stubListFetch(resource: DataResource) {
   server.use(
-    http.get(`${dataApi}/${resource}/`, ({ request }) =>
-      request.url.includes("limit(1)")
-        ? HttpResponse.json({ response: { numFound: 0 } })
-        : HttpResponse.json([]),
+    http.get(`/api/data/${resource}`, () =>
+      HttpResponse.json({
+        rows: [],
+        total: 0,
+        facets: {},
+        page: 1,
+        pageSize: 200,
+      }),
     ),
   );
 }
 
 function renderListData(
-  resource: string,
+  resource: DataResource,
   selectedIds: string[],
   extraProps: Partial<React.ComponentProps<typeof ListData>> = {},
 ) {
@@ -308,7 +306,7 @@ describe("ListData selected export: AMR phenotypes", () => {
   // so its selected export fell back to serializing whatever rows happened to
   // be loaded — a narrower promise than every other resource made. It is a
   // registered resource now, so it takes the same repository path, and a
-  // selected id that is not on the currently loaded page is still exported.
+  // selected id that is not on the current page is still exported.
   it("exports selected AMR rows through the repository, including ids not on the loaded page", async () => {
     const user = userEvent.setup();
     let body: unknown;

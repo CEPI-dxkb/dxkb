@@ -1,8 +1,9 @@
 import {
   isSameResourceQuery,
   deriveTableFields,
+  downloadLoadedResourceRows,
   findPageRow,
-  downloadResourceRows,
+  projectedFields,
 } from "../list-data-utils";
 
 afterEach(() => {
@@ -59,11 +60,56 @@ describe("deriveTableFields", () => {
     expect(fields.find((f) => f.id === "taxon_lineage_ids")).toBeUndefined();
   });
 
-  it("returns a stable empty array for unknown resources", () => {
+  // `deriveTableFields` is typed over `DataResource`, so an arbitrary string can
+  // no longer reach it. The one remaining miss is a registered resource with no
+  // `datafields/*` map — `epitope_assay`, which has no legacy table.
+  it("returns a stable empty array for a resource with no table field map", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const first = deriveTableFields("not_a_resource");
-    expect(first).toEqual([]);
-    expect(deriveTableFields("another_unknown_resource")).toBe(first);
+    expect(deriveTableFields("epitope_assay")).toEqual([]);
+    expect(deriveTableFields("epitope_assay")).toBe(
+      deriveTableFields("epitope_assay"),
+    );
+  });
+
+  // The registry is the single source of sortability, and it is the same value
+  // `validateSort` enforces at the gateway — so a column that advertises a sort
+  // header can never produce a request the gateway rejects. Before this,
+  // `deriveTableFields` emitted no `sortable` at all and every column claimed
+  // server sorting.
+  it("reports a column the registry declares unsortable as unsortable", () => {
+    // genome_feature.go and experiment.experimenters both carry an explicit
+    // `sortable: false` in their datafields entry and are still table columns.
+    expect(
+      deriveTableFields("genome_feature").find((f) => f.id === "go")?.sortable,
+    ).toBe(false);
+    expect(
+      deriveTableFields("experiment").find((f) => f.id === "experimenters")
+        ?.sortable,
+    ).toBe(false);
+    // A neighbouring column with no flag still sorts, so this is not just
+    // "nothing is sortable".
+    expect(
+      deriveTableFields("genome_feature").find((f) => f.id === "property")
+        ?.sortable,
+    ).toBe(true);
+  });
+
+  it("reports a multiple-valued column as unsortable even without a sortable flag", () => {
+    // strain.genome_ids has no `sortable` flag; the registry derives it from
+    // declared cardinality (`multipleFields`), which Solr cannot sort on.
+    const strain = deriveTableFields("strain");
+    expect(strain.find((f) => f.id === "genome_ids")?.sortable).toBe(false);
+    expect(strain.find((f) => f.id === "genbank_accessions")?.sortable).toBe(
+      false,
+    );
+    // A scalar column on the same resource still sorts.
+    expect(strain.find((f) => f.id === "strain")?.sortable).toBe(true);
+  });
+
+  it("reports the AMR publication list as unsortable and its scalar columns as sortable", () => {
+    const amr = deriveTableFields("genome_amr");
+    expect(amr.find((f) => f.id === "pmid")?.sortable).toBe(false);
+    expect(amr.find((f) => f.id === "antibiotic")?.sortable).toBe(true);
   });
 });
 
@@ -92,97 +138,120 @@ describe("genome_sequence field registry", () => {
   });
 });
 
-describe("downloadResourceRows", () => {
-  it("requests only exported columns and omits the selection column", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify([{ genome_id: "1", genome_name: "Example" }]),
-        {
-          status: 200,
-        },
-      ),
+// The projection sent with every row read. It is deliberately wider than the
+// visible columns: the detail panel renders `show_in_table: false` fields too.
+describe("projectedFields", () => {
+  it("always includes the identity field", () => {
+    expect(projectedFields("genome_sequence", "sequence_id")).toContain(
+      "sequence_id",
     );
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:download");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-      () => undefined,
-    );
+    expect(projectedFields("genome_amr", "id")).toContain("id");
+  });
 
-    await downloadResourceRows({
-      dataApi: "https://data.example",
-      resource: "genome",
-      query: "eq(public,true)",
-      totalItems: 1,
-      format: "csv",
-      visibleColumns: ["__select__", "genome_id", "genome_name"],
-      fields: [
-        { id: "genome_id", label: "Genome ID", visible: true },
-        { id: "genome_name", label: "Genome Name", visible: true },
-      ],
-    });
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://data.example/genome/?eq(public,true)&select(genome_id,genome_name)",
-      expect.any(Object),
+  // Regression: the genome_sequence core returns the raw `sequence` DNA field
+  // by default, inflating a page from ~80KB to ~18MB. The projection is what
+  // keeps it out.
+  it("omits the raw genome_sequence DNA column", () => {
+    expect(projectedFields("genome_sequence", "sequence_id")).not.toContain(
+      "sequence",
     );
   });
 
-  it("neutralizes CSV formulas and keeps each value on one row", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify([{ genome_id: '=1+1\r\n"quoted"' }]),
-        { status: 200 },
-      ),
-    );
+  // Regression: serologyFields declares `date_modified` and `date_inserted`;
+  // there is no `date_updated` field, so the projection must never name it.
+  it("uses serology's real date columns, not the dead date_updated name", () => {
+    const fields = projectedFields("serology", "id");
+    expect(fields).toContain("date_modified");
+    expect(fields).toContain("date_inserted");
+    expect(fields).not.toContain("date_updated");
+  });
+
+  it("includes both interactor sides for ppi", () => {
+    const fields = projectedFields("ppi", "id");
+    expect(fields).toContain("genome_id_a");
+    expect(fields).toContain("interactor_a");
+    expect(fields).toContain("genome_id_b");
+    expect(fields).toContain("interactor_b");
+  });
+});
+
+describe("downloadLoadedResourceRows", () => {
+  function captureDownload() {
     let blob: Blob | undefined;
+    let filename: string | undefined;
     vi.spyOn(URL, "createObjectURL").mockImplementation((value) => {
       blob = value as Blob;
       return "blob:download";
     });
     vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-      () => undefined,
+      function (this: HTMLAnchorElement) {
+        filename = this.download;
+      },
     );
+    return {
+      text: () => blob?.text(),
+      filename: () => filename,
+    };
+  }
 
-    await downloadResourceRows({
-      dataApi: "https://data.example",
+  it("writes only the exported columns and omits the selection column", async () => {
+    const download = captureDownload();
+
+    downloadLoadedResourceRows({
       resource: "genome",
-      query: "eq(public,true)",
-      totalItems: 1,
+      rows: [{ genome_id: "1", genome_name: "Example" }],
       format: "csv",
-      visibleColumns: ["genome_id"],
-      fields: [{ id: "genome_id", label: "Genome ID", visible: true }],
+      visibleColumns: ["__select__", "genome_id", "genome_name"],
+      fields: [
+        { id: "genome_id", label: "Genome ID", visible: true, sortable: true },
+        {
+          id: "genome_name",
+          label: "Genome Name",
+          visible: true,
+          sortable: true,
+        },
+      ],
     });
 
-    await expect(blob?.text()).resolves.toBe(
+    await expect(download.text()).resolves.toBe(
+      'Genome ID,Genome Name\n"1","Example"',
+    );
+    expect(download.filename()).toBe("genome-all.csv");
+  });
+
+  it("neutralizes CSV formulas and keeps each value on one row", async () => {
+    const download = captureDownload();
+
+    downloadLoadedResourceRows({
+      resource: "genome",
+      rows: [{ genome_id: '=1+1\r\n"quoted"' }],
+      format: "csv",
+      visibleColumns: ["genome_id"],
+      fields: [
+        { id: "genome_id", label: "Genome ID", visible: true, sortable: true },
+      ],
+    });
+
+    await expect(download.text()).resolves.toBe(
       'Genome ID\n"\'=1+1 ""quoted"""',
     );
   });
 
-  it("does not treat an empty displayed-column selection as all columns", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(JSON.stringify([{}]), { status: 200 }));
-    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:download");
-    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
-    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-      () => undefined,
-    );
+  it("writes headers only for an empty displayed-column selection", async () => {
+    const download = captureDownload();
 
-    await downloadResourceRows({
-      dataApi: "https://data.example",
+    downloadLoadedResourceRows({
       resource: "genome",
-      query: "eq(public,true)",
-      totalItems: 1,
+      rows: [{ genome_id: "1" }],
       format: "csv",
       visibleColumns: [],
-      fields: [{ id: "genome_id", label: "Genome ID", visible: true }],
+      fields: [
+        { id: "genome_id", label: "Genome ID", visible: true, sortable: true },
+      ],
     });
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://data.example/genome/?eq(public,true)",
-      expect.any(Object),
-    );
+    await expect(download.text()).resolves.toBe("\n");
   });
 });
 

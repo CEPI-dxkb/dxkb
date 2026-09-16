@@ -3,18 +3,9 @@
  * facet panel, but through its own error / loading / loaded branches, each
  * with its own panel background. These tests guard that all three branches —
  * and the FacetColumn markup nested inside the loaded one — use theme tokens
- * rather than hardcoded gray-* / text-white utility classes.
- *
- * KNOWN ARCHITECTURAL VIOLATION, not a sanctioned pattern: `FacetPanel` is a
- * `"use client"` component that reads `NEXT_PUBLIC_DATA_API` and raw-`fetch`es the
- * upstream Data API (`facet-panel.tsx`), which `AGENTS.md` forbids — every backend
- * call belongs behind the `/api/data/[resource]` gateway. The env var set below and
- * the MSW handlers for `${dataApi}/genome/` exist only to drive the component as it
- * is *today*, so these theme-token assertions can run at all. Nothing here asserts
- * that the upstream call is correct, and no new test should. Migrating the component
- * off the env var and onto the gateway is tracked separately (whole-branch review
- * F10 / the Search+filterbar Data API migration follow-up); when it lands, delete
- * the `beforeEach`/`afterEach` env plumbing and point the handlers at the gateway.
+ * rather than hardcoded gray-* / text-white utility classes, and that the
+ * counts come from the same-origin Data API gateway rather than a direct
+ * upstream fetch.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -23,38 +14,64 @@ import { createQueryClientWrapper } from "@/test-helpers/react";
 import { server } from "@/test-helpers/msw-server";
 import { FacetPanel } from "../facet-panel";
 
-const dataApi = "https://test-facet-panel.example.com";
+const gateway = "/api/data/genome";
+const fields = [{ id: "genome_status", label: "Genome Status" }];
 
-const fields = [{ id: "genome_status", label: "Genome Status", facet: true }];
+function renderPanel(query = "") {
+  const Wrapper = createQueryClientWrapper();
+  return render(
+    <Wrapper>
+      <FacetPanel
+        fields={fields}
+        query={query}
+        resource="genome"
+        onSelect={vi.fn()}
+      />
+    </Wrapper>,
+  );
+}
 
-beforeEach(() => {
-  process.env.NEXT_PUBLIC_DATA_API = dataApi;
-});
+describe("FacetPanel request", () => {
+  it("asks the same-origin gateway for facet counts, not the upstream data API", async () => {
+    const requests: URL[] = [];
+    server.use(
+      http.get(gateway, ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json({
+          rows: [],
+          total: 0,
+          facets: { genome_status: [{ value: "Complete", count: 5 }] },
+          page: 1,
+          pageSize: 1,
+        });
+      }),
+    );
 
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_DATA_API;
+    renderPanel("keyword(influenza)");
+
+    await screen.findByText("Complete (5)");
+    const url = requests[0];
+    expect(url.origin).toBe(window.location.origin);
+    expect(url.searchParams.get("operation")).toBe("collection");
+    expect(url.searchParams.get("rql")).toBe("keyword(influenza)");
+    expect(url.searchParams.getAll("facet")).toEqual(["genome_status"]);
+    // Counts, not rows: the smallest page the gateway accepts.
+    expect(url.searchParams.get("pageSize")).toBe("1");
+  });
 });
 
 describe("FacetPanel theme tokens", () => {
   it("renders the error panel with theme tokens, not hardcoded grays", async () => {
     server.use(
-      http.get(
-        `${dataApi}/genome/`,
-        () => new HttpResponse("boom", { status: 500 }),
+      http.get(gateway, () =>
+        HttpResponse.json(
+          { error: "Facet query failed.", code: "upstream_error" },
+          { status: 502 },
+        ),
       ),
     );
 
-    const Wrapper = createQueryClientWrapper();
-    render(
-      <Wrapper>
-        <FacetPanel
-          fields={fields}
-          query=""
-          resource="genome"
-          onSelect={vi.fn()}
-        />
-      </Wrapper>,
-    );
+    renderPanel();
 
     const message = await screen.findByText("Facets unavailable");
     expect(message.className).not.toMatch(/gray-/);
@@ -67,19 +84,9 @@ describe("FacetPanel theme tokens", () => {
       resolveResponse = resolve;
     });
 
-    server.use(http.get(`${dataApi}/genome/`, async () => pending));
+    server.use(http.get(gateway, async () => pending));
 
-    const Wrapper = createQueryClientWrapper();
-    const { container } = render(
-      <Wrapper>
-        <FacetPanel
-          fields={fields}
-          query=""
-          resource="genome"
-          onSelect={vi.fn()}
-        />
-      </Wrapper>,
-    );
+    const { container } = renderPanel();
 
     const panel = container.querySelector(".overflow-auto");
     expect(panel).not.toBeNull();
@@ -89,7 +96,15 @@ describe("FacetPanel theme tokens", () => {
     expect(panel?.innerHTML).not.toMatch(/text-white/);
 
     // Resolve so the in-flight request doesn't leak into later tests.
-    resolveResponse(HttpResponse.json({}));
+    resolveResponse(
+      HttpResponse.json({
+        rows: [],
+        total: 0,
+        facets: {},
+        page: 1,
+        pageSize: 1,
+      }),
+    );
     await waitFor(() => {
       expect(screen.getByText("Genome Status")).toBeInTheDocument();
     });
@@ -97,26 +112,18 @@ describe("FacetPanel theme tokens", () => {
 
   it("renders the loaded panel (with FacetColumn) using theme tokens", async () => {
     server.use(
-      http.get(`${dataApi}/genome/`, () =>
+      http.get(gateway, () =>
         HttpResponse.json({
-          facet_counts: {
-            facet_fields: { genome_status: ["Complete", 5] },
-          },
+          rows: [],
+          total: 0,
+          facets: { genome_status: [{ value: "Complete", count: 5 }] },
+          page: 1,
+          pageSize: 1,
         }),
       ),
     );
 
-    const Wrapper = createQueryClientWrapper();
-    const { container } = render(
-      <Wrapper>
-        <FacetPanel
-          fields={fields}
-          query=""
-          resource="genome"
-          onSelect={vi.fn()}
-        />
-      </Wrapper>,
-    );
+    const { container } = renderPanel();
 
     await screen.findByText("Genome Status");
     const panel = container.querySelector(".overflow-auto");

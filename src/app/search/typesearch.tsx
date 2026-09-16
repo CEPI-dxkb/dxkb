@@ -169,7 +169,7 @@ function TypeSearchList({
           sidePanel={
             <GenomeDetailPanel
               genomeId={activeRowId}
-              activeTab={resource}
+              resource={resource}
               selectedIds={selectedIds}
               isAllPagesSelected={isAllPagesSelected}
               totalItems={totalItems}

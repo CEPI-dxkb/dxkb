@@ -1,10 +1,11 @@
 import { useEffect, useEffectEvent, useState, useRef } from "react";
-import { buildRql } from "./filter-utils";
+import { buildRql, combineRql } from "./filter-utils";
 import { KeywordSearch } from "./keyword-search";
 import { SelectedFilters } from "./selected-filters";
 import { FacetPanel } from "./facet-panel";
 import { SelectedFilter } from "@/types/filters";
 import { Button } from "@/components/ui/button";
+import type { DataResource } from "@/lib/data-api";
 
 interface ColumnField {
   id: string;
@@ -17,11 +18,11 @@ interface ColumnField {
 interface FilterBarProps {
   facetFields: ColumnField[];
   onFilterChange: (rql: string) => void;
-  resource: string;
+  resource: DataResource;
+  /** RQL predicate the list is already filtered by, which facet counts respect. */
   query: string;
   keywordValue?: string;
   onKeywordChange?: (value: string) => void;
-  keywordPlaceholder?: string;
   keywordMode?: "server" | "loaded";
 }
 
@@ -32,7 +33,6 @@ export function FilterBar({
   query,
   keywordValue,
   onKeywordChange,
-  keywordPlaceholder,
   keywordMode = "server",
 }: FilterBarProps) {
   const [internalKeywords, setInternalKeywords] = useState<string[]>([]);
@@ -120,7 +120,7 @@ export function FilterBar({
     selected,
     keywords: keywordMode === "loaded" ? [] : keywords,
   });
-  const facetQuery = [query, filterRql].filter(Boolean).join("&");
+  const facetQuery = combineRql(query, filterRql);
 
   return (
     <div className="mt-0 mb-2 flex flex-col gap-1 p-1 text-sm">
@@ -137,7 +137,6 @@ export function FilterBar({
               }
               updateFilters(selected, val.split(" ").filter(Boolean));
             }}
-            placeholder={keywordPlaceholder}
           />
 
           <SelectedFilters

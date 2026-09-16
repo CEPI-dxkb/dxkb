@@ -1,5 +1,10 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { permissiveBackendOverrides, workspaceOverrides } from "../../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  externalCatchallOverrides,
+  genomeScenarioOverrides,
+  workspaceOverrides,
+} from "../../fixtures/overrides";
 import { OrganismLandingPage } from "../../pages/organism-landing-page";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -15,7 +20,15 @@ test.describe("all organisms landing page", () => {
           headers: { "Content-Range": "items 0-0/0" },
         },
         ...workspaceOverrides,
-        ...permissiveBackendOverrides,
+        ...genomeScenarioOverrides,
+        // The "Taxa Tree" tab fires a child-count lookup straight at
+        // theseed.org (NEXT_PUBLIC_DATA_API in this build), not the same-origin
+        // gateway or loopback mock — undeclared dependency found while
+        // narrowing this spec off the old blanket catch-all: without
+        // externalCatchallOverrides's theseed.org stub the strict guard aborts
+        // the request and fails the test on the leaked-request check.
+        ...externalCatchallOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

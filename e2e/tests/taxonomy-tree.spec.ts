@@ -1,5 +1,8 @@
 import { test, expect, applyBackendMocks, type JsonOverride } from "../mocks/backends";
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  taxonomyScenarioOverrides,
+} from "../fixtures/overrides";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -69,7 +72,8 @@ test.describe("taxonomy tree tab", () => {
         childCountsOverride({ 236: 0 }),
         childrenOverride(234, speciesChildren),
         childrenOverride(235, abortusStrains),
-        ...permissiveBackendOverrides,
+        ...taxonomyScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

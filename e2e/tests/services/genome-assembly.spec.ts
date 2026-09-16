@@ -196,7 +196,7 @@ test.describe("genome assembly submission", () => {
 // a billable job under the test account; see
 // `scripts/journeys/service-submit.ts`). Spec assertions stay scoped to
 // what the form renders on mount. See `harOverridesFor` for the canary
-// rationale (no `permissiveBackendOverrides` here).
+// rationale (no broad, unscoped aggregate here).
 test.describe("genome assembly via recorded HAR replay", () => {
   test("renders the form heading and submit button from recorded form-load traffic", async ({
     page,

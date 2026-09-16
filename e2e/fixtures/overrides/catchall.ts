@@ -40,12 +40,13 @@ import {
  *     resource. Import the ones a spec actually exercises instead of reaching
  *     for the broad aggregate below.
  *
- * `apiCatchallOverrides` / `permissiveBackendOverrides` remain as the union of
- * every named bundle for existing call sites that already rely on broad
- * coverage (organism landing pages, smoke/visual specs that touch many
- * resource types in one page). `a11yBackendOverrides` is the same union under
- * a distinct name reserved for the accessibility sweep (see its doc comment
- * below) — new specs should prefer a named bundle over either aggregate.
+ * `apiCatchallOverrides` composes the named bundles + the empty fallback (no
+ * external hosts) as an internal building block. `a11yBackendOverrides` adds
+ * `externalCatchallOverrides` on top and is the *only* broad, unscoped
+ * aggregate this module exports — reserved for the accessibility sweep (see
+ * its doc comment below). Every journey/view/smoke spec in the suite has been
+ * converted to import the specific named bundle(s) it actually exercises;
+ * there is no `permissiveBackendOverrides` fallback anymore.
  */
 const genomeRows = [genomeRecord];
 
@@ -498,23 +499,15 @@ export const externalCatchallOverrides: JsonOverride[] = [
 ];
 
 /**
- * Combined catch-all for the quick "I just want the page to render" case.
- * Kept for existing call sites (organism landing pages, smoke/visual specs
- * that legitimately touch many resource types on one page); new specs should
- * import a named scenario bundle instead so their fixture dependency stays
- * explicit. Content-equivalent to `a11yBackendOverrides` below.
- */
-export const permissiveBackendOverrides: JsonOverride[] = [
-  ...apiCatchallOverrides,
-  ...externalCatchallOverrides,
-];
-
-/**
- * Aggregate reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`).
- * Those specs scan dozens of routes spanning every resource type in one pass,
- * so they legitimately need every named scenario bundle populated at once —
- * unlike a single-resource journey spec, which should depend on one bundle
- * explicitly. Do not import this outside `e2e/tests/a11y/`.
+ * The one broad, unscoped aggregate — reserved for the accessibility sweep
+ * (`e2e/tests/a11y/*.spec.ts`). Those specs scan dozens of routes spanning
+ * every resource type in one pass, so they legitimately need every named
+ * scenario bundle populated at once, unlike a single-resource journey or
+ * smoke spec, which should import the specific named bundle(s) it exercises
+ * instead. Do not import this outside `e2e/tests/a11y/` — every other spec in
+ * the suite has been converted to declare its actual fixture dependency (see
+ * `e2e/README.md`'s "Canonical fixture records" section). There is no
+ * `permissiveBackendOverrides` alias anymore; this is the only broad export.
  */
 export const a11yBackendOverrides: JsonOverride[] = [
   ...apiCatchallOverrides,

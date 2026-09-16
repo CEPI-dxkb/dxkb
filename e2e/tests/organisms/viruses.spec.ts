@@ -1,5 +1,9 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { permissiveBackendOverrides, workspaceOverrides } from "../../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  genomeScenarioOverrides,
+  workspaceOverrides,
+} from "../../fixtures/overrides";
 import { OrganismLandingPage } from "../../pages/organism-landing-page";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -14,7 +18,8 @@ test.describe("viruses organism landing page", () => {
           body: { response: { numFound: 0, docs: [] } },
         },
         ...workspaceOverrides,
-        ...permissiveBackendOverrides,
+        ...genomeScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

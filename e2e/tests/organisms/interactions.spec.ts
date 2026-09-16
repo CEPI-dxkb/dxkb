@@ -1,7 +1,7 @@
 import type { Request as PlaywrightRequest } from "@playwright/test";
 
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { buildPpiRows, buildPpiOverrides, permissiveBackendOverrides } from "../../fixtures/overrides";
+import { buildPpiRows, buildPpiOverrides, emptyBackendFallbackOverrides } from "../../fixtures/overrides";
 import { TaxonInteractionsPage } from "../../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -13,7 +13,7 @@ async function setupInteractionsPage(
   rows = buildPpiRows(3),
 ) {
   await applyBackendMocks(page, {
-    overrides: [...buildPpiOverrides(rows), ...permissiveBackendOverrides],
+    overrides: [...buildPpiOverrides(rows), ...emptyBackendFallbackOverrides],
   });
 
   const interactionsPage = new TaxonInteractionsPage(page);
@@ -145,7 +145,7 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
   async function setupFilterableInteractionsPage(
     page: Parameters<typeof applyBackendMocks>[0],
   ): Promise<TaxonInteractionsPage> {
-    await applyBackendMocks(page, { overrides: [...permissiveBackendOverrides] });
+    await applyBackendMocks(page, { overrides: [...emptyBackendFallbackOverrides] });
 
     await page.route(ppiRequest, async (route) => {
       const request = route.request();

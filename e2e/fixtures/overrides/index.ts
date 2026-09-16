@@ -28,7 +28,6 @@ export {
 export {
   apiCatchallOverrides,
   externalCatchallOverrides,
-  permissiveBackendOverrides,
   a11yBackendOverrides,
   emptyBackendFallbackOverrides,
   namedResourceScenarioOverrides,

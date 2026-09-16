@@ -1,4 +1,7 @@
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  serologyScenarioOverrides,
+} from "../fixtures/overrides";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import { SerologyPage } from "../pages";
 
@@ -7,7 +10,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Serology view", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...serologyScenarioOverrides, ...emptyBackendFallbackOverrides],
     });
   });
 

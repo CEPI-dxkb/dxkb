@@ -2,7 +2,7 @@ import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
   authSessionOverrides,
   workspaceOverrides,
-  permissiveBackendOverrides,
+  emptyBackendFallbackOverrides,
 } from "../fixtures/overrides";
 
 // Minimal 1-atom PDB. Mol* parses ATOM records; HEADER + END frames the file
@@ -32,7 +32,7 @@ async function applyViewerMocks(page: import("@playwright/test").Page) {
       },
       ...authSessionOverrides,
       ...workspaceOverrides,
-      ...permissiveBackendOverrides,
+      ...emptyBackendFallbackOverrides,
     ],
   });
 }
@@ -129,7 +129,7 @@ test.describe("3D viewer (Mol*)", () => {
       overrides: [
         ...authSessionOverrides,
         ...workspaceOverrides,
-        ...permissiveBackendOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
     await page.goto("/viewer/structure");

@@ -360,7 +360,7 @@ test.describe("jobs lifecycle", () => {
 // (which has no submitted jobs), so the recorded `enumerate-tasks-filtered`
 // payload is `{jobs:[],totalTasks:0}` — asserting on the empty-state copy
 // proves the HAR-derived overrides actually fed the jobs hook. See
-// `harOverridesFor` for the canary rationale (no `permissiveBackendOverrides`
+// `harOverridesFor` for the canary rationale (no broad, unscoped aggregate
 // here).
 test.describe("jobs lifecycle via recorded HAR replay", () => {
   test("renders the recorded empty jobs state", async ({ page }) => {

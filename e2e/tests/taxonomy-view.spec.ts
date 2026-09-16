@@ -1,12 +1,17 @@
 import { applyBackendMocks, test } from "../mocks/backends";
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  taxonomyScenarioOverrides,
+} from "../fixtures/overrides";
 import { TaxonomyCollectionPage } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Taxonomy collection", () => {
   test.beforeEach(async ({ page }) => {
-    await applyBackendMocks(page, { overrides: [...permissiveBackendOverrides] });
+    await applyBackendMocks(page, {
+      overrides: [...taxonomyScenarioOverrides, ...emptyBackendFallbackOverrides],
+    });
   });
 
   test("searches Taxa canonically and opens the selected Taxon", async ({ page }) => {

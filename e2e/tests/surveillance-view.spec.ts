@@ -1,4 +1,7 @@
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  surveillanceScenarioOverrides,
+} from "../fixtures/overrides";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import { SurveillancePage } from "../pages";
 
@@ -7,7 +10,10 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Surveillance view", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [
+        ...surveillanceScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
+      ],
     });
   });
 

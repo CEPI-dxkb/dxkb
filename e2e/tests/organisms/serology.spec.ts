@@ -1,5 +1,5 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { permissiveBackendOverrides } from "../../fixtures/overrides";
+import { emptyBackendFallbackOverrides } from "../../fixtures/overrides";
 import { TaxonPage } from "../../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -37,7 +37,7 @@ test.describe("taxon serology tab", () => {
             pageSize: 200,
           },
         },
-        ...permissiveBackendOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
 

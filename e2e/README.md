@@ -58,18 +58,18 @@ Non-backend requests (Next.js assets, fonts, CDN) always pass through regardless
 
 Call `applyBackendMocks(page, { overrides })` in a `beforeEach`. **Strict is the default.** If you genuinely need to let real backend calls through for an exploratory test, pass `strict: false`.
 
-The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overrides`) covers `/api/auth/`, `/api/services/`, `/api/workspace/`, and the four backend hosts with generic 200 responses — use it as the last spread in your override list for the "I just want the page to render" case, after specific fixtures.
+`emptyBackendFallbackOverrides` (from `e2e/fixtures/overrides`) covers `/api/auth/`, `/api/services/`, `/api/workspace/` with generic, data-free 200 responses — spread it last in your override list so it answers anything a more specific override in your list didn't. It never returns named business data, so it's safe to include in any spec regardless of what that spec is testing.
 
 #### Canonical fixture records (`e2e/fixtures/overrides/catchall.ts`)
 
-The populated business-entity fixtures inside `catchall.ts` (genome, taxonomy, epitope, experiment, surveillance, serology, protein structure, etc.) are built from typed, dependency-free records in `src/lib/e2e-fixtures/records.ts` and wrapped per-transport by `src/lib/e2e-fixtures/envelopes.ts`. The **same** records back the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`) — before this module existed, each layer hand-rolled its own copy and they drifted (e.g. epitope `host_name` was an array in one file and a bare string in the other). `src/lib/e2e-fixtures/__tests__/records.test.ts` parses every record with the production Zod schemas from `src/lib/data-api/schemas.ts`, and `src/lib/e2e-fixtures/__tests__/transport-parity.test.ts` asserts the browser and server envelopes serve identical record content, so a future edit that re-inlines a diverging literal in either file fails loudly instead of drifting silently.
+The populated business-entity fixtures inside `catchall.ts` (genome, taxonomy, epitope, experiment, surveillance, serology, protein structure, etc.) are built from typed, dependency-free records in `src/lib/e2e-fixtures/records.ts` and wrapped per-transport by `src/lib/e2e-fixtures/envelopes.ts`. The **same** records back the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`) — before this module existed, each layer hand-rolled its own copy and they drifted (e.g. epitope `host_name` was an array in one file and a bare string in the other). `src/lib/e2e-fixtures/__tests__/records.test.ts` parses every record with the production Zod schemas from `src/lib/data-api/schemas.ts`. `src/lib/e2e-fixtures/__tests__/transport-parity.test.ts` calls the real server-side `route.ts` handler and compares its response against the exact `catchall.ts` bundle a browser-side spec would get for the same resource — it imports `catchall.ts` directly (a type-only `import type` keeps the Playwright runtime out of that import chain, so this works fine from a Vitest test) — so a future edit that re-inlines a diverging literal in either file fails loudly instead of drifting silently.
 
-`catchall.ts` exports three kinds of things — prefer the most specific one your spec needs:
+`catchall.ts` exports two kinds of things — import the most specific one your spec needs:
 
 - **`emptyBackendFallbackOverrides`** — generic, data-free responses (`/api/auth/`, `/api/services/`, `/api/workspace/`). Safe anywhere; never returns named business data a test didn't ask for.
-- **Named resource scenario bundles** — one per resource (`genomeScenarioOverrides`, `epitopeScenarioOverrides`, `taxonomyScenarioOverrides`, `experimentScenarioOverrides`, `biosetScenarioOverrides`, `surveillanceScenarioOverrides`, `serologyScenarioOverrides`, `proteinStructureScenarioOverrides`, `proteinFeatureScenarioOverrides`, `genomeFeatureScenarioOverrides`, `genomeSequenceScenarioOverrides`, `strainScenarioOverrides`, `epitopeAssayScenarioOverrides`). Import only the bundle(s) a spec actually exercises so its fixture dependency stays explicit.
-- **`namedResourceScenarioOverrides`** / **`apiCatchallOverrides`** / **`permissiveBackendOverrides`** — aggregates of every named bundle, kept for existing call sites (organism landing pages, smoke/visual specs) that legitimately touch many resource types on one page.
-- **`a11yBackendOverrides`** — content-equivalent aggregate reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`), which scans dozens of routes spanning every resource type in one pass. Do not import it outside `e2e/tests/a11y/`.
+- **Named resource scenario bundles** — one per resource (`genomeScenarioOverrides`, `epitopeScenarioOverrides`, `taxonomyScenarioOverrides`, `experimentScenarioOverrides`, `biosetScenarioOverrides`, `surveillanceScenarioOverrides`, `serologyScenarioOverrides`, `proteinStructureScenarioOverrides`, `proteinFeatureScenarioOverrides`, `genomeFeatureScenarioOverrides`, `genomeSequenceScenarioOverrides`, `strainScenarioOverrides`, `epitopeAssayScenarioOverrides`). Every journey/view/smoke/visual spec in the suite imports the specific bundle(s) it actually exercises, plus `emptyBackendFallbackOverrides` for everything else, instead of a blanket catch-all.
+
+`namedResourceScenarioOverrides` and `apiCatchallOverrides` compose all the named bundles (± the empty fallback) as internal building blocks — not intended for specs to import directly. **`a11yBackendOverrides`** is the one broad, unscoped aggregate this module exports (every named bundle + the empty fallback + external-host stubs), reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`), which scans dozens of routes spanning every resource type in one pass. Do not import it outside `e2e/tests/a11y/`.
 
 ### Server-side backends: loopback isolation
 
@@ -131,9 +131,10 @@ await applyBackendMocks(page, {
     // server-side profile validation.
     ...authSessionOverrides,
     ...harOverridesFor("workspace-browse.har"),
-    // Mops up anything the HAR didn't capture (future code paths) so strict
-    // mode doesn't fail the test on an unrelated unmocked request.
-    ...permissiveBackendOverrides,
+    // Generic, data-free fallback only — do NOT layer a broad, unscoped
+    // aggregate here (see harOverridesFor's doc comment): it would silently
+    // paper over HAR coverage drift instead of failing loudly.
+    ...emptyBackendFallbackOverrides,
   ],
 });
 

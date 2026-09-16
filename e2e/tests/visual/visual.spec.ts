@@ -3,7 +3,7 @@ import {
   authSessionOverrides,
   workspaceOverrides,
   jobsOverrides,
-  permissiveBackendOverrides,
+  emptyBackendFallbackOverrides,
 } from "../../fixtures/overrides";
 
 test.describe("visual regression", () => {
@@ -13,7 +13,7 @@ test.describe("visual regression", () => {
         ...authSessionOverrides,
         ...workspaceOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

@@ -171,8 +171,8 @@ interface GroupedEntries {
  * fixture-specific overrides before or after for behaviour the recorder
  * couldn't capture (empty list, 500 response, etc.).
  *
- * **Canary specs that drive a HAR-replay journey should NOT layer
- * `permissiveBackendOverrides` on top.** The catch-all would silently serve
+ * **Canary specs that drive a HAR-replay journey should NOT layer a broad,
+ * unscoped aggregate (e.g. `a11yBackendOverrides`) on top.** It would silently serve
  * `{}` / `{result:[[]]}` for any drift in the HAR's coverage and the test
  * would still pass; letting the strict guard fail loudly is what surfaces
  * the missing replay so the HAR can be re-recorded. Layer endpoint-specific

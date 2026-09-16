@@ -13,7 +13,10 @@ export const taxonomySorts = taxonomyMetadata.sorts;
 export const taxonomyCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...taxonomySorts],
-  friendlyFilters: ["taxon_id", "taxon_rank", "genetic_code", "division"],
+  // Same shape as every sibling view: the resource's own faceted fields plus
+  // `taxon_id`. Unlike the siblings, `taxon_id` is not remapped downstream —
+  // it already is taxonomy's own id field (see `taxonLineageFieldMap`).
+  friendlyFilters: ["taxon_id", ...taxonomyMetadata.facetFields],
 };
 
 export function parseTaxonomyCollectionState(

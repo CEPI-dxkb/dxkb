@@ -5,7 +5,10 @@ import {
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
-import { structuralFilterRql } from "@/lib/views/structural-rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 
 import { genomeMetadata } from "./fields";
 
@@ -31,7 +34,6 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     "isolation_country",
     "host_common_name",
   ],
-  filterFieldMap: { taxon_id: "taxon_lineage_ids" },
 };
 
 export function parseGenomeCollectionState(
@@ -47,14 +49,18 @@ export function parseGenomeCollectionState(
 // filter can't reach the backend under its raw name before this table is
 // updated. Every other structural-filter module passes unmapped names
 // through unchanged (see structuralFilterRql's `unknownFilters` option).
-const genomeStructuralFieldMap: Readonly<Record<string, string>> = {
-  taxon_id: "taxon_lineage_ids",
-  genome_status: "genome_status",
-  genome_quality: "genome_quality",
-  collection_year: "collection_year",
-  isolation_country: "isolation_country",
-  host_common_name: "host_common_name",
-};
+//
+// "Total" is why it is derived from `friendlyFilters` rather than restating
+// those six names: the two lists have to agree by construction, or adding a
+// friendly filter here silently drops it at the backend boundary. Each name
+// maps to itself except the shared taxonomic-lineage remap.
+const genomeStructuralFieldMap: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    (genomeCollectionOptions.friendlyFilters ?? []).map((name) => [
+      name,
+      taxonLineageFieldMap[name] ?? name,
+    ]),
+  );
 
 export function genomeStructuralRql(
   state: CollectionState,

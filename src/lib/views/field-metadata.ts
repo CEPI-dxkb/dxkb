@@ -58,7 +58,7 @@ export interface FieldMetadataPolicy {
    * `initiallyVisible: false`; `"omit"` drops it from the combined facet query entirely.
    */
   hiddenFacets?: "collapse" | "omit";
-   /**
+  /**
    * Per-column hook for the entity extras the metadata cannot express — `valueHref`
    * defaulting, `fallbackValue` accessors. It shapes columns only: `sorts` is derived
    * from the field metadata and the registry, so an adapter cannot widen or narrow the

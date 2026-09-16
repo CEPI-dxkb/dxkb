@@ -5,7 +5,10 @@ import {
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import { rqlKeyword, type SearchParamsRecord } from "@/lib/views/rql";
-import { structuralFilterRql } from "@/lib/views/structural-rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 import { experimentMetadata } from "./fields";
 
 export const experimentSorts = experimentMetadata.sorts;
@@ -14,7 +17,6 @@ export const experimentCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...experimentSorts],
   friendlyFilters: ["taxon_id", ...experimentMetadata.facetFields],
-  filterFieldMap: { taxon_id: "taxon_lineage_ids" },
 };
 
 export function parseExperimentCollectionState(
@@ -29,7 +31,7 @@ export function experimentStructuralRql(
   state: CollectionState,
 ): string | undefined {
   return structuralFilterRql("experiment", state, {
-    fieldMap: experimentCollectionOptions.filterFieldMap,
+    fieldMap: taxonLineageFieldMap,
   });
 }
 

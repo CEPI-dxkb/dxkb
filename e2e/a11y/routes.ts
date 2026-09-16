@@ -12,7 +12,7 @@ import type { SettleOptions } from "./settle";
  */
 export type PrepareHook = (page: Page) => Promise<void>;
 
-export interface RouteVariant {
+interface RouteVariant {
   /** Appended to parent name: e.g. "virus" → scanned as "taxonomy/virus". */
   nameSuffix: string;
   path: string;

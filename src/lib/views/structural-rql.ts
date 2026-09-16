@@ -2,6 +2,21 @@ import { eq, type DataResource } from "@/lib/data-api";
 
 import type { CollectionState } from "./collection-state";
 
+/**
+ * The one remap shared by every resource that carries a taxonomic lineage: the
+ * friendly `taxon_id` filter means "anywhere in this organism's lineage", which
+ * the Data API expresses through the multi-valued `taxon_lineage_ids` field.
+ * Epitope, Experiment, Genome, Protein Structure and Strain all read it, so the
+ * fact lives here once rather than restated per sibling module.
+ *
+ * Taxonomy is deliberately not a consumer: `taxon_id` already *is* the taxonomy
+ * resource's own id field, so remapping it there would filter the wrong column.
+ * That is also why this is not `fieldMap`'s default — a resource has to opt in.
+ */
+export const taxonLineageFieldMap: Readonly<Record<string, string>> = {
+  taxon_id: "taxon_lineage_ids",
+};
+
 export interface StructuralFilterOptions {
   /**
    * Backend field name overrides, keyed by friendly filter name. A filter

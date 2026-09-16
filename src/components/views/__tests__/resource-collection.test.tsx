@@ -408,6 +408,8 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       genomeCollectionProfile.columns,
       genomeCollectionProfile.columns.map((column) => column.id),
       "csv",
+      "all",
+      "genome",
     );
   });
 
@@ -575,6 +577,8 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       genomeCollectionProfile.columns,
       ["genome_name"],
       "csv",
+      "all",
+      "genome",
     );
   });
 
@@ -910,6 +914,8 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       genomeCollectionProfile.columns,
       genomeCollectionProfile.columns.map((column) => column.id),
       "csv",
+      "all",
+      "genome",
     );
   });
 

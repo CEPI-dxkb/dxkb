@@ -5,7 +5,10 @@ import {
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
-import { structuralFilterRql } from "@/lib/views/structural-rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 import { strainMetadata } from "./fields";
 
 export const strainSorts = strainMetadata.sorts;
@@ -24,14 +27,10 @@ export function parseStrainCollectionState(
   return state;
 }
 
-const strainStructuralFieldMap: Readonly<Record<string, string>> = {
-  taxon_id: "taxon_lineage_ids",
-};
-
 export function strainStructuralRql(
   state: CollectionState,
 ): string | undefined {
   return structuralFilterRql("strain", state, {
-    fieldMap: strainStructuralFieldMap,
+    fieldMap: taxonLineageFieldMap,
   });
 }

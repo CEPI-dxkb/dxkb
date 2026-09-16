@@ -1,4 +1,3 @@
-import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
 import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
 import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
@@ -11,10 +10,14 @@ import { deriveFieldMetadata } from "./field-metadata";
  * `sortable` entirely, which `DataTable` reads as "sortable" — a header for a field the
  * Data API rejects. Child tabs hold their sort in component state rather than the URL, so
  * they consume `columns` only; the other three derived outputs stay unused here.
+ *
+ * Only the three child resources with no `src/lib/*-view/` directory of their own live
+ * here. `genome_feature` deliberately does not: `ResourceChildCollection` substitutes the
+ * Feature collection profile (`src/lib/feature-view/profile.ts`) for its feature tabs, so
+ * a set declared here would be dead *and* would collide by name with that profile's
+ * `featureColumns` under a different `hiddenColumns` policy. Any set added here must keep
+ * a name no `*-view/profile.ts` already exports.
  */
-export const featureColumns = deriveFieldMetadata(genomeFeatureFields, {
-  resource: "genome_feature",
-}).columns;
 export const genomeSequenceColumns = deriveFieldMetadata(genomeSequenceFields, {
   resource: "genome_sequence",
 }).columns;

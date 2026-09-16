@@ -9,7 +9,11 @@ import {
   experimentStructuralRql,
   parseExperimentCollectionState,
 } from "@/lib/experiment-view/query";
-import { genomeStructuralRql, parseGenomeCollectionState } from "@/lib/genome-view/query";
+import {
+  genomeCollectionOptions,
+  genomeStructuralRql,
+  parseGenomeCollectionState,
+} from "@/lib/genome-view/query";
 import {
   parseProteinFeatureCollectionState,
   proteinFeatureStructuralRql,
@@ -26,7 +30,10 @@ import {
 } from "@/lib/surveillance-view/query";
 import { parseTaxonomyCollectionState, taxonomyStructuralRql } from "@/lib/taxonomy-view/query";
 import type { CollectionState } from "@/lib/views/collection-state";
-import { structuralFilterRql } from "@/lib/views/structural-rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 
 const emptyState: CollectionState = { filters: {}, page: 1, sort: "unsorted" };
 
@@ -104,6 +111,24 @@ describe("structuralFilterRql", () => {
     expect(structuralFilterRql("genome", state)).toBe("eq(genome_quality,Good)");
   });
 
+  it("never folds keyword or refine into the structural clause", () => {
+    // Keyword search is deliberately independent of structural filters — the
+    // collection query combines the two itself, so a composer that swallowed
+    // `keyword` would double-apply it. (Moved here from the deleted
+    // `collectionStateToRql`, the only other place that asserted it.)
+    const state: CollectionState = {
+      ...emptyState,
+      keyword: "coli",
+      refine: "K-12",
+      filters: { taxon_id: ["2"], host_common_name: ["Human", "Swine"] },
+    };
+    expect(
+      structuralFilterRql("genome", state, { fieldMap: taxonLineageFieldMap }),
+    ).toBe(
+      "and(eq(taxon_lineage_ids,2),or(eq(host_common_name,Human),eq(host_common_name,Swine)))",
+    );
+  });
+
   it("drops an unmapped filter name in allowlist mode instead of forwarding it", () => {
     const state: CollectionState = {
       ...emptyState,
@@ -122,6 +147,20 @@ describe("structuralFilterRql", () => {
   });
 });
 
+describe("taxonLineageFieldMap is the one shared lineage remap", () => {
+  it("is the map every lineage-bearing resource composes with", () => {
+    expect(taxonLineageFieldMap).toEqual({ taxon_id: "taxon_lineage_ids" });
+  });
+
+  it("is not applied by taxonomy, whose taxon_id is its own id field", () => {
+    const state: CollectionState = {
+      ...emptyState,
+      filters: { taxon_id: ["2"] },
+    };
+    expect(taxonomyStructuralRql(state)).toBe("eq(taxon_id,2)");
+  });
+});
+
 describe("genome's allowlist stays total and authoritative", () => {
   it("drops a friendly filter name absent from its remap table", () => {
     // parseGenomeCollectionState can never itself produce this shape (it
@@ -133,6 +172,22 @@ describe("genome's allowlist stays total and authoritative", () => {
       filters: { genome_status: ["Complete"], not_a_real_filter: ["x"] },
     };
     expect(genomeStructuralRql(state)).toBe("eq(genome_status,Complete)");
+  });
+});
+
+describe("genome's allowlist is derived from its friendly filters", () => {
+  it("accepts every genomeCollectionOptions friendly filter", () => {
+    // The derivation is what keeps the "total and authoritative" remap table
+    // and `friendlyFilters` from drifting apart: a filter the URL accepts but
+    // the table omits would be dropped silently at the backend boundary.
+    for (const name of genomeCollectionOptions.friendlyFilters ?? []) {
+      const state: CollectionState = {
+        ...emptyState,
+        filters: { [name]: ["x"] },
+      };
+      const expectedField = name === "taxon_id" ? "taxon_lineage_ids" : name;
+      expect(genomeStructuralRql(state)).toBe(`eq(${expectedField},x)`);
+    }
   });
 });
 

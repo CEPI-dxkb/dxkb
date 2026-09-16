@@ -5,7 +5,10 @@ import {
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
-import { structuralFilterRql } from "@/lib/views/structural-rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 import { epitopeMetadata } from "./fields";
 
 export const epitopeSorts = epitopeMetadata.sorts;
@@ -24,15 +27,11 @@ export function parseEpitopeCollectionState(
   return state;
 }
 
-const epitopeStructuralFieldMap: Readonly<Record<string, string>> = {
-  taxon_id: "taxon_lineage_ids",
-};
-
 export function epitopeStructuralRql(
   state: CollectionState,
 ): string | undefined {
   return structuralFilterRql("epitope", state, {
-    fieldMap: epitopeStructuralFieldMap,
+    fieldMap: taxonLineageFieldMap,
   });
 }
 

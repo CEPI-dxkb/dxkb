@@ -2,7 +2,6 @@ import {
   canonicalizeCollectionSearchParams,
   canonicalizeCollectionState,
   collectionManagedParamNames,
-  collectionStateToRql,
   parseCollectionState,
   replaceCollectionSearchParams,
   serializeCollectionState,
@@ -16,7 +15,6 @@ const options = {
   defaultSort: "relevance",
   sortAllowlist: ["relevance", "name", "date"] as const,
   friendlyFilters: ["taxon_id", "host"] as const,
-  filterFieldMap: { taxon_id: "taxon_lineage_ids" },
 } satisfies CollectionStateOptions<"relevance" | "name" | "date">;
 
 describe("collection URL state", () => {
@@ -57,6 +55,8 @@ describe("collection URL state", () => {
   });
 
   it("keeps keyword independent and gives explicit rql precedence over friendly filters", () => {
+    // What the composer then does with this state is
+    // `structuralFilterRql`'s contract, asserted in structural-rql.test.ts.
     const state = parseCollectionState(
       { keyword: "influenza", rql: "eq(public,true)", taxon_id: "11520" },
       options,
@@ -64,7 +64,6 @@ describe("collection URL state", () => {
     expect(state.keyword).toBe("influenza");
     expect(state.rql).toBe("eq(public,true)");
     expect(state.filters).toEqual({});
-    expect(collectionStateToRql(state, options)).toBe("eq(public,true)");
   });
 
   it("preserves explicitly independent filters alongside rql", () => {
@@ -128,15 +127,12 @@ describe("collection URL state", () => {
     ).toBe("filter=eq%28public%2Ctrue%29&rql=eq%28public%2Cfalse%29");
   });
 
-  it("maps multi-value friendly fields using OR within a field and AND across fields", () => {
+  it("collects multi-value friendly fields and serializes each value separately", () => {
     const state = parseCollectionState(
       { keyword: "coli", taxon_id: "2", host: ["human", "swine"] },
       options,
     );
-    expect(collectionStateToRql(state, options)).toBe(
-      "and(eq(taxon_lineage_ids,2),or(eq(host,human),eq(host,swine)))",
-    );
-    expect(collectionStateToRql(state, options)).not.toContain("keyword");
+    expect(state.filters).toEqual({ taxon_id: ["2"], host: ["human", "swine"] });
     expect(serializeCollectionState(state, options).getAll("host")).toEqual([
       "human",
       "swine",

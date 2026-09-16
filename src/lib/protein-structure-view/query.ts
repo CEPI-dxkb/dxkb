@@ -5,7 +5,10 @@ import {
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
-import { structuralFilterRql } from "@/lib/views/structural-rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 import { proteinStructureMetadata } from "./fields";
 
 export const proteinStructureSorts = proteinStructureMetadata.sorts;
@@ -28,14 +31,10 @@ export function parseProteinStructureCollectionState(
   return state;
 }
 
-const proteinStructureStructuralFieldMap: Readonly<Record<string, string>> = {
-  taxon_id: "taxon_lineage_ids",
-};
-
 export function proteinStructureStructuralRql(
   state: CollectionState,
 ): string | undefined {
   return structuralFilterRql("protein_structure", state, {
-    fieldMap: proteinStructureStructuralFieldMap,
+    fieldMap: taxonLineageFieldMap,
   });
 }

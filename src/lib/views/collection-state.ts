@@ -1,4 +1,4 @@
-import { rqlAnd, rqlEq, type SearchParamsRecord } from "./rql";
+import type { SearchParamsRecord } from "./rql";
 
 export interface CollectionStateOptions<Sort extends string = string> {
   defaultSort: Sort;
@@ -6,7 +6,6 @@ export interface CollectionStateOptions<Sort extends string = string> {
   friendlyFilters?: readonly string[];
   /** Filters that remain active and serialized alongside explicit structural RQL. */
   independentFilters?: readonly string[];
-  filterFieldMap?: Readonly<Record<string, string>>;
   /** Accept legacy `filter=<RQL>` URLs and canonicalize them to `rql`. */
   legacyRqlFilter?: boolean;
 }
@@ -83,7 +82,7 @@ function parseSort<Sort extends string>(
     : options.defaultSort;
 }
 
-export function consumesLegacyRqlFilter<Sort extends string>(
+function consumesLegacyRqlFilter<Sort extends string>(
   params: SearchParamsRecord,
   options: CollectionStateOptions<Sort>,
 ): boolean {
@@ -164,23 +163,6 @@ export function serializeCollectionState<Sort extends string>(
   if (canonical.sort !== options.defaultSort)
     params.set("sort", canonical.sort);
   return params;
-}
-
-/** Resolve structural filters to backend RQL without folding in keyword search. */
-export function collectionStateToRql<Sort extends string>(
-  state: CollectionState<Sort>,
-  options: CollectionStateOptions<Sort>,
-): string {
-  const canonical = canonicalizeCollectionState(state, options);
-  if (canonical.rql !== undefined) return canonical.rql;
-  const clauses = Object.entries(canonical.filters).map(([name, selected]) => {
-    const field = options.filterFieldMap?.[name] ?? name;
-    const predicates = selected.map((value) => rqlEq(field, value));
-    return predicates.length === 1
-      ? predicates[0]
-      : `or(${predicates.join(",")})`;
-  });
-  return clauses.length === 0 ? "" : rqlAnd(...clauses);
 }
 
 /** Canonicalize managed parameters while retaining unrelated URL state. */

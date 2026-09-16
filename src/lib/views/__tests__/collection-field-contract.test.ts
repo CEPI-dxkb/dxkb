@@ -26,7 +26,6 @@ import { resourceRegistry, type DataResource } from "@/lib/data-api";
 import { validateDataApiRequest } from "@/lib/data-api/validation";
 import type { DerivedFieldMetadata } from "../field-metadata";
 import {
-  featureColumns as childFeatureColumns,
   genomeSequenceColumns,
   interactionColumns,
   sequenceFeatureColumns,
@@ -467,7 +466,6 @@ describe("profile column adapters", () => {
 describe("child-resource columns", () => {
   const childCases: [string, DataResource, readonly { id: string; sortable?: boolean }[]][] =
     [
-      ["feature", "genome_feature", childFeatureColumns],
       ["genome sequence", "genome_sequence", genomeSequenceColumns],
       ["interaction", "ppi", interactionColumns],
       ["sequence feature", "sequence_feature", sequenceFeatureColumns],
@@ -485,22 +483,20 @@ describe("child-resource columns", () => {
     },
   );
 
-  it("stops the Feature child tab offering a sort on GO terms", () => {
-    // `go` is metadata-unsortable; child columns used to omit `sortable` entirely,
-    // which DataTable reads as sortable.
-    expect(childFeatureColumns).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: "go", sortable: false }),
-      ]),
-    );
-  });
-
-  it("keeps the Feature child tab's hidden columns, unlike the Feature collection", () => {
-    expect(childFeatureColumns.map((column) => column.id)).toContain(
-      "plfam_id",
+  it("has no genome_feature entry: the feature tabs reuse the Feature profile", () => {
+    // ResourceChildCollection substitutes `feature-view/profile.ts` for its
+    // genome_feature tabs, so a child column set here would be dead and would
+    // collide by name with that profile's `featureColumns`. The Feature column
+    // contract is covered by the genome_feature case in the derived-metadata
+    // suite above; the GO terms a child set used to guard never reach a Feature
+    // column or sort at all, since `go` is both hidden (and Feature omits
+    // hidden columns) and metadata-unsortable.
+    expect(childCases.map(([, resource]) => resource)).not.toContain(
+      "genome_feature",
     );
     expect(featureMetadata.columns.map((column) => column.id)).not.toContain(
-      "plfam_id",
+      "go",
     );
+    expect(featureMetadata.sorts).not.toContain("go:asc");
   });
 });

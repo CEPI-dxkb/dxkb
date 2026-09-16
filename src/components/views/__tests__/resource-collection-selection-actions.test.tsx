@@ -666,6 +666,8 @@ describe("ResourceCollection selection actions", () => {
         proteinStructureCollectionProfile.columns,
         proteinStructureCollectionProfile.columns.map((column) => column.id),
         "csv",
+        "all",
+        "protein_structure",
       );
     });
   });

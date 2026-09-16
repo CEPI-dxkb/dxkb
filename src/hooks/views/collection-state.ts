@@ -1,7 +1,6 @@
 export {
   canonicalizeCollectionSearchParams,
   canonicalizeCollectionState,
-  collectionStateToRql,
   parseCollectionState,
   serializeCollectionState,
   updateCollectionSearchParams,

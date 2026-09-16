@@ -204,7 +204,6 @@ describe("ResourceCollection resource-navigation actions", () => {
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -256,7 +255,6 @@ describe("ResourceCollection resource-navigation actions", () => {
         repository={strainRepository}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -289,7 +287,6 @@ describe("ResourceCollection resource-navigation actions", () => {
         repository={repository()}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -330,7 +327,6 @@ describe("ResourceCollection resource-navigation actions", () => {
         repository={repository()}
         state={{ ...state, sort: "patric_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -369,12 +365,10 @@ describe("ResourceCollection resource-navigation actions", () => {
             { id: "feature_id_a", label: "Interactor A" },
             { id: "feature_id_b", label: "Interactor B" },
           ],
-          defaultSort: "id:asc",
         }}
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -437,7 +431,6 @@ describe("ResourceCollection resource-navigation actions", () => {
           sort: "sample_identifier:asc",
         }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 

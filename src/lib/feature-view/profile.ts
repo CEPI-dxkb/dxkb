@@ -14,7 +14,6 @@ export const featureCollectionProfile: ResourceCollectionProfile<FeatureViewReco
   idField: "feature_id",
   columns: featureColumns,
   detailFields: featureDetailFields,
-  defaultSort: "unsorted",
   basePredicate: "eq(feature_id,*)",
   guideUrl: "https://www.bv-brc.org/docs/quick_references/organisms_taxon/features.html",
   buildStructuralRql: featureStructuralRql,

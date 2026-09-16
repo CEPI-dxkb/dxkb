@@ -15,7 +15,6 @@ export const serologyCollectionProfile: ResourceCollectionProfile<SerologyViewRe
     idField: "id",
     columns: serologyColumns,
     detailFields: serologyDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/serology_data.html",

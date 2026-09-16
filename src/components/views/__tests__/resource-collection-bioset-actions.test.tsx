@@ -168,13 +168,11 @@ describe("ResourceCollection Bioset actions", () => {
           label: "Biosets",
           idField: "bioset_id",
           columns: [{ id: "bioset_id", label: "Bioset ID" }],
-          defaultSort: "bioset_id:asc",
           guideUrl: "https://example.test/guide",
         }}
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -220,7 +218,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={repository()}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -252,7 +249,6 @@ describe("ResourceCollection Bioset actions", () => {
       label: "Biosets",
       idField: "bioset_id",
       columns: [{ id: "bioset_id", label: "Bioset ID" }],
-      defaultSort: "bioset_id:asc",
     };
     let currentCollection = {
       ...collectionResult(),
@@ -271,7 +267,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
     act(() => {
@@ -296,7 +291,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 2, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
     act(() => {
@@ -356,7 +350,6 @@ describe("ResourceCollection Bioset actions", () => {
         }}
         baseRql="eq(exp_id,*)"
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -404,7 +397,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={{ exportAll } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -445,7 +437,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={{ exportAll } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -495,7 +486,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={{ exportAll } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -516,7 +506,6 @@ describe("ResourceCollection Bioset actions", () => {
         repository={{ exportAll } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -564,7 +553,6 @@ describe("ResourceCollection Bioset actions", () => {
         }
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 

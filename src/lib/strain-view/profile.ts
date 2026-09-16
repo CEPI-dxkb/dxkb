@@ -14,7 +14,6 @@ export const strainCollectionProfile: ResourceCollectionProfile<StrainViewRecord
     idField: "id",
     columns: strainColumns,
     detailFields: strainDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
     buildStructuralRql: strainStructuralRql,
     facets: strainFacets,

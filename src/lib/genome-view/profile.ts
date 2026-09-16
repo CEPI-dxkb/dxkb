@@ -14,7 +14,6 @@ export const genomeCollectionProfile: ResourceCollectionProfile<GenomeViewRecord
     idField: "genome_id",
     columns: genomeColumns,
     detailFields: genomeDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(genome_id,*)",
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/genomes.html",

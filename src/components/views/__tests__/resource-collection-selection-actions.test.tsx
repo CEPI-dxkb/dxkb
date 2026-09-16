@@ -244,7 +244,6 @@ describe("ResourceCollection sequence actions", () => {
             { id: "sequence_id", label: "Sequence ID" },
             { id: "genome_id", label: "Genome ID" },
           ],
-          defaultSort: "sequence_id:asc",
         }}
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "sequence_id:asc" }}
@@ -305,7 +304,6 @@ describe("ResourceCollection sequence actions", () => {
             { id: "sequence_id", label: "Sequence ID" },
             { id: "genome_id", label: "Genome ID" },
           ],
-          defaultSort: "sequence_id:asc",
         }}
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "sequence_id:asc" }}
@@ -342,7 +340,6 @@ describe("ResourceCollection selection actions", () => {
           sort: "genome_length:desc",
         }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -389,12 +386,10 @@ describe("ResourceCollection selection actions", () => {
             { id: "sf_name", label: "Name" },
             { id: "sf_id", label: "SFVT ID" },
           ],
-          defaultSort: "sf_name:asc",
         }}
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "sf_name:asc" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -447,12 +442,10 @@ describe("ResourceCollection selection actions", () => {
             { id: "epitope_sequence", label: "Epitope Sequence" },
             { id: "host_name", label: "Host" },
           ],
-          defaultSort: "unsorted",
         }}
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -507,7 +500,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -554,7 +546,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -604,7 +595,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -654,7 +644,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -689,7 +678,6 @@ describe("ResourceCollection selection actions", () => {
         repository={repository()}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -727,7 +715,6 @@ describe("ResourceCollection selection actions", () => {
         repository={repository()}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -766,7 +753,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -813,7 +799,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -861,7 +846,6 @@ describe("ResourceCollection selection actions", () => {
         repository={{ selected } as unknown as DataRepository}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1080,14 +1064,12 @@ describe.each(actionMatrixFixtures)(
               label,
               idField,
               columns: Object.keys(rows[0]).map((id) => ({ id, label: id })),
-              defaultSort: `${idField}:asc`,
             }}
             repository={
               { exportAll, selected } as unknown as DataRepository
             }
             state={{ filters: {}, page: 1, sort: `${idField}:asc` }}
             onStateChange={vi.fn()}
-            showHeader={false}
           />,
         );
 
@@ -1152,7 +1134,6 @@ describe("useResourceCollectionActions error integration", () => {
           sort: "genome_length:desc",
         }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 

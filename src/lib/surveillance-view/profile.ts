@@ -15,7 +15,6 @@ export const surveillanceCollectionProfile: ResourceCollectionProfile<Surveillan
     idField: "id",
     columns: surveillanceColumns,
     detailFields: surveillanceDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/surveillance_data.html",

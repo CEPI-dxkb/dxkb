@@ -390,7 +390,6 @@ describe("ResourceChildCollection scope changes", () => {
       label: "Genomes",
       idField: "genome_id",
       columns: [],
-      defaultSort: "genome_id:asc",
       buildStructuralRql: () => 'eq(status,"active")',
     };
 
@@ -662,7 +661,6 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     label: "Structures",
     idField: "pdb_id",
     columns: structureColumns,
-    defaultSort: "unsorted",
   };
   // A formula-injection payload in a value column, to prove the shared guard
   // still applies once the child no longer runs its own copy of it.
@@ -726,7 +724,6 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
         repository={{ exportAll, selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
     await userEvent.click(
@@ -780,7 +777,6 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
         repository={{ exportAll, selected } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
     await userEvent.click(

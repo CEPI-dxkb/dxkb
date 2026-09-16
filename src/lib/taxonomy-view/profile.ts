@@ -14,7 +14,6 @@ export const taxonomyCollectionProfile: ResourceCollectionProfile<TaxonomyViewRe
   idField: "taxon_id",
   columns: taxonomyColumns,
   detailFields: taxonomyDetailFields,
-  defaultSort: "unsorted",
   basePredicate: "eq(taxon_id,*)",
   guideUrl:
     "https://www.bv-brc.org/docs/quick_references/organisms_taxon/taxonomy.html",

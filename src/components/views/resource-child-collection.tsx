@@ -205,7 +205,6 @@ function ScopedResourceChildCollection({
       label,
       idField,
       columns,
-      defaultSort,
       basePredicate: rql,
       guideUrl,
       exportFileName: label.toLowerCase(),
@@ -218,7 +217,6 @@ function ScopedResourceChildCollection({
       repository={repository}
       state={effectiveState}
       onStateChange={handleStateChange}
-      showHeader={false}
       keywordMode={keywordMode}
       loadedKeywordValue={keywordMode === "loaded" ? keywordValue : undefined}
       onLoadedKeywordChange={

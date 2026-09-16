@@ -15,7 +15,6 @@ export const proteinFeatureCollectionProfile: ResourceCollectionProfile<ProteinF
     idField: "id",
     columns: proteinFeatureColumns,
     detailFields: proteinFeatureDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
     buildStructuralRql: proteinFeatureStructuralRql,
     facets: proteinFeatureFacets,

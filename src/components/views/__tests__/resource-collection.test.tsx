@@ -255,6 +255,25 @@ afterEach(() => vi.unstubAllGlobals());
 // (plan item 21) now that the resource-specific action tests that name lumped
 // together have moved to their own files.
 describe("ResourceCollection generic collection, export and filter behaviour", () => {
+  // Plan item 27: `showHeader` (and its heading/aria-labelledby branch) is gone
+  // because every production caller always passed `showHeader={false}` — this
+  // pins the one surviving arm so the accessible name doesn't regress.
+  it("labels the collection region from the profile with no rendered heading", () => {
+    const { container } = render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const section = container.querySelector("section");
+    expect(section).toHaveAttribute("aria-label", "Genomes");
+    expect(section).not.toHaveAttribute("aria-labelledby");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+    expect(screen.queryByText("Field guide")).not.toBeInTheDocument();
+  });
+
   it("keeps global and taxon-scoped views on the same profile and interaction surface", () => {
     const global = render(
       <ResourceCollection
@@ -262,7 +281,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
     const globalHookOptions = useResourceCollection.mock.calls.at(-1)?.[0];
@@ -280,7 +298,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         state={state}
         onStateChange={vi.fn()}
         baseRql="eq(taxon_lineage_ids,561)"
-        showHeader={false}
       />,
     );
     const scopedHookOptions = useResourceCollection.mock.calls.at(-1)?.[0];
@@ -328,7 +345,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -358,7 +374,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -382,7 +397,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         state={state}
         onStateChange={vi.fn()}
         baseRql="eq(taxon_lineage_ids,561)"
-        showHeader={false}
         keywordMode="server"
       />,
     );
@@ -427,7 +441,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -455,7 +468,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -492,7 +504,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -521,11 +532,10 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     const exportAll = vi.spyOn(data, "exportAll");
     render(
       <ResourceCollection
-        profile={{ ...genomeCollectionProfile, defaultSort: "unsorted" }}
+        profile={genomeCollectionProfile}
         repository={data}
         state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -553,7 +563,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -595,7 +604,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -625,7 +633,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -653,7 +660,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -671,7 +677,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={onStateChange}
-        showHeader={false}
         keywordMode="server"
       />,
     );
@@ -715,7 +720,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={onStateChange}
-        showHeader={false}
         keywordMode="loaded"
       />,
     );
@@ -782,7 +786,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={refinedState}
         onStateChange={onStateChange}
-        showHeader={false}
         keywordMode="refine"
       />,
     );
@@ -857,7 +860,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
         keywordMode="loaded"
       />,
     );
@@ -941,7 +943,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
         keywordMode="loaded"
       />,
     );
@@ -971,7 +972,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
         keywordMode="loaded"
       />,
     );
@@ -1001,7 +1001,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={repository()}
         state={{ ...state, keyword: "", filters: {}, page: 1 }}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1019,7 +1018,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         state={{ ...state, rql: "eq(genome_id,83332.12)" }}
         onStateChange={vi.fn()}
         baseRql="eq(taxon_lineage_ids,561)"
-        showHeader={false}
       />,
     );
 
@@ -1052,7 +1050,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1085,7 +1082,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1122,7 +1118,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1163,7 +1158,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1199,7 +1193,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1232,7 +1225,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1266,7 +1258,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1297,7 +1288,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         repository={data}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1337,7 +1327,6 @@ describe("ResourceCollection error presentation", () => {
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 
@@ -1364,7 +1353,6 @@ describe("ResourceCollection error presentation", () => {
         repository={repository()}
         state={state}
         onStateChange={vi.fn()}
-        showHeader={false}
       />,
     );
 

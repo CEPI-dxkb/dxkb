@@ -15,7 +15,6 @@ export const proteinStructureCollectionProfile: ResourceCollectionProfile<Protei
     idField: "pdb_id",
     columns: proteinStructureColumns,
     detailFields: proteinStructureDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(pdb_id,*)",
     buildStructuralRql: proteinStructureStructuralRql,
     facets: proteinStructureFacets,

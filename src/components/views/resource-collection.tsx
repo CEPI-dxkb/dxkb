@@ -36,7 +36,6 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   idField: string;
   columns: readonly DataTableColumn[];
   detailFields?: readonly string[];
-  defaultSort: string;
   guideUrl?: string;
   basePredicate?: string;
   buildStructuralRql?: (state: CollectionState) => string | undefined;
@@ -104,7 +103,6 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   baseRql?: string;
   enableRowLinks?: boolean;
   renderDetail?: (row: Row) => ReactNode;
-  showHeader?: boolean;
   keywordMode?: "server" | "loaded" | "refine";
   loadedKeywordValue?: string;
   onLoadedKeywordChange?: (value: string) => void;
@@ -120,7 +118,6 @@ export function ResourceCollection<Row extends DataTableRow>({
   baseRql,
   enableRowLinks = true,
   renderDetail,
-  showHeader = true,
   keywordMode = "server",
   loadedKeywordValue,
   onLoadedKeywordChange,
@@ -400,38 +397,9 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   return (
     <section
-      aria-label={showHeader ? undefined : profile.label}
-      aria-labelledby={
-        showHeader ? `${profile.resource}-collection-title` : undefined
-      }
+      aria-label={profile.label}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {showHeader && (
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1
-              id={`${profile.resource}-collection-title`}
-              className="text-xl font-semibold"
-            >
-              {profile.label}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Browse {profile.label.toLowerCase()} records.
-            </p>
-          </div>
-          {profile.guideUrl && (
-            <a
-              className="text-primary text-sm underline underline-offset-2"
-              href={profile.guideUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Field guide
-            </a>
-          )}
-        </header>
-      )}
-
       <ResourceFilterBar
         keyword={
           keywordMode === "server"

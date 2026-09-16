@@ -18,7 +18,6 @@ export const experimentCollectionProfile: ResourceCollectionProfile<ExperimentVi
     idField: "exp_id",
     columns: experimentColumns,
     detailFields: experimentDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(exp_id,*)",
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/experiments_comparisons_tables.html",
@@ -36,7 +35,6 @@ export const biosetCollectionProfile: ResourceCollectionProfile<
   idField: "bioset_id",
   columns: biosetColumns,
   detailFields: biosetDetailFields,
-  defaultSort: "bioset_id:asc",
   basePredicate: "eq(bioset_id,*)",
   buildStructuralRql: biosetStructuralRql,
   guideUrl:

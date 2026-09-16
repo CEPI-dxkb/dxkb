@@ -41,7 +41,6 @@ export function FeatureResourceCollection({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
     />
   );

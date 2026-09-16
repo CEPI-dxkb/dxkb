@@ -16,7 +16,6 @@ export const epitopeCollectionProfile: ResourceCollectionProfile<EpitopeViewReco
   idField: "epitope_id",
   columns: epitopeColumns,
   detailFields: epitopeDetailFields,
-  defaultSort: "unsorted",
   basePredicate: "eq(epitope_id,*)",
   guideUrl: "https://www.bv-brc.org/docs/quick_references/organisms_taxon/epitopes.html",
   buildStructuralRql: epitopeStructuralRql,

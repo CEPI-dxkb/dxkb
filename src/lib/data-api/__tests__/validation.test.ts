@@ -26,7 +26,12 @@ describe("data API contracts", () => {
     );
     for (const resource of dataResources) {
       const definition = resourceRegistry[resource];
-      expect(Object.hasOwn(definition.fields, definition.idField)).toBe(true);
+      expect(() =>
+        validateDataApiRequest(resource, {
+          operation: "collection",
+          fields: [definition.idField],
+        }),
+      ).not.toThrow();
       expect(() => definition.schema.parse({})).toThrow();
     }
   });

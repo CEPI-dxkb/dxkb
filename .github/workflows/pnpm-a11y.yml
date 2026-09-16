@@ -62,26 +62,33 @@ jobs:
           CI: "true"
           WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
-      - name: Run routes sweep (chromium)
-        run: pnpm a11y:routes
-        env:
-          CI: "true"
-          HOME: /root
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
-
       # coverage.meta.spec.ts is the single enforcement point for "routes.ts is the
       # one coverage list", and it carries no project filter of its own — so before
       # this step it reached CI only through a11y:tripwire, i.e. only if the Firefox
       # half of the flakiest job in the matrix ran. It belongs on a chromium job.
       #
       # Attached to this job rather than given a job of its own because it checks the
-      # same registry the sweep above consumes, and a new job would repeat the whole
-      # install+build for a filesystem diff that takes seconds. It runs as its own
-      # step with the existing sweep's filter untouched, and `!cancelled()` so a sweep
-      # failure still cannot mask registry drift (or vice versa).
+      # same registry the sweep below consumes, and a new job would repeat the whole
+      # install+build for a check that runs in seconds.
+      #
+      # It MUST stay above the routes sweep. Playwright clears `outputDir`
+      # (a11y-results/) at the start of every run and the json reporter rewrites
+      # a11y-report/results.json, so running this after the sweep deletes the sweep's
+      # traces, screenshots and videos before the upload step and replaces its results
+      # with these eight tests. Verified locally: a sentinel file under a11y-results/
+      # does not survive `pnpm a11y:meta`. Both steps carry `!cancelled()` so neither
+      # failure can mask the other.
       - name: Check route registry coverage accounting (chromium)
         if: ${{ !cancelled() }}
         run: pnpm a11y:meta
+        env:
+          CI: "true"
+          HOME: /root
+          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
+
+      - name: Run routes sweep (chromium)
+        if: ${{ !cancelled() }}
+        run: pnpm a11y:routes
         env:
           CI: "true"
           HOME: /root

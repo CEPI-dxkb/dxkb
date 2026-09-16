@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { FacetColumn } from "./facet-column";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DataRepository, dataQueryKeys } from "@/lib/data-api";
+import { DataRepository, collectionQueryOptions } from "@/lib/data-api";
 import type { DataResource } from "@/lib/data-api";
 
 // Same-origin Data API entrypoint (`/api/data/<resource>`). Stateless wrapper
@@ -48,12 +48,12 @@ export function FacetPanel({
     error,
     isLoading,
   } = useQuery({
-    queryKey: dataQueryKeys.collection(resource, request),
-    queryFn: ({ signal }) =>
-      dataRepository.collection(resource, request, signal),
+    // Same shared options `list-data.tsx` spreads, so the key and the call are
+    // built in one place. Its `keepPreviousData` default is what keeps the
+    // previous counts on screen during a background refetch — no flash, no
+    // spinner — so only `enabled` and the facet-specific stale window differ.
+    ...collectionQueryOptions(dataRepository, resource, request),
     enabled: validFieldIds.length > 0,
-    // Keep previous data visible during background refetch — no flash or spinner
-    placeholderData: (prev) => prev,
     staleTime: 30_000,
   });
 

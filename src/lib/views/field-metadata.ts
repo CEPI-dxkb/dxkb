@@ -26,7 +26,7 @@ import { getResourceDefinition, type DataResource } from "@/lib/data-api";
  * sort the backend rejects. A hidden scalar field stays sortable, because `hidden` is a
  * visibility flag, not a permission.
  *
- * The registry's `multipleFields` table covers 7 of 15 resources, so declared cardinality
+ * The registry's `multipleFields` table covers 8 of 16 resources, so declared cardinality
  * is not the whole story: `genome_feature` has no entry, and its multi-valued `go` is
  * still carried by `DataField.sortable: false`. Both routes land in the same registry
  * `sortable` answer, which is why this helper reads only that — but "array-valued" here

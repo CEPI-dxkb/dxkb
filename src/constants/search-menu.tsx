@@ -19,7 +19,9 @@ import {
  * `src/app/search/typesearch.tsx`.
  *
  * Every entry must have a destination: a canonical route (via its descriptor in
- * `./search-info`) or a legacy tab group `TypeSearch` can render. Overview,
+ * `./search-info`), or a legacy `tabs` marker, which `resolveLegacySearch`
+ * reads as "this type still reaches the legacy list". `TypeSearch` no longer
+ * renders a tab group — it lists the routed type as its one resource. Overview,
  * Phylogeny, Specialty Genes, Pathways, and Subsystems used to sit here with no
  * destination at all and resolved to a literal fallback screen; they are out
  * until something implements them. Their descriptors stay in `search-info.ts`

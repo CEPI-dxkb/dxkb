@@ -1,3 +1,4 @@
+import { epitopeFields } from "@/constants/datafields/epitope";
 import {
   isSameResourceQuery,
   deriveTableFields,
@@ -94,16 +95,21 @@ describe("deriveTableFields", () => {
     ).toBe(true);
   });
 
-  it("reports a multiple-valued column as unsortable even without a sortable flag", () => {
-    // strain.genome_ids has no `sortable` flag; the registry derives it from
-    // declared cardinality (`multipleFields`), which Solr cannot sort on.
-    const strain = deriveTableFields("strain");
-    expect(strain.find((f) => f.id === "genome_ids")?.sortable).toBe(false);
-    expect(strain.find((f) => f.id === "genbank_accessions")?.sortable).toBe(
-      false,
-    );
-    // A scalar column on the same resource still sorts.
-    expect(strain.find((f) => f.id === "strain")?.sortable).toBe(true);
+  // The cardinality-derived half of the registry's `sortable`: a column with no
+  // `sortable` flag of its own, declared array-valued in `multipleFields`, which
+  // Solr cannot sort on. `epitope.host_name` is the clean case (and the one
+  // `docs/architecture.md` cites); `strain.genome_ids` is not, because it
+  // carries an explicit `sortable: false` and would pass from the flag alone.
+  it("reports a declared multiple-valued column as unsortable with no sortable flag of its own", () => {
+    const epitope = deriveTableFields("epitope");
+    expect(epitope.find((f) => f.id === "host_name")?.sortable).toBe(false);
+    // Emptying `multipleFields.epitope` must be what breaks the line above, so
+    // pin that this column has no flag to fall back on.
+    expect(Object.hasOwn(epitopeFields.host_name, "sortable")).toBe(false);
+    // A scalar column on the same resource, also unflagged, still sorts — so
+    // the assertion above cannot pass by making everything unsortable.
+    expect(Object.hasOwn(epitopeFields.total_assays, "sortable")).toBe(false);
+    expect(epitope.find((f) => f.id === "total_assays")?.sortable).toBe(true);
   });
 
   it("reports the AMR publication list as unsortable and its scalar columns as sortable", () => {

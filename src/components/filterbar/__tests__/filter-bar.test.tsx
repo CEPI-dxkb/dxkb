@@ -1,10 +1,16 @@
 /**
  * The legacy Search filter bar's facet chooser. It used to be a bare `<div>`
  * that looked like a menu: no menu role, no keyboard handling, no Escape, no
- * focus return, no outside-click dismissal, and hard-coded `gray-*` colours
- * that ignored the light/dark themes. It is now built on the shared
- * `DropdownMenuCheckboxItem` primitive, the same one `resource-filter-bar.tsx`
- * uses, so these tests assert the behaviour that primitive is there to supply.
+ * focus return, an outside-click dismissal hand-rolled on a document
+ * `mousedown` listener, and hard-coded `gray-*` colours that ignored the
+ * light/dark themes. It is now built on the shared `DropdownMenuCheckboxItem`
+ * primitive, the same one `resource-filter-bar.tsx` uses.
+ *
+ * So these tests split two ways. Menu role, keyboard open, Escape and focus
+ * return are behaviour the primitive *adds*. Outside-click dismissal is
+ * behaviour the base already had and the primitive *takes over* — its test is
+ * therefore a regression guard, not a new-feature check: it fails if the
+ * rebuilt chooser dropped a dismissal the hand-rolled one provided.
  */
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -109,7 +115,8 @@ describe("FilterBar facet chooser", () => {
     });
   });
 
-  it("closes when clicking outside the menu", async () => {
+  // Regression guard, not a new-feature check — see the file header.
+  it("closes when clicking outside the menu, as the hand-rolled popup also did", async () => {
     const user = userEvent.setup();
     renderFilterBar();
     await openChooser(user);

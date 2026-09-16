@@ -4,6 +4,7 @@ import {
   type SearchType,
 } from "@/constants/search-info";
 import { searchTypeMenuItems } from "@/constants/search-menu";
+import { isDataResource } from "@/lib/data-api";
 import {
   parseTaxonomyCollectionState,
   taxonomyCollectionOptions,
@@ -248,4 +249,25 @@ describe("legacy search routing contract", () => {
       });
     },
   );
+
+  // `TypeSearch` no longer resolves a tab group: it treats the routed type as
+  // the resource it lists, reads it through the Data API gateway, and renders
+  // exactly one table. Both halves of that are invariants of the descriptors
+  // rather than of the component, so they are asserted here — this is what
+  // replaced the component's `?? "genome"` fallbacks, which quietly rendered
+  // the Genome tab group under another type's name.
+  it("gives every type that reaches the legacy list one tab named after a registered resource", () => {
+    const listed = searchDescriptors.filter(
+      (descriptor) =>
+        resolveLegacySearch({ type: descriptor.id }, "").kind === "typeSearch",
+    );
+    expect(listed.map((descriptor) => descriptor.id)).toEqual([
+      "genome_amr",
+      "genome_sequence",
+    ]);
+    for (const descriptor of listed) {
+      expect(Object.keys(descriptor.tabs ?? {})).toEqual([descriptor.id]);
+      expect(isDataResource(descriptor.id)).toBe(true);
+    }
+  });
 });

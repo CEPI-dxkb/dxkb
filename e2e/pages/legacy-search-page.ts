@@ -9,7 +9,6 @@ export class LegacySearchPage {
   constructor(
     readonly page: Page,
     readonly resource: string,
-    readonly idField: string,
   ) {}
 
   async goto(keyword: string) {
@@ -34,11 +33,6 @@ export class LegacySearchPage {
     await expect(
       this.page.getByText(new RegExp(`of ${String(total)} results`)),
     ).toBeVisible();
-  }
-
-  /** The left-hand type menu entry for this list's own type. */
-  typeMenuEntry(label: string) {
-    return this.page.getByRole("button", { name: label });
   }
 
   /**

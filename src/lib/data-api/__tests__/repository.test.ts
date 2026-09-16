@@ -645,4 +645,94 @@ describe("ServerDataRepository", () => {
       ).resolves.toEqual({ rows: [] });
     });
   });
+  // genome_amr is the one registry resource with no row fixture anywhere in
+  // this repo, and `parseRows` turns a schema mismatch into a 502 that blanks
+  // the whole AMR list. These pin the shapes its columns actually arrive in, so
+  // the deliberately-minimal `genomeAmrRecordSchema` is a checked contract
+  // rather than an untested guess.
+  describe("genome_amr row shapes", () => {
+    const amrUrl = "https://data.test/genome_amr/";
+    const amrRepository = () =>
+      new ServerDataRepository({ baseUrl: "https://data.test" });
+
+    const amrRow = {
+      id: "1a2b3c",
+      genome_id: "1313.5678",
+      genome_name: "Streptococcus pneumoniae",
+      antibiotic: "ampicillin",
+      resistant_phenotype: "Resistant",
+      // Non-numeric by design: AMR measurements carry the comparison in the
+      // value, which is why measurement_value is left string-typed in the
+      // registry.
+      measurement_value: ">=32",
+      measurement_sign: ">=",
+      measurement_unit: "mg/L",
+      // Lists on rows that cite more than one source.
+      pmid: ["12345", "67890"],
+      evidence: ["Laboratory Method"],
+      laboratory_typing_method: "Broth dilution",
+      computational_method: "",
+    };
+
+    it("parses a realistic AMR row verbatim, list and non-numeric columns included", async () => {
+      server.use(
+        http.get(amrUrl, () =>
+          HttpResponse.json({ response: { numFound: 1, docs: [amrRow] } }),
+        ),
+      );
+
+      await expect(
+        amrRepository().collection("genome_amr", {
+          operation: "collection",
+          rql: "keyword(ampicillin%2A)",
+          fields: ["id", "antibiotic", "pmid", "measurement_value"],
+        }),
+      ).resolves.toMatchObject({
+        total: 1,
+        rows: [
+          {
+            id: "1a2b3c",
+            antibiotic: "ampicillin",
+            pmid: ["12345", "67890"],
+            measurement_value: ">=32",
+          },
+        ],
+      });
+    });
+
+    it("reads an AMR member through the registry idField", async () => {
+      const requested: string[] = [];
+      server.use(
+        http.get(amrUrl, ({ request }) => {
+          requested.push(decodeURIComponent(request.url));
+          return HttpResponse.json([amrRow]);
+        }),
+      );
+
+      await expect(
+        amrRepository().member("genome_amr", {
+          operation: "member",
+          id: "1a2b3c",
+        }),
+      ).resolves.toEqual({ row: amrRow });
+      expect(requested[0]).toContain("eq(id,1a2b3c)");
+    });
+
+    it("rejects a row with no id, which the list cannot key", async () => {
+      server.use(
+        http.get(amrUrl, () =>
+          HttpResponse.json({
+            response: { numFound: 1, docs: [{ antibiotic: "ampicillin" }] },
+          }),
+        ),
+      );
+
+      await expect(
+        amrRepository().collection("genome_amr", { operation: "collection" }),
+      ).rejects.toMatchObject({
+        name: "DataApiError",
+        code: "malformed_response",
+      });
+    });
+  });
 });

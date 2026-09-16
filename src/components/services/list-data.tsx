@@ -326,9 +326,13 @@ function useListData({
       return;
     }
 
-    // The aggregate read is capped at the gateway (`maxExportRows`), which
-    // would otherwise silently truncate the file. Say so instead of shipping a
-    // short export.
+    // `DataRepository.exportAll` hard-requests `limit: maxExportRows, offset: 0`
+    // with no paging, so without this guard a larger result set would ship as a
+    // silently short file. Refuse and name the real limit instead. (The path
+    // this replaced fetched upstream directly and never compared the returned
+    // row count against the total, so it could not tell a complete export from
+    // a truncated one either way — see `use-interactions.ts` for the same
+    // defect written down.)
     if (!hasLoadedKeyword && exportTotal > maxExportRows) {
       alert(
         `This export matches ${exportTotal.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,

@@ -1,11 +1,26 @@
 import type { Page } from "@playwright/test";
 import type { SettleOptions } from "./settle";
 
+/**
+ * Route-specific readiness hook, run AFTER awaitSettled().
+ *
+ * Reserve these for *observable, page-specific* readiness — an element that must
+ * exist before axe scans, or a redirect that must have landed. Generic readiness
+ * (load state, fonts, skeleton detach) belongs in `settle` / `awaitSettled()`;
+ * a bare `waitForLoadState("networkidle")` here is always redundant because
+ * awaitSettled() has already awaited it.
+ */
+export type PrepareHook = (page: Page) => Promise<void>;
+
 export interface RouteVariant {
   /** Appended to parent name: e.g. "virus" → scanned as "taxonomy/virus". */
   nameSuffix: string;
   path: string;
-  prepare?: (page: Page) => Promise<void>;
+  /**
+   * Variant-specific readiness. Runs AFTER the parent entry's `prepare`, not
+   * instead of it — put anything true of every variant on the parent.
+   */
+  prepare?: PrepareHook;
 }
 
 export interface RouteEntry {
@@ -13,6 +28,16 @@ export interface RouteEntry {
   name: string;
   /** URL path to navigate to. */
   path: string;
+  /**
+   * Every page.tsx file this entry accounts for, relative to `src/app/`.
+   *
+   * This is the ONLY coverage list: `coveredPageFiles` is derived from it and
+   * `coverage.meta.spec.ts` diffs that against the files on disk in both
+   * directions. Most entries name exactly one file; name more when one scan
+   * genuinely covers several (a redirect target, or the same component mounted
+   * under a different segment). Required, so a new entry cannot skip accounting.
+   */
+  pages: string[];
   /** Skip auth cookies + use unauthenticated session override. Default: false. */
   unauthenticated?: boolean;
   /**
@@ -28,11 +53,6 @@ export interface RouteEntry {
   tripwire?: boolean;
   /** Include in mobile-thin project (375px viewport). */
   mobile?: boolean;
-  /**
-   * page.tsx paths (relative to src/app/) this entry covers via redirect or same-component.
-   * Used by coverage.meta.spec.ts for full page.tsx accounting.
-   */
-  covers?: string[];
   /** Variants for dynamic routes — one scan per variant. */
   variants?: RouteVariant[];
   /**
@@ -40,11 +60,8 @@ export interface RouteEntry {
    * pages with continuous Next.js RSC prefetch cycles that prevent networkidle.
    */
   settle?: SettleOptions;
-  /**
-   * Extra settle hook. Called AFTER awaitSettled() for route-specific waiting
-   * (e.g. waitForURL after redirect, element waits for streamed content).
-   */
-  prepare?: (page: Page) => Promise<void>;
+  /** Observable page-specific readiness. See {@link PrepareHook}. */
+  prepare?: PrepareHook;
 }
 
 // e2e test username — matches auth cookie values set in backends.ts
@@ -55,22 +72,20 @@ export const routes: RouteEntry[] = [
   {
     name: "home",
     path: "/",
+    pages: ["page.tsx"],
     unauthenticated: true,
     tripwire: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Auth pages ────────────────────────────────────────────────────────────────
   {
     name: "sign-in",
     path: "/sign-in",
+    pages: ["(auth)/sign-in/page.tsx"],
     unauthenticated: true,
     tripwire: true,
     prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
       await page
         .getByRole("button", { name: /sign in/i })
         .waitFor({ state: "visible" });
@@ -79,88 +94,69 @@ export const routes: RouteEntry[] = [
   {
     name: "sign-up",
     path: "/sign-up",
+    pages: ["(auth)/sign-up/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "forgot-password",
     path: "/forgot-password",
+    pages: ["(auth)/forgot-password/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Footer / static pages (unauthenticated) ─────────────────────────────────
   {
     name: "about",
     path: "/about",
+    pages: ["(footer)/about/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "citations",
     path: "/citations",
+    pages: ["(footer)/citations/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "contact",
     path: "/contact",
+    pages: ["(footer)/contact/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "faq",
     path: "/faq",
+    pages: ["(footer)/faq/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "funding",
     path: "/funding",
+    pages: ["(footer)/funding/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "help",
     path: "/help",
+    pages: ["(footer)/help/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "news",
     path: "/news",
+    pages: ["(footer)/news/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "privacy-policy",
     path: "/privacy-policy",
+    pages: ["(footer)/privacy-policy/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "publications",
     path: "/publications",
+    pages: ["(footer)/publications/page.tsx"],
     unauthenticated: true,
     // Next.js prefetches all <Link> elements continuously with rolling RSC tokens,
     // preventing networkidle from ever opening a 500ms quiet window on this page.
@@ -169,98 +165,85 @@ export const routes: RouteEntry[] = [
   {
     name: "related-resources",
     path: "/related-resources",
+    pages: ["(footer)/related-resources/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "team",
     path: "/team",
+    pages: ["(footer)/team/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "updates",
     path: "/updates",
+    pages: ["(footer)/updates/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Organism landing pages ────────────────────────────────────────────────────
   {
     name: "organisms-all",
     path: "/organisms/all",
+    pages: ["organisms/all/page.tsx"],
     unauthenticated: true,
     tripwire: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "organisms-bacteria",
     path: "/organisms/bacteria",
+    pages: ["organisms/bacteria/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "organisms-viruses",
     path: "/organisms/viruses",
+    pages: ["organisms/viruses/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Search ───────────────────────────────────────────────────────────────────
   {
     name: "search",
     path: "/search",
+    pages: ["search/page.tsx"],
     unauthenticated: true,
     tripwire: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Taxonomy (dynamic — two variants for multi-param coverage) ───────────────
+  // No parent `prepare`: the only readiness signal worth asserting here (the
+  // Metadata Distributions section) exists on the virus variant but NOT on the
+  // bacteria one, whose mock data has no taxon_name and therefore resolves to the
+  // framework error boundary. A parent hook runs for every variant, so it may
+  // only hold what is true of every variant — see the virus variant below.
   {
     name: "taxonomy",
     path: "/taxonomy/234",
+    pages: ["(views)/taxonomy/[taxonId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      // The section's <h2> renders synchronously; chart cards stream in after.
-      await page
-        .getByRole("heading", { level: 2, name: /Metadata Distributions/ })
-        .waitFor({ timeout: 10_000 })
-        .catch(() => undefined);
-      await page.waitForLoadState("networkidle");
-    },
     variants: [
       {
         nameSuffix: "virus",
         path: "/taxonomy/234",
+        // The section's <h2> renders synchronously; chart cards stream in after.
         prepare: async (page) => {
-          await page.waitForLoadState("networkidle");
+          await page
+            .getByTestId("metadata-distributions")
+            .waitFor({ timeout: 10_000 });
         },
       },
       {
         nameSuffix: "bacteria",
         path: "/taxonomy/1763",
-        prepare: async (page) => {
-          await page.waitForLoadState("networkidle");
-        },
+        // Intentionally no prepare: this taxon renders the error boundary (see
+        // the document-title / html-has-lang entries for it in
+        // baseline.generated.ts), so there is no page content to wait for.
       },
     ],
   },
@@ -269,10 +252,10 @@ export const routes: RouteEntry[] = [
   {
     name: "taxonomy-list",
     path: "/taxonomy",
+    pages: ["(views)/taxonomy/page.tsx"],
     unauthenticated: true,
     mobile: true,
     prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
       await page.getByRole("heading", { level: 1, name: "Taxa" }).waitFor();
       await page.getByRole("row", { name: /Select row 11520/ }).waitFor();
     },
@@ -280,50 +263,41 @@ export const routes: RouteEntry[] = [
   {
     name: "genome-list",
     path: "/genome",
+    pages: ["(views)/genome/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "feature-list",
     path: "/feature",
+    pages: ["(views)/feature/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "epitope-list",
     path: "/epitope",
+    pages: ["(views)/epitope/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "surveillance-list",
     path: "/surveillance?keyword=sentinel",
+    pages: ["(views)/surveillance/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "serology-list",
     path: "/serology?keyword=antibody",
+    pages: ["(views)/serology/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "strain-list",
     path: "/strain?keyword=influenza",
+    pages: ["(views)/strain/page.tsx"],
     unauthenticated: true,
     mobile: true,
     settle: { loadState: "domcontentloaded" },
@@ -337,6 +311,7 @@ export const routes: RouteEntry[] = [
   {
     name: "domains-and-motifs",
     path: "/domains-and-motifs?keyword=domain",
+    pages: ["(views)/domains-and-motifs/page.tsx"],
     unauthenticated: true,
     mobile: true,
     settle: { loadState: "domcontentloaded" },
@@ -350,8 +325,15 @@ export const routes: RouteEntry[] = [
   {
     name: "experiment",
     path: "/experiment?keyword=RNA",
+    pages: ["(views)/experiment/page.tsx"],
     unauthenticated: true,
     mobile: true,
+    prepare: async (page) => {
+      await page
+        .getByText(/results/)
+        .first()
+        .waitFor();
+    },
     variants: [
       { nameSuffix: "experiments", path: "/experiment?keyword=RNA" },
       {
@@ -359,16 +341,11 @@ export const routes: RouteEntry[] = [
         path: "/experiment?keyword=influenza&tab=biosets",
       },
     ],
-    prepare: async (page) => {
-      await page
-        .getByText(/results/)
-        .first()
-        .waitFor();
-    },
   },
   {
     name: "protein-structure",
     path: "/protein-structure?accession=AF-P12345-F1",
+    pages: ["(views)/protein-structure/page.tsx"],
     unauthenticated: true,
     mobile: true,
     settle: { loadState: "domcontentloaded" },
@@ -384,319 +361,256 @@ export const routes: RouteEntry[] = [
   {
     name: "genome",
     path: "/genome/1282460.2049",
+    pages: ["(views)/genome/[genomeId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "feature",
     path: "/feature/PATRIC.1282460.2049.JX869059.CDS.1.100.fwd",
+    pages: ["(views)/feature/[featureId]/page.tsx"],
     unauthenticated: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "epitope",
     path: "/epitope/15780",
+    pages: ["(views)/epitope/[epitopeId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "surveillance",
     path: "/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen",
+    pages: ["(views)/surveillance/[sampleId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "serology",
     path: "/serology/000123?test_type=ELISA%2FIgG%20test",
+    pages: ["(views)/serology/[sampleId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "experiment-singular",
     path: "/experiment/2000000",
+    pages: ["(views)/experiment/[experimentId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
+    prepare: async (page) => {
+      await page.getByRole("heading", { level: 1, name: "2000000" }).waitFor();
+    },
     variants: [
       { nameSuffix: "overview", path: "/experiment/2000000" },
       { nameSuffix: "biosets", path: "/experiment/2000000?tab=biosets" },
     ],
-    prepare: async (page) => {
-      await page.getByRole("heading", { level: 1, name: "2000000" }).waitFor();
-    },
   },
 
   // ── Jobs ─────────────────────────────────────────────────────────────────────
   {
     name: "jobs",
     path: "/jobs",
+    pages: ["jobs/page.tsx"],
     needsJobs: true,
     tripwire: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Settings ─────────────────────────────────────────────────────────────────
   {
     name: "settings",
     path: "/settings",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["settings/page.tsx"],
   },
 
   // ── Services index ───────────────────────────────────────────────────────────
   {
     name: "services",
     path: "/services",
+    pages: ["services/page.tsx"],
     tripwire: true,
     mobile: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // ── Genomics service forms ───────────────────────────────────────────────────
   {
     name: "genome-assembly",
     path: "/services/genome-assembly",
+    pages: ["services/(genomics)/genome-assembly/page.tsx"],
     tripwire: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "genome-annotation",
     path: "/services/genome-annotation",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(genomics)/genome-annotation/page.tsx"],
   },
   {
     name: "genome-alignment",
     path: "/services/genome-alignment",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(genomics)/genome-alignment/page.tsx"],
   },
   {
     name: "blast",
     path: "/services/blast",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(genomics)/blast/page.tsx"],
   },
   {
     name: "primer-design",
     path: "/services/primer-design",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(genomics)/primer-design/page.tsx"],
   },
   {
     name: "similar-genome-finder",
     path: "/services/similar-genome-finder",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(genomics)/similar-genome-finder/page.tsx"],
   },
   {
     name: "variation-analysis",
     path: "/services/variation-analysis",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(genomics)/variation-analysis/page.tsx"],
   },
 
   // ── Metagenomics service forms ───────────────────────────────────────────────
   {
     name: "metagenomic-binning",
     path: "/services/metagenomic-binning",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(metagenomics)/metagenomic-binning/page.tsx"],
   },
   {
     name: "metagenomic-read-mapping",
     path: "/services/metagenomic-read-mapping",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(metagenomics)/metagenomic-read-mapping/page.tsx"],
   },
   {
     name: "taxonomic-classification",
     path: "/services/taxonomic-classification",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(metagenomics)/taxonomic-classification/page.tsx"],
   },
 
   // ── Phylogenomics service forms ──────────────────────────────────────────────
   {
     name: "viral-genome-tree",
     path: "/services/viral-genome-tree",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(phylogenomics)/viral-genome-tree/page.tsx"],
   },
 
   // ── Protein tools service forms ──────────────────────────────────────────────
   {
     name: "gene-protein-tree",
     path: "/services/gene-protein-tree",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(protein-tools)/gene-protein-tree/page.tsx"],
   },
   {
     name: "meta-cats",
     path: "/services/meta-cats",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(protein-tools)/meta-cats/page.tsx"],
   },
   {
     name: "msa-snp-analysis",
     path: "/services/msa-snp-analysis",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(protein-tools)/msa-snp-analysis/page.tsx"],
   },
   {
     name: "proteome-comparison",
     path: "/services/proteome-comparison",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(protein-tools)/proteome-comparison/page.tsx"],
   },
 
   // ── Utilities service forms ──────────────────────────────────────────────────
   {
     name: "fastq-utilities",
     path: "/services/fastq-utilities",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(utilities)/fastq-utilities/page.tsx"],
   },
 
   // ── Viral tools service forms ────────────────────────────────────────────────
   {
     name: "influenza-ha-subtype",
     path: "/services/influenza-ha-subtype",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(viral-tools)/influenza-ha-subtype/page.tsx"],
   },
   {
     name: "sars-cov2-genome-analysis",
     path: "/services/sars-cov2-genome-analysis",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(viral-tools)/sars-cov2-genome-analysis/page.tsx"],
   },
   {
     name: "sars-cov2-wastewater-analysis",
     path: "/services/sars-cov2-wastewater-analysis",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(viral-tools)/sars-cov2-wastewater-analysis/page.tsx"],
   },
   {
     name: "subspecies-classification",
     path: "/services/subspecies-classification",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(viral-tools)/subspecies-classification/page.tsx"],
   },
   {
     name: "viral-assembly",
     path: "/services/viral-assembly",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["services/(viral-tools)/viral-assembly/page.tsx"],
   },
 
   // ── Workspace (authenticated) ────────────────────────────────────────────────
   // Navigating to /workspace triggers a server redirect to /workspace/username/home.
   // The prepare hook waits for the redirect so the scan runs on the workspace browser.
-  // This single entry covers: workspace/page.tsx AND workspace/[username]/home/[[...path]]/page.tsx
-  // AND workspace/[username]/[folder]/[[...path]]/page.tsx (same component, different root).
+  // The redirect target and the sibling [folder] route render the same component off
+  // a different root, so all three page files are accounted for by this one scan.
   {
     name: "workspace",
     path: "/workspace",
-    needsWorkspace: true,
-    tripwire: true,
-    mobile: true,
-    covers: [
+    pages: [
       "workspace/page.tsx",
       "workspace/[username]/home/[[...path]]/page.tsx",
       "workspace/[username]/[folder]/[[...path]]/page.tsx",
     ],
+    needsWorkspace: true,
+    tripwire: true,
+    mobile: true,
     prepare: async (page) => {
       await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
       await page.getByPlaceholder(/search files/i).waitFor({ timeout: 10_000 });
-      await page.waitForLoadState("networkidle");
     },
   },
   // Public workspace listing (no auth required to VIEW, but authenticated user sees their context)
   {
     name: "workspace-public",
     path: "/workspace/public",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["workspace/public/page.tsx"],
   },
   {
     name: "workspace-public-user",
     path: `/workspace/public/${e2eUsername}`,
-    covers: ["workspace/public/[username]/[...path]/page.tsx"],
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    // The [...path] route below it is the same component with a deeper segment.
+    pages: [
+      "workspace/public/[username]/page.tsx",
+      "workspace/public/[username]/[...path]/page.tsx",
+    ],
   },
   {
     name: "workspace-shared",
     path: "/workspace/shared",
+    pages: ["workspace/shared/[[...path]]/page.tsx"],
     needsWorkspace: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
   {
     name: "workspace-workshop",
     path: "/workspace/workshop",
+    pages: ["workspace/workshop/page.tsx"],
     needsWorkspace: true,
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
   },
 
   // Redirect-only workspace routes — not scanned, just counted for meta-test accounting.
   {
     name: "workspace-home-redirect",
     path: "/workspace/home",
+    pages: ["workspace/home/[[...path]]/page.tsx"],
     redirectOnly: true,
-    covers: ["workspace/home/[[...path]]/page.tsx"],
   },
   {
     name: "workspace-username-redirect",
     path: `/workspace/${e2eUsername}`,
+    pages: ["workspace/[username]/page.tsx"],
     redirectOnly: true,
-    covers: ["workspace/[username]/page.tsx"],
   },
 
   // ── Structure viewer ─────────────────────────────────────────────────────────
@@ -704,100 +618,68 @@ export const routes: RouteEntry[] = [
   {
     name: "structure-viewer",
     path: "/viewer/structure",
-    prepare: async (page) => {
-      await page.waitForLoadState("networkidle");
-    },
+    pages: ["viewer/structure/[[...path]]/page.tsx"],
   },
 ];
 
-// All src/app page.tsx paths (relative to src/app/) covered by this route table.
-// coverage.meta.spec.ts globs the actual files and diffs against this set.
-export const coveredPageFiles = new Set<string>([
-  // Root
-  "page.tsx",
-  // Auth
-  "(auth)/sign-in/page.tsx",
-  "(auth)/sign-up/page.tsx",
-  "(auth)/forgot-password/page.tsx",
-  // Footer / static
-  "(footer)/about/page.tsx",
-  "(footer)/citations/page.tsx",
-  "(footer)/contact/page.tsx",
-  "(footer)/faq/page.tsx",
-  "(footer)/funding/page.tsx",
-  "(footer)/help/page.tsx",
-  "(footer)/news/page.tsx",
-  "(footer)/privacy-policy/page.tsx",
-  "(footer)/publications/page.tsx",
-  "(footer)/related-resources/page.tsx",
-  "(footer)/team/page.tsx",
-  "(footer)/updates/page.tsx",
-  // Taxonomy (views)
-  "(views)/taxonomy/[taxonId]/page.tsx",
-  "(views)/taxonomy/page.tsx",
-  // Genome (views)
-  "(views)/genome/[genomeId]/page.tsx",
-  "(views)/genome/page.tsx",
-  // Feature (views)
-  "(views)/feature/[featureId]/page.tsx",
-  "(views)/feature/page.tsx",
-  // Epitope (views)
-  "(views)/epitope/[epitopeId]/page.tsx",
-  "(views)/epitope/page.tsx",
-  // Surveillance (views)
-  "(views)/surveillance/[sampleId]/page.tsx",
-  "(views)/surveillance/page.tsx",
-  // Serology (views)
-  "(views)/serology/[sampleId]/page.tsx",
-  "(views)/serology/page.tsx",
-  // List-only views
-  "(views)/strain/page.tsx",
-  "(views)/domains-and-motifs/page.tsx",
-  "(views)/experiment/page.tsx",
-  "(views)/experiment/[experimentId]/page.tsx",
-  "(views)/protein-structure/page.tsx",
-  // Organisms
-  "organisms/all/page.tsx",
-  "organisms/bacteria/page.tsx",
-  "organisms/viruses/page.tsx",
-  // Jobs / search / settings
-  "jobs/page.tsx",
-  "search/page.tsx",
-  "settings/page.tsx",
-  // Services
-  "services/page.tsx",
-  "services/(genomics)/blast/page.tsx",
-  "services/(genomics)/genome-alignment/page.tsx",
-  "services/(genomics)/genome-annotation/page.tsx",
-  "services/(genomics)/genome-assembly/page.tsx",
-  "services/(genomics)/primer-design/page.tsx",
-  "services/(genomics)/similar-genome-finder/page.tsx",
-  "services/(genomics)/variation-analysis/page.tsx",
-  "services/(metagenomics)/metagenomic-binning/page.tsx",
-  "services/(metagenomics)/metagenomic-read-mapping/page.tsx",
-  "services/(metagenomics)/taxonomic-classification/page.tsx",
-  "services/(phylogenomics)/viral-genome-tree/page.tsx",
-  "services/(protein-tools)/gene-protein-tree/page.tsx",
-  "services/(protein-tools)/meta-cats/page.tsx",
-  "services/(protein-tools)/msa-snp-analysis/page.tsx",
-  "services/(protein-tools)/proteome-comparison/page.tsx",
-  "services/(utilities)/fastq-utilities/page.tsx",
-  "services/(viral-tools)/influenza-ha-subtype/page.tsx",
-  "services/(viral-tools)/sars-cov2-genome-analysis/page.tsx",
-  "services/(viral-tools)/sars-cov2-wastewater-analysis/page.tsx",
-  "services/(viral-tools)/subspecies-classification/page.tsx",
-  "services/(viral-tools)/viral-assembly/page.tsx",
-  // Structure viewer
-  "viewer/structure/[[...path]]/page.tsx",
-  // Workspace
-  "workspace/page.tsx",
-  "workspace/home/[[...path]]/page.tsx", // redirectOnly
-  "workspace/[username]/page.tsx", // redirectOnly
-  "workspace/[username]/home/[[...path]]/page.tsx",
-  "workspace/[username]/[folder]/[[...path]]/page.tsx",
-  "workspace/public/page.tsx",
-  "workspace/public/[username]/page.tsx",
-  "workspace/public/[username]/[...path]/page.tsx",
-  "workspace/shared/[[...path]]/page.tsx",
-  "workspace/workshop/page.tsx",
-]);
+/**
+ * Every src/app page.tsx path accounted for by the route table, derived from the
+ * per-entry `pages` declarations. `coverage.meta.spec.ts` globs the real files and
+ * diffs them against this set in both directions, so this is not a second list to
+ * maintain — edit the owning route entry's `pages` instead.
+ */
+export const coveredPageFiles: ReadonlySet<string> = new Set(
+  routes.flatMap((route) => route.pages),
+);
+
+export interface ScanTarget {
+  /** Owning route entry — carries the mock/project flags for the scan. */
+  route: RouteEntry;
+  /** Baseline + reflowSkip key. Variants read `${route.name}/${nameSuffix}`. */
+  name: string;
+  path: string;
+  prepare?: PrepareHook;
+}
+
+/**
+ * Run the parent hook first, then the variant's, forwarding the same argument to
+ * both. Either side may be absent, in which case the other is returned as-is.
+ *
+ * Generic in the argument so the ordering contract can be asserted without
+ * launching a browser — `buildScanTargets` always instantiates it at `Page`.
+ */
+export function composePrepare<T>(
+  parent: ((target: T) => Promise<void>) | undefined,
+  variant: ((target: T) => Promise<void>) | undefined,
+): ((target: T) => Promise<void>) | undefined {
+  if (!parent) return variant;
+  if (!variant) return parent;
+  return async (target) => {
+    await parent(target);
+    await variant(target);
+  };
+}
+
+/**
+ * Flatten routes × variants into individual scan targets, skipping redirect-only
+ * entries. A parent with variants is not scanned on its own — only its variants —
+ * so its `prepare` is composed into each variant's rather than replaced by it.
+ */
+export function buildScanTargets(entries: readonly RouteEntry[]): ScanTarget[] {
+  return entries.flatMap((route) => {
+    if (route.redirectOnly) return [];
+    if (!route.variants?.length) {
+      return [
+        { route, name: route.name, path: route.path, prepare: route.prepare },
+      ];
+    }
+    return route.variants.map((variant) => ({
+      route,
+      name: `${route.name}/${variant.nameSuffix}`,
+      path: variant.path,
+      prepare: composePrepare(route.prepare, variant.prepare),
+    }));
+  });
+}
+
+export const scanTargets: ScanTarget[] = buildScanTargets(routes);

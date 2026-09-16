@@ -24,7 +24,7 @@ pnpm a11y:motion         # prefers-reduced-motion assertion
 | `axe-scan.ts` | AxeBuilder factory: tag set, vendor exclusions, formatters |
 | `settle.ts` | `awaitSettled()` — networkidle + fonts.ready + zero-skeleton |
 | `theme.ts` | `forEachTheme()` — light/dark in-test loop |
-| `routes.ts` | Route entry types + full 58-route table (Phase 2) |
+| `routes.ts` | Route entry types + the route table, plus the `coveredPageFiles` and `scanTargets` views derived from it |
 | `report.ts` | Scan record accumulator; Phase 5 adds artifact file output |
 
 ## Gate rules
@@ -60,8 +60,33 @@ Rules:
 
 ## Adding a new route
 
-Phase 2 populates `routes.ts` with all 58 routes. Until then, add entries to the
-inline `routes` array in `routes-sweep.spec.ts`.
+Add one entry to the `routes` array in `routes.ts`. Nothing else needs editing —
+`routes-sweep.spec.ts` derives its scan list from `scanTargets` and
+`coverage.meta.spec.ts` derives page accounting from `coveredPageFiles`, both
+exported from that same table.
+
+- **`pages`** is required: list every `src/app` `page.tsx` the entry accounts for,
+  relative to `src/app/`. This is the only coverage list, and `coverage.meta.spec.ts`
+  diffs it against the files on disk in both directions — a new page with no owning
+  entry fails, and a declared file that no longer exists fails with the owning route
+  named. A page.tsx may be claimed by only one entry.
+- **`redirectOnly: true`** for a path that always redirects: counted for accounting,
+  never scanned. Its redirect target needs its own entry.
+- **`settle`** owns *generic* readiness — load state, `document.fonts.ready`,
+  skeleton detach. `awaitSettled()` already awaits `loadState ?? "networkidle"`
+  before any hook runs, so never put `waitForLoadState("networkidle")` in a hook.
+  Use `loadState: "domcontentloaded"` on pages whose rolling RSC prefetch means
+  networkidle is never reached, and `skeletonSelector` for `DataTable` routes —
+  skeleton detach, not networkidle, is the correct signal there.
+- **`prepare`** is reserved for *observable, page-specific* readiness: an element
+  that must exist before axe scans, or a redirect that must have landed.
+- **`variants`** produce one scan each, keyed `${name}/${nameSuffix}`, and the
+  parent is not scanned on its own. A variant's `prepare` runs *after* the parent's,
+  not instead of it, so only put on the parent what is true of every variant.
+
+Route and variant names are the `baseline.generated.ts` and `reflowSkip` keys.
+Renaming one silently stops its suppressions from matching — update both maps in
+the same change.
 
 ## Vendor widgets
 

@@ -14,9 +14,9 @@ import { forEachTheme } from "../../a11y/theme";
 import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 import { isReflowSkipped } from "../../a11y/baseline";
 import { recordScan } from "../../a11y/report";
-import { routes } from "../../a11y/routes";
+import { scanTargets } from "../../a11y/routes";
 import type { BaselineMap } from "../../a11y/baseline";
-import type { RouteEntry, RouteVariant } from "../../a11y/routes";
+import type { RouteEntry } from "../../a11y/routes";
 import type { JsonOverride } from "../../mocks/backends";
 import auspiceDataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
 
@@ -57,29 +57,6 @@ function assertNoBlockingViolations(
   ).toEqual([]);
 }
 
-interface ScanTarget {
-  route: RouteEntry;
-  name: string;
-  path: string;
-  prepare?: RouteEntry["prepare"] | RouteVariant["prepare"];
-}
-
-// Flatten routes × variants into individual scan targets, skipping redirect-only entries.
-const scanTargets: ScanTarget[] = routes.flatMap((route) => {
-  if (route.redirectOnly) return [];
-  if (!route.variants?.length) {
-    return [
-      { route, name: route.name, path: route.path, prepare: route.prepare },
-    ];
-  }
-  return route.variants.map((v) => ({
-    route,
-    name: `${route.name}/${v.nameSuffix}`,
-    path: v.path,
-    prepare: v.prepare ?? route.prepare,
-  }));
-});
-
 function buildOverrides(route: RouteEntry): JsonOverride[] {
   if (route.unauthenticated) {
     return [...a11yBackendOverrides];
@@ -115,6 +92,8 @@ test.describe("a11y route sweep", () => {
         overrides: buildOverrides(target.route),
       });
       await page.goto(target.path);
+      // Generic readiness (load state, fonts, skeleton detach) is awaitSettled's
+      // job; the target's composed prepare hook adds only page-specific waits.
       await awaitSettled(page, target.route.settle);
       await target.prepare?.(page);
 

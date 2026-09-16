@@ -49,21 +49,23 @@ export const genomeRecordSchema = z.looseObject({
 });
 
 /**
- * AMR phenotype rows. `id` is the genome_amr core's own document identifier
- * (the same field `src/constants/resources.ts` already keys the legacy table
- * on); every other column is optional because the legacy Search table projects
- * a wide, mostly-sparse field list. `pmid` arrives as a list on rows that cite
- * more than one publication, so it is accepted as either shape.
+ * AMR phenotype rows. `id` is the genome_amr core's own document identifier —
+ * the same field `src/constants/resources.ts` already keys the legacy table on,
+ * and the only column the list needs to render a row at all (it is the React
+ * key and the selection id).
+ *
+ * Nothing else is declared, deliberately. `parseRows`
+ * (`./repository.ts`) turns any row that disagrees with this schema into a 502
+ * that blanks the whole page, and there is no genome_amr row fixture anywhere
+ * in this repo to check a declaration against — so a declared type here can
+ * only add a failure mode. `looseObject` passes every other AMR column through
+ * untouched, which is what the columns the UI reads already relied on.
+ * This matches the other legacy-list resource (`genomeSequenceRecordSchema`)
+ * and `ppiRecordSchema`; the heavily-declared schemas below are the ones with
+ * real fixtures in `src/lib/e2e-fixtures/records.ts`.
  */
 export const genomeAmrRecordSchema = z.looseObject({
   id: identifier,
-  genome_id: z.string().optional(),
-  genome_name: z.string().optional(),
-  antibiotic: z.string().optional(),
-  resistant_phenotype: z.string().optional(),
-  measurement_value: stringOrNumber.optional(),
-  evidence: z.string().optional(),
-  pmid: scalarList.optional(),
   ...optionalTaxonomy,
 });
 

@@ -87,15 +87,32 @@ describe("data API contracts", () => {
     expect(resourceRegistry.genome_amr.fields.pmid.cardinality).toBe("multiple");
     expect(resourceRegistry.genome_amr.fields.pmid.sortable).toBe(false);
     expect(resourceRegistry.genome_amr.fields.antibiotic.sortable).toBe(true);
+    // The schema declares only `id` (plus the shared optional taxonomy keys),
+    // so a row keeps every other AMR column verbatim — including the shapes
+    // that have no in-repo fixture to check a declaration against: a
+    // multi-publication `pmid` list and a non-numeric measurement.
     expect(
       genomeAmrRecordSchema.parse({
         id: "amr-row-1",
         genome_id: "1.1",
         antibiotic: "ampicillin",
         resistant_phenotype: "Resistant",
+        measurement_value: ">=32",
+        evidence: ["Laboratory Method"],
         pmid: ["12345", "67890"],
       }),
-    ).toMatchObject({ id: "amr-row-1" });
+    ).toEqual({
+      id: "amr-row-1",
+      genome_id: "1.1",
+      antibiotic: "ampicillin",
+      resistant_phenotype: "Resistant",
+      measurement_value: ">=32",
+      evidence: ["Laboratory Method"],
+      pmid: ["12345", "67890"],
+    });
+    // Only `id` is required, so a missing one is what fails — not a column
+    // whose type this repo cannot verify.
+    expect(() => genomeAmrRecordSchema.parse({ antibiotic: "ampicillin" })).toThrow();
     expect(() =>
       validateDataApiRequest("genome_amr", {
         operation: "collection",

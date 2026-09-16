@@ -69,6 +69,24 @@ jobs:
           HOME: /root
           WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
+      # coverage.meta.spec.ts is the single enforcement point for "routes.ts is the
+      # one coverage list", and it carries no project filter of its own — so before
+      # this step it reached CI only through a11y:tripwire, i.e. only if the Firefox
+      # half of the flakiest job in the matrix ran. It belongs on a chromium job.
+      #
+      # Attached to this job rather than given a job of its own because it checks the
+      # same registry the sweep above consumes, and a new job would repeat the whole
+      # install+build for a filesystem diff that takes seconds. It runs as its own
+      # step with the existing sweep's filter untouched, and `!cancelled()` so a sweep
+      # failure still cannot mask registry drift (or vice versa).
+      - name: Check route registry coverage accounting (chromium)
+        if: ${{ !cancelled() }}
+        run: pnpm a11y:meta
+        env:
+          CI: "true"
+          HOME: /root
+          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
+
       - name: Upload a11y report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

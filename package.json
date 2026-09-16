@@ -29,6 +29,7 @@
     "a11y:keyboard": "playwright test --config playwright.a11y.config.ts --project=a11y-chromium tests/a11y/keyboard.spec.ts",
     "a11y:primitives": "vitest run --config vitest.a11y.config.mts",
     "a11y:motion": "playwright test --config playwright.a11y.config.ts --project=a11y-chromium tests/a11y/reduced-motion.spec.ts",
+    "a11y:meta": "playwright test --config playwright.a11y.config.ts --project=a11y-chromium tests/a11y/coverage.meta.spec.ts",
     "a11y:tripwire": "playwright test --config playwright.a11y.config.ts --project=a11y-webkit-tripwire --project=a11y-firefox-tripwire",
     "a11y:mobile": "playwright test --config playwright.a11y.config.ts --project=a11y-mobile-chromium tests/a11y/routes-sweep.spec.ts",
     "a11y:report": "playwright show-report --config playwright.a11y.config.ts",

@@ -13,7 +13,13 @@ pnpm a11y:keyboard       # keyboard / focus / no-trap tests
 pnpm a11y:primitives     # Vitest browser-mode primitive isolation
 pnpm a11y:tripwire       # webkit + firefox cross-engine smoke
 pnpm a11y:motion         # prefers-reduced-motion assertion
+pnpm a11y:meta           # route-registry coverage accounting only
 ```
+
+Every script above except `pnpm a11y` itself has a CI job in
+`.github/workflows/pnpm-a11y.yml`; `a11y:meta` runs as a second step of the
+routes-sweep job, so the registry-drift guardrail does not depend on the
+Firefox tripwire.
 
 ## Architecture
 
@@ -76,8 +82,14 @@ exported from that same table.
   skeleton detach. `awaitSettled()` already awaits `loadState ?? "networkidle"`
   before any hook runs, so never put `waitForLoadState("networkidle")` in a hook.
   Use `loadState: "domcontentloaded"` on pages whose rolling RSC prefetch means
-  networkidle is never reached, and `skeletonSelector` for `DataTable` routes —
-  skeleton detach, not networkidle, is the correct signal there.
+  networkidle is never reached. `skeletonSelector` is available for the case where
+  readiness is a skeleton detaching rather than the network going quiet, but no
+  `routes.ts` entry sets it today — the sweep's `DataTable` routes reach networkidle
+  once their first page of rows lands, so they settle without it. The specs that
+  interact with a table after load pass it to `awaitSettled()` directly instead (see
+  `tests/a11y/deep-tier.spec.ts`, where skeleton `<tr>` placeholders satisfy
+  `waitForRows()` and caused a real flake). Reach for it on a route entry only if a
+  sweep route starts scanning a loading state.
 - **`prepare`** is reserved for *observable, page-specific* readiness: an element
   that must exist before axe scans, or a redirect that must have landed.
 - **`variants`** produce one scan each, keyed `${name}/${nameSuffix}`, and the

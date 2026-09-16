@@ -170,10 +170,13 @@ function canonicalRedirectHref(
 
 /**
  * Legacy types that still render `TypeSearch`: a descriptor with no canonical
- * route, but with a tab group the legacy list knows how to render. Derived
- * rather than listed, so marking a descriptor canonical is by itself enough to
- * redirect it, and a descriptor with neither a canonical route nor tabs can
- * never reach a list that would silently render some other type's tabs.
+ * route that owns a `tabs` group. Derived rather than listed, so marking a
+ * descriptor canonical is by itself enough to redirect it.
+ *
+ * `tabs` is read here purely as the marker separating a supported legacy list
+ * from an unsupported type — this is its only non-test reader, and the legacy
+ * list no longer renders a tab strip of its own. A legacy descriptor without
+ * `tabs` resolves to the explicit "no search view for this type" panel.
  */
 function rendersTypeSearch(descriptor: SearchType): boolean {
   return descriptor.route.status === "legacy" && descriptor.tabs !== undefined;

@@ -1,10 +1,16 @@
-import { useEffect, useEffectEvent, useState, useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { buildRql, combineRql } from "./filter-utils";
 import { KeywordSearch } from "./keyword-search";
 import { SelectedFilters } from "./selected-filters";
 import { FacetPanel } from "./facet-panel";
 import { SelectedFilter } from "@/types/filters";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { DataResource } from "@/lib/data-api";
 
 interface ColumnField {
@@ -47,11 +53,16 @@ export function FilterBar({
   };
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
   const [showFacets, setShowFacets] = useState(false);
-  const [localFacetFields, setLocalFacetFields] = useState<ColumnField[]>(
-    () => facetFields,
+  // Which facets the chooser currently shows. Seeded from each field's
+  // `facet_hidden` flag, so the initial set matches the legacy default.
+  const [visibleFacetIds, setVisibleFacetIds] = useState(
+    () =>
+      new Set(
+        facetFields
+          .filter((field) => field.facet && !field.facet_hidden)
+          .map((field) => field.id),
+      ),
   );
-  const [facetMenuOpen, setFacetMenuOpen] = useState(false);
-  const facetMenuRef = useRef<HTMLDivElement | null>(null);
   const locallyRequestedKeywords = useRef<string | null>(null);
   const syncExternalKeywords = useEffectEvent((value: string) => {
     if (locallyRequestedKeywords.current === value) {
@@ -84,37 +95,10 @@ export function FilterBar({
     updateFilters([], []);
   };
 
-  const activeFacetFields: ColumnField[] = [];
-  const configurableFacetFields: ColumnField[] = [];
-  for (const field of localFacetFields) {
-    if (!field.facet) continue;
-    configurableFacetFields.push(field);
-    if (!field.facet_hidden) activeFacetFields.push(field);
-  }
-
-  const toggleFacetVisibility = (id: string) => {
-    setLocalFacetFields((prev) =>
-      prev.map((f) =>
-        f.id === id ? { ...f, facet_hidden: !f.facet_hidden } : f,
-      ),
-    );
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        facetMenuRef.current &&
-        !facetMenuRef.current.contains(e.target as Node)
-      ) {
-        setFacetMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+  const configurableFacetFields = facetFields.filter((field) => field.facet);
+  const activeFacetFields = configurableFacetFields.filter((field) =>
+    visibleFacetIds.has(field.id),
+  );
 
   const filterRql = buildRql({
     selected,
@@ -151,62 +135,63 @@ export function FilterBar({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* FACET DROPDOWN */}
-          {showFacets && (
-            <div className="relative" ref={facetMenuRef}>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFacetMenuOpen((prev) => !prev);
-                }}
-                className="rounded border border-gray-400 px-2 py-1 text-xs hover:bg-gray-700"
-              >
-                Facets ⚙
-              </Button>
-
-              {facetMenuOpen && (
-                <div className="absolute right-0 z-9999 mt-1 max-h-64 w-56 overflow-y-auto rounded border border-gray-600 bg-gray-800 shadow-lg">
-                  {configurableFacetFields.map((f) => (
-                    <label
-                      key={f.id}
-                      className="flex cursor-pointer items-center gap-2 px-2 py-1 text-xs hover:bg-gray-700"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={!f.facet_hidden}
-                        onChange={() => {
-                          toggleFacetVisibility(f.id);
-                        }}
-                      />
-                      {f.label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* FACET CHOOSER — the shared menu primitive supplies the menu
+              semantics, keyboard handling, Escape, focus return and
+              outside-click dismissal that the hand-rolled popup it replaces
+              had none of. */}
+          {showFacets && configurableFacetFields.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded border px-2 py-1 text-xs hover:bg-muted"
+                  >
+                    Facets
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className="max-h-64 w-56">
+                {configurableFacetFields.map((field) => (
+                  <DropdownMenuCheckboxItem
+                    key={field.id}
+                    checked={visibleFacetIds.has(field.id)}
+                    onCheckedChange={(checked) => {
+                      setVisibleFacetIds((current) => {
+                        const next = new Set(current);
+                        if (checked) next.add(field.id);
+                        else next.delete(field.id);
+                        return next;
+                      });
+                    }}
+                  >
+                    {field.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* CLEAR ALL */}
           <Button
+            type="button"
             variant="outline"
             onClick={clearAll}
             disabled={selected.length === 0 && keywords.length === 0}
-            className={`rounded border px-2 py-1 text-xs whitespace-nowrap ${
-              selected.length === 0 && keywords.length === 0
-                ? "cursor-not-allowed border-gray-600 text-gray-500"
-                : "border-red-400 text-red-300 hover:bg-red-900"
-            }`}
+            className="rounded border px-2 py-1 text-xs whitespace-nowrap"
           >
             Clear All Filters
           </Button>
 
           {/* SHOW/HIDE FILTERS */}
           <Button
+            type="button"
             variant="outline"
             onClick={() => {
               setShowFacets((prev) => !prev);
             }}
-            className="rounded border border-gray-400 px-2 py-1 text-xs whitespace-nowrap hover:bg-gray-700"
+            className="rounded border px-2 py-1 text-xs whitespace-nowrap hover:bg-muted"
           >
             {showFacets ? "Hide Filters" : "Show Filters"}
           </Button>

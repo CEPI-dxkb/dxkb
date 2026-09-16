@@ -68,8 +68,7 @@ function validateFields(
         `Field ${field} cannot be used for ${purpose} on ${resource}.`,
       );
     }
-    const definition = metadata[field];
-    if (purpose === "select" ? !definition.selectable : !definition.facet) {
+    if (purpose === "facet" && !metadata[field].facet) {
       throw new DataApiValidationError(
         `Field ${field} cannot be used for ${purpose} on ${resource}.`,
       );

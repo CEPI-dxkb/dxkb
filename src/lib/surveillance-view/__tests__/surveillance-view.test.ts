@@ -9,7 +9,6 @@ import {
   formatSourceDate,
   isSurveillanceSampleId,
   parseSurveillanceCollectionState,
-  parseSurveillanceTab,
   surveillanceCollectionProfile,
   surveillanceStructuralRql,
   surveillanceViewRecordSchema,
@@ -107,11 +106,6 @@ describe("Surveillance view contracts", () => {
     expect(surveillanceCollectionProfile.detailFields).toContain(
       "maintenance_medication",
     );
-  });
-
-  it("canonicalizes the overview-only tab", () => {
-    expect(parseSurveillanceTab(undefined)).toBe("overview");
-    expect(parseSurveillanceTab("missing")).toBe("overview");
   });
 });
 

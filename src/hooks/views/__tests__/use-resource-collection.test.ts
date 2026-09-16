@@ -4,10 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { DataRepository } from "@/lib/data-api";
 import type { CollectionState } from "@/lib/views/collection-state";
 import { resourceCollectionPageSize } from "../collection-state";
-import {
-  selectedIdsFromSelection,
-  useResourceCollection,
-} from "../use-resource-collection";
+import { useResourceCollection } from "../use-resource-collection";
 
 const initialState: CollectionState = {
   filters: {},
@@ -40,21 +37,6 @@ function repository() {
     }),
   } as unknown as DataRepository;
 }
-
-describe("selectedIdsFromSelection", () => {
-  it("preserves selected IDs across pages", () => {
-    expect(selectedIdsFromSelection({ a: true, b: true, stale: true })).toEqual(
-      ["a", "b", "stale"],
-    );
-  });
-
-  it("keeps string identities distinct without numeric coercion", () => {
-    expect(selectedIdsFromSelection({ "0012": true, "12": true })).toEqual([
-      "12",
-      "0012",
-    ]);
-  });
-});
 
 describe("useResourceCollection", () => {
   it("omits repository and table sorting for the unsorted state", async () => {

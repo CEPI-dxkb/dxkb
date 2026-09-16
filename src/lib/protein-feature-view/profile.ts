@@ -4,9 +4,9 @@ import { proteinFeatureMetadata } from "./fields";
 import { proteinFeatureStructuralRql } from "./query";
 import type { ProteinFeatureViewRecord } from "./schema";
 
-export const proteinFeatureColumns = proteinFeatureMetadata.columns;
-export const proteinFeatureDetailFields = proteinFeatureMetadata.detailFields;
-export const proteinFeatureFacets = proteinFeatureMetadata.facets;
+const proteinFeatureColumns = proteinFeatureMetadata.columns;
+const proteinFeatureDetailFields = proteinFeatureMetadata.detailFields;
+const proteinFeatureFacets = proteinFeatureMetadata.facets;
 
 export const proteinFeatureCollectionProfile: ResourceCollectionProfile<ProteinFeatureViewRecord> =
   {

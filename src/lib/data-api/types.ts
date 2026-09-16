@@ -28,7 +28,6 @@ export type RqlFieldOperator = "eq" | "ne" | "lt" | "le" | "gt" | "ge" | "in";
 export interface ResourceField {
   type: FieldType;
   cardinality: "scalar" | "multiple";
-  selectable: boolean;
   sortable: boolean;
   facet: boolean;
   quote: "always" | "auto" | "never";

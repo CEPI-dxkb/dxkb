@@ -5,8 +5,8 @@ import { taxonomyStructuralRql } from "./query";
 import type { TaxonomyViewRecord } from "./schema";
 
 export const taxonomyColumns = taxonomyMetadata.columns;
-export const taxonomyDetailFields = taxonomyMetadata.detailFields;
-export const taxonomyFacets = taxonomyMetadata.facets;
+const taxonomyDetailFields = taxonomyMetadata.detailFields;
+const taxonomyFacets = taxonomyMetadata.facets;
 
 export const taxonomyCollectionProfile: ResourceCollectionProfile<TaxonomyViewRecord> = {
   resource: "taxonomy",

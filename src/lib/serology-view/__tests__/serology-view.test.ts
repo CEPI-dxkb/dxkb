@@ -8,7 +8,6 @@ import {
   formatSerologyDate,
   isSerologySampleId,
   parseSerologyCollectionState,
-  parseSerologyTab,
   serologyCollectionProfile,
   serologyStructuralRql,
   serologyViewRecordSchema,
@@ -91,7 +90,6 @@ describe("Serology view contracts", () => {
         test_type: "ELISA/IgG test",
       }),
     ).toBe("/serology/000123?test_type=ELISA%2FIgG%20test");
-    expect(parseSerologyTab("missing")).toBe("overview");
   });
 });
 

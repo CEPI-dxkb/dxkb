@@ -5,8 +5,8 @@ import { featureStructuralRql } from "./query";
 import type { FeatureViewRecord } from "./schema";
 
 export const featureColumns = featureMetadata.columns;
-export const featureDetailFields = featureMetadata.detailFields;
-export const featureFacets = featureMetadata.facets;
+const featureDetailFields = featureMetadata.detailFields;
+const featureFacets = featureMetadata.facets;
 
 export const featureCollectionProfile: ResourceCollectionProfile<FeatureViewRecord> = {
   resource: "genome_feature",

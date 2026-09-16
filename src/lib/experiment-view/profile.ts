@@ -4,12 +4,12 @@ import { biosetMetadata, experimentMetadata } from "./fields";
 import { biosetStructuralRql, experimentStructuralRql } from "./query";
 import type { ExperimentViewRecord } from "./schema";
 
-export const experimentColumns = experimentMetadata.columns;
-export const experimentDetailFields = experimentMetadata.detailFields;
-export const experimentFacets = experimentMetadata.facets;
-export const biosetColumns = biosetMetadata.columns;
-export const biosetDetailFields = biosetMetadata.detailFields;
-export const biosetFacets = biosetMetadata.facets;
+const experimentColumns = experimentMetadata.columns;
+const experimentDetailFields = experimentMetadata.detailFields;
+const experimentFacets = experimentMetadata.facets;
+const biosetColumns = biosetMetadata.columns;
+const biosetDetailFields = biosetMetadata.detailFields;
+const biosetFacets = biosetMetadata.facets;
 
 export const experimentCollectionProfile: ResourceCollectionProfile<ExperimentViewRecord> =
   {

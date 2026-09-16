@@ -4,9 +4,9 @@ import { epitopeAssayMetadata, epitopeMetadata } from "./fields";
 import { epitopeStructuralRql } from "./query";
 import type { EpitopeViewRecord } from "./schema";
 
-export const epitopeColumns = epitopeMetadata.columns;
-export const epitopeDetailFields = epitopeMetadata.detailFields;
-export const epitopeFacets = epitopeMetadata.facets;
+const epitopeColumns = epitopeMetadata.columns;
+const epitopeDetailFields = epitopeMetadata.detailFields;
+const epitopeFacets = epitopeMetadata.facets;
 
 export const epitopeAssayColumns = epitopeAssayMetadata.columns;
 

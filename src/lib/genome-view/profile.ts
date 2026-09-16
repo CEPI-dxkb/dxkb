@@ -3,9 +3,9 @@ import { genomeMetadata } from "./fields";
 import { genomeStructuralRql } from "./query";
 import type { GenomeViewRecord } from "./schema";
 
-export const genomeColumns = genomeMetadata.columns;
-export const genomeDetailFields = genomeMetadata.detailFields;
-export const genomeFacets = genomeMetadata.facets;
+const genomeColumns = genomeMetadata.columns;
+const genomeDetailFields = genomeMetadata.detailFields;
+const genomeFacets = genomeMetadata.facets;
 
 export const genomeCollectionProfile: ResourceCollectionProfile<GenomeViewRecord> =
   {

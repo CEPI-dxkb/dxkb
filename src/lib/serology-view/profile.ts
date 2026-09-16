@@ -4,9 +4,9 @@ import { serologyMetadata } from "./fields";
 import { serologyStructuralRql } from "./query";
 import type { SerologyViewRecord } from "./schema";
 
-export const serologyColumns = serologyMetadata.columns;
-export const serologyDetailFields = serologyMetadata.detailFields;
-export const serologyFacets = serologyMetadata.facets;
+const serologyColumns = serologyMetadata.columns;
+const serologyDetailFields = serologyMetadata.detailFields;
+const serologyFacets = serologyMetadata.facets;
 
 export const serologyCollectionProfile: ResourceCollectionProfile<SerologyViewRecord> =
   {

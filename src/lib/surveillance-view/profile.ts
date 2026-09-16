@@ -4,9 +4,9 @@ import { surveillanceMetadata } from "./fields";
 import { surveillanceStructuralRql } from "./query";
 import type { SurveillanceViewRecord } from "./schema";
 
-export const surveillanceColumns = surveillanceMetadata.columns;
-export const surveillanceDetailFields = surveillanceMetadata.detailFields;
-export const surveillanceFacets = surveillanceMetadata.facets;
+const surveillanceColumns = surveillanceMetadata.columns;
+const surveillanceDetailFields = surveillanceMetadata.detailFields;
+const surveillanceFacets = surveillanceMetadata.facets;
 
 export const surveillanceCollectionProfile: ResourceCollectionProfile<SurveillanceViewRecord> =
   {

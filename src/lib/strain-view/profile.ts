@@ -3,9 +3,9 @@ import { strainMetadata } from "./fields";
 import { strainStructuralRql } from "./query";
 import type { StrainViewRecord } from "./schema";
 
-export const strainColumns = strainMetadata.columns;
-export const strainDetailFields = strainMetadata.detailFields;
-export const strainFacets = strainMetadata.facets;
+const strainColumns = strainMetadata.columns;
+const strainDetailFields = strainMetadata.detailFields;
+const strainFacets = strainMetadata.facets;
 
 export const strainCollectionProfile: ResourceCollectionProfile<StrainViewRecord> =
   {

@@ -102,7 +102,7 @@ describe("DataRepository", () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it("fails after bounded rate-limit retries without partial rows", async () => {
+  it("fails after bounded rate-limit retries with the upstream error intact", async () => {
     vi.useFakeTimers();
     global.fetch = vi.fn<typeof fetch>().mockImplementation(() =>
       Promise.resolve(
@@ -117,12 +117,10 @@ describe("DataRepository", () => {
       fields: ["genome_id"],
     });
     const expectation = expect(resultPromise).rejects.toMatchObject({
-      name: "DataExportError",
+      name: "DataRepositoryError",
       message: "Too many requests",
       status: 429,
       code: "rate_limited",
-      rows: [],
-      nextOffset: 0,
     });
     await vi.runAllTimersAsync();
 

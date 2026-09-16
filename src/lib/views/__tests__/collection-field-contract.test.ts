@@ -162,12 +162,10 @@ describe.each(derived)(
     },
   );
 
-  it("projects only selectable fields", () => {
+  it("projects only fields the registry actually defines", () => {
     expect(metadata.detailFields.length).toBeGreaterThan(0);
     for (const name of metadata.detailFields) {
-      expect(registryFields[name]).toEqual(
-        expect.objectContaining({ selectable: true }),
-      );
+      expect(Object.hasOwn(registryFields, name)).toBe(true);
     }
     expect(() =>
       validateDataApiRequest(resource, {

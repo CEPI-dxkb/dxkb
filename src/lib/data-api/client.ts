@@ -22,19 +22,6 @@ export class DataRepositoryError extends Error {
   }
 }
 
-export class DataExportError<
-  T extends Record<string, unknown> = Record<string, unknown>,
-> extends DataRepositoryError {
-  constructor(
-    error: DataRepositoryError,
-    readonly rows: T[],
-    readonly nextOffset: number,
-  ) {
-    super(error.message, error.status, error.code, error.retryAfterMs);
-    this.name = "DataExportError";
-  }
-}
-
 const maxExportRetries = 3;
 const defaultRetryDelayMs = 1_000;
 
@@ -174,7 +161,7 @@ export class DataRepository {
           throw error;
         }
         if (retries >= maxExportRetries) {
-          throw new DataExportError(error, [], 0);
+          throw error;
         }
         const delay =
           error.retryAfterMs ?? defaultRetryDelayMs * Math.pow(2, retries);

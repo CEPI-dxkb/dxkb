@@ -229,7 +229,6 @@ function buildFields(resource: DataResource): Record<string, ResourceField> {
           cardinality: multipleFields[resource]?.has(name)
             ? "multiple"
             : "scalar",
-          selectable: true,
           sortable:
             !multipleFields[resource]?.has(name) &&
             metadata?.sortable !== false,

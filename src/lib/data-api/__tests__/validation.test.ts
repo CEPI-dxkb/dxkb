@@ -26,7 +26,7 @@ describe("data API contracts", () => {
     );
     for (const resource of dataResources) {
       const definition = resourceRegistry[resource];
-      expect(definition.fields[definition.idField].selectable).toBe(true);
+      expect(Object.hasOwn(definition.fields, definition.idField)).toBe(true);
       expect(() => definition.schema.parse({})).toThrow();
     }
   });
@@ -208,6 +208,12 @@ describe("data API contracts", () => {
         sort: { field: "password", direction: "asc" },
       }),
     ).toThrow(/cannot sort/);
+    expect(() =>
+      validateDataApiRequest("genome", {
+        operation: "collection",
+        facets: ["genome_id"],
+      }),
+    ).toThrow(/cannot be used/);
   });
 
   it("enforces paging and bulk operation bounds", () => {

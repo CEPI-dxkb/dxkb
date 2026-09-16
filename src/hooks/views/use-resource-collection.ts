@@ -32,12 +32,6 @@ export interface UseResourceCollectionOptions {
 
 const emptyFacets: ResourceFacets = {};
 
-export function selectedIdsFromSelection(
-  selection: RowSelectionState,
-): string[] {
-  return Object.keys(selection);
-}
-
 function combineRql(...parts: (string | undefined)[]) {
   const predicates = parts.filter((part): part is string => part !== undefined);
   if (predicates.length === 0) return undefined;
@@ -124,7 +118,7 @@ export function useResourceCollection<Row extends ResourceRow>({
   ]);
   const rows = query.data?.rows;
   const visibleRows = rows ?? [];
-  const selectedIds = selectedIdsFromSelection(selection);
+  const selectedIds = Object.keys(selection);
   const activeId =
     !isAllPagesSelected && selectedIds.length === 1 ? selectedIds[0] : null;
 

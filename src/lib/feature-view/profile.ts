@@ -4,7 +4,7 @@ import { featureMetadata } from "./fields";
 import { featureStructuralRql } from "./query";
 import type { FeatureViewRecord } from "./schema";
 
-export const featureColumns = featureMetadata.columns;
+const featureColumns = featureMetadata.columns;
 const featureDetailFields = featureMetadata.detailFields;
 const featureFacets = featureMetadata.facets;
 

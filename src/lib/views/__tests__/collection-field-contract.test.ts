@@ -483,11 +483,12 @@ describe("child-resource columns", () => {
 
   it("has no genome_feature entry: the feature tabs reuse the Feature profile", () => {
     // ResourceChildCollection substitutes `feature-view/profile.ts` for its
-    // genome_feature tabs, so a child column set here would be dead and would
-    // collide by name with that profile's `featureColumns`. The Feature column
-    // contract is covered by the genome_feature case in the derived-metadata
-    // suite above; the GO terms a child set used to guard never reach a Feature
-    // column or sort at all, since `go` is both hidden (and Feature omits
+    // genome_feature tabs, so a child column set here would be dead code, and it would
+    // disagree on policy with that profile's columns anyway (Feature passes
+    // `hiddenColumns: "omit"`; every derivation in this module uses the default collapse
+    // policy). The Feature column contract is covered by the genome_feature case in the
+    // derived-metadata suite above; the GO terms a child set used to guard never reach a
+    // Feature column or sort at all, since `go` is both hidden (and Feature omits
     // hidden columns) and metadata-unsortable.
     expect(childCases.map(([, resource]) => resource)).not.toContain(
       "genome_feature",

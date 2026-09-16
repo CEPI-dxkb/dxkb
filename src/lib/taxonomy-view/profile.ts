@@ -4,7 +4,7 @@ import { taxonomyMetadata } from "./fields";
 import { taxonomyStructuralRql } from "./query";
 import type { TaxonomyViewRecord } from "./schema";
 
-export const taxonomyColumns = taxonomyMetadata.columns;
+const taxonomyColumns = taxonomyMetadata.columns;
 const taxonomyDetailFields = taxonomyMetadata.detailFields;
 const taxonomyFacets = taxonomyMetadata.facets;
 

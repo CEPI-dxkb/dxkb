@@ -14,9 +14,11 @@ import { deriveFieldMetadata } from "./field-metadata";
  * Only the three child resources with no `src/lib/*-view/` directory of their own live
  * here. `genome_feature` deliberately does not: `ResourceChildCollection` substitutes the
  * Feature collection profile (`src/lib/feature-view/profile.ts`) for its feature tabs, so
- * a set declared here would be dead *and* would collide by name with that profile's
- * `featureColumns` under a different `hiddenColumns` policy. Any set added here must keep
- * a name no `*-view/profile.ts` already exports.
+ * a set declared here would be dead code. It would also disagree on policy with that
+ * profile's columns even if declared: Feature passes `hiddenColumns: "omit"`
+ * (`feature-view/fields.ts`), while every `deriveFieldMetadata` call in this module uses
+ * the default collapse policy, so a `genome_feature` entry here could not simply mirror
+ * Feature's canonical columns.
  */
 export const genomeSequenceColumns = deriveFieldMetadata(genomeSequenceFields, {
   resource: "genome_sequence",

@@ -1,5 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleIdentityGet, handleIdentityPost } from "./identity";
+import {
+  ambiguousSerologyRecords,
+  ambiguousSurveillanceRecords,
+  epitopeRecord,
+  experimentRecord,
+  genomeRecord,
+  proteinStructureRecords,
+  serologyRecord,
+  surveillanceRecord,
+  taxonomyRecord,
+} from "@/lib/e2e-fixtures/records";
+import { buildLoopbackSolrEnvelope } from "@/lib/e2e-fixtures/envelopes";
 
 /**
  * Loopback mock for Playwright e2e only.
@@ -46,187 +58,6 @@ const e2eDeterministicCounts: Record<string, number> = {
   ppi: 4358,
 };
 
-const taxonomyRecordFixture = {
-  taxon_id: "11520",
-  taxon_name: "Influenza A virus",
-  taxon_rank: "species",
-  other_names: ["Influenza A"],
-  genetic_code: 1,
-  lineage_ids: ["10239", "11308", "11520"],
-  lineage_names: ["Viruses", "Orthornavirae", "Influenza A virus"],
-  parent_id: "11320",
-  division: "Viruses",
-  description: "Influenza A virus taxonomy record",
-  genomes: 42,
-};
-
-const proteinStructureRecordFixtures = [
-  {
-    pdb_id: "6VXX",
-    title: "SARS-CoV-2 spike glycoprotein",
-    organism_name: "Severe acute respiratory syndrome coronavirus 2",
-    taxon_id: 2697049,
-    taxon_lineage_ids: [10239, 2697049],
-    taxon_lineage_names: ["Viruses", "Betacoronavirus pandemicum"],
-    genome_id: "2697049.42",
-    patric_id: "fig|2697049.42.peg.1",
-    uniprotkb_accession: ["P0DTC2"],
-    gene: "S",
-    product: "surface glycoprotein",
-    sequence_md5: "e2e6vxxsequence",
-    method: "Electron microscopy",
-    resolution: 2.8,
-    pmid: 32155444,
-    institution: ["University of Texas at Austin"],
-    authors: ["Walls AC"],
-    release_date: "2020-03-25",
-    file_path: "/PDB/6VXX.pdb",
-    date_inserted: "2024-01-01",
-  },
-  {
-    pdb_id: "7BV2",
-    title: "RNA-dependent RNA polymerase in complex with remdesivir",
-    organism_name: "Severe acute respiratory syndrome coronavirus 2",
-    taxon_id: 2697049,
-    method: "Electron microscopy",
-    resolution: 2.5,
-    release_date: "2020-05-20",
-    file_path: "/PDB/7BV2.pdb",
-    date_inserted: "2024-01-02",
-  },
-];
-
-const epitopeRecordFixture = {
-  epitope_id: "15780",
-  epitope_type: "Discontinuous peptide",
-  epitope_sequence: "A1, C4, D8",
-  organism: "Influenza A virus",
-  taxon_id: 11520,
-  taxon_lineage_ids: [10239, 11520],
-  protein_name: "Hemagglutinin",
-  protein_accession: "P03452",
-  host_name: "Human",
-  total_assays: 2,
-  assay_results: ["Positive", "Negative"],
-  bcell_assays: 2,
-  tcell_assays: 0,
-  mhc_assays: 0,
-  comments: "Discontinuous residues",
-  date_inserted: "2024-01-01",
-};
-
-const experimentRecordFixture = {
-  exp_id: "2000000",
-  study_name: "E2E host response study",
-  study_title: "Host response to viral infection",
-  study_description: "A deterministic experiment fixture.",
-  study_pi: "Ada Scientist",
-  study_institution: "Research Institute",
-  exp_name: "E2E-RNA-1",
-  exp_title: "RNA response experiment",
-  exp_description: "Differential expression after infection.",
-  public_repository: "GEO",
-  public_identifier: "GSE2000000",
-  pmid: "12345678",
-  exp_type: "Transcript Quantification",
-  measurement_technique: "RNA-Seq",
-  organism: ["Middle East respiratory syndrome-related coronavirus"],
-  taxon_id: [1335626],
-  taxon_lineage_ids: [10239, 1335626],
-  strain: ["E2E strain"],
-  treatment_type: ["Infectious Agent"],
-  treatment_name: ["Virus infection"],
-  samples: 6,
-  biosets: 1,
-  genome_id: ["1282460.2049"],
-  date_inserted: "2024-01-01",
-};
-
-const surveillanceRecordFixture = {
-  id: "surveillance-backend-901",
-  sample_identifier: "sample/1",
-  contributing_institution: "Sentinel Health Laboratory",
-  sample_material: "Nasal swab",
-  collection_date: "2024-07",
-  collection_year: 2024,
-  collection_country: "Australia",
-  collection_state_province: "New South Wales",
-  collection_latitude: "-33.45",
-  collection_longitude: "151.2",
-  pathogen_test_type: ["RAT/antigen"],
-  pathogen_test_result: ["Positive"],
-  pathogen_test_interpretation: ["Detected"],
-  pathogen_type: "SARS-CoV-2",
-  host_identifier: "host-42",
-  host_common_name: "Human",
-};
-
-const ambiguousSurveillanceFixtures = [
-  {
-    id: "surveillance-backend-902",
-    sample_identifier: "ambiguous-sample",
-    pathogen_test_type: ["PCR"],
-  },
-  {
-    id: "surveillance-backend-903",
-    sample_identifier: "ambiguous-sample",
-    pathogen_test_type: ["RAT/antigen"],
-  },
-];
-
-const serologyRecordFixture = {
-  id: "serology-backend-901",
-  sample_identifier: "000123",
-  contributing_institution: "Sentinel Serology Laboratory",
-  host_identifier: "host-42",
-  host_type: "Human",
-  host_species: "Homo sapiens",
-  host_common_name: "Human",
-  collection_date: "2024-07",
-  collection_year: 2024,
-  collection_country: "Australia",
-  collection_state: "New South Wales",
-  test_type: "ELISA/IgG test",
-  test_result: "Detected",
-  test_interpretation: "Evidence of prior exposure; confirm clinically",
-  serotype: "H1N1",
-};
-
-const ambiguousSerologyFixtures = [
-  {
-    id: "serology-backend-902",
-    sample_identifier: "ambiguous-serology",
-    test_type: "Western blot",
-  },
-  {
-    id: "serology-backend-903",
-    sample_identifier: "ambiguous-serology",
-    test_type: "ELISA/IgG test",
-  },
-];
-
-const genomeRecordFixture = {
-  genome_id: "1282460.2049",
-  genome_name: "Middle East respiratory syndrome-related coronavirus isolate",
-  strain: "MERS-CoV",
-  superkingdom: "Viruses",
-  genome_status: "Complete",
-  genome_quality: "Good",
-  genome_length: 30_119,
-  contigs: 1,
-  cds: 11,
-  collection_year: 2012,
-  isolation_country: "Saudi Arabia",
-  host_common_name: "Human",
-  genbank_accessions: ["JX869059"],
-  taxon_id: 1335626,
-  taxon_lineage_ids: [10239, 1335626],
-  taxon_lineage_names: [
-    "Viruses",
-    "Middle East respiratory syndrome-related coronavirus",
-  ],
-};
-
 function maybeSolrCount(
   path: string,
   request: NextRequest,
@@ -234,11 +65,11 @@ function maybeSolrCount(
   | {
       response: {
         numFound: number;
-        docs: Record<string, unknown>[];
+        docs: unknown[];
       };
       facet_counts?: { facet_fields: Record<string, unknown[]> };
     }
-  | Record<string, unknown>[]
+  | unknown[]
   | null {
   const segments = path.split("/").filter(Boolean);
   if (segments[0] !== "data" || segments.length < 2) return null;
@@ -248,111 +79,108 @@ function maybeSolrCount(
     const taxonId = query.match(/eq\(taxon_id,([^)&]+)\)/)?.[1];
     const matchesKeyword = query.includes("keyword(influenza)");
     const docs =
-      taxonId === "*" || taxonId === taxonomyRecordFixture.taxon_id || matchesKeyword
-        ? [taxonomyRecordFixture]
+      taxonId === "*" || taxonId === taxonomyRecord.taxon_id || matchesKeyword
+        ? [taxonomyRecord]
         : [];
     if (request.headers.get("accept") === "application/json") return docs;
-    return {
-      response: { numFound: docs.length, docs },
-      facet_counts: {
+    return buildLoopbackSolrEnvelope(docs, {
+      facetCounts: {
         facet_fields: {
           taxon_rank: ["species", docs.length],
           genetic_code: [1, docs.length],
           division: ["Viruses", docs.length],
         },
       },
-    };
+    });
   }
   if (core === "serology") {
     const isAmbiguous = query.includes(
       "eq(sample_identifier,ambiguous-serology)",
     );
     const hasTestTypeFilter = query.includes("eq(test_type,");
-    const requestedTestType = ambiguousSerologyFixtures
+    const requestedTestType = ambiguousSerologyRecords
       .map((fixture) => fixture.test_type)
       .find((testType) => query.includes(`eq(test_type,${testType})`));
     const docs = isAmbiguous
       ? requestedTestType
-        ? ambiguousSerologyFixtures.filter(
+        ? ambiguousSerologyRecords.filter(
             (fixture) => fixture.test_type === requestedTestType,
           )
         : hasTestTypeFilter
           ? []
-          : ambiguousSerologyFixtures
+          : ambiguousSerologyRecords
       : query.includes("eq(sample_identifier,000123)") ||
           query.includes("keyword(antibody*)")
-        ? [serologyRecordFixture]
+        ? [serologyRecord]
         : [];
     if (request.headers.get("accept") === "application/json") return docs;
-    return {
-      response: { numFound: docs.length, docs },
-      facet_counts: {
+    return buildLoopbackSolrEnvelope(docs, {
+      facetCounts: {
         facet_fields: {
           test_type: isAmbiguous
             ? docs.flatMap((fixture) => [fixture.test_type, 1])
             : ["ELISA/IgG test", 1],
         },
       },
-    };
+    });
   }
   if (core === "experiment") {
     const experimentId = query.match(/eq\(exp_id,([^)&]+)\)/)?.[1];
     const docs =
       experimentId && experimentId !== "*"
-        ? experimentId === experimentRecordFixture.exp_id
-          ? [experimentRecordFixture]
+        ? experimentId === experimentRecord.exp_id
+          ? [experimentRecord]
           : []
-        : [experimentRecordFixture];
+        : [experimentRecord];
     if (request.headers.get("accept") === "application/json") return docs;
-    return { response: { numFound: docs.length, docs } };
+    return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "protein_structure") {
     const accession = query.match(/eq\(pdb_id,([^)&]+)\)/)?.[1];
     const docs =
       accession === "*"
-        ? proteinStructureRecordFixtures
+        ? proteinStructureRecords
         : accession
-          ? proteinStructureRecordFixtures.filter(
+          ? proteinStructureRecords.filter(
               (record) => record.pdb_id === accession,
             )
-          : proteinStructureRecordFixtures;
+          : proteinStructureRecords;
     if (request.headers.get("accept") === "application/json") return docs;
-    return { response: { numFound: docs.length, docs } };
+    return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "surveillance") {
     const isAmbiguous = query.includes(
       "eq(sample_identifier,ambiguous-sample)",
     );
     const hasTestTypeFilter = query.includes("eq(pathogen_test_type,");
-    const requestedTestType = ambiguousSurveillanceFixtures
+    const requestedTestType = ambiguousSurveillanceRecords
       .flatMap((fixture) => fixture.pathogen_test_type)
       .find((testType) =>
         query.includes(`eq(pathogen_test_type,"${testType}")`),
       );
     const docs = isAmbiguous
       ? requestedTestType
-        ? ambiguousSurveillanceFixtures.filter((fixture) =>
+        ? ambiguousSurveillanceRecords.filter((fixture) =>
             fixture.pathogen_test_type.includes(requestedTestType),
           )
         : hasTestTypeFilter
           ? []
-          : ambiguousSurveillanceFixtures
+          : ambiguousSurveillanceRecords
       : query.includes("eq(sample_identifier,sample/1)")
-        ? [surveillanceRecordFixture]
+        ? [surveillanceRecord]
         : query.includes("keyword(sentinel*)")
-          ? [surveillanceRecordFixture]
+          ? [surveillanceRecord]
           : [];
     if (request.headers.get("accept") === "application/json") return docs;
-    return {
-      response: { numFound: docs.length, docs },
-      facet_counts: {
+    return buildLoopbackSolrEnvelope(docs, {
+      facetCounts: {
         facet_fields: {
           pathogen_test_type: isAmbiguous
             ? docs.flatMap((fixture) => [fixture.pathogen_test_type[0], 1])
             : ["RAT/antigen", 1],
         },
       },
-    };
+    });
   }
   const numFound = e2eDeterministicCounts[core];
   if (typeof numFound !== "number") return null;
@@ -368,15 +196,15 @@ function maybeSolrCount(
     !itemRange || (Number(itemRange[1]) <= 0 && Number(itemRange[2]) >= 0);
   const isEpitopeFixtureQuery =
     core === "epitope" && query.includes("eq(epitope_id,15780)");
-  const docs = includesFixtureRow
+  const docs: unknown[] = includesFixtureRow
     ? isGenomeFixtureQuery
-      ? [genomeRecordFixture]
+      ? [genomeRecord]
       : isEpitopeFixtureQuery
-        ? [epitopeRecordFixture]
+        ? [epitopeRecord]
         : []
     : [];
   if (request.headers.get("accept") === "application/json") return docs;
-  return { response: { numFound, docs } };
+  return buildLoopbackSolrEnvelope(docs, { numFound });
 }
 
 const bacteriaSummaryFixture = {

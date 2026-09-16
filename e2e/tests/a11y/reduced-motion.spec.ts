@@ -10,7 +10,7 @@ import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import {
   authSessionOverrides,
   workspacePopulatedOverrides,
-  permissiveBackendOverrides,
+  a11yBackendOverrides,
 } from "../../fixtures/overrides";
 
 // Minimum duration (ms) below which we consider a transition "suppressed".
@@ -44,7 +44,7 @@ test.describe("prefers-reduced-motion", () => {
       overrides: [
         ...authSessionOverrides,
         ...workspacePopulatedOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     await page.goto("/workspace");
@@ -81,7 +81,7 @@ test.describe("prefers-reduced-motion", () => {
   }) => {
     await context.clearCookies();
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...a11yBackendOverrides],
     });
     await page.goto("/");
     await page.waitForLoadState("networkidle");

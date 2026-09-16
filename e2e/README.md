@@ -60,6 +60,17 @@ Call `applyBackendMocks(page, { overrides })` in a `beforeEach`. **Strict is the
 
 The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overrides`) covers `/api/auth/`, `/api/services/`, `/api/workspace/`, and the four backend hosts with generic 200 responses — use it as the last spread in your override list for the "I just want the page to render" case, after specific fixtures.
 
+#### Canonical fixture records (`e2e/fixtures/overrides/catchall.ts`)
+
+The populated business-entity fixtures inside `catchall.ts` (genome, taxonomy, epitope, experiment, surveillance, serology, protein structure, etc.) are built from typed, dependency-free records in `src/lib/e2e-fixtures/records.ts` and wrapped per-transport by `src/lib/e2e-fixtures/envelopes.ts`. The **same** records back the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`) — before this module existed, each layer hand-rolled its own copy and they drifted (e.g. epitope `host_name` was an array in one file and a bare string in the other). `src/lib/e2e-fixtures/__tests__/records.test.ts` parses every record with the production Zod schemas from `src/lib/data-api/schemas.ts`, and `src/lib/e2e-fixtures/__tests__/transport-parity.test.ts` asserts the browser and server envelopes serve identical record content, so a future edit that re-inlines a diverging literal in either file fails loudly instead of drifting silently.
+
+`catchall.ts` exports three kinds of things — prefer the most specific one your spec needs:
+
+- **`emptyBackendFallbackOverrides`** — generic, data-free responses (`/api/auth/`, `/api/services/`, `/api/workspace/`). Safe anywhere; never returns named business data a test didn't ask for.
+- **Named resource scenario bundles** — one per resource (`genomeScenarioOverrides`, `epitopeScenarioOverrides`, `taxonomyScenarioOverrides`, `experimentScenarioOverrides`, `biosetScenarioOverrides`, `surveillanceScenarioOverrides`, `serologyScenarioOverrides`, `proteinStructureScenarioOverrides`, `proteinFeatureScenarioOverrides`, `genomeFeatureScenarioOverrides`, `genomeSequenceScenarioOverrides`, `strainScenarioOverrides`, `epitopeAssayScenarioOverrides`). Import only the bundle(s) a spec actually exercises so its fixture dependency stays explicit.
+- **`namedResourceScenarioOverrides`** / **`apiCatchallOverrides`** / **`permissiveBackendOverrides`** — aggregates of every named bundle, kept for existing call sites (organism landing pages, smoke/visual specs) that legitimately touch many resource types on one page.
+- **`a11yBackendOverrides`** — content-equivalent aggregate reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`), which scans dozens of routes spanning every resource type in one pass. Do not import it outside `e2e/tests/a11y/`.
+
 ### Server-side backends: loopback isolation
 
 `page.route()` only intercepts _browser_ requests. Server components and API route handlers make their own outbound fetches to `APP_SERVICE_URL`, `WORKSPACE_API_URL`, `USER_URL`, etc. before the page is streamed, and those fetches bypass Playwright entirely — previously they failed with "JSON-RPC call failed: HTTP error! status: 500" and flooded the webServer log on every render.

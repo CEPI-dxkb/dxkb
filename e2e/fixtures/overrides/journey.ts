@@ -12,7 +12,9 @@ import { jobsOverrides } from "./jobs";
  * `{}`/`{result: [[]]}` catch-all.
  *
  * Use:
- *   - smoke / a11y / visual specs        → keep `permissiveBackendOverrides`
+ *   - smoke / visual specs               → keep `permissiveBackendOverrides`
+ *   - accessibility sweep
+ *     (e2e/tests/a11y/**)                → use `a11yBackendOverrides`
  *   - journey specs (auth, workspace,
  *     jobs, services deep-submit)        → use `journeyOverrides`
  */

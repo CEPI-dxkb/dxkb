@@ -3,7 +3,7 @@ import {
   authSessionOverrides,
   workspaceOverrides,
   jobsOverrides,
-  permissiveBackendOverrides,
+  a11yBackendOverrides,
   workspacePopulatedOverrides,
   workspaceEmptyOverrides,
   jobsEmptyOverrides,
@@ -59,7 +59,7 @@ test.describe("a11y deep tier: service forms", () => {
 
   test("genome-assembly: validation errors shown", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...a11yBackendOverrides],
     });
     await page.goto("/services/genome-assembly");
     await page.waitForLoadState("networkidle");
@@ -76,7 +76,7 @@ test.describe("a11y deep tier: service forms", () => {
 
   test("genome-assembly: file-picker dialog open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
     });
     await page.goto("/services/genome-assembly");
     await page.waitForLoadState("networkidle");
@@ -101,7 +101,7 @@ test.describe("a11y deep tier: service forms", () => {
 test.describe("a11y deep tier: workspace", () => {
   test("workspace: populated state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -114,7 +114,7 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: empty state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspaceEmptyOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...workspaceEmptyOverrides, ...a11yBackendOverrides],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -127,7 +127,7 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: details panel open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -144,7 +144,7 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: new-folder dialog open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -159,7 +159,7 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: upload dialog open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -178,7 +178,7 @@ test.describe("a11y deep tier: workspace", () => {
 test.describe("a11y deep tier: jobs", () => {
   test("jobs: populated state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...jobsOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...jobsOverrides, ...a11yBackendOverrides],
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
@@ -193,7 +193,7 @@ test.describe("a11y deep tier: jobs", () => {
 
   test("jobs: empty state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...jobsEmptyOverrides, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, ...jobsEmptyOverrides, ...a11yBackendOverrides],
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
@@ -218,7 +218,7 @@ test.describe("a11y deep tier: jobs", () => {
       overrides: [
         ...authSessionOverrides,
         ...buildJobsOverrides({ jobs: [failedJob] }),
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -246,7 +246,7 @@ test.describe("a11y deep tier: jobs", () => {
       overrides: [
         ...authSessionOverrides,
         ...buildJobsOverrides({ jobs: [runningJob] }),
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -290,7 +290,7 @@ test.describe("a11y deep tier: search", () => {
 
   test("search: no-results state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, dataApiOverride, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, dataApiOverride, ...a11yBackendOverrides],
     });
     await page.goto("/search?type=everything&q=zzznoresultsxxx");
     await page.waitForLoadState("networkidle");
@@ -302,7 +302,7 @@ test.describe("a11y deep tier: search", () => {
 
   test("search: default state (no query)", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, dataApiOverride, ...permissiveBackendOverrides],
+      overrides: [...authSessionOverrides, dataApiOverride, ...a11yBackendOverrides],
     });
     await page.goto("/search");
     await page.waitForLoadState("networkidle");
@@ -323,7 +323,7 @@ test.describe("a11y deep tier: command palette", () => {
         ...authSessionOverrides,
         ...workspaceOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     await page.goto("/jobs");
@@ -434,7 +434,7 @@ test.describe("a11y deep tier: taxon interactions graph", () => {
       overrides: [
         ...buildPpiOverrides(rows),
         ...authSessionOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
 
@@ -479,7 +479,7 @@ test.describe("a11y deep tier: file viewer", () => {
         viewerContentOverride("config\\.json", '{"hello":"world"}', "application/json"),
         ...authSessionOverrides,
         ...buildWorkspaceOverrides({ pathItems: { [e2eHomePath]: viewerItems } }),
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
         ...journeyOverrides,
       ],
     });

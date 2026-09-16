@@ -25,7 +25,7 @@ Route groups `(…)` are organizational and do NOT appear in the URL.
 - `/api/data/[resource]` — validated, rate-limited same-origin gateway to allowlisted BV-BRC Data API resources
 - `/api/structure/[...path]` — validated same-origin proxy for BV-BRC-hosted structure files
 - `/api/taxon-view/tab-policy` — tab-visibility policy for views (see `docs/taxon-view-tab-visibility.md`)
-- `/api/e2e-mock/[...path]` — loopback backend mock used only by the Playwright suite
+- `/api/e2e-mock/[...path]` — loopback backend mock used only by the Playwright suite. Its populated fixtures come from `src/lib/e2e-fixtures/records.ts` (dependency-free typed canonical records) + `envelopes.ts` (transport-specific Solr/gateway wrapping), the single source of truth shared with the browser-side mock in `e2e/fixtures/overrides/catchall.ts` — see `e2e/README.md` for the fixture-composition breakdown (empty fallback vs. named resource scenario bundles vs. the a11y-only aggregate)
 
 ## Auth system (`src/lib/auth/`) — server-first identity
 

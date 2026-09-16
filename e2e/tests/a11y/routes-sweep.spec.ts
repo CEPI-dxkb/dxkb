@@ -3,7 +3,7 @@ import {
   authSessionOverrides,
   workspaceOverrides,
   jobsOverrides,
-  permissiveBackendOverrides,
+  a11yBackendOverrides,
 } from "../../fixtures/overrides";
 import { awaitSettled } from "../../a11y/settle";
 import { scanPage, formatBlocking, logWarnings } from "../../a11y/axe-scan";
@@ -82,13 +82,13 @@ const scanTargets: ScanTarget[] = routes.flatMap((route) => {
 
 function buildOverrides(route: RouteEntry): JsonOverride[] {
   if (route.unauthenticated) {
-    return [...permissiveBackendOverrides];
+    return [...a11yBackendOverrides];
   }
   return [
     ...authSessionOverrides,
     ...(route.needsWorkspace ? workspaceOverrides : []),
     ...(route.needsJobs ? jobsOverrides : []),
-    ...permissiveBackendOverrides,
+    ...a11yBackendOverrides,
   ];
 }
 
@@ -157,7 +157,7 @@ test.describe("a11y component surfaces", () => {
   }) => {
     await context.clearCookies();
     await applyBackendMocks(page, {
-      overrides: [...workspaceOverrides, ...permissiveBackendOverrides],
+      overrides: [...workspaceOverrides, ...a11yBackendOverrides],
     });
     await page.goto("/taxonomy/234");
 
@@ -209,7 +209,7 @@ test.describe("a11y component surfaces", () => {
         ...authSessionOverrides,
         ...workspaceOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     await page.goto("/jobs");
@@ -284,7 +284,7 @@ test.describe("a11y component surfaces", () => {
           body: { error: "dataset not found" },
         },
         { url: "/api/charon/getDataset", body: auspiceDataset },
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     // Basemap tiles are the one outbound host the viewer needs; serve a 1×1 PNG.

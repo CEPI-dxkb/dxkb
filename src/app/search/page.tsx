@@ -122,5 +122,13 @@ export default async function GlobalSearch({
           keyword={keyword}
         />
       );
+    default: {
+      // The whole point of this module is that the branch table is total, and
+      // neither `noImplicitReturns` nor an explicit return type is in force
+      // here — so a sixth target kind would otherwise compile and return
+      // `undefined` from a page component.
+      const unhandled: never = target;
+      throw new Error(`Unhandled search target: ${JSON.stringify(unhandled)}`);
+    }
   }
 }

@@ -213,6 +213,18 @@ export const routes: RouteEntry[] = [
     unauthenticated: true,
     tripwire: true,
     mobile: true,
+    // Two states of the same page, both produced by `search/page.tsx`'s own
+    // branch table rather than by a different route: the Overview prompt (no
+    // params) and the explicit "no search view for this type" panel. They are
+    // variants instead of separate entries because coverage accounting allows a
+    // `page.tsx` exactly one owning entry.
+    variants: [
+      { nameSuffix: "default", path: "/search" },
+      {
+        nameSuffix: "unsupported-type",
+        path: "/search?type=pathway&q=influenza",
+      },
+    ],
   },
 
   // ── Taxonomy (dynamic — two variants for multi-param coverage) ───────────────

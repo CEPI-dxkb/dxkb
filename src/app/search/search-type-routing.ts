@@ -25,7 +25,11 @@ export function firstSearchParamValue(
  * it named a type this app has no view for.
  */
 export type LegacySearchTarget =
-  /** Permanent move to a canonical collection route. */
+  /**
+   * Move to a canonical collection route. `page.tsx` serves it with Next's
+   * `redirect()` (307), not `permanentRedirect()` (308) — the same status the
+   * Taxa and Experiment redirects have always used.
+   */
   | { kind: "redirect"; href: string }
   /** The all-data-types result page (legacy `type=everything`, and Overview). */
   | { kind: "allTypes" }
@@ -61,6 +65,14 @@ const legacySearchOwnedParams = new Set(["type", "q"]);
  * widened here; the narrowing itself is derived from the destination's own
  * collection options, so a filter added to the Taxa view is carried across
  * automatically and there is no parameter list to maintain by hand.
+ *
+ * The residual risk is a *non-collection* parameter that `/taxonomy` starts
+ * reading outside `parseTaxonomyCollectionState` — the shape
+ * `/protein-structure` already has with `accession`/`path` — which this
+ * narrowing would drop. `search-type-routing.test.ts` guards the collection
+ * half by round-tripping the destination URL back through the real Taxa
+ * parser; a new non-collection parameter must be added to `carriedParamNames`
+ * and to that test's explicit list alongside `tab`.
  */
 const narrowedRedirectOptions: Readonly<
   Record<string, CollectionStateOptions | undefined>
@@ -101,6 +113,8 @@ function requestsBiosetTab(
  * route. The contract, in the order the destination query is built:
  *
  * 1. `keyword` carries the formatted query, and is omitted when there is none.
+ *    An incoming `keyword` is used only when `q` supplied none, and only its
+ *    first value, so the destination never receives two.
  * 2. Every other incoming parameter is carried across with its repeats intact
  *    and in URL order — the destination collections deliberately retain the
  *    parameters they do not own (`mergeWithUnrelatedParams`), so dropping one
@@ -127,8 +141,16 @@ function canonicalRedirectHref(
   for (const [name, value] of Object.entries(params)) {
     if (value === undefined || legacySearchOwnedParams.has(name)) continue;
     if (carried && !carried.has(name)) continue;
-    // An incoming `keyword` only survives when `q` did not already supply one.
-    if (name === "keyword" && destination.has("keyword")) continue;
+    // An incoming `keyword` only survives when `q` did not already supply one,
+    // and only as a single value: the destination reads `keyword` through
+    // `optionalValue`, which takes the first of a repeated parameter, so
+    // forwarding all of them would print a URL that lies about what it does.
+    if (name === "keyword") {
+      if (!destination.has("keyword")) {
+        destination.set("keyword", firstSearchParamValue(value));
+      }
+      continue;
+    }
     if (name === "tab" && biosetTab) {
       destination.set("tab", "biosets");
       continue;

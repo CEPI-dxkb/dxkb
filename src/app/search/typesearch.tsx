@@ -18,6 +18,7 @@ import {
   searchHref,
   searchTabsByType,
 } from "@/constants/search-info";
+import { searchTypeMenuItems } from "@/constants/search-menu";
 import {
   experimentHref,
   experimentIdFromRow,
@@ -31,23 +32,7 @@ import {
   surveillanceHref,
   surveillanceIdFromRow,
 } from "@/lib/views/hrefs";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Activity,
-  Atom,
-  Binary,
-  Database,
-  Dna,
-  Eye,
-  FlaskConical,
-  Globe,
-  ListTree,
-  Puzzle,
-  Share2,
-  ShieldCheck,
-  Waypoints,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // ---- Props interface ----
 export interface TypeSearchProps {
@@ -259,58 +244,6 @@ function TabsRenderer({
     </Tabs>
   );
 }
-
-/**
- * The legacy left-hand type menu. Every entry must have a destination: a
- * canonical route (via its descriptor) or a legacy tab group this component can
- * render. Overview, Phylogeny, Specialty Genes, Pathways, and Subsystems used to
- * sit here with no destination at all and resolved to a literal fallback screen;
- * they are out until something implements them. Their descriptors stay in
- * `search-info.ts` because the all-data-types result page still queries them.
- */
-export const searchTypeMenuItems = [
-  { key: "taxonomy", label: "Taxa", icon: <Binary className="size-4" /> },
-  { key: "genome", label: "Genomes", icon: <Dna className="size-4" /> },
-  {
-    key: "genome_amr",
-    label: "AMR Phenotypes",
-    icon: <ShieldCheck className="size-4" />,
-  },
-  {
-    key: "genome_sequence",
-    label: "Sequences",
-    icon: <Database className="size-4" />,
-  },
-  {
-    key: "genome_feature",
-    label: "Features",
-    icon: <ListTree className="size-4" />,
-  },
-  { key: "protein", label: "Proteins", icon: <Atom className="size-4" /> },
-  {
-    key: "protein_structure",
-    label: "Protein Structures",
-    icon: <Waypoints className="size-4" />,
-  },
-  {
-    key: "protein_feature",
-    label: "Domains and Motifs",
-    icon: <Puzzle className="size-4" />,
-  },
-  { key: "epitope", label: "Epitopes", icon: <Activity className="size-4" /> },
-  { key: "strain", label: "Strains", icon: <Share2 className="size-4" /> },
-  {
-    key: "surveillance",
-    label: "Surveillance",
-    icon: <Eye className="size-4" />,
-  },
-  { key: "serology", label: "Serology", icon: <Globe className="size-4" /> },
-  {
-    key: "experiment",
-    label: "Experiments",
-    icon: <FlaskConical className="size-4" />,
-  },
-];
 
 export function TypeSearch({ q, searchtype }: TypeSearchProps) {
   const searchParams = useSearchParams();

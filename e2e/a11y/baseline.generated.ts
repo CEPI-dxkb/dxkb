@@ -87,7 +87,10 @@ export const reflowSkip: ReflowSkipMap = {
   "related-resources": { ticket: "DXKBCORE-178" },
   team: { ticket: "DXKBCORE-178" },
   updates: { ticket: "DXKBCORE-178" },
-  search: { ticket: "DXKBCORE-178" },
+  // `search` became two variants (Overview prompt / unsupported type); both
+  // inherit the same pre-existing mobile-navbar overflow as every entry above.
+  "search/default": { ticket: "DXKBCORE-178" },
+  "search/unsupported-type": { ticket: "DXKBCORE-178" },
   "taxonomy/virus": { ticket: "DXKBCORE-178" },
   "organisms-all": { ticket: "DXKBCORE-178" },
   "organisms-bacteria": { ticket: "DXKBCORE-178" },

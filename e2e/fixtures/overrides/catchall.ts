@@ -123,12 +123,17 @@ export const emptyBackendFallbackOverrides: JsonOverride[] = [
 
 export const taxonomyScenarioOverrides: JsonOverride[] = [
   // The Taxa Tree (src/components/taxonomy/use-taxon-children.ts) calls the Data API
-  // directly via NEXT_PUBLIC_DATA_API — the loopback /api/e2e-mock/data mock — not the
-  // same-origin gateway below, and needs a different envelope: a bare array plus a
-  // Content-Range total and a facet_counts header (fetchTaxonChildCounts throws when
-  // facet_counts is missing). Empty so any page containing a tree renders; specs that
-  // need real nodes prepend their own content-bearing overrides, which win under
-  // first-match ordering (see e2e/tests/taxonomy-tree.spec.ts).
+  // directly via NEXT_PUBLIC_DATA_API rather than the same-origin gateway below, and
+  // needs a different envelope: a bare array plus a Content-Range total and a
+  // facet_counts header (fetchTaxonChildCounts throws when facet_counts is missing).
+  //
+  // This entry is dead as written and kept only until its deletion is verified against
+  // the taxonomy specs. NEXT_PUBLIC_* inlines at `pnpm build` time, whereas
+  // .env.e2e.test substitutes ${E2E_PORT} at server start (e2e/scripts/start-webserver.mjs)
+  // — so the client bundle never carries the loopback /api/e2e-mock/data origin and this
+  // pattern cannot match. Specs that need real tree nodes prepend their own
+  // content-bearing overrides keyed on the origin the bundle actually got, and those win
+  // under first-match ordering (see e2e/tests/taxonomy-tree.spec.ts).
   {
     url: /\/api\/e2e-mock\/data\/taxonomy\/\?/,
     method: "GET",

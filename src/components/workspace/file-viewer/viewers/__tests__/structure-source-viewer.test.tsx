@@ -195,7 +195,7 @@ describe("StructureSourceViewer", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Initializing structure…"),
+        screen.getByText("Initializing structure\u2026"),
       ).toBeInTheDocument();
       expect(mockDispose).toHaveBeenCalledTimes(1);
       expect(mockDownload).toHaveBeenLastCalledWith(
@@ -237,7 +237,7 @@ describe("StructureSourceViewer", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Initializing structure…"),
+        screen.getByText("Initializing structure\u2026"),
       ).toBeInTheDocument();
       expect(mockDispose).toHaveBeenCalledTimes(1);
       expect(mockDownload).toHaveBeenCalledTimes(2);
@@ -318,7 +318,7 @@ describe("StructureSourceViewer", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
-  it("disposes the plugin immediately when the download fails, before the terminal error renders", async () => {
+  it("disposes the plugin exactly once when the download fails", async () => {
     // Plugin creation succeeds (WebGL context allocated); the failure
     // happens afterwards, in the download step.
     mockDownload.mockRejectedValueOnce(new Error("Network unavailable"));

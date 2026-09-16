@@ -9,14 +9,12 @@ interface StructureSourceViewerProps {
   source: StructureSource;
   sources?: readonly StructureSource[];
   layout: MolstarLayoutSpec;
-  compact?: boolean;
   containerClassName?: string;
 }
 
 interface ActiveStructureSourceViewerProps {
   source: StructureSource;
   layout: MolstarLayoutSpec;
-  compact?: boolean;
   containerClassName: string;
   hasNext: boolean;
   onFailure: () => void;
@@ -27,7 +25,6 @@ interface ActiveStructureSourceViewerProps {
 function ActiveStructureSourceViewer({
   source,
   layout,
-  compact,
   containerClassName,
   hasNext,
   onFailure,
@@ -54,7 +51,6 @@ function ActiveStructureSourceViewer({
         status={status === "error" && hasNext ? "loading" : status}
         errorMessage={errorMessage}
         onRetry={retryFromStart ? onRetry : resetError}
-        compact={compact}
       />
     </>
   );
@@ -64,7 +60,6 @@ export function StructureSourceViewer({
   source,
   sources,
   layout,
-  compact,
   containerClassName = "relative isolate min-h-0 flex-1 overflow-hidden",
 }: StructureSourceViewerProps) {
   const candidates = sources?.length ? sources : [source];
@@ -78,7 +73,6 @@ export function StructureSourceViewer({
       key={activeSource.url}
       source={activeSource}
       layout={layout}
-      compact={compact}
       containerClassName={containerClassName}
       hasNext={candidateIndex < candidates.length - 1}
       retryFromStart={candidates.length > 1 && candidateIndex === candidates.length - 1}

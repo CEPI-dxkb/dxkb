@@ -10,14 +10,12 @@ interface MolstarStatusOverlayProps {
   status: ViewerStatus;
   errorMessage: string | undefined;
   onRetry: () => void;
-  compact?: boolean;
 }
 
 export function MolstarStatusOverlay({
   status,
   errorMessage,
   onRetry,
-  compact,
 }: MolstarStatusOverlayProps) {
   if (status === "loading" || status === "initializing") {
     return (
@@ -36,16 +34,8 @@ export function MolstarStatusOverlay({
     return (
       <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-background">
         <div className="flex flex-col items-center gap-2 text-center">
-          <AlertCircle
-            className={compact ? "size-8 text-destructive" : "size-10 text-destructive"}
-          />
-          <p
-            className={
-              compact
-                ? "max-w-xs text-sm text-muted-foreground"
-                : "max-w-sm text-sm text-muted-foreground"
-            }
-          >
+          <AlertCircle className="size-10 text-destructive" />
+          <p className="max-w-sm text-sm text-muted-foreground">
             {errorMessage}
           </p>
         </div>

@@ -1,5 +1,9 @@
 import type { ViewRegistry } from "../view-types";
-import { viewRegistry, viewSegments, legacyViewTargets } from "../view-registry";
+import {
+  viewRegistry,
+  viewSegments,
+  legacyViewTargets,
+} from "../view-registry";
 
 // Cast to the loose ViewRegistry type so TypeScript treats every entry as
 // ViewTypeEntry (with optional legacySingular) rather than the narrow literal

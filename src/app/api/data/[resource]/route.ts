@@ -6,6 +6,10 @@ import {
   DataApiValidationError,
   isDataResource,
 } from "@/lib/data-api/resources";
+import {
+  dataApiErrorResponse,
+  dataApiNotConfiguredMessage,
+} from "@/lib/data-api/route-errors";
 import type { DataApiRequest, DataResource, DataSort } from "@/lib/data-api/types";
 import {
   maxRequestBytes,
@@ -14,15 +18,6 @@ import {
 
 const rateLimitMax = 120;
 const rateLimitWindowMs = 60_000;
-
-/**
- * Client-facing text for a deployment with no Data API base URL. Stable and
- * distinct from the catch-all's "The data service request failed." so the two
- * failures stay tellable apart, without echoing a server env var name to
- * unauthenticated callers.
- */
-const dataApiNotConfiguredMessage =
-  "The data service is not configured for this deployment.";
 
 /**
  * Single response contract for every oversized-body rejection path (a
@@ -72,32 +67,6 @@ async function readCappedBody(
     offset += chunk.byteLength;
   }
   return new TextDecoder().decode(combined);
-}
-
-function errorResponse(error: unknown): NextResponse {
-  if (error instanceof DataApiValidationError) {
-    return NextResponse.json(
-      { error: error.message, code: "invalid_request" },
-      { status: error.status },
-    );
-  }
-  if (error instanceof DataApiError) {
-    return NextResponse.json(
-      { error: error.message, code: error.code },
-      { status: error.status },
-    );
-  }
-  if (error instanceof DOMException && error.name === "AbortError") {
-    return NextResponse.json(
-      { error: "Data request was aborted.", code: "aborted" },
-      { status: 499 },
-    );
-  }
-  console.error("Data API gateway failed:", error);
-  return NextResponse.json(
-    { error: "The data service request failed.", code: "internal_error" },
-    { status: 500 },
-  );
 }
 
 function parseSort(value: string | null): DataSort | undefined {
@@ -237,7 +206,7 @@ async function execute(
       },
     });
   } catch (error) {
-    return errorResponse(error);
+    return dataApiErrorResponse(error);
   }
 }
 
@@ -252,7 +221,7 @@ export async function GET(
   try {
     return await execute(request, resource, parseGetRequest(request));
   } catch (error) {
-    return errorResponse(error);
+    return dataApiErrorResponse(error);
   }
 }
 
@@ -287,7 +256,7 @@ export async function POST(
     }
     return await execute(request, resource, body as DataApiRequest);
   } catch (error) {
-    return errorResponse(
+    return dataApiErrorResponse(
       error instanceof SyntaxError
         ? new DataApiValidationError("Request body must be valid JSON.")
         : error,

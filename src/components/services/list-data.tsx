@@ -303,9 +303,10 @@ function useListData({
   };
 
   /**
-   * Columns to project for an export. The gateway requires at least one field,
-   * and `__select__` is the checkbox column rather than a data field, so it is
-   * stripped and the full projection stands in when nothing else is visible.
+   * Columns to project for an export. `__select__` is the checkbox column
+   * rather than a data field, so it is stripped; the full projection stands in
+   * when nothing else is visible, because the gateway's export operation
+   * requires at least one field (`fields: fieldListSchema.min(1)`).
    */
   function exportProjection(visibleColumns: string[] | null): string[] {
     const requested = (visibleColumns ?? projection).filter(

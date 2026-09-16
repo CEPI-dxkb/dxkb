@@ -135,10 +135,11 @@ export function FilterBar({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* FACET CHOOSER — the shared menu primitive supplies the menu
-              semantics, keyboard handling, Escape, focus return and
-              outside-click dismissal that the hand-rolled popup it replaces
-              had none of. */}
+          {/* FACET CHOOSER — the shared menu primitive supplies the menu role,
+              keyboard handling, Escape and focus return the hand-rolled popup
+              it replaces had none of, and takes over the outside-click
+              dismissal that popup implemented with its own document-level
+              `mousedown` listener. */}
           {showFacets && configurableFacetFields.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger

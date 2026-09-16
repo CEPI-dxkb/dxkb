@@ -122,22 +122,6 @@ export function epitopeHref(epitopeId: number | string): string {
   return `/epitope/${encodeURIComponent(String(epitopeId))}`;
 }
 
-/** Canonical Epitope collection route. Explicit RQL takes precedence over keyword. */
-export function epitopeListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  taxonId?: number | string;
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else if (opts?.keyword)
-    params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-  if (opts?.taxonId != null) {
-    params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
-  }
-  return params.length ? `/epitope?${params.join("&")}` : "/epitope";
-}
-
 /** Return a canonical Experiment ID from an API row, if present. */
 export function experimentIdFromRow(
   row: Record<string, unknown> | null,
@@ -159,58 +143,9 @@ export function biosetResultsHref(experimentIds: readonly string[]): string {
   return `https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(${ids}))`;
 }
 
-/** Canonical Experiment collection route. Explicit RQL takes precedence. */
-export function experimentListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  taxonId?: number | string;
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else {
-    if (opts?.keyword)
-      params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-    if (opts?.taxonId != null)
-      params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
-  }
-  return params.length ? `/experiment?${params.join("&")}` : "/experiment";
-}
-
 /** Internal Protein Structure route using the canonical accession query. */
 export function proteinStructureHref(accession: number | string): string {
   return `/protein-structure?accession=${encodeURIComponent(String(accession))}`;
-}
-
-/** Canonical Protein Structure collection route. Explicit RQL takes precedence. */
-export function proteinStructureListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  taxonId?: number | string;
-  genomeId?: number | string;
-  page?: number;
-  sort?: string;
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else {
-    if (opts?.keyword)
-      params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-    if (opts?.taxonId != null)
-      params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
-    if (opts?.genomeId != null)
-      params.push(`genome_id=${encodeURIComponent(String(opts.genomeId))}`);
-  }
-  if (opts?.page != null)
-    params.push(`page=${encodeURIComponent(String(opts.page))}`);
-  if (opts?.sort) params.push(`sort=${encodeURIComponent(opts.sort)}`);
-  return params.length
-    ? `/protein-structure?${params.join("&")}`
-    : "/protein-structure";
-}
-
-/** Protein Structure route for a workspace file. */
-export function proteinStructurePathHref(path: string): string {
-  return `/protein-structure?path=${encodeURIComponent(path)}`;
 }
 
 /** Return a public Surveillance sample identifier from an API row, if present. */
@@ -235,28 +170,6 @@ export function surveillanceHref(
     : path;
 }
 
-/** Canonical Surveillance collection route. Explicit RQL takes precedence over keyword. */
-export function surveillanceListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  pathogenTestType?: string | readonly string[];
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else if (opts?.keyword)
-    params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-  const discriminator = opts?.pathogenTestType;
-  const testTypes: readonly string[] = Array.isArray(discriminator)
-    ? discriminator
-    : typeof discriminator === "string"
-      ? [discriminator]
-      : [];
-  for (const testType of testTypes) {
-    params.push(`pathogen_test_type=${encodeURIComponent(testType)}`);
-  }
-  return params.length ? `/surveillance?${params.join("&")}` : "/surveillance";
-}
-
 /** Return a public Serology sample identifier from an API row, if present. */
 export function serologyIdFromRow(
   row: Record<string, unknown> | null,
@@ -275,75 +188,4 @@ export function serologyHref(
 ): string {
   const path = `/serology/${encodeURIComponent(String(sampleIdentifier))}`;
   return testType ? `${path}?test_type=${encodeURIComponent(testType)}` : path;
-}
-
-/** Canonical Strain collection route. Explicit RQL takes precedence over keyword. */
-export function strainListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  taxonId?: number | string;
-  strain?: string | readonly string[];
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else if (opts?.keyword)
-    params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-  if (!opts?.rql) {
-    if (opts?.taxonId != null) {
-      params.push(`taxon_id=${encodeURIComponent(String(opts.taxonId))}`);
-    }
-    const strain = opts?.strain;
-    const values: readonly string[] = Array.isArray(strain)
-      ? strain
-      : typeof strain === "string"
-        ? [strain]
-        : [];
-    for (const value of values)
-      params.push(`strain=${encodeURIComponent(value)}`);
-  }
-  return params.length ? `/strain?${params.join("&")}` : "/strain";
-}
-
-/** Canonical Domains and Motifs collection route. */
-export function domainsAndMotifsListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  genomeId?: number | string;
-  featureId?: number | string;
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else {
-    if (opts?.keyword)
-      params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-    if (opts?.genomeId != null)
-      params.push(`genome_id=${encodeURIComponent(String(opts.genomeId))}`);
-    if (opts?.featureId != null)
-      params.push(`feature_id=${encodeURIComponent(String(opts.featureId))}`);
-  }
-  return params.length
-    ? `/domains-and-motifs?${params.join("&")}`
-    : "/domains-and-motifs";
-}
-
-/** Canonical Serology collection route. Explicit RQL takes precedence over keyword. */
-export function serologyListHref(opts?: {
-  keyword?: string;
-  rql?: string;
-  testType?: string | readonly string[];
-}): string {
-  const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
-  else if (opts?.keyword)
-    params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-  const discriminator = opts?.testType;
-  const testTypes: readonly string[] = Array.isArray(discriminator)
-    ? discriminator
-    : typeof discriminator === "string"
-      ? [discriminator]
-      : [];
-  for (const testType of testTypes) {
-    params.push(`test_type=${encodeURIComponent(testType)}`);
-  }
-  return params.length ? `/serology?${params.join("&")}` : "/serology";
 }

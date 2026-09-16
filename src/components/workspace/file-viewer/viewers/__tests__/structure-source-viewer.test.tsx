@@ -55,18 +55,11 @@ vi.mock("molstar/lib/mol-plugin-ui/spec", () => ({
 // CSS import is a no-op in vitest (css: false in config)
 vi.mock("molstar/lib/mol-plugin-ui/skin/light.scss", () => ({}));
 
-vi.mock("../../file-viewer-registry", () => ({
-  getProxyUrl: vi.fn(
-    (path: string) => `/api/workspace/view/${path.replace(/^\//, "")}`,
-  ),
-}));
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 import { StructureSourceViewer } from "../structure-source-viewer";
-import { StructureViewer } from "../structure-viewer";
 
 const testLayout = { showControls: false, regionState: "hidden" } as const;
 
@@ -81,207 +74,6 @@ function directSource(
     ...overrides,
   };
 }
-
-describe("StructureViewer", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockDownload.mockResolvedValue("mock-data");
-    mockParseTrajectory.mockResolvedValue("mock-trajectory");
-    mockApplyPreset.mockResolvedValue(undefined);
-  });
-
-  it("shows loading state initially", () => {
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    expect(screen.getByText("Loading viewer\u2026")).toBeInTheDocument();
-  });
-
-  it("renders the Mol* container div", () => {
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    expect(screen.getByTestId("molstar-container")).toBeInTheDocument();
-  });
-
-  it("resolves workspace paths before loading the structure", async () => {
-    const { getProxyUrl } = await import("../../file-viewer-registry");
-
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    expect(getProxyUrl).toHaveBeenCalledWith("/user@bvbrc/home/model.pdb");
-
-    await waitFor(() => {
-      expect(mockDownload).toHaveBeenCalledWith(
-        {
-          url: "/api/workspace/view/user@bvbrc/home/model.pdb",
-          isBinary: false,
-        },
-        { state: { isGhost: true } },
-      );
-      expect(mockParseTrajectory).toHaveBeenCalledWith("mock-data", "pdb");
-      expect(mockApplyPreset).toHaveBeenCalledWith(
-        "mock-trajectory",
-        "default",
-      );
-    });
-  });
-
-  it("uses embedded layout spec (controls hidden)", async () => {
-    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
-
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    await waitFor(() => {
-      expect(createPluginUI).toHaveBeenCalledWith(
-        expect.objectContaining({
-          spec: expect.objectContaining({
-            layout: expect.objectContaining({
-              initial: expect.objectContaining({
-                showControls: false,
-                regionState: expect.objectContaining({
-                  left: "hidden",
-                  right: "hidden",
-                }) as Record<string, string>,
-              }) as Record<string, unknown>,
-            }) as Record<string, unknown>,
-          }) as Record<string, unknown>,
-        }) as Record<string, unknown>,
-      );
-    });
-  });
-
-  it("disposes the plugin on unmount", async () => {
-    const { unmount } = render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    // Wait for plugin to be created
-    await waitFor(() => {
-      expect(mockApplyPreset).toHaveBeenCalled();
-    });
-
-    unmount();
-
-    expect(mockDispose).toHaveBeenCalled();
-  });
-
-  it("shows error state when initialization fails", async () => {
-    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
-    vi.mocked(createPluginUI).mockRejectedValueOnce(
-      new Error("WebGL not supported"),
-    );
-
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText("WebGL not supported")).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-  });
-
-  it("disposes the plugin immediately when the download fails, before the terminal error renders", async () => {
-    // Plugin creation succeeds (WebGL context allocated); the failure
-    // happens afterwards, in the download step.
-    mockDownload.mockRejectedValueOnce(new Error("Network unavailable"));
-
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    // By the time the terminal error is on screen, the plugin (and its
-    // WebGL context) must already be disposed — not merely disposed later
-    // on retry or unmount.
-    await waitFor(() => {
-      expect(screen.getByText("Network unavailable")).toBeInTheDocument();
-      expect(mockDispose).toHaveBeenCalledTimes(1);
-    });
-
-    // No further disposal should happen once the error state has settled.
-    expect(mockDispose).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not double-dispose when unmounted while the download is still pending", async () => {
-    let rejectDownload: ((err: Error) => void) | undefined;
-    mockDownload.mockImplementationOnce(
-      () =>
-        new Promise<string>((_resolve, reject) => {
-          rejectDownload = reject;
-        }),
-    );
-
-    const { unmount } = render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    // Wait until the plugin has been created and the (still-pending)
-    // download has been kicked off.
-    await waitFor(() => {
-      expect(mockDownload).toHaveBeenCalled();
-    });
-
-    unmount();
-
-    // The effect cleanup disposes the plugin exactly once on unmount.
-    expect(mockDispose).toHaveBeenCalledTimes(1);
-
-    // The in-flight download now rejects *after* unmount. The async
-    // catch's own disposal must see the lifecycle as already disposed and
-    // skip disposing again — asserting on the call count (not just "no
-    // throw") is what actually proves the race is closed.
-    rejectDownload?.(new Error("Network unavailable"));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-
-    expect(mockDispose).toHaveBeenCalledTimes(1);
-  });
-
-  it("wraps content in ExpandableViewerWrapper with filename as title", () => {
-    render(
-      <StructureViewer
-        filePath="/user@bvbrc/home/model.pdb"
-        fileName="model.pdb"
-      />,
-    );
-
-    // The expand button from ExpandableViewerWrapper should be present
-    expect(
-      screen.getByRole("button", { name: "Expand to full screen" }),
-    ).toBeInTheDocument();
-  });
-});
 
 describe("StructureSourceViewer", () => {
   beforeEach(() => {
@@ -403,7 +195,7 @@ describe("StructureSourceViewer", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Initializing structure\u2026"),
+        screen.getByText("Initializing structure…"),
       ).toBeInTheDocument();
       expect(mockDispose).toHaveBeenCalledTimes(1);
       expect(mockDownload).toHaveBeenLastCalledWith(
@@ -445,7 +237,7 @@ describe("StructureSourceViewer", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Initializing structure\u2026"),
+        screen.getByText("Initializing structure…"),
       ).toBeInTheDocument();
       expect(mockDispose).toHaveBeenCalledTimes(1);
       expect(mockDownload).toHaveBeenCalledTimes(2);
@@ -458,5 +250,126 @@ describe("StructureSourceViewer", () => {
         "mmcif",
       );
     });
+  });
+
+  // -------------------------------------------------------------------------
+  // Hook lifecycle assertions migrated from the deleted `StructureViewer`
+  // wrapper (removed as dead code — it was only reachable from its own test).
+  // `useMolstarPlugin` is shared by this component and the dedicated
+  // `/viewer/structure` route, so its dispose/error-handling guarantees stay
+  // covered here rather than only through the now-gone wrapper.
+  // -------------------------------------------------------------------------
+
+  it("passes the layout spec through to createPluginUI", async () => {
+    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
+
+    render(
+      <StructureSourceViewer source={directSource()} layout={testLayout} />,
+    );
+
+    await waitFor(() => {
+      expect(createPluginUI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          spec: expect.objectContaining({
+            layout: expect.objectContaining({
+              initial: expect.objectContaining({
+                showControls: false,
+                regionState: expect.objectContaining({
+                  left: "hidden",
+                  right: "hidden",
+                }) as Record<string, string>,
+              }) as Record<string, unknown>,
+            }) as Record<string, unknown>,
+          }) as Record<string, unknown>,
+        }) as Record<string, unknown>,
+      );
+    });
+  });
+
+  it("disposes the plugin on unmount", async () => {
+    const { unmount } = render(
+      <StructureSourceViewer source={directSource()} layout={testLayout} />,
+    );
+
+    // Wait for plugin to be created
+    await waitFor(() => {
+      expect(mockApplyPreset).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it("shows error state when plugin initialization fails", async () => {
+    const { createPluginUI } = await import("molstar/lib/mol-plugin-ui");
+    vi.mocked(createPluginUI).mockRejectedValueOnce(
+      new Error("WebGL not supported"),
+    );
+
+    render(
+      <StructureSourceViewer source={directSource()} layout={testLayout} />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("WebGL not supported")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("disposes the plugin immediately when the download fails, before the terminal error renders", async () => {
+    // Plugin creation succeeds (WebGL context allocated); the failure
+    // happens afterwards, in the download step.
+    mockDownload.mockRejectedValueOnce(new Error("Network unavailable"));
+
+    render(
+      <StructureSourceViewer source={directSource()} layout={testLayout} />,
+    );
+
+    // By the time the terminal error is on screen, the plugin (and its
+    // WebGL context) must already be disposed — not merely disposed later
+    // on retry or unmount.
+    await waitFor(() => {
+      expect(screen.getByText("Network unavailable")).toBeInTheDocument();
+      expect(mockDispose).toHaveBeenCalledTimes(1);
+    });
+
+    // No further disposal should happen once the error state has settled.
+    expect(mockDispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not double-dispose when unmounted while the download is still pending", async () => {
+    let rejectDownload: ((err: Error) => void) | undefined;
+    mockDownload.mockImplementationOnce(
+      () =>
+        new Promise<string>((_resolve, reject) => {
+          rejectDownload = reject;
+        }),
+    );
+
+    const { unmount } = render(
+      <StructureSourceViewer source={directSource()} layout={testLayout} />,
+    );
+
+    // Wait until the plugin has been created and the (still-pending)
+    // download has been kicked off.
+    await waitFor(() => {
+      expect(mockDownload).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    // The effect cleanup disposes the plugin exactly once on unmount.
+    expect(mockDispose).toHaveBeenCalledTimes(1);
+
+    // The in-flight download now rejects *after* unmount. The async
+    // catch's own disposal must see the lifecycle as already disposed and
+    // skip disposing again — asserting on the call count (not just "no
+    // throw") is what actually proves the race is closed.
+    rejectDownload?.(new Error("Network unavailable"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(mockDispose).toHaveBeenCalledTimes(1);
   });
 });

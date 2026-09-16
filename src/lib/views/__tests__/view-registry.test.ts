@@ -1,5 +1,5 @@
 import type { ViewRegistry } from "../view-types";
-import { viewRegistry, viewSegments, legacyToSegment } from "../view-registry";
+import { viewRegistry, viewSegments, legacyViewTargets } from "../view-registry";
 
 // Cast to the loose ViewRegistry type so TypeScript treats every entry as
 // ViewTypeEntry (with optional legacySingular) rather than the narrow literal
@@ -39,17 +39,21 @@ describe("viewRegistry", () => {
     expect(names.length).toBeGreaterThanOrEqual(10);
     expect(new Set(names).size).toBe(names.length); // unique
     for (const name of names) {
-      expect(legacyToSegment[name]).toBeDefined();
-      expect(reg[legacyToSegment[name]]).toBeDefined();
+      expect(legacyViewTargets[name]).toBeDefined();
+      expect(reg[legacyViewTargets[name]?.segment ?? ""]).toBeDefined();
     }
   });
 
   it("reverse-maps a known legacy name", () => {
-    expect(legacyToSegment.GenomeList).toBe("genome");
-    expect(legacyToSegment.Taxonomy).toBe("taxonomy");
-    expect(legacyToSegment.Protein).toBe("feature");
-    expect(legacyToSegment.ProteinList).toBe("feature");
-    expect(legacyToSegment.DomainsAndMotifsList).toBe("domains-and-motifs");
-    expect(legacyToSegment.ProteinFeaturesList).toBe("domains-and-motifs");
+    expect(legacyViewTargets.GenomeList?.segment).toBe("genome");
+    expect(legacyViewTargets.Taxonomy?.segment).toBe("taxonomy");
+    expect(legacyViewTargets.Protein?.segment).toBe("feature");
+    expect(legacyViewTargets.ProteinList?.segment).toBe("feature");
+    expect(legacyViewTargets.DomainsAndMotifsList?.segment).toBe(
+      "domains-and-motifs",
+    );
+    expect(legacyViewTargets.ProteinFeaturesList?.segment).toBe(
+      "domains-and-motifs",
+    );
   });
 });

@@ -55,20 +55,8 @@ export class SurveillancePage {
     await this.collectionKeyword.fill(query);
   }
 
-  async clearCollectionFilter(): Promise<void> {
-    await this.collectionKeyword.clear();
-  }
-
   async expectMemberVisible(sampleIdentifier: string): Promise<void> {
     await expect(this.memberLink(sampleIdentifier)).toBeVisible();
-  }
-
-  async expectMemberAbsent(sampleIdentifier: string): Promise<void> {
-    await expect(this.memberLink(sampleIdentifier)).toHaveCount(0);
-  }
-
-  async expectNoResults(): Promise<void> {
-    await expect(this.page.getByText("No results")).toBeVisible();
   }
 
   async selectFacet(name: string): Promise<void> {

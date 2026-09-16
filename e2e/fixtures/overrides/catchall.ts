@@ -132,7 +132,7 @@ export const taxonomyScenarioOverrides: JsonOverride[] = [
   // .env.e2e.test substitutes ${E2E_PORT} at server start (e2e/scripts/start-webserver.mjs)
   // — so the client bundle never carries the loopback /api/e2e-mock/data origin and this
   // pattern cannot match. Specs that need real tree nodes prepend their own
-  // content-bearing overrides keyed on the origin the bundle actually got, and those win
+  // content-bearing overrides, matched by origin-agnostic path regex, and those win
   // under first-match ordering (see e2e/tests/taxonomy-tree.spec.ts).
   {
     url: /\/api\/e2e-mock\/data\/taxonomy\/\?/,

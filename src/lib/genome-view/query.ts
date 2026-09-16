@@ -44,16 +44,20 @@ export function parseGenomeCollectionState(
   return state;
 }
 
-// Genome's remap table is total and authoritative: a friendly filter name
-// absent from it is dropped rather than forwarded, so a future friendly
-// filter can't reach the backend under its raw name before this table is
-// updated. Every other structural-filter module passes unmapped names
-// through unchanged (see structuralFilterRql's `unknownFilters` option).
+// Derived from `friendlyFilters` so the two lists agree by construction: each
+// friendly filter name maps to itself, except the shared taxonomic-lineage
+// remap. Restating the six names here instead would let the lists drift.
 //
-// "Total" is why it is derived from `friendlyFilters` rather than restating
-// those six names: the two lists have to agree by construction, or adding a
-// friendly filter here silently drops it at the backend boundary. Each name
-// maps to itself except the shared taxonomic-lineage remap.
+// Genome pairs this with `unknownFilters: "drop"` (every other
+// structural-filter module passes unmapped names through unchanged). Note what
+// that does and does not buy, because deriving the table changed it: since
+// `parseCollectionState` only admits names in `friendlyFilters`, and every
+// admitted name is a key here by construction, "drop" is unreachable for
+// URL-derived state. It still guards a caller that hands `structuralFilterRql`
+// a hand-built `CollectionState`. A new friendly filter therefore reaches the
+// backend under its raw name automatically — which is the intended behaviour
+// for a field whose Solr name matches, but it is NOT a tripwire forcing this
+// table to be updated first. Add the entry when the Solr name differs.
 const genomeStructuralFieldMap: Readonly<Record<string, string>> =
   Object.fromEntries(
     (genomeCollectionOptions.friendlyFilters ?? []).map((name) => [

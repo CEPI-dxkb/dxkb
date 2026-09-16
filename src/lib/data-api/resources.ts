@@ -222,16 +222,22 @@ function buildFields(resource: DataResource): Record<string, ResourceField> {
       const metadata = source
         ? Object.values(source).find((field) => field.field === name)
         : undefined;
+      // Sortability is derived from the cardinality this same pass just decided,
+      // not from a second `multipleFields` lookup. The two used to be computed
+      // independently from the same set, which left `field-metadata.ts`'s stated
+      // contract ("`sortable` + registry cardinality owns sortability") describing
+      // an intent the code only happened to satisfy.
+      const cardinality: ResourceField["cardinality"] = multipleFields[
+        resource
+      ]?.has(name)
+        ? "multiple"
+        : "scalar";
       return [
         name,
         {
           type: inferType(name),
-          cardinality: multipleFields[resource]?.has(name)
-            ? "multiple"
-            : "scalar",
-          sortable:
-            !multipleFields[resource]?.has(name) &&
-            metadata?.sortable !== false,
+          cardinality,
+          sortable: cardinality === "scalar" && metadata?.sortable !== false,
           facet: metadata?.facet === true,
           quote:
             resource === "serology" && name === "test_type"

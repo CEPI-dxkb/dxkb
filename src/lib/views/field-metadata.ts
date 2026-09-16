@@ -19,7 +19,8 @@ import { getResourceDefinition, type DataResource } from "@/lib/data-api";
  *
  * Sortability is the Data API registry's answer, not the metadata's alone:
  * `resourceRegistry[resource].fields[name].sortable` is already
- * `!isArrayValued(name) && metadata.sortable !== false`, and it is the same value
+ * `field.cardinality === "scalar" && metadata.sortable !== false` — derived from the
+ * same field's declared cardinality, in the same pass — and it is the same value
  * `validateSort` enforces at the API boundary (`src/lib/data-api/validation.ts`). Deriving
  * from it is what stops a field the registry *declares* array-valued from advertising a
  * sort the backend rejects. A hidden scalar field stays sortable, because `hidden` is a

@@ -48,6 +48,26 @@ interface ResourceChildCollectionProps {
   rql: string;
   columns?: ResourceCollectionProfile<ChildRow>["columns"];
   defaultSort: string;
+  /**
+   * Explicit collection profile, overriding the per-`resource` dispatch below.
+   *
+   * No production caller sets this today — every real child tab lands on one of
+   * the four `resource === …` branches or on the raw-`columns` fallback. It is
+   * retained deliberately, for two reasons:
+   *
+   * 1. It is the *general* form those four branches specialize. Each of them
+   *    spreads a canonical profile and overrides `label`, `basePredicate`,
+   *    `buildStructuralRql` and `exportFileName` — exactly what this branch
+   *    does. Deleting the general mechanism while keeping four near-duplicate
+   *    specializations is the wrong direction; folding them into it is the
+   *    "collection wrapper adapter" the review plan deferred, because the
+   *    `rowHref` casts those branches need keep it from being cast-free.
+   * 2. It is the seam the export-contract tests need. The byte-identical
+   *    CSV/TSV assertions in `__tests__/resource-child-collection.test.tsx` pin
+   *    exact bytes against a two-column profile; routed through
+   *    `resource="protein_structure"` they would inherit the canonical
+   *    metadata-derived column set and break on any unrelated field change.
+   */
   profile?: ResourceCollectionProfile<ChildRow>;
   guideUrl?: string;
   // Matches ResourceCollection's own default. Pass "loaded" only where the caller

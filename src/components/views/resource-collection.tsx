@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
@@ -102,7 +102,6 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   onStateChange: (state: CollectionState) => void;
   baseRql?: string;
   enableRowLinks?: boolean;
-  renderDetail?: (row: Row) => ReactNode;
   keywordMode?: "server" | "loaded" | "refine";
   loadedKeywordValue?: string;
   onLoadedKeywordChange?: (value: string) => void;
@@ -117,7 +116,6 @@ export function ResourceCollection<Row extends DataTableRow>({
   onStateChange,
   baseRql,
   enableRowLinks = true,
-  renderDetail,
   keywordMode = "server",
   loadedKeywordValue,
   onLoadedKeywordChange,
@@ -376,8 +374,6 @@ export function ResourceCollection<Row extends DataTableRow>({
                 : String(collection.detailError)}
             </AlertDescription>
           </Alert>
-        ) : renderDetail && displayedDetail ? (
-          renderDetail(displayedDetail)
         ) : (
           <InfoPanel
             variant="search"

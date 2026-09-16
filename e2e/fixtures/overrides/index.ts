@@ -26,11 +26,9 @@ export {
   type MockJob,
 } from "./jobs";
 export {
-  apiCatchallOverrides,
   externalCatchallOverrides,
   a11yBackendOverrides,
   emptyBackendFallbackOverrides,
-  namedResourceScenarioOverrides,
   taxonomyScenarioOverrides,
   experimentScenarioOverrides,
   biosetScenarioOverrides,

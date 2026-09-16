@@ -62,14 +62,14 @@ Call `applyBackendMocks(page, { overrides })` in a `beforeEach`. **Strict is the
 
 #### Canonical fixture records (`e2e/fixtures/overrides/catchall.ts`)
 
-The populated business-entity fixtures inside `catchall.ts` (genome, taxonomy, epitope, experiment, surveillance, serology, protein structure, etc.) are built from typed, dependency-free records in `src/lib/e2e-fixtures/records.ts` and wrapped per-transport by `src/lib/e2e-fixtures/envelopes.ts`. The **same** records back the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`) — before this module existed, each layer hand-rolled its own copy and they drifted (e.g. epitope `host_name` was an array in one file and a bare string in the other). `src/lib/e2e-fixtures/__tests__/records.test.ts` parses every record with the production Zod schemas from `src/lib/data-api/schemas.ts`. `src/lib/e2e-fixtures/__tests__/transport-parity.test.ts` calls the real server-side `route.ts` handler and compares its response against the exact `catchall.ts` bundle a browser-side spec would get for the same resource — it imports `catchall.ts` directly (a type-only `import type` keeps the Playwright runtime out of that import chain, so this works fine from a Vitest test) — so a future edit that re-inlines a diverging literal in either file fails loudly instead of drifting silently.
+The populated business-entity fixtures inside `catchall.ts` (genome, taxonomy, epitope, experiment, surveillance, serology, protein structure, etc.) are built from typed, dependency-free records in `src/lib/e2e-fixtures/records.ts` and wrapped per-transport by `src/lib/e2e-fixtures/envelopes.ts`. The **same** records back the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`) — before this module existed, each layer hand-rolled its own copy and they drifted (e.g. epitope `host_name` was an array in one file and a bare string in the other). `src/lib/e2e-fixtures/__tests__/records.test.ts` parses every record with the production Zod schemas from `src/lib/data-api/schemas.ts`. `src/lib/e2e-fixtures/__tests__/transport-parity.test.ts` calls the real server-side `route.ts` handler and compares its response against the real, statically-defined bodies in the matching `catchall.ts` bundle — it imports `catchall.ts` directly (a type-only `import type` keeps the Playwright runtime out of that import chain, so this works fine from a Vitest test). For each of the 7 resources it covers, it diffs the gateway GET entry, the gateway POST entry (except `genome`'s, which is a dynamic function, not a static literal), and the e2e-mock loopback GET entry where one exists with real data (`experiment`, `surveillance`, `serology`) — see the test file's own doc comment for the exact per-resource breakdown. A future edit that re-inlines a diverging literal into any of those covered call sites fails loudly instead of drifting silently.
 
 `catchall.ts` exports two kinds of things — import the most specific one your spec needs:
 
 - **`emptyBackendFallbackOverrides`** — generic, data-free responses (`/api/auth/`, `/api/services/`, `/api/workspace/`). Safe anywhere; never returns named business data a test didn't ask for.
 - **Named resource scenario bundles** — one per resource (`genomeScenarioOverrides`, `epitopeScenarioOverrides`, `taxonomyScenarioOverrides`, `experimentScenarioOverrides`, `biosetScenarioOverrides`, `surveillanceScenarioOverrides`, `serologyScenarioOverrides`, `proteinStructureScenarioOverrides`, `proteinFeatureScenarioOverrides`, `genomeFeatureScenarioOverrides`, `genomeSequenceScenarioOverrides`, `strainScenarioOverrides`, `epitopeAssayScenarioOverrides`). Every journey/view/smoke/visual spec in the suite imports the specific bundle(s) it actually exercises, plus `emptyBackendFallbackOverrides` for everything else, instead of a blanket catch-all.
 
-`namedResourceScenarioOverrides` and `apiCatchallOverrides` compose all the named bundles (± the empty fallback) as internal building blocks — not intended for specs to import directly. **`a11yBackendOverrides`** is the one broad, unscoped aggregate this module exports (every named bundle + the empty fallback + external-host stubs), reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`), which scans dozens of routes spanning every resource type in one pass. Do not import it outside `e2e/tests/a11y/`.
+`namedResourceScenarioOverrides` and `apiCatchallOverrides` compose all the named bundles (± the empty fallback) as internal, unexported building blocks — nothing outside `catchall.ts` imports them. **`a11yBackendOverrides`** is the one broad, unscoped aggregate this module exports (every named bundle + the empty fallback + external-host stubs), reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`), which scans dozens of routes spanning every resource type in one pass. Do not import it outside `e2e/tests/a11y/`.
 
 ### Server-side backends: loopback isolation
 
@@ -131,10 +131,11 @@ await applyBackendMocks(page, {
     // server-side profile validation.
     ...authSessionOverrides,
     ...harOverridesFor("workspace-browse.har"),
-    // Generic, data-free fallback only — do NOT layer a broad, unscoped
-    // aggregate here (see harOverridesFor's doc comment): it would silently
-    // paper over HAR coverage drift instead of failing loudly.
-    ...emptyBackendFallbackOverrides,
+    // No fallback layered on top — not `emptyBackendFallbackOverrides`, not a
+    // broad aggregate. `emptyBackendFallbackOverrides` answers `/api/workspace/`
+    // with `{items: []}`, which is exactly the traffic this replay's strict-mode
+    // canary watches; layering it here would turn a loud unmocked-request
+    // failure (missing HAR coverage) into a silent empty-state timeout instead.
   ],
 });
 

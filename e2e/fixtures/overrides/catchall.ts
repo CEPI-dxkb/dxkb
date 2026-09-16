@@ -445,13 +445,13 @@ export const genomeScenarioOverrides: JsonOverride[] = [
 ];
 
 /**
- * Union of every named resource scenario bundle above — the full set of
- * populated business-entity fixtures this mock knows about. Prefer importing
- * the specific bundle(s) a spec exercises; reach for this aggregate only when
- * a test genuinely needs broad, unscoped coverage (see `a11yBackendOverrides`
- * below for the accessibility sweep's use case).
+ * Union of every named resource scenario bundle above. Internal composition
+ * building block only — not exported. No spec should import "every resource
+ * bundle at once"; a spec that needs broad coverage across many resource
+ * types is the accessibility sweep's job (`a11yBackendOverrides` below), not
+ * a general-purpose escape hatch for other specs.
  */
-export const namedResourceScenarioOverrides: JsonOverride[] = [
+const namedResourceScenarioOverrides: JsonOverride[] = [
   ...taxonomyScenarioOverrides,
   ...experimentScenarioOverrides,
   ...biosetScenarioOverrides,
@@ -467,7 +467,8 @@ export const namedResourceScenarioOverrides: JsonOverride[] = [
   ...genomeScenarioOverrides,
 ];
 
-export const apiCatchallOverrides: JsonOverride[] = [
+/** Internal composition building block only — not exported (see above). */
+const apiCatchallOverrides: JsonOverride[] = [
   ...namedResourceScenarioOverrides,
   ...emptyBackendFallbackOverrides,
 ];

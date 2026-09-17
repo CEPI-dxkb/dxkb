@@ -8,6 +8,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import {
   json,
+  makeRouteContext,
   mockNextRequest,
   setTestSession,
 } from "@/test-helpers/api-route-helpers";
@@ -22,22 +23,15 @@ const taxonomyUrl = "https://data.test/taxonomy/";
  */
 let nextIpOctet = 10;
 
-function request(
-  operation: string,
-  query = "",
-): { request: ReturnType<typeof mockNextRequest>; context: Context } {
+function request(operation: string, query = "") {
   nextIpOctet += 1;
   return {
     request: mockNextRequest({
       url: `http://localhost:3019/api/taxonomy-tree/${operation}${query}`,
       headers: { "x-forwarded-for": `203.0.113.${String(nextIpOctet)}` },
     }),
-    context: { params: Promise.resolve({ operation }) },
+    context: makeRouteContext({ operation }),
   };
-}
-
-interface Context {
-  params: Promise<{ operation: string }>;
 }
 
 function call(operation: string, query = "") {

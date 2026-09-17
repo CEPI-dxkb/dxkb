@@ -79,8 +79,21 @@ export function mockNextRequest(
 }
 
 
-export function makeRouteContext(id: string) {
-  return { params: Promise.resolve({ id }) };
+/**
+ * Builds the `{ params: Promise<…> }` second argument an App Router route
+ * handler receives, typed to whatever params the route actually declares.
+ *
+ * Takes the params object rather than a bare `id` so a route segmented on
+ * something else (`{ resource }` for `/api/data/[resource]`, `{ operation }`
+ * for `/api/taxonomy-tree/[operation]`) uses this helper instead of
+ * hand-rolling `{ params: Promise.resolve(…) }`. The generic preserves the
+ * literal key type, so passing the wrong param name is a type error rather
+ * than an `undefined` at runtime.
+ */
+export function makeRouteContext<T extends Record<string, string | string[]>>(
+  params: T,
+): { params: Promise<T> } {
+  return { params: Promise.resolve(params) };
 }
 
 export async function json<T = unknown>(res: Response): Promise<T> {

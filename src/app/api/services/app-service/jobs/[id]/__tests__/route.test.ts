@@ -29,7 +29,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
 
     const request = mockNextRequest();
 
-    const response = await GET(request, makeRouteContext("job-1"));
+    const response = await GET(request, makeRouteContext({ id: "job-1" }));
     const data = (await response.json()) as { error?: string };
 
     expect(response.status).toBe(401);
@@ -48,7 +48,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
 
     const request = mockNextRequest();
 
-    const response = await GET(request, makeRouteContext("job-1"));
+    const response = await GET(request, makeRouteContext({ id: "job-1" }));
     const data = (await response.json()) as typeof mockDetails;
 
     expect(response.status).toBe(200);
@@ -62,7 +62,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
       searchParams: { include_logs: "true" },
     });
 
-    await GET(request, makeRouteContext("job-2"));
+    await GET(request, makeRouteContext({ id: "job-2" }));
 
     expect(mockAppService.queryJobDetails).toHaveBeenCalledWith({
       job_id: "job-2",
@@ -75,7 +75,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
 
     const request = mockNextRequest();
 
-    await GET(request, makeRouteContext("job-3"));
+    await GET(request, makeRouteContext({ id: "job-3" }));
 
     expect(mockAppService.queryJobDetails).toHaveBeenCalledWith({
       job_id: "job-3",
@@ -90,7 +90,7 @@ describe("GET /api/services/app-service/jobs/[id]", () => {
 
     const request = mockNextRequest();
 
-    const response = await GET(request, makeRouteContext("job-err"));
+    const response = await GET(request, makeRouteContext({ id: "job-err" }));
     const data = (await response.json()) as { error?: string };
 
     expect(response.status).toBe(500);

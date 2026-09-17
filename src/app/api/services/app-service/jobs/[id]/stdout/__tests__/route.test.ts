@@ -29,7 +29,7 @@ describe("GET /api/services/app-service/jobs/[id]/stdout", () => {
 
     const request = mockNextRequest();
 
-    const response = await GET(request, makeRouteContext("job-1"));
+    const response = await GET(request, makeRouteContext({ id: "job-1" }));
     const data = (await response.json()) as { error?: string };
 
     expect(response.status).toBe(401);
@@ -44,7 +44,7 @@ describe("GET /api/services/app-service/jobs/[id]/stdout", () => {
 
     const request = mockNextRequest();
 
-    const response = await GET(request, makeRouteContext("job-out"));
+    const response = await GET(request, makeRouteContext({ id: "job-out" }));
     const text = await response.text();
 
     expect(response.status).toBe(200);
@@ -63,7 +63,7 @@ describe("GET /api/services/app-service/jobs/[id]/stdout", () => {
 
     const request = mockNextRequest();
 
-    const response = await GET(request, makeRouteContext("job-err"));
+    const response = await GET(request, makeRouteContext({ id: "job-err" }));
     const data = (await response.json()) as { error?: string };
 
     expect(response.status).toBe(500);

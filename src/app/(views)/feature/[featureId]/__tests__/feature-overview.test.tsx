@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { metadataLinkClassName } from "@/components/detail-panel/metadata-link";
 import type { FeatureViewRecord } from "@/lib/feature-view";
 import {
   emptyOverviewSectionTitles,
@@ -88,9 +89,14 @@ describe("FeatureOverview", () => {
         feature={featureRecord({ genome_id: "83332.12", taxon_id: 1773 })}
       />,
     );
+    // Class identity with the boundary's own constant is the mechanism check.
+    // A local `<Link className="text-primary underline">` — the code this task
+    // replaced — also lacks `target` and also carries `text-primary`, so only
+    // the exact shared treatment distinguishes a classified link from an
+    // unclassified one.
     for (const link of screen.getAllByRole("link")) {
       expect(link).not.toHaveAttribute("target");
-      expect(link).toHaveClass("text-primary");
+      expect(link).toHaveClass(metadataLinkClassName, { exact: true });
     }
   });
 

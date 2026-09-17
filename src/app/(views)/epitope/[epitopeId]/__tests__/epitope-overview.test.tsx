@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { metadataLinkClassName } from "@/components/detail-panel/metadata-link";
 import type { EpitopeViewRecord } from "@/lib/epitope-view";
 import {
   emptyOverviewSectionTitles,
@@ -56,7 +57,12 @@ describe("EpitopeOverview", () => {
     ]);
     const link = screen.getByRole("link", { name: "11320" });
     expect(link).not.toHaveAttribute("target");
-    expect(link).toHaveClass("text-primary");
+    // Class identity with the boundary's own constant is the mechanism check.
+    // A local `<Link className="text-primary underline">` — the code this task
+    // replaced — also lacks `target` and also carries `text-primary`, so only
+    // the exact shared treatment distinguishes a classified link from an
+    // unclassified one.
+    expect(link).toHaveClass(metadataLinkClassName, { exact: true });
   });
 
   it("omits the Taxon ID field entirely when the ID is not a usable taxon ID", () => {

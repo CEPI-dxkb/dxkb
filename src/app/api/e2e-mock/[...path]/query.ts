@@ -3,48 +3,48 @@ import type { NextRequest } from "next/server";
 /**
  * Query parsing for the loopback E2E mock's fixture matchers.
  *
- * ## Why this is not one `decodeURIComponent(search)` call
+ * ## One decode, per clause — never a second one per value
  *
- * A Data API request reaches this handler through two encoding layers, and
- * both have to come off — in order — before a fixture value can be compared
- * to a fixture record.
+ * A Data API clause reaches this handler in one of two shapes, and a single
+ * `decodeURIComponent` of the raw `&`-separated part lands on the decoded
+ * clause text in both:
  *
- * 1. **`serializeValue`** (`src/lib/data-api/rql.ts`) percent-encodes every
- *    RQL *value* and quotes it when it contains whitespace, so the sample
- *    identifier `sample/1` is serialised into the clause
- *    `eq(sample_identifier,sample%2F1)`.
- * 2. **The query transport.** `ServerDataRepository` assigns those clauses to
- *    `URL.search`, and Next normalises every route-handler query through a
- *    `URLSearchParams` round trip: each bare clause arrives as a *key* with an
- *    empty value, with `(` `)` `,` percent-encoded and spaces turned into
- *    `+`. A page whose dynamic `params` segment is still percent-encoded
- *    (Next does not decode `%2F` for the page component the way it does for
- *    `generateMetadata`) serialises one level deeper again:
- *    `eq(sample_identifier,sample%252F1)`.
+ * 1. **As the repository wrote it.** `serializeValue`
+ *    (`src/lib/data-api/rql.ts`) percent-encodes each RQL value, so
+ *    `sample/1` arrives inside `eq(sample_identifier,sample%2F1)`. One decode
+ *    gives `eq(sample_identifier,sample/1)`.
+ * 2. **After Next's normalisation.** Next runs every route-handler query
+ *    through a `URLSearchParams` round trip: it DECODES the clause (consuming
+ *    `serializeValue`'s layer) and re-encodes it form-urlencoded, so each
+ *    clause arrives as a key with an empty value and with `(` `)` `,`
+ *    escaped. One decode of that lands on the same text as case 1.
  *
- * A single decode over the whole search string undoes exactly one of those
- * layers, so `sample%252F1` came back as `sample%2F1` and never matched the
- * `sample/1` fixture — the Surveillance compound-member journey rendered
- * "Surveillance record not found" from an empty result. Decoding twice
- * globally would instead corrupt clause syntax. So: decode the transport
- * layer per clause, then decode the value layer per extracted value, and
- * compare parsed values to fixture values rather than substrings to a
- * substring.
+ * So the decode in `splitClauses` is the only percent-decode this module
+ * performs. {@link normalizeQueryValue} only strips `serializeValue`'s
+ * quoting and restores the space that the form-urlencoded transport wrote as
+ * `+`; it deliberately does NOT decode again.
  *
- * ## Two ambiguities the transport genuinely destroys
+ * ## Why the second decode was removed
  *
- * The `URLSearchParams` round trip is lossy, and no parser can undo that:
+ * An earlier version of this module decoded the extracted value a second
+ * time. That made `sample%2F1` and `sample/1` resolve to the same fixture,
+ * which is exactly the wrong leniency: the production bug this task
+ * uncovered was a page component sending `eq(sample_identifier,sample%252F1)`
+ * because Next re-encodes its `params` (see `readRouteParam` in
+ * `src/lib/views/route-params.ts` for the full mechanism and the
+ * Next-internals citation). The extra decode absorbed that and turned
+ * `e2e/tests/surveillance-view.spec.ts` green while the real app 404'd. With
+ * the production path fixed, the mock must be strict again so a regression of
+ * that bug fails the suite instead of being forgiven by it.
  *
- * - `+` inside a value means a space (a literal plus is emitted as `%2B` by
- *   `serializeValue` and survives as `%2B`), so {@link decodeQueryValue}
- *   treats it as one. Clause *text* keeps its `+`, which is what makes
- *   `sort(+genome_name,+genome_id)` still match.
- * - A value that literally contains `%2F` is indistinguishable from one that
- *   contains `/`, and it resolves to the slash fixture. That is the outcome
- *   the app needs, not a concession: the page component receives
- *   `params.sampleId` still percent-encoded, so `/surveillance/sample%2F1`
- *   asks for `sample%2F1` and has to find `sample/1`.
- *   `__tests__/full-transport.test.ts` pins both halves.
+ * ## The one ambiguity the transport still destroys
+ *
+ * A value written as `+` cannot be told apart from a value containing a
+ * literal plus: `serializeValue` emits `%2B` for a real plus, but Next's
+ * round trip writes a space as `+`, and after the single decode both read as
+ * `+`. {@link normalizeQueryValue} resolves it as a space, which is what
+ * `keyword("Nasal swab")` needs. Clause TEXT keeps its `+`, which is what
+ * keeps `sort(+genome_name,+genome_id)` matching verbatim.
  */
 
 export interface FixtureQueryEquality {
@@ -55,11 +55,11 @@ export interface FixtureQueryEquality {
 export interface FixtureQuery {
   /** Still-encoded search string, `?` included. Diagnostics only. */
   search: string;
-  /** Transport-decoded clauses, in request order. Values stay value-encoded. */
+  /** Decoded clauses, in request order (see this module's header). */
   clauses: string[];
-  /** Every `eq(field,value)` in the query, values fully decoded. */
+  /** Every `eq(field,value)` in the query, values unquoted and space-restored. */
   equals: FixtureQueryEquality[];
-  /** Every `keyword(value)` in the query, values fully decoded. */
+  /** Every `keyword(value)` in the query, values unquoted and space-restored. */
   keywords: string[];
 }
 
@@ -73,16 +73,18 @@ function decodeOnce(value: string): string {
 }
 
 /**
- * Decode an RQL value: strip `serializeValue`'s quoting, treat `+` as the
- * space the form-urlencoded transport turned it into, then undo
- * `serializeValue`'s percent-encoding.
+ * Read an RQL value out of an already-decoded clause: strip
+ * `serializeValue`'s quoting and restore the space the form-urlencoded
+ * transport wrote as `+`. No percent-decoding — `splitClauses` already did
+ * the one decode there is, and a second one would collapse `sample%2F1` onto
+ * `sample/1` (see this module's header).
  */
-export function decodeQueryValue(raw: string): string {
+export function normalizeQueryValue(raw: string): string {
   const unquoted =
     raw.length >= 2 && raw.startsWith('"') && raw.endsWith('"')
       ? raw.slice(1, -1)
       : raw;
-  return decodeOnce(unquoted.replace(/\+/g, "%20"));
+  return unquoted.replace(/\+/g, " ");
 }
 
 const equalsPattern = /\beq\(([A-Za-z_][A-Za-z0-9_]*),("[^"]*"|[^(),]*)\)/g;
@@ -115,15 +117,15 @@ export function parseFixtureQuery(request: NextRequest): FixtureQuery {
     clauses,
     equals: [...joined.matchAll(equalsPattern)].map((match) => ({
       field: match[1],
-      value: decodeQueryValue(match[2]),
+      value: normalizeQueryValue(match[2]),
     })),
     keywords: [...joined.matchAll(keywordPattern)].map((match) =>
-      decodeQueryValue(match[1]),
+      normalizeQueryValue(match[1]),
     ),
   };
 }
 
-/** The first `eq(<field>,…)` value in the query, decoded, or `undefined`. */
+/** The first `eq(<field>,…)` value in the query, or `undefined`. */
 export function equalsValue(
   query: FixtureQuery,
   field: string,

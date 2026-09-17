@@ -1,4 +1,5 @@
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { brucellaPpiTotal } from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
 
 interface RouteContext {
@@ -75,7 +76,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
   beforeEach(() => {
     process.env.E2E_MOCK_ENABLED = "1";
   });
-
 
   it("returns protein structure fixtures for collections and exact members", async () => {
     const unfilteredResp = await GET(
@@ -339,7 +339,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     );
   });
 
-
   it("GET returns a valid BV-BRC profile for server-side session hydration", async () => {
     const resp = await GET(
       mockNextRequest({
@@ -457,7 +456,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     },
   );
 
-
   it("GET returns the Genome collection fixture for the expected MERS query", async () => {
     const resp = await GET(
       mockNextRequest({
@@ -518,7 +516,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
       response: { docs: [] },
     });
   });
-
 
   it("GET returns the reference_genome array fixture (not a SOLR envelope)", async () => {
     const resp = await GET(
@@ -829,7 +826,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     },
   );
 
-
   it("POST returns SOLR-shaped genome_amr fixture for a well-formed AMR body", async () => {
     const body =
       "eq(genome_id,*)" +
@@ -1099,20 +1095,78 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
   it.each([
     ["PUT", PUT],
     ["DELETE", DELETE],
-  ])("%s rejects every path — no fixture is registered", async (name, handler) => {
-    const resp = await handler(
+  ])(
+    "%s rejects every path — no fixture is registered",
+    async (name, handler) => {
+      const resp = await handler(
+        mockNextRequest({
+          method: name,
+          url: "http://localhost:3020/api/e2e-mock/workspace/anything",
+        }),
+        ctx(["workspace", "anything"]),
+      );
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toMatchObject({
+        error: `e2e-mock: unhandled ${name} endpoint`,
+        path: "workspace/anything",
+        reason: expect.stringContaining(`add a ${name} branch`) as unknown,
+      });
+    },
+  );
+
+  it("logs every rejection branch under the prefix e2e/README.md documents", async () => {
+    // The README tells a reader to grep the webServer log for
+    // "[api/e2e-mock] e2e-mock: unhandled". A branch with its own prefix
+    // would be invisible to that grep — which is exactly what the JSON-RPC
+    // branch used to be, making a "zero diagnostics" check unsound.
+    const logged: string[] = [];
+    const spy = vi
+      .spyOn(console, "error")
+      .mockImplementation((...args: unknown[]) => {
+        logged.push(args.map(String).join(" "));
+      });
+
+    await rpc(["workspace"], "Workspace.no_such_method");
+    await rpc(["mystery"], "Some.method");
+    await post(["mystery"], { something: 1 });
+    await GET(
+      mockNextRequest({ url: "http://localhost:3020/api/e2e-mock/nowhere" }),
+      ctx(["nowhere"]),
+    );
+    await PUT(
       mockNextRequest({
-        method: name,
-        url: "http://localhost:3020/api/e2e-mock/workspace/anything",
+        method: "PUT",
+        url: "http://localhost:3020/api/e2e-mock/nowhere",
       }),
-      ctx(["workspace", "anything"]),
+      ctx(["nowhere"]),
+    );
+    await DELETE(
+      mockNextRequest({
+        method: "DELETE",
+        url: "http://localhost:3020/api/e2e-mock/nowhere",
+      }),
+      ctx(["nowhere"]),
+    );
+    spy.mockRestore();
+
+    expect(logged).toHaveLength(6);
+    for (const line of logged) {
+      expect(line).toMatch(/^\[api\/e2e-mock\] e2e-mock: unhandled /);
+    }
+  });
+
+  it("GET reports the canonical ppi total for an unnarrowed count", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/ppi/?eq(id,*)",
+      }),
+      ctx(["data", "ppi"]),
     );
 
-    expect(resp.status).toBe(400);
+    expect(resp.status).toBe(200);
     expect((await resp.json()) as unknown).toMatchObject({
-      error: `e2e-mock: unhandled ${name} endpoint`,
-      path: "workspace/anything",
-      registered: [],
+      response: { numFound: brucellaPpiTotal },
     });
   });
 

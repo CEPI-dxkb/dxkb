@@ -6,6 +6,7 @@ import { ArrowLeft, Cuboid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { buildWorkspaceStructureSource } from "@/lib/protein-structure-view/source";
+import { readRouteParamSegments } from "@/lib/views/route-params";
 import { StructureSourceViewer } from "@/components/workspace/file-viewer/viewers/structure-source-viewer";
 import type { MolstarLayoutSpec } from "@/components/workspace/file-viewer/viewers/use-molstar-plugin";
 
@@ -19,10 +20,13 @@ const fullLayout: MolstarLayoutSpec = {
 };
 
 export default function StructureViewerPage({ params }: StructurePageProps) {
-  // `path` segments come from a catch-all route param, which Next.js has
-  // already percent-decoded once per segment — do not decode again here.
+  // A page component's catch-all param arrives percent-encoded PER SEGMENT —
+  // `getParamValue()` maps `encodeURIComponent` over the array before user
+  // code sees it. `readRouteParamSegments` undoes exactly that; its doc
+  // comment carries the Next-internals citation and explains why
+  // `generateMetadata` and route handlers must NOT do the same.
   const { path } = use(params);
-  const filePath = path?.join("/") ?? "";
+  const filePath = readRouteParamSegments(path ?? [], "page").join("/");
   const source = filePath ? buildWorkspaceStructureSource(filePath) : undefined;
 
   if (!source) {

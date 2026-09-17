@@ -24,7 +24,11 @@ export async function generateMetadata({
   const { sampleId: decodedSampleId, result } = await loadCompoundSamplePage(
     sampleId,
     scalarQueryParam(query.pathogen_test_type),
-    { isSampleId: isSurveillanceSampleId, lookup: getSurveillance },
+    {
+      source: "metadata",
+      isSampleId: isSurveillanceSampleId,
+      lookup: getSurveillance,
+    },
   );
   return {
     title: `${decodedSampleId} | Surveillance`,
@@ -44,7 +48,11 @@ export default async function SurveillancePage({
   const { sampleId: decodedSampleId, result } = await loadCompoundSamplePage(
     sampleId,
     pathogenTestType,
-    { isSampleId: isSurveillanceSampleId, lookup: getSurveillance },
+    {
+      source: "page",
+      isSampleId: isSurveillanceSampleId,
+      lookup: getSurveillance,
+    },
   );
   canonicalizeCompoundSampleUrl(decodedSampleId, query, {
     discriminatorParam: "pathogen_test_type",

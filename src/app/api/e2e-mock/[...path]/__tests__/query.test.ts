@@ -1,6 +1,6 @@
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import {
-  decodeQueryValue,
+  normalizeQueryValue,
   equalsValue,
   hasCall,
   hasClause,
@@ -25,22 +25,22 @@ function normalise(repositorySearch: string): string {
   return `?${new URLSearchParams(repositorySearch.replace(/^\?/, "")).toString()}`;
 }
 
-describe("decodeQueryValue", () => {
+describe("normalizeQueryValue", () => {
   it("strips serializeValue's quoting", () => {
-    expect(decodeQueryValue('"RAT%2Fantigen"')).toBe("RAT/antigen");
-  });
-
-  it("decodes a slash value", () => {
-    expect(decodeQueryValue("sample%2F1")).toBe("sample/1");
+    expect(normalizeQueryValue('"RAT/antigen"')).toBe("RAT/antigen");
   });
 
   it("reads + as the space the form-urlencoded transport made of it", () => {
-    expect(decodeQueryValue('"Nasal+swab"')).toBe("Nasal swab");
+    expect(normalizeQueryValue('"Nasal+swab"')).toBe("Nasal swab");
   });
 
-  it("returns a malformed escape unchanged instead of throwing", () => {
-    expect(decodeQueryValue("50%")).toBe("50%");
-    expect(decodeQueryValue("%E0%A4%A")).toBe("%E0%A4%A");
+  it("does NOT percent-decode — splitClauses already did the one decode", () => {
+    // The second decode is what used to collapse sample%2F1 onto sample/1 and
+    // hide the production param-encoding bug. Values reach this function
+    // already decoded; anything percent-looking left in one is literal.
+    expect(normalizeQueryValue("sample%2F1")).toBe("sample%2F1");
+    expect(normalizeQueryValue("50%")).toBe("50%");
+    expect(normalizeQueryValue("%E0%A4%A")).toBe("%E0%A4%A");
   });
 });
 
@@ -76,7 +76,12 @@ describe("parseFixtureQuery — clause extraction", () => {
 
   it("returns an empty parse for a query-less request", () => {
     const query = parse("");
-    expect(query).toMatchObject({ search: "", clauses: [], equals: [], keywords: [] });
+    expect(query).toMatchObject({
+      search: "",
+      clauses: [],
+      equals: [],
+      keywords: [],
+    });
   });
 });
 
@@ -84,18 +89,12 @@ describe("parseFixtureQuery — predicate extraction", () => {
   it.each([
     [
       "repository form",
-      '?and(eq(sample_identifier,sample%2F1),eq(pathogen_test_type,%22RAT%2Fantigen%22))',
+      "?and(eq(sample_identifier,sample%2F1),eq(pathogen_test_type,%22RAT%2Fantigen%22))",
     ],
     [
       "Next-normalised form",
       normalise(
-        '?and(eq(sample_identifier,sample%2F1),eq(pathogen_test_type,%22RAT%2Fantigen%22))',
-      ),
-    ],
-    [
-      "double-encoded form (page params Next left percent-encoded)",
-      normalise(
-        '?and(eq(sample_identifier,sample%252F1),eq(pathogen_test_type,%22RAT%2Fantigen%22))',
+        "?and(eq(sample_identifier,sample%2F1),eq(pathogen_test_type,%22RAT%2Fantigen%22))",
       ),
     ],
   ])("decodes slash values identically in the %s", (_name, search) => {
@@ -105,15 +104,29 @@ describe("parseFixtureQuery — predicate extraction", () => {
   });
 
   it.each([
+    ["repository form", "?eq(sample_identifier,sample%252F1)"],
+    ["Next-normalised form", normalise("?eq(sample_identifier,sample%252F1)")],
+  ])(
+    "keeps a double-encoded identifier distinct from the slash one (%s)",
+    (_name, search) => {
+      // `sample%252F1` is what a caller that forgot to decode its route param
+      // puts on the wire. It asks for the identifier `sample%2F1`, which is
+      // not `sample/1`, and the matcher must say so — that strictness is what
+      // makes a regression of the page-param bug visible.
+      expect(equalsValue(parse(search), "sample_identifier")).toBe(
+        "sample%2F1",
+      );
+    },
+  );
+
+  it.each([
     ["repository form", `?eq(sample_identifier,${encodeURIComponent("50%")})`],
     [
       "Next-normalised form",
       normalise(`?eq(sample_identifier,${encodeURIComponent("50%")})`),
     ],
   ])("recovers a literal-percent identifier from the %s", (_name, search) => {
-    // A malformed escape after the transport decode (`50%`) must fall back to
-    // the raw text rather than throw — and must not be confused with a value
-    // whose percent sequence really was an encoded character.
+    // A malformed escape must fall back to the raw text rather than throw.
     expect(equalsValue(parse(search), "sample_identifier")).toBe("50%");
   });
 

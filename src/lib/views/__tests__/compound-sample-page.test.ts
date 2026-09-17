@@ -89,6 +89,7 @@ describe.each(views)(
 
       await expect(
         loadCompoundSamplePage("missing-sample", undefined, {
+          source: "page",
           isSampleId,
           lookup,
         }),
@@ -103,7 +104,11 @@ describe.each(views)(
       );
 
       await expect(
-        loadCompoundSamplePage("sample-1", undefined, { isSampleId, lookup }),
+        loadCompoundSamplePage("sample-1", undefined, {
+          source: "page",
+          isSampleId,
+          lookup,
+        }),
       ).rejects.toThrow("NEXT_NOT_FOUND");
     });
 
@@ -115,7 +120,11 @@ describe.each(views)(
       );
 
       const error = await rejection(
-        loadCompoundSamplePage("sample-1", undefined, { isSampleId, lookup }),
+        loadCompoundSamplePage("sample-1", undefined, {
+          source: "page",
+          isSampleId,
+          lookup,
+        }),
       );
 
       expect(error).toBeInstanceOf(DataApiError);
@@ -133,7 +142,11 @@ describe.each(views)(
       );
 
       const error = await rejection(
-        loadCompoundSamplePage("sample-1", undefined, { isSampleId, lookup }),
+        loadCompoundSamplePage("sample-1", undefined, {
+          source: "page",
+          isSampleId,
+          lookup,
+        }),
       );
 
       expect(error).toBeInstanceOf(DataApiError);
@@ -151,7 +164,11 @@ describe.each(views)(
       );
 
       const error = await rejection(
-        loadCompoundSamplePage("sample-1", undefined, { isSampleId, lookup }),
+        loadCompoundSamplePage("sample-1", undefined, {
+          source: "page",
+          isSampleId,
+          lookup,
+        }),
       );
 
       expect(error).toBeInstanceOf(DataApiError);
@@ -160,5 +177,56 @@ describe.each(views)(
         "Custom internal upstream failure",
       );
     });
+
+    /**
+     * The guard for the param-encoding asymmetry documented on
+     * `readRouteParam` (src/lib/views/route-params.ts). Next hands the page component
+     * `encodeURIComponent(id)` and `generateMetadata` the bare `id`, so the
+     * two sources must be fed DIFFERENT strings and still resolve to the same
+     * identifier. A loader that normalised neither, or both, fails here.
+     */
+    describe.each([
+      ["a slash", "sample/1"],
+      ["a space", "sample 1"],
+      ["a literal percent", "sample%1"],
+      ["a literal %2F", "sample%2F1"],
+      ["an ampersand", "sample&1"],
+      ["no escaped character at all", "000123"],
+    ])(
+      "both param sources resolve one identifier — %s",
+      (_name, identifier) => {
+        it(`resolves ${identifier} from either entry point`, async () => {
+          const requested: string[] = [];
+          server.use(
+            http.get(`${dataApiUrl}/${resourcePath}/`, ({ request }) => {
+              requested.push(new URL(request.url).search);
+              return HttpResponse.json({
+                response: {
+                  numFound: 1,
+                  docs: [{ id: "row-1", sample_identifier: identifier }],
+                },
+              });
+            }),
+          );
+
+          const fromPage = await loadCompoundSamplePage(
+            encodeURIComponent(identifier),
+            undefined,
+            { source: "page", isSampleId, lookup },
+          );
+          const fromMetadata = await loadCompoundSamplePage(
+            identifier,
+            undefined,
+            { source: "metadata", isSampleId, lookup },
+          );
+
+          expect(fromPage.sampleId).toBe(identifier);
+          expect(fromMetadata.sampleId).toBe(identifier);
+          // Same identifier in, same query out: the wire clauses must match, or
+          // the two entry points are asking the backend different questions.
+          expect(new Set(requested).size).toBe(1);
+        });
+      },
+    );
   },
 );

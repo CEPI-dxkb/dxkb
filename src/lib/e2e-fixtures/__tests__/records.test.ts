@@ -1,3 +1,4 @@
+import { getResourceDefinition } from "@/lib/data-api/resources";
 import {
   biosetRecordSchema,
   genomeAmrRecordSchema,
@@ -73,9 +74,7 @@ describe("canonical E2E fixture records parse with production Zod schemas", () =
   it.each(proteinStructureRecords)(
     "proteinStructureRecords[$pdb_id] matches proteinStructureRecordSchema",
     (record) => {
-      expect(proteinStructureRecordSchema.safeParse(record).success).toBe(
-        true,
-      );
+      expect(proteinStructureRecordSchema.safeParse(record).success).toBe(true);
     },
   );
 
@@ -148,23 +147,58 @@ describe("epitope.host_name stays array-valued (registry: multipleFields.epitope
   });
 });
 
-describe("genome_amr.pmid stays array-valued (registry: multipleFields.genome_amr)", () => {
-  // src/lib/data-api/resources.ts declares genome_amr.pmid multi-valued, which
-  // is what makes the column unsortable in the gateway. Task 19 onboarded the
-  // resource without a row fixture anywhere in the repo and could not check
-  // that declaration against anything; this fixture is that check's anchor.
-  // It cannot prove what the live BV-BRC core returns (no test may reach a
-  // live backend), but it does mean the registry and the fixture can no
-  // longer disagree silently.
-  it("genomeAmrRecord.pmid is an array", () => {
-    expect(Array.isArray(genomeAmrRecord.pmid)).toBe(true);
+describe("genomeAmrRecord agrees with what the registry declares", () => {
+  // Task 19 onboarded `genome_amr` without a row fixture anywhere in the
+  // repo, so nothing checked its declarations against a concrete row. These
+  // read the REGISTRY — not a literal restated from the fixture — so editing
+  // either side alone fails. What they cannot do is prove what the live
+  // BV-BRC core returns; no test may reach a live backend.
+  const definition = getResourceDefinition("genome_amr");
+
+  it("matches the registry's pmid cardinality", () => {
+    // `multipleFields` itself is module-private; `cardinality` is the derived
+    // public surface `buildFields` computes from it, so dropping `pmid` from
+    // `multipleFields.genome_amr` flips this to "scalar" and fails here.
+    expect(definition.fields.pmid.cardinality).toBe("multiple");
+    expect(Array.isArray(genomeAmrRecord.pmid)).toBe(
+      definition.fields.pmid.cardinality === "multiple",
+    );
   });
 
-  it("leaves measurement_value and testing_standard_year as strings", () => {
-    // Deliberately string-typed so the gateway's inferType default keeps
-    // accepting non-numeric facet values (">=", year ranges).
-    expect(typeof genomeAmrRecord.measurement_value).toBe("string");
-    expect(typeof genomeAmrRecord.testing_standard_year).toBe("string");
+  it("matches the registry's inferred type for every scalar field it carries", () => {
+    // `measurement_value` and `testing_standard_year` are deliberately left
+    // to inferType's string default so the gateway does not reject
+    // non-numeric facet values (">=", year ranges). Assert that against the
+    // registry rather than against a restated literal.
+    const jsTypeFor: Record<string, string> = {
+      string: "string",
+      number: "number",
+    };
+    const checked: string[] = [];
+    for (const [field, value] of Object.entries(genomeAmrRecord)) {
+      if (!Object.hasOwn(definition.fields, field)) continue;
+      const declared = definition.fields[field];
+      if (declared.cardinality === "multiple") continue;
+      if (!Object.hasOwn(jsTypeFor, declared.type)) continue;
+      checked.push(field);
+      expect(`${field}:${typeof value}`).toBe(
+        `${field}:${jsTypeFor[declared.type]}`,
+      );
+    }
+    // Guards the loop against passing vacuously if the fixture or the
+    // registry dropped the two fields this assertion exists for.
+    expect(checked).toEqual(
+      expect.arrayContaining(["measurement_value", "testing_standard_year"]),
+    );
+  });
+
+  it("covers the two fields Task 19 left to inferType's string default", () => {
+    // Guards the loop above against vacuously passing if those fields were
+    // dropped from the fixture or from the registry.
+    expect(definition.fields.measurement_value.type).toBe("string");
+    expect(definition.fields.testing_standard_year.type).toBe("string");
+    expect(genomeAmrRecord).toHaveProperty("measurement_value");
+    expect(genomeAmrRecord).toHaveProperty("testing_standard_year");
   });
 });
 
@@ -210,7 +244,10 @@ describe("Brucella PPI records", () => {
     expect(new Set(rows.map((row) => row.id)).size).toBe(3);
   });
 
-  it("reports a deterministic collection total for both transports", () => {
-    expect(brucellaPpiTotal).toBe(4358);
+  it("names a positive total for the loopback's unnarrowed ppi count", () => {
+    // Behaviour, not the literal: the loopback's response is asserted in
+    // src/app/api/e2e-mock/[...path]/__tests__/route.test.ts, which compares
+    // `numFound` against this constant.
+    expect(brucellaPpiTotal).toBeGreaterThan(0);
   });
 });

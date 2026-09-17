@@ -91,13 +91,24 @@ function logHit(method: string, path: string, extra?: string): void {
  * `JsonRpcClient` and `ServerDataRepository` both collapse a non-2xx into
  * their own generic message — the webServer log is where whoever is reading a
  * failing Playwright run will actually find out what to add.
+ *
+ * EVERY rejection branch logs through {@link logUnhandled}, including the
+ * JSON-RPC one that answers with an envelope instead of this body, so the
+ * single grep `[api/e2e-mock] e2e-mock: unhandled` documented in
+ * `e2e/README.md` sees all of them. A branch with its own log prefix would
+ * be invisible to that grep — which is how a "zero diagnostics" check can
+ * look clean while missing the most likely rejection class.
  */
+function logUnhandled(error: string, reason: string): void {
+  console.error(`[api/e2e-mock] ${error}: ${reason}`);
+}
+
 function unhandledResponse(
   error: string,
   reason: string,
   context: Record<string, unknown> = {},
 ): NextResponse {
-  console.error(`[api/e2e-mock] ${error}: ${reason}`);
+  logUnhandled(error, reason);
   return NextResponse.json({ error, reason, ...context }, { status: 400 });
 }
 
@@ -930,8 +941,11 @@ export async function GET(
  * The other seven namespaces the old allowlist carried — `service`,
  * `services`, `data`, `data-service`, `sra-validation`, `minhash`, `upload` —
  * were never reached by a POST in that run and are gone rather than kept
- * "just in case"; `.env.e2e.test` still points at them, so the first real
- * caller gets a diagnostic naming itself instead of a fake success.
+ * "just in case". Five of them (`services`, `data`, `data-service`,
+ * `sra-validation`, `minhash`) still have a `.env.e2e.test` variable pointing
+ * here, so a real caller can still arrive and will get a diagnostic naming
+ * itself instead of a fake success. `service` and `upload` never had one and
+ * were unreachable even before this change.
  *
  * `bvbrc-website` is deliberately not here: its one POST endpoint,
  * `genome_amr`, is handled by `maybeBvBrcWebsitePost` with its own body
@@ -1027,7 +1041,7 @@ export async function POST(
     const reason = Object.hasOwn(loopbackRpcResults, endpoint)
       ? `no fixture for JSON-RPC method '${rpcMethod}' at endpoint '${endpoint}'`
       : `no JSON-RPC endpoint '${endpoint}' is mocked`;
-    console.error(`[api/e2e-mock] unhandled JSON-RPC call: ${reason}`);
+    logUnhandled("e2e-mock: unhandled JSON-RPC call", reason);
     return NextResponse.json(
       buildLoopbackRpcError(
         jsonRpcErrorCodes.METHOD_NOT_FOUND,
@@ -1049,14 +1063,17 @@ export async function POST(
  * behaviour to preserve — only a hole to close. Both handlers stay exported:
  * without them Next answers 405 with no explanation of why, and the point is
  * for the first real caller to be told what to add and where.
+ *
+ * There is deliberately no empty fixture table to "add an entry to" — the
+ * first real caller needs a handler shaped like its own contract, the way
+ * `loopbackRpcResults` is shaped like JSON-RPC, not a row in a map whose
+ * value type nobody has designed yet.
  */
-const mutationMethodFixtures: Record<string, never> = {};
-
 function rejectMutation(method: string, path: string): NextResponse {
   return unhandledResponse(
     `e2e-mock: unhandled ${method} endpoint`,
-    `no ${method} fixture is registered — add one to mutationMethodFixtures in this module`,
-    { path, registered: Object.keys(mutationMethodFixtures) },
+    `no ${method} fixture is registered — add a ${method} branch to src/app/api/e2e-mock/[...path]/route.ts`,
+    { path },
   );
 }
 

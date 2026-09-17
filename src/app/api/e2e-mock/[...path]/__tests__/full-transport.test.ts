@@ -23,10 +23,13 @@ import { GET } from "../route";
  *     turns spaces into `+`, and (when a page component's dynamic `params`
  *     segment was still percent-encoded) leaves the value one encode deeper.
  *
- * The second form is the one that regressed: a single global
- * `decodeURIComponent` over the search string left `sample%2F1` where the
- * matcher expected `sample/1`, so `/surveillance/sample%2F1` rendered
- * "Surveillance record not found" from an empty result.
+ * Matching is strict in both: a request for `sample%2F1` is a request for the
+ * identifier `sample%2F1`, not for `sample/1`. That strictness is the point.
+ * The page component used to send the former while meaning the latter (Next
+ * re-encodes its `params` — see `readRouteParam` in
+ * `src/lib/views/route-params.ts`), and a mock lenient enough to
+ * forgive it kept `e2e/tests/surveillance-view.spec.ts` green while the real
+ * app 404'd.
  */
 
 type WireForm = "repository" | "next";
@@ -37,7 +40,7 @@ function normalizeLikeNext(url: URL): URL {
   return normalized;
 }
 
-function loopbackFetch(wireForm: WireForm, seen: string[]): typeof fetch {
+function loopbackFetch(wireForm: WireForm, seen?: string[]): typeof fetch {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const requested = new URL(
       input instanceof URL
@@ -48,7 +51,7 @@ function loopbackFetch(wireForm: WireForm, seen: string[]): typeof fetch {
     );
     const delivered =
       wireForm === "next" ? normalizeLikeNext(requested) : requested;
-    seen.push(delivered.search);
+    seen?.push(delivered.search);
     const path = delivered.pathname
       .replace(/^\/api\/e2e-mock\//, "")
       .split("/")
@@ -64,7 +67,7 @@ function loopbackFetch(wireForm: WireForm, seen: string[]): typeof fetch {
   };
 }
 
-function repositoryFor(wireForm: WireForm, seen: string[]) {
+function repositoryFor(wireForm: WireForm, seen?: string[]) {
   return new ServerDataRepository({
     baseUrl: "http://127.0.0.1:3020/api/e2e-mock/data",
     fetch: loopbackFetch(wireForm, seen),
@@ -84,10 +87,8 @@ afterEach(() => {
 });
 
 describe.each(wireForms)("surveillance over the %s wire form", (wireForm) => {
-  const seen: string[] = [];
-
   function lookup(sampleIdentifier: string, discriminator?: string) {
-    return resolveCompoundSample(repositoryFor(wireForm, seen), {
+    return resolveCompoundSample(repositoryFor(wireForm), {
       resource: "surveillance",
       sampleIdentifier,
       discriminatorField: "pathogen_test_type",
@@ -119,18 +120,14 @@ describe.each(wireForms)("surveillance over the %s wire form", (wireForm) => {
     await expect(lookup("50%")).resolves.toEqual({ status: "not-found" });
   });
 
-  it("treats a literal %2F identifier as the slash one — documented collision", async () => {
-    // The `URLSearchParams` round trip Next applies makes `sample%2F1` and
-    // `sample/1` the same bytes on arrival, so no parser can separate them.
-    // This is load-bearing rather than incidental: Next hands the page
-    // component a still-encoded `params.sampleId`, so `/surveillance/sample%2F1`
-    // asks for `sample%2F1` and must still find `sample/1`. Pinned here so a
-    // future "stricter decode" cannot silently break that page again.
-    await expect(lookup("sample%2F1")).resolves.toMatchObject({
-      status: "unique",
-      record: expect.objectContaining({
-        sample_identifier: "sample/1",
-      }) as unknown,
+  it("does NOT resolve a literal %2F identifier to the slash record", async () => {
+    // The regression guard for the production bug. A caller that forwards an
+    // un-decoded route param asks for the identifier `sample%2F1`; the mock
+    // must answer not-found so the failure surfaces in the suite instead of
+    // being absorbed here. See `readRouteParam` in
+    // `src/lib/views/route-params.ts` for why a caller used to.
+    await expect(lookup("sample%2F1")).resolves.toEqual({
+      status: "not-found",
     });
   });
 
@@ -152,10 +149,8 @@ describe.each(wireForms)("surveillance over the %s wire form", (wireForm) => {
 });
 
 describe.each(wireForms)("serology over the %s wire form", (wireForm) => {
-  const seen: string[] = [];
-
   function lookup(sampleIdentifier: string, discriminator?: string) {
-    return resolveCompoundSample(repositoryFor(wireForm, seen), {
+    return resolveCompoundSample(repositoryFor(wireForm), {
       resource: "serology",
       sampleIdentifier,
       discriminatorField: "test_type",

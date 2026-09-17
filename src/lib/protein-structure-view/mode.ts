@@ -84,10 +84,14 @@ function workspacePathError(path: string): string | undefined {
 }
 
 /**
- * `params` values come from a page's `searchParams` prop, which Next.js has
- * already percent-decoded once. Treat every value here as the final decoded
- * string — do not decode again, or a literal `%25`/`%2F` in an accession or
- * workspace path becomes a different character than the one the user typed.
+ * `params` values come from a page's `searchParams` prop. Unlike a dynamic
+ * route param, `searchParams` are decoded consistently at every entry point,
+ * so treat every value here as the final decoded string — do not decode
+ * again, or a literal `%25`/`%2F` in an accession or workspace path becomes a
+ * different character than the one the user typed.
+ *
+ * A page component's `params` are the opposite case and DO need decoding —
+ * see `readRouteParam` in `src/lib/views/route-params.ts`.
  */
 export function parseProteinStructureMode(
   params: SearchParamsRecord,

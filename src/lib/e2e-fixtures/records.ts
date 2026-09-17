@@ -585,10 +585,10 @@ export interface GenomeAmrFixtureRecord {
   evidence: string;
   /**
    * Array-valued on the wire — `genome_amr.pmid` is registry-declared
-   * multi-valued (see the `multipleFields.genome_amr` set in
-   * src/lib/data-api/resources.ts), which is what makes the column
-   * unsortable. Kept as an array so the fixture agrees with the registry
-   * rather than quietly contradicting it.
+   * multi-valued (the `multipleFields.genome_amr` set in
+   * src/lib/data-api/resources.ts, surfaced as `cardinality: "multiple"`),
+   * which is what makes the column unsortable. The test reads that
+   * declaration rather than restating it here.
    */
   pmid: string[];
   /**
@@ -608,10 +608,13 @@ export interface GenomeAmrFixtureRecord {
 /**
  * No transport serves this row yet — nothing in the suite requests
  * `data/genome_amr` rows, and the AMR landing chart is fed by a facet-pivot
- * fixture, not by rows. It exists as the schema anchor Task 19 could not
- * supply when it registered the resource: `__tests__/records.test.ts` parses
- * it with the production `genomeAmrRecordSchema` and pins the field shapes
- * the registry declares. Wire it into a transport when a caller appears.
+ * fixture, not by rows. It exists as the concrete row Task 19 could not
+ * supply when it registered the resource: `__tests__/records.test.ts` reads
+ * `getResourceDefinition("genome_amr")` and asserts this row against the
+ * registry's own derived `cardinality` and `type`, so editing either side
+ * alone fails. It says nothing about what the live BV-BRC core returns — no
+ * test may reach a live backend. Wire it into a transport when a caller
+ * appears.
  */
 export const genomeAmrRecord: GenomeAmrFixtureRecord = {
   id: "genome-amr-backend-901",
@@ -655,10 +658,12 @@ export interface PpiFixtureRecord {
 }
 
 /**
- * Deterministic total the loopback reports for a `ppi` collection count. The
- * browser layer builds however many rows a spec asks for; this is the number
- * the SERVER reports when nothing narrows the query, so both layers agree on
- * "how many PPI rows exist for Brucella" without either one hard-coding it.
+ * The total the loopback reports for an unnarrowed `ppi` count
+ * (`e2eDeterministicCounts.ppi`). The browser layer does NOT read this: it
+ * reports `rows.length` for whatever a spec asked it to build, because a
+ * browser override answers a request the spec itself scoped. This constant
+ * lives here so the server-side number has a name and a home next to the row
+ * builder, not because the two layers share it.
  */
 export const brucellaPpiTotal = 4358;
 

@@ -88,11 +88,18 @@ export function mockNextRequest(
  * for `/api/taxonomy-tree/[operation]`) uses this helper instead of
  * hand-rolling `{ params: Promise.resolve(…) }`. The generic preserves the
  * literal key type, so passing the wrong param name is a type error rather
- * than an `undefined` at runtime.
+ * than an `undefined` at runtime. Values may be `string[]` for a catch-all
+ * segment and `undefined` for an optional one (`[[...path]]`), which is what
+ * Next actually hands a handler.
+ *
+ * This is for **route handlers** only. A Page or `generateMetadata` receives
+ * `{ params, searchParams }` — a different shape, usually with a second
+ * promise — so the page specs under `src/app/(views)/**` build their props
+ * directly and are not callers of this.
  */
-export function makeRouteContext<T extends Record<string, string | string[]>>(
-  params: T,
-): { params: Promise<T> } {
+export function makeRouteContext<
+  T extends Record<string, string | string[] | undefined>,
+>(params: T): { params: Promise<T> } {
   return { params: Promise.resolve(params) };
 }
 

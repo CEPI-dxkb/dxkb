@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 import { brucellaPpiTotal } from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
 
@@ -9,7 +12,7 @@ interface RouteContext {
 }
 
 function ctx(path: string[]): RouteContext {
-  return { params: Promise.resolve({ path }) };
+  return makeRouteContext({ path });
 }
 
 interface SolrPivotEntry {

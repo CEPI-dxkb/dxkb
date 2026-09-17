@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 import { GET } from "../[...path]/route";
 
 vi.mock("../../resolve-download", async (importOriginal) => ({
@@ -11,7 +14,7 @@ import { resolveWorkspaceDownload } from "../../resolve-download";
 const mockResolve = vi.mocked(resolveWorkspaceDownload);
 
 function makeParams(path: string[]) {
-  return { params: Promise.resolve({ path }) };
+  return makeRouteContext({ path });
 }
 
 describe("GET /api/workspace/view/[...path]", () => {

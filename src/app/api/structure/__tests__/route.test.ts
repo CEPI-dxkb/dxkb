@@ -1,8 +1,11 @@
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 import { GET } from "../[...path]/route";
 
 function context(path?: string[]) {
-  return { params: Promise.resolve({ path }) };
+  return makeRouteContext({ path });
 }
 
 describe("GET /api/structure/[...path]", () => {

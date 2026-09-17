@@ -1,4 +1,7 @@
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 import { GET } from "@/app/api/e2e-mock/[...path]/route";
 // `catchall.ts` only imports `JsonOverride` from `e2e/mocks/backends.ts` as a
 // TYPE (`import type`), which esbuild/Vite elide entirely at compile time —
@@ -64,7 +67,7 @@ import {
  */
 
 function routeContext(path: string[]): { params: Promise<{ path: string[] }> } {
-  return { params: Promise.resolve({ path }) };
+  return makeRouteContext({ path });
 }
 
 const originalMockEnabled = process.env.E2E_MOCK_ENABLED;

@@ -7,6 +7,7 @@ import {
   surveillanceRecord,
 } from "@/lib/e2e-fixtures/records";
 import { resolveCompoundSample } from "@/lib/views/compound-sample";
+import { makeRouteContext } from "@/test-helpers/api-route-helpers";
 import { GET } from "../route";
 
 /**
@@ -61,7 +62,7 @@ function loopbackFetch(wireForm: WireForm, seen?: string[]): typeof fetch {
         method: "GET",
         headers: new Headers(init?.headers),
       }),
-      { params: Promise.resolve({ path }) },
+      makeRouteContext({ path }),
     );
     return response as unknown as Response;
   };

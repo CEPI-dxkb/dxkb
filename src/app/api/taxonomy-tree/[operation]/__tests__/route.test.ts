@@ -231,9 +231,7 @@ describe("taxonomy tree route", () => {
     });
     controller.abort();
 
-    const response = await GET(nextRequest, {
-      params: Promise.resolve({ operation: "children" }),
-    });
+    const response = await GET(nextRequest, makeRouteContext({ operation: "children" }));
 
     expect(response.status).toBe(499);
     await expect(json(response)).resolves.toEqual({
@@ -279,7 +277,7 @@ describe("taxonomy tree route", () => {
           url: "http://localhost:3019/api/taxonomy-tree/children?parentId=234",
           headers: { "x-forwarded-for": ip },
         }),
-        { params: Promise.resolve({ operation: "children" }) },
+        makeRouteContext({ operation: "children" }),
       );
 
     let last = await fire();

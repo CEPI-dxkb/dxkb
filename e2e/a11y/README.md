@@ -41,6 +41,13 @@ run in either order.
 | `.misc/a11y-report/a11y-summary.json` | `teardown.ts` | Per-route/theme scan summary for **one** invocation. `pnpm a11y:baseline:update` reads it, so run the sweep immediately before that script. |
 | `.misc/a11y-meta-results/`, `.misc/a11y-meta-report/` | `a11y:meta` only | Kept separate on purpose — see above. |
 
+Scan records are written to `.misc/a11y-report/scans/<A11Y_RUN_ID>/` and the
+global teardown aggregates and removes only that directory. `setup.ts` assigns
+the id in the config process before any worker forks, which is how every worker
+and the teardown agree on it. A run that records no scans (for example a
+setup-project-only invocation) leaves the previous summary untouched rather than
+replacing it with an empty one.
+
 ## Architecture
 
 | File | Purpose |
@@ -51,7 +58,8 @@ run in either order.
 | `settle.ts` | `awaitSettled()` — networkidle + fonts.ready + zero-skeleton |
 | `theme.ts` | `forEachTheme()` — light/dark in-test loop |
 | `routes.ts` | Route entry types + the route table, plus the `coveredPageFiles` and `scanTargets` views derived from it |
-| `report.ts` | Scan record accumulator; Phase 5 adds artifact file output |
+| `report.ts` | `recordScan()` + the artifact paths; writes one JSON file per route/theme under the current run id |
+| `setup.ts` / `teardown.ts` | Playwright global setup/teardown: stamp the invocation, then aggregate its scans into `a11y-summary.json` |
 
 ## Gate rules
 

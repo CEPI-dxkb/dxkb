@@ -21,6 +21,9 @@ const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 const a11ySpecs = /tests\/a11y\/(?!coverage\.meta\.spec\.ts$).*\.spec\.ts$/;
 
 export default defineConfig({
+  // globalSetup stamps the invocation with A11Y_RUN_ID; globalTeardown
+  // aggregates only that invocation's scan records. See e2e/a11y/report.ts.
+  globalSetup: "./e2e/a11y/setup.ts",
   globalTeardown: "./e2e/a11y/teardown.ts",
   testDir: "./e2e",
   // a11y specs + auth setup files (setup projects need those to create the

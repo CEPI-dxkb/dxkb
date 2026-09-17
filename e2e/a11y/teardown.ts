@@ -1,9 +1,21 @@
 import * as fs from "fs";
 import * as path from "path";
-import type { ScanRecord } from "./report";
+import {
+  a11yReportDir,
+  a11ySummaryPath,
+  currentScansDir,
+  type ScanRecord,
+} from "./report";
 
+/**
+ * Aggregate this invocation's scan records into one summary.
+ *
+ * Only this invocation's directory is read and removed, so a later run — or a
+ * setup-only invocation, which records nothing and therefore returns early —
+ * neither absorbs nor deletes another run's evidence.
+ */
 export default function globalTeardown(): void {
-  const scansDir = "a11y-report/scans";
+  const scansDir = currentScansDir();
   if (!fs.existsSync(scansDir)) return;
 
   const files = fs.readdirSync(scansDir).filter((f) => f.endsWith(".json"));
@@ -22,6 +34,8 @@ export default function globalTeardown(): void {
     (a, b) => a.route.localeCompare(b.route) || a.theme.localeCompare(b.theme),
   );
 
-  fs.mkdirSync("a11y-report", { recursive: true });
-  fs.writeFileSync("a11y-report/a11y-summary.json", JSON.stringify(summary, null, 2));
+  fs.mkdirSync(a11yReportDir, { recursive: true });
+  fs.writeFileSync(a11ySummaryPath, JSON.stringify(summary, null, 2));
+  // Raw records are consumed now; the summary is the artifact worth keeping.
+  fs.rmSync(scansDir, { recursive: true, force: true });
 }

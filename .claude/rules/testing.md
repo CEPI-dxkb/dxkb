@@ -102,8 +102,10 @@ Specs interact with the app through page objects in `e2e/pages/` (e.g. `SignInPa
 
 `playwright.config.ts` defines two setup projects that run before browser projects:
 
-- `setup-signed-in` (`e2e/auth/signed-in.setup.ts`) — Seeds production-named HttpOnly session cookies and writes `e2e/.auth/user.json`. The `chromium`, `firefox`, and `webkit` projects depend on it and load that storage state by default. Auth lifecycle specs use empty state and exercise real local sign-in/sign-out separately.
-- `setup-public` (`e2e/auth/public.setup.ts`) — Empty storage state for unauthenticated specs.
+- `setup-signed-in` (`e2e/auth/signed-in.setup.ts`) — Seeds production-named HttpOnly session cookies and writes `e2e/.auth/e2e-signed-in.json`. The `chromium`, `firefox`, and `webkit` projects depend on it and load that storage state by default. Auth lifecycle specs use empty state and exercise real local sign-in/sign-out separately.
+- `setup-public` (`e2e/auth/public.setup.ts`) — Empty storage state for unauthenticated specs (`e2e/.auth/e2e-public.json`).
+
+`playwright.a11y.config.ts` reuses the same two setup specs under its own project names (`a11y-setup-signed-in` / `a11y-setup-public`) and its own destination files (`e2e/.auth/a11y-*.json`). The destinations come from `e2e/auth/storage-state.ts`, keyed by project name — the two configs deliberately do not share one file, so a `pnpm e2e` and a `pnpm a11y` cannot race on it. Point any new project at an exported constant from that module rather than a path literal.
 
 Specs that must run logged-out should override with `test.use({ storageState: { cookies: [], origins: [] } })` (or the public storage path) at the top of the spec.
 

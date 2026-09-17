@@ -24,8 +24,9 @@ Override the port with `E2E_PORT=3030 pnpm e2e --project=chromium`. The wrapper 
 ```
 e2e/
   auth/                         # Playwright setup projects (storageState generators)
-    signed-in.setup.ts          # Seeds mocked auth cookies → e2e/.auth/user.json
+    signed-in.setup.ts          # Seeds mocked auth cookies → e2e/.auth/<config>-signed-in.json
     public.setup.ts             # Empty storageState for public specs
+    storage-state.ts            # Per-config storage-state paths (keyed by setup project name)
   mocks/
     backends.ts                 # applyBackendMocks(page, { overrides })
   pages/                        # Page-object helpers (SignInPage, …) — import from "../pages"
@@ -40,7 +41,7 @@ e2e/
     workspace.spec.ts           # Signed-in workspace browsing
     services/services-smoke.spec.ts  # Parametrized h1 smoke for all 21 services
     jobs.spec.ts                # Jobs list + detail
-    a11y.spec.ts                # axe-core sweep on home, sign-in, workspace, jobs, genome-assembly
+    a11y/                       # Accessibility suite — own config, see e2e/a11y/README.md
     viewer-3d.spec.ts           # Mol* /viewer/structure container + WebGL canvas paint
     search-keyboard.spec.ts     # Navbar SearchBar keyboard journey + clipboard paste
     visual/visual.spec.ts       # Screenshot baselines
@@ -234,7 +235,7 @@ Two paths, depending on what the agent needs to do.
 
 ## Cross-cutting specs
 
-**`a11y.spec.ts`** — runs `@axe-core/playwright` on home, sign-in, workspace, the genome-assembly form, and jobs, plus a dedicated check on the open command palette dialog. Fails on `serious` or `critical` violations; logs `moderate`/`minor` ones via `console.warn`. After DXKBCORE-133 the `knownBaselineViolations` allowlist is `[]`; only add IDs back with a linked ticket and a target removal date.
+**`tests/a11y/`** — the accessibility suite does not run under `playwright.config.ts` at all (`testMatch` excludes it). It has its own configs, scripts and gate; see `e2e/a11y/README.md` for the runbook.
 
 **`viewer-3d.spec.ts`** — drives `/viewer/structure/<path>`, mocks `/api/workspace/view/...` with a minimal one-atom PDB, and asserts the page chrome + Mol* container render. The full WebGL canvas-paint assertion is gated on Mol*'s own runtime probe — if Mol* surfaces "WebGL does not seem to be available" (e.g. headless Chromium without GPU), the paint test self-skips. Firefox and WebKit are skipped wholesale because their headless WebGL stacks are unreliable.
 

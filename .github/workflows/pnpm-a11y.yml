@@ -56,12 +56,6 @@ jobs:
           # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
 
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
-
       # coverage.meta.spec.ts is the single enforcement point for "routes.ts is the
       # one coverage list", and it carries no project filter of its own — so before
       # this step it reached CI only through a11y:tripwire, i.e. only if the Firefox
@@ -136,12 +130,6 @@ jobs:
           # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
 
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
-
       - name: Run deep-tier tests (chromium)
         run: pnpm a11y:deep
         env:
@@ -191,12 +179,6 @@ jobs:
           # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
 
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
-
       - name: Run keyboard tests (chromium)
         run: pnpm a11y:keyboard
         env:
@@ -245,12 +227,6 @@ jobs:
           # same-origin Data API gateway.) Matches pnpm-e2e.yml; keep port 3020 in
           # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
-
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Run cross-engine tripwire (webkit + firefox)
         run: pnpm a11y:tripwire

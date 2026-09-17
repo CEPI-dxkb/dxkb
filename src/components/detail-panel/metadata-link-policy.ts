@@ -3,18 +3,43 @@
  * `{placeholder}` template resolution, with no JSX and no React import.
  *
  * Rendering lives in the sibling `./metadata-link` module. Both halves exist so
- * every metadata-driven link surface — the detail panel's scalar, array and
- * button fields, and the entity overviews under `src/app/(views)/` — shares one
- * security and routing decision instead of each re-deriving a scheme check.
+ * the link surfaces that adopt them — the detail panel's scalar, array and
+ * button fields, and the four entity overviews that render links (`genome`,
+ * `feature`, `epitope`, `experiment`; the `serology` and `surveillance`
+ * overviews render none) — share one security and routing decision instead of
+ * each re-deriving a scheme check.
  */
 
 /** Three-way outcome of {@link classifyHref}. */
 export type HrefClassification = "internal" | "external" | "unsafe";
 
 /**
- * The one shared security and routing boundary for every metadata-driven link.
- * Any new link surface must route through this rather than reinventing its own
- * scheme check.
+ * The shared security and routing boundary for the surfaces named above, and
+ * the one a new link surface should adopt rather than reinventing its own
+ * scheme check. Its reach is *not* repo-wide, so do not read it as a guarantee
+ * that every rendered `DataField.link` has been classified:
+ *
+ * - **Routes through here.** `./info-panel.tsx` renders no `<Link>`, `<a>` or
+ *   `href` of its own — every link it produces goes through
+ *   `renderMetadataLink` / `renderMetadataLinkButton`, so its scalar, array and
+ *   button fields are all covered. The four link-rendering entity overviews
+ *   likewise use only `MetadataLink`.
+ * - **Bypasses it.** `src/components/shared/data-table.tsx` renders the same
+ *   `DataField.link` templates through its own `valueHref` path: it builds an
+ *   href with `valueHref.replace("{value}", encodeURIComponent(...))` and hands
+ *   it straight to `<Link>` with no scheme check, no `target` and no `rel`. The
+ *   profiles that forward `link` to `valueHref` are
+ *   `src/lib/protein-feature-view/fields.ts`,
+ *   `src/lib/protein-structure-view/fields.ts` and
+ *   `src/lib/strain-view/fields.ts`, and several forwarded templates are
+ *   absolute external URLs (NCBI protein, EBI InterPro, NCBI CDD, NCBI
+ *   nuccore). So one InterPro template opens in a `noopener`-isolated new tab
+ *   from the detail panel and navigates in the same tab from the Protein
+ *   Feature collection table. Routing `valueHref` through this function is the
+ *   real fix, but it changes collection-table behaviour and needs its own
+ *   change with its own visual baseline.
+ *
+ * The three classification outcomes:
  *
  * - `"internal"` — an unambiguous same-origin path. Requires `startsWith("/")`
  *   *and* excludes a protocol-relative `//host` string: a browser resolves

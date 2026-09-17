@@ -19,7 +19,6 @@ export default defineConfig(
       "coverage/**",
       "public/dist/**",
       "public/nextstrain-viewer.html",
-      "playwright-report/**",
       ".misc/**",
       "next-env.d.ts"
     ],

@@ -18,6 +18,12 @@ const isCi = Boolean(process.env.CI);
 // threads reject NODE_OPTIONS containing --env-file.
 const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 
+// Every folder this config writes lives under /.misc, per AGENTS.md's
+// file-structure rule. The html reporter defaults to `playwright-report/` at
+// the repo root, which is both a rule violation and a path shared with
+// playwright.a11y.config.ts, so it is set explicitly here.
+const htmlReportDir = ".misc/playwright-report";
+
 export default defineConfig({
   testDir: "./e2e",
   // Excludes tests/a11y/ — those run via playwright.a11y.config.ts (pnpm a11y).
@@ -26,7 +32,9 @@ export default defineConfig({
   forbidOnly: isCi,
   retries: isCi ? 2 : 0,
   workers: isCi ? 2 : undefined,
-  reporter: isCi ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "never" }]],
+  reporter: isCi
+    ? [["github"], ["html", { open: "never", outputFolder: htmlReportDir }]]
+    : [["list"], ["html", { open: "never", outputFolder: htmlReportDir }]],
   outputDir: ".misc/test-results",
   snapshotDir: "e2e/__snapshots__",
   expect: {

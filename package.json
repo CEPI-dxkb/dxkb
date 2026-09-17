@@ -20,7 +20,7 @@
     "e2e:ui": "playwright test --ui",
     "e2e:debug": "playwright test --debug",
     "e2e:codegen": "playwright codegen http://127.0.0.1:3020",
-    "e2e:report": "playwright show-report",
+    "e2e:report": "playwright show-report .misc/playwright-report",
     "e2e:update-snapshots": "playwright test --update-snapshots",
     "e2e:record": "tsx e2e/scripts/record-har.ts",
     "a11y": "playwright test --config playwright.a11y.config.ts --project=a11y-chromium",

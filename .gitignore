@@ -64,13 +64,16 @@ next-env.d.ts
 .playwright-mcp
 
 # Playwright e2e
-/playwright-report/
-/blob-report/
 /playwright/.cache/
 /e2e/.auth/
 # /e2e/__snapshots__ is NOT ignored — baselines must be committed for visual regression to work.
-# Playwright + a11y output (outputDir, JSON reports, HTML reports, scan records)
-# all live under /.misc, which is ignored wholesale at the bottom of this file.
+#
+# Every folder the Playwright and a11y configs write — outputDir, JSON reports,
+# HTML reports, scan records — is configured under /.misc, which is ignored
+# wholesale at the bottom of this file. The one Playwright output no config
+# names is `blob-report/`: nothing here sets `--reporter=blob`, so it is never
+# produced. If you enable it, set PLAYWRIGHT_BLOB_OUTPUT_DIR under /.misc too
+# rather than re-adding a root ignore for it.
 
 # Auspice / Nextstrain viewer build output
 /public/dist/

@@ -18,6 +18,14 @@ import {
   virusesSummaryRecord,
 } from "@/lib/e2e-fixtures/records";
 import { buildLoopbackSolrEnvelope } from "@/lib/e2e-fixtures/envelopes";
+import {
+  equalsValue,
+  hasCall,
+  hasClause,
+  hasKeyword,
+  parseFixtureQuery,
+  type FixtureQuery,
+} from "./query";
 
 /**
  * Loopback mock for Playwright e2e only.
@@ -80,10 +88,10 @@ function maybeSolrCount(
   const segments = path.split("/").filter(Boolean);
   if (segments[0] !== "data" || segments.length < 2) return null;
   const core = segments[1];
-  const query = decodeURIComponent(new URL(request.url).search);
+  const query = parseFixtureQuery(request);
   if (core === "taxonomy") {
-    const taxonId = query.match(/eq\(taxon_id,([^)&]+)\)/)?.[1];
-    const matchesKeyword = query.includes("keyword(influenza)");
+    const taxonId = equalsValue(query, "taxon_id");
+    const matchesKeyword = hasKeyword(query, "influenza");
     const docs =
       taxonId === "*" || taxonId === taxonomyRecord.taxon_id || matchesKeyword
         ? [taxonomyRecord]
@@ -100,23 +108,21 @@ function maybeSolrCount(
     });
   }
   if (core === "serology") {
-    const isAmbiguous = query.includes(
-      "eq(sample_identifier,ambiguous-serology)",
-    );
-    const hasTestTypeFilter = query.includes("eq(test_type,");
-    const requestedTestType = ambiguousSerologyRecords
-      .map((fixture) => fixture.test_type)
-      .find((testType) => query.includes(`eq(test_type,${testType})`));
+    const sampleIdentifier = equalsValue(query, "sample_identifier");
+    const requestedTestType = equalsValue(query, "test_type");
+    const isAmbiguous =
+      sampleIdentifier === ambiguousSerologyRecords[0].sample_identifier;
+    // An unmatched discriminator filters to zero rows rather than falling
+    // back to the whole ambiguous set — that is what makes the "no such test
+    // type" branch of the ambiguity page reachable.
     const docs = isAmbiguous
-      ? requestedTestType
-        ? ambiguousSerologyRecords.filter(
+      ? requestedTestType === undefined
+        ? ambiguousSerologyRecords
+        : ambiguousSerologyRecords.filter(
             (fixture) => fixture.test_type === requestedTestType,
           )
-        : hasTestTypeFilter
-          ? []
-          : ambiguousSerologyRecords
-      : query.includes("eq(sample_identifier,000123)") ||
-          query.includes("keyword(antibody*)")
+      : sampleIdentifier === serologyRecord.sample_identifier ||
+          hasKeyword(query, "antibody*")
         ? [serologyRecord]
         : [];
     if (request.headers.get("accept") === "application/json") return docs;
@@ -131,7 +137,7 @@ function maybeSolrCount(
     });
   }
   if (core === "experiment") {
-    const experimentId = query.match(/eq\(exp_id,([^)&]+)\)/)?.[1];
+    const experimentId = equalsValue(query, "exp_id");
     const docs =
       experimentId && experimentId !== "*"
         ? experimentId === experimentRecord.exp_id
@@ -142,7 +148,7 @@ function maybeSolrCount(
     return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "protein_structure") {
-    const accession = query.match(/eq\(pdb_id,([^)&]+)\)/)?.[1];
+    const accession = equalsValue(query, "pdb_id");
     const docs =
       accession === "*"
         ? proteinStructureRecords
@@ -155,28 +161,20 @@ function maybeSolrCount(
     return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "surveillance") {
-    const isAmbiguous = query.includes(
-      "eq(sample_identifier,ambiguous-sample)",
-    );
-    const hasTestTypeFilter = query.includes("eq(pathogen_test_type,");
-    const requestedTestType = ambiguousSurveillanceRecords
-      .flatMap((fixture) => fixture.pathogen_test_type)
-      .find((testType) =>
-        query.includes(`eq(pathogen_test_type,"${testType}")`),
-      );
+    const sampleIdentifier = equalsValue(query, "sample_identifier");
+    const requestedTestType = equalsValue(query, "pathogen_test_type");
+    const isAmbiguous =
+      sampleIdentifier === ambiguousSurveillanceRecords[0].sample_identifier;
     const docs = isAmbiguous
-      ? requestedTestType
-        ? ambiguousSurveillanceRecords.filter((fixture) =>
+      ? requestedTestType === undefined
+        ? ambiguousSurveillanceRecords
+        : ambiguousSurveillanceRecords.filter((fixture) =>
             fixture.pathogen_test_type.includes(requestedTestType),
           )
-        : hasTestTypeFilter
-          ? []
-          : ambiguousSurveillanceRecords
-      : query.includes("eq(sample_identifier,sample/1)")
+      : sampleIdentifier === surveillanceRecord.sample_identifier ||
+          hasKeyword(query, "sentinel*")
         ? [surveillanceRecord]
-        : query.includes("keyword(sentinel*)")
-          ? [surveillanceRecord]
-          : [];
+        : [];
     if (request.headers.get("accept") === "application/json") return docs;
     return buildLoopbackSolrEnvelope(docs, {
       facetCounts: {
@@ -192,16 +190,17 @@ function maybeSolrCount(
   if (typeof numFound !== "number") return null;
   const isGenomeFixtureQuery =
     core === "genome" &&
-    (query.includes("eq(genome_id,1282460.2049)") ||
-      (query.includes("keyword(MERS*)") &&
-        query.includes("sort(+genome_name,+genome_id)")));
+    (equalsValue(query, "genome_id") === genomeRecord.genome_id ||
+      (hasKeyword(query, "MERS*") &&
+        hasClause(query, "sort(+genome_name,+genome_id)")));
   const itemRange = (
     request.headers.get("range") ?? request.headers.get("x-range")
   )?.match(/^items=(\d+)-(\d+)$/i);
   const includesFixtureRow =
     !itemRange || (Number(itemRange[1]) <= 0 && Number(itemRange[2]) >= 0);
   const isEpitopeFixtureQuery =
-    core === "epitope" && query.includes("eq(epitope_id,15780)");
+    core === "epitope" &&
+    equalsValue(query, "epitope_id") === epitopeRecord.epitope_id;
   const docs: unknown[] = includesFixtureRow
     ? isGenomeFixtureQuery
       ? [genomeRecord]
@@ -373,25 +372,11 @@ const sharedFacetFixtures: Record<string, (string | number)[]> = {
   ],
 };
 
-function facetFieldFromRequest(request: NextRequest): string | null {
-  const url = new URL(request.url);
-  const candidates = [
-    url.search,
-    ...Array.from(url.searchParams.keys()),
-    ...Array.from(url.searchParams.values()),
-  ].map((value) => {
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      return value;
-    }
-  });
-
-  for (const candidate of candidates) {
-    const match = candidate.match(/\(field,([^),=]+)\)/);
+function facetFieldFromQuery(query: FixtureQuery): string | null {
+  for (const clause of query.clauses) {
+    const match = /\(field,([^),=]+)\)/.exec(clause);
     if (match?.[1]) return match[1];
   }
-
   return null;
 }
 
@@ -401,32 +386,18 @@ interface PivotKey {
   tertiary?: string;
 }
 
-function pivotKeyFromRequest(request: NextRequest): PivotKey | null {
-  const url = new URL(request.url);
-  const candidates = [
-    url.search,
-    ...Array.from(url.searchParams.keys()),
-    ...Array.from(url.searchParams.values()),
-  ].map((value) => {
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      return value;
-    }
-  });
-
-  for (const candidate of candidates) {
+function pivotKeyFromQuery(query: FixtureQuery): PivotKey | null {
+  for (const clause of query.clauses) {
     // `[^,)]+` prevents `(...,foo)),(mincount,1)` from being misread as a
     // 3-level pivot by greedily consuming the close paren of the inner pivot.
-    const triple = candidate.match(/\(pivot,\(([^,)]+),([^,)]+),([^,)]+)\)\)/);
+    const triple = /\(pivot,\(([^,)]+),([^,)]+),([^,)]+)\)\)/.exec(clause);
     if (triple?.[1] && triple[2] && triple[3]) {
       return { primary: triple[1], secondary: triple[2], tertiary: triple[3] };
     }
-    const match = candidate.match(/\(pivot,\(([^,)]+),([^,)]+)\)\)/);
+    const match = /\(pivot,\(([^,)]+),([^,)]+)\)\)/.exec(clause);
     if (match?.[1] && match[2])
       return { primary: match[1], secondary: match[2] };
   }
-
   return null;
 }
 
@@ -777,21 +748,23 @@ function maybeBvBrcWebsite(
     if (taxon) return { kind: "ok", body: taxon };
   }
   if (endpoint === "genome" || endpoint === "genome/") {
-    const url = new URL(request.url);
-    const query = decodeURIComponent(url.search);
+    const query = parseFixtureQuery(request);
 
     // Reference-genomes endpoint: BV-BRC returns a bare array of docs
     // (json(nl,map)), not the SOLR envelope shape.
-    if (query.includes("reference_genome,*") && query.includes("select(")) {
+    if (
+      equalsValue(query, "reference_genome") === "*" &&
+      hasCall(query, "select")
+    ) {
       return { kind: "ok", body: referenceGenomesFixture };
     }
 
-    // Use a strict regex to avoid substring collisions as fixture IDs grow
-    // (e.g. "234" should not match a taxon "1234").
-    const taxonMatch = query.match(/eq\(taxon_lineage_ids,(\d+)\)/);
-    const taxonId = taxonMatch ? Number(taxonMatch[1]) : null;
+    // Parsed equality, not a substring: a fixture taxon "234" must not match
+    // a request for taxon "1234".
+    const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
+    const taxonId = /^\d+$/.test(rawTaxonId ?? "") ? Number(rawTaxonId) : null;
 
-    const pivot = pivotKeyFromRequest(request);
+    const pivot = pivotKeyFromQuery(query);
     if (pivot) {
       const pivotKey = pivot.tertiary
         ? `${pivot.primary},${pivot.secondary},${pivot.tertiary}`
@@ -826,7 +799,7 @@ function maybeBvBrcWebsite(
       }
       return { kind: "ok", body: solrPivot(pivot.primary, pivot.secondary) };
     }
-    const field = facetFieldFromRequest(request);
+    const field = facetFieldFromQuery(query);
     if (!field) {
       return { kind: "unhandled", reason: "no pivot or facet field" };
     }

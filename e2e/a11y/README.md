@@ -14,7 +14,7 @@ pnpm a11y:primitives     # Vitest browser-mode primitive isolation
 pnpm a11y:tripwire       # webkit + firefox cross-engine smoke
 pnpm a11y:motion         # prefers-reduced-motion assertion
 pnpm a11y:mobile         # Pixel 5 viewport sweep of the mobile-flagged routes
-pnpm a11y:meta           # route-registry coverage accounting only
+pnpm a11y:meta           # route-registry accounting + suppression-key hygiene
 ```
 
 `.github/workflows/pnpm-a11y.yml` has a job for `a11y:routes`, `a11y:deep`,
@@ -58,6 +58,7 @@ replacing it with an empty one.
 | `settle.ts` | `awaitSettled()` — networkidle + fonts.ready + zero-skeleton |
 | `theme.ts` | `forEachTheme()` — light/dark in-test loop |
 | `routes.ts` | Route entry types + the route table, plus the `coveredPageFiles` and `scanTargets` views derived from it |
+| `scan-keys.ts` | The set of valid baseline/`reflowSkip` keys + the stale-key guard `coverage.meta.spec.ts` runs |
 | `report.ts` | `recordScan()` + the artifact paths; writes one JSON file per route/theme under the current run id |
 | `setup.ts` / `teardown.ts` | Playwright global setup/teardown: stamp the invocation, then aggregate its scans into `a11y-summary.json` |
 
@@ -125,8 +126,16 @@ exported from that same table.
   not instead of it, so only put on the parent what is true of every variant.
 
 Route and variant names are the `baseline.generated.ts` and `reflowSkip` keys.
-Renaming one silently stops its suppressions from matching — update both maps in
-the same change.
+Renaming one stops its suppressions from matching, so update both maps in the
+same change — `pnpm a11y:meta` now fails with the offending key named if you
+forget. Giving an entry `variants` counts as a rename: the keys become
+`${name}/${nameSuffix}` and the bare name matches nothing.
+
+Keys that are not route names (component surfaces in `routes-sweep.spec.ts`,
+interaction states in `deep-tier.spec.ts`) are enumerated in `nonRouteScanKeys`
+(`scan-keys.ts`); the baseline wildcard `"*"` is accepted there too. `reflowSkip`
+has no wildcard — `isReflowSkipped` tests plain key membership — so a `"*"` in
+that map is reported as stale rather than treated as global.
 
 ## Vendor widgets
 

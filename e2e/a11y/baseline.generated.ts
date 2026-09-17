@@ -99,11 +99,16 @@ export const reflowSkip: ReflowSkipMap = {
   epitope: { ticket: "DXKBCORE-178" },
   surveillance: { ticket: "DXKBCORE-178" },
   serology: { ticket: "DXKBCORE-178" },
-  "experiment-singular": { ticket: "DXKBCORE-178" },
   "strain-list": { ticket: "DXKBCORE-178" },
   "domains-and-motifs": { ticket: "DXKBCORE-178" },
-  experiment: { ticket: "DXKBCORE-178" },
   "protein-structure": { ticket: "DXKBCORE-178" },
+  // The bare `experiment` and `experiment-singular` keys that used to sit here
+  // stopped matching when both entries gained variants: the sweep keys those
+  // scans `experiment/{experiments,biosets}` and
+  // `experiment-singular/{overview,biosets}`. All four scan clean at 320px, so
+  // the exemptions are gone rather than renamed — carrying an unused
+  // suppression forward is how an exemption stops meaning anything. The
+  // stale-key guard in coverage.meta.spec.ts is what caught them.
 };
 
 // ── Warn-tier tracking (DoD item 6) ──────────────────────────────────────────

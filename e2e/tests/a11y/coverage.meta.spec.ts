@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { glob } from "node:fs/promises";
+import { glob, readFile } from "node:fs/promises";
 import path from "node:path";
 import {
   buildScanTargets,
@@ -9,6 +9,13 @@ import {
   scanTargets,
 } from "../../a11y/routes";
 import type { PrepareHook, RouteEntry } from "../../a11y/routes";
+import {
+  baselineWildcardKey,
+  findStaleScanKeys,
+  formatStaleScanKeys,
+  nonRouteScanKeys,
+} from "../../a11y/scan-keys";
+import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 
 // Resolve the src/app directory relative to the repo root.
 const appDir = path.resolve(process.cwd(), "src/app");
@@ -198,5 +205,93 @@ test.describe("a11y scan target derivation", () => {
       .map((route) => route.name);
 
     expect([...scannedRouteNames].sort()).toEqual([...expected].sort());
+  });
+});
+
+test.describe("a11y suppression keys", () => {
+  test("every baseline route key matches a current scan target", () => {
+    const stale = findStaleScanKeys(Object.keys(generatedBaseline), {
+      allowWildcard: true,
+    });
+
+    expect(
+      stale,
+      stale.length === 0
+        ? undefined
+        : formatStaleScanKeys("baseline.generated.ts", stale),
+    ).toEqual([]);
+  });
+
+  test("every reflowSkip key matches a current scan target", () => {
+    const stale = findStaleScanKeys(Object.keys(reflowSkip), {
+      allowWildcard: false,
+    });
+
+    expect(
+      stale,
+      stale.length === 0 ? undefined : formatStaleScanKeys("reflowSkip", stale),
+    ).toEqual([]);
+  });
+
+  test("every enumerated non-route scan key is still scanned by a spec", async () => {
+    // Keeps the sanctioned enumeration from outliving the scans it names: a
+    // surface that is deleted or renamed leaves its key here unreferenced.
+    const specDir = path.resolve(process.cwd(), "e2e/tests/a11y");
+    const sources: string[] = [];
+    for await (const file of glob("*.spec.ts", { cwd: specDir })) {
+      sources.push(await readFile(path.join(specDir, file), "utf8"));
+    }
+    expect(sources.length, "expected a11y spec sources to read").toBeGreaterThan(
+      0,
+    );
+
+    const unreferenced = nonRouteScanKeys.filter(
+      (key) => !sources.some((source) => source.includes(`"${key}"`)),
+    );
+
+    expect(
+      unreferenced,
+      unreferenced.length === 0
+        ? undefined
+        : `${String(unreferenced.length)} key(s) in nonRouteScanKeys are no longer scanned by any\n` +
+            `e2e/tests/a11y/*.spec.ts. Remove them from nonRouteScanKeys in\n` +
+            `e2e/a11y/scan-keys.ts (and drop any suppression keyed by them):\n` +
+            unreferenced.map((key) => `  - ${key}`).join("\n"),
+    ).toEqual([]);
+  });
+});
+
+test.describe("stale scan key detection", () => {
+  test("only keys naming no scan target are reported, and every one is named", () => {
+    const realRouteKey = scanTargets[0]?.name ?? "";
+    expect(realRouteKey, "expected at least one scan target").not.toEqual("");
+
+    const stale = findStaleScanKeys(
+      [
+        realRouteKey,
+        nonRouteScanKeys[0],
+        baselineWildcardKey,
+        "organisms-virusez",
+        "experiment",
+      ],
+      { allowWildcard: true },
+    );
+    expect(stale).toEqual(["organisms-virusez", "experiment"]);
+
+    // The message has to name every rejected key — a guard that says "stale
+    // key" without saying which one costs more time than it saves.
+    const message = formatStaleScanKeys("baseline.generated.ts", stale);
+    for (const key of stale) expect(message).toContain(key);
+    expect(message).toContain("baseline.generated.ts");
+
+    // reflowSkip has no wildcard, so "*" is dead weight there rather than valid.
+    expect(
+      findStaleScanKeys([baselineWildcardKey], { allowWildcard: false }),
+    ).toEqual([baselineWildcardKey]);
+
+    // Every sanctioned non-route key is accepted, not just the first.
+    expect(
+      findStaleScanKeys([...nonRouteScanKeys], { allowWildcard: false }),
+    ).toEqual([]);
   });
 });

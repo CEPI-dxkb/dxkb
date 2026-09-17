@@ -13,12 +13,17 @@ or layout component `encodeURIComponent(value)` (via `getDynamicParam()`),
 while `generateMetadata` receives the route matcher's decoded value, and
 route handlers and `searchParams` are decoded everywhere. A page component
 that forwards its param as data therefore sends a value one encoding level
-too deep — which 404'd every Surveillance/Serology identifier containing a
-character `encodeURIComponent` escapes. Read a page component's param through
-`readRouteParam` / `readRouteParamSegments` in `src/lib/views/route-params.ts`
-(the doc comment there carries the Next-internals citation); do not call
-`decodeURIComponent` at the call site, and do not decode in `generateMetadata`
-or a route handler.
+too deep. That 404'd every Surveillance/Serology identifier containing a
+character `encodeURIComponent` escapes, doubly encoded every workspace file
+URL the standalone structure viewer requested, and doubly encoded the
+`/workspace/home/**` and `/workspace/shared/**` redirect targets. A page
+component's param must be read back exactly once: use `readRouteParam` /
+`readRouteParamSegments` in `src/lib/views/route-params.ts`, whose doc comment
+carries the Next-internals citation and the per-entry-point rules. Do not
+decode in `generateMetadata` or in a route handler — both already receive the
+decoded value, and decoding there corrupts an identifier containing a literal
+`%xx`. (The `workspace/[username]/**` pages predate the helper and do the same
+single decode through `safeDecode`; that is correct, just older.)
 
 - `/` — Public home page (search, news, statistics)
 - `(auth)/` — `sign-in`, `sign-up`, `forgot-password`

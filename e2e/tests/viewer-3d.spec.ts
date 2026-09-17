@@ -57,6 +57,25 @@ async function molstarWebglAvailable(page: import("@playwright/test").Page): Pro
 }
 
 test.describe("3D viewer (Mol*)", () => {
+  test("requests the workspace file at a singly encoded path", async ({ page }) => {
+    // The catch-all route param reaches a page component already
+    // percent-encoded, and `buildWorkspaceStructureSource` encodes what it is
+    // handed, so forwarding the raw segments produced a DOUBLY encoded
+    // `/api/workspace/view/` URL — `%2540` for the `@` every workspace path
+    // starts with. The route handler on the other end decodes exactly once,
+    // so it looked up a path that does not exist. The other specs here mock
+    // that endpoint with a URL-agnostic regex and cannot see the difference.
+    const viewRequest = page.waitForRequest((request) =>
+      request.url().includes("/api/workspace/view/"),
+    );
+    await applyViewerMocks(page);
+    await page.goto(viewerUrl);
+
+    expect(new URL((await viewRequest).url()).pathname).toBe(
+      "/api/workspace/view/e2e-test-user%40patricbrc.org/home/test.pdb",
+    );
+  });
+
   test("page chrome renders and Mol* mounts its container", async ({ page }) => {
     await applyViewerMocks(page);
     await page.goto(viewerUrl);

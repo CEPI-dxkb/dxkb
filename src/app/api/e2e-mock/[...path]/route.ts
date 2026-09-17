@@ -85,31 +85,74 @@ function logHit(method: string, path: string, extra?: string): void {
 }
 
 /**
- * The one diagnostic shape this mock returns for "no fixture matches".
+ * Prefix on every rejection this mock emits.
+ *
+ * `e2e/README.md` documents `grep '[api/e2e-mock] e2e-mock: '` as the way to
+ * find out whether a Playwright run hit a fixture gap. That grep is only
+ * trustworthy if no branch can answer non-2xx without it, so the label
+ * callers pass is never the whole string — {@link rejectionError} builds it.
+ * A caller cannot opt out by writing its own `error` string, which is exactly
+ * how the `genome_amr` body-validation branch ended up outside the grep for a
+ * round while a comment claimed every branch was inside it.
+ *
+ * Deliberately NOT carried by two other kinds of non-2xx in this module:
+ *
+ *   - {@link disabledResponse}'s 404 — the `E2E_MOCK_ENABLED` runtime guard,
+ *     which is a refusal to serve at all, not a missing fixture.
+ *   - `identity.ts`'s 401/404s — MODELLED responses (bad credentials, unknown
+ *     user) that specs assert on. They are fixture behaviour, not gaps, and
+ *     surfacing them as diagnostics would make the grep useless.
+ *
+ * `src/app/api/e2e-mock/[...path]/__tests__/route.test.ts` pins both halves:
+ * it drives every rejection branch through the prefix, and it scans this
+ * module's source so a future branch cannot add a bare `status:` literal
+ * outside these helpers without failing.
+ */
+const rejectionPrefix = "e2e-mock: ";
+
+function rejectionError(label: string): string {
+  return `${rejectionPrefix}${label}`;
+}
+
+function logRejection(error: string, reason: string): void {
+  console.error(`[api/e2e-mock] ${error}: ${reason}`);
+}
+
+/**
+ * The diagnostic body this mock returns for a non-JSON-RPC rejection.
  *
  * `reason` always names the specific combination that was missing, because
  * `JsonRpcClient` and `ServerDataRepository` both collapse a non-2xx into
  * their own generic message — the webServer log is where whoever is reading a
  * failing Playwright run will actually find out what to add.
- *
- * EVERY rejection branch logs through {@link logUnhandled}, including the
- * JSON-RPC one that answers with an envelope instead of this body, so the
- * single grep `[api/e2e-mock] e2e-mock: unhandled` documented in
- * `e2e/README.md` sees all of them. A branch with its own log prefix would
- * be invisible to that grep — which is how a "zero diagnostics" check can
- * look clean while missing the most likely rejection class.
  */
-function logUnhandled(error: string, reason: string): void {
-  console.error(`[api/e2e-mock] ${error}: ${reason}`);
-}
-
 function unhandledResponse(
-  error: string,
+  label: string,
   reason: string,
   context: Record<string, unknown> = {},
 ): NextResponse {
-  logUnhandled(error, reason);
+  const error = rejectionError(label);
+  logRejection(error, reason);
   return NextResponse.json({ error, reason, ...context }, { status: 400 });
+}
+
+/**
+ * The same rejection for a JSON-RPC caller, in its own transport's error
+ * shape. `JsonRpcClient` throws `HTTP error! status: 400` on a non-2xx
+ * without reading the body, so the reason reaches a human through the log
+ * line above; the envelope keeps the wire contract honest for anything that
+ * does read it.
+ */
+function unhandledRpcResponse(label: string, reason: string): NextResponse {
+  const error = rejectionError(label);
+  logRejection(error, reason);
+  return NextResponse.json(
+    buildLoopbackRpcError(
+      jsonRpcErrorCodes.METHOD_NOT_FOUND,
+      `${error}: ${reason}`,
+    ),
+    { status: 400 },
+  );
 }
 
 const e2eDeterministicCounts: Record<string, number> = {
@@ -906,7 +949,7 @@ export async function GET(
   if (bvBrcWebsite) {
     if (bvBrcWebsite.kind === "unhandled") {
       return unhandledResponse(
-        "e2e-mock: unhandled bvbrc-website request",
+        "unhandled bvbrc-website request",
         bvBrcWebsite.reason,
         { path, query: search },
       );
@@ -921,7 +964,7 @@ export async function GET(
     segments[0] === "data"
       ? `no fixture for data core '${segments[1] ?? ""}' — add it to e2eDeterministicCounts or give it a named branch in maybeSolrCount`
       : `no GET fixture is registered for this path`;
-  return unhandledResponse("e2e-mock: unhandled GET endpoint", reason, {
+  return unhandledResponse("unhandled GET endpoint", reason, {
     path,
     query: search,
   });
@@ -1009,7 +1052,7 @@ export async function POST(
   if (bvBrcWebsitePost) {
     if (bvBrcWebsitePost.kind === "unhandled") {
       return unhandledResponse(
-        "e2e-mock: invalid bvbrc-website/genome_amr POST",
+        "invalid bvbrc-website/genome_amr POST",
         bvBrcWebsitePost.reason,
         { path },
       );
@@ -1025,7 +1068,7 @@ export async function POST(
     // Not JSON-RPC at all (a form upload, or a malformed body). There is no
     // method name to dispatch on, so answer in the plain diagnostic shape.
     return unhandledResponse(
-      "e2e-mock: unhandled POST endpoint",
+      "unhandled POST endpoint",
       "request body carried no JSON-RPC method",
       { path },
     );
@@ -1033,22 +1076,10 @@ export async function POST(
 
   const matched = findRpcResult(endpoint, rpcMethod);
   if (!matched) {
-    // A JSON-RPC caller gets a JSON-RPC error body: `JsonRpcClient` throws
-    // `HTTP error! status: 400` on a non-2xx without reading the body, so the
-    // reason reaches a human through the webServer log `unhandledResponse`
-    // writes, while the envelope keeps the wire contract honest for anything
-    // that does read it.
     const reason = Object.hasOwn(loopbackRpcResults, endpoint)
       ? `no fixture for JSON-RPC method '${rpcMethod}' at endpoint '${endpoint}'`
       : `no JSON-RPC endpoint '${endpoint}' is mocked`;
-    logUnhandled("e2e-mock: unhandled JSON-RPC call", reason);
-    return NextResponse.json(
-      buildLoopbackRpcError(
-        jsonRpcErrorCodes.METHOD_NOT_FOUND,
-        `e2e-mock: ${reason}`,
-      ),
-      { status: 400 },
-    );
+    return unhandledRpcResponse("unhandled JSON-RPC call", reason);
   }
 
   return NextResponse.json(buildLoopbackRpcSuccess(matched.result));
@@ -1071,7 +1102,7 @@ export async function POST(
  */
 function rejectMutation(method: string, path: string): NextResponse {
   return unhandledResponse(
-    `e2e-mock: unhandled ${method} endpoint`,
+    `unhandled ${method} endpoint`,
     `no ${method} fixture is registered — add a ${method} branch to src/app/api/e2e-mock/[...path]/route.ts`,
     { path },
   );

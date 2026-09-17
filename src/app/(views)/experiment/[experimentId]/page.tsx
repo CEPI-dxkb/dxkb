@@ -5,6 +5,10 @@ import { isExperimentId, parseExperimentTab } from "@/lib/experiment-view";
 import { getExperiment } from "@/lib/experiment-view/server";
 import { experimentHref } from "@/lib/views/hrefs";
 import { canonicalizeMemberTabQuery } from "@/lib/views/search-params";
+import {
+  readRouteParam,
+  type RouteParamSource,
+} from "@/lib/views/route-params";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { ExperimentMember } from "./experiment-member";
 
@@ -16,13 +20,15 @@ interface ExperimentPageProps extends ExperimentMetadataProps {
   searchParams: Promise<SearchParamsRecord>;
 }
 
-async function loadExperiment(rawExperimentId: string) {
-  let experimentId: string;
-  try {
-    experimentId = decodeURIComponent(rawExperimentId);
-  } catch {
-    notFound();
-  }
+async function loadExperiment(
+  rawExperimentId: string,
+  source: RouteParamSource,
+) {
+  // The two entry points receive this segment in different encodings, so
+  // each declares which it is. Decoding unconditionally made
+  // `generateMetadata` resolve a different record than the body for any id
+  // containing a literal percent escape. See `readRouteParam`.
+  const experimentId = readRouteParam(rawExperimentId, source);
   if (!isExperimentId(experimentId)) notFound();
   try {
     const experiment = await getExperiment(experimentId);
@@ -39,7 +45,7 @@ export async function generateMetadata({
   params,
 }: ExperimentMetadataProps): Promise<Metadata> {
   const { experimentId } = await params;
-  const experiment = await loadExperiment(experimentId);
+  const experiment = await loadExperiment(experimentId, "metadata");
   return {
     title: `${experiment.exp_title ?? experiment.exp_name ?? experiment.exp_id} | Experiment`,
     description:
@@ -52,7 +58,7 @@ export default async function ExperimentPage({
   searchParams,
 }: ExperimentPageProps) {
   const [{ experimentId }, query] = await Promise.all([params, searchParams]);
-  const experiment = await loadExperiment(experimentId);
+  const experiment = await loadExperiment(experimentId, "page");
   const activeTab = parseExperimentTab(query.tab);
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {

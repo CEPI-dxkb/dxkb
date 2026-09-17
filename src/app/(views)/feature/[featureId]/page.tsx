@@ -5,6 +5,10 @@ import { canonicalFeatureTab, isFeatureId } from "@/lib/feature-view";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
 import { featureHref } from "@/lib/views/hrefs";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import {
+  readRouteParam,
+  type RouteParamSource,
+} from "@/lib/views/route-params";
 import { canonicalizeMemberTabQuery } from "@/lib/views/search-params";
 import { FeatureMember } from "./feature-member";
 
@@ -13,13 +17,12 @@ interface FeaturePageProps {
   searchParams: Promise<SearchParamsRecord>;
 }
 
-async function loadFeature(rawFeatureId: string) {
-  let featureId: string;
-  try {
-    featureId = decodeURIComponent(rawFeatureId);
-  } catch {
-    notFound();
-  }
+async function loadFeature(rawFeatureId: string, source: RouteParamSource) {
+  // The two entry points receive this segment in different encodings, so
+  // each declares which it is. Decoding unconditionally made
+  // `generateMetadata` resolve a different record than the body for any id
+  // containing a literal percent escape. See `readRouteParam`.
+  const featureId = readRouteParam(rawFeatureId, source);
   if (!isFeatureId(featureId)) notFound();
   let result: FeatureLookup;
   try {
@@ -43,7 +46,7 @@ export async function generateMetadata({
   params,
 }: FeaturePageProps): Promise<Metadata> {
   const { featureId } = await params;
-  const feature = await loadFeature(featureId);
+  const feature = await loadFeature(featureId, "metadata");
   return {
     title: `${feature.patric_id ?? feature.feature_id} | Feature`,
     description: feature.product ?? `Feature record ${feature.feature_id}`,
@@ -55,7 +58,7 @@ export default async function FeaturePage({
   searchParams,
 }: FeaturePageProps) {
   const [{ featureId }, query] = await Promise.all([params, searchParams]);
-  const feature = await loadFeature(featureId);
+  const feature = await loadFeature(featureId, "page");
   const activeTab = canonicalFeatureTab(query.tab, feature);
   const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
   if (canonicalQuery !== null) {

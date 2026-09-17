@@ -4,6 +4,10 @@ import { notFound } from "next/navigation";
 import { DataApiError } from "@/lib/data-api/repository";
 import { canonicalGenomeTab, isGenomeId } from "@/lib/genome-view";
 import { getGenome } from "@/lib/genome-view/server";
+import {
+  readRouteParam,
+  type RouteParamSource,
+} from "@/lib/views/route-params";
 import { GenomeMember } from "./genome-member";
 import { GenomeTabCanonicalizer } from "./genome-tab-canonicalizer";
 
@@ -12,13 +16,12 @@ interface GenomePageProps {
   searchParams: Promise<{ tab?: string | string[] }>;
 }
 
-async function loadGenome(rawGenomeId: string) {
-  let genomeId: string;
-  try {
-    genomeId = decodeURIComponent(rawGenomeId);
-  } catch {
-    notFound();
-  }
+async function loadGenome(rawGenomeId: string, source: RouteParamSource) {
+  // The two entry points receive this segment in different encodings, so
+  // each declares which it is. Decoding unconditionally made
+  // `generateMetadata` resolve a different record than the body for any id
+  // containing a literal percent escape. See `readRouteParam`.
+  const genomeId = readRouteParam(rawGenomeId, source);
   if (!isGenomeId(genomeId)) notFound();
   try {
     const genome = await getGenome(genomeId);
@@ -39,7 +42,7 @@ export async function generateMetadata({
   params,
 }: GenomePageProps): Promise<Metadata> {
   const { genomeId } = await params;
-  const genome = await loadGenome(genomeId);
+  const genome = await loadGenome(genomeId, "metadata");
   return {
     title: `${genome.genome_name ?? genome.genome_id} | Genome`,
     description: `Genome record ${genome.genome_id}`,
@@ -51,7 +54,7 @@ export default async function GenomePage({
   searchParams,
 }: GenomePageProps) {
   const [{ genomeId }, query] = await Promise.all([params, searchParams]);
-  const genome = await loadGenome(genomeId);
+  const genome = await loadGenome(genomeId, "page");
   const activeTab = canonicalGenomeTab(query.tab, genome);
   return (
     <>

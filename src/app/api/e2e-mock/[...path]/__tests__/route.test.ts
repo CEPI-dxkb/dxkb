@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { mockNextRequest } from "@/test-helpers/api-route-helpers";
 import { brucellaPpiTotal } from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
@@ -1117,9 +1119,10 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
 
   it("logs every rejection branch under the prefix e2e/README.md documents", async () => {
     // The README tells a reader to grep the webServer log for
-    // "[api/e2e-mock] e2e-mock: unhandled". A branch with its own prefix
-    // would be invisible to that grep — which is exactly what the JSON-RPC
-    // branch used to be, making a "zero diagnostics" check unsound.
+    // "[api/e2e-mock] e2e-mock: ". That grep is only trustworthy if EVERY
+    // rejection is in it, so this drives all eight — including the
+    // `genome_amr` body-validation branch, which is the one that sat outside
+    // the prefix while a comment claimed none did.
     const logged: string[] = [];
     const spy = vi
       .spyOn(console, "error")
@@ -1127,13 +1130,37 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
         logged.push(args.map(String).join(" "));
       });
 
+    // 1. unknown JSON-RPC method inside a mocked endpoint
     await rpc(["workspace"], "Workspace.no_such_method");
+    // 2. unmocked JSON-RPC endpoint
     await rpc(["mystery"], "Some.method");
+    // 3. POST with no JSON-RPC method at all
     await post(["mystery"], { something: 1 });
+    // 4. unknown GET path
     await GET(
       mockNextRequest({ url: "http://localhost:3020/api/e2e-mock/nowhere" }),
       ctx(["nowhere"]),
     );
+    // 5. unmocked bvbrc-website GET endpoint
+    await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/taxonomy/999999",
+      }),
+      ctx(["bvbrc-website", "taxonomy", "999999"]),
+    );
+    // 6. invalid bvbrc-website/genome_amr POST body
+    await POST(
+      mockNextRequest({
+        method: "POST",
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome_amr/",
+        headers: {
+          "Content-Type": "application/rqlquery+x-www-form-urlencoded",
+        },
+        rawBody: "eq(genome_id,*)",
+      }),
+      ctx(["bvbrc-website", "genome_amr"]),
+    );
+    // 7 + 8. PUT and DELETE
     await PUT(
       mockNextRequest({
         method: "PUT",
@@ -1150,10 +1177,41 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
     );
     spy.mockRestore();
 
-    expect(logged).toHaveLength(6);
+    expect(logged).toHaveLength(8);
     for (const line of logged) {
-      expect(line).toMatch(/^\[api\/e2e-mock\] e2e-mock: unhandled /);
+      expect(line).toMatch(/^\[api\/e2e-mock\] e2e-mock: /);
     }
+  });
+
+  it("routes every 4xx in the module through the two prefixed helpers", () => {
+    // The test above can only cover branches someone remembered to add to
+    // it. This one is the completeness half: a new branch that builds its
+    // own `NextResponse` with a status literal — and therefore its own log
+    // line, or none — fails here even if nobody updates the list above.
+    // `disabledResponse` is the one allowed exception: the
+    // `E2E_MOCK_ENABLED` guard is a refusal to serve, not a missing fixture.
+    const source = readFileSync(join(__dirname, "..", "route.ts"), "utf8");
+    const allowed = [
+      "function disabledResponse",
+      "function unhandledResponse",
+      "function unhandledRpcResponse",
+    ];
+    let remaining = source;
+    for (const declaration of allowed) {
+      const start = remaining.indexOf(declaration);
+      expect(`${declaration} present`).toBe(
+        start === -1 ? `${declaration} missing` : `${declaration} present`,
+      );
+      const end = remaining.indexOf("\n}\n", start);
+      remaining = remaining.slice(0, start) + remaining.slice(end);
+    }
+    // Strip comments before scanning so prose mentioning a status code (the
+    // JsonRpcClient note, the module header) is not read as a branch.
+    const code = remaining
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+
+    expect([...code.matchAll(/status:\s*\d{3}/g)].map((m) => m[0])).toEqual([]);
   });
 
   it("GET reports the canonical ppi total for an unnarrowed count", async () => {

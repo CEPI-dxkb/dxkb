@@ -107,41 +107,39 @@ describe("rateLimit prune cadence", () => {
     vi.resetModules();
   });
 
-  it("does not sweep again between deadlines, even with a map over the threshold", async () => {
+  it("skips the sweep between deadlines, then resumes once the interval elapses", async () => {
     const limiter = await freshLimiter();
     // Fill to the threshold, then let the first eligible call spend its sweep.
+    // From here the size gate is open and `nextPruneAt` is one interval away.
     fillToThreshold(limiter, "fresh");
     limiter.rateLimit("first-eligible-call", 5, 60_000);
 
-    // A bucket that expires *after* that sweep. The map is still over the
-    // threshold, so a size-only gate would rescan (and evict it) on the very
-    // next call.
-    limiter.rateLimit("expires-soon", 1, 1_000);
+    // A bucket that expires *after* that sweep and is then never touched
+    // again. Never touching it is load-bearing: any later call that records
+    // this key recreates the bucket, so `hasRateLimitBucket` would report
+    // `true` whether or not a sweep ran in between, and the first assertion
+    // below would pass under the old size-only gate too. The key's name says
+    // so, because an earlier version of this test did exactly that and proved
+    // nothing.
+    limiter.rateLimit("untouched-after-expiry", 1, 1_000);
     vi.advanceTimersByTime(1_001);
-    expect(limiter.rateLimit("expires-soon", 1, 1_000).allowed).toBe(true);
 
     limiter.rateLimit("probe", 5, 60_000);
 
-    // Still physically present: the scan was skipped because the interval has
-    // not elapsed. This is the assertion that fails under a size-only gate.
-    expect(limiter.hasRateLimitBucket("expires-soon")).toBe(true);
-  });
-
-  it("sweeps again once the interval has elapsed", async () => {
-    const limiter = await freshLimiter();
-    fillToThreshold(limiter, "fresh");
-    limiter.rateLimit("first-eligible-call", 5, 60_000);
-
-    limiter.rateLimit("expires-soon", 1, 1_000);
-    vi.advanceTimersByTime(1_001);
-    limiter.rateLimit("probe", 5, 60_000);
-    expect(limiter.hasRateLimitBucket("expires-soon")).toBe(true);
+    // Physically retained. The map is over the size gate and this bucket is
+    // expired, so a size-only gate would have swept it on this very call; it
+    // survives only because the interval has not elapsed. **This assertion is
+    // the one that fails when the `now >= nextPruneAt` conjunct is removed.**
+    expect(limiter.hasRateLimitBucket("untouched-after-expiry")).toBe(true);
 
     // Past the deadline the gate reopens and the next call sweeps.
     vi.advanceTimersByTime(pruneIntervalMs);
     limiter.rateLimit("probe-after-interval", 5, 60_000);
 
-    expect(limiter.hasRateLimitBucket("expires-soon")).toBe(false);
+    // **This assertion is the one that fails when the sweep stops running at
+    // all.** The two together are the whole cadence contract, which is why
+    // they share a test rather than sitting in one test and a prefix of it.
+    expect(limiter.hasRateLimitBucket("untouched-after-expiry")).toBe(false);
   });
 
   it("does not sweep below the threshold however much time passes", async () => {
@@ -167,8 +165,9 @@ describe("rateLimit prune cadence", () => {
     expect(limiter.rateLimit("budget-spent", 1, 1_000).allowed).toBe(false);
 
     vi.advanceTimersByTime(1_001);
-    // Not swept yet (proved above), but the window is over, so the next
-    // request is allowed on a fresh count.
+    // Not swept yet — "skips the sweep between deadlines…" above proves that
+    // for an identical setup — but the window is over, so the next request is
+    // allowed on a fresh count.
     expect(limiter.rateLimit("budget-spent", 1, 1_000)).toMatchObject({
       allowed: true,
       remaining: 0,

@@ -58,12 +58,21 @@ export const pruneThreshold = 1_000;
  * serves just as well — see below.)
  *
  * A bucket only becomes prunable once *its own* window has ended, and the next
- * sweep after that point removes it. So the bound is "its own window, plus at
- * most one interval", whatever that window is. Sizing the interval to the
- * shortest window is therefore the useful choice: a shorter cadence would buy
- * no memory back, because nothing new can have expired yet, and a longer one
- * would leave the 60,000 ms buckets — the only ones that accumulate in volume —
- * lingering for multiples of their own lifetime.
+ * sweep after that point removes it. So while the map stays at or above
+ * `pruneThreshold` **and** requests keep arriving, the bound is "its own
+ * window, plus at most one interval", whatever that window is. Both conditions
+ * are load-bearing and neither is a bug: below the threshold no sweep runs at
+ * all (the map is capped at `pruneThreshold - 1` entries in that state, so
+ * there is nothing to reclaim), and with no traffic nothing runs at all,
+ * because the sweep is opportunistic rather than timer-driven — an idle
+ * process holds whatever it was holding until the next request. Neither state
+ * is one where retention costs anything.
+ *
+ * Given that, sizing the interval to the shortest window is the useful choice:
+ * a shorter cadence would buy no memory back, because nothing new can have
+ * expired yet, and a longer one would leave the 60,000 ms buckets — the only
+ * ones that accumulate in volume — lingering for multiples of their own
+ * lifetime.
  *
  * Note this bounds *physical* eviction only. Logical expiry is unaffected:
  * `rateLimit` still compares `now` against the bucket's own `resetAt` on every

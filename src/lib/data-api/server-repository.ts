@@ -27,12 +27,19 @@ import {
  * Throws `DataApiError("DATA_API_URL is not configured.", 500,
  * "not_configured")` when neither env var is set. The message names the env var
  * on purpose — unlike the sanitized text the same-origin routes answer with,
- * nothing returns this string to an arbitrary caller. The five member modules
- * let it propagate (Next redacts the message in production while still logging
- * it server-side); `protein-structure-view/server.ts` narrows on
+ * nothing returns this string to an arbitrary caller. Every caller except
+ * `protein-structure-view/server.ts` lets it propagate — that is the six
+ * scalar-ID lookups (`genome`, `feature`, `epitope`, `experiment`,
+ * `surveillance`, `serology`), and Next redacts the message in production while
+ * still logging it server-side. Note that set deliberately does *not* line up
+ * with the `readScope` split above: it cuts across it (four `"member"` plus the
+ * two `"query"` compound lookups), because how a module surfaces a
+ * configuration failure is unrelated to whether its reads are cacheable.
+ * `protein-structure-view/server.ts` is the one exception: it narrows on
  * `error instanceof DataApiError && error.code === "not_configured"`, maps it to
  * a per-accession message that does not name the variable, logs the original
- * detail, and rethrows anything else.
+ * detail, and rethrows anything else. `docs/architecture.md` describes the same
+ * set as "the six scalar-ID modules".
  *
  * Deliberately not wrapped in React `cache()` — memoizing this factory would
  * memoize the repository across every caller in one render pass, which the plan

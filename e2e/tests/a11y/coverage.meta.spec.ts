@@ -243,6 +243,15 @@ test.describe("a11y suppression keys", () => {
     const scanned = new Set<string>();
     let sourceCount = 0;
     for await (const file of glob("*.spec.ts", { cwd: specDir })) {
+      // Skip this spec. It scans nothing — it contains no live
+      // `assertNoBlocking*` call, only extractor *fixtures* like
+      // "real-surface" and "multiline-surface" as string literals. Harvesting
+      // them would put strings into `scanned` that no spec ever scanned, which
+      // is exactly what would let a stale `nonRouteScanKeys` entry survive the
+      // check below. Filtered here rather than through `glob`'s `exclude` so
+      // the reason travels with the code and the guard does not depend on that
+      // option's semantics.
+      if (file === "coverage.meta.spec.ts") continue;
       sourceCount++;
       const source = await readFile(path.join(specDir, file), "utf8");
       for (const key of extractScannedKeys(source)) scanned.add(key);

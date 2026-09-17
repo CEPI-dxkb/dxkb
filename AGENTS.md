@@ -51,8 +51,8 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 
 ### Formatting
 
-- Prettier has exactly one configuration source: the `prettier` key in `package.json`, which sets `printWidth: 80` (the width the tree is actually formatted to) and loads `prettier-plugin-tailwindcss`. A `.prettierrc` used to sit alongside it asking for 160, but Prettier resolves `package.json` first, so it was inert in its entirety and has been removed — do not reintroduce a second source.
-- **Formatting is not enforced.** No script and no CI workflow runs Prettier. `prettier --check .` currently reports 737 files, and `pnpm lint` reports 31 standing `tailwindcss/classnames-order` warnings; both are pre-existing debt. Adding a format gate (or running `prettier --write .`) therefore needs its own change with its own baseline — it must not ride along inside an unrelated commit, where it would bury every real edit.
+- Prettier has exactly one configuration source: the `prettier` key in `package.json`, which sets `printWidth: 80` and loads `prettier-plugin-tailwindcss`. A `.prettierrc` used to sit alongside it asking for 160, but Prettier resolves `package.json` first, so it was inert in its entirety and has been removed — do not reintroduce a second source. 80 is the lower-debt of the two widths, not a width the tree already matches.
+- **Formatting is not enforced.** No script and no CI workflow runs Prettier, and most of the tree does not match the configured width. `prettier --check .` and `pnpm lint`'s `tailwindcss/classnames-order` rule both report a large pre-existing backlog; measure it yourself when you need the figure rather than trusting a count written here, which goes stale on the next commit. Adding a format gate (or running `prettier --write .`) therefore needs its own change with its own baseline — it must not ride along inside an unrelated commit, where it would bury every real edit.
 
 ### Git
 

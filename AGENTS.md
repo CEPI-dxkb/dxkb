@@ -49,6 +49,11 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 
 - Do NOT swap real errors for generic ones — the original message must still be displayed. Condense if too long, but preserve the meaning.
 
+### Formatting
+
+- Prettier has exactly one configuration source: the `prettier` key in `package.json`, which sets `printWidth: 80` (the width the tree is actually formatted to) and loads `prettier-plugin-tailwindcss`. A `.prettierrc` used to sit alongside it asking for 160, but Prettier resolves `package.json` first, so it was inert in its entirety and has been removed — do not reintroduce a second source.
+- **Formatting is not enforced.** No script and no CI workflow runs Prettier. `prettier --check .` currently reports 737 files, and `pnpm lint` reports 31 standing `tailwindcss/classnames-order` warnings; both are pre-existing debt. Adding a format gate (or running `prettier --write .`) therefore needs its own change with its own baseline — it must not ride along inside an unrelated commit, where it would bury every real edit.
+
 ### Git
 
 - Do NOT commit unless asked. All changes are reviewed manually first.

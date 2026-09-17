@@ -149,6 +149,7 @@
     "wait-on": "^9.1.0"
   },
   "prettier": {
+    "printWidth": 80,
     "plugins": [
       "prettier-plugin-tailwindcss"
     ]

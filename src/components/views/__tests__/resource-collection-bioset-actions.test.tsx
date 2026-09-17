@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
@@ -19,49 +18,36 @@ const { useResourceCollection } = vi.hoisted(() => ({
 let actionBarProps: Record<string, unknown>;
 let dataTableProps: Record<string, unknown>;
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/taxonomy/2955291",
-  useSearchParams: () => new URLSearchParams("tab=strains"),
-}));
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
-}));
-vi.mock("@/lib/auth/provider", () => ({
-  useAuth: () => ({ user: null, isAuthenticated: false }),
-}));
-vi.mock("@/contexts/workspace-repository-context", () => ({
-  useWorkspaceRepository: () => ({
-    createIdGroup: vi.fn(),
-    appendToIdGroup: vi.fn(),
-  }),
-}));
-vi.mock("../collection-copy-dialog", () => ({
-  CollectionCopyDialog: () => null,
-}));
-vi.mock("../selection-service-chooser", () => ({
-  SelectionServiceChooser: () => null,
-}));
-vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
-  SelectionToGroupDialog: () => null,
-}));
-vi.mock("../resource-export", () => ({
-  downloadResourceExport: vi.fn(),
-  serializeResourceRows: vi.fn(),
-}));
+vi.mock("next/navigation", async () =>
+  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock(),
+);
+vi.mock("@tanstack/react-query", async () =>
+  (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
+);
+vi.mock("@/lib/auth/provider", async () =>
+  (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
+);
+vi.mock("@/contexts/workspace-repository-context", async () =>
+  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+);
+vi.mock("../collection-copy-dialog", async () =>
+  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+);
+vi.mock("../selection-service-chooser", async () =>
+  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+);
+vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
+  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+);
+vi.mock("../resource-export", async () =>
+  (await import("./fixtures/resource-collection-mocks")).resourceExportMock(),
+);
 vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
-vi.mock("../resource-filter-bar", () => ({
-  ResourceFilterBar: (props: Record<string, unknown>) => (
-    <div
-      data-testid="filter-bar"
-      data-definitions={JSON.stringify(props.definitions)}
-      data-keyword={typeof props.keyword === "string" ? props.keyword : ""}
-    />
-  ),
-}));
+vi.mock("../resource-filter-bar", async () =>
+  (await import("./fixtures/resource-collection-mocks")).resourceFilterBarMock(),
+);
 // The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
 // It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
 // production does (search-action-policy.ts), so a control this suite can query or
@@ -81,43 +67,20 @@ vi.mock("@/components/search/search-action-bar", async () => {
     ),
   };
 });
-vi.mock("@/components/detail-panel/info-panel", () => ({
-  InfoPanel: ({
-    selectedRow,
-  }: {
-    selectedRow: Record<string, unknown> | null;
-  }) => (
-    <div data-testid="detail">
-      {selectedRow ? String(selectedRow.genome_name) : null}
-    </div>
-  ),
-}));
-vi.mock("../taxonomy-service-chooser", () => ({
-  TaxonomyServiceChooser: () => null,
-}));
-vi.mock("../resource-workspace", () => ({
-  ResourceWorkspace: ({
-    children,
-    actionBar,
-    sidePanel,
-  }: {
-    children: ReactNode;
-    actionBar: ReactNode;
-    sidePanel: ReactNode;
-  }) => (
-    <div>
-      {actionBar}
-      {children}
-      {sidePanel}
-    </div>
-  ),
-}));
-vi.mock("@/components/shared/data-table", () => ({
-  DataTable: (props: Record<string, unknown>) => {
+vi.mock("@/components/detail-panel/info-panel", async () =>
+  (await import("./fixtures/resource-collection-mocks")).infoPanelMock(),
+);
+vi.mock("../taxonomy-service-chooser", async () =>
+  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+);
+vi.mock("../resource-workspace", async () =>
+  (await import("./fixtures/resource-collection-mocks")).flatResourceWorkspaceMock(),
+);
+vi.mock("@/components/shared/data-table", async () =>
+  (await import("./fixtures/resource-collection-mocks")).dataTableMock((props) => {
     dataTableProps = props;
-    return <div data-testid="data-table" />;
-  },
-}));
+  }),
+);
 
 function collectionResult(
   overrides: Partial<ReturnType<typeof useResourceCollectionHook>> = {},

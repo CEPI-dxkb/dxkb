@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
@@ -27,52 +26,30 @@ const { push, downloadResourceExport, useResourceCollection } = vi.hoisted(
 let dataTableProps: Record<string, unknown>;
 let actionBarProps: Record<string, unknown>;
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
-  usePathname: () => "/taxonomy/2955291",
-  useSearchParams: () => new URLSearchParams("tab=strains"),
-}));
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
-}));
-vi.mock("@/lib/auth/provider", () => ({
-  useAuth: () => ({ user: null, isAuthenticated: false }),
-}));
-vi.mock("@/contexts/workspace-repository-context", () => ({
-  useWorkspaceRepository: () => ({
-    createIdGroup: vi.fn(),
-    appendToIdGroup: vi.fn(),
-  }),
-}));
-vi.mock("../collection-copy-dialog", () => ({
-  CollectionCopyDialog: () => null,
-}));
-vi.mock("../selection-service-chooser", () => ({
-  SelectionServiceChooser: ({
-    open,
-    kind = "genome",
-    hasSelectableServices = true,
-  }: {
-    open: boolean;
-    kind?: "genome" | "feature";
-    hasSelectableServices?: boolean;
-  }) =>
-    open ? (
-      <div data-testid="selection-services" data-kind={kind}>
-        {hasSelectableServices
-          ? "Selectable services"
-          : "No selectable services"}
-      </div>
-    ) : null,
-}));
-vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
-  SelectionToGroupDialog: () => null,
-}));
-vi.mock("../resource-export", () => ({
-  downloadResourceExport,
-  serializeResourceRows: vi.fn(),
-}));
+vi.mock("next/navigation", async () =>
+  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({ push }),
+);
+vi.mock("@tanstack/react-query", async () =>
+  (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
+);
+vi.mock("@/lib/auth/provider", async () =>
+  (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
+);
+vi.mock("@/contexts/workspace-repository-context", async () =>
+  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+);
+vi.mock("../collection-copy-dialog", async () =>
+  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+);
+vi.mock("../selection-service-chooser", async () =>
+  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+);
+vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
+  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+);
+vi.mock("../resource-export", async () =>
+  (await import("./fixtures/resource-collection-mocks")).resourceExportMock(downloadResourceExport),
+);
 vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
@@ -115,62 +92,20 @@ vi.mock("../resource-filter-bar", () => ({
 // It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
 // production does (search-action-policy.ts), so a control this suite can query or
 // click is one the real bar would have rendered, in the same enabled state.
-vi.mock("@/components/search/search-action-bar", async () => {
-  // A dynamic import, not a static one: `vi.mock` factories run before the file's own
-  // static imports are linked, so a statically-imported helper referenced here throws
-  // ("Cannot access ... before initialization"). Awaiting the import inside the
-  // factory sidesteps that — `beforeEach`/the tests below still resolve normally.
-  const { createSearchActionBarFake } = await import(
-    "./fixtures/search-action-bar-fake"
-  );
-  return {
-    SearchActionBar: createSearchActionBarFake(
-      (props: Record<string, unknown>) => {
-        actionBarProps = props;
-      },
-    ),
-  };
-});
-vi.mock("@/components/detail-panel/info-panel", () => ({
-  InfoPanel: ({
-    selectedRow,
-  }: {
-    selectedRow: Record<string, unknown> | null;
-  }) => (
-    <div data-testid="detail">
-      {selectedRow ? String(selectedRow.genome_name) : null}
-    </div>
-  ),
-}));
-vi.mock("../taxonomy-service-chooser", () => ({
-  TaxonomyServiceChooser: ({
-    open,
-    taxonIds,
-  }: {
-    open: boolean;
-    taxonIds: string[];
-  }) =>
-    open ? (
-      <div data-testid="taxonomy-services">{taxonIds.join(",")}</div>
-    ) : null,
-}));
-vi.mock("../resource-workspace", () => ({
-  ResourceWorkspace: ({
-    children,
-    actionBar,
-    sidePanel,
-  }: {
-    children: ReactNode;
-    actionBar: ReactNode;
-    sidePanel: ReactNode;
-  }) => (
-    <div>
-      {actionBar}
-      {children}
-      {sidePanel}
-    </div>
-  ),
-}));
+vi.mock("@/components/search/search-action-bar", async () =>
+  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock((props) => {
+    actionBarProps = props;
+  }),
+);
+vi.mock("@/components/detail-panel/info-panel", async () =>
+  (await import("./fixtures/resource-collection-mocks")).infoPanelMock(),
+);
+vi.mock("../taxonomy-service-chooser", async () =>
+  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+);
+vi.mock("../resource-workspace", async () =>
+  (await import("./fixtures/resource-collection-mocks")).flatResourceWorkspaceMock(),
+);
 vi.mock("@/components/shared/data-table", () => ({
   DataTable: (props: Record<string, unknown>) => {
     dataTableProps = props;

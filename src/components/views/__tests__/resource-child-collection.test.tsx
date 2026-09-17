@@ -28,33 +28,30 @@ const {
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/experiment/1",
-  useSearchParams: () => new URLSearchParams(),
-}));
-vi.mock("@tanstack/react-query", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@tanstack/react-query")>()),
-  useQueryClient: () => ({ invalidateQueries: vi.fn() }),
-}));
-vi.mock("@/lib/auth/provider", () => ({
-  useAuth: () => ({ user: null, isAuthenticated: false }),
-}));
-vi.mock("@/contexts/workspace-repository-context", () => ({
-  useWorkspaceRepository: () => ({
-    createIdGroup: vi.fn(),
-    appendToIdGroup: vi.fn(),
+vi.mock("next/navigation", async () =>
+  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({
+    pathname: "/experiment/1",
+    search: "",
   }),
-}));
-vi.mock("@/components/views/collection-copy-dialog", () => ({
-  CollectionCopyDialog: () => null,
-}));
-vi.mock("@/components/views/selection-service-chooser", () => ({
-  SelectionServiceChooser: () => null,
-}));
-vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
-  SelectionToGroupDialog: () => null,
-}));
+);
+vi.mock("@tanstack/react-query", async () =>
+  (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
+);
+vi.mock("@/lib/auth/provider", async () =>
+  (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
+);
+vi.mock("@/contexts/workspace-repository-context", async () =>
+  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+);
+vi.mock("@/components/views/collection-copy-dialog", async () =>
+  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+);
+vi.mock("@/components/views/selection-service-chooser", async () =>
+  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+);
+vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
+  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+);
 
 vi.mock("@/lib/data-api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/data-api")>()),

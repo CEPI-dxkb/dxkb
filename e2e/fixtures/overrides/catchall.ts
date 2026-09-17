@@ -132,13 +132,16 @@ export const emptyBackendFallbackOverrides: JsonOverride[] = [
  *
  * Data-free on purpose — an empty `{rows}` and an empty `{counts}`, so a page
  * that mounts the tree renders its server-provided root rows with no children
- * and no expand arrows. A spec that needs real tree nodes prepends its own
- * content-bearing overrides, which win under first-match ordering (see
- * `e2e/tests/taxonomy-tree.spec.ts`).
+ * and no expand arrows. This is the bundle for a spec that mounts the tree
+ * incidentally and only needs the strict guard satisfied: `applyBackendMocks`'
+ * guard aborts any unmocked `/api/**` request and fails the test on teardown.
+ * `e2e/tests/organisms/all.spec.ts` and the a11y sweep use it that way.
  *
- * Needed rather than optional wherever the tree mounts: `applyBackendMocks`'
- * strict guard aborts any unmocked `/api/**` request and fails the test on
- * teardown.
+ * A spec that exercises the tree itself does not use this bundle at all — it
+ * supplies its own content-bearing entries for both operations, because an
+ * empty `{rows}`/`{counts}` earlier in the list would win under first-match
+ * ordering and leave every node a leaf. `e2e/tests/taxonomy-tree.spec.ts` is
+ * the worked example.
  */
 export const taxonomyTreeScenarioOverrides: JsonOverride[] = [
   {

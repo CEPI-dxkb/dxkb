@@ -16,8 +16,11 @@ export interface ProteinStructureLookup {
  * distinct from a per-accession upstream failure, without echoing the
  * `DATA_API_URL`/`NEXT_PUBLIC_DATA_API` env var name — which
  * `createServerDataRepository`'s thrown error does name — to a response any
- * caller can read. Mirrors the equivalent client-facing message in
- * `src/app/api/data/[resource]/route.ts`.
+ * caller can read. The same-origin routes answer the identical condition with
+ * `dataApiNotConfiguredMessage` (`@/lib/data-api/route-errors`); this one is
+ * separate because it names the protein structure service specifically, and it
+ * reaches the caller through a per-accession `error` field rather than a
+ * response body.
  */
 const proteinStructureNotConfiguredMessage =
   "The protein structure service is not configured for this deployment.";
@@ -30,7 +33,7 @@ export async function getProteinStructures(
   // the scalar-ID memoization the sibling *-view/server.ts modules do.
   let repository: ServerDataRepository;
   try {
-    repository = await createServerDataRepository();
+    repository = await createServerDataRepository({ readScope: "member" });
   } catch (error) {
     // Narrow on the factory's specific "not configured" error only — a
     // readSession()/cookies() failure (or anything else) is a different

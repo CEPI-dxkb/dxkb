@@ -33,7 +33,7 @@ export const getSerology = cache(
     sampleIdentifier: string,
     testType?: string,
   ): Promise<SerologyLookup> => {
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({ readScope: "query" });
     return resolveSerology(repository, sampleIdentifier, testType);
   },
 );

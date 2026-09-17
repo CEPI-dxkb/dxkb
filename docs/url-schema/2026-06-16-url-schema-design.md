@@ -256,7 +256,10 @@ and backend projections always include the resource ID required for response val
 Upstream item ranges have an exclusive end: `items=0-200` yields 200 rows. Thus page `p`
 uses `start = (p - 1) * 200` and `end = start + 200`. Anonymous public member responses may
 be shared for five minutes (`s-maxage=300`); authenticated/private responses, collections,
-selected rows, and exports are `no-store`. The gateway preserves client-safe upstream
+selected rows, and exports are `no-store`, as is every response served while
+`E2E_MOCK_ENABLED=1` (per-run fixture data must not be shared across runs). The single
+decision behind both the response header and the upstream cache init lives in
+`src/lib/data-api/server-policy.ts`. The gateway preserves client-safe upstream
 `401`, `403`, `404`, and `429` statuses and maps other upstream failures to `502` while
 retaining a concise meaningful message.
 

@@ -12,7 +12,7 @@ export interface FeatureLookup {
 }
 
 export const getFeature = cache(async (featureId: string): Promise<FeatureLookup> => {
-  const repository = await createServerDataRepository();
+  const repository = await createServerDataRepository({ readScope: "member" });
   const usedAlternateId = isPatricFeatureId(featureId);
   const result = await repository.member("genome_feature", {
     operation: "member",

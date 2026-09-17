@@ -4,7 +4,7 @@ import { genomeViewRecordSchema, type GenomeViewRecord } from "./schema";
 
 export const getGenome = cache(
   async (genomeId: string): Promise<GenomeViewRecord | null> => {
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({ readScope: "member" });
     const result = await repository.member("genome", {
       operation: "member",
       id: genomeId,

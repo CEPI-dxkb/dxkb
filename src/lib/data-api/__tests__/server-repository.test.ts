@@ -34,9 +34,16 @@ afterEach(() => {
   }
 });
 
+// Auth, env resolution and cache policy themselves belong to
+// `resolveServerDataRepository` and are covered exhaustively in
+// `server-policy.test.ts` (every read scope × anonymous/authenticated/E2E).
+// What is left here is the factory's own contribution: its client-facing
+// missing-configuration message, that a read scope reaches the shared policy
+// unchanged, and that the assembled repository really talks to the resolved
+// base URL.
 describe("createServerDataRepository", () => {
-  it("throws a DataApiError with a not_configured code when neither env var is set", async () => {
-    const rejection = createServerDataRepository();
+  it("names the env var in its own missing-configuration error, with the shared discriminator", async () => {
+    const rejection = createServerDataRepository({ readScope: "member" });
     await expect(rejection).rejects.toBeInstanceOf(DataApiError);
     await expect(rejection).rejects.toMatchObject({
       message: "DATA_API_URL is not configured.",
@@ -53,7 +60,9 @@ describe("createServerDataRepository", () => {
       ),
     );
 
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({
+      readScope: "member",
+    });
 
     await expect(
       repository.member("genome", { operation: "member", id: "1.1" }),
@@ -69,20 +78,25 @@ describe("createServerDataRepository", () => {
       ),
     );
 
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({
+      readScope: "member",
+    });
 
     await expect(
       repository.member("genome", { operation: "member", id: "1.1" }),
     ).resolves.toEqual({ row: { genome_id: "1.1" } });
   });
 
-  it("caches anonymous requests with a 300-second revalidation window and no token", async () => {
+  it("caches an anonymous member lookup for 300 seconds and sends no token", async () => {
     process.env.DATA_API_URL = "https://data.example";
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
 
-    const repository = await createServerDataRepository({ fetch: fetchMock });
+    const repository = await createServerDataRepository({
+      readScope: "member",
+      fetch: fetchMock,
+    });
     await repository.member("genome", { operation: "member", id: "1.1" });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -93,6 +107,29 @@ describe("createServerDataRepository", () => {
     expect(headers.get("Authorization")).toBeNull();
   });
 
+  // Deliberate production behaviour change, not a refactor: this factory used
+  // to cache *every* anonymous request for 300 seconds, including the
+  // collection-backed compound lookups in `surveillance-view/server.ts` and
+  // `serology-view/server.ts`. Those pass `readScope: "query"` now and are
+  // never cached, which is what the gateway already did for collections.
+  it("does not cache an anonymous query lookup", async () => {
+    process.env.DATA_API_URL = "https://data.example";
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
+
+    const repository = await createServerDataRepository({
+      readScope: "query",
+      fetch: fetchMock,
+    });
+    await repository.collection("surveillance", { operation: "collection" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ cache: "no-store", next: undefined }),
+    );
+  });
+
   it("bypasses cache and forwards the session token for authenticated requests", async () => {
     process.env.DATA_API_URL = "https://data.example";
     setTestSession({ token: "secret-token" });
@@ -100,7 +137,10 @@ describe("createServerDataRepository", () => {
       .fn<typeof fetch>()
       .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
 
-    const repository = await createServerDataRepository({ fetch: fetchMock });
+    const repository = await createServerDataRepository({
+      readScope: "member",
+      fetch: fetchMock,
+    });
     await repository.member("genome", { operation: "member", id: "1.1" });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -118,7 +158,10 @@ describe("createServerDataRepository", () => {
       .fn<typeof fetch>()
       .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
 
-    const repository = await createServerDataRepository({ fetch: fetchMock });
+    const repository = await createServerDataRepository({
+      readScope: "member",
+      fetch: fetchMock,
+    });
     await repository.member("genome", { operation: "member", id: "1.1" });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -138,7 +181,9 @@ describe("createServerDataRepository", () => {
     process.env.DATA_API_URL = "http://insecure.example";
     setTestSession({ token: "secret-token" });
 
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({
+      readScope: "member",
+    });
 
     await expect(
       repository.member("genome", { operation: "member", id: "1.1" }),

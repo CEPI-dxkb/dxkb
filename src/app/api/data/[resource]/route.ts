@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readSession } from "@/lib/auth/server/session";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { DataApiError, ServerDataRepository } from "@/lib/data-api/repository";
 import {
   DataApiValidationError,
   isDataResource,
@@ -10,6 +8,11 @@ import {
   dataApiErrorResponse,
   dataApiNotConfiguredMessage,
 } from "@/lib/data-api/route-errors";
+import {
+  anonymousMemberRevalidateSeconds,
+  readScopeForOperation,
+  resolveServerDataRepository,
+} from "@/lib/data-api/server-policy";
 import type { DataApiRequest, DataResource, DataSort } from "@/lib/data-api/types";
 import {
   maxRequestBytes,
@@ -165,42 +168,41 @@ async function execute(
 ): Promise<NextResponse> {
   try {
     const validated = validateDataApiRequest(resourceName, operation);
-    const session = await readSession();
-    const publicMember = validated.operation === "member" && !session;
-    const baseUrl =
-      process.env.DATA_API_URL ?? process.env.NEXT_PUBLIC_DATA_API;
-    // A DataApiError instead of a bare throw: the catch-all below replaces the
-    // message with a generic one, so a misconfigured deployment reached clients
-    // as "The data service request failed." with nothing to act on. The
-    // actionable detail is the env var name, which belongs in the operator's
-    // log rather than in a response any caller — signed in or not — can read;
-    // the distinct `not_configured` code is what tells a client this is a
-    // deployment problem and not a failed request.
-    if (!baseUrl) {
-      console.error(
-        "Data API gateway is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
-      );
-      throw new DataApiError(
-        dataApiNotConfiguredMessage,
-        500,
-        "not_configured",
-      );
-    }
-    const repository = new ServerDataRepository({
-      baseUrl,
-      token: session?.token,
-      cache: publicMember ? "force-cache" : "no-store",
-      revalidate: publicMember ? 300 : undefined,
+    // Session lookup, env resolution, missing-configuration handling,
+    // repository construction, and cache policy all come from
+    // `resolveServerDataRepository`, shared with the page factory
+    // (`createServerDataRepository`) and the Taxa Tree route. This route used
+    // to reimplement all five, and disagreed with the factory on anonymous
+    // collections and on E2E mode.
+    //
+    // What stays here: the sanitized client-facing message paired with an
+    // operator-facing log. The actionable detail is the env var name, which
+    // belongs in the operator's log rather than in a response any caller —
+    // signed in or not — can read. The distinct `not_configured` code is what
+    // tells a client this is a deployment problem and not a failed request;
+    // without it the catch-all below would answer "The data service request
+    // failed." with nothing to act on.
+    const { repository, sharedCache } = await resolveServerDataRepository({
+      readScope: readScopeForOperation(validated.operation),
+      notConfigured: {
+        message: dataApiNotConfiguredMessage,
+        log: "Data API gateway is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
+      },
     });
     const result = await repository.execute(
       resourceName,
       validated,
       request.signal,
     );
+    // `sharedCache` is true only for an anonymous, non-E2E member read; the
+    // shared window below is the same constant the repository's own
+    // `next.revalidate` uses, so the two cannot drift. `Vary: Cookie` stays on
+    // both branches: a response that is private today becomes shareable the
+    // moment the caller signs out, and the cache has to be told that.
     return NextResponse.json(result, {
       headers: {
-        "Cache-Control": publicMember
-          ? "public, max-age=0, s-maxage=300"
+        "Cache-Control": sharedCache
+          ? `public, max-age=0, s-maxage=${String(anonymousMemberRevalidateSeconds)}`
           : "private, no-store",
         Vary: "Cookie",
       },

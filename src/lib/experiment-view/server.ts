@@ -7,7 +7,7 @@ import {
 
 export const getExperiment = cache(
   async (experimentId: string): Promise<ExperimentViewRecord | null> => {
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({ readScope: "member" });
     const result = await repository.member("experiment", {
       operation: "member",
       id: experimentId,

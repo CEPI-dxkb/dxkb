@@ -39,7 +39,7 @@ export const getSurveillance = cache(
     sampleIdentifier: string,
     pathogenTestType?: string,
   ): Promise<SurveillanceLookup> => {
-    const repository = await createServerDataRepository();
+    const repository = await createServerDataRepository({ readScope: "query" });
     return resolveSurveillance(repository, sampleIdentifier, pathogenTestType);
   },
 );

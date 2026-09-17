@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readSession } from "@/lib/auth/server/session";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { DataApiError, ServerDataRepository } from "@/lib/data-api/repository";
 import { DataApiValidationError } from "@/lib/data-api/resources";
 import {
   dataApiErrorResponse,
   dataApiNotConfiguredMessage,
 } from "@/lib/data-api/route-errors";
+import { resolveServerDataRepository } from "@/lib/data-api/server-policy";
 import {
   readTaxonChildCounts,
   readTaxonChildren,
@@ -96,26 +95,6 @@ function parseParentId(value: string | null): number {
   return Number(value);
 }
 
-async function buildRepository(): Promise<ServerDataRepository> {
-  const baseUrl = process.env.DATA_API_URL ?? process.env.NEXT_PUBLIC_DATA_API;
-  // Same treatment as the gateway's identical condition: the actionable detail
-  // is the env var name, which belongs in the operator's log rather than in a
-  // response any caller can read, and the `not_configured` code is what tells
-  // a client this is a deployment problem and not a failed request.
-  if (!baseUrl) {
-    console.error(
-      "Taxa Tree route is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
-    );
-    throw new DataApiError(dataApiNotConfiguredMessage, 500, "not_configured");
-  }
-  const session = await readSession();
-  return new ServerDataRepository({
-    baseUrl,
-    token: session?.token,
-    cache: "no-store",
-  });
-}
-
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ operation: string }> },
@@ -128,7 +107,23 @@ export async function GET(
 
   try {
     const params = request.nextUrl.searchParams;
-    const repository = await buildRepository();
+    // Session lookup, env resolution, missing-configuration handling, and
+    // repository construction come from `resolveServerDataRepository`, shared
+    // with the Data API gateway and the page factory. The base-URL check and
+    // throw used to be copied here verbatim from the gateway, which is exactly
+    // where a drift in status or code would have started.
+    //
+    // `readScope: "query"` because both operations are multi-row reads whose
+    // answers vary with the caller's token — the token decides what the
+    // upstream counts as a visible genome — so neither is ever shared-cached.
+    // Same reason as the response headers below.
+    const { repository } = await resolveServerDataRepository({
+      readScope: "query",
+      notConfigured: {
+        message: dataApiNotConfiguredMessage,
+        log: "Taxa Tree route is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
+      },
+    });
     const result =
       operation === "children"
         ? await readTaxonChildren(

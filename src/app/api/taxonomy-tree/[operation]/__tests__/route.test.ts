@@ -1,3 +1,9 @@
+// `server-only` throws unconditionally outside Next's bundler (it relies on a
+// webpack alias swap that only exists in the real build); this route reaches it
+// through `@/lib/data-api/server-policy`, so the guard is neutralized the same
+// way `src/lib/phylogeny/__tests__/dataset-store.test.ts` does.
+vi.mock("server-only", () => ({}));
+
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
 import {

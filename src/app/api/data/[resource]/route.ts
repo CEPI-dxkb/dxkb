@@ -152,7 +152,9 @@ function limited(request: NextRequest, resource: string): NextResponse | null {
  * `data:${clientIp}:${resourceName}` is the rate-limit key, so a resource
  * name straight from the URL must be allowlist-checked before it ever reaches
  * `limited()` — otherwise an attacker can mint one rate-limit bucket per
- * garbage path segment, the same unbounded-map growth sub-part 1 prunes for.
+ * garbage path segment: the same unbounded-map growth that
+ * `src/lib/rate-limit.ts`'s `pruneExpiredBuckets` sweep (gated on
+ * `pruneThreshold` and `pruneIntervalMs`) exists to bound.
  */
 function unsupportedResourceResponse(resourceName: string): NextResponse {
   return NextResponse.json(

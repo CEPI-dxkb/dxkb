@@ -331,10 +331,11 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   /**
    * Everything resource-specific about the action bar. A hook rather than a
-   * component so its state lives in this instance: `ResourceWorkspace` remounts its
-   * `actionBar` slot when the `md` breakpoint flips, and `actionDialogs` is rendered
-   * below at section level, outside the workspace, so an in-flight launch survives
-   * both.
+   * component so its state lives in this instance: a collection error replaces the
+   * whole workspace, action bar included, with the alert below, and `actionDialogs` is
+   * rendered at section level as a sibling of the workspace, so an in-flight launch
+   * survives that. (Crossing the `md` breakpoint does not remount the slot — the
+   * workspace renders one stable subtree at every width.)
    */
   const { actionBar, actionDialogs } = useResourceCollectionActions({
     profile,

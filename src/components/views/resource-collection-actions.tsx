@@ -431,17 +431,20 @@ export interface ResourceCollectionActionsOptions<Row extends DataTableRow> {
  * state, loaded-keyword behaviour, table and detail rendering, and export; it passes
  * in the current selection and takes back only an error message.
  *
- * **A hook returning two slots, deliberately, not a component.** `ResourceWorkspace`
- * renders its `actionBar` under structurally different parents either side of the
- * `md` breakpoint — `div[data-layout="stacked"] > aside` versus
- * `ResizablePanelGroup > ResizablePanel > aside` — and flips between them from a live
- * `matchMedia` listener. Anything holding state inside that slot is therefore
- * remounted by a window resize or a tablet rotation, which for the Taxonomy chooser
- * would mean a resolved launch silently vanishing mid-flight. Running here puts
- * `loadingActionIds`, the overlap ref and the chooser's own state in the shell's
- * instance, and hands the chooser back as `actionDialogs` for the shell to render at
- * section level, outside the workspace entirely — the same two guarantees this
- * behaviour had before it was extracted.
+ * **A hook returning two slots, deliberately, not a component.** The shell renders
+ * `ResourceWorkspace` only on the success path: a collection error (including one from
+ * a background refetch) replaces the whole workspace, action bar included, with an
+ * alert. The Taxonomy launch resolves IDs over the network before it can navigate, so
+ * a chooser living inside the bar would vanish mid-flight the moment that happened —
+ * no chooser, no error, no spinner. Running here puts `loadingActionIds`, the overlap
+ * ref and the chooser's own state in the shell's instance, and hands the chooser back
+ * as `actionDialogs` for the shell to render at section level, as a sibling of the
+ * workspace rather than a descendant.
+ *
+ * Crossing the `md` breakpoint is *not* one of the reasons: `ResourceWorkspace` renders
+ * one stable subtree at every width, so a resize re-styles the `actionBar` slot instead
+ * of re-parenting it. That was not always true, and the guarantees above are what stood
+ * in for it; they still earn their keep on the error path.
  */
 export function useResourceCollectionActions<Row extends DataTableRow>({
   profile,
@@ -456,7 +459,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
 }: ResourceCollectionActionsOptions<Row>): {
   /** The workspace's action-bar slot. Safe to remount; holds no state. */
   actionBar: ReactNode;
-  /** Dialogs the shell must render outside `ResourceWorkspace`'s layout branches. */
+  /** Dialogs the shell must render as a sibling of `ResourceWorkspace`, not inside it. */
   actionDialogs: ReactNode;
 } {
   const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);

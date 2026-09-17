@@ -6,47 +6,31 @@ import {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-// Children of a node arrive as a bare array with a Content-Range total. The tree
-// pages Range until that total is reached; keeping each fixture <= 25 rows means a
-// single page satisfies the loop (the mock ignores Range and returns the full set).
+// The tree reads both of these from its own same-origin route
+// (`/api/taxonomy-tree/*`), which answers with already-paged, already-validated
+// JSON: `{rows}` for one parent's children, `{counts}` for a batch of parents.
+// Range paging, the Content-Range total and the facet_counts header are all
+// upstream of that route now, so these fixtures no longer restate them.
 function childrenOverride(parentId: number, rows: Record<string, unknown>[]): JsonOverride {
   return {
-    // parent_id<sep>ID where sep is a literal comma or its %2C encoding. Not [^0-9]+:
-    // the "2" in "%2C" is a digit, so that would mis-split the encoded separator.
     // (?![0-9]) guards against matching a longer id (234 must not match 2345).
-    // (?!\)) so this doesn't hijack the facet request's in(parent_id,(…)) form.
-    url: new RegExp(`/taxonomy/\\?.*parent_id(?:,|%2C)${String(parentId)}(?![0-9])`),
+    url: new RegExp(`/api/taxonomy-tree/children\\?parentId=${String(parentId)}(?![0-9])`),
     method: "GET",
-    body: rows,
-    headers: { "Content-Range": `items 0-${String(rows.length)}/${String(rows.length)}` },
+    body: { rows },
   };
 }
 
-// The tree asks for every visible node's child count in one faceted request; the
-// Data API answers in a `facet_counts` header (flat [id, count, …] array). Only
-// nodes with a count > 0 get an expand arrow, so this must be mocked or no row is
-// expandable. Registered before childrenOverride (first match wins) since its URL
-// also contains parent_id.
+// One entry answers every child-count request. The tree asks about whatever
+// collapsed nodes are on screen and reads back only the ids it asked for, so a
+// superset is harmless. Only nodes with a count > 0 get an expand arrow, so
+// this must be mocked or no row is expandable. A parent with no qualifying
+// children is absent rather than present with 0, which is how the route
+// reports it — its upstream facet uses mincount,1.
 function childCountsOverride(counts: Record<number, number>): JsonOverride {
-  const entries = Object.entries(counts);
-  const ids = entries.map(([id]) => id).join(",");
-  const encodedIds = entries.map(([id]) => id).join("(?:,|%2C)");
-  const flat = entries.flatMap(([id, n]) => [id, n]);
-  const open = "(?:%28|\\()";
-  const close = "(?:%29|\\))";
   return {
-    url: new RegExp(
-      `/taxonomy/\\?.*in${open}parent_id(?:,|%2C)${open}${encodedIds}${close}${close}.*facet`,
-      "i",
-    ),
+    url: /\/api\/taxonomy-tree\/child-counts(?:\?|$)/,
     method: "GET",
-    body: [],
-    headers: {
-      "Content-Range": "items 0-0/0",
-      facet_counts: JSON.stringify({ facet_fields: { parent_id: flat } }),
-      "Access-Control-Expose-Headers": "facet_counts, Content-Range",
-      "x-mocked-parent-ids": ids,
-    },
+    body: { counts },
   };
 }
 
@@ -62,14 +46,10 @@ const abortusStrains = [
 test.describe("taxonomy tree tab", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      // Facet child-counts first (its URL also has parent_id, so it must win over
-      // childrenOverride), then specific children, then permissive for the rest.
-      // 235 has strains (→ expand arrow), 236 has none.
+      // Every parent the tree can ask about, in one child-count entry: 234 has
+      // two species, 235 has one strain, and 236 is absent (→ no expand arrow).
       overrides: [
-        childCountsOverride({ 234: 2 }),
-        childCountsOverride({ 235: 1, 236: 0 }),
-        childCountsOverride({ 235: 1 }),
-        childCountsOverride({ 236: 0 }),
+        childCountsOverride({ 234: 2, 235: 1 }),
         childrenOverride(234, speciesChildren),
         childrenOverride(235, abortusStrains),
         ...taxonomyScenarioOverrides,

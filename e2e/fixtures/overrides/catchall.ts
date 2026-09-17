@@ -38,7 +38,9 @@ import {
  *   - Per-resource NAMED scenario bundles (`genomeScenarioOverrides`,
  *     `epitopeScenarioOverrides`, etc.) — populated fixture data for one
  *     resource. Import the ones a spec actually exercises instead of reaching
- *     for the broad aggregate below.
+ *     for the broad aggregate below. `taxonomyTreeScenarioOverrides` is the one
+ *     bundle named for a *boundary* rather than a resource, because the Taxa
+ *     Tree has its own route rather than an `/api/data` operation.
  *
  * `apiCatchallOverrides` composes the named bundles + the empty fallback (no
  * external hosts) as an internal building block. `a11yBackendOverrides` adds
@@ -121,29 +123,37 @@ export const emptyBackendFallbackOverrides: JsonOverride[] = [
   { url: /\/api\/workspace\//, method: "POST", body: {} },
 ];
 
-export const taxonomyScenarioOverrides: JsonOverride[] = [
-  // The Taxa Tree (src/components/taxonomy/use-taxon-children.ts) calls the Data API
-  // directly via NEXT_PUBLIC_DATA_API rather than the same-origin gateway below, and
-  // needs a different envelope: a bare array plus a Content-Range total and a
-  // facet_counts header (fetchTaxonChildCounts throws when facet_counts is missing).
-  //
-  // This entry is dead as written and kept only until its deletion is verified against
-  // the taxonomy specs. NEXT_PUBLIC_* inlines at `pnpm build` time, whereas
-  // .env.e2e.test substitutes ${E2E_PORT} at server start (e2e/scripts/start-webserver.mjs)
-  // — so the client bundle never carries the loopback /api/e2e-mock/data origin and this
-  // pattern cannot match. Specs that need real tree nodes prepend their own
-  // content-bearing overrides, matched by origin-agnostic path regex, and those win
-  // under first-match ordering (see e2e/tests/taxonomy-tree.spec.ts).
+/**
+ * The Taxa Tree's own same-origin boundary (`/api/taxonomy-tree/*`), which is
+ * not the `/api/data/taxonomy` gateway below: the tree has a dedicated route
+ * because it asks for one node's children in a single upstream range far
+ * wider than the gateway's fixed 200-row page, and reads its child counts from
+ * a `facet_counts` response header (`src/lib/data-api/taxonomy-tree.ts`).
+ *
+ * Data-free on purpose — an empty `{rows}` and an empty `{counts}`, so a page
+ * that mounts the tree renders its server-provided root rows with no children
+ * and no expand arrows. A spec that needs real tree nodes prepends its own
+ * content-bearing overrides, which win under first-match ordering (see
+ * `e2e/tests/taxonomy-tree.spec.ts`).
+ *
+ * Needed rather than optional wherever the tree mounts: `applyBackendMocks`'
+ * strict guard aborts any unmocked `/api/**` request and fails the test on
+ * teardown.
+ */
+export const taxonomyTreeScenarioOverrides: JsonOverride[] = [
   {
-    url: /\/api\/e2e-mock\/data\/taxonomy\/\?/,
+    url: /\/api\/taxonomy-tree\/children(?:\?|$)/,
     method: "GET",
-    body: [],
-    headers: {
-      "Content-Range": "items 0-0/0",
-      facet_counts: JSON.stringify({ facet_fields: { parent_id: [] } }),
-      "Access-Control-Expose-Headers": "facet_counts, Content-Range",
-    },
+    body: { rows: [] },
   },
+  {
+    url: /\/api\/taxonomy-tree\/child-counts(?:\?|$)/,
+    method: "GET",
+    body: { counts: {} },
+  },
+];
+
+export const taxonomyScenarioOverrides: JsonOverride[] = [
   {
     url: /\/api\/data\/taxonomy(?:\?|$)/,
     method: "GET",
@@ -457,6 +467,7 @@ export const genomeScenarioOverrides: JsonOverride[] = [
  * a general-purpose escape hatch for other specs.
  */
 const namedResourceScenarioOverrides: JsonOverride[] = [
+  ...taxonomyTreeScenarioOverrides,
   ...taxonomyScenarioOverrides,
   ...experimentScenarioOverrides,
   ...biosetScenarioOverrides,
@@ -478,10 +489,19 @@ const apiCatchallOverrides: JsonOverride[] = [
   ...emptyBackendFallbackOverrides,
 ];
 
-// Anchor to scheme + host so these only match outbound requests whose HOST ends in one of the
-// domains. Without the anchor, a URL like `http://127.0.0.1:3020/workspace/user@patricbrc.org/home`
-// would match `/patricbrc\.org/` and hijack the page navigation itself.
-export const externalCatchallOverrides: JsonOverride[] = [
+/**
+ * External-host stubs — an `a11yBackendOverrides` building block only, not
+ * exported. No journey spec needs one: the last importer was
+ * `e2e/tests/organisms/all.spec.ts`, whose only external dependency was the
+ * Taxa Tree reading `NEXT_PUBLIC_DATA_API` straight from the browser, which it
+ * no longer does.
+ *
+ * Anchored to scheme + host so these only match outbound requests whose HOST
+ * ends in one of the domains. Without the anchor, a URL like
+ * `http://127.0.0.1:3020/workspace/user@patricbrc.org/home` would match
+ * `/patricbrc\.org/` and hijack the page navigation itself.
+ */
+const externalCatchallOverrides: JsonOverride[] = [
   {
     url: /^https:\/\/alphafold\.ebi\.ac\.uk\/files\/AF-P12345-F1-model_v6\.cif$/i,
     headers: { "Content-Type": "chemical/x-mmcif" },

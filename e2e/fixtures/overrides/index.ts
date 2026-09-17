@@ -26,10 +26,10 @@ export {
   type MockJob,
 } from "./jobs";
 export {
-  externalCatchallOverrides,
   a11yBackendOverrides,
   emptyBackendFallbackOverrides,
   taxonomyScenarioOverrides,
+  taxonomyTreeScenarioOverrides,
   experimentScenarioOverrides,
   biosetScenarioOverrides,
   proteinStructureScenarioOverrides,

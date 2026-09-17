@@ -1,8 +1,8 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
 import {
   emptyBackendFallbackOverrides,
-  externalCatchallOverrides,
   genomeScenarioOverrides,
+  taxonomyTreeScenarioOverrides,
   workspaceOverrides,
 } from "../../fixtures/overrides";
 import { OrganismLandingPage } from "../../pages/organism-landing-page";
@@ -21,13 +21,12 @@ test.describe("all organisms landing page", () => {
         },
         ...workspaceOverrides,
         ...genomeScenarioOverrides,
-        // The "Taxa Tree" tab fires a child-count lookup straight at
-        // theseed.org (NEXT_PUBLIC_DATA_API in this build), not the same-origin
-        // gateway or loopback mock — undeclared dependency found while
-        // narrowing this spec off the old blanket catch-all: without
-        // externalCatchallOverrides's theseed.org stub the strict guard aborts
-        // the request and fails the test on the leaked-request check.
-        ...externalCatchallOverrides,
+        // The "Taxa Tree" tab fetches its children and child counts from the
+        // same-origin /api/taxonomy-tree route. This spec only asserts that the
+        // two server-provided root rows render, so the data-free bundle is
+        // enough — but it is not optional: the strict guard aborts any unmocked
+        // /api/** request and fails the test on the leaked-request check.
+        ...taxonomyTreeScenarioOverrides,
         ...emptyBackendFallbackOverrides,
       ],
     });

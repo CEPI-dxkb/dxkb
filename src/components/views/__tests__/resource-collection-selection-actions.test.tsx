@@ -11,6 +11,7 @@ import { strainCollectionProfile } from "@/lib/strain-view/profile";
 import { serologyCollectionProfile } from "@/lib/serology-view/profile";
 import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
+import { visibleSearchActions } from "@/components/search/search-action-policy";
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
@@ -89,12 +90,13 @@ vi.mock("../resource-filter-bar", () => ({
     />
   ),
 }));
-// Plan item 21: shared with every resource-collection*.test.tsx suite so the
-// enabledActions/disabledActions gating logic (a real behavioral contract mirroring
-// search-action-bar.tsx's actionConfig) lives in one place. See the fixture's own doc
-// comment for what it does and does not model. The cross-resource matrix below still
-// asserts the full enabledActions/disabledActions prop values directly (captured here
-// as actionBarProps), independent of what this fake renders.
+// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
+// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
+// production does (search-action-policy.ts), so a control this suite can query or
+// click is one the real bar would have rendered, in the same enabled state. The
+// cross-resource matrix below still asserts the full enabledActions/disabledActions
+// prop values directly (captured here as actionBarProps), independent of what this
+// fake renders.
 vi.mock("@/components/search/search-action-bar", async () => {
   // A dynamic import, not a static one: `vi.mock` factories run before the file's own
   // static imports are linked, so a statically-imported helper referenced here throws
@@ -878,9 +880,12 @@ describe("ResourceCollection selection actions", () => {
  * `useResourceCollectionActions` owns this table now, so adding a resource extends this
  * matrix instead of the shell's generic query, export and table code.
  *
- * Which entries are in scope is a property of the resource; only the count and the
- * download route change with the selection. Both are asserted for every resource so
- * a config entry cannot silently stop reaching the bar.
+ * Which entries a resource *owns* is a property of the resource, and `enabledActions`
+ * / `disabledActions` are asserted for all four states of every resource so a config
+ * entry cannot silently stop reaching the bar. Which of them the bar actually renders
+ * is the shared policy's call and varies with the selection, so the download route is
+ * exercised only where `visibleSearchActions` says DWNLD is on screen, and asserted
+ * absent everywhere else.
  */
 const actionMatrixFixtures: {
   resource: DataResource;
@@ -1082,13 +1087,30 @@ describe.each(actionMatrixFixtures)(
         // `toEqual` would treat that object as equal to `undefined`.
         expect(actionBarProps.disabledActions).toStrictEqual(disabledActions);
 
-        await user.click(screen.getByRole("button", { name: "Download action" }));
-        if (count === 0) {
-          // An empty selection has nothing to export, so neither request is made.
+        // Whether the bar offers DWNLD at all is the shared policy's call, not this
+        // matrix's: `download` is absent from `validSearchTypes` for Taxa, Strains
+        // and Genomes (those download from the table instead), and
+        // `requiresSelection` removes it from every resource with nothing selected.
+        // Asking the policy keeps the two in step; hand-listing it here is how the
+        // old fake came to offer 23 clicks production never would.
+        const offersDownload = visibleSearchActions({
+          searchType: resource,
+          selectedCount: count,
+          hasGuideUrl: false,
+        }).some((action) => action.id === "download");
+        if (!offersDownload) {
+          expect(
+            screen.queryByRole("button", {
+              hidden: true,
+              name: "Download action",
+            }),
+          ).not.toBeInTheDocument();
           expect(selected).not.toHaveBeenCalled();
           expect(exportAll).not.toHaveBeenCalled();
           return;
         }
+
+        await user.click(screen.getByRole("button", { name: "Download action" }));
         if (isAllPagesSelected) {
           await waitFor(() => {
             expect(exportAll).toHaveBeenCalledWith(

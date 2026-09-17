@@ -111,10 +111,10 @@ vi.mock("../resource-filter-bar", () => ({
     </div>
   ),
 }));
-// Plan item 21: shared with every resource-collection*.test.tsx suite so the
-// enabledActions/disabledActions gating logic (a real behavioral contract mirroring
-// search-action-bar.tsx's actionConfig) lives in one place. See the fixture's own
-// doc comment for what it does and does not model.
+// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
+// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
+// production does (search-action-policy.ts), so a control this suite can query or
+// click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () => {
   // A dynamic import, not a static one: `vi.mock` factories run before the file's own
   // static imports are linked, so a statically-imported helper referenced here throws
@@ -370,7 +370,11 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
 
     render(
       <ResourceCollection
-        profile={genomeCollectionProfile}
+        // The Genome profile's columns, facets and sort, pointed at a resource whose
+        // action bar actually offers DWNLD: `download` is not in the `genome` entry's
+        // `validSearchTypes`, so a Genome collection downloads from the table. The
+        // request shape under test belongs to the shell, not to either resource.
+        profile={{ ...genomeCollectionProfile, resource: "genome_feature" }}
         repository={data}
         state={state}
         onStateChange={vi.fn()}
@@ -379,7 +383,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
 
     await user.click(screen.getByRole("button", { name: "Download action" }));
 
-    expect(exportAll).toHaveBeenCalledWith("genome", {
+    expect(exportAll).toHaveBeenCalledWith("genome_feature", {
       rql: "eq(genome_status,Complete)",
       keyword: "coli",
       fields: genomeCollectionProfile.columns.map((column) => column.id),

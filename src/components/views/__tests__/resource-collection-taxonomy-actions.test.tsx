@@ -62,10 +62,10 @@ vi.mock("../resource-filter-bar", () => ({
     />
   ),
 }));
-// Plan item 21: shared with every resource-collection*.test.tsx suite so the
-// enabledActions/disabledActions gating logic (a real behavioral contract mirroring
-// search-action-bar.tsx's actionConfig) lives in one place. See the fixture's own
-// doc comment for what it does and does not model.
+// The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
+// It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
+// production does (search-action-policy.ts), so a control this suite can query or
+// click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () => {
   // A dynamic import, not a static one: `vi.mock` factories run before the file's own
   // static imports are linked, so a statically-imported helper referenced here throws

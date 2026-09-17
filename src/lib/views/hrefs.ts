@@ -82,7 +82,6 @@ export function featureHref(featureId: number | string): string {
   return `/feature/${encodeURIComponent(String(featureId))}`;
 }
 
-/** Canonical Feature list route. Explicit RQL takes precedence over keyword. */
 /**
  * Feature list route for an explicit ID set — the Interactions tab's FEATURES action,
  * which pools both interactors of every selected row. Mirrors `genomesHrefFromIds`.
@@ -94,6 +93,10 @@ export function featuresHrefFromIds(
   return rql ? featureListHref({ rql }) : null;
 }
 
+/**
+ * Canonical Feature list route. Explicit RQL takes precedence over keyword;
+ * `filter` is independent of both and is appended whenever it is supplied.
+ */
 export function featureListHref(opts?: {
   keyword?: string;
   rql?: string;

@@ -33,11 +33,14 @@ export interface OverviewGroupFieldsOptions {
 /**
  * Collect one `DataField.group`'s populated fields from a row, as display text.
  *
- * This is the shared half of the Serology and Surveillance overviews, which
- * held byte-for-byte equivalent copies of both the per-field `displayValue`
- * branch and the group `flatMap` around it. Only two things ever differed
- * between them — the set of date fields and the date formatter — so both are
- * parameters.
+ * This is the shared half of the Serology and Surveillance overviews. Their
+ * per-field `displayValue` branches were identical apart from the date
+ * formatter they called, and the group `flatMap` around them was identical
+ * outright. Four things differed, which is why four parameters join `group`
+ * and `row`: the `DataFieldMap` each one read (`fields`), its own set of
+ * date-valued field ids (`dateFields`), its formatter (`formatDate`), and
+ * Surveillance's skip of `collection_latitude`/`collection_longitude`, which
+ * it renders as a single combined field (`exclude`).
  *
  * It deliberately does **not** generalize to the static entity overviews
  * (Genome, Feature, Epitope, Experiment). Those order and format their fields

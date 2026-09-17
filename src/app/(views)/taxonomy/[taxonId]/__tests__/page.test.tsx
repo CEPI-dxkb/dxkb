@@ -67,8 +67,9 @@ vi.mock("@/components/organisms/taxon-views/taxonomy-tree-view", () => ({
     },
 }));
 
-// The sequences view renders ListData (useQueryClient, useQuery, react-resizable-panels)
-// and is covered by view-factories.test.tsx. Stub the factory here so this page-level
+// The sequences view renders ResourceChildCollection — TanStack Query through
+// useResourceCollection, plus ResourceWorkspace's react-resizable-panels — and is
+// covered by view-factories.test.tsx. Stub the factory here so this page-level
 // test stays focused on routing/wiring, not TanStack Query provider setup.
 vi.mock("@/components/organisms/taxon-views/sequences", () => ({
   makeSequencesView: () =>

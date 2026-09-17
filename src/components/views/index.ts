@@ -4,6 +4,8 @@ export * from "./experiment-resource-collection";
 export * from "./feature-resource-collection";
 export * from "./genome-resource-collection";
 export * from "./overview-card";
+export * from "./overview-group-fields";
+export * from "./overview-section";
 export * from "./protein-feature-resource-collection";
 export * from "./protein-structure-resource-collection";
 export * from "./resource-child-collection";

@@ -1,9 +1,4 @@
-import {
-  OverviewCard,
-  OverviewField,
-  formatOverviewValue,
-  isOverviewValueAvailable,
-} from "@/components/views";
+import { OverviewSection, overviewGroupFields } from "@/components/views";
 import { surveillanceFields } from "@/constants/datafields/surveillance";
 import {
   formatCoordinates,
@@ -34,15 +29,17 @@ const dateFields = new Set([
   "date_updated",
 ]);
 
+/**
+ * Latitude and longitude are rendered as one combined "Coordinates" field
+ * appended to the Collection section, so neither is collected on its own.
+ */
+const combinedCoordinateFields = new Set([
+  "collection_latitude",
+  "collection_longitude",
+]);
+
 interface SurveillanceOverviewProps {
   surveillance: SurveillanceViewRecord;
-}
-
-function displayValue(field: string, value: unknown): string | null {
-  if (dateFields.has(field) && typeof value === "string" && value !== "")
-    return formatSourceDate(value);
-  if (!isOverviewValueAvailable(value)) return null;
-  return formatOverviewValue(value);
 }
 
 export function SurveillanceOverview({
@@ -56,39 +53,23 @@ export function SurveillanceOverview({
   return (
     <div className="grid gap-4 pb-6 xl:grid-cols-2">
       {sections.map(([title, sourceGroup]) => {
-        const fields = Object.values(surveillanceFields).filter(
-          ({ group, field }) =>
-            group === sourceGroup &&
-            field !== "collection_latitude" &&
-            field !== "collection_longitude",
-        );
-        const values = fields.flatMap(({ field, label }) => {
-          const value = displayValue(field, surveillance[field]);
-          return value ? [{ field, label, value }] : [];
+        const fields = overviewGroupFields({
+          fields: surveillanceFields,
+          group: sourceGroup,
+          row: surveillance,
+          dateFields,
+          formatDate: formatSourceDate,
+          exclude: combinedCoordinateFields,
         });
         if (title === "Collection" && coordinates) {
-          values.push({
+          fields.push({
             field: "coordinates",
             label: "Coordinates",
             value: coordinates,
           });
         }
 
-        return (
-          <OverviewCard key={title} title={title}>
-            {values.length > 0 ? (
-              <dl className="grid gap-4 sm:grid-cols-2">
-                {values.map(({ field, label, value }) => (
-                  <OverviewField key={field} label={label} value={value} />
-                ))}
-              </dl>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No data available.
-              </p>
-            )}
-          </OverviewCard>
-        );
+        return <OverviewSection key={title} title={title} fields={fields} />;
       })}
     </div>
   );

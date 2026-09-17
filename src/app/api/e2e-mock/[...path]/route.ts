@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleIdentityGet, handleIdentityPost } from "./identity";
 import {
+  allOrganismsSummaryRecord,
   ambiguousSerologyRecords,
   ambiguousSurveillanceRecords,
+  bacteriaSummaryRecord,
+  brucellaPpiTotal,
   epitopeRecord,
   experimentRecord,
+  findOrganismSummaryRecord,
+  findOrganismTaxonomyRecord,
   genomeRecord,
   proteinStructureRecords,
   serologyRecord,
   surveillanceRecord,
   taxonomyRecord,
+  virusesSummaryRecord,
 } from "@/lib/e2e-fixtures/records";
 import { buildLoopbackSolrEnvelope } from "@/lib/e2e-fixtures/envelopes";
 
@@ -55,7 +61,7 @@ const e2eDeterministicCounts: Record<string, number> = {
   protein_structure: 4567,
   protein_feature: 8901,
   experiment: 1,
-  ppi: 4358,
+  ppi: brucellaPpiTotal,
 };
 
 function maybeSolrCount(
@@ -206,145 +212,6 @@ function maybeSolrCount(
   if (request.headers.get("accept") === "application/json") return docs;
   return buildLoopbackSolrEnvelope(docs, { numFound });
 }
-
-const bacteriaSummaryFixture = {
-  count: 1337420,
-  unique_family: 391,
-  unique_genus: 5432,
-  unique_species: 82915,
-  CDS: 482001224,
-  mat_peptide: 23144,
-  PDB: 9821,
-};
-
-const virusesSummaryFixture = {
-  count: 890123,
-  unique_family: 212,
-  unique_genus: 2841,
-  unique_species: 14302,
-  CDS: 12803441,
-  mat_peptide: 419820,
-  PDB: 3201,
-};
-
-const allOrganismsSummaryFixture = {
-  count: 9800000,
-  unique_family: 1204,
-  unique_genus: 41200,
-  unique_species: 510000,
-  CDS: 980000000,
-  mat_peptide: 450000,
-  PDB: 21000,
-};
-
-const bacteriaTaxonomyFixture = {
-  taxon_id: 2,
-  taxon_name: "Bacteria",
-  lineage_names: ["cellular organisms", "Bacteria"],
-  lineage_ids: [131567, 2],
-  taxon_rank: "superkingdom",
-  genomes: 1337420,
-};
-
-const virusesTaxonomyFixture = {
-  taxon_id: 10239,
-  taxon_name: "Viruses",
-  lineage_names: ["Viruses"],
-  lineage_ids: [10239],
-  taxon_rank: "superkingdom",
-  genomes: virusesSummaryFixture.count,
-};
-
-const cellularOrganismsTaxonomyFixture = {
-  taxon_id: 131567,
-  taxon_name: "cellular organisms",
-  lineage_names: ["cellular organisms"],
-  lineage_ids: [131567],
-  taxon_rank: "no rank",
-  genomes: allOrganismsSummaryFixture.count,
-};
-
-const brucellaTaxonomyFixture = {
-  taxon_id: 234,
-  taxon_name: "Brucella",
-  lineage_names: [
-    "cellular organisms",
-    "Bacteria",
-    "Pseudomonadota",
-    "Alphaproteobacteria",
-    "Hyphomicrobiales",
-    "Brucellaceae",
-    "Brucella",
-  ],
-  lineage_ids: [131567, 2, 1224, 28211, 356, 118882, 234],
-  taxon_rank: "genus",
-  genomes: 1909,
-};
-
-// Influenza A virus — lineage includes "Orthomyxoviridae" so hasStrains = true.
-// Used by the strains-tab e2e tests which need a taxon where the Strains tab is enabled.
-const influenzaATaxonomyFixture = {
-  taxon_id: 11520,
-  taxon_name: "Influenza A virus",
-  lineage_names: [
-    "Viruses",
-    "Orthornavirae",
-    "Negarnaviricota",
-    "Insthoviricetes",
-    "Articulavirales",
-    "Orthomyxoviridae",
-    "Alphainfluenzavirus",
-    "Influenza A virus",
-  ],
-  lineage_ids: [
-    10239, 2497569, 2497570, 2497583, 2499399, 11308, 2499397, 11520,
-  ],
-  taxon_rank: "species",
-  genomes: 245000,
-};
-
-// Alphainfluenzavirus influenzae — lineage includes "Alphainfluenzavirus influenzae"
-// so hasSerology = true. Used by the serology-tab e2e test.
-const alphainfluenzavirusInfluenzaeTaxonomyFixture = {
-  taxon_id: 2955291,
-  taxon_name: "Alphainfluenzavirus influenzae",
-  lineage_names: [
-    "Viruses",
-    "Riboviria",
-    "Orthornavirae",
-    "Negarnaviricota",
-    "Polyploviricotina",
-    "Insthoviricetes",
-    "Articulavirales",
-    "Orthomyxoviridae",
-    "Alphainfluenzavirus",
-    "Alphainfluenzavirus influenzae",
-  ],
-  lineage_ids: [
-    10239, 2559587, 2732396, 2497569, 2497571, 2497577, 2499411, 11308, 197911,
-    2955291,
-  ],
-  taxon_rank: "species",
-  genomes: 1876178,
-};
-
-// Caliciviridae — virus family used by domains-and-motifs e2e tests.
-const caliciviridaeTaxonomyFixture = {
-  taxon_id: 11974,
-  taxon_name: "Caliciviridae",
-  lineage_names: [
-    "Viruses",
-    "Riboviria",
-    "Orthornavirae",
-    "Pisuviricota",
-    "Pisoniviricetes",
-    "Picornavirales",
-    "Caliciviridae",
-  ],
-  lineage_ids: [10239, 2559587, 2732396, 2732408, 2732506, 464095, 11974],
-  taxon_rank: "family",
-  genomes: 86222,
-};
 
 const sharedFacetFixtures: Record<string, (string | number)[]> = {
   genus: [
@@ -893,26 +760,22 @@ function maybeBvBrcWebsite(
   if (segments[0] !== "bvbrc-website") return null;
   const endpoint = segments.slice(1).join("/");
 
-  if (endpoint === "data/summary_by_taxon/2")
-    return { kind: "ok", body: bacteriaSummaryFixture };
-  if (endpoint === "data/summary_by_taxon/10239")
-    return { kind: "ok", body: virusesSummaryFixture };
-  if (endpoint === "data/summary_by_taxon/131567")
-    return { kind: "ok", body: allOrganismsSummaryFixture };
-  if (endpoint === "taxonomy/2")
-    return { kind: "ok", body: bacteriaTaxonomyFixture };
-  if (endpoint === "taxonomy/10239")
-    return { kind: "ok", body: virusesTaxonomyFixture };
-  if (endpoint === "taxonomy/131567")
-    return { kind: "ok", body: cellularOrganismsTaxonomyFixture };
-  if (endpoint === "taxonomy/234")
-    return { kind: "ok", body: brucellaTaxonomyFixture };
-  if (endpoint === "taxonomy/11520")
-    return { kind: "ok", body: influenzaATaxonomyFixture };
-  if (endpoint === "taxonomy/11974")
-    return { kind: "ok", body: caliciviridaeTaxonomyFixture };
-  if (endpoint === "taxonomy/2955291")
-    return { kind: "ok", body: alphainfluenzavirusInfluenzaeTaxonomyFixture };
+  // Both landing-page endpoints are table lookups keyed by taxon id, so
+  // "which taxa this mock knows" is one fact in
+  // src/lib/e2e-fixtures/records.ts rather than a branch per taxon here.
+  const summaryTaxonId = endpoint.match(
+    /^data\/summary_by_taxon\/(\d+)\/?$/,
+  )?.[1];
+  if (summaryTaxonId) {
+    const summary = findOrganismSummaryRecord(summaryTaxonId);
+    if (summary) return { kind: "ok", body: summary };
+  }
+
+  const websiteTaxonId = endpoint.match(/^taxonomy\/(\d+)\/?$/)?.[1];
+  if (websiteTaxonId) {
+    const taxon = findOrganismTaxonomyRecord(websiteTaxonId);
+    if (taxon) return { kind: "ok", body: taxon };
+  }
   if (endpoint === "genome" || endpoint === "genome/") {
     const url = new URL(request.url);
     const query = decodeURIComponent(url.search);
@@ -967,9 +830,9 @@ function maybeBvBrcWebsite(
     if (!field) {
       return { kind: "unhandled", reason: "no pivot or facet field" };
     }
-    let count = bacteriaSummaryFixture.count;
-    if (taxonId === 10239) count = virusesSummaryFixture.count;
-    else if (taxonId === 131567) count = allOrganismsSummaryFixture.count;
+    let count = bacteriaSummaryRecord.count;
+    if (taxonId === 10239) count = virusesSummaryRecord.count;
+    else if (taxonId === 131567) count = allOrganismsSummaryRecord.count;
     if (field === "isolation_country" && taxonId === 234) {
       return {
         kind: "ok",

@@ -17,6 +17,7 @@ import {
   taxonomyRecord,
 } from "@/lib/e2e-fixtures/records";
 import {
+  buildBrowserRpcSuccess,
   buildGatewayCollectionEnvelope,
   buildGatewayRowsEnvelope,
   buildLoopbackSolrEnvelope,
@@ -118,7 +119,11 @@ export const emptyBackendFallbackOverrides: JsonOverride[] = [
   { url: /\/api\/auth\//, method: "GET", body: {} },
   { url: /\/api\/auth\//, method: "POST", body: {} },
   { url: /\/api\/services\//, method: "GET", body: {} },
-  { url: /\/api\/services\//, method: "POST", body: { result: [[]] } },
+  {
+    url: /\/api\/services\//,
+    method: "POST",
+    body: buildBrowserRpcSuccess([[]]),
+  },
   { url: /\/api\/workspace\//, method: "GET", body: { items: [] } },
   { url: /\/api\/workspace\//, method: "POST", body: {} },
 ];
@@ -519,7 +524,7 @@ const externalCatchallOverrides: JsonOverride[] = [
   { url: /^https?:\/\/(?:[a-z0-9-]+\.)*bv-brc\.org(?:[:/]|$)/i, body: {} },
   {
     url: /^https?:\/\/(?:[a-z0-9-]+\.)*theseed\.org(?:[:/]|$)/i,
-    body: { result: [[]] },
+    body: buildBrowserRpcSuccess([[]]),
   },
   {
     url: /^https?:\/\/(?:[a-z0-9-]+\.)*ncbi\.nlm\.nih\.gov(?:[:/]|$)/i,

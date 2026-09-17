@@ -77,3 +77,71 @@ export function buildLoopbackSolrEnvelope<T>(
   if (options.facetCounts) envelope.facet_counts = options.facetCounts;
   return envelope;
 }
+
+/**
+ * JSON-RPC 2.0 envelopes.
+ *
+ * The two transports read different parts of the same envelope, so there are
+ * two pairs rather than one shared builder:
+ *
+ *   - `buildLoopbackRpc*` — the full wire shape (`id` + `jsonrpc` + payload).
+ *     The loopback mock answers a real HTTP request that `JsonRpcClient`
+ *     (src/lib/jsonrpc-client.ts) parses, so the envelope has to be complete.
+ *   - `buildBrowserRpc*` — payload only. A `page.route()` override is handed
+ *     straight to the same client, which reads `result` / `error` and ignores
+ *     `id` / `jsonrpc`, so the browser fixtures have always omitted them; the
+ *     builders keep that deliberate difference visible instead of quietly
+ *     making the two shapes look identical.
+ *
+ * Both pairs are used by explicit method dispatch only — the loopback's
+ * dispatch table in src/app/api/e2e-mock/[...path]/route.ts and the named
+ * per-method overrides in e2e/fixtures/overrides/. No builder here exists
+ * without a dispatch site that calls it.
+ */
+
+export interface JsonRpcSuccessEnvelope<T> {
+  id: number;
+  jsonrpc: "2.0";
+  result: T;
+}
+
+export interface JsonRpcErrorBody {
+  code: number;
+  message: string;
+}
+
+export interface JsonRpcErrorEnvelope {
+  id: number;
+  jsonrpc: "2.0";
+  error: JsonRpcErrorBody;
+}
+
+/** Server-side loopback JSON-RPC success — full `{id, jsonrpc, result}` wire shape. */
+export function buildLoopbackRpcSuccess<T>(
+  result: T,
+  id = 1,
+): JsonRpcSuccessEnvelope<T> {
+  return { id, jsonrpc: "2.0", result };
+}
+
+/** Server-side loopback JSON-RPC error — full `{id, jsonrpc, error}` wire shape. */
+export function buildLoopbackRpcError(
+  code: number,
+  message: string,
+  id = 1,
+): JsonRpcErrorEnvelope {
+  return { id, jsonrpc: "2.0", error: { code, message } };
+}
+
+/** Browser-side override JSON-RPC success — the client reads only `result`. */
+export function buildBrowserRpcSuccess<T>(result: T): { result: T } {
+  return { result };
+}
+
+/** Browser-side override JSON-RPC error — the client reads only `error`. */
+export function buildBrowserRpcError(
+  code: number,
+  message: string,
+): { error: JsonRpcErrorBody } {
+  return { error: { code, message } };
+}

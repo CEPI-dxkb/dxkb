@@ -567,3 +567,440 @@ export const ambiguousSerologyRecords: SerologyFixtureRecord[] = [
     test_type: "ELISA/IgG test",
   },
 ];
+
+export interface GenomeAmrFixtureRecord {
+  id: string;
+  taxon_id: number;
+  genome_id: string;
+  genome_name: string;
+  antibiotic: string;
+  resistant_phenotype: string;
+  evidence: string;
+  /**
+   * Array-valued on the wire — `genome_amr.pmid` is registry-declared
+   * multi-valued (see the `multipleFields.genome_amr` set in
+   * src/lib/data-api/resources.ts), which is what makes the column
+   * unsortable. Kept as an array so the fixture agrees with the registry
+   * rather than quietly contradicting it.
+   */
+  pmid: string[];
+  /**
+   * String-valued deliberately: `measurement_value` and
+   * `testing_standard_year` are left to `inferType`'s string default so the
+   * gateway does not reject non-numeric facet values such as ">=" ranges.
+   */
+  measurement_value: string;
+  measurement_sign: string;
+  measurement_unit: string;
+  laboratory_typing_method: string;
+  testing_standard: string;
+  testing_standard_year: string;
+  computational_method: string;
+}
+
+export const genomeAmrRecord: GenomeAmrFixtureRecord = {
+  id: "genome-amr-backend-901",
+  taxon_id: 234,
+  genome_id: "234.1",
+  genome_name: "Brucella suis 1330",
+  antibiotic: "ampicillin",
+  resistant_phenotype: "Resistant",
+  evidence: "Laboratory Method",
+  pmid: ["12345678", "23456789"],
+  measurement_value: "32",
+  measurement_sign: ">=",
+  measurement_unit: "mg/L",
+  laboratory_typing_method: "Broth dilution",
+  testing_standard: "CLSI",
+  testing_standard_year: "2019",
+  computational_method: "PATRIC AMR classifier",
+};
+
+export interface PpiFixtureRecord {
+  id: string;
+  genome_id_a: string;
+  genome_name_a: string;
+  interactor_a: string;
+  feature_id_a: string;
+  refseq_locus_tag_a: string;
+  gene_a: string;
+  interactor_desc_a: string;
+  genome_id_b: string;
+  genome_name_b: string;
+  interactor_b: string;
+  feature_id_b: string;
+  refseq_locus_tag_b: string;
+  gene_b: string;
+  interactor_desc_b: string;
+  category: string;
+  interaction_type: string[];
+  detection_method: string[];
+  evidence: string[];
+  score: number;
+}
+
+/**
+ * Deterministic total the loopback reports for a `ppi` collection count. The
+ * browser layer builds however many rows a spec asks for; this is the number
+ * the SERVER reports when nothing narrows the query, so both layers agree on
+ * "how many PPI rows exist for Brucella" without either one hard-coding it.
+ */
+export const brucellaPpiTotal = 4358;
+
+/** Build `count` synthetic Brucella melitensis (taxon 234) PPI rows. */
+export function buildBrucellaPpiRecords(count: number): PpiFixtureRecord[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `ppi-${String(index).padStart(4, "0")}`,
+    genome_id_a: "224914.16",
+    genome_name_a: "Brucella melitensis bv. 1 str. 16M [WGS]",
+    interactor_a: `fig|224914.16.peg.${String(600 + index)}`,
+    feature_id_a: `PATRIC.224914.16.feature-a-${String(index)}`,
+    refseq_locus_tag_a: `BAWG_${String(1000 + index)}`,
+    gene_a: "",
+    interactor_desc_a: "6,7-dimethyl-8-ribityllumazine synthase",
+    genome_id_b: "224914.16",
+    genome_name_b: "Brucella melitensis bv. 1 str. 16M [WGS]",
+    interactor_b: `fig|224914.16.peg.${String(2400 + index)}`,
+    feature_id_b: `PATRIC.224914.16.feature-b-${String(index)}`,
+    refseq_locus_tag_b: `BAWG_${String(2000 + index)}`,
+    gene_b: "",
+    interactor_desc_b: "CrcB protein",
+    category: "PPI",
+    interaction_type: ["predicted interaction"],
+    detection_method: ["predictive text mining"],
+    evidence: ["experimental"],
+    score: 2.5316925,
+  }));
+}
+
+/**
+ * BV-BRC *website* API taxonomy shape — `GET {BVBRC_WEBSITE_API_URL}/taxonomy/<id>`,
+ * consumed by `fetchOrganismTaxonomy` in
+ * src/lib/services/organisms/taxonomy.ts. Deliberately NOT the same shape as
+ * {@link TaxonomyFixtureRecord}, which models the Data API `taxonomy` core
+ * (`/api/data/taxonomy`): the website endpoint answers a single object with
+ * numeric ids and no `other_names`/`parent_id`/`description`, and the two
+ * transports really do differ here. Keeping both shapes named separately is
+ * what stops a fixture from being "fixed" into the wrong one.
+ */
+export interface OrganismTaxonomyFixtureRecord {
+  taxon_id: number;
+  taxon_name: string;
+  lineage_names: string[];
+  lineage_ids: number[];
+  taxon_rank: string;
+  genomes: number;
+}
+
+/**
+ * BV-BRC *website* API summary shape — `GET
+ * {BVBRC_WEBSITE_API_URL}/data/summary_by_taxon/<id>`, consumed by
+ * `fetchOrganismSummary` in src/lib/services/organisms/summary.ts. The
+ * SCREAMING keys (`CDS`, `PDB`) are the real wire names, not a naming-rule
+ * violation — `fetchOrganismSummary` reads `payload.CDS` / `payload.PDB`.
+ */
+export interface OrganismSummaryFixtureRecord {
+  count: number;
+  unique_family: number;
+  unique_genus: number;
+  unique_species: number;
+  CDS: number;
+  mat_peptide: number;
+  PDB: number;
+}
+
+const bacteriaGenomeCount = 1_337_420;
+const virusesGenomeCount = 890_123;
+const allOrganismsGenomeCount = 9_800_000;
+const brucellaGenomeCount = 1909;
+const mycobacteriumGenomeCount = 62_310;
+const influenzaAGenomeCount = 245_000;
+const caliciviridaeGenomeCount = 86_222;
+const alphainfluenzavirusInfluenzaeGenomeCount = 1_876_178;
+
+export const bacteriaOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
+  taxon_id: 2,
+  taxon_name: "Bacteria",
+  lineage_names: ["cellular organisms", "Bacteria"],
+  lineage_ids: [131567, 2],
+  taxon_rank: "superkingdom",
+  genomes: bacteriaGenomeCount,
+};
+
+export const virusesOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
+  taxon_id: 10239,
+  taxon_name: "Viruses",
+  lineage_names: ["Viruses"],
+  lineage_ids: [10239],
+  taxon_rank: "superkingdom",
+  genomes: virusesGenomeCount,
+};
+
+export const cellularOrganismsTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
+  taxon_id: 131567,
+  taxon_name: "cellular organisms",
+  lineage_names: ["cellular organisms"],
+  lineage_ids: [131567],
+  taxon_rank: "no rank",
+  genomes: allOrganismsGenomeCount,
+};
+
+export const brucellaOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
+  taxon_id: 234,
+  taxon_name: "Brucella",
+  lineage_names: [
+    "cellular organisms",
+    "Bacteria",
+    "Pseudomonadota",
+    "Alphaproteobacteria",
+    "Hyphomicrobiales",
+    "Brucellaceae",
+    "Brucella",
+  ],
+  lineage_ids: [131567, 2, 1224, 28211, 356, 118882, 234],
+  taxon_rank: "genus",
+  genomes: brucellaGenomeCount,
+};
+
+/**
+ * Mycobacterium (NCBI taxon 1763) — the second taxon the a11y suite scans.
+ * It exists so `/taxonomy/1763` renders a real organism landing page instead
+ * of the framework error boundary `fetchOrganismTaxonomy` raised when the
+ * loopback answered that endpoint with an empty object.
+ */
+export const mycobacteriumOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord =
+  {
+    taxon_id: 1763,
+    taxon_name: "Mycobacterium",
+    lineage_names: [
+      "cellular organisms",
+      "Bacteria",
+      "Bacillati",
+      "Actinomycetota",
+      "Actinomycetes",
+      "Mycobacteriales",
+      "Mycobacteriaceae",
+      "Mycobacterium",
+    ],
+    lineage_ids: [131567, 2, 1783272, 201174, 1760, 85007, 1762, 1763],
+    taxon_rank: "genus",
+    genomes: mycobacteriumGenomeCount,
+  };
+
+/**
+ * Influenza A virus — lineage includes "Orthomyxoviridae" so `hasStrains` is
+ * true. Used by the strains-tab e2e tests, which need a taxon whose Strains
+ * tab is enabled.
+ */
+export const influenzaAOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord = {
+  taxon_id: 11520,
+  taxon_name: "Influenza A virus",
+  lineage_names: [
+    "Viruses",
+    "Orthornavirae",
+    "Negarnaviricota",
+    "Insthoviricetes",
+    "Articulavirales",
+    "Orthomyxoviridae",
+    "Alphainfluenzavirus",
+    "Influenza A virus",
+  ],
+  lineage_ids: [
+    10239, 2497569, 2497570, 2497583, 2499399, 11308, 2499397, 11520,
+  ],
+  taxon_rank: "species",
+  genomes: influenzaAGenomeCount,
+};
+
+/**
+ * Alphainfluenzavirus influenzae — lineage includes
+ * "Alphainfluenzavirus influenzae" so `hasSerology` is true. Used by the
+ * serology-tab e2e test.
+ */
+export const alphainfluenzavirusInfluenzaeOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord =
+  {
+    taxon_id: 2955291,
+    taxon_name: "Alphainfluenzavirus influenzae",
+    lineage_names: [
+      "Viruses",
+      "Riboviria",
+      "Orthornavirae",
+      "Negarnaviricota",
+      "Polyploviricotina",
+      "Insthoviricetes",
+      "Articulavirales",
+      "Orthomyxoviridae",
+      "Alphainfluenzavirus",
+      "Alphainfluenzavirus influenzae",
+    ],
+    lineage_ids: [
+      10239, 2559587, 2732396, 2497569, 2497571, 2497577, 2499411, 11308,
+      197911, 2955291,
+    ],
+    taxon_rank: "species",
+    genomes: alphainfluenzavirusInfluenzaeGenomeCount,
+  };
+
+/** Caliciviridae — virus family used by the domains-and-motifs e2e tests. */
+export const caliciviridaeOrganismTaxonomyRecord: OrganismTaxonomyFixtureRecord =
+  {
+    taxon_id: 11974,
+    taxon_name: "Caliciviridae",
+    lineage_names: [
+      "Viruses",
+      "Riboviria",
+      "Orthornavirae",
+      "Pisuviricota",
+      "Pisoniviricetes",
+      "Picornavirales",
+      "Caliciviridae",
+    ],
+    lineage_ids: [10239, 2559587, 2732396, 2732408, 2732506, 464095, 11974],
+    taxon_rank: "family",
+    genomes: caliciviridaeGenomeCount,
+  };
+
+/**
+ * Every taxon the BV-BRC website mock knows, keyed by taxon id as it appears
+ * in the URL path. One table so "which taxa exist" is a single fact rather
+ * than a chain of `if (endpoint === ...)` branches, and so the summary table
+ * below can be checked against it.
+ */
+export const organismTaxonomyRecords: Record<
+  string,
+  OrganismTaxonomyFixtureRecord
+> = {
+  "2": bacteriaOrganismTaxonomyRecord,
+  "234": brucellaOrganismTaxonomyRecord,
+  "1763": mycobacteriumOrganismTaxonomyRecord,
+  "10239": virusesOrganismTaxonomyRecord,
+  "11520": influenzaAOrganismTaxonomyRecord,
+  "11974": caliciviridaeOrganismTaxonomyRecord,
+  "131567": cellularOrganismsTaxonomyRecord,
+  "2955291": alphainfluenzavirusInfluenzaeOrganismTaxonomyRecord,
+};
+
+export const bacteriaSummaryRecord: OrganismSummaryFixtureRecord = {
+  count: bacteriaGenomeCount,
+  unique_family: 391,
+  unique_genus: 5432,
+  unique_species: 82_915,
+  CDS: 482_001_224,
+  mat_peptide: 23_144,
+  PDB: 9821,
+};
+
+export const virusesSummaryRecord: OrganismSummaryFixtureRecord = {
+  count: virusesGenomeCount,
+  unique_family: 212,
+  unique_genus: 2841,
+  unique_species: 14_302,
+  CDS: 12_803_441,
+  mat_peptide: 419_820,
+  PDB: 3201,
+};
+
+export const allOrganismsSummaryRecord: OrganismSummaryFixtureRecord = {
+  count: allOrganismsGenomeCount,
+  unique_family: 1204,
+  unique_genus: 41_200,
+  unique_species: 510_000,
+  CDS: 980_000_000,
+  mat_peptide: 450_000,
+  PDB: 21_000,
+};
+
+export const brucellaSummaryRecord: OrganismSummaryFixtureRecord = {
+  count: brucellaGenomeCount,
+  unique_family: 1,
+  unique_genus: 1,
+  unique_species: 12,
+  CDS: 6_281_044,
+  mat_peptide: 0,
+  PDB: 214,
+};
+
+export const mycobacteriumSummaryRecord: OrganismSummaryFixtureRecord = {
+  count: mycobacteriumGenomeCount,
+  unique_family: 1,
+  unique_genus: 1,
+  unique_species: 204,
+  CDS: 264_812_900,
+  mat_peptide: 0,
+  PDB: 1873,
+};
+
+export const influenzaASummaryRecord: OrganismSummaryFixtureRecord = {
+  count: influenzaAGenomeCount,
+  unique_family: 1,
+  unique_genus: 1,
+  unique_species: 1,
+  CDS: 2_205_000,
+  mat_peptide: 98_400,
+  PDB: 612,
+};
+
+export const caliciviridaeSummaryRecord: OrganismSummaryFixtureRecord = {
+  count: caliciviridaeGenomeCount,
+  unique_family: 1,
+  unique_genus: 11,
+  unique_species: 64,
+  CDS: 258_666,
+  mat_peptide: 74_180,
+  PDB: 143,
+};
+
+export const alphainfluenzavirusInfluenzaeSummaryRecord: OrganismSummaryFixtureRecord =
+  {
+    count: alphainfluenzavirusInfluenzaeGenomeCount,
+    unique_family: 1,
+    unique_genus: 1,
+    unique_species: 1,
+    CDS: 16_885_602,
+    mat_peptide: 750_471,
+    PDB: 1204,
+  };
+
+/**
+ * Summary counters keyed by the same taxon ids as
+ * {@link organismTaxonomyRecords}. The two tables are kept 1:1 — a taxon the
+ * landing page can resolve must also have a summary, because the page fetches
+ * both — and `count` always equals that taxon's `genomes`. Both invariants are
+ * pinned in src/lib/e2e-fixtures/__tests__/records.test.ts.
+ */
+export const organismSummaryRecords: Record<
+  string,
+  OrganismSummaryFixtureRecord
+> = {
+  "2": bacteriaSummaryRecord,
+  "234": brucellaSummaryRecord,
+  "1763": mycobacteriumSummaryRecord,
+  "10239": virusesSummaryRecord,
+  "11520": influenzaASummaryRecord,
+  "11974": caliciviridaeSummaryRecord,
+  "131567": allOrganismsSummaryRecord,
+  "2955291": alphainfluenzavirusInfluenzaeSummaryRecord,
+};
+
+/**
+ * Lookups rather than bare indexing: the tables above are
+ * `Record<string, …>`, and this project does not enable
+ * `noUncheckedIndexedAccess`, so `table[id]` types as present even for a taxon
+ * that is not. These return `undefined` honestly so callers must decide what
+ * an unknown taxon means.
+ */
+export function findOrganismTaxonomyRecord(
+  taxonId: string,
+): OrganismTaxonomyFixtureRecord | undefined {
+  return Object.hasOwn(organismTaxonomyRecords, taxonId)
+    ? organismTaxonomyRecords[taxonId]
+    : undefined;
+}
+
+export function findOrganismSummaryRecord(
+  taxonId: string,
+): OrganismSummaryFixtureRecord | undefined {
+  return Object.hasOwn(organismSummaryRecords, taxonId)
+    ? organismSummaryRecords[taxonId]
+    : undefined;
+}

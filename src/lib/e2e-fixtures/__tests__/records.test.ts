@@ -1,5 +1,6 @@
 import {
   biosetRecordSchema,
+  genomeAmrRecordSchema,
   epitopeAssayRecordSchema,
   epitopeRecordSchema,
   experimentRecordSchema,
@@ -17,6 +18,11 @@ import {
   ambiguousSerologyRecords,
   ambiguousSurveillanceRecords,
   biosetRecord,
+  brucellaPpiTotal,
+  buildBrucellaPpiRecords,
+  genomeAmrRecord,
+  organismSummaryRecords,
+  organismTaxonomyRecords,
   epitopeAssayRecords,
   epitopeRecord,
   experimentRecord,
@@ -91,6 +97,10 @@ describe("canonical E2E fixture records parse with production Zod schemas", () =
     );
   });
 
+  it("genomeAmrRecord matches genomeAmrRecordSchema", () => {
+    expect(genomeAmrRecordSchema.safeParse(genomeAmrRecord).success).toBe(true);
+  });
+
   it("biosetRecord matches biosetRecordSchema", () => {
     expect(biosetRecordSchema.safeParse(biosetRecord).success).toBe(true);
   });
@@ -135,5 +145,72 @@ describe("epitope.host_name stays array-valued (registry: multipleFields.epitope
     if (result.success) {
       expect(Array.isArray(result.data.host_name)).toBe(true);
     }
+  });
+});
+
+describe("genome_amr.pmid stays array-valued (registry: multipleFields.genome_amr)", () => {
+  // src/lib/data-api/resources.ts declares genome_amr.pmid multi-valued, which
+  // is what makes the column unsortable in the gateway. Task 19 onboarded the
+  // resource without a row fixture anywhere in the repo and could not check
+  // that declaration against anything; this fixture is that check's anchor.
+  // It cannot prove what the live BV-BRC core returns (no test may reach a
+  // live backend), but it does mean the registry and the fixture can no
+  // longer disagree silently.
+  it("genomeAmrRecord.pmid is an array", () => {
+    expect(Array.isArray(genomeAmrRecord.pmid)).toBe(true);
+  });
+
+  it("leaves measurement_value and testing_standard_year as strings", () => {
+    // Deliberately string-typed so the gateway's inferType default keeps
+    // accepting non-numeric facet values (">=", year ranges).
+    expect(typeof genomeAmrRecord.measurement_value).toBe("string");
+    expect(typeof genomeAmrRecord.testing_standard_year).toBe("string");
+  });
+});
+
+describe("BV-BRC website organism tables stay paired", () => {
+  // The organism landing page fetches taxonomy AND summary for the same taxon
+  // in one render, so a taxon present in one table and missing from the other
+  // renders half a page (or, before this task, an error boundary).
+  it("covers the same taxon ids in both tables", () => {
+    expect(Object.keys(organismSummaryRecords).sort()).toEqual(
+      Object.keys(organismTaxonomyRecords).sort(),
+    );
+  });
+
+  it.each(Object.keys(organismTaxonomyRecords))(
+    "taxon %s reports the same genome count in both tables",
+    (taxonId) => {
+      expect(organismSummaryRecords[taxonId].count).toBe(
+        organismTaxonomyRecords[taxonId].genomes,
+      );
+    },
+  );
+
+  it.each(Object.entries(organismTaxonomyRecords))(
+    "taxon %s key matches its record taxon_id",
+    (taxonId, record) => {
+      expect(String(record.taxon_id)).toBe(taxonId);
+    },
+  );
+
+  it("covers the taxon ids the a11y taxonomy variants scan", () => {
+    // /taxonomy/234 and /taxonomy/1763 are the two variants in
+    // e2e/a11y/routes.ts. 1763 had no fixture and scanned an error boundary.
+    expect(Object.keys(organismTaxonomyRecords)).toEqual(
+      expect.arrayContaining(["234", "1763"]),
+    );
+  });
+});
+
+describe("Brucella PPI records", () => {
+  it("builds the requested number of distinct rows", () => {
+    const rows = buildBrucellaPpiRecords(3);
+    expect(rows).toHaveLength(3);
+    expect(new Set(rows.map((row) => row.id)).size).toBe(3);
+  });
+
+  it("reports a deterministic collection total for both transports", () => {
+    expect(brucellaPpiTotal).toBe(4358);
   });
 });

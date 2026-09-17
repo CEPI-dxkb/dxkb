@@ -28,7 +28,7 @@ const generatedBaseline: BaselineMap = {
       "aria-command-name": { maxNodes: 99, ticket: "DXKBCORE-133" },
       // Dark-theme CSS variables produce insufficient contrast ratios across
       // multiple surfaces (navbar, tabs, badges, cards). Tracked for a
-      // dark-theme contrast audit. Ticket: DXKBCORE-174 — calibrated to observed max of 74 (taxonomy/virus).
+      // dark-theme contrast audit. Ticket: DXKBCORE-174 — calibrated to observed max of 74 (taxonomy/brucella).
       "color-contrast": { maxNodes: 80, ticket: "DXKBCORE-174" },
       // SVG circular icons on organisms pages lack <title> / role="img" in dark theme too.
       // Ticket: DXKBCORE-175 — calibrated to observed max of 48 nodes (same as light).
@@ -36,9 +36,6 @@ const generatedBaseline: BaselineMap = {
       // Same switch/toggle issue as light theme — Base UI Checkbox/Switch
       // root span receives no htmlFor association in dark theme scans.
       "aria-toggle-field-name": { maxNodes: 10, ticket: "DXKBCORE-176" },
-      // taxonomy/bacteria mock error causes missing lang and title in dark theme.
-      "document-title": { maxNodes: 1, ticket: "DXKBCORE-177" },
-      "html-has-lang": { maxNodes: 1, ticket: "DXKBCORE-177" },
     },
   },
   // organisms-viruses dark has more color-contrast nodes than the wildcard cap (106 vs 80)
@@ -49,20 +46,23 @@ const generatedBaseline: BaselineMap = {
       "color-contrast": { maxNodes: 110, ticket: "DXKBCORE-174" },
     },
   },
-  // taxonomy/virus dark exceeds the wildcard 80-node cap (94 observed) because the
-  // AMR chart legend pills and view-tab search components add dark-mode contrast nodes
-  // beyond what existed before the merge. Ticket: DXKBCORE-174
-  "taxonomy/virus": {
+  // The taxonomy entry's two variants are named for their taxa (234 Brucella,
+  // 1763 Mycobacterium); both dark scans exceed the wildcard 80-node cap
+  // because the AMR chart legend pills and view-tab search components add
+  // dark-mode contrast nodes. Ticket: DXKBCORE-174
+  //
+  // The DXKBCORE-177 document-title / html-has-lang suppressions that used to
+  // sit here (and on the wildcard dark entry) recorded a MOCK gap, not a page
+  // defect: /taxonomy/1763 had no taxonomy fixture and rendered the framework
+  // error boundary. It renders a real page now, so those entries are gone.
+  "taxonomy/brucella": {
     "dxkb-dark": {
       "color-contrast": { maxNodes: 100, ticket: "DXKBCORE-174" },
     },
   },
-  // taxonomy/bacteria renders an error page when mock data lacks taxon_name,
-  // causing missing <title> and missing html[lang]. Ticket: DXKBCORE-177
-  "taxonomy/bacteria": {
-    "dxkb-light": {
-      "document-title": { maxNodes: 1, ticket: "DXKBCORE-177" },
-      "html-has-lang": { maxNodes: 1, ticket: "DXKBCORE-177" },
+  "taxonomy/mycobacterium": {
+    "dxkb-dark": {
+      "color-contrast": { maxNodes: 100, ticket: "DXKBCORE-174" },
     },
   },
 };
@@ -91,7 +91,10 @@ export const reflowSkip: ReflowSkipMap = {
   // inherit the same pre-existing mobile-navbar overflow as every entry above.
   "search/default": { ticket: "DXKBCORE-178" },
   "search/unsupported-type": { ticket: "DXKBCORE-178" },
-  "taxonomy/virus": { ticket: "DXKBCORE-178" },
+  // Both taxonomy variants render the same landing shell, so both inherit the
+  // same pre-existing 320px mobile-navbar overflow.
+  "taxonomy/brucella": { ticket: "DXKBCORE-178" },
+  "taxonomy/mycobacterium": { ticket: "DXKBCORE-178" },
   "organisms-all": { ticket: "DXKBCORE-178" },
   "organisms-bacteria": { ticket: "DXKBCORE-178" },
   "organisms-viruses": { ticket: "DXKBCORE-178" },

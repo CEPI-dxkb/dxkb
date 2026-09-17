@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildLoopbackRpcSuccess } from "@/lib/e2e-fixtures/envelopes";
 
 const e2eAdminProfile = {
   id: "e2e-test-user@patricbrc.org",
@@ -96,7 +97,7 @@ export async function handleIdentityPost(
     return NextResponse.json({ success: true });
   }
   if (path === "user" && rpcMethod === "setPassword") {
-    return NextResponse.json({ id: 1, jsonrpc: "2.0", result: true });
+    return NextResponse.json(buildLoopbackRpcSuccess(true));
   }
   return null;
 }

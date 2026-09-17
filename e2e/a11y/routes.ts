@@ -13,7 +13,7 @@ import type { SettleOptions } from "./settle";
 export type PrepareHook = (page: Page) => Promise<void>;
 
 interface RouteVariant {
-  /** Appended to parent name: e.g. "virus" → scanned as "taxonomy/virus". */
+  /** Appended to parent name: e.g. "brucella" → scanned as "taxonomy/brucella". */
   nameSuffix: string;
   path: string;
   /**
@@ -228,35 +228,29 @@ export const routes: RouteEntry[] = [
   },
 
   // ── Taxonomy (dynamic — two variants for multi-param coverage) ───────────────
-  // No parent `prepare`: the only readiness signal worth asserting here (the
-  // Metadata Distributions section) exists on the virus variant but NOT on the
-  // bacteria one, whose mock data has no taxon_name and therefore resolves to the
-  // framework error boundary. A parent hook runs for every variant, so it may
-  // only hold what is true of every variant — see the virus variant below.
+  // Both variants are bacterial genera — 234 is Brucella, 1763 is
+  // Mycobacterium — so they are named for those taxa. They were previously
+  // "virus" and "bacteria", which named neither taxon correctly, and the 1763
+  // scan reached the framework error boundary because the loopback mock had no
+  // taxonomy fixture for that taxon (a fixture gap recorded in
+  // baseline.generated.ts as if it were a page defect). Both now render the
+  // real landing page, so the Metadata Distributions readiness signal is true
+  // of every variant and belongs on the parent.
   {
     name: "taxonomy",
     path: "/taxonomy/234",
     pages: ["(views)/taxonomy/[taxonId]/page.tsx"],
     unauthenticated: true,
     mobile: true,
+    // The section's <h2> renders synchronously; chart cards stream in after.
+    prepare: async (page) => {
+      await page
+        .getByTestId("metadata-distributions")
+        .waitFor({ timeout: 10_000 });
+    },
     variants: [
-      {
-        nameSuffix: "virus",
-        path: "/taxonomy/234",
-        // The section's <h2> renders synchronously; chart cards stream in after.
-        prepare: async (page) => {
-          await page
-            .getByTestId("metadata-distributions")
-            .waitFor({ timeout: 10_000 });
-        },
-      },
-      {
-        nameSuffix: "bacteria",
-        path: "/taxonomy/1763",
-        // Intentionally no prepare: this taxon renders the error boundary (see
-        // the document-title / html-has-lang entries for it in
-        // baseline.generated.ts), so there is no page content to wait for.
-      },
+      { nameSuffix: "brucella", path: "/taxonomy/234" },
+      { nameSuffix: "mycobacterium", path: "/taxonomy/1763" },
     ],
   },
 

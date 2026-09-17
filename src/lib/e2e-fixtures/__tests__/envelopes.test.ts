@@ -1,6 +1,10 @@
 import {
+  buildBrowserRpcError,
+  buildBrowserRpcSuccess,
   buildGatewayCollectionEnvelope,
   buildGatewayRowsEnvelope,
+  buildLoopbackRpcError,
+  buildLoopbackRpcSuccess,
   buildLoopbackSolrEnvelope,
 } from "../envelopes";
 
@@ -58,6 +62,39 @@ describe("buildLoopbackSolrEnvelope", () => {
     ).toEqual({
       response: { numFound: 12345, docs },
       facet_counts: facetCounts,
+    });
+  });
+});
+
+describe("JSON-RPC envelopes", () => {
+  it("buildLoopbackRpcSuccess emits the full wire shape with a default id", () => {
+    expect(buildLoopbackRpcSuccess([[]])).toEqual({
+      id: 1,
+      jsonrpc: "2.0",
+      result: [[]],
+    });
+  });
+
+  it("buildLoopbackRpcSuccess echoes an explicit request id", () => {
+    expect(buildLoopbackRpcSuccess(true, 42)).toEqual({
+      id: 42,
+      jsonrpc: "2.0",
+      result: true,
+    });
+  });
+
+  it("buildLoopbackRpcError carries code and message in the JSON-RPC error body", () => {
+    expect(buildLoopbackRpcError(-32601, "e2e-mock: no such method")).toEqual({
+      id: 1,
+      jsonrpc: "2.0",
+      error: { code: -32601, message: "e2e-mock: no such method" },
+    });
+  });
+
+  it("browser builders omit id/jsonrpc, which page.route() consumers ignore", () => {
+    expect(buildBrowserRpcSuccess([[]])).toEqual({ result: [[]] });
+    expect(buildBrowserRpcError(-32000, "Object not found")).toEqual({
+      error: { code: -32000, message: "Object not found" },
     });
   });
 });

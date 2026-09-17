@@ -13,13 +13,33 @@ pnpm a11y:keyboard       # keyboard / focus / no-trap tests
 pnpm a11y:primitives     # Vitest browser-mode primitive isolation
 pnpm a11y:tripwire       # webkit + firefox cross-engine smoke
 pnpm a11y:motion         # prefers-reduced-motion assertion
+pnpm a11y:mobile         # Pixel 5 viewport sweep of the mobile-flagged routes
 pnpm a11y:meta           # route-registry coverage accounting only
 ```
 
-Every script above except `pnpm a11y` itself has a CI job in
-`.github/workflows/pnpm-a11y.yml`; `a11y:meta` runs as a second step of the
-routes-sweep job, so the registry-drift guardrail does not depend on the
-Firefox tripwire.
+`.github/workflows/pnpm-a11y.yml` has a job for `a11y:routes`, `a11y:deep`,
+`a11y:keyboard`, `a11y:tripwire` and `a11y:primitives`, plus `a11y:meta` as a
+step of the routes-sweep job — so the registry-drift guardrail does not depend
+on the Firefox tripwire. `a11y:motion` and `a11y:mobile` have **no** CI job and
+are local-only gates today; run them before pushing a change that touches
+animation or responsive layout.
+
+`a11y:meta` is the one script that needs neither a build nor a browser: it runs
+under `playwright.a11y.meta.config.ts`, which declares no `webServer` and no
+storage state. That config also owns its own `outputDir`
+(`.misc/a11y-meta-results/`) and report path (`.misc/a11y-meta-report/`), so it
+cannot clear or overwrite the sweep's traces, screenshots and JSON — the two can
+run in either order.
+
+## Artifacts
+
+| Path | Written by | Contents |
+|---|---|---|
+| `.misc/a11y-results/` | every `a11y:*` script except `a11y:meta` | Playwright `outputDir`: traces, screenshots, videos. Cleared at the start of each run. |
+| `.misc/a11y-report/results.json` | the same scripts, on CI | JSON reporter output. Rewritten each run. |
+| `.misc/a11y-report/html/` | the same scripts | HTML report (`pnpm a11y:report`). |
+| `.misc/a11y-report/a11y-summary.json` | `teardown.ts` | Per-route/theme scan summary for **one** invocation. `pnpm a11y:baseline:update` reads it, so run the sweep immediately before that script. |
+| `.misc/a11y-meta-results/`, `.misc/a11y-meta-report/` | `a11y:meta` only | Kept separate on purpose — see above. |
 
 ## Architecture
 
@@ -108,5 +128,11 @@ an accessible name — tested separately in `deep-tier.spec.ts`.
 
 ## CI
 
-`pnpm-a11y.yml` runs four parallel jobs (one per spec file). All jobs block merging
-to `main` on failure. Report artifacts are uploaded per job (14-day retention).
+`pnpm-a11y.yml` runs five parallel jobs: routes-sweep (which also runs
+`a11y:meta`), deep-tier, keyboard, the webkit+firefox tripwire, and the
+Vitest-browser-mode primitives. All jobs block merging to `main` on failure.
+Report artifacts are uploaded per job (14-day retention).
+
+No job seeds the auth state as a separate step: every a11y project declares
+`dependencies: ["a11y-setup-signed-in"]`, so Playwright runs that setup project
+to completion first — an explicit step just ran it twice.

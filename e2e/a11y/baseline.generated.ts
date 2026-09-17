@@ -109,7 +109,7 @@ export const reflowSkip: ReflowSkipMap = {
 // ── Warn-tier tracking (DoD item 6) ──────────────────────────────────────────
 // These rule IDs were observed in warn-tier (best-practice / WCAG 2.2 AA) during
 // the first real sweep. All are tracked under DXKBCORE-174; the report artifact
-// (a11y-report/a11y-summary.json) enumerates every instance per route/theme.
+// (.misc/a11y-report/a11y-summary.json) enumerates every instance per route/theme.
 //
 // Rule IDs → brief description → ticket:
 //   heading-order              — Heading levels should only increase by one        → DXKBCORE-174

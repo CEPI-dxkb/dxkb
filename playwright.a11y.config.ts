@@ -8,19 +8,25 @@ const isCi = Boolean(process.env.CI);
 // Same wrapper as playwright.config.ts — loads .env.e2e.* and starts next start.
 const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 
-// A project-level `testMatch` replaces the config-level one rather than
-// narrowing it, so every browser project restates the spec pattern. Without it
-// they also match the auth setup files below and run them as ordinary tests —
-// a second execution of a setup their `dependencies` already guarantee, which
-// re-writes the storage state its sibling tests are concurrently reading under
-// `fullyParallel`.
-const a11ySpecs = /tests\/a11y\/.*\.spec\.ts$/;
+// a11y specs minus coverage.meta.spec.ts, which is browser-free and runs under
+// playwright.a11y.meta.config.ts so it cannot clear this config's outputDir or
+// rewrite its JSON report.
+//
+// Every browser project restates this, because a project-level `testMatch`
+// replaces the config-level one rather than narrowing it. Without it the
+// browser projects also match the auth setup files below and run them as
+// ordinary tests — which is a third execution of a setup their `dependencies`
+// already guarantee, re-writing the storage state its sibling tests are
+// concurrently reading under `fullyParallel`.
+const a11ySpecs = /tests\/a11y\/(?!coverage\.meta\.spec\.ts$).*\.spec\.ts$/;
 
 export default defineConfig({
   globalTeardown: "./e2e/a11y/teardown.ts",
   testDir: "./e2e",
-  // Include a11y specs + auth setup files (setup projects need those to create
-  // the storage state below).
+  // a11y specs + auth setup files (setup projects need those to create the
+  // storage state below). coverage.meta.spec.ts is excluded on purpose: it is
+  // browser-free and runs under playwright.a11y.meta.config.ts, so it cannot
+  // clear this config's outputDir or rewrite its JSON report.
   testMatch: [a11ySpecs, /auth\/.*\.setup\.ts$/],
   timeout: 60_000,
   fullyParallel: true,
@@ -30,11 +36,14 @@ export default defineConfig({
   reporter: isCi
     ? [
         ["github"],
-        ["html", { open: "never" }],
-        ["json", { outputFile: "a11y-report/results.json" }],
+        ["html", { open: "never", outputFolder: ".misc/a11y-report/html" }],
+        ["json", { outputFile: ".misc/a11y-report/results.json" }],
       ]
-    : [["list"], ["html", { open: "never" }]],
-  outputDir: "a11y-results",
+    : [
+        ["list"],
+        ["html", { open: "never", outputFolder: ".misc/a11y-report/html" }],
+      ],
+  outputDir: ".misc/a11y-results",
   use: {
     baseURL,
     trace: "retain-on-failure",

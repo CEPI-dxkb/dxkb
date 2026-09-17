@@ -122,8 +122,10 @@ test.describe("a11y coverage accounting", () => {
   });
 });
 
-// These assert pure derivation logic, so they take no browser fixture — they run
-// in every project (including the thin tripwires) for the cost of a function call.
+// These assert pure derivation logic, so they take no browser fixture. That is
+// also why this whole file has its own config (playwright.a11y.meta.config.ts):
+// it launches no browser and needs no web server, so it must not share the
+// sweep's outputDir or JSON report path.
 test.describe("a11y scan target derivation", () => {
   test("a composed hook runs the parent first, then the variant", async () => {
     const calls: string[] = [];

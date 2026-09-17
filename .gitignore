@@ -64,12 +64,13 @@ next-env.d.ts
 .playwright-mcp
 
 # Playwright e2e
-/test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
 /e2e/.auth/
 # /e2e/__snapshots__ is NOT ignored — baselines must be committed for visual regression to work.
+# Playwright + a11y output (outputDir, JSON reports, HTML reports, scan records)
+# all live under /.misc, which is ignored wholesale at the bottom of this file.
 
 # Auspice / Nextstrain viewer build output
 /public/dist/
@@ -77,13 +78,7 @@ next-env.d.ts
 /public/auspice-favicon.png
 /public/.auspice-build-hash
 
-# a11y scan + screenshot artifacts
-/.screenshots/
-/a11y-report/
-/a11y-results/
-# a11y scan artifacts (generated)
-/a11y-report/
-/a11y-results/
+# MCP debug screenshots (never committed)
 /.screenshots/
 
 # graphify

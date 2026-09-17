@@ -57,28 +57,26 @@ jobs:
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
 
       # coverage.meta.spec.ts is the single enforcement point for "routes.ts is the
-      # one coverage list", and it carries no project filter of its own — so before
-      # this step it reached CI only through a11y:tripwire, i.e. only if the Firefox
-      # half of the flakiest job in the matrix ran. It belongs on a chromium job.
-      #
-      # Attached to this job rather than given a job of its own because it checks the
+      # one coverage list" plus the baseline/reflowSkip stale-key guard. It is
+      # attached to this job rather than given one of its own because it checks the
       # same registry the sweep below consumes, and a new job would repeat the whole
-      # install+build for a check that runs in seconds.
+      # install for a check that runs in seconds.
       #
-      # It MUST stay above the routes sweep. Playwright clears `outputDir`
-      # (a11y-results/) at the start of every run and the json reporter rewrites
-      # a11y-report/results.json, so running this after the sweep deletes the sweep's
-      # traces, screenshots and videos before the upload step and replaces its results
-      # with these eight tests. Verified locally: a sentinel file under a11y-results/
-      # does not survive `pnpm a11y:meta`. Both steps carry `!cancelled()` so neither
-      # failure can mask the other.
-      - name: Check route registry coverage accounting (chromium)
+      # Its position relative to the sweep no longer affects the artifacts either
+      # step produces. `pnpm a11y:meta` runs under playwright.a11y.meta.config.ts,
+      # which has its own outputDir (.misc/a11y-meta-results/) and JSON report
+      # (.misc/a11y-meta-report/), so the outputDir Playwright clears at the start
+      # of a run and the JSON file its reporter rewrites are never the sweep's.
+      # Both steps still carry `!cancelled()` so neither failure masks the other.
+      #
+      # It needs no browser, no web server and no build: nothing in the spec
+      # navigates, so the config declares no webServer and the step sets no
+      # browser-cache HOME or server env.
+      - name: Check route registry coverage accounting (browser-free)
         if: ${{ !cancelled() }}
         run: pnpm a11y:meta
         env:
           CI: "true"
-          HOME: /root
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Run routes sweep (chromium)
         if: ${{ !cancelled() }}
@@ -94,8 +92,10 @@ jobs:
         with:
           name: a11y-report-routes-sweep
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
+            .misc/a11y-meta-report/
+            .misc/a11y-meta-results/
           retention-days: 14
 
   a11y-deep-tier:
@@ -143,8 +143,8 @@ jobs:
         with:
           name: a11y-report-deep-tier
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
           retention-days: 14
 
   a11y-keyboard:
@@ -192,8 +192,8 @@ jobs:
         with:
           name: a11y-report-keyboard
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
           retention-days: 14
 
   a11y-tripwire:
@@ -241,8 +241,8 @@ jobs:
         with:
           name: a11y-report-tripwire
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
           retention-days: 14
 
   a11y-primitives:

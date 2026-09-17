@@ -20,7 +20,7 @@ export default defineConfig(
       "public/dist/**",
       "public/nextstrain-viewer.html",
       "playwright-report/**",
-      "test-results/**",
+      ".misc/**",
       "next-env.d.ts"
     ],
   },

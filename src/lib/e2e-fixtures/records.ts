@@ -1,9 +1,16 @@
 /**
  * Canonical E2E fixture records — the single source of truth for deterministic
- * domain data shared by BOTH mock transport layers:
+ * domain data used by the mock transport layers:
  *
- *   - Browser-side:  e2e/fixtures/overrides/catchall.ts (via `applyBackendMocks`)
+ *   - Browser-side:  e2e/fixtures/overrides/* (via `applyBackendMocks`)
  *   - Server-side:   src/app/api/e2e-mock/[...path]/route.ts (loopback mock)
+ *
+ * Most records are shared by both, which is the point. A few are reached
+ * through one transport only — the BV-BRC *website* tables below are
+ * server-rendered, the PPI rows are browser-fetched — and they live here
+ * anyway so "what a fixture of this kind looks like" stays one fact, and so
+ * the schema and cross-table checks in `__tests__/records.test.ts` cover them
+ * too. Each record's own comment names the endpoint it answers.
  *
  * Both layers are required because Playwright's `page.route()` cannot see
  * server-side fetches (Server Components, route handlers forwarding to
@@ -598,6 +605,14 @@ export interface GenomeAmrFixtureRecord {
   computational_method: string;
 }
 
+/**
+ * No transport serves this row yet — nothing in the suite requests
+ * `data/genome_amr` rows, and the AMR landing chart is fed by a facet-pivot
+ * fixture, not by rows. It exists as the schema anchor Task 19 could not
+ * supply when it registered the resource: `__tests__/records.test.ts` parses
+ * it with the production `genomeAmrRecordSchema` and pins the field shapes
+ * the registry declares. Wire it into a transport when a caller appears.
+ */
 export const genomeAmrRecord: GenomeAmrFixtureRecord = {
   id: "genome-amr-backend-901",
   taxon_id: 234,

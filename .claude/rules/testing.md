@@ -112,7 +112,7 @@ Specs that must run logged-out should override with `test.use({ storageState: { 
 Two layers, both required for full isolation:
 
 1. **Browser-side** — `applyBackendMocks(page, { har, overrides })` from `e2e/mocks/backends.ts` intercepts requests made from the page via `page.route()`.
-2. **Server-side (loopback)** — Server Components and route handlers fetch through env vars (e.g. `APP_SERVICE_URL` and `USER_URL`) that `.env.e2e.test` rewrites to `http://127.0.0.1:${E2E_PORT}/api/e2e-mock/<service>`. The loopback handler returns endpoint-correct identity responses and deterministic service fixtures. Playwright's `page.route()` cannot see server-side fetches, so this layer is mandatory.
+2. **Server-side (loopback)** — Server Components and route handlers fetch through env vars (e.g. `APP_SERVICE_URL` and `USER_URL`) that `.env.e2e.test` rewrites to `http://127.0.0.1:${E2E_PORT}/api/e2e-mock/<service>`. The loopback handler returns endpoint-correct identity responses and deterministic service fixtures. Its dispatch is fail-closed: an unregistered path or JSON-RPC method gets a diagnostic `400` naming what is missing, never an empty success, so a new server-side backend call needs a fixture registered in `route.ts` as well as an env var in `.env.e2e.test`. Playwright's `page.route()` cannot see server-side fetches, so this layer is mandatory — and a green browser-side run is not evidence that the loopback is complete.
 
 Because of the env-loading dance, the Playwright `webServer` runs `node e2e/scripts/start-webserver.mjs ${port}` instead of `next start` directly. Run `pnpm build` before `pnpm e2e` (the wrapper does not rebuild).
 

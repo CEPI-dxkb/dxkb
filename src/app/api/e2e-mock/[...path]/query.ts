@@ -131,11 +131,6 @@ export function equalsValue(
   return query.equals.find((equality) => equality.field === field)?.value;
 }
 
-/** Whether the query filters on `<field>` at all, whatever the value. */
-export function hasEqualsField(query: FixtureQuery, field: string): boolean {
-  return query.equals.some((equality) => equality.field === field);
-}
-
 /** Whether the query carries a `keyword(<value>)` matching exactly. */
 export function hasKeyword(query: FixtureQuery, value: string): boolean {
   return query.keywords.includes(value);

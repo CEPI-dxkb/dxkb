@@ -17,7 +17,12 @@ import {
   taxonomyRecord,
   virusesSummaryRecord,
 } from "@/lib/e2e-fixtures/records";
-import { buildLoopbackSolrEnvelope } from "@/lib/e2e-fixtures/envelopes";
+import {
+  buildLoopbackRpcError,
+  buildLoopbackRpcSuccess,
+  buildLoopbackSolrEnvelope,
+} from "@/lib/e2e-fixtures/envelopes";
+import { jsonRpcErrorCodes } from "@/lib/jsonrpc-client";
 import {
   equalsValue,
   hasCall,
@@ -39,6 +44,24 @@ import {
  *
  * Guarded by E2E_MOCK_ENABLED=1 so a production deploy that somehow ships
  * this file still can't be tricked into serving fake backend responses.
+ *
+ * ## Dispatch is fail-closed
+ *
+ * Every method answers ONLY the path / RPC-method combinations named below.
+ * Anything else gets a diagnostic non-2xx naming the combination that was
+ * missing, never an empty success. A silent `{}` is worse than a failure
+ * here: it renders a real page with no data, so a spec passes while
+ * asserting nothing, or — as `/taxonomy/1763` did for the a11y suite —
+ * renders an error boundary that gets recorded as a page defect.
+ *
+ * The retained empty results are named, per-method, with the reason each one
+ * is legitimately empty. They were found by instrumenting this handler and
+ * running the full Chromium suite plus `pnpm a11y`; anything they did not
+ * observe is rejected. Browser-side strict mode cannot substitute for that
+ * measurement — `page.route()` never sees a Server Component's fetch, and the
+ * browser fallback bundle (`emptyBackendFallbackOverrides`) deliberately
+ * swallows broad auth/services/workspace families before they ever leave the
+ * page. The two accommodations are separate on purpose.
  */
 
 function isEnabled(): boolean {
@@ -59,6 +82,23 @@ function resolvePath(params: Promise<{ path: string[] }>): Promise<string> {
 function logHit(method: string, path: string, extra?: string): void {
   const tail = extra ? ` ${extra}` : "";
   console.log(`[api/e2e-mock] ${method} /${path}${tail}`);
+}
+
+/**
+ * The one diagnostic shape this mock returns for "no fixture matches".
+ *
+ * `reason` always names the specific combination that was missing, because
+ * `JsonRpcClient` and `ServerDataRepository` both collapse a non-2xx into
+ * their own generic message — the webServer log is where whoever is reading a
+ * failing Playwright run will actually find out what to add.
+ */
+function unhandledResponse(
+  error: string,
+  reason: string,
+  context: Record<string, unknown> = {},
+): NextResponse {
+  console.error(`[api/e2e-mock] ${error}: ${reason}`);
+  return NextResponse.json({ error, reason, ...context }, { status: 400 });
 }
 
 const e2eDeterministicCounts: Record<string, number> = {
@@ -739,13 +779,23 @@ function maybeBvBrcWebsite(
   )?.[1];
   if (summaryTaxonId) {
     const summary = findOrganismSummaryRecord(summaryTaxonId);
-    if (summary) return { kind: "ok", body: summary };
+    return summary
+      ? { kind: "ok", body: summary }
+      : {
+          kind: "unhandled",
+          reason: `no summary_by_taxon fixture for taxon ${summaryTaxonId} — add one to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
+        };
   }
 
   const websiteTaxonId = endpoint.match(/^taxonomy\/(\d+)\/?$/)?.[1];
   if (websiteTaxonId) {
     const taxon = findOrganismTaxonomyRecord(websiteTaxonId);
-    if (taxon) return { kind: "ok", body: taxon };
+    return taxon
+      ? { kind: "ok", body: taxon }
+      : {
+          kind: "unhandled",
+          reason: `no taxonomy fixture for taxon ${websiteTaxonId} — add one to organismTaxonomyRecords in src/lib/e2e-fixtures/records.ts`,
+        };
   }
   if (endpoint === "genome" || endpoint === "genome/") {
     const query = parseFixtureQuery(request);
@@ -822,7 +872,10 @@ function maybeBvBrcWebsite(
     return { kind: "ok", body: solrFacet(field, count) };
   }
 
-  return null;
+  return {
+    kind: "unhandled",
+    reason: `no fixture for bvbrc-website endpoint '${endpoint}'`,
+  };
 }
 
 export async function GET(
@@ -831,51 +884,95 @@ export async function GET(
 ): Promise<NextResponse> {
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
-  logHit("GET", path);
+  logHit("GET", path, new URL(request.url).search);
   if (path === "phylo-manifest") {
     return NextResponse.json({ trees: { "2955291": "influenza" } });
   }
   const identityResponse = handleIdentityGet(path);
   if (identityResponse) return identityResponse;
+  const search = new URL(request.url).search;
   const bvBrcWebsite = maybeBvBrcWebsite(path, request);
   if (bvBrcWebsite) {
     if (bvBrcWebsite.kind === "unhandled") {
-      // Fail loudly so e2e tests surface fixture gaps instead of silently
-      // rendering empty data.
-      return NextResponse.json(
-        {
-          error: "e2e-mock: unhandled bvbrc-website/genome query",
-          reason: bvBrcWebsite.reason,
-          query: new URL(request.url).search,
-        },
-        { status: 400 },
+      return unhandledResponse(
+        "e2e-mock: unhandled bvbrc-website request",
+        bvBrcWebsite.reason,
+        { path, query: search },
       );
     }
     return NextResponse.json(bvBrcWebsite.body);
   }
   const solr = maybeSolrCount(path, request);
   if (solr) return NextResponse.json(solr);
-  return NextResponse.json({});
+
+  const segments = path.split("/").filter(Boolean);
+  const reason =
+    segments[0] === "data"
+      ? `no fixture for data core '${segments[1] ?? ""}' — add it to e2eDeterministicCounts or give it a named branch in maybeSolrCount`
+      : `no GET fixture is registered for this path`;
+  return unhandledResponse("e2e-mock: unhandled GET endpoint", reason, {
+    path,
+    query: search,
+  });
 }
 
-// Permissive POST fallback is reserved for the known JSON-RPC / service
-// namespaces wired through .env.e2e.test so an unexpected POST routed through
-// this mock fails loudly rather than silently returning success. The
-// `bvbrc-website` namespace is intentionally excluded from this fallback —
-// the only supported POST endpoint there is `genome_amr`, which is handled
-// explicitly by `maybeBvBrcWebsitePost` above this fallback. Every other
-// `bvbrc-website` POST still fails loudly.
-const postAllowedNamespaces = new Set([
-  "workspace",
-  "app-service",
-  "service",
-  "services",
-  "data",
-  "data-service",
-  "sra-validation",
-  "minhash",
-  "upload",
-]);
+/**
+ * The JSON-RPC calls this mock answers, full path → method → `result`.
+ *
+ * Keyed on the WHOLE path, not its first segment: the old allowlist tested
+ * only the first segment, so `POST /workspace/anything` was accepted as
+ * readily as `POST /workspace`.
+ *
+ * This replaces a blanket `{result: [[]]}` for any POST landing in one of
+ * nine namespaces. Every entry here was OBSERVED reaching the loopback during
+ * an instrumented run of the full Chromium suite and `pnpm a11y`; every
+ * method absent from it is rejected, including inside these two namespaces.
+ * The other seven namespaces the old allowlist carried — `service`,
+ * `services`, `data`, `data-service`, `sra-validation`, `minhash`, `upload` —
+ * were never reached by a POST in that run and are gone rather than kept
+ * "just in case"; `.env.e2e.test` still points at them, so the first real
+ * caller gets a diagnostic naming itself instead of a fake success.
+ *
+ * `bvbrc-website` is deliberately not here: its one POST endpoint,
+ * `genome_amr`, is handled by `maybeBvBrcWebsitePost` with its own body
+ * validation, and it is not JSON-RPC.
+ *
+ * Each result is empty, and each is empty for a stated reason. An empty
+ * result that is merely *convenient* belongs in a named fixture instead.
+ */
+const loopbackRpcResults: Record<string, Record<string, unknown>> = {
+  workspace: {
+    // Server-rendered workspace surfaces (favourites, path resolution) list a
+    // path before any spec-specific browser override exists. `result[0]` is
+    // the path → tuples map; an empty map is "this path holds nothing", which
+    // is what every `parseLsResult*` caller renders as an empty folder. Specs
+    // that need real items mock `/api/services/workspace` in the browser.
+    "Workspace.ls": [{}],
+    // `result[0]` is the per-requested-object array. Empty means "no object
+    // metadata", which resolve/availability callers treat as "not present" —
+    // the same answer the real service gives for an unknown path.
+    "Workspace.get": [[]],
+  },
+  "app-service": {
+    // `/api/services/app-service/jobs/task-summary` and `/app-summary` are
+    // server routes with no browser override, so they reach the loopback on
+    // every jobs render. Both contracts are `Record<string, number>`; an
+    // empty record is "no jobs in any state", and the jobs specs that assert
+    // on counts mock `/jobs/summary` in the browser instead.
+    "AppService.query_task_summary_filtered": {},
+    "AppService.query_app_summary_filtered": {},
+  },
+};
+
+function findRpcResult(
+  endpoint: string,
+  method: string,
+): { result: unknown } | undefined {
+  if (!Object.hasOwn(loopbackRpcResults, endpoint)) return undefined;
+  const methods = loopbackRpcResults[endpoint];
+  if (!Object.hasOwn(methods, method)) return undefined;
+  return { result: methods[method] };
+}
 
 export async function POST(
   request: NextRequest,
@@ -897,12 +994,10 @@ export async function POST(
   const bvBrcWebsitePost = await maybeBvBrcWebsitePost(path, request);
   if (bvBrcWebsitePost) {
     if (bvBrcWebsitePost.kind === "unhandled") {
-      return NextResponse.json(
-        {
-          error: "e2e-mock: invalid bvbrc-website/genome_amr POST",
-          reason: bvBrcWebsitePost.reason,
-        },
-        { status: 400 },
+      return unhandledResponse(
+        "e2e-mock: invalid bvbrc-website/genome_amr POST",
+        bvBrcWebsitePost.reason,
+        { path },
       );
     }
     return NextResponse.json(bvBrcWebsitePost.body);
@@ -911,15 +1006,58 @@ export async function POST(
   const identityResponse = await handleIdentityPost(path, request, rpcMethod);
   if (identityResponse) return identityResponse;
 
-  const firstSegment = path.split("/").filter(Boolean)[0] ?? "";
-  if (!postAllowedNamespaces.has(firstSegment)) {
+  const endpoint = path.split("/").filter(Boolean).join("/");
+  if (rpcMethod === undefined) {
+    // Not JSON-RPC at all (a form upload, or a malformed body). There is no
+    // method name to dispatch on, so answer in the plain diagnostic shape.
+    return unhandledResponse(
+      "e2e-mock: unhandled POST endpoint",
+      "request body carried no JSON-RPC method",
+      { path },
+    );
+  }
+
+  const matched = findRpcResult(endpoint, rpcMethod);
+  if (!matched) {
+    // A JSON-RPC caller gets a JSON-RPC error body: `JsonRpcClient` throws
+    // `HTTP error! status: 400` on a non-2xx without reading the body, so the
+    // reason reaches a human through the webServer log `unhandledResponse`
+    // writes, while the envelope keeps the wire contract honest for anything
+    // that does read it.
+    const reason = Object.hasOwn(loopbackRpcResults, endpoint)
+      ? `no fixture for JSON-RPC method '${rpcMethod}' at endpoint '${endpoint}'`
+      : `no JSON-RPC endpoint '${endpoint}' is mocked`;
+    console.error(`[api/e2e-mock] unhandled JSON-RPC call: ${reason}`);
     return NextResponse.json(
-      { error: "e2e-mock: unhandled POST endpoint", path },
+      buildLoopbackRpcError(
+        jsonRpcErrorCodes.METHOD_NOT_FOUND,
+        `e2e-mock: ${reason}`,
+      ),
       { status: 400 },
     );
   }
 
-  return NextResponse.json({ id: 1, jsonrpc: "2.0", result: [[]] });
+  return NextResponse.json(buildLoopbackRpcSuccess(matched.result));
+}
+
+/**
+ * No PUT or DELETE fixture exists, so both reject everything.
+ *
+ * These used to return `{}` unconditionally, with no path check at all.
+ * Instrumenting the handler and running the full Chromium suite plus
+ * `pnpm a11y` recorded not one PUT or DELETE reaching it, so there is no
+ * behaviour to preserve — only a hole to close. Both handlers stay exported:
+ * without them Next answers 405 with no explanation of why, and the point is
+ * for the first real caller to be told what to add and where.
+ */
+const mutationMethodFixtures: Record<string, never> = {};
+
+function rejectMutation(method: string, path: string): NextResponse {
+  return unhandledResponse(
+    `e2e-mock: unhandled ${method} endpoint`,
+    `no ${method} fixture is registered — add one to mutationMethodFixtures in this module`,
+    { path, registered: Object.keys(mutationMethodFixtures) },
+  );
 }
 
 export async function PUT(
@@ -929,7 +1067,7 @@ export async function PUT(
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("PUT", path);
-  return NextResponse.json({});
+  return rejectMutation("PUT", path);
 }
 
 export async function DELETE(
@@ -939,5 +1077,5 @@ export async function DELETE(
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("DELETE", path);
-  return NextResponse.json({});
+  return rejectMutation("DELETE", path);
 }

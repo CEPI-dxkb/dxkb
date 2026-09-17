@@ -4,7 +4,6 @@ import {
   equalsValue,
   hasCall,
   hasClause,
-  hasEqualsField,
   hasKeyword,
   parseFixtureQuery,
 } from "../query";
@@ -137,10 +136,8 @@ describe("parseFixtureQuery — predicate extraction", () => {
     expect(equalsValue(query, "genome_id")).toBe("*");
   });
 
-  it("distinguishes 'filters on this field' from 'filters on this value'", () => {
+  it("reports undefined for a field the query does not filter on", () => {
     const query = parse("?eq(test_type,LAMP)");
-    expect(hasEqualsField(query, "test_type")).toBe(true);
-    expect(hasEqualsField(query, "pathogen_test_type")).toBe(false);
     expect(equalsValue(query, "test_type")).toBe("LAMP");
     expect(equalsValue(query, "pathogen_test_type")).toBeUndefined();
   });

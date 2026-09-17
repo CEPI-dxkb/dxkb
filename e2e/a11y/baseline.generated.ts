@@ -46,25 +46,16 @@ const generatedBaseline: BaselineMap = {
       "color-contrast": { maxNodes: 110, ticket: "DXKBCORE-174" },
     },
   },
-  // The taxonomy entry's two variants are named for their taxa (234 Brucella,
-  // 1763 Mycobacterium); both dark scans exceed the wildcard 80-node cap
-  // because the AMR chart legend pills and view-tab search components add
-  // dark-mode contrast nodes. Ticket: DXKBCORE-174
+  // The taxonomy entry's two variants (234 Brucella, 1763 Mycobacterium) have
+  // no route-specific entry: both scan 7 dark-theme color-contrast nodes,
+  // well inside the wildcard cap. The 100-node override the old
+  // `taxonomy/virus` key carried is gone rather than renamed — carrying an
+  // unused suppression forward is how a cap stops meaning anything.
   //
   // The DXKBCORE-177 document-title / html-has-lang suppressions that used to
   // sit here (and on the wildcard dark entry) recorded a MOCK gap, not a page
   // defect: /taxonomy/1763 had no taxonomy fixture and rendered the framework
   // error boundary. It renders a real page now, so those entries are gone.
-  "taxonomy/brucella": {
-    "dxkb-dark": {
-      "color-contrast": { maxNodes: 100, ticket: "DXKBCORE-174" },
-    },
-  },
-  "taxonomy/mycobacterium": {
-    "dxkb-dark": {
-      "color-contrast": { maxNodes: 100, ticket: "DXKBCORE-174" },
-    },
-  },
 };
 
 // Routes with pre-existing WCAG 1.4.10 reflow failures at 320px viewport width.
@@ -91,10 +82,7 @@ export const reflowSkip: ReflowSkipMap = {
   // inherit the same pre-existing mobile-navbar overflow as every entry above.
   "search/default": { ticket: "DXKBCORE-178" },
   "search/unsupported-type": { ticket: "DXKBCORE-178" },
-  // Both taxonomy variants render the same landing shell, so both inherit the
-  // same pre-existing 320px mobile-navbar overflow.
   "taxonomy/brucella": { ticket: "DXKBCORE-178" },
-  "taxonomy/mycobacterium": { ticket: "DXKBCORE-178" },
   "organisms-all": { ticket: "DXKBCORE-178" },
   "organisms-bacteria": { ticket: "DXKBCORE-178" },
   "organisms-viruses": { ticket: "DXKBCORE-178" },

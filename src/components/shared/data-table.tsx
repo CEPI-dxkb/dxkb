@@ -883,8 +883,6 @@ function useDataTableContent(
         ? allCols.filter((col) => col.getIsVisible() && col.id !== "__select__")
         : allCols.filter((col) => col.id !== "__select__");
 
-      const headers = visibleCols.map((col) => col.columnDef.header as string);
-
       if (onlySelected) {
         if (!isAllPagesSelected && (!selectedIds || selectedIds.length === 0))
           return;
@@ -900,6 +898,10 @@ function useDataTableContent(
         return;
       }
 
+      // Below the selected-rows return: that path delegates to
+      // `onDownloadSelected`, which builds its own header row, so computing
+      // these above the branch was work thrown away on every such export.
+      const headers = visibleCols.map((col) => col.columnDef.header as string);
       const rowsToExport = table.getPrePaginatedRowModel().rows;
 
       const content = [

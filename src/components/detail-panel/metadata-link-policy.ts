@@ -73,8 +73,15 @@ export function resolveLink(
     if (primitive === undefined || String(primitive) === "") return undefined;
     resolvedSegments.set(key, encodeURIComponent(String(primitive)));
   }
-  return template.replace(
-    /{([^}]+)}/g,
-    (_, key: string) => resolvedSegments.get(key) ?? "",
-  );
+  // Substitute from the resolved map rather than re-scanning the template.
+  // A second regex pass would have to answer "what if this key is missing?"
+  // with a fallback that cannot be reached — the loop above either resolved
+  // every distinct placeholder or already rejected the whole template. Every
+  // segment is `encodeURIComponent` output, so it can contain neither `{`
+  // nor `}` and cannot form a placeholder for a later pass to substitute.
+  let resolved = template;
+  for (const [key, segment] of resolvedSegments) {
+    resolved = resolved.replaceAll(`{${key}}`, () => segment);
+  }
+  return resolved;
 }

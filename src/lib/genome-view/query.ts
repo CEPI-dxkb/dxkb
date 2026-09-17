@@ -14,8 +14,6 @@ import { genomeMetadata } from "./fields";
 
 export const genomeSorts = genomeMetadata.sorts;
 
-export type GenomeSort = string;
-
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 

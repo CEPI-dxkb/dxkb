@@ -1,10 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import {
   parseCollectionState,
-  resourceCollectionPageSize,
   serializeCollectionState,
   updateCollectionSearchParams,
-} from "../collection-state";
+} from "@/lib/views/collection-state";
+import { resourceCollectionPageSize } from "../collection-state";
 import { useCollectionUrlState } from "../use-collection-url-state";
 
 const navigation = vi.hoisted(() => ({

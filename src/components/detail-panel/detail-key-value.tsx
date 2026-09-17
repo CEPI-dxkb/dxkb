@@ -8,9 +8,10 @@ export interface DetailField {
   format?: "date";
   /**
    * Custom renderer — overrides default text rendering. The sole mechanism for
-   * link fields: the caller (`info-panel.tsx`) classifies internal versus external
-   * destinations and supplies the already-built `Link`/`<a>` element here, so this
-   * component stays free of routing and URL-classification concerns.
+   * link fields: the caller (`info-panel.tsx`) routes the destination through
+   * the `./metadata-link` boundary, which classifies internal versus external
+   * and returns the built `Link`/`<a>` element supplied here, so this component
+   * stays free of routing and URL-classification concerns.
    */
   render?: () => ReactNode;
 }

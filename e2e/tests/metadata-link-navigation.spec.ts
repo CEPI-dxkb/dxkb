@@ -9,7 +9,8 @@ import {
 /**
  * `DataField.link` templates are pinned as strings by
  * `src/constants/datafields/__tests__/metadata-links.test.ts`, and the rendered
- * `href` by the `info-panel-*` unit suites. Neither follows the link. This spec
+ * `href` by the `info-panel-search` and `metadata-link` unit suites under
+ * `src/components/detail-panel/__tests__/`. Neither follows the link. This spec
  * does, for the one rewritten target that carries raw RQL in its query string:
  * Genome Sequence's `sequence_id` → the Feature collection.
  *

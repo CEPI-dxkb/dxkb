@@ -1,100 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import {
-  classifyHref,
+  MetadataLink,
   renderMetadataLink,
   renderMetadataLinkButton,
-  resolveLink,
-} from "../info-panel";
-
-describe("resolveLink", () => {
-  it("resolves a row-aware placeholder directly from a matching row field", () => {
-    expect(
-      resolveLink(
-        "/genome/{genome_id}",
-        { genome_id: "83332.12", genome_name: "M. tuberculosis H37Rv" },
-        "genome_name",
-      ),
-    ).toBe("/genome/83332.12");
-  });
-
-  it("falls back to the field's own value for the {value} sentinel", () => {
-    expect(
-      resolveLink("/genome/{value}", { genome_id: "83332.12" }, "genome_id"),
-    ).toBe("/genome/83332.12");
-  });
-
-  it("URL-encodes the resolved segment", () => {
-    expect(
-      resolveLink("/genome/{value}", { genome_id: "100/2" }, "genome_id"),
-    ).toBe("/genome/100%2F2");
-  });
-
-  it("preserves falsy-but-real primitives such as 0", () => {
-    expect(resolveLink("/thing/{value}", { count: 0 }, "count")).toBe(
-      "/thing/0",
-    );
-  });
-
-  it("rejects the link when a row-aware placeholder has no matching field anywhere", () => {
-    expect(
-      resolveLink(
-        "/genome/{genome_id}",
-        { unrelated: "x" },
-        "unrelated_fallback",
-      ),
-    ).toBeUndefined();
-  });
-
-  it("rejects the link when the resolved value is an empty string", () => {
-    expect(
-      resolveLink("/genome/{value}", { genome_id: "" }, "genome_id"),
-    ).toBeUndefined();
-  });
-
-  it("rejects the link when the value is a non-primitive (array/object)", () => {
-    expect(
-      resolveLink("/genome/{value}", { genome_id: ["a", "b"] }, "genome_id"),
-    ).toBeUndefined();
-  });
-
-  it("never leaves a literal unresolved {placeholder} in the output", () => {
-    const result = resolveLink("/genome/{missing}", {}, "also_missing");
-    expect(result === undefined || !result.includes("{")).toBe(true);
-  });
-});
-
-describe("classifyHref", () => {
-  it("classifies a same-origin relative path as internal", () => {
-    expect(classifyHref("/genome/123")).toBe("internal");
-  });
-
-  it("classifies an absolute http(s) URL as external", () => {
-    expect(classifyHref("https://www.ncbi.nlm.nih.gov/taxonomy/1")).toBe(
-      "external",
-    );
-    expect(classifyHref("http://example.com")).toBe("external");
-  });
-
-  it("classifies a protocol-relative //host as unsafe, not internal", () => {
-    // A browser resolves "//evil.com" as an absolute, cross-origin URL despite
-    // the missing scheme — a bare startsWith("/") check would wrongly treat it
-    // as same-origin and hand it straight to Link.
-    expect(classifyHref("//evil.com")).toBe("unsafe");
-  });
-
-  it("classifies a javascript: URI as unsafe, never internal", () => {
-    expect(classifyHref("javascript:alert(1)")).toBe("unsafe");
-  });
-
-  it("classifies a bare mailto: URI as unsafe", () => {
-    expect(classifyHref("mailto:someone@example.com")).toBe("unsafe");
-  });
-
-  it("classifies a scheme-less, non-rooted string as unsafe", () => {
-    expect(classifyHref("genome/123")).toBe("unsafe");
-    expect(classifyHref("")).toBe("unsafe");
-  });
-});
+} from "../metadata-link";
 
 describe("renderMetadataLink", () => {
   it("renders an internal href through Next Link (relative, no new-tab attributes)", () => {
@@ -184,5 +93,71 @@ describe("renderMetadataLinkButton", () => {
     );
     expect(container).toBeEmptyDOMElement();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+});
+
+describe("MetadataLink", () => {
+  it("renders an internal href through Next Link (relative, no new-tab attributes)", () => {
+    render(<MetadataLink href="/genome/1">1</MetadataLink>);
+    const link = screen.getByRole("link", { name: "1" });
+    expect(link).toHaveAttribute("href", "/genome/1");
+    expect(link).not.toHaveAttribute("target");
+  });
+
+  it("renders an external href as a safe new-tab anchor", () => {
+    render(
+      <MetadataLink href="https://pubmed.ncbi.nlm.nih.gov/12345/">
+        12345
+      </MetadataLink>,
+    );
+    const link = screen.getByRole("link", { name: "12345" });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://pubmed.ncbi.nlm.nih.gov/12345/",
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("renders nothing for an unsafe href", () => {
+    const { container } = render(
+      <MetadataLink href="javascript:alert(1)">1</MetadataLink>,
+    );
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("merges an extra className onto the shared link treatment", () => {
+    render(
+      <MetadataLink href="/genome/1" className="inline-flex">
+        1
+      </MetadataLink>,
+    );
+    const link = screen.getByRole("link", { name: "1" });
+    expect(link).toHaveClass("inline-flex");
+    expect(link).toHaveClass("text-primary");
+    expect(link).toHaveClass("underline");
+  });
+
+  it("renders the external indicator only when the destination is external", () => {
+    const { rerender } = render(
+      <MetadataLink
+        href="https://example.com/x"
+        externalIndicator={<span data-testid="indicator" />}
+      >
+        x
+      </MetadataLink>,
+    );
+    expect(screen.getByTestId("indicator")).toBeInTheDocument();
+
+    rerender(
+      <MetadataLink
+        href="/genome/1"
+        externalIndicator={<span data-testid="indicator" />}
+      >
+        x
+      </MetadataLink>,
+    );
+    expect(screen.queryByTestId("indicator")).not.toBeInTheDocument();
   });
 });

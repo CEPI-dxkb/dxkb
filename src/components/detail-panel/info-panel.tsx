@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { useWorkspaceDu } from "@/hooks/services/workspace/use-workspace-du";
 
 import { genomeFields } from "@/constants/datafields/genome";
@@ -17,155 +16,14 @@ import { surveillanceFields } from "@/constants/datafields/surveillance";
 import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import { ppiFields } from "@/constants/datafields/ppi";
 import type { DataFieldMap } from "@/constants/datafields/types";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { DetailPanel, type DetailField } from "./index";
+import { isLinkValue, resolveLink } from "./metadata-link-policy";
+import { renderMetadataLink, renderMetadataLinkButton } from "./metadata-link";
 import { formatOwner, formatFileSize } from "@/lib/services/workspace/helpers";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { getItemFullPath } from "./info-panel-utils";
 import { WorkspaceItemHeader } from "@/components/workspace/workspace-item-header";
 import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-details";
-
-/**
- * Shared visual treatment for every metadata-driven link rendered by this file —
- * scalar, array, and button alike — so internal and external destinations look
- * identical regardless of which shape produced them.
- */
-export const metadataLinkClassName =
-  "text-primary underline hover:text-primary/80";
-
-export type HrefClassification = "internal" | "external" | "unsafe";
-
-/**
- * The one shared security and routing boundary for every metadata-driven link
- * this file renders — scalar, array, and button alike. Any link surface added
- * here in the future must route through this rather than reinventing its own
- * scheme check.
- *
- * - `"internal"` — an unambiguous same-origin path. Requires `startsWith("/")`
- *   *and* excludes a protocol-relative `//host` string: a browser resolves
- *   `//host` as an absolute, cross-origin URL despite the missing scheme, so a
- *   bare `startsWith("/")` check would misclassify it as same-origin and hand
- *   it to `Link`.
- * - `"external"` — an absolute `http(s)` URL, the only scheme this file opens
- *   safely, in a new `noopener`-isolated tab.
- * - `"unsafe"` — anything else: a bare `//host`, a non-http(s) scheme
- *   (`javascript:`, `mailto:`, `data:`, ...), or a string that is neither a
- *   path nor a URL. No current `DataField.link` template can reach this today
- *   — every scheme-bearing prefix is a developer-authored literal, and
- *   `resolveLink` always `encodeURIComponent`s the row-supplied `{placeholder}`
- *   segments, so row data cannot inject a `//` or `javascript:` prefix — but
- *   that is a property of today's data, not of this contract, so it must not
- *   guess. **Rendering nothing is the deliberate choice for `"unsafe"`**: an
- *   unclassified anchor (no `target`, no `rel` isolation, and — worse — a
- *   scheme a browser might execute) is strictly more dangerous than no anchor.
- */
-export function classifyHref(href: string): HrefClassification {
-  if (/^https?:\/\//i.test(href)) return "external";
-  if (href.startsWith("/") && !href.startsWith("//")) return "internal";
-  return "unsafe";
-}
-
-function isLinkValue(value: unknown): value is string | number | boolean {
-  return (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  );
-}
-
-/**
- * Fill a `{placeholder}` template from the row. `{value}` is a sentinel that never
- * matches a real row key, so it always falls through to the field's own value;
- * `{genome_id}`-style placeholders match a real row field directly (row-aware).
- *
- * Returns `undefined` — rejecting the link — when any placeholder has no resolvable
- * primitive value, rather than emitting a URL with a missing or literal `{...}` segment.
- */
-export function resolveLink(
-  template: string,
-  row: Record<string, unknown>,
-  fallbackField: string,
-): string | undefined {
-  const resolvedSegments = new Map<string, string>();
-  for (const [, key] of template.matchAll(/{([^}]+)}/g)) {
-    if (resolvedSegments.has(key)) continue;
-    const value = row[key] ?? row[fallbackField];
-    const primitive = isLinkValue(value) ? value : undefined;
-    if (primitive === undefined || String(primitive) === "") return undefined;
-    resolvedSegments.set(key, encodeURIComponent(String(primitive)));
-  }
-  return template.replace(
-    /{([^}]+)}/g,
-    (_, key: string) => resolvedSegments.get(key) ?? "",
-  );
-}
-
-/** Render one metadata link: internal destinations through Next `Link`, external
- * destinations as a safe new-tab anchor, and an unsafe destination as nothing at
- * all (see {@link classifyHref}). The one place this file decides which. */
-export function renderMetadataLink(
-  href: string,
-  label: ReactNode,
-  key?: string,
-): ReactNode {
-  const classification = classifyHref(href);
-  if (classification === "external") {
-    return (
-      <a
-        key={key}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={metadataLinkClassName}
-      >
-        {label}
-      </a>
-    );
-  }
-  if (classification === "internal") {
-    return (
-      <Link key={key} href={href} className={metadataLinkClassName}>
-        {label}
-      </Link>
-    );
-  }
-  return null;
-}
-
-/** Same internal/external/unsafe contract as {@link renderMetadataLink}, wrapped
- * in the shared `Button` styling for `linkType: "button"` fields. */
-export function renderMetadataLinkButton(
-  href: string,
-  label: ReactNode,
-): ReactNode {
-  const buttonClassName =
-    "rounded border-black bg-primary px-2 py-1 text-sm text-secondary";
-  const classification = classifyHref(href);
-  if (classification === "external") {
-    return (
-      <Button
-        nativeButton={false}
-        render={<a href={href} target="_blank" rel="noopener noreferrer" />}
-        className={buttonClassName}
-      >
-        {label}
-      </Button>
-    );
-  }
-  if (classification === "internal") {
-    return (
-      <Button
-        nativeButton={false}
-        render={<Link href={href} />}
-        className={buttonClassName}
-      >
-        {label}
-      </Button>
-    );
-  }
-  return null;
-}
 
 export type InfoPanelProps =
   | {
@@ -1008,9 +866,7 @@ function renderSearchInfoPanel(
                 // string): fall back to `value: undefined` so the row is
                 // suppressed like any other unavailable field, instead of
                 // rendering a populated label next to an empty <span>.
-                if (
-                  !resolvedValues.some((entry) => entry.href !== undefined)
-                ) {
+                if (!resolvedValues.some((entry) => entry.href !== undefined)) {
                   return { label: item.label, value: undefined };
                 }
                 return {
@@ -1036,7 +892,11 @@ function renderSearchInfoPanel(
                 };
               }
 
-              const href = resolveLink(linkTemplate, selectedRow ?? {}, fieldId);
+              const href = resolveLink(
+                linkTemplate,
+                selectedRow ?? {},
+                fieldId,
+              );
               if (href === undefined) {
                 return { label: item.label, value: rawValue };
               }

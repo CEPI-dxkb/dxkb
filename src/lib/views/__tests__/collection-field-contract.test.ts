@@ -36,51 +36,63 @@ interface DerivedCase {
   resource: DataResource;
   fieldMap: DataFieldMap;
   metadata: DerivedFieldMetadata;
+  /**
+   * One column this resource must render. The column-projection assertion
+   * below iterates `metadata.columns` and so passes vacuously for a resource
+   * that derives none; a named member makes "derived nothing" fail loudly
+   * instead of quietly.
+   */
+  knownColumn: string;
 }
 
 const derived: DerivedCase[] = [
-  { name: "epitope", resource: "epitope", metadata: epitopeMetadata, fieldMap: epitopeFields },
+  { name: "epitope", resource: "epitope", metadata: epitopeMetadata, fieldMap: epitopeFields, knownColumn: "epitope_id" },
   {
     name: "epitope_assay",
     resource: "epitope_assay",
     fieldMap: epitopeAssayFields,
     metadata: epitopeAssayMetadata,
+    knownColumn: "assay_id",
   },
-  { name: "experiment", resource: "experiment", metadata: experimentMetadata, fieldMap: experimentFields },
-  { name: "bioset", resource: "bioset", metadata: biosetMetadata, fieldMap: biosetFields },
+  { name: "experiment", resource: "experiment", metadata: experimentMetadata, fieldMap: experimentFields, knownColumn: "exp_id" },
+  { name: "bioset", resource: "bioset", metadata: biosetMetadata, fieldMap: biosetFields, knownColumn: "bioset_id" },
   {
     name: "genome_feature",
     resource: "genome_feature",
     fieldMap: genomeFeatureFields,
     metadata: featureMetadata,
+    knownColumn: "patric_id",
   },
-  { name: "genome", resource: "genome", metadata: genomeMetadata, fieldMap: genomeFields },
+  { name: "genome", resource: "genome", metadata: genomeMetadata, fieldMap: genomeFields, knownColumn: "genome_id" },
   {
     name: "protein_feature",
     resource: "protein_feature",
     fieldMap: proteinFeatureFields,
     metadata: proteinFeatureMetadata,
+    knownColumn: "feature_id",
   },
   {
     name: "protein_structure",
     resource: "protein_structure",
     fieldMap: proteinStructureFields,
     metadata: proteinStructureMetadata,
+    knownColumn: "pdb_id",
   },
-  { name: "serology", resource: "serology", metadata: serologyMetadata, fieldMap: serologyFields },
-  { name: "strain", resource: "strain", metadata: strainMetadata, fieldMap: strainFields },
+  { name: "serology", resource: "serology", metadata: serologyMetadata, fieldMap: serologyFields, knownColumn: "sample_identifier" },
+  { name: "strain", resource: "strain", metadata: strainMetadata, fieldMap: strainFields, knownColumn: "strain" },
   {
     name: "surveillance",
     resource: "surveillance",
     fieldMap: surveillanceFields,
     metadata: surveillanceMetadata,
+    knownColumn: "sample_identifier",
   },
-  { name: "taxonomy", resource: "taxonomy", fieldMap: taxonomyFields, metadata: taxonomyMetadata },
+  { name: "taxonomy", resource: "taxonomy", fieldMap: taxonomyFields, metadata: taxonomyMetadata, knownColumn: "taxon_id" },
 ];
 
 describe.each(derived)(
   "$name derived field contract",
-  ({ resource, fieldMap, metadata }) => {
+  ({ resource, fieldMap, metadata, knownColumn }) => {
   const registryFields = resourceRegistry[resource].fields;
   const sourceFields = new Map<string, DataField>(
     Object.values(fieldMap).map((entry) => [entry.field, entry]),
@@ -176,6 +188,11 @@ describe.each(derived)(
   });
 
   it("projects every column it renders", () => {
+    // Non-vacuity guard, matching the siblings above: the loop below is
+    // satisfied by a resource that derives zero columns, which is the one
+    // outcome this assertion most needs to catch.
+    expect(metadata.columns.length).toBeGreaterThan(0);
+    expect(metadata.columns.map((column) => column.id)).toContain(knownColumn);
     for (const column of metadata.columns) {
       expect(metadata.detailFields).toContain(column.id);
     }

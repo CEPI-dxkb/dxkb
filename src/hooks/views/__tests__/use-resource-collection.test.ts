@@ -94,6 +94,53 @@ describe("useResourceCollection", () => {
     expect(result.current.selectedIds).toEqual([]);
   });
 
+  /**
+   * Serology and Surveillance row ids ARE digit-only strings ("000123" appears
+   * in serology-view.test.ts), so `"0012"` and `"12"` are two real, distinct
+   * selections that must not collapse into one.
+   *
+   * Today that is free: `selectedIds` is `Object.keys` over a
+   * `Record<string, boolean>`, and object keys cannot coerce. The guarantee
+   * disappears SILENTLY the moment selection state moves off
+   * `RowSelectionState` — to a `Map`, to a number keying, or to any dedupe
+   * that parses ids — and nothing else in the suite would fail. Hence the
+   * exact ids rather than a count.
+   *
+   * The expected order is deliberately NOT sorted: `"12"` is a canonical
+   * integer-index string and so enumerates ahead of the leading-zero keys
+   * regardless of insertion order, while `"0012"` and `"000123"` follow in
+   * insertion order. Alphabetical order would be the reverse, so a `.sort()`
+   * creeping into the derivation fails here.
+   */
+  it("keeps digit-only selection ids distinct, in enumeration order", async () => {
+    const data = repository();
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "serology",
+          idField: "id",
+          fields: ["id", "sample_identifier"],
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.setSelection({
+        "0012": true,
+        "12": true,
+        "000123": true,
+      });
+    });
+
+    expect(result.current.selectedIds).toEqual(["12", "0012", "000123"]);
+  });
+
   it("does not prefetch the next page by default", async () => {
     const data = repository();
     const collection = vi.spyOn(data, "collection").mockResolvedValue({

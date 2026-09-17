@@ -190,7 +190,19 @@ describe("InfoPanel — search variant", () => {
         screen.getAllByText("fig|224914.16.peg.635").length,
       ).toBeGreaterThan(0);
       expect(screen.getByText("Genome Name A")).toBeInTheDocument();
-      expect(screen.getAllByText("Interactor B").length).toBeGreaterThan(0);
+      // "Interactor B" names BOTH the collapsible section header (a <button>)
+      // and the field label inside it (a <td>), so asserting the text is
+      // present says nothing about the value: a panel rendering the header and
+      // an empty value cell passed. `DetailKeyValueTable` renders each field as
+      // one <tr> of label cell + value cell, so the field row's text is the
+      // label/value pairing. Dropping the <tr>-less section header leaves
+      // exactly one row, asserted whole.
+      const interactorBFieldRows = screen
+        .getAllByText("Interactor B")
+        .flatMap((label) => label.closest("tr")?.textContent ?? []);
+      expect(interactorBFieldRows).toEqual([
+        "Interactor Bfig|224914.16.peg.2425",
+      ]);
       expect(screen.getByText("PPI")).toBeInTheDocument();
     });
   });

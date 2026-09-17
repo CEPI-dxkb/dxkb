@@ -212,7 +212,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
   // because every production caller always passed `showHeader={false}` — this
   // pins the one surviving arm so the accessible name doesn't regress.
   it("labels the collection region from the profile with no rendered heading", () => {
-    const { container } = render(
+    render(
       <ResourceCollection
         profile={genomeCollectionProfile}
         repository={repository()}
@@ -220,8 +220,11 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         onStateChange={vi.fn()}
       />,
     );
-    const section = container.querySelector("section");
-    expect(section).toHaveAttribute("aria-label", "Genomes");
+    // The COMPUTED accessible name, not the attribute that happens to produce
+    // it today: `getByRole` also fails if the region is hidden (`aria-hidden`,
+    // `display: none`) or given a competing label on a wrapper, neither of
+    // which a `toHaveAttribute("aria-label", …)` check can see.
+    const section = screen.getByRole("region", { name: "Genomes" });
     expect(section).not.toHaveAttribute("aria-labelledby");
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.queryByText("Field guide")).not.toBeInTheDocument();

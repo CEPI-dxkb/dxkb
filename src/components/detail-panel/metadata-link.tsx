@@ -11,9 +11,13 @@ import { classifyHref } from "./metadata-link-policy";
  */
 
 /**
- * Shared visual treatment for every metadata-driven link — scalar, array and
- * button alike — so internal and external destinations look identical
- * regardless of which shape produced them.
+ * Shared visual treatment for the detail panel's metadata-driven links —
+ * scalar, array and button alike — so internal and external destinations look
+ * identical regardless of which shape produced them. Not repo-wide: the
+ * collection table styles the same `DataField.link` templates through its own
+ * `valueHref` path with a different class string, which
+ * `./metadata-link-policy` records alongside the classification boundary that
+ * path also bypasses.
  */
 export const metadataLinkClassName =
   "text-primary underline hover:text-primary/80";

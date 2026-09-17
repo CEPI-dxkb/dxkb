@@ -251,7 +251,13 @@ test.describe("a11y suppression keys", () => {
       // check below. Filtered here rather than through `glob`'s `exclude` so
       // the reason travels with the code and the guard does not depend on that
       // option's semantics.
-      if (file === "coverage.meta.spec.ts") continue;
+      //
+      // Keyed off `__filename` rather than a string literal so renaming or
+      // splitting this spec cannot silently restore the false green. It is
+      // `__filename` and not `import.meta.filename` because Playwright loads
+      // this spec as CJS, where `import.meta` is a load-time syntax error —
+      // `pnpm a11y:meta` reports "No tests found" rather than failing a test.
+      if (file === path.basename(__filename)) continue;
       sourceCount++;
       const source = await readFile(path.join(specDir, file), "utf8");
       for (const key of extractScannedKeys(source)) scanned.add(key);

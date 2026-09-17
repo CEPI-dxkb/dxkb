@@ -7,9 +7,16 @@ import { awaitSettled, type SettleOptions } from "./settle";
  * Reserve these for *observable, page-specific* readiness — an element that must
  * exist before axe scans, or a redirect that must have landed. Generic readiness
  * (load state, fonts, skeleton detach) belongs in `settle` / `awaitSettled()`,
- * and for an entry that lands on the page it scans, a bare
- * `waitForLoadState("networkidle")` here is redundant because awaitSettled()
- * has already awaited it.
+ * and for an entry that lands on the page it scans *and* leaves
+ * `settle.loadState` at its default, a bare `waitForLoadState("networkidle")`
+ * here is redundant because awaitSettled() has already awaited it.
+ *
+ * That carve-out is load-bearing. `awaitSettled` forwards the entry's override
+ * (`settle.ts` — `options.loadState ?? "networkidle"`), so the four entries
+ * setting `loadState: "domcontentloaded"` never await networkidle at all. On
+ * those pages networkidle never opens its 500 ms quiet window, which is why
+ * they opt out — so a bare networkidle in their `prepare` would hang to
+ * timeout rather than duplicate work already done.
  *
  * **Exception: an entry whose `prepare` awaits a redirect.** `settle` runs
  * before `prepare` (`routes-sweep.spec.ts`), so for such an entry there is no
@@ -591,12 +598,14 @@ export const routes: RouteEntry[] = [
       await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
       await page.getByPlaceholder(/search files/i).waitFor({ timeout: 10_000 });
       // The two waits above are not sufficient cover on their own. The search
-      // box lives in workspace-toolbar.tsx, which renders only after
-      // workspace-browser.tsx's `resolveQuery.isLoading` skeleton early
-      // return — so its appearance proves the path resolved, not that the
-      // file listing landed. The listing is a separate query whose
-      // `isLoading` reaches WorkspaceDataTable, which renders `<Skeleton>`
-      // rows until it resolves.
+      // box lives in workspace-toolbar.tsx, and on *this* route its appearance
+      // proves nothing about the data: workspace-browser.tsx's
+      // `resolveQuery.isLoading` skeleton early return is gated on a non-empty
+      // path, and `/workspace/<user>/home` renders with `path === ""` because
+      // the optional catch-all is absent, so the toolbar comes from the main
+      // return without passing that gate at all. Either way the file listing
+      // is a separate query whose `isLoading` reaches WorkspaceDataTable,
+      // which renders `<Skeleton>` rows until it resolves.
       //
       // This is defensive rather than a fix for a reproduced local failure:
       // on chromium against the loopback mocks both the redirect and the
@@ -604,7 +613,8 @@ export const routes: RouteEntry[] = [
       // resolves immediately. It is here because `settle` runs before
       // `prepare`, so nothing *guarantees* that for a redirecting entry —
       // see {@link PrepareHook}. Exposure is largest on the tripwire
-      // projects, which cannot be run on the dev machine.
+      // projects, whose firefox half cannot be launched on this machine at all
+      // (`e2e/README.md`), so the combined script only ever runs green in CI.
       await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
     },
   },

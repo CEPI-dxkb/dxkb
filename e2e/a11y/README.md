@@ -43,9 +43,9 @@ run in either order.
 
 Only the scan records are per-invocation. `results.json` and
 `a11y-summary.json` are single files, so two sweeps running at the same time
-would overwrite each other's copy — run the heavy suites sequentially (which is
-the operational rule on the dev machine regardless) and note that CI runs one
-sweep per job. What the split below guarantees is that `a11y:meta` can never be
+would overwrite each other's copy. That is not *why* the heavy suites run
+sequentially — that rule is about resource contention on the dev machine — but
+it is one more reason not to overlap them. CI runs one sweep per job. What the split below guarantees is that `a11y:meta` can never be
 the run that does the overwriting.
 
 Scan records are written to `.misc/a11y-report/scans/<A11Y_RUN_ID>/` and the

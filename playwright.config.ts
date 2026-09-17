@@ -18,10 +18,17 @@ const isCi = Boolean(process.env.CI);
 // threads reject NODE_OPTIONS containing --env-file.
 const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 
-// Every folder this config writes lives under /.misc, per AGENTS.md's
-// file-structure rule. The html reporter defaults to `playwright-report/` at
-// the repo root, which is both a rule violation and a path shared with
-// playwright.a11y.config.ts, so it is set explicitly here.
+// Every *report and artifact* folder this config writes lives under /.misc,
+// per AGENTS.md's file-structure rule — this html report and `outputDir`
+// below. Two paths it writes sit outside /.misc on purpose and are not
+// artifacts: `snapshotDir` (`e2e/__snapshots__`, committed visual baselines —
+// .gitignore says so in place) and the `e2e/.auth/` storage state (gitignored
+// at .gitignore's `/e2e/.auth/`).
+//
+// The html reporter would otherwise default to `playwright-report/` at the
+// repo root, which breaks that rule and is also the default
+// playwright.a11y.config.ts would land on, so both configs set it explicitly
+// rather than sharing one directory.
 const htmlReportDir = ".misc/playwright-report";
 
 export default defineConfig({

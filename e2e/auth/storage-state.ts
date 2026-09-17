@@ -16,12 +16,20 @@
  * hard-coded: one setup spec, two destinations.
  *
  * This removes the storage-state collision, not every collision. Two a11y
- * sweeps running at once still share `a11ySummaryPath` and the JSON reporter's
- * single `results.json`, and would overwrite each other's copy — per-invocation
- * scoping covers the scan *records* those files are built from, not the files
- * themselves. That is left alone deliberately: CI runs one sweep per job, and
- * on the dev machine the operational rule is to run the heavy suites
- * sequentially anyway (for resource contention, not for this).
+ * sweeps running at once still share two single files and would overwrite each
+ * other's copy, and the two have different origins:
+ *
+ * - `a11ySummaryPath` (`.misc/a11y-report/a11y-summary.json`) is the one built
+ *   from scan records — `e2e/a11y/teardown.ts` aggregates it. Only those
+ *   *records* are per-invocation; the summary they aggregate into is not.
+ * - `results.json` is Playwright's own `json` reporter output and is not built
+ *   from scan records at all. It also only exists under `CI=true`, because
+ *   `playwright.a11y.config.ts` registers the `json` reporter on that branch
+ *   only — so on the dev machine this file is not in play.
+ *
+ * That is left alone deliberately: CI runs one sweep per job, and on the dev
+ * machine the operational rule is to run the heavy suites sequentially anyway
+ * (for resource contention, not for this).
  */
 
 export const e2eSignedInStatePath = "e2e/.auth/e2e-signed-in.json";

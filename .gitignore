@@ -81,9 +81,6 @@ next-env.d.ts
 /public/auspice-favicon.png
 /public/.auspice-build-hash
 
-# MCP debug screenshots (never committed)
-/.screenshots/
-
 # graphify
 graphify-out
 

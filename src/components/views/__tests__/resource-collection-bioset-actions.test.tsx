@@ -115,9 +115,11 @@ function repository(
 
 /**
  * A stand-in for the tab both Bioset paths reserve with `window.open("about:blank")`.
- * The explicit path navigates it by clicking an `<a rel="noreferrer">` (the taxonomy
- * pattern), the all-pages path by `location.replace`, so the stub captures both and
- * the tests assert which one was used.
+ * Both navigate it through `navigateReservedTab`, by clicking an
+ * `<a target="_self" rel="noreferrer">` created in the reserved document, so `links`
+ * is where the destination assertions look. `location.replace` is still captured, and
+ * asserted *not* called: the all-pages path used to navigate that way, which sends the
+ * destination a referrer.
  */
 function reservedTab() {
   const links: {
@@ -208,8 +210,8 @@ describe("ResourceCollection Bioset actions", () => {
       }),
     ]);
     expect(links[0].click).toHaveBeenCalledOnce();
-    // The explicit path navigates by link click; `location.replace` belongs to the
-    // all-pages path, which has to wait for a network round-trip first.
+    // Nothing reaches for `location.replace` any more — it would send the
+    // destination a referrer, which is why all three paths click an anchor instead.
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -340,9 +342,7 @@ describe("ResourceCollection Bioset actions", () => {
 
   it("resolves all matching Bioset experiment IDs", async () => {
     const user = userEvent.setup();
-    const replace = vi.fn();
-    const open = vi.fn(() => ({ opener: window, location: { replace } }));
-    vi.stubGlobal("open", open);
+    const { open, links, replace } = reservedTab();
     const exportAll = vi.fn(() =>
       Promise.resolve({ rows: [{ exp_id: "00042" }, { exp_id: "00051" }] }),
     );
@@ -386,9 +386,18 @@ describe("ResourceCollection Bioset actions", () => {
       sort: { field: "bioset_id", direction: "asc" },
     });
     expect(open).toHaveBeenCalledWith("about:blank", "_blank");
-    expect(replace).toHaveBeenCalledWith(
-      "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,00051))",
-    );
+    // Navigated by the same `navigateReservedTab` anchor as the other two pop-up
+    // paths, so this one no longer hands the destination a referrer either. It used
+    // to call `resultsWindow.location.replace(href)`, which does.
+    expect(links).toStrictEqual([
+      expect.objectContaining({
+        href: "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,00051))",
+        target: "_self",
+        rel: "noreferrer",
+      }),
+    ]);
+    expect(links[0].click).toHaveBeenCalledOnce();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it("rejects all matching Biosets when any lacks an experiment", async () => {
@@ -514,12 +523,7 @@ describe("ResourceCollection Bioset actions", () => {
 
   it("navigates the reserved Bioset tab with the IDs it resolved, not a later selection", async () => {
     const user = userEvent.setup();
-    const replace = vi.fn();
-    const close = vi.fn();
-    vi.stubGlobal(
-      "open",
-      vi.fn(() => ({ opener: window, location: { replace }, close })),
-    );
+    const { links, replace, close } = reservedTab();
     let resolveExport:
       ((value: { rows: { exp_id: string }[] }) => void) | undefined;
     const exportAll = vi.fn(
@@ -575,11 +579,17 @@ describe("ResourceCollection Bioset actions", () => {
     });
 
     await waitFor(() => {
-      expect(replace).toHaveBeenCalledWith(
-        "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
-      );
+      expect(links).toHaveLength(1);
     });
-    expect(replace).toHaveBeenCalledTimes(1);
+    expect(links[0]).toEqual(
+      expect.objectContaining({
+        href: "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
+        target: "_self",
+        rel: "noreferrer",
+      }),
+    );
+    expect(links[0].click).toHaveBeenCalledOnce();
+    expect(replace).not.toHaveBeenCalled();
     expect(close).not.toHaveBeenCalled();
     expect(
       screen.queryByText("Could not complete action"),

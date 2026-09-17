@@ -236,6 +236,37 @@ const selectionActionsConfigByResource = {
 >;
 
 /**
+ * Send a reserved pop-up tab to its destination.
+ *
+ * The three Taxonomy/Bioset pop-up paths reserve their tab first —
+ * `window.open("about:blank", "_blank")`, null-check the handle, then
+ * `reservedWindow.opener = null` while the tab is still same-origin and empty. This is
+ * the other half of that pattern: the navigation itself. (The seven single-row
+ * member-navigation opens in `dispatchAction` do *not* reserve; they still pass
+ * `"noopener,noreferrer"` and discard the handle, so they cannot detect a blocked
+ * pop-up. Converting them is tracked separately.)
+ *
+ * **Why an anchor click and not `reservedWindow.location.replace(href)`.** Both
+ * navigate the tab, but `location.replace` sends a `Referer` — the reserved
+ * `about:blank` inherits this page's URL as its referrer, so the destination learns
+ * where the user came from. Clicking an `<a rel="noreferrer">` suppresses it, and also
+ * guarantees the destination document gets no `window.opener` even if the assignment
+ * above were ever dropped. `target="_self"` because this anchor lives *inside* the
+ * reserved tab's own document, so the click has to navigate that tab rather than open
+ * yet another one.
+ *
+ * Safe after an `await`: nothing has navigated the reserved tab, so its document is
+ * still the same-origin `about:blank` this page created and can still be scripted.
+ */
+function navigateReservedTab(reservedWindow: Window, href: string) {
+  const link = reservedWindow.document.createElement("a");
+  link.href = href;
+  link.target = "_self";
+  link.rel = "noreferrer";
+  link.click();
+}
+
+/**
  * Per-sink fallback for `formatUserFacingErrorMessage`, used for a non-`Error`
  * rejection and for an `Error` whose message is empty or whitespace-only. The shared
  * helper owns the emptiness, non-`Error` and length decisions; only the wording is
@@ -544,11 +575,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         resultsWindow.close();
         return;
       }
-      const link = resultsWindow.document.createElement("a");
-      link.href = href;
-      link.target = "_self";
-      link.rel = "noreferrer";
-      link.click();
+      navigateReservedTab(resultsWindow, href);
     } catch (error) {
       resultsWindow.close();
       onError(formatUserFacingErrorMessage(error, genericActionErrorMessage));
@@ -561,32 +588,25 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   const openBiosetResults = async () => {
     onError(null);
     if (!selection.isAllPagesSelected) {
-      // Same shape as the taxonomy branch above, for the same reason and one more.
+      // Reserved and navigated exactly like the other two paths (see
+      // `navigateReservedTab`), even though this one awaits nothing first.
       //
-      // The reason it cannot just be `window.open(href, "_blank",
-      // "noopener,noreferrer")` with a null check bolted on: the spec makes
-      // `window.open` return null whenever `noopener` is set (and `noreferrer`
-      // implies it), so that handle says nothing about whether the pop-up was
-      // allowed. That is how this branch came to swallow a blocked pop-up.
-      //
-      // The reason it reserves `about:blank` even though nothing is awaited here:
-      // reserving is what lets the tab be both detectable *and* opened without
-      // `noopener` while still reaching the destination with `rel="noreferrer"`.
-      // `opener` is severed while the tab is still same-origin and empty, before any
-      // destination document exists, and the navigation itself carries no referrer.
-      // Opening the final href directly would work, but only by giving up
-      // `noreferrer` — a trade this pattern does not have to make.
+      // It cannot be `window.open(href, "_blank", "noopener,noreferrer")` with a null
+      // check bolted on: the spec makes `window.open` return null whenever `noopener`
+      // is set (and `noreferrer` implies it), so that handle says nothing about
+      // whether the pop-up was allowed. That is how this branch came to swallow a
+      // blocked pop-up. Opening the final href with no feature string would restore
+      // the check but give up `noreferrer`; reserving keeps both.
       const resultsWindow = window.open("about:blank", "_blank");
       if (!resultsWindow) {
         onError("Allow pop-ups to open the selected Bioset results.");
         return;
       }
       resultsWindow.opener = null;
-      const link = resultsWindow.document.createElement("a");
-      link.href = biosetResultsHref(targets.selectedBiosetExperimentIds);
-      link.target = "_self";
-      link.rel = "noreferrer";
-      link.click();
+      navigateReservedTab(
+        resultsWindow,
+        biosetResultsHref(targets.selectedBiosetExperimentIds),
+      );
       return;
     }
     if (selection.total > maxExportRows) {
@@ -616,7 +636,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         );
         return;
       }
-      resultsWindow.location.replace(biosetResultsHref(experimentIds));
+      navigateReservedTab(resultsWindow, biosetResultsHref(experimentIds));
     } catch (error) {
       resultsWindow.close();
       // Through the shared formatter, not `error.message`: an `Error("")` here used

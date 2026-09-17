@@ -1,9 +1,10 @@
 import { render, screen } from "@testing-library/react";
+import Link from "next/link";
 import { OverviewSection } from "../overview-section";
 
 /** Rendered `<dt>` labels, in DOM order. */
 function renderedLabels(): string[] {
-  return screen.queryAllByRole("term").map((dt) => dt.textContent ?? "");
+  return screen.queryAllByRole("term").map((dt) => dt.textContent);
 }
 
 describe("OverviewSection", () => {
@@ -128,7 +129,7 @@ describe("OverviewSection", () => {
           {
             label: "CDS",
             value: 4004,
-            children: <a href="/feature?rql=x">4004</a>,
+            children: <Link href="/feature?rql=x">4004</Link>,
           },
         ]}
       />,

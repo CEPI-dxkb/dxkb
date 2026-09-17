@@ -11,7 +11,7 @@ function cardTitleNodes(): Element[] {
 
 /** Every overview section title on the page, in DOM order. */
 export function overviewSectionTitles(): string[] {
-  return cardTitleNodes().map((node) => node.textContent ?? "");
+  return cardTitleNodes().map((node) => node.textContent);
 }
 
 /** The card element for one overview section, located by its title. */
@@ -30,7 +30,7 @@ export function overviewSection(title: string): HTMLElement {
 /** The `<dt>` labels inside one overview section, in DOM order. */
 export function overviewSectionLabels(title: string): string[] {
   return Array.from(overviewSection(title).querySelectorAll("dt")).map(
-    (dt) => dt.textContent ?? "",
+    (dt) => dt.textContent,
   );
 }
 
@@ -46,7 +46,7 @@ export function overviewFieldValue(title: string, label: string): string {
       `No field labelled "${label}" in section "${title}". Present: ${overviewSectionLabels(title).join(" | ")}`,
     );
   }
-  return definition.textContent ?? "";
+  return definition.textContent;
 }
 
 /** The `<a href>` values inside one overview section, in DOM order. */
@@ -59,6 +59,6 @@ export function overviewSectionHrefs(title: string): string[] {
 /** Section titles whose body is the shared empty-section fallback. */
 export function emptyOverviewSectionTitles(): string[] {
   return overviewSectionTitles().filter((title) =>
-    overviewSection(title).textContent?.includes("No data available."),
+    overviewSection(title).textContent.includes("No data available."),
   );
 }

@@ -1,10 +1,10 @@
-import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { MetadataLink } from "@/components/detail-panel/metadata-link";
 import {
-  OverviewCard,
-  OverviewField,
+  OverviewSection,
   formatOverviewValue,
   isOverviewValueAvailable,
+  type OverviewSectionField,
 } from "@/components/views";
 import type { ExperimentViewRecord } from "@/lib/experiment-view";
 import { experimentHref, genomeHref } from "@/lib/views/hrefs";
@@ -14,53 +14,44 @@ interface LinkItem {
   label: string;
 }
 
-interface LinkFieldProps {
-  label: string;
-  items: LinkItem[];
-  external?: boolean;
-}
-
 interface ExperimentOverviewProps {
   experiment: ExperimentViewRecord;
 }
 
-function LinkField({ label, items, external = false }: LinkFieldProps) {
+/**
+ * A field holding zero or more links laid out inline. Each destination goes
+ * through the shared `MetadataLink` boundary, which decides internal versus
+ * external and renders the new-tab icon only for a destination it classified
+ * as external — this field no longer carries its own `external` flag, so a
+ * caller cannot disagree with the classifier about what a URL is.
+ */
+function linkListField(
+  label: string,
+  items: readonly LinkItem[],
+): OverviewSectionField {
   const availableItems = items.filter((item) => item.label !== "");
-
-  return (
-    <OverviewField
-      label={label}
-      available={availableItems.length > 0}
-      className="mt-0.5 flex flex-wrap gap-x-2 wrap-break-word"
-    >
-      {availableItems.map((item) =>
-        item.href ? (
-          external ? (
-            <a
-              key={`${item.href}-${item.label}`}
-              className="inline-flex items-center gap-1 text-primary underline"
-              href={item.href}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {item.label}
-              <ExternalLink className="size-3" aria-hidden="true" />
-            </a>
-          ) : (
-            <Link
-              key={`${item.href}-${item.label}`}
-              className="text-primary underline"
-              href={item.href}
-            >
-              {item.label}
-            </Link>
-          )
-        ) : (
-          <span key={item.label}>{item.label}</span>
-        ),
-      )}
-    </OverviewField>
-  );
+  return {
+    label,
+    value: availableItems,
+    available: availableItems.length > 0,
+    className: "mt-0.5 flex flex-wrap gap-x-2 wrap-break-word",
+    children: availableItems.map((item) =>
+      item.href ? (
+        <MetadataLink
+          key={`${item.href}-${item.label}`}
+          href={item.href}
+          className="inline-flex items-center gap-1"
+          externalIndicator={
+            <ExternalLink className="size-3" aria-hidden="true" />
+          }
+        >
+          {item.label}
+        </MetadataLink>
+      ) : (
+        <span key={item.label}>{item.label}</span>
+      ),
+    ),
+  };
 }
 
 function repositoryHref(
@@ -90,135 +81,100 @@ export function ExperimentOverview({ experiment }: ExperimentOverviewProps) {
   );
   return (
     <div className="grid gap-4 pb-6 xl:grid-cols-2">
-      <OverviewCard title="Study">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <OverviewField label="Study name" value={experiment.study_name} />
-          <OverviewField label="Study title" value={experiment.study_title} />
-          <OverviewField
-            label="Description"
-            value={experiment.study_description}
-          />
-          <OverviewField
-            label="Principal investigator"
-            value={experiment.study_pi}
-          />
-          <OverviewField
-            label="Institution"
-            value={experiment.study_institution}
-          />
-        </dl>
-      </OverviewCard>
-      <OverviewCard title="Experiment">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <OverviewField label="Experiment ID" value={experiment.exp_id} />
-          <OverviewField label="Name" value={experiment.exp_name} />
-          <OverviewField label="Title" value={experiment.exp_title} />
-          <OverviewField
-            label="Description"
-            value={experiment.exp_description}
-          />
-          <OverviewField
-            label="Point of contact"
-            value={experiment.exp_poc}
-          />
-          <OverviewField
-            label="Experimenters"
-            value={experiment.experimenters}
-          />
-          <OverviewField label="Type" value={experiment.exp_type} />
-          <OverviewField
-            label="Measurement technique"
-            value={experiment.measurement_technique}
-          />
-        </dl>
-      </OverviewCard>
-      <OverviewCard title="Repository and publication">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <OverviewField
-            label="Public repository"
-            value={experiment.public_repository}
-          />
-          <LinkField
-            label="Public identifier"
-            items={
-              experiment.public_identifier
-                ? [{ href: publicHref, label: experiment.public_identifier }]
-                : []
-            }
-            external
-          />
-          <LinkField
-            label="PubMed"
-            items={
-              experiment.pmid != null
-                ? [
-                    {
-                      href: `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(String(experiment.pmid))}/`,
-                      label: formatOverviewValue(experiment.pmid),
-                    },
-                  ]
-                : []
-            }
-            external
-          />
-        </dl>
-      </OverviewCard>
-      <OverviewCard title="Organism and treatment">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <OverviewField label="Organism" value={experiment.organism} />
-          <OverviewField label="Strain" value={experiment.strain} />
-          <LinkField
-            label="Genome"
-            items={genomeIds.map((genomeId) => ({
+      <OverviewSection
+        title="Study"
+        fields={[
+          { label: "Study name", value: experiment.study_name },
+          { label: "Study title", value: experiment.study_title },
+          { label: "Description", value: experiment.study_description },
+          { label: "Principal investigator", value: experiment.study_pi },
+          { label: "Institution", value: experiment.study_institution },
+        ]}
+      />
+      <OverviewSection
+        title="Experiment"
+        fields={[
+          { label: "Experiment ID", value: experiment.exp_id },
+          { label: "Name", value: experiment.exp_name },
+          { label: "Title", value: experiment.exp_title },
+          { label: "Description", value: experiment.exp_description },
+          { label: "Point of contact", value: experiment.exp_poc },
+          { label: "Experimenters", value: experiment.experimenters },
+          { label: "Type", value: experiment.exp_type },
+          {
+            label: "Measurement technique",
+            value: experiment.measurement_technique,
+          },
+        ]}
+      />
+      <OverviewSection
+        title="Repository and publication"
+        fields={[
+          { label: "Public repository", value: experiment.public_repository },
+          linkListField(
+            "Public identifier",
+            experiment.public_identifier
+              ? [{ href: publicHref, label: experiment.public_identifier }]
+              : [],
+          ),
+          linkListField(
+            "PubMed",
+            experiment.pmid != null
+              ? [
+                  {
+                    href: `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(String(experiment.pmid))}/`,
+                    label: formatOverviewValue(experiment.pmid),
+                  },
+                ]
+              : [],
+          ),
+        ]}
+      />
+      <OverviewSection
+        title="Organism and treatment"
+        fields={[
+          { label: "Organism", value: experiment.organism },
+          { label: "Strain", value: experiment.strain },
+          linkListField(
+            "Genome",
+            genomeIds.map((genomeId) => ({
               href: genomeHref(genomeId),
               label: genomeId,
-            }))}
-          />
-          <OverviewField
-            label="Treatment type"
-            value={experiment.treatment_type}
-          />
-          <OverviewField
-            label="Treatment name"
-            value={experiment.treatment_name}
-          />
-          <OverviewField
-            label="Treatment amount"
-            value={experiment.treatment_amount}
-          />
-          <OverviewField
-            label="Treatment duration"
-            value={experiment.treatment_duration}
-          />
-        </dl>
-      </OverviewCard>
-      <OverviewCard title="Samples and biosets">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <OverviewField label="Samples" value={experiment.samples} />
-          <LinkField
-            label="Biosets"
-            items={
-              isOverviewValueAvailable(experiment.biosets)
-                ? [
-                    {
-                      href: `${experimentHref(experiment.exp_id)}?tab=biosets`,
-                      label: formatOverviewValue(experiment.biosets),
-                    },
-                  ]
-                : []
-            }
-          />
-        </dl>
-      </OverviewCard>
-      <OverviewCard title="Additional metadata">
-        <dl className="grid gap-4 sm:grid-cols-2">
-          <OverviewField label="Date added" value={experiment.date_inserted} />
-          <OverviewField
-            label="Additional metadata"
-            value={experiment.additional_metadata}
-          />
-        </dl>
-      </OverviewCard>
+            })),
+          ),
+          { label: "Treatment type", value: experiment.treatment_type },
+          { label: "Treatment name", value: experiment.treatment_name },
+          { label: "Treatment amount", value: experiment.treatment_amount },
+          { label: "Treatment duration", value: experiment.treatment_duration },
+        ]}
+      />
+      <OverviewSection
+        title="Samples and biosets"
+        fields={[
+          { label: "Samples", value: experiment.samples },
+          linkListField(
+            "Biosets",
+            isOverviewValueAvailable(experiment.biosets)
+              ? [
+                  {
+                    href: `${experimentHref(experiment.exp_id)}?tab=biosets`,
+                    label: formatOverviewValue(experiment.biosets),
+                  },
+                ]
+              : [],
+          ),
+        ]}
+      />
+      <OverviewSection
+        title="Additional metadata"
+        fields={[
+          { label: "Date added", value: experiment.date_inserted },
+          {
+            label: "Additional metadata",
+            value: experiment.additional_metadata,
+          },
+        ]}
+      />
     </div>
   );
 }

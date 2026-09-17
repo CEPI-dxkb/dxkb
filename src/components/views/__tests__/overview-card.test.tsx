@@ -107,7 +107,9 @@ describe("formatOverviewValue", () => {
 
 describe("OverviewField", () => {
   it("omits the field for a null value (no empty dt/dd pair)", () => {
-    const { container } = render(<OverviewField label="Missing" value={null} />);
+    const { container } = render(
+      <OverviewField label="Missing" value={null} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -117,7 +119,9 @@ describe("OverviewField", () => {
   });
 
   it("omits the field for an empty array instead of rendering an empty dd", () => {
-    const { container } = render(<OverviewField label="Accessions" value={[]} />);
+    const { container } = render(
+      <OverviewField label="Accessions" value={[]} />,
+    );
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -162,13 +166,20 @@ describe("OverviewField", () => {
   it("renders an external link via children", () => {
     render(
       <OverviewField label="PubMed" value="12345" available>
-        <a href="https://pubmed.ncbi.nlm.nih.gov/12345/" target="_blank" rel="noopener noreferrer">
+        <a
+          href="https://pubmed.ncbi.nlm.nih.gov/12345/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           12345
         </a>
       </OverviewField>,
     );
     const link = screen.getByRole("link", { name: "12345" });
-    expect(link).toHaveAttribute("href", "https://pubmed.ncbi.nlm.nih.gov/12345/");
+    expect(link).toHaveAttribute(
+      "href",
+      "https://pubmed.ncbi.nlm.nih.gov/12345/",
+    );
     expect(link).toHaveAttribute("target", "_blank");
   });
 
@@ -207,13 +218,11 @@ describe("OverviewCard", () => {
     expect(screen.getByText("content")).toBeInTheDocument();
   });
 
-  it("renders a fallback message when the card has no available fields", () => {
-    render(
-      <OverviewCard title="Empty section">
-        <p className="text-sm text-muted-foreground">No data available.</p>
-      </OverviewCard>,
-    );
-    expect(screen.getByText("Empty section")).toBeInTheDocument();
-    expect(screen.getByText("No data available.")).toBeInTheDocument();
-  });
+  // There is deliberately no empty-card test here. `OverviewCard` takes opaque
+  // `children`, so it cannot know whether the body it was handed is empty; a
+  // test that passed it the fallback paragraph and then asserted the paragraph
+  // could not fail for any behaviour of this component. Deciding a section is
+  // empty belongs to `OverviewSection` (see `overview-section.test.tsx`), and
+  // the policy is asserted against real entity overviews in the six
+  // `*-overview.test.tsx` suites under `src/app/(views)/`.
 });

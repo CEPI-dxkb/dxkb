@@ -14,6 +14,14 @@
  * The setup specs are shared between the two configs (both `testMatch` them),
  * so the destination is resolved from the running project's name rather than
  * hard-coded: one setup spec, two destinations.
+ *
+ * This removes the storage-state collision, not every collision. Two a11y
+ * sweeps running at once still share `a11ySummaryPath` and the JSON reporter's
+ * single `results.json`, and would overwrite each other's copy — per-invocation
+ * scoping covers the scan *records* those files are built from, not the files
+ * themselves. That is left alone deliberately: CI runs one sweep per job, and
+ * on the dev machine the operational rule is to run the heavy suites
+ * sequentially anyway (for resource contention, not for this).
  */
 
 export const e2eSignedInStatePath = "e2e/.auth/e2e-signed-in.json";

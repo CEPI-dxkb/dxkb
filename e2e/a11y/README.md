@@ -41,6 +41,13 @@ run in either order.
 | `.misc/a11y-report/a11y-summary.json` | `teardown.ts` | Per-route/theme scan summary for **one** invocation. `pnpm a11y:baseline:update` reads it, so run the sweep immediately before that script. |
 | `.misc/a11y-meta-results/`, `.misc/a11y-meta-report/` | `a11y:meta` only | Kept separate on purpose — see above. |
 
+Only the scan records are per-invocation. `results.json` and
+`a11y-summary.json` are single files, so two sweeps running at the same time
+would overwrite each other's copy — run the heavy suites sequentially (which is
+the operational rule on the dev machine regardless) and note that CI runs one
+sweep per job. What the split below guarantees is that `a11y:meta` can never be
+the run that does the overwriting.
+
 Scan records are written to `.misc/a11y-report/scans/<A11Y_RUN_ID>/` and the
 global teardown aggregates and removes only that directory. `setup.ts` assigns
 the id in the config process before any worker forks, which is how every worker
@@ -154,4 +161,5 @@ per job (14-day retention).
 
 No job seeds the auth state as a separate step: every a11y *browser* project declares
 `dependencies: ["a11y-setup-signed-in"]`, so Playwright runs that setup project
-to completion first — an explicit step just ran it twice.
+to completion first. An explicit step only re-ran a setup that was already
+guaranteed to have run.

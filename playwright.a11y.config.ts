@@ -15,9 +15,11 @@ const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 // Every browser project restates this, because a project-level `testMatch`
 // replaces the config-level one rather than narrowing it. Without it the
 // browser projects also match the auth setup files below and run them as
-// ordinary tests — which is a third execution of a setup their `dependencies`
-// already guarantee, re-writing the storage state its sibling tests are
-// concurrently reading under `fullyParallel`.
+// ordinary tests — re-running a setup that `dependencies` has already
+// guaranteed, and doing it *concurrently with the tests that read the storage
+// state it writes*, because `fullyParallel` is on. The concurrency is the
+// defect; how many redundant executions it works out to depends on which
+// projects and files the invocation selects, so no count is asserted here.
 const a11ySpecs = /tests\/a11y\/(?!coverage\.meta\.spec\.ts$).*\.spec\.ts$/;
 
 export default defineConfig({

@@ -51,13 +51,19 @@ export const pruneThreshold = 1_000;
  * forever, for no eviction. Adding this interval turns the cost into one O(n)
  * scan per interval instead of one per request.
  *
- * One minute because that is the window length both callers use
- * (`rateLimitWindowMs` in `/api/data/[resource]` and
- * `/api/taxonomy-tree/[operation]`). A bucket becomes prunable at most one
- * window after its last hit, so sweeping on the same cadence bounds how long
- * an expired bucket survives physically at roughly one extra window — while a
- * shorter cadence would buy no memory back, because nothing can have expired
- * yet.
+ * One minute because that is the *shortest* window any caller uses, and the one
+ * the two high-volume callers use: `/api/data/[resource]` and
+ * `/api/taxonomy-tree/[operation]` both set `rateLimitWindowMs` to 60,000.
+ * (`/api/contact` is the third caller and uses an hour, which this cadence
+ * serves just as well — see below.)
+ *
+ * A bucket only becomes prunable once *its own* window has ended, and the next
+ * sweep after that point removes it. So the bound is "its own window, plus at
+ * most one interval", whatever that window is. Sizing the interval to the
+ * shortest window is therefore the useful choice: a shorter cadence would buy
+ * no memory back, because nothing new can have expired yet, and a longer one
+ * would leave the 60,000 ms buckets — the only ones that accumulate in volume —
+ * lingering for multiples of their own lifetime.
  *
  * Note this bounds *physical* eviction only. Logical expiry is unaffected:
  * `rateLimit` still compares `now` against the bucket's own `resetAt` on every

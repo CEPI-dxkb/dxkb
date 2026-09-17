@@ -25,9 +25,12 @@ async function loadExperiment(
   source: RouteParamSource,
 ) {
   // The two entry points receive this segment in different encodings, so
-  // each declares which it is. Decoding unconditionally made
-  // `generateMetadata` resolve a different record than the body for any id
-  // containing a literal percent escape. See `readRouteParam`.
+  // each declares which it is. Unlike the feature and epitope views, this
+  // route never had the underlying bug: `isExperimentId` accepts digits only,
+  // so no experiment id can carry a percent escape for the two encodings to
+  // differ on. Declaring `source` here is uniformity with the other member
+  // views — one way to read a route param — not a fix for a live defect. See
+  // `readRouteParam`.
   const experimentId = readRouteParam(rawExperimentId, source);
   if (!isExperimentId(experimentId)) notFound();
   try {

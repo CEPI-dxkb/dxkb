@@ -1199,9 +1199,10 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
     let remaining = source;
     for (const declaration of allowed) {
       const start = remaining.indexOf(declaration);
-      expect(`${declaration} present`).toBe(
-        start === -1 ? `${declaration} missing` : `${declaration} present`,
-      );
+      expect(
+        start,
+        `\`${declaration}\` is gone from route.ts — this scan allowlists it by name, so rename it here too or the scan silently stops covering it.`,
+      ).not.toBe(-1);
       const end = remaining.indexOf("\n}\n", start);
       remaining = remaining.slice(0, start) + remaining.slice(end);
     }
@@ -1211,7 +1212,10 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^\s*\/\/.*$/gm, "");
 
-    expect([...code.matchAll(/status:\s*\d{3}/g)].map((m) => m[0])).toEqual([]);
+    expect(
+      [...code.matchAll(/status:\s*\d{3}/g)].map((m) => m[0]),
+      "a 4xx/5xx status literal outside the allowed helpers: route it through `unhandledResponse` or `unhandledRpcResponse` so it carries the rejection prefix, or add its enclosing function to `allowed` above with a comment saying why it is not a fixture gap.",
+    ).toEqual([]);
   });
 
   it("GET reports the canonical ppi total for an unnarrowed count", async () => {

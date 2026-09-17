@@ -108,6 +108,15 @@ function logHit(method: string, path: string, extra?: string): void {
  * module's source so a future branch cannot add a bare `status:` literal
  * outside these helpers without failing.
  */
+/**
+ * Every rejection this module answers carries this prefix, because callers
+ * pass a bare label and {@link rejectionError} builds the string.
+ *
+ * The completeness test in `__tests__/route.test.ts` enforces that by scanning
+ * *this file*, so the guarantee ends at the module boundary: `identity.ts`
+ * already returns its own 401/404 from this directory. A rejection helper has
+ * to stay here, or that scan has to grow to cover wherever it moves.
+ */
 const rejectionPrefix = "e2e-mock: ";
 
 function rejectionError(label: string): string {

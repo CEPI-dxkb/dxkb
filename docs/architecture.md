@@ -22,8 +22,10 @@ component's param must be read back exactly once: use `readRouteParam` /
 carries the Next-internals citation and the per-entry-point rules. Do not
 decode in `generateMetadata` or in a route handler — both already receive the
 decoded value, and decoding there corrupts an identifier containing a literal
-`%xx`. (The `workspace/[username]/**` pages predate the helper and do the same
-single decode through `safeDecode`; that is correct, just older.)
+`%xx`. (Four pages under `workspace/[username]/**` and `workspace/public/**`
+predate the helper and do the same single decode through `safeDecode`; that is
+correct, just older. `workspace/[username]/page.tsx` is no longer among them —
+it reads through `readRouteParam` now.)
 
 - `/` — Public home page (search, news, statistics)
 - `(auth)/` — `sign-in`, `sign-up`, `forgot-password`

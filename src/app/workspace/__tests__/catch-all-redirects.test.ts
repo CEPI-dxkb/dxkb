@@ -25,7 +25,9 @@ const userId = "e2e-test-user@patricbrc.org";
  * human would type them.
  */
 function pageParams(segments: string[]) {
-  return { params: Promise.resolve({ path: segments.map(encodeURIComponent) }) };
+  return {
+    params: Promise.resolve({ path: segments.map(encodeURIComponent) }),
+  };
 }
 
 async function redirectTargetOf(

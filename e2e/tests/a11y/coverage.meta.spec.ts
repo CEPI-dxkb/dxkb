@@ -267,20 +267,46 @@ test.describe("a11y suppression keys", () => {
     ).toEqual([]);
   });
 
-  test("a scan key mentioned only in a comment does not count as scanned", () => {
-    // The check this pins: the previous version tested `source.includes()`, so
-    // a stale key left behind in a comment kept its entry alive.
+  test("only a top-level literal in a live call counts as scanned", () => {
+    // Every line here miscredited a key at some point in this task's history.
     const source = [
+      // 1. A key surviving only in a comment (the original `includes()` bug).
       '// legacy surface: "ghost-surface" was scanned here until DXKBCORE-000',
+      // 2. A fully commented-out call.
+      '// assertNoBlocking(page, "commented-out-surface", theme);',
+      // 3. A block comment inside a live call's argument list.
+      'assertNoBlockingViolations(violations, /* was "ghost-in-args" */ target.name, theme);',
+      // 4. A nested call's literal, and an object literal's.
+      'assertNoBlockingViolations(scanPage(page, "nested-surface"), target.name, theme);',
+      'assertNoBlocking(page, { include: "object-surface" }, theme);',
+      // 5. A `//` inside a string must not start a comment.
+      'assertNoBlockingViolations(violations, "real//surface", theme);',
+      // What should be picked up:
       'assertNoBlockingViolations(violations, "real-surface", theme);',
       "assertNoBlockingViolations(violations, target.name, theme);",
       'assertNoBlocking(\n  page,\n  "multiline-surface",\n  theme,\n);',
     ].join("\n");
 
     expect(extractScannedKeys(source)).toEqual([
+      "real//surface",
       "real-surface",
       "multiline-surface",
     ]);
+  });
+
+  test("a key passed as anything but a plain double-quoted literal is rejected", () => {
+    // These fail *closed* — the key is reported unreferenced rather than
+    // credited. Pinned so the doc comment's list stays true.
+    const source = [
+      "assertNoBlocking(page, `template-surface`, theme);",
+      "assertNoBlocking(page, 'single-quoted-surface', theme);",
+      "assertNoBlocking(page, surfaceNameVariable, theme);",
+      'assertNoBlocking(page, "pre" + "fix", theme);',
+    ].join("\n");
+
+    // The concatenation contributes its first fragment, not the joined key —
+    // which is still a rejection of "prefix", the key someone meant.
+    expect(extractScannedKeys(source)).toEqual(["pre"]);
   });
 });
 

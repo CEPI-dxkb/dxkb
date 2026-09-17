@@ -10,13 +10,21 @@ import { scanTargets } from "./routes";
  * than derived because the alternative is a guard that cannot tell a renamed
  * route from a component scan, and so cannot reject either.
  *
- * `coverage.meta.spec.ts` checks every key below is still passed as a string
- * literal to an `assertNoBlocking*` call in an `e2e/tests/a11y/*.spec.ts`
+ * `coverage.meta.spec.ts` checks every key below is still passed as a top-level
+ * string literal to an `assertNoBlocking*` call in an `e2e/tests/a11y/*.spec.ts`
  * source (see {@link extractScannedKeys}), so a deleted or renamed surface
- * leaves its entry here unreferenced. It matches call arguments rather than raw
- * text, so a key surviving only in a comment does not satisfy it. What it does
- * not check is *which* spec scans the key — the enumeration records no owner —
- * so moving a surface between a11y specs keeps its entry valid.
+ * leaves its entry here unreferenced.
+ *
+ * Two limits of that check, stated so nobody has to re-derive them:
+ *
+ * - It does not record *which* spec scans a key, so moving a surface between
+ *   a11y specs keeps its entry valid.
+ * - It only recognises a plain double-quoted literal in the call's own argument
+ *   list. A key passed as a template literal, a single-quoted string, a
+ *   variable or a concatenation is *not* recognised — the entry is reported as
+ *   unreferenced. That direction is safe (it fails loudly rather than
+ *   accepting), but if a key you are sure is scanned is rejected, this is why:
+ *   pass it as a plain `"double-quoted"` literal.
  *
  * Adding a surface is the other direction and is not enforced: an un-enumerated
  * surface only matters once someone baselines it, and the stale key message
@@ -56,32 +64,93 @@ export const nonRouteScanKeys: readonly string[] = [
 ];
 
 /**
- * Scan keys a spec source passes as a string literal to an `assertNoBlocking*`
- * call — the first literal inside each call's own argument list.
+ * Remove line and block comments, leaving string and template literals intact.
  *
- * Walks the argument list with a paren counter rather than using one regex: the
- * sweep also calls `assertNoBlockingViolations(violations, target.name, theme)`
- * with no literal at all, and a regex that simply scanned forward for the next
- * `"` would attribute an unrelated literal from further down the file to it.
- * Calls whose argument list holds no double-quoted literal contribute nothing.
+ * A lexical approximation, not a parser: it tracks quotes so a `//` inside a
+ * string survives, and it declines to start a line comment on a backslash-
+ * escaped slash so a regex literal ending `\//` is not mistaken for one. If it
+ * ever over-strips, the consequence is that a real `assertNoBlocking*` call
+ * disappears and its key is reported as unreferenced — loud, not silent. The
+ * unsafe direction is under-stripping, which is what this exists to prevent.
+ */
+function stripComments(source: string): string {
+  let out = "";
+  let i = 0;
+  while (i < source.length) {
+    const char = source[i];
+    const next = source[i + 1];
+    if (char === '"' || char === "'" || char === "`") {
+      out += char;
+      i++;
+      while (i < source.length) {
+        if (source[i] === "\\") {
+          out += source.slice(i, i + 2);
+          i += 2;
+          continue;
+        }
+        out += source[i];
+        const closed = source[i] === char;
+        i++;
+        if (closed) break;
+      }
+      continue;
+    }
+    if (char === "/" && next === "/" && source[i - 1] !== "\\") {
+      while (i < source.length && source[i] !== "\n") i++;
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      i += 2;
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) i++;
+      i += 2;
+      continue;
+    }
+    out += char;
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Scan keys a spec source passes to an `assertNoBlocking*` call: the first
+ * double-quoted literal at the *top level* of that call's own argument list.
+ *
+ * Three properties, each there because its absence miscredited a key:
+ *
+ * - Comments are stripped first, so neither a commented-out call nor a comment
+ *   sitting inside a live call's argument list can supply a key.
+ * - The argument list is walked with a bracket counter rather than matched with
+ *   one regex, because the sweep also calls
+ *   `assertNoBlockingViolations(violations, target.name, theme)` with no
+ *   literal at all; a regex scanning forward for the next `"` would hand it an
+ *   unrelated literal from further down the file.
+ * - Only depth-1 literals count, so a nested call's or object literal's string
+ *   — `assertNoBlocking(scanPage(page, "not-a-key"), name, theme)` — is not
+ *   mistaken for the scan key.
+ *
+ * Calls with no qualifying literal contribute nothing.
  */
 export function extractScannedKeys(source: string): string[] {
   const keys: string[] = [];
+  const stripped = stripComments(source);
   const callPattern = /assertNoBlocking\w*\(/g;
   let call: RegExpExecArray | null;
-  while ((call = callPattern.exec(source)) !== null) {
+  while ((call = callPattern.exec(stripped)) !== null) {
     let depth = 1;
     let quote: string | null = null;
+    let quoteDepth = 0;
     let literal: string | null = null;
     let current = "";
-    for (let i = call.index + call[0].length; i < source.length; i++) {
-      const char = source[i];
+    for (let i = call.index + call[0].length; i < stripped.length; i++) {
+      const char = stripped[i];
       if (quote) {
         if (char === "\\") {
-          current += source[i + 1] ?? "";
+          current += stripped[i + 1] ?? "";
           i++;
         } else if (char === quote) {
-          if (quote === '"' && literal === null) literal = current;
+          if (quote === '"' && literal === null && quoteDepth === 1) {
+            literal = current;
+          }
           quote = null;
         } else {
           current += char;
@@ -90,11 +159,16 @@ export function extractScannedKeys(source: string): string[] {
       }
       if (char === '"' || char === "'" || char === "`") {
         quote = char;
+        quoteDepth = depth;
         current = "";
         continue;
       }
-      if (char === "(") depth++;
-      else if (char === ")" && --depth === 0) break;
+      if (char === "(" || char === "[" || char === "{") depth++;
+      else if (char === "]" || char === "}") depth--;
+      else if (char === ")") {
+        depth--;
+        if (depth === 0) break;
+      }
     }
     if (literal !== null) keys.push(literal);
   }

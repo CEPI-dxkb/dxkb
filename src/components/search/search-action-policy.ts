@@ -369,21 +369,29 @@ export function visibleSearchActions({
 export interface SearchActionEnablement {
   disabledActions?: Partial<Record<SearchActionId, string>>;
   enabledActions?: readonly SearchActionId[];
+  /** Actions currently resolving, which the bar disables while they run. */
+  loadingActionIds?: readonly SearchActionId[];
 }
 
 /**
- * Whether a visible action is disabled: the consumer gave an explicit reason, or the
- * action is one of the `disabledWithTooltip` entries and the consumer has not opted
- * it in through `enabledActions`. A disabled action stays in the DOM — that is the
- * difference between this and `visibleSearchActions`.
+ * Whether a visible action's button is disabled: the consumer gave an explicit
+ * reason, or the action is one of the `disabledWithTooltip` entries and the consumer
+ * has not opted it in through `enabledActions`, or it is mid-flight. A disabled action
+ * stays in the DOM — that is the difference between this and `visibleSearchActions`.
+ *
+ * All three rules live here rather than two here and one in the bar, so the test fake
+ * cannot offer a click on an action production has disabled. `SearchActionBar` calls
+ * this twice per action: once without `loadingActionIds` to pick the button's
+ * *structure*, and once with it for the `disabled` attribute — see the call site.
  */
 export function isSearchActionDisabled(
   action: SearchActionConfig,
-  { disabledActions, enabledActions }: SearchActionEnablement,
+  { disabledActions, enabledActions, loadingActionIds }: SearchActionEnablement,
 ): boolean {
   return (
     Boolean(disabledActions?.[action.id]) ||
     (!enabledActions?.includes(action.id) &&
-      Boolean(action.disabledWithTooltip))
+      Boolean(action.disabledWithTooltip)) ||
+    (loadingActionIds?.includes(action.id) ?? false)
   );
 }

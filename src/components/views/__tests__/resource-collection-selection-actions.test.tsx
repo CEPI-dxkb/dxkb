@@ -32,7 +32,9 @@ const { push, downloadResourceExport, useResourceCollection } = vi.hoisted(
 let actionBarProps: Record<string, unknown>;
 
 vi.mock("next/navigation", async () =>
-  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({ push }),
+  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({
+    push,
+  }),
 );
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
@@ -41,25 +43,37 @@ vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
 );
 vi.mock("@/contexts/workspace-repository-context", async () =>
-  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).workspaceRepositoryContextMock(),
 );
 vi.mock("../collection-copy-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionCopyDialogMock(),
 );
 vi.mock("../selection-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionServiceChooserMock(),
 );
 vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionToGroupDialogMock(),
 );
 vi.mock("../resource-export", async () =>
-  (await import("./fixtures/resource-collection-mocks")).resourceExportMock(downloadResourceExport),
+  (await import("./fixtures/resource-collection-mocks")).resourceExportMock(
+    downloadResourceExport,
+  ),
 );
 vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
 vi.mock("../resource-filter-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).resourceFilterBarMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).resourceFilterBarMock(),
 );
 // The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
 // It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
@@ -69,18 +83,24 @@ vi.mock("../resource-filter-bar", async () =>
 // prop values directly (captured here as actionBarProps), independent of what this
 // fake renders.
 vi.mock("@/components/search/search-action-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock((props) => {
-    actionBarProps = props;
-  }),
+  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
+    (props) => {
+      actionBarProps = props;
+    },
+  ),
 );
 vi.mock("@/components/detail-panel/info-panel", async () =>
   (await import("./fixtures/resource-collection-mocks")).infoPanelMock(),
 );
 vi.mock("../taxonomy-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).taxonomyServiceChooserMock(),
 );
 vi.mock("../resource-workspace", async () =>
-  (await import("./fixtures/resource-collection-mocks")).flatResourceWorkspaceMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).flatResourceWorkspaceMock(),
 );
 vi.mock("@/components/shared/data-table", () => ({
   DataTable: (props: Record<string, unknown>) => {
@@ -634,9 +654,15 @@ describe("ResourceCollection selection actions", () => {
     // present, with the native `disabled` attribute. `toBeDisabled()` proves each
     // destination is genuinely unreachable in the real UI's own terms, not just that a
     // click happens to have no effect.
-    expect(screen.getByRole("button", { name: "Genome action" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Feature action" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Structure action" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Genome action" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Feature action" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Structure action" }),
+    ).toBeDisabled();
   });
 
   it("keeps the Strain Genomes action disabled without associated genomes", () => {
@@ -670,7 +696,9 @@ describe("ResourceCollection selection actions", () => {
     // the real bar disables rather than removes a gated-off button, so both are still
     // present here — `toBeDisabled()` proves each is genuinely unreachable rather than
     // merely unclicked.
-    expect(screen.getByRole("button", { name: "Genomes action" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Genomes action" }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
   });
 
@@ -832,9 +860,18 @@ const actionMatrixFixtures: {
   rows: Record<string, unknown>[];
   enabledActions: string[];
   disabledActions?: Record<string, string | undefined>;
+  /**
+   * Whether the bar has a DWNLD entry for this resource at all — written out rather
+   * than asked of `visibleSearchActions`, so a regression that hid DWNLD everywhere
+   * fails here instead of quietly agreeing with itself. Taxa, Strains and Genomes are
+   * absent from `download`'s `validSearchTypes` and download from the table instead.
+   * The test cross-checks this column against the policy, so it cannot drift either.
+   */
+  offersDownload: boolean;
 }[] = [
   {
     resource: "taxonomy",
+    offersDownload: false,
     label: "Taxa",
     idField: "taxon_id",
     rows: [
@@ -845,6 +882,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "strain",
+    offersDownload: false,
     label: "Strains",
     idField: "id",
     rows: [
@@ -855,6 +893,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "genome",
+    offersDownload: false,
     label: "Genomes",
     idField: "genome_id",
     rows: [{ genome_id: "83332.12" }, { genome_id: "83332.13" }],
@@ -862,6 +901,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "genome_feature",
+    offersDownload: true,
     label: "Features",
     idField: "feature_id",
     rows: [{ feature_id: "PATRIC.1" }, { feature_id: "PATRIC.2" }],
@@ -869,6 +909,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "genome_sequence",
+    offersDownload: true,
     label: "Sequences",
     idField: "sequence_id",
     rows: [
@@ -879,6 +920,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "protein_feature",
+    offersDownload: true,
     label: "Domains and Motifs",
     idField: "id",
     rows: [
@@ -889,6 +931,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "protein_structure",
+    offersDownload: true,
     label: "Protein Structures",
     idField: "pdb_id",
     rows: [
@@ -906,6 +949,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "sequence_feature",
+    offersDownload: true,
     label: "Sequence Features",
     idField: "id",
     rows: [{ id: "sfvt-1" }, { id: "sfvt-2" }],
@@ -913,6 +957,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "epitope",
+    offersDownload: true,
     label: "Epitopes",
     idField: "epitope_id",
     rows: [{ epitope_id: "EPI-1" }, { epitope_id: "EPI-2" }],
@@ -920,6 +965,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "serology",
+    offersDownload: true,
     label: "Serology",
     idField: "id",
     rows: [{ id: "sero-1" }, { id: "sero-2" }],
@@ -927,6 +973,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "surveillance",
+    offersDownload: true,
     label: "Surveillance",
     idField: "id",
     rows: [{ id: "surv-1" }, { id: "surv-2" }],
@@ -934,6 +981,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "ppi",
+    offersDownload: true,
     label: "Interactions",
     idField: "id",
     rows: [
@@ -944,6 +992,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "experiment",
+    offersDownload: true,
     label: "Experiments",
     idField: "exp_id",
     rows: [{ exp_id: "00042" }, { exp_id: "00051" }],
@@ -951,6 +1000,7 @@ const actionMatrixFixtures: {
   },
   {
     resource: "bioset",
+    offersDownload: true,
     label: "Biosets",
     idField: "bioset_id",
     rows: [
@@ -966,12 +1016,35 @@ const actionMatrixTotal = 7;
 
 describe.each(actionMatrixFixtures)(
   "useResourceCollectionActions $resource selection states",
-  ({ resource, label, idField, rows, enabledActions, disabledActions }) => {
+  ({
+    resource,
+    label,
+    idField,
+    rows,
+    enabledActions,
+    disabledActions,
+    offersDownload,
+  }) => {
     const ids = rows.map((row) => String(row[idField]));
     const selectionStates = [
-      { name: "no selection", selectedIds: [], isAllPagesSelected: false, count: 0 },
-      { name: "one row", selectedIds: [ids[0]], isAllPagesSelected: false, count: 1 },
-      { name: "several rows", selectedIds: ids, isAllPagesSelected: false, count: 2 },
+      {
+        name: "no selection",
+        selectedIds: [],
+        isAllPagesSelected: false,
+        count: 0,
+      },
+      {
+        name: "one row",
+        selectedIds: [ids[0]],
+        isAllPagesSelected: false,
+        count: 1,
+      },
+      {
+        name: "several rows",
+        selectedIds: ids,
+        isAllPagesSelected: false,
+        count: 2,
+      },
       {
         name: "every matching row",
         selectedIds: [],
@@ -1008,9 +1081,7 @@ describe.each(actionMatrixFixtures)(
               idField,
               columns: Object.keys(rows[0]).map((id) => ({ id, label: id })),
             }}
-            repository={
-              { exportAll, selected } as unknown as DataRepository
-            }
+            repository={{ exportAll, selected } as unknown as DataRepository}
             state={{ filters: {}, page: 1, sort: `${idField}:asc` }}
             onStateChange={vi.fn()}
           />,
@@ -1025,18 +1096,20 @@ describe.each(actionMatrixFixtures)(
         // `toEqual` would treat that object as equal to `undefined`.
         expect(actionBarProps.disabledActions).toStrictEqual(disabledActions);
 
-        // Whether the bar offers DWNLD at all is the shared policy's call, not this
-        // matrix's: `download` is absent from `validSearchTypes` for Taxa, Strains
-        // and Genomes (those download from the table instead), and
-        // `requiresSelection` removes it from every resource with nothing selected.
-        // Asking the policy keeps the two in step; hand-listing it here is how the
-        // old fake came to offer 23 clicks production never would.
-        const offersDownload = visibleSearchActions({
-          searchType: resource,
-          selectedCount: count,
-          hasGuideUrl: false,
-        }).some((action) => action.id === "download");
-        if (!offersDownload) {
+        // The resource's own column, plus the one selection rule that applies to
+        // DWNLD (`requiresSelection`, and no `maxSelection`), spelled out rather than
+        // asked of the function under test.
+        const expectsDownload = offersDownload && count > 0;
+        // Then cross-check the column against the policy, so the table cannot drift
+        // from `searchActionConfig` without this failing.
+        expect(
+          visibleSearchActions({
+            searchType: resource,
+            selectedCount: count,
+            hasGuideUrl: false,
+          }).some((action) => action.id === "download"),
+        ).toBe(expectsDownload);
+        if (!expectsDownload) {
           expect(
             screen.queryByRole("button", {
               hidden: true,
@@ -1048,12 +1121,16 @@ describe.each(actionMatrixFixtures)(
           return;
         }
 
-        await user.click(screen.getByRole("button", { name: "Download action" }));
+        await user.click(
+          screen.getByRole("button", { name: "Download action" }),
+        );
         if (isAllPagesSelected) {
           await waitFor(() => {
             expect(exportAll).toHaveBeenCalledWith(
               resource,
-              expect.objectContaining({ sort: { field: idField, direction: "asc" } }),
+              expect.objectContaining({
+                sort: { field: idField, direction: "asc" },
+              }),
             );
           });
           expect(selected).not.toHaveBeenCalled();
@@ -1102,9 +1179,7 @@ describe("useResourceCollectionActions error integration", () => {
     await user.click(screen.getByRole("button", { name: "services" }));
     expect(await screen.findByText("Could not complete action")).toBeVisible();
     // The repository's own message reaches the user rather than a generic one.
-    expect(
-      screen.getByText("Data service is unavailable (503)"),
-    ).toBeVisible();
+    expect(screen.getByText("Data service is unavailable (503)")).toBeVisible();
     expect(screen.queryByTestId("selection-services")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "services" }));

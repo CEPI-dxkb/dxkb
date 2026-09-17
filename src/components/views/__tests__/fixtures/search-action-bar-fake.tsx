@@ -17,8 +17,11 @@ import {
  * Sharing the policy makes that impossible rather than merely discouraged: an
  * `actionConfig` change lands on production and the fake in the same edit.
  *
- * What it still fakes is presentation only: one plain `<button>` per visible action
- * instead of icons, spinners, tooltips and sign-in popovers.
+ * What it still fakes is presentation only: one plain `<button>` per visible action,
+ * instead of the real bar's icons, spinners, "not ready" tooltips and sign-in
+ * popovers. Every rule that decides whether a button *exists*, or whether it is
+ * *disabled* — including the `loadingActionIds` one the bar used to apply on its own
+ * — comes from the policy.
  */
 
 /**
@@ -63,6 +66,8 @@ export function createSearchActionBarFake(
         SearchActionConfig["id"][] | undefined,
       disabledActions: props.disabledActions as
         Partial<Record<SearchActionConfig["id"], string>> | undefined,
+      loadingActionIds: props.loadingActionIds as
+        SearchActionConfig["id"][] | undefined,
     };
     const onAction = props.onAction as
       ((action: SearchActionConfig["id"]) => void) | undefined;

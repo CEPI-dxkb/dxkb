@@ -57,7 +57,18 @@ export function SearchActionBar({
     hasGuideUrl: Boolean(guideUrl),
   });
 
+  // Two calls, deliberately. The button's own `disabled` covers all three rules; the
+  // *structure* around it (sign-in popover, "not ready" tooltip, or a plain button)
+  // follows the consumer's enablement only, so an action that is merely mid-flight
+  // keeps its shape and just goes disabled while it resolves.
   const isDisabled = (action: SearchActionConfig) =>
+    isSearchActionDisabled(action, {
+      disabledActions,
+      enabledActions,
+      loadingActionIds,
+    });
+
+  const isDisabledByConsumer = (action: SearchActionConfig) =>
     isSearchActionDisabled(action, { disabledActions, enabledActions });
 
   const isLoading = (actionId: SearchActionId) =>
@@ -71,6 +82,7 @@ export function SearchActionBar({
           const Icon = action.icon;
           const showSpinner = isLoading(action.id);
           const disabled = isDisabled(action);
+          const disabledByConsumer = isDisabledByConsumer(action);
           const tooltipText =
             disabledActions?.[action.id] ?? action.disabledWithTooltip;
           const popoverContent = actionPopovers?.[action.id];
@@ -102,7 +114,7 @@ export function SearchActionBar({
               key={renderKey}
               variant="secondary"
               className="h-15 w-full flex-col gap-1 font-normal"
-              disabled={disabled || showSpinner}
+              disabled={disabled}
               onClick={
                 popoverContent
                   ? undefined
@@ -124,7 +136,7 @@ export function SearchActionBar({
             </Button>
           );
 
-          if (popoverContent && !disabled) {
+          if (popoverContent && !disabledByConsumer) {
             return (
               <Popover key={renderKey}>
                 <PopoverTrigger
@@ -145,7 +157,7 @@ export function SearchActionBar({
             );
           }
 
-          return tooltipText && disabled ? (
+          return tooltipText && disabledByConsumer ? (
             <Tooltip key={renderKey}>
               <TooltipTrigger
                 render={

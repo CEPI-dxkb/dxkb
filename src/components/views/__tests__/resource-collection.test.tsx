@@ -27,7 +27,9 @@ let dataTableProps: Record<string, unknown>;
 let actionBarProps: Record<string, unknown>;
 
 vi.mock("next/navigation", async () =>
-  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({ push }),
+  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({
+    push,
+  }),
 );
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
@@ -36,19 +38,29 @@ vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
 );
 vi.mock("@/contexts/workspace-repository-context", async () =>
-  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).workspaceRepositoryContextMock(),
 );
 vi.mock("../collection-copy-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionCopyDialogMock(),
 );
 vi.mock("../selection-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionServiceChooserMock(),
 );
 vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionToGroupDialogMock(),
 );
 vi.mock("../resource-export", async () =>
-  (await import("./fixtures/resource-collection-mocks")).resourceExportMock(downloadResourceExport),
+  (await import("./fixtures/resource-collection-mocks")).resourceExportMock(
+    downloadResourceExport,
+  ),
 );
 vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
@@ -93,18 +105,24 @@ vi.mock("../resource-filter-bar", () => ({
 // production does (search-action-policy.ts), so a control this suite can query or
 // click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock((props) => {
-    actionBarProps = props;
-  }),
+  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
+    (props) => {
+      actionBarProps = props;
+    },
+  ),
 );
 vi.mock("@/components/detail-panel/info-panel", async () =>
   (await import("./fixtures/resource-collection-mocks")).infoPanelMock(),
 );
 vi.mock("../taxonomy-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).taxonomyServiceChooserMock(),
 );
 vi.mock("../resource-workspace", async () =>
-  (await import("./fixtures/resource-collection-mocks")).flatResourceWorkspaceMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).flatResourceWorkspaceMock(),
 );
 vi.mock("@/components/shared/data-table", () => ({
   DataTable: (props: Record<string, unknown>) => {
@@ -1075,9 +1093,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
         ),
       ).toBeVisible(),
     );
-    expect(
-      screen.queryByText("upstream socket reset"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("upstream socket reset")).not.toBeInTheDocument();
     expect(consoleError).toHaveBeenCalledWith(
       "Resource export failed:",
       "upstream socket reset",
@@ -1209,9 +1225,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       )("csv", null);
     });
 
-    await waitFor(() =>
-      expect(screen.getByText(normalMessage)).toBeVisible(),
-    );
+    await waitFor(() => expect(screen.getByText(normalMessage)).toBeVisible());
   });
 
   it("does not truncate an export error message exactly at the presentation limit", async () => {
@@ -1242,9 +1256,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     await waitFor(() =>
       expect(screen.getByText(boundaryMessage)).toBeVisible(),
     );
-    expect(
-      screen.queryByText(`${boundaryMessage}…`),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(`${boundaryMessage}…`)).not.toBeInTheDocument();
   });
 });
 

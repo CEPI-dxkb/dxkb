@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,12 +26,37 @@ const narrowWorkspaceQuery = "(max-width: 47.999rem)";
 /**
  * Detail-panel extent along the group's main axis, per layout. Stacked gets a much
  * larger share because the axis is the viewport's short one, and it cannot be dragged
- * (the group is `disabled` and the separator is hidden below `md`), so its default is
- * also its final size.
+ * there (the group is `disabled` and the separator is hidden below `md`).
+ *
+ * `panelId` is load-bearing, not decoration. `ResizablePanelGroup` caches its computed
+ * layout under a key built from its panels' joined `id`s and restores that cache in
+ * preference to any `defaultSize`, merely clamping it to the current `minSize`/
+ * `maxSize`. A layout whose sizes change therefore has to change the key too, or the
+ * first mount's split is the only one the group will ever use: crossing the breakpoint
+ * would leave the detail panel clamped to `stacked.minSize` (25%) and crossing back
+ * would leave the desktop panel at that same 25% instead of 15%. Changing an `id` on a
+ * mounted element remounts nothing, which is what lets this coexist with the
+ * one-stable-subtree contract below.
+ *
+ * Because the cache is per key, the two layouts also keep their splits apart: the
+ * stacked layout does not inherit a share dragged along the horizontal axis (where it
+ * would mean nothing), and a width the user dragged side by side is handed back when
+ * they return to it. `resource-workspace.test.tsx` pins all of that as rendered
+ * `flex-grow`, because a `defaultSize` assertion cannot see any of it.
  */
 const detailPanelSizes = {
-  stacked: { defaultSize: "45%", minSize: "25%", maxSize: "60%" },
-  sideBySide: { defaultSize: "15%", minSize: "10%", maxSize: "60%" },
+  stacked: {
+    panelId: "detail-stacked",
+    defaultSize: "45%",
+    minSize: "25%",
+    maxSize: "60%",
+  },
+  sideBySide: {
+    panelId: "detail-side",
+    defaultSize: "15%",
+    minSize: "10%",
+    maxSize: "60%",
+  },
 } as const;
 
 /**
@@ -62,6 +87,10 @@ export function ResourceWorkspace({
   actionBar,
   hasSidePanel = true,
 }: ResourceWorkspaceProps) {
+  // Namespaces the detail panel's id. The library writes a panel's id straight into
+  // the DOM `id` attribute, so two workspaces mounted at once would otherwise collide
+  // on a bare "detail-side" — the duplicate-id failure this item exists to avoid.
+  const instanceId = useId();
   const [panelExpanded, setPanelExpanded] = useState(hasSidePanel);
   const [isNarrow, setIsNarrow] = useState(false);
   const [previousHasSidePanel, setPreviousHasSidePanel] =
@@ -144,12 +173,21 @@ export function ResourceWorkspace({
                 and out of the accessibility tree and tab order with it. */}
             <ResizableHandle withHandle className="max-md:hidden" />
             <ResizablePanel
+              id={`${instanceId}${detailSizes.panelId}`}
               defaultSize={detailSizes.defaultSize}
               minSize={detailSizes.minSize}
               maxSize={detailSizes.maxSize}
               className="relative min-h-0 overflow-hidden"
             >
-              <div className="absolute inset-0 flex flex-col overflow-hidden border-t max-md:overflow-auto max-md:shadow-[0_-8px_24px_-16px_rgb(0_0_0/0.5)]">
+              {/* `border-t` and `max-md:bg-background` are the stacked layout's
+                  separation from the content above it. The old stacked `<aside>` also
+                  carried an upward `shadow-[0_-8px_24px_-16px_…]`; that cannot survive
+                  here, because the library writes `overflow: auto` inline on the
+                  panel's inner div (beating any `overflow-hidden` class) and this
+                  element fills that box exactly, so a shadow drawn above its top edge
+                  is entirely outside the clip. Carrying the class anyway would just be
+                  dead CSS. */}
+              <div className="absolute inset-0 flex flex-col overflow-hidden border-t max-md:overflow-auto max-md:bg-background">
                 {sidePanel}
               </div>
             </ResizablePanel>

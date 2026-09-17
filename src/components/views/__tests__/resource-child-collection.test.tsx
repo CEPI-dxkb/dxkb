@@ -41,16 +41,24 @@ vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
 );
 vi.mock("@/contexts/workspace-repository-context", async () =>
-  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).workspaceRepositoryContextMock(),
 );
 vi.mock("@/components/views/collection-copy-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionCopyDialogMock(),
 );
 vi.mock("@/components/views/selection-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionServiceChooserMock(),
 );
 vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionToGroupDialogMock(),
 );
 
 vi.mock("@/lib/data-api", async (importOriginal) => ({
@@ -69,11 +77,9 @@ vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
 vi.mock("@/components/search/search-action-bar", () => ({
-  SearchActionBar: ({
-    onAction,
-  }: {
-    onAction?: (action: string) => void;
-  }) => <button onClick={() => onAction?.("biosets")}>Bioset Results</button>,
+  SearchActionBar: ({ onAction }: { onAction?: (action: string) => void }) => (
+    <button onClick={() => onAction?.("biosets")}>Bioset Results</button>
+  ),
 }));
 vi.mock("../resource-workspace", () => ({
   ResourceWorkspace: ({
@@ -136,7 +142,8 @@ vi.mock("@/components/shared/data-table", () => ({
 }));
 
 vi.mock("../resource-collection", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../resource-collection")>();
+  const actual =
+    await importOriginal<typeof import("../resource-collection")>();
   return {
     ...actual,
     ResourceCollection: (
@@ -214,11 +221,11 @@ function spyOnDownload() {
     exportedBlob = blob as Blob;
     return "blob:test";
   });
-  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
-    function (this: HTMLAnchorElement) {
-      downloadedFilename = this.download;
-    },
-  );
+  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
+    this: HTMLAnchorElement,
+  ) {
+    downloadedFilename = this.download;
+  });
   return {
     text: async () => {
       await waitFor(() => {
@@ -365,8 +372,7 @@ describe("ResourceChildCollection scope changes", () => {
     );
 
     const profile = resourceCollectionProfile.mock.lastCall?.[0] as
-      | ResourceCollectionProfile<Record<string, unknown>>
-      | undefined;
+      ResourceCollectionProfile<Record<string, unknown>> | undefined;
     expect(profile?.basePredicate).toBe("eq(exp_id,experiment-1)");
     expect(
       profile?.buildStructuralRql?.({
@@ -380,15 +386,14 @@ describe("ResourceChildCollection scope changes", () => {
   });
 
   it("keeps a supplied profile scoped to its parent predicate", () => {
-    const suppliedProfile: ResourceCollectionProfile<
-      Record<string, unknown>
-    > = {
-      resource: "genome",
-      label: "Genomes",
-      idField: "genome_id",
-      columns: [],
-      buildStructuralRql: () => 'eq(status,"active")',
-    };
+    const suppliedProfile: ResourceCollectionProfile<Record<string, unknown>> =
+      {
+        resource: "genome",
+        label: "Genomes",
+        idField: "genome_id",
+        columns: [],
+        buildStructuralRql: () => 'eq(status,"active")',
+      };
 
     render(
       <ResourceChildCollection
@@ -402,8 +407,7 @@ describe("ResourceChildCollection scope changes", () => {
     );
 
     const profile = resourceCollectionProfile.mock.lastCall?.[0] as
-      | ResourceCollectionProfile<Record<string, unknown>>
-      | undefined;
+      ResourceCollectionProfile<Record<string, unknown>> | undefined;
     expect(profile?.basePredicate).toBe("eq(parent_id,parent-1)");
     expect(profile?.buildStructuralRql?.(changedState)).toBe(
       'and(eq(parent_id,parent-1),eq(status,"active"))',
@@ -520,8 +524,7 @@ describe("ResourceChildCollection scope changes", () => {
     );
 
     const profile = resourceCollectionProfile.mock.lastCall?.[0] as
-      | ResourceCollectionProfile<Record<string, unknown>>
-      | undefined;
+      ResourceCollectionProfile<Record<string, unknown>> | undefined;
     // Passing only `columns` used to drop these, so PDB links, the detail panel and
     // the facets disappeared from the multi-genome Protein Structures tab.
     expect(profile?.detailFields?.length).toBeGreaterThan(0);
@@ -580,8 +583,7 @@ describe("ResourceChildCollection scope changes", () => {
       );
     });
     const request = exportAll.mock.lastCall?.[1] as
-      | { fields: string[] }
-      | undefined;
+      { fields: string[] } | undefined;
     expect(request?.fields).toContain("pdb_id");
     expect(request?.fields).toContain("title");
     expect(request?.fields.length).toBeGreaterThan(1);

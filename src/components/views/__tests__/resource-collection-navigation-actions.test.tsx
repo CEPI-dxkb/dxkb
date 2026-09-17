@@ -23,7 +23,9 @@ const { push, useResourceCollection } = vi.hoisted(() => ({
 let actionBarProps: Record<string, unknown>;
 
 vi.mock("next/navigation", async () =>
-  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({ push }),
+  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({
+    push,
+  }),
 );
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
@@ -32,16 +34,24 @@ vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
 );
 vi.mock("@/contexts/workspace-repository-context", async () =>
-  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).workspaceRepositoryContextMock(),
 );
 vi.mock("../collection-copy-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionCopyDialogMock(),
 );
 vi.mock("../selection-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionServiceChooserMock(),
 );
 vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionToGroupDialogMock(),
 );
 vi.mock("../resource-export", async () =>
   (await import("./fixtures/resource-collection-mocks")).resourceExportMock(),
@@ -50,25 +60,33 @@ vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
 vi.mock("../resource-filter-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).resourceFilterBarMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).resourceFilterBarMock(),
 );
 // The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
 // It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
 // production does (search-action-policy.ts), so a control this suite can query or
 // click is one the real bar would have rendered, in the same enabled state.
 vi.mock("@/components/search/search-action-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock((props) => {
-    actionBarProps = props;
-  }),
+  (await import("./fixtures/resource-collection-mocks")).searchActionBarMock(
+    (props) => {
+      actionBarProps = props;
+    },
+  ),
 );
 vi.mock("@/components/detail-panel/info-panel", async () =>
   (await import("./fixtures/resource-collection-mocks")).infoPanelMock(),
 );
 vi.mock("../taxonomy-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).taxonomyServiceChooserMock(),
 );
 vi.mock("../resource-workspace", async () =>
-  (await import("./fixtures/resource-collection-mocks")).flatResourceWorkspaceMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).flatResourceWorkspaceMock(),
 );
 vi.mock("@/components/shared/data-table", () => ({
   DataTable: (props: Record<string, unknown>) => {

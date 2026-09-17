@@ -28,16 +28,24 @@ vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
 );
 vi.mock("@/contexts/workspace-repository-context", async () =>
-  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).workspaceRepositoryContextMock(),
 );
 vi.mock("../collection-copy-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionCopyDialogMock(),
 );
 vi.mock("../selection-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionServiceChooserMock(),
 );
 vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionToGroupDialogMock(),
 );
 vi.mock("../resource-export", async () =>
   (await import("./fixtures/resource-collection-mocks")).resourceExportMock(),
@@ -46,7 +54,9 @@ vi.mock("@/hooks/views/use-resource-collection", () => ({
   useResourceCollection,
 }));
 vi.mock("../resource-filter-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).resourceFilterBarMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).resourceFilterBarMock(),
 );
 // The `SearchActionBar` fake shared with every resource-collection*.test.tsx suite.
 // It calls the same `visibleSearchActions` / `isSearchActionDisabled` policy
@@ -71,15 +81,21 @@ vi.mock("@/components/detail-panel/info-panel", async () =>
   (await import("./fixtures/resource-collection-mocks")).infoPanelMock(),
 );
 vi.mock("../taxonomy-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).taxonomyServiceChooserMock(),
 );
 vi.mock("../resource-workspace", async () =>
-  (await import("./fixtures/resource-collection-mocks")).flatResourceWorkspaceMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).flatResourceWorkspaceMock(),
 );
 vi.mock("@/components/shared/data-table", async () =>
-  (await import("./fixtures/resource-collection-mocks")).dataTableMock((props) => {
-    dataTableProps = props;
-  }),
+  (await import("./fixtures/resource-collection-mocks")).dataTableMock(
+    (props) => {
+      dataTableProps = props;
+    },
+  ),
 );
 
 function collectionResult(
@@ -97,6 +113,36 @@ function repository(
   } as unknown as DataRepository;
 }
 
+/**
+ * A stand-in for the tab both Bioset paths reserve with `window.open("about:blank")`.
+ * The explicit path navigates it by clicking an `<a rel="noreferrer">` (the taxonomy
+ * pattern), the all-pages path by `location.replace`, so the stub captures both and
+ * the tests assert which one was used.
+ */
+function reservedTab() {
+  const links: {
+    href?: string;
+    target?: string;
+    rel?: string;
+    click: ReturnType<typeof vi.fn>;
+  }[] = [];
+  const replace = vi.fn();
+  const close = vi.fn();
+  const createElement = vi.fn(() => {
+    const link = { click: vi.fn() };
+    links.push(link);
+    return link;
+  });
+  const open = vi.fn(() => ({
+    opener: window,
+    document: { createElement },
+    location: { replace },
+    close,
+  }));
+  vi.stubGlobal("open", open);
+  return { open, links, replace, close };
+}
+
 beforeEach(() => {
   useResourceCollection.mockReturnValue(collectionResult());
 });
@@ -106,9 +152,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("ResourceCollection Bioset actions", () => {
   it("supports legacy Bioset sidebar actions", async () => {
     const user = userEvent.setup();
-    const replace = vi.fn();
-    const open = vi.fn(() => ({ opener: window, location: { replace } }));
-    vi.stubGlobal("open", open);
+    const { open, links, replace } = reservedTab();
     const selected = vi.fn((resource, request: { fields: string[] }) =>
       Promise.resolve({
         rows: request.fields.includes("exp_id") ? [{ exp_id: "00042" }] : [],
@@ -149,16 +193,23 @@ describe("ResourceCollection Bioset actions", () => {
     });
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(selected).toHaveBeenCalledOnce();
-    // No `noopener`/`noreferrer` in the feature string: the spec makes
-    // `window.open` return null whenever either is set, which would make the
-    // blocked-pop-up check below meaningless. The handle's `opener` is severed
-    // instead.
-    expect(open).toHaveBeenCalledWith(
-      "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
-      "_blank",
-    );
+    // A reserved `about:blank`, not the final href with `noopener,noreferrer`: the
+    // spec makes `window.open` return null whenever `noopener` is set, so the handle
+    // could not tell a blocked pop-up from an allowed one. Reserving keeps the
+    // handle meaningful *and* keeps `noreferrer` on the navigation.
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+    // `opener` is severed while the tab is still same-origin and empty.
     expect(open.mock.results[0].value).toMatchObject({ opener: null });
-    // The href is the final destination, so nothing has to navigate afterwards.
+    expect(links).toStrictEqual([
+      expect.objectContaining({
+        href: "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
+        target: "_self",
+        rel: "noreferrer",
+      }),
+    ]);
+    expect(links[0].click).toHaveBeenCalledOnce();
+    // The explicit path navigates by link click; `location.replace` belongs to the
+    // all-pages path, which has to wait for a network round-trip first.
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -210,8 +261,7 @@ describe("ResourceCollection Bioset actions", () => {
 
   it("resolves Bioset experiment IDs retained across pages", async () => {
     const user = userEvent.setup();
-    const open = vi.fn(() => ({ opener: window }));
-    vi.stubGlobal("open", open);
+    const { open, links } = reservedTab();
     const selected = vi.fn();
     const profile = {
       resource: "bioset" as const,
@@ -278,10 +328,14 @@ describe("ResourceCollection Bioset actions", () => {
     });
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(selected).not.toHaveBeenCalled();
-    expect(open).toHaveBeenCalledWith(
-      "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,00051))",
-      "_blank",
-    );
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+    expect(links).toStrictEqual([
+      expect.objectContaining({
+        href: "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,00051))",
+        target: "_self",
+        rel: "noreferrer",
+      }),
+    ]);
   });
 
   it("resolves all matching Bioset experiment IDs", async () => {
@@ -407,10 +461,9 @@ describe("ResourceCollection Bioset actions", () => {
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     // This branch used to discard the result of `window.open` entirely, so a
     // blocked pop-up looked exactly like a click that did nothing.
-    expect(open).toHaveBeenCalledWith(
-      "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
-      "_blank",
-    );
+    // Reserved, then abandoned: the handle was null, so nothing was navigated and
+    // no second attempt was made.
+    expect(open).toHaveBeenCalledExactlyOnceWith("about:blank", "_blank");
     expect(
       await screen.findByText(
         "Allow pop-ups to open the selected Bioset results.",

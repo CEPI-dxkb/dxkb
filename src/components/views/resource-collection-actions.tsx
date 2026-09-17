@@ -561,24 +561,32 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   const openBiosetResults = async () => {
     onError(null);
     if (!selection.isAllPagesSelected) {
-      // No reservation dance: nothing is awaited before the open, so the click is
-      // still user-initiated and the destination can be the final href.
+      // Same shape as the taxonomy branch above, for the same reason and one more.
       //
-      // `noopener`/`noreferrer` cannot be passed here, though. The spec makes
-      // `window.open` return null whenever either is set, so the returned handle
-      // says nothing about whether the pop-up was actually allowed — which is how
-      // this branch came to swallow a blocked pop-up in the first place. Open
-      // without them and sever `opener` on the handle instead, the same way the
-      // all-pages branch below and the taxonomy branch above do.
-      const resultsWindow = window.open(
-        biosetResultsHref(targets.selectedBiosetExperimentIds),
-        "_blank",
-      );
+      // The reason it cannot just be `window.open(href, "_blank",
+      // "noopener,noreferrer")` with a null check bolted on: the spec makes
+      // `window.open` return null whenever `noopener` is set (and `noreferrer`
+      // implies it), so that handle says nothing about whether the pop-up was
+      // allowed. That is how this branch came to swallow a blocked pop-up.
+      //
+      // The reason it reserves `about:blank` even though nothing is awaited here:
+      // reserving is what lets the tab be both detectable *and* opened without
+      // `noopener` while still reaching the destination with `rel="noreferrer"`.
+      // `opener` is severed while the tab is still same-origin and empty, before any
+      // destination document exists, and the navigation itself carries no referrer.
+      // Opening the final href directly would work, but only by giving up
+      // `noreferrer` — a trade this pattern does not have to make.
+      const resultsWindow = window.open("about:blank", "_blank");
       if (!resultsWindow) {
         onError("Allow pop-ups to open the selected Bioset results.");
         return;
       }
       resultsWindow.opener = null;
+      const link = resultsWindow.document.createElement("a");
+      link.href = biosetResultsHref(targets.selectedBiosetExperimentIds);
+      link.target = "_self";
+      link.rel = "noreferrer";
+      link.click();
       return;
     }
     if (selection.total > maxExportRows) {

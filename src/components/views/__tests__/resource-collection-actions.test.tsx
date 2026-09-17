@@ -85,13 +85,17 @@ vi.mock("@/components/shared/data-table", () => ({
   },
 }));
 vi.mock("../resource-filter-bar", async () =>
-  (await import("./fixtures/resource-collection-mocks")).resourceFilterBarMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).resourceFilterBarMock(),
 );
 vi.mock("@/components/detail-panel/info-panel", () => ({
   InfoPanel: () => null,
 }));
 vi.mock("../taxonomy-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).taxonomyServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).taxonomyServiceChooserMock(),
 );
 // The dependencies `CollectionSelectionActions` brings with it, for the non-Taxonomy
 // half of the suite. Its COPY / SERVICES / GROUP progress lives in its own instance
@@ -106,16 +110,24 @@ vi.mock("@/lib/auth/provider", async () =>
   }),
 );
 vi.mock("@/contexts/workspace-repository-context", async () =>
-  (await import("./fixtures/resource-collection-mocks")).workspaceRepositoryContextMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).workspaceRepositoryContextMock(),
 );
 vi.mock("../collection-copy-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).collectionCopyDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionCopyDialogMock(),
 );
 vi.mock("../selection-service-chooser", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionServiceChooserMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionServiceChooserMock(),
 );
 vi.mock("@/components/workspace/selection-to-group-dialog", async () =>
-  (await import("./fixtures/resource-collection-mocks")).selectionToGroupDialogMock(),
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).selectionToGroupDialogMock(),
 );
 
 /** A `matchMedia` whose `matches` can change and notify, like a real resize. */

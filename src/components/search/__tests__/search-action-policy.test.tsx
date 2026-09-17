@@ -8,6 +8,7 @@ import {
   searchActionConfig,
   visibleSearchActions,
   type SearchActionConfig,
+  type SearchActionId,
 } from "../search-action-policy";
 
 /**
@@ -162,7 +163,7 @@ describe("SearchActionBar / test-fake parity", () => {
   }
 
   // Every search type the config mentions, at the selection sizes the policy
-  // distinguishes, with and without the two consumer-side overrides.
+  // distinguishes, against each shape of consumer-side override.
   const cases = searchTypes.flatMap((searchType) =>
     [0, 1, 2].flatMap((selectedCount) =>
       [
@@ -171,6 +172,19 @@ describe("SearchActionBar / test-fake parity", () => {
         {
           name: "a consumer reason",
           props: { disabledActions: { services: "Not here" } },
+        },
+        {
+          // The real bar disables a mid-flight action and swaps its icon for a
+          // spinner; the fake has to agree about the disabling.
+          name: "actions mid-flight",
+          props: {
+            enabledActions,
+            loadingActionIds: [
+              "services",
+              "genome",
+              "download",
+            ] satisfies SearchActionId[],
+          },
         },
       ].map(({ name, props }) => ({
         searchType,
@@ -210,11 +224,16 @@ describe("SearchActionBar / test-fake parity", () => {
       expect(fakeStates).toStrictEqual(realStates);
       // Order too, so the fake cannot rearrange the bar under a suite's feet.
       // The real bar prints the letter glyph (where an entry has one) ahead of the
-      // label, and splits a two-line label into adjacent spans with no separator.
+      // label, and splits a two-line label into adjacent spans with no separator. A
+      // mid-flight action shows a spinner *instead of* its glyph — the spinner is an
+      // svg, so it contributes no text.
+      const loading = new Set<string>(
+        (props as { loadingActionIds?: string[] }).loadingActionIds ?? [],
+      );
       expect(realNames).toStrictEqual(
         expected.map(
           (action) =>
-            `${action.letter ?? ""}${action.label.replaceAll("\n", "")}`,
+            `${loading.has(action.id) ? "" : (action.letter ?? "")}${action.label.replaceAll("\n", "")}`,
         ),
       );
     },

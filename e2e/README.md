@@ -227,14 +227,25 @@ So a version bump alone turns the chromium visual job red for a change nobody ma
 
 When you adjudicate a drift, enumerate the regions from an **exact** byte comparison of baseline vs actual (a histogram of `oldColor -> newColor` transitions finds the sub-threshold ones immediately), not from the failure message. Treating the reported count as the region list is how a full-page repaint gets waved through as "a few pixels of text AA". The same trap is worse on firefox and webkit, whose `maxDiffPixelRatio: 0.05` hides perceptible changes too.
 
-### Keep `-darwin` and `-linux` in step
+### `--update-snapshots=all` ignores tolerance
+
+`--update-snapshots=changed` rewrites only the baselines whose comparison fails. `=all` (the default for a bare `--update-snapshots`) rewrites every baseline the run touches, **including ones that were passing** — which on firefox and webkit means ones that were passing inside `maxDiffPixelRatio: 0.05`. Use `=changed` when you mean "refresh what is failing", and reach for `=all` only when you have adjudicated every image in the selection, because it will overwrite images you never looked at.
+
+### The baseline sets are not in step, per file
 
 Refreshing one platform and not the other leaves a baseline that disagrees with head on the platform you skipped, and — at chromium's zero tolerance — a red job for the next person. When a change requires new baselines, refresh **both** sets in the same PR: `-darwin` locally, `-linux` from that PR's failing CI run.
 
-Two known cases where the sets currently disagree, both recorded so they are not rediscovered as mysteries:
+The committed sets are currently a patchwork. This is the measured per-file state, not a generalisation, because the generalisations are all false:
 
-- **`home`'s statistics tiles are pinned to values that are wrong on purpose.** The DB-statistics row reads `Virus Species 0`, `Taxons 0`, `Protein Structures 2` in every committed baseline, because `e2eDeterministicCounts.taxonomy` and `.protein_structure` in `src/app/api/e2e-mock/[...path]/route.ts` are unreachable — the named per-core branches in `maybeSolrCount` return first with `numFound: docs.length`. A fix to that fixture will change the rendered numbers, so it **must** refresh `home-chromium-darwin.png` and `home-chromium-linux.png` (and the webkit/firefox pair) together.
-- **The firefox baselines are stale on both platforms.** They render a `v0.2.6` badge and a navbar whose first item is a since-removed "Getting started", and pass only because firefox allows `maxDiffPixelRatio: 0.05`. Firefox cannot be launched on the current dev Macs (`browserType.launch: Timeout 180000ms exceeded`, `sandbox_extension_issue_file_to_process … Operation not permitted`), so `-firefox-darwin` cannot be regenerated locally; both sets need a CI run.
+**Version badge and navbar.** Only the chromium sets and `-webkit-darwin` are current (`v0.4.1`, navbar `Organisms / Services / Workspace / Resources`). In `-firefox-darwin`, `-firefox-linux` and `-webkit-linux`, the three organism-landing images read **`v0.3.3` with the current navbar**, `genome-assembly` and `home` read `v0.2.6` (firefox-darwin) or `v0.2.7` (the other two), and `jobs` / `sign-in` / `workspace` read `v0.2.6` with a navbar whose first item is the since-removed **"Getting started"**. So of the 16 firefox images, 6 are at v0.3.3 and 7 carry the old navbar — do not assume a whole set shares one vintage.
+
+**`home`'s statistics tiles are pinned to values that are wrong on purpose**, in three of the six `home` baselines. `chromium-darwin`, `chromium-linux` and `webkit-darwin` read `Virus Species 0`; `webkit-linux`, `firefox-darwin` and `firefox-linux` still read `23,456`. The `0` is the honest render of the current fixture: `e2eDeterministicCounts.taxonomy` and `.protein_structure` in `src/app/api/e2e-mock/[...path]/route.ts` are unreachable, because the named per-core branches in `maybeSolrCount` return first with `numFound: docs.length`. A fix to that fixture will change the rendered numbers and **must** refresh all six `home` baselines together.
+
+**The `jobs` baselines capture three different table states**, and the assertion cannot tell them apart. `chromium-darwin` shows the empty state ("No jobs found"); `firefox-darwin` and `webkit-darwin` show **skeleton placeholder rows**; `chromium-linux`, `webkit-linux` and `firefox-linux` show two loaded rows. All six pass, because the skeleton-vs-loaded difference is a greyscale delta of 27 — under pixelmatch's threshold — and `jobs` additionally allows `maxDiffPixelRatio: 0.02`. A capture that renders live rows also renders a wall-clock `Last updated: HH:MM:SS` string. Fixing this means settling the spec on skeleton-detach rather than `networkidle` (the a11y suite already does exactly that for its `DataTable` scans) **and** masking the timestamp, then refreshing all six baselines — so it needs a CI run for the `-linux` half. Until then, treat the `jobs` snapshot as not asserting table content.
+
+**`-webkit-darwin` is ahead of `-webkit-linux`.** Seven of the eight webkit darwin baselines were refreshed to match head; the linux set was not, and cannot be from a Mac. Both need the same CI run as firefox.
+
+**Firefox cannot be regenerated locally at all**: `browserType.launch: Timeout 180000ms exceeded` with `sandbox_extension_issue_file_to_process … Operation not permitted`, reproducible on an untouched route. Both firefox sets need a CI run.
 
 ## Browser matrix
 

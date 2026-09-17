@@ -108,3 +108,23 @@ export interface MemberResult<T extends Record<string, unknown>> {
 export interface RowsResult<T extends Record<string, unknown>> {
   rows: T[];
 }
+
+/**
+ * `/api/taxonomy-tree/children` response. Separate from `RowsResult` because
+ * the Taxa Tree route is not a generic collection: it has no page, no total,
+ * and no facet map, and its rows are every child of one parent rather than one
+ * bounded page of them.
+ */
+export interface TaxonChildrenResult {
+  rows: Record<string, unknown>[];
+}
+
+/**
+ * `/api/taxonomy-tree/child-counts` response: parent taxon id → number of
+ * qualifying children. Keys are the ids as decimal strings, because that is
+ * what a JSON object can carry. A requested parent with no qualifying children
+ * is absent rather than present with `0`.
+ */
+export interface TaxonChildCountsResult {
+  counts: Record<string, number>;
+}

@@ -16,17 +16,18 @@ pnpm test:coverage    # Run with V8 coverage
 
 ## Coverage
 
-V8 coverage with floor thresholds enforced by `pnpm test:coverage` (see `vitest.config.mts`):
+V8 coverage with floor thresholds enforced by `pnpm test:coverage`. **`vitest.config.mts`'s `thresholds` block is the authority** — if these numbers ever disagree with it, the config is right and this table is stale. At the time of writing it enforces:
 
 | Metric     | Floor |
 | ---------- | ----- |
-| lines      | 81    |
-| statements | 80    |
-| functions  | 84    |
-| branches   | 70    |
+| lines      | 87    |
+| statements | 86    |
+| functions  | 90    |
+| branches   | 77    |
 
-- Floors sit just below the measured baseline so unrelated PRs don't trip on rounding drift. Bump them upward when new tests raise the measured numbers; never lower them.
-- Scope: `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/app/api/**`, `src/app/services/page.tsx`. Excludes `src/components/ui/**`, `*.d.ts`, and `types.ts` / `types/**`.
+- Floors sit 1–2 points below the measured baseline so unrelated PRs don't trip on rounding drift. Bump them upward when new tests raise the measured numbers; **never lower them** — and never lower the config to match a stale figure here.
+- Scope: `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/app/api/**`, `src/app/services/page.tsx`. Excludes `src/components/ui/**`, `*.d.ts`, `types.ts` / `types/**`, `src/**/__tests__/fixtures/**`, and `src/lib/e2e-fixtures/**` (fixture data, not product code — its near-total coverage inflated every metric).
+- These percentages describe **only** the server/library subset `include` names above. All of `src/components/**` except the `ui/**` exclusion is outside the measurement, so a high number here says nothing about the UI layer. Widening `include` to add the component layer is a separate, separately baselined coverage-policy change — do not widen it and reuse these floors.
 - Reporters: `text`, `html`, `json-summary`, `json` (HTML report at `coverage/index.html`).
 
 ## CI / GitHub Actions

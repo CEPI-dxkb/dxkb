@@ -1,5 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { rateLimit, clientIp, hasRateLimitBucket } from "@/lib/rate-limit";
+import {
+  rateLimit,
+  clientIp,
+  hasRateLimitBucket,
+  pruneIntervalMs,
+  pruneThreshold,
+} from "@/lib/rate-limit";
+
+/**
+ * The bucket map and the prune deadline are module-level state, so the
+ * cadence tests below — which have to fill the map past `pruneThreshold` and
+ * then reason about *when* the next sweep is allowed — load their own copy of
+ * the module instead of sharing one with each other or with the tests above.
+ * This is why the limiter needs no test-only reset export.
+ */
+async function freshLimiter(): Promise<typeof import("@/lib/rate-limit")> {
+  vi.resetModules();
+  return import("@/lib/rate-limit");
+}
+
+/** Fills a fresh limiter's map to exactly `pruneThreshold` live entries. */
+function fillToThreshold(
+  limiter: typeof import("@/lib/rate-limit"),
+  prefix: string,
+): void {
+  for (let i = 0; i < pruneThreshold; i++) {
+    limiter.rateLimit(`${prefix}-${String(i)}`, 5, 60_000);
+  }
+}
 
 describe("rateLimit", () => {
   beforeEach(() => {
@@ -48,11 +76,103 @@ describe("rateLimit", () => {
     // keys. This forces rateLimit's opportunistic sweep to run at least once,
     // which should find and evict the now-expired target bucket rather than
     // leaving it tracked for the life of the process.
-    for (let i = 0; i < 1_000; i++) {
+    for (let i = 0; i < pruneThreshold; i++) {
       rateLimit(`prune-filler-${String(i)}`, 5, 60_000);
     }
 
     expect(hasRateLimitBucket(target)).toBe(false);
+  });
+});
+
+/**
+ * The sweep is gated on map size **and** elapsed time. Size alone was the
+ * defect: a map of `pruneThreshold` *fresh* entries stays over the threshold
+ * while the sweep deletes nothing, so every subsequent request paid a full
+ * O(n) scan, forever, for no eviction.
+ *
+ * `hasRateLimitBucket` is what makes the gate observable at all. A *skipped*
+ * sweep and a *performed* sweep are indistinguishable from `rateLimit`'s own
+ * return value, which compares against each bucket's `resetAt` either way — so
+ * an expired bucket is reported as reset whether or not it is still physically
+ * in the map.
+ */
+describe("rateLimit prune cadence", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.resetModules();
+  });
+
+  it("does not sweep again between deadlines, even with a map over the threshold", async () => {
+    const limiter = await freshLimiter();
+    // Fill to the threshold, then let the first eligible call spend its sweep.
+    fillToThreshold(limiter, "fresh");
+    limiter.rateLimit("first-eligible-call", 5, 60_000);
+
+    // A bucket that expires *after* that sweep. The map is still over the
+    // threshold, so a size-only gate would rescan (and evict it) on the very
+    // next call.
+    limiter.rateLimit("expires-soon", 1, 1_000);
+    vi.advanceTimersByTime(1_001);
+    expect(limiter.rateLimit("expires-soon", 1, 1_000).allowed).toBe(true);
+
+    limiter.rateLimit("probe", 5, 60_000);
+
+    // Still physically present: the scan was skipped because the interval has
+    // not elapsed. This is the assertion that fails under a size-only gate.
+    expect(limiter.hasRateLimitBucket("expires-soon")).toBe(true);
+  });
+
+  it("sweeps again once the interval has elapsed", async () => {
+    const limiter = await freshLimiter();
+    fillToThreshold(limiter, "fresh");
+    limiter.rateLimit("first-eligible-call", 5, 60_000);
+
+    limiter.rateLimit("expires-soon", 1, 1_000);
+    vi.advanceTimersByTime(1_001);
+    limiter.rateLimit("probe", 5, 60_000);
+    expect(limiter.hasRateLimitBucket("expires-soon")).toBe(true);
+
+    // Past the deadline the gate reopens and the next call sweeps.
+    vi.advanceTimersByTime(pruneIntervalMs);
+    limiter.rateLimit("probe-after-interval", 5, 60_000);
+
+    expect(limiter.hasRateLimitBucket("expires-soon")).toBe(false);
+  });
+
+  it("does not sweep below the threshold however much time passes", async () => {
+    const limiter = await freshLimiter();
+    limiter.rateLimit("lonely-expired", 1, 1_000);
+    vi.advanceTimersByTime(pruneIntervalMs * 10);
+
+    limiter.rateLimit("lonely-probe", 5, 60_000);
+
+    // Size is still the outer gate: a two-entry map is not worth scanning, and
+    // the stale entry costs nothing until the map is actually large.
+    expect(limiter.hasRateLimitBucket("lonely-expired")).toBe(true);
+  });
+
+  // Physical retention must never change an answer. This is the half of the
+  // contract the size/time gate is allowed to relax.
+  it("still expires a retained bucket logically while it waits to be swept", async () => {
+    const limiter = await freshLimiter();
+    fillToThreshold(limiter, "fresh");
+    limiter.rateLimit("first-eligible-call", 5, 60_000);
+
+    limiter.rateLimit("budget-spent", 1, 1_000);
+    expect(limiter.rateLimit("budget-spent", 1, 1_000).allowed).toBe(false);
+
+    vi.advanceTimersByTime(1_001);
+    // Not swept yet (proved above), but the window is over, so the next
+    // request is allowed on a fresh count.
+    expect(limiter.rateLimit("budget-spent", 1, 1_000)).toMatchObject({
+      allowed: true,
+      remaining: 0,
+    });
   });
 });
 

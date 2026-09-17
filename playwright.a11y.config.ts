@@ -58,8 +58,9 @@ export default defineConfig({
   projects: [
     // Auth setup — reuses the same setup scripts as playwright.config.ts, which
     // resolve their destination from the project name so the two configs do not
-    // write the same file. Writes a11ySignedInStatePath, read by every project
-    // below; `dependencies` runs it to completion first even under fullyParallel.
+    // write the same file. Writes a11ySignedInStatePath, read by the four
+    // browser projects below (not by a11y-setup-public, which writes its own);
+    // `dependencies` runs it to completion first even under fullyParallel.
     {
       name: "a11y-setup-signed-in",
       testMatch: /auth\/signed-in\.setup\.ts$/,

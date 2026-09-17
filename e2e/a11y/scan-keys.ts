@@ -56,7 +56,7 @@ export const nonRouteScanKeys: readonly string[] = [
  */
 export const baselineWildcardKey = "*";
 
-/** Every scan key a suppression may legitimately be keyed by. */
+/** Every scan key a suppression may be keyed by, excluding the wildcard. */
 export const knownScanKeys: ReadonlySet<string> = new Set([
   ...scanTargets.map((target) => target.name),
   ...nonRouteScanKeys,

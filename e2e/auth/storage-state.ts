@@ -5,10 +5,11 @@
  * `e2e/.auth/user.json`, so a `pnpm e2e` and a `pnpm a11y` started at the same
  * time raced on one file: one config's setup project rewrote it while the other
  * config's browser projects were reading it. Each config now owns its own pair
- * of files, so the only ordering that still matters is the one Playwright
+ * of files, so the only ordering these files depend on is the one Playwright
  * already guarantees *within* a config — a project listed in `dependencies`
  * runs to completion before the projects that declare it, regardless of
- * `fullyParallel`.
+ * `fullyParallel`. (Running the heavy suites sequentially is still the
+ * operational rule on the dev machine, for resource contention, not for this.)
  *
  * The setup specs are shared between the two configs (both `testMatch` them),
  * so the destination is resolved from the running project's name rather than

@@ -1,14 +1,29 @@
 import type { Page } from "@playwright/test";
-import type { SettleOptions } from "./settle";
+import { awaitSettled, type SettleOptions } from "./settle";
 
 /**
  * Route-specific readiness hook, run AFTER awaitSettled().
  *
  * Reserve these for *observable, page-specific* readiness — an element that must
  * exist before axe scans, or a redirect that must have landed. Generic readiness
- * (load state, fonts, skeleton detach) belongs in `settle` / `awaitSettled()`;
- * a bare `waitForLoadState("networkidle")` here is always redundant because
- * awaitSettled() has already awaited it.
+ * (load state, fonts, skeleton detach) belongs in `settle` / `awaitSettled()`,
+ * and for an entry that lands on the page it scans, a bare
+ * `waitForLoadState("networkidle")` here is redundant because awaitSettled()
+ * has already awaited it.
+ *
+ * **Exception: an entry whose `prepare` awaits a redirect.** `settle` runs
+ * before `prepare` (`routes-sweep.spec.ts`), so for such an entry there is no
+ * ordering guarantee that the settle covered the *destination's* fetches
+ * rather than the pre-redirect page's. It may happen to — measured on
+ * chromium against the loopback mocks, `/workspace`'s redirect has already
+ * landed and its skeletons have already detached by the time `prepare` is
+ * entered — but that is a property of how fast the mocks answer, not
+ * something the ordering enforces, and a slower browser or machine has no
+ * such luck. So a redirect entry should not stop at `waitForURL`: end it on
+ * observable readiness for the page axe will actually scan, which is what
+ * re-calling `awaitSettled()` with a `skeletonSelector` gives it. Prefer that
+ * to a bare `networkidle`, which cannot tell a resolved table from one still
+ * rendering `<Skeleton>` rows.
  */
 export type PrepareHook = (page: Page) => Promise<void>;
 
@@ -575,6 +590,22 @@ export const routes: RouteEntry[] = [
     prepare: async (page) => {
       await page.waitForURL(/\/workspace\/[^/]+\/home/, { timeout: 10_000 });
       await page.getByPlaceholder(/search files/i).waitFor({ timeout: 10_000 });
+      // The two waits above are not sufficient cover on their own. The search
+      // box lives in workspace-toolbar.tsx, which renders only after
+      // workspace-browser.tsx's `resolveQuery.isLoading` skeleton early
+      // return — so its appearance proves the path resolved, not that the
+      // file listing landed. The listing is a separate query whose
+      // `isLoading` reaches WorkspaceDataTable, which renders `<Skeleton>`
+      // rows until it resolves.
+      //
+      // This is defensive rather than a fix for a reproduced local failure:
+      // on chromium against the loopback mocks both the redirect and the
+      // skeleton detach are already done before this hook runs, so this call
+      // resolves immediately. It is here because `settle` runs before
+      // `prepare`, so nothing *guarantees* that for a redirecting entry —
+      // see {@link PrepareHook}. Exposure is largest on the tripwire
+      // projects, which cannot be run on the dev machine.
+      await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
     },
   },
   // Public workspace listing (no auth required to VIEW, but authenticated user sees their context)

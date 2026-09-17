@@ -172,7 +172,7 @@ Each group opens its own PR (`chore/e2e-har-refresh-read-only` / `chore/e2e-har-
 
 ## Visual regression
 
-Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.
+Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences — which also means those two engines keep passing against a materially outdated baseline, so their images need refreshing deliberately rather than when a job goes red.
 
 We commit both `*-linux.png` (for CI on `ubuntu-latest`) and `*-darwin.png` (for local Macs) so visual tests work out of the box on both. Windows contributors regenerate their own `*-win32.png` locally and are not expected to commit them.
 
@@ -214,6 +214,27 @@ This is the only way to get byte-exact parity with GitHub Actions runners.
 **Do not** use `docker run --platform linux/amd64 mcr.microsoft.com/playwright:X-noble …` on Apple Silicon. QEMU emulation produces ~20-24 px height differences and ~6% pixel drift vs native amd64, which busts chromium's zero-tolerance. The image works on a native amd64 host (EC2, GitHub Codespaces) if you have one.
 
 Review the PNG diffs in the PR before merging.
+
+### A `pkg.version` bump reddens every full-page chromium snapshot
+
+`next.config.ts` inlines `package.json`'s version as `NEXT_PUBLIC_APP_VERSION` and `src/components/navbars/desktop-navbar.tsx` renders it as a `v0.0.0` badge. The badge's glyph advance widths change with the digits, which shifts every navbar item to the left of the flex-grown search box by about a pixel — roughly 2100-2400 differing pixels on any `fullPage` snapshot, which chromium's zero tolerance rejects.
+
+So a version bump alone turns the chromium visual job red for a change nobody made to the UI. That is expected, not a regression: refresh the baselines (`-darwin` locally, `-linux` from the failing CI run) as part of the bump. If this becomes tiresome, the fix is to pin `NEXT_PUBLIC_APP_VERSION` for the E2E build — masking the badge does not work, because the items to its right still shift when its intrinsic width changes.
+
+### Adjudicating a drift: the failure's pixel count is not the region list
+
+`toHaveScreenshot` counts pixels through pixelmatch at `threshold: 0.2`, which ignores differences below roughly a greyscale delta of 53. A change can therefore repaint most of the page and contribute **zero** to the reported count. When the `#ffffff` → `#f7f7f7` page background landed, it changed 636,261 px on `sign-in` and 557,125 px on `genome-assembly` — over half of each image — and Playwright reported 2450 and 3501 differing pixels, none of them the background.
+
+When you adjudicate a drift, enumerate the regions from an **exact** byte comparison of baseline vs actual (a histogram of `oldColor -> newColor` transitions finds the sub-threshold ones immediately), not from the failure message. Treating the reported count as the region list is how a full-page repaint gets waved through as "a few pixels of text AA". The same trap is worse on firefox and webkit, whose `maxDiffPixelRatio: 0.05` hides perceptible changes too.
+
+### Keep `-darwin` and `-linux` in step
+
+Refreshing one platform and not the other leaves a baseline that disagrees with head on the platform you skipped, and — at chromium's zero tolerance — a red job for the next person. When a change requires new baselines, refresh **both** sets in the same PR: `-darwin` locally, `-linux` from that PR's failing CI run.
+
+Two known cases where the sets currently disagree, both recorded so they are not rediscovered as mysteries:
+
+- **`home`'s statistics tiles are pinned to values that are wrong on purpose.** The DB-statistics row reads `Virus Species 0`, `Taxons 0`, `Protein Structures 2` in every committed baseline, because `e2eDeterministicCounts.taxonomy` and `.protein_structure` in `src/app/api/e2e-mock/[...path]/route.ts` are unreachable — the named per-core branches in `maybeSolrCount` return first with `numFound: docs.length`. A fix to that fixture will change the rendered numbers, so it **must** refresh `home-chromium-darwin.png` and `home-chromium-linux.png` (and the webkit/firefox pair) together.
+- **The firefox baselines are stale on both platforms.** They render a `v0.2.6` badge and a navbar whose first item is a since-removed "Getting started", and pass only because firefox allows `maxDiffPixelRatio: 0.05`. Firefox cannot be launched on the current dev Macs (`browserType.launch: Timeout 180000ms exceeded`, `sandbox_extension_issue_file_to_process … Operation not permitted`), so `-firefox-darwin` cannot be regenerated locally; both sets need a CI run.
 
 ## Browser matrix
 

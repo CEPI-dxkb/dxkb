@@ -101,8 +101,13 @@ export default defineConfig(
               group: [
                 "@/lib/e2e-fixtures",
                 "@/lib/e2e-fixtures/*",
-                "**/e2e-fixtures/records",
-                "**/e2e-fixtures/envelopes",
+                // Directory glob, not two filenames: pinning `records` and
+                // `envelopes` by name left the relative-import form of any
+                // *third* fixture module unrestricted, so the zone enforced
+                // two filenames rather than the boundary the docs credit it
+                // with. Verified with a throwaway fixture module imported
+                // from e2e/pages/ both ways.
+                "**/e2e-fixtures/*",
               ],
               message:
                 "src/lib/e2e-fixtures is E2E fixture data. Only the e2e-mock route handler, the e2e/fixtures/overrides bundles, and the fixture module's own tests may import it.",

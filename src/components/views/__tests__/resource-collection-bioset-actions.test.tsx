@@ -71,9 +71,8 @@ vi.mock("@/components/search/search-action-bar", async () => {
   // static imports are linked, so a statically-imported helper referenced here throws
   // ("Cannot access ... before initialization"). Awaiting the import inside the
   // factory sidesteps that — `beforeEach`/the tests below still resolve normally.
-  const { createSearchActionBarFake } = await import(
-    "./fixtures/search-action-bar-fake"
-  );
+  const { createSearchActionBarFake } =
+    await import("./fixtures/search-action-bar-fake");
   return {
     SearchActionBar: createSearchActionBarFake(
       (props: Record<string, unknown>) => {
@@ -187,11 +186,16 @@ describe("ResourceCollection Bioset actions", () => {
     });
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
     expect(selected).toHaveBeenCalledOnce();
+    // No `noopener`/`noreferrer` in the feature string: the spec makes
+    // `window.open` return null whenever either is set, which would make the
+    // blocked-pop-up check below meaningless. The handle's `opener` is severed
+    // instead.
     expect(open).toHaveBeenCalledWith(
       "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
       "_blank",
-      "noopener,noreferrer",
     );
+    expect(open.mock.results[0].value).toMatchObject({ opener: null });
+    // The href is the final destination, so nothing has to navigate afterwards.
     expect(replace).not.toHaveBeenCalled();
   });
 
@@ -233,7 +237,9 @@ describe("ResourceCollection Bioset actions", () => {
     // BIOSETS is genuinely unreachable in the real UI's own terms; the click below
     // (which a disabled `<button>` never dispatches) and the `open` assertion confirm
     // it, rather than merely proving a click happened to have no effect.
-    const biosetsButton = screen.getByRole("button", { name: "Biosets action" });
+    const biosetsButton = screen.getByRole("button", {
+      name: "Biosets action",
+    });
     expect(biosetsButton).toBeDisabled();
     await user.click(biosetsButton);
     expect(open).not.toHaveBeenCalled();
@@ -241,7 +247,7 @@ describe("ResourceCollection Bioset actions", () => {
 
   it("resolves Bioset experiment IDs retained across pages", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
     const selected = vi.fn();
     const profile = {
@@ -312,7 +318,6 @@ describe("ResourceCollection Bioset actions", () => {
     expect(open).toHaveBeenCalledWith(
       "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042,00051))",
       "_blank",
-      "noopener,noreferrer",
     );
   });
 
@@ -413,6 +418,46 @@ describe("ResourceCollection Bioset actions", () => {
     ).toBeInTheDocument();
   });
 
+  it("reports a blocked pop-up for an explicitly selected Bioset's results", async () => {
+    const user = userEvent.setup();
+    const selected = vi.fn(() => Promise.resolve({ rows: [] }));
+    const open = vi.fn(() => null);
+    vi.stubGlobal("open", open);
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "bioset-1",
+      detail: { bioset_id: "bioset-1", exp_id: "00042" },
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: { "bioset-1": true },
+      selectedIds: ["bioset-1"],
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+    // This branch used to discard the result of `window.open` entirely, so a
+    // blocked pop-up looked exactly like a click that did nothing.
+    expect(open).toHaveBeenCalledWith(
+      "https://www.bv-brc.org/view/BiosetResult/?in(exp_id,(00042))",
+      "_blank",
+    );
+    expect(
+      await screen.findByText(
+        "Allow pop-ups to open the selected Bioset results.",
+      ),
+    ).toBeVisible();
+    // Same wording and same sink as the all-matching branch below, so the two
+    // failures read identically to the user.
+    expect(screen.getByText("Could not complete action")).toBeVisible();
+  });
+
   it("reports a blocked pop-up for all-matching Bioset results without requesting rows", async () => {
     const user = userEvent.setup();
     const exportAll = vi.fn(() => Promise.resolve({ rows: [] }));
@@ -460,8 +505,7 @@ describe("ResourceCollection Bioset actions", () => {
       vi.fn(() => ({ opener: window, location: { replace }, close })),
     );
     let resolveExport:
-      | ((value: { rows: { exp_id: string }[] }) => void)
-      | undefined;
+      ((value: { rows: { exp_id: string }[] }) => void) | undefined;
     const exportAll = vi.fn(
       () =>
         new Promise<{ rows: { exp_id: string }[] }>((resolve) => {
@@ -521,7 +565,9 @@ describe("ResourceCollection Bioset actions", () => {
     });
     expect(replace).toHaveBeenCalledTimes(1);
     expect(close).not.toHaveBeenCalled();
-    expect(screen.queryByText("Could not complete action")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Could not complete action"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the Bioset failure even when its Error carries an empty message", async () => {

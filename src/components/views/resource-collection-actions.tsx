@@ -561,11 +561,24 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
   const openBiosetResults = async () => {
     onError(null);
     if (!selection.isAllPagesSelected) {
-      window.open(
+      // No reservation dance: nothing is awaited before the open, so the click is
+      // still user-initiated and the destination can be the final href.
+      //
+      // `noopener`/`noreferrer` cannot be passed here, though. The spec makes
+      // `window.open` return null whenever either is set, so the returned handle
+      // says nothing about whether the pop-up was actually allowed — which is how
+      // this branch came to swallow a blocked pop-up in the first place. Open
+      // without them and sever `opener` on the handle instead, the same way the
+      // all-pages branch below and the taxonomy branch above do.
+      const resultsWindow = window.open(
         biosetResultsHref(targets.selectedBiosetExperimentIds),
         "_blank",
-        "noopener,noreferrer",
       );
+      if (!resultsWindow) {
+        onError("Allow pop-ups to open the selected Bioset results.");
+        return;
+      }
+      resultsWindow.opener = null;
       return;
     }
     if (selection.total > maxExportRows) {
@@ -689,20 +702,19 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         onOtherAction={dispatchAction}
       />
     ) : (
+      // Reached only for a resource with no `selectionActionsConfigByResource`
+      // entry, which today means Taxonomy alone. `bioset` has an entry, so this
+      // branch can never see one — which is why it carries no Bioset fallback for
+      // `enabledActions` and no Bioset `disabledActions`: both `hasBiosetSelection`
+      // and `hasIncompleteBiosetSelection` require `profile.resource === "bioset"`
+      // and are therefore always false here. `CollectionSelectionActions` owns the
+      // Bioset bar, and `resolveDisabledActions` above owns its disabled reason.
       <SearchActionBar
         selectedCount={selection.count}
         searchType={profile.resource}
         guideUrl={profile.guideUrl}
-        enabledActions={
-          enabledActionsByResource[profile.resource] ??
-          (targets.hasBiosetSelection ? ["biosets"] : undefined)
-        }
+        enabledActions={enabledActionsByResource[profile.resource]}
         loadingActionIds={loadingActionIds}
-        disabledActions={
-          targets.hasIncompleteBiosetSelection
-            ? { biosets: incompleteBiosetSelectionReason }
-            : undefined
-        }
         onAction={dispatchAction}
       />
     ),

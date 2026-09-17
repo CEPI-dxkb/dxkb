@@ -229,7 +229,9 @@ When you adjudicate a drift, enumerate the regions from an **exact** byte compar
 
 ### `--update-snapshots=all` ignores tolerance
 
-`--update-snapshots=changed` rewrites only the baselines whose comparison fails. `=all` (the default for a bare `--update-snapshots`) rewrites every baseline the run touches, **including ones that were passing** — which on firefox and webkit means ones that were passing inside `maxDiffPixelRatio: 0.05`. Use `=changed` when you mean "refresh what is failing", and reach for `=all` only when you have adjudicated every image in the selection, because it will overwrite images you never looked at.
+`=all` rewrites every baseline the run touches, **including ones that were passing** — which on firefox and webkit means ones that were passing inside `maxDiffPixelRatio: 0.05`, and on `jobs` ones passing inside its `maxDiffPixelRatio: 0.02`. That is how an image nobody adjudicated ends up rewritten alongside the ones they did.
+
+A bare `--update-snapshots` does **not** do this: Playwright's default preset is `changed`, which rewrites only the baselines whose comparison fails. So `pnpm e2e:update-snapshots` is the safe form, and `=all` is an explicit opt-in to overwriting images you never looked at. Reach for it only once you have adjudicated every image in the selection.
 
 ### The baseline sets are not in step, per file
 
@@ -237,7 +239,7 @@ Refreshing one platform and not the other leaves a baseline that disagrees with 
 
 The committed sets are currently a patchwork. This is the measured per-file state, not a generalisation, because the generalisations are all false:
 
-**Version badge and navbar.** Only the chromium sets and `-webkit-darwin` are current (`v0.4.1`, navbar `Organisms / Services / Workspace / Resources`). In `-firefox-darwin`, `-firefox-linux` and `-webkit-linux`, the three organism-landing images read **`v0.3.3` with the current navbar**, `genome-assembly` and `home` read `v0.2.6` (firefox-darwin) or `v0.2.7` (the other two), and `jobs` / `sign-in` / `workspace` read `v0.2.6` with a navbar whose first item is the since-removed **"Getting started"**. So of the 16 firefox images, 6 are at v0.3.3 and 7 carry the old navbar — do not assume a whole set shares one vintage.
+**Version badge and navbar.** The chromium sets are current (`v0.4.1`, navbar `Organisms / Services / Workspace / Resources`), and so are seven of the eight `-webkit-darwin` images. The exception is `jobs-webkit-darwin`, which still reads `v0.2.6` with the old navbar: it was deliberately left at its prior bytes rather than refreshed, because its drift could not be adjudicated (see "The `jobs` baselines capture three different table states" below). In `-firefox-darwin`, `-firefox-linux` and `-webkit-linux`, the three organism-landing images read **`v0.3.3` with the current navbar**, `genome-assembly` and `home` read `v0.2.6` (firefox-darwin) or `v0.2.7` (the other two), and `jobs` / `sign-in` / `workspace` read `v0.2.6` with a navbar whose first item is the since-removed **"Getting started"**. So of the 16 firefox images, 6 are at v0.3.3 and 7 carry the old navbar — do not assume a whole set shares one vintage.
 
 **`home`'s statistics tiles are pinned to values that are wrong on purpose**, in three of the six `home` baselines. `chromium-darwin`, `chromium-linux` and `webkit-darwin` read `Virus Species 0`; `webkit-linux`, `firefox-darwin` and `firefox-linux` still read `23,456`. The `0` is the honest render of the current fixture: `e2eDeterministicCounts.taxonomy` and `.protein_structure` in `src/app/api/e2e-mock/[...path]/route.ts` are unreachable, because the named per-core branches in `maybeSolrCount` return first with `numFound: docs.length`. A fix to that fixture will change the rendered numbers and **must** refresh all six `home` baselines together.
 

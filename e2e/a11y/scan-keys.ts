@@ -10,11 +10,17 @@ import { scanTargets } from "./routes";
  * than derived because the alternative is a guard that cannot tell a renamed
  * route from a component scan, and so cannot reject either.
  *
- * `coverage.meta.spec.ts` checks every key below still appears as a literal in
- * an `e2e/tests/a11y/*.spec.ts` source, so an entry cannot outlive the scan it
- * names. Adding a surface is the other direction and is not enforced: an
- * un-enumerated surface only matters once someone baselines it, and the stale
- * key message says what to do at that point.
+ * `coverage.meta.spec.ts` checks every key below is still passed as a string
+ * literal to an `assertNoBlocking*` call in an `e2e/tests/a11y/*.spec.ts`
+ * source (see {@link extractScannedKeys}), so a deleted or renamed surface
+ * leaves its entry here unreferenced. It matches call arguments rather than raw
+ * text, so a key surviving only in a comment does not satisfy it. What it does
+ * not check is *which* spec scans the key — the enumeration records no owner —
+ * so moving a surface between a11y specs keeps its entry valid.
+ *
+ * Adding a surface is the other direction and is not enforced: an un-enumerated
+ * surface only matters once someone baselines it, and the stale key message
+ * says what to do at that point.
  *
  * `search/default` is intentionally absent: the deep-tier suite scans a surface
  * under that name, but it is also a `routes.ts` variant target, so it is
@@ -48,6 +54,52 @@ export const nonRouteScanKeys: readonly string[] = [
   "file-viewer/csv",
   "file-viewer/json",
 ];
+
+/**
+ * Scan keys a spec source passes as a string literal to an `assertNoBlocking*`
+ * call — the first literal inside each call's own argument list.
+ *
+ * Walks the argument list with a paren counter rather than using one regex: the
+ * sweep also calls `assertNoBlockingViolations(violations, target.name, theme)`
+ * with no literal at all, and a regex that simply scanned forward for the next
+ * `"` would attribute an unrelated literal from further down the file to it.
+ * Calls whose argument list holds no double-quoted literal contribute nothing.
+ */
+export function extractScannedKeys(source: string): string[] {
+  const keys: string[] = [];
+  const callPattern = /assertNoBlocking\w*\(/g;
+  let call: RegExpExecArray | null;
+  while ((call = callPattern.exec(source)) !== null) {
+    let depth = 1;
+    let quote: string | null = null;
+    let literal: string | null = null;
+    let current = "";
+    for (let i = call.index + call[0].length; i < source.length; i++) {
+      const char = source[i];
+      if (quote) {
+        if (char === "\\") {
+          current += source[i + 1] ?? "";
+          i++;
+        } else if (char === quote) {
+          if (quote === '"' && literal === null) literal = current;
+          quote = null;
+        } else {
+          current += char;
+        }
+        continue;
+      }
+      if (char === '"' || char === "'" || char === "`") {
+        quote = char;
+        current = "";
+        continue;
+      }
+      if (char === "(") depth++;
+      else if (char === ")" && --depth === 0) break;
+    }
+    if (literal !== null) keys.push(literal);
+  }
+  return keys;
+}
 
 /**
  * The baseline map's route dimension accepts this wildcard (see `lookupEntry`

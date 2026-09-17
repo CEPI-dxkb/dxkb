@@ -11,6 +11,7 @@ import {
 import type { PrepareHook, RouteEntry } from "../../a11y/routes";
 import {
   baselineWildcardKey,
+  extractScannedKeys,
   findStaleScanKeys,
   formatStaleScanKeys,
   nonRouteScanKeys,
@@ -236,28 +237,50 @@ test.describe("a11y suppression keys", () => {
   test("every enumerated non-route scan key is still scanned by a spec", async () => {
     // Keeps the sanctioned enumeration from outliving the scans it names: a
     // surface that is deleted or renamed leaves its key here unreferenced.
+    // Matched against the `assertNoBlocking*` argument rather than the raw
+    // source, so a key that survives only in a comment does not count.
     const specDir = path.resolve(process.cwd(), "e2e/tests/a11y");
-    const sources: string[] = [];
+    const scanned = new Set<string>();
+    let sourceCount = 0;
     for await (const file of glob("*.spec.ts", { cwd: specDir })) {
-      sources.push(await readFile(path.join(specDir, file), "utf8"));
+      sourceCount++;
+      const source = await readFile(path.join(specDir, file), "utf8");
+      for (const key of extractScannedKeys(source)) scanned.add(key);
     }
-    expect(sources.length, "expected a11y spec sources to read").toBeGreaterThan(
-      0,
-    );
+    expect(sourceCount, "expected a11y spec sources to read").toBeGreaterThan(0);
+    expect(
+      scanned.size,
+      "expected to extract scan keys from the a11y spec sources",
+    ).toBeGreaterThan(0);
 
-    const unreferenced = nonRouteScanKeys.filter(
-      (key) => !sources.some((source) => source.includes(`"${key}"`)),
-    );
+    const unreferenced = nonRouteScanKeys.filter((key) => !scanned.has(key));
 
     expect(
       unreferenced,
       unreferenced.length === 0
         ? undefined
-        : `${String(unreferenced.length)} key(s) in nonRouteScanKeys are no longer scanned by any\n` +
-            `e2e/tests/a11y/*.spec.ts. Remove them from nonRouteScanKeys in\n` +
-            `e2e/a11y/scan-keys.ts (and drop any suppression keyed by them):\n` +
+        : `${String(unreferenced.length)} key(s) in nonRouteScanKeys are not passed to any\n` +
+            `assertNoBlocking* call in e2e/tests/a11y/*.spec.ts. Remove them from\n` +
+            `nonRouteScanKeys in e2e/a11y/scan-keys.ts (and drop any suppression\n` +
+            `keyed by them), or fix the call that should be using them:\n` +
             unreferenced.map((key) => `  - ${key}`).join("\n"),
     ).toEqual([]);
+  });
+
+  test("a scan key mentioned only in a comment does not count as scanned", () => {
+    // The check this pins: the previous version tested `source.includes()`, so
+    // a stale key left behind in a comment kept its entry alive.
+    const source = [
+      '// legacy surface: "ghost-surface" was scanned here until DXKBCORE-000',
+      'assertNoBlockingViolations(violations, "real-surface", theme);',
+      "assertNoBlockingViolations(violations, target.name, theme);",
+      'assertNoBlocking(\n  page,\n  "multiline-surface",\n  theme,\n);',
+    ].join("\n");
+
+    expect(extractScannedKeys(source)).toEqual([
+      "real-surface",
+      "multiline-surface",
+    ]);
   });
 });
 
@@ -266,17 +289,22 @@ test.describe("stale scan key detection", () => {
     const realRouteKey = scanTargets[0]?.name ?? "";
     expect(realRouteKey, "expected at least one scan target").not.toEqual("");
 
+    // Both stale keys are synthetic. An earlier version used "experiment",
+    // which is stale only because that route entry currently has variants —
+    // giving it a plain entry again would have failed this test with a message
+    // about stale-key detection instead of about the route change. The
+    // experiment decision is pinned by reflowSkip's own comment.
     const stale = findStaleScanKeys(
       [
         realRouteKey,
         nonRouteScanKeys[0],
         baselineWildcardKey,
         "organisms-virusez",
-        "experiment",
+        "no-such-scan-target",
       ],
       { allowWildcard: true },
     );
-    expect(stale).toEqual(["organisms-virusez", "experiment"]);
+    expect(stale).toEqual(["organisms-virusez", "no-such-scan-target"]);
 
     // The message has to name every rejected key — a guard that says "stale
     // key" without saying which one costs more time than it saves.

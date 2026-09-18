@@ -43,6 +43,7 @@ function assertNoBlockingViolations(
     );
   }
   recordScan({
+    project: test.info().project.name,
     route: routeKey,
     theme,
     blocking: remaining,

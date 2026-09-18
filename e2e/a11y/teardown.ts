@@ -20,14 +20,24 @@ export default function globalTeardown(): void {
 
   const files = fs.readdirSync(scansDir).filter((f) => f.endsWith(".json"));
   const records: ScanRecord[] = files.map(
-    (f) => JSON.parse(fs.readFileSync(path.join(scansDir, f), "utf8")) as ScanRecord,
+    (f) =>
+      JSON.parse(fs.readFileSync(path.join(scansDir, f), "utf8")) as ScanRecord,
   );
 
+  const summary = summarizeScanRecords(records);
+
+  fs.mkdirSync(a11yReportDir, { recursive: true });
+  fs.writeFileSync(a11ySummaryPath, JSON.stringify(summary, null, 2));
+  // Raw records are consumed now; the summary is the artifact worth keeping.
+  fs.rmSync(scansDir, { recursive: true, force: true });
+}
+
+export function summarizeScanRecords(records: ScanRecord[]): ScanRecord[] {
   // Retries may repeat an identical scan. Different evidence under one key means two
   // surfaces collided and must be named separately rather than silently dropping one.
   const seen = new Map<string, ScanRecord>();
   for (const record of records) {
-    const key = `${record.route}::${record.theme}`;
+    const key = `${record.project}::${record.route}::${record.theme}`;
     const previous = seen.get(key);
     if (previous && JSON.stringify(previous) !== JSON.stringify(record)) {
       throw new Error(`Conflicting accessibility scan records for ${key}`);
@@ -35,12 +45,10 @@ export default function globalTeardown(): void {
     seen.set(key, record);
   }
 
-  const summary = [...seen.values()].sort(
-    (a, b) => a.route.localeCompare(b.route) || a.theme.localeCompare(b.theme),
+  return [...seen.values()].sort(
+    (a, b) =>
+      a.project.localeCompare(b.project) ||
+      a.route.localeCompare(b.route) ||
+      a.theme.localeCompare(b.theme),
   );
-
-  fs.mkdirSync(a11yReportDir, { recursive: true });
-  fs.writeFileSync(a11ySummaryPath, JSON.stringify(summary, null, 2));
-  // Raw records are consumed now; the summary is the artifact worth keeping.
-  fs.rmSync(scansDir, { recursive: true, force: true });
 }

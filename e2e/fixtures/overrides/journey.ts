@@ -20,8 +20,10 @@ import { jobsOverrides } from "./jobs";
  *     (e2e/tests/a11y/**)                → use `a11yBackendOverrides` (the
  *     one broad, unscoped aggregate — every other spec has been converted
  *     off it)
- *   - journey specs (auth, workspace,
- *     jobs, services deep-submit)        → use `journeyOverrides`
+ *   - hand-written auth, workspace, jobs, and service journeys
+ *                                          → use `journeyOverrides`
+ *   - HAR canary journeys                  → use endpoint-specific overrides
+ *     plus `harOverridesFor(...)`; do not layer `journeyOverrides` over replay
  */
 export const journeyOverrides: JsonOverride[] = [
   ...authSessionOverrides,

@@ -130,7 +130,10 @@ export async function resolveServerDataRepository({
   notConfigured,
   fetch: fetchOverride,
 }: ResolveServerDataRepositoryOptions): Promise<ResolvedServerDataRepository> {
-  const baseUrl = process.env.DATA_API_URL ?? process.env.NEXT_PUBLIC_DATA_API;
+  const baseUrl = [
+    process.env.DATA_API_URL,
+    process.env.NEXT_PUBLIC_DATA_API,
+  ].find((value): value is string => Boolean(value?.trim()))?.trim();
   if (!baseUrl) {
     if (notConfigured.log) console.error(notConfigured.log);
     throw new DataApiError(notConfigured.message, 500, "not_configured");

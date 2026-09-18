@@ -2,12 +2,11 @@
  * The pure half of the metadata-link boundary: href classification and
  * `{placeholder}` template resolution, with no JSX and no React import.
  *
- * Rendering lives in the sibling `./metadata-link` module. Both halves exist so
- * the link surfaces that adopt them — the detail panel's scalar, array and
- * button fields, and the four entity overviews that render links (`genome`,
- * `feature`, `epitope`, `experiment`; the `serology` and `surveillance`
- * overviews render none) — share one security and routing decision instead of
- * each re-deriving a scheme check.
+ * Rendering lives in the sibling `./metadata-link` module and in DataTable's
+ * table-specific wrapper. These surfaces, the detail panel, and the four entity
+ * overviews that render links (`genome`, `feature`, `epitope`, `experiment`)
+ * share one security and routing decision instead of each re-deriving a scheme
+ * check.
  */
 
 /** Three-way outcome of {@link classifyHref}. */
@@ -24,28 +23,16 @@ export type HrefClassification = "internal" | "external" | "unsafe";
  *   `renderMetadataLink` / `renderMetadataLinkButton`, so its scalar, array and
  *   button fields are all covered. The four link-rendering entity overviews
  *   likewise use only `MetadataLink`.
- * - **Bypasses it.** `src/components/shared/data-table.tsx` renders the same
- *   `DataField.link` templates through its own `valueHref` path: it builds an
- *   href with `valueHref.replace("{value}", encodeURIComponent(...))` and hands
- *   it straight to `<Link>` with no scheme check, no `target` and no `rel`. The
- *   profiles that forward `link` to `valueHref` are
- *   `src/lib/protein-feature-view/fields.ts`,
- *   `src/lib/protein-structure-view/fields.ts` and
- *   `src/lib/strain-view/fields.ts`, and several forwarded templates are
- *   absolute external URLs (NCBI protein, EBI InterPro, NCBI CDD, NCBI
- *   nuccore). So one InterPro template opens in a `noopener`-isolated new tab
- *   from the detail panel and navigates in the same tab from the Protein
- *   Feature collection table. Routing `valueHref` through this function is the
- *   real fix, but it changes collection-table behaviour and needs its own
- *   change with its own visual baseline.
+ * - **Collection tables.** `src/components/shared/data-table.tsx` resolves and
+ *   classifies every `valueHref` through this policy. This keeps metadata links
+ *   consistent between table, detail-panel, and overview surfaces.
  *
  * The three classification outcomes:
  *
  * - `"internal"` — an unambiguous same-origin path. Requires `startsWith("/")`
- *   *and* excludes a protocol-relative `//host` string: a browser resolves
- *   `//host` as an absolute, cross-origin URL despite the missing scheme, so a
- *   bare `startsWith("/")` check would misclassify it as same-origin and hand
- *   it to `Link`.
+ *   *and* excludes network-path `//host` and `/\\host` strings: browsers resolve
+ *   both as absolute, cross-origin URLs despite the missing scheme, so a bare
+ *   `startsWith("/")` check would misclassify them as same-origin.
  * - `"external"` — an absolute `http(s)` URL, the only scheme this boundary
  *   opens safely, in a new `noopener`-isolated tab.
  * - `"unsafe"` — anything else: a bare `//host`, a non-http(s) scheme
@@ -62,7 +49,9 @@ export type HrefClassification = "internal" | "external" | "unsafe";
  */
 export function classifyHref(href: string): HrefClassification {
   if (/^https?:\/\//i.test(href)) return "external";
-  if (href.startsWith("/") && !href.startsWith("//")) return "internal";
+  if (href.startsWith("/") && href[1] !== "/" && href[1] !== "\\") {
+    return "internal";
+  }
   return "unsafe";
 }
 
@@ -93,7 +82,7 @@ export function resolveLink(
   const resolvedSegments = new Map<string, string>();
   for (const [, key] of template.matchAll(/{([^}]+)}/g)) {
     if (resolvedSegments.has(key)) continue;
-    const value = row[key] ?? row[fallbackField];
+    const value = key === "value" ? row[fallbackField] : row[key];
     const primitive = isLinkValue(value) ? value : undefined;
     if (primitive === undefined || String(primitive) === "") return undefined;
     resolvedSegments.set(key, encodeURIComponent(String(primitive)));

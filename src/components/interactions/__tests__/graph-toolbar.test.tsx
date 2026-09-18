@@ -39,6 +39,20 @@ describe("GraphToolbar", () => {
     });
   });
 
+  it("flushes one uncommitted draft when unmounted before the debounce", () => {
+    const onFilterChange = vi.fn();
+    const { unmount } = render(
+      <GraphToolbar filterValue="" onFilterChange={onFilterChange} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(placeholder), {
+      target: { value: "half-typed" },
+    });
+    unmount();
+
+    expect(onFilterChange).toHaveBeenCalledExactlyOnceWith("half-typed");
+  });
+
   it("reflects the current filterValue back into the keyword input", () => {
     render(<GraphToolbar filterValue="groEL" onFilterChange={vi.fn()} />);
 

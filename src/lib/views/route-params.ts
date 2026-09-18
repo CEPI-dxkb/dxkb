@@ -1,3 +1,5 @@
+import { safeDecode } from "@/lib/url";
+
 /**
  * Recovering a real value from a Next dynamic route param.
  *
@@ -57,14 +59,9 @@ export function readRouteParam(
   source: RouteParamSource,
 ): string {
   if (source === "metadata") return value;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    // Unreachable for a real request — Next always hands page components
-    // `encodeURIComponent` output. A malformed value is kept verbatim rather
-    // than throwing a 500 out of route-param handling.
-    return value;
-  }
+  // Malformed values are unreachable for real requests because Next supplies
+  // `encodeURIComponent` output, but keeping one verbatim avoids a route 500.
+  return safeDecode(value);
 }
 
 /** Catch-all form of {@link readRouteParam}; `getParamValue` encodes per segment. */

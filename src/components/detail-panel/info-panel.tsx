@@ -21,6 +21,10 @@ import { isLinkValue, resolveLink } from "./metadata-link-policy";
 import { renderMetadataLink, renderMetadataLinkButton } from "./metadata-link";
 import { formatOwner, formatFileSize } from "@/lib/services/workspace/helpers";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
+import {
+  isStrainAccessionField,
+  strainAccessionUrlTemplate,
+} from "@/lib/strain-view/link-policy";
 import { getItemFullPath } from "./info-panel-utils";
 import { WorkspaceItemHeader } from "@/components/workspace/workspace-item-header";
 import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-details";
@@ -791,21 +795,6 @@ function renderSearchInfoPanel(
     linkText?: string;
   }
   const allowedFieldIds = new Set(allowedFields);
-  const strainAccessionFields = new Set([
-    "genbank_accessions",
-    "1_pb2",
-    "2_pb1",
-    "3_pa",
-    "4_ha",
-    "5_np",
-    "6_na",
-    "7_mp",
-    "8_ns",
-    "s",
-    "m",
-    "l",
-    "other_segments",
-  ]);
   const displayColumns: DisplayColumn[] = Object.values(fieldFile).map((o) => ({
     id: o.field,
     label: o.label,
@@ -813,8 +802,8 @@ function renderSearchInfoPanel(
     group: o.group,
     link:
       o.link ??
-      (activeTab === "strain" && strainAccessionFields.has(o.field)
-        ? "https://www.ncbi.nlm.nih.gov/nuccore/{value}"
+      (activeTab === "strain" && isStrainAccessionField(o.field)
+        ? strainAccessionUrlTemplate
         : undefined),
     linkType: o.linkType,
     linkText: o.linkText,

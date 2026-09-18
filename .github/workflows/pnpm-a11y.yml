@@ -96,6 +96,8 @@ jobs:
             .misc/a11y-results/
             .misc/a11y-meta-report/
             .misc/a11y-meta-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-deep-tier:
@@ -145,6 +147,8 @@ jobs:
           path: |
             .misc/a11y-report/
             .misc/a11y-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-keyboard:
@@ -194,6 +198,8 @@ jobs:
           path: |
             .misc/a11y-report/
             .misc/a11y-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-tripwire:
@@ -243,6 +249,8 @@ jobs:
           path: |
             .misc/a11y-report/
             .misc/a11y-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-primitives:

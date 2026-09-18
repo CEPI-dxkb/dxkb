@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 const mocks = vi.hoisted(() => ({
   createFolder: vi.fn(),
   createIdGroup: vi.fn(),
+  delete: vi.fn(),
   rerunJob: vi.fn(),
   reserveRerunWindow: vi.fn(),
   refresh: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("@/contexts/workspace-repository-context", () => ({
   useWorkspaceRepository: vi.fn(() => ({
     createFolder: mocks.createFolder,
     createIdGroup: mocks.createIdGroup,
+    delete: mocks.delete,
   })),
 }));
 // `closeRerunWindow` stays real so the tests observe the reserved tab being closed.
@@ -87,6 +89,7 @@ describe("SelectionServiceChooser", () => {
     reservedWindows = [];
     mocks.createFolder.mockReset().mockResolvedValue(undefined);
     mocks.createIdGroup.mockReset().mockResolvedValue(undefined);
+    mocks.delete.mockReset().mockResolvedValue(undefined);
     mocks.rerunJob.mockReset().mockReturnValue({ status: "opened" });
     mocks.reserveRerunWindow.mockReset().mockImplementation(reserveFakeWindow);
     mocks.refresh.mockReset();
@@ -258,6 +261,7 @@ describe("SelectionServiceChooser", () => {
       "GeneTree",
       { resultWindow: reservedWindows[0] },
     );
+    expect(mocks.delete).not.toHaveBeenCalled();
   });
 
   it("creates a temporary genome group and opens Viral MSA", async () => {
@@ -505,6 +509,7 @@ describe("SelectionServiceChooser", () => {
       rerunPopupBlockedMessage,
     );
     expect(reservedWindows[0].close).toHaveBeenCalled();
+    expect(mocks.delete).toHaveBeenCalledWith([groupPath]);
     expect(
       screen.getByRole("button", { name: "Viral Genome Tree" }),
     ).toBeEnabled();
@@ -525,6 +530,38 @@ describe("SelectionServiceChooser", () => {
       await screen.findByText("Workspace quota exceeded"),
     ).toBeInTheDocument();
     expect(reservedWindows[0].close).toHaveBeenCalled();
+    expect(mocks.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes a written group when launching the service throws", async () => {
+    mocks.rerunJob.mockImplementation(() => {
+      throw new Error("Service launch failed");
+    });
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(await screen.findByText("Service launch failed")).toBeInTheDocument();
+    expect(mocks.delete).toHaveBeenCalledWith([groupPath]);
+  });
+
+  it("keeps the launch error when temporary-group cleanup fails", async () => {
+    mocks.rerunJob.mockReturnValue({
+      status: "windowClosed",
+      message: rerunWindowClosedMessage,
+    });
+    mocks.delete.mockRejectedValue(new Error("Cleanup failed"));
+    renderChooser();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Viral Genome Tree" }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      rerunWindowClosedMessage,
+    );
   });
 
   it("keeps the original error when closing the reserved tab also fails", async () => {
@@ -641,6 +678,7 @@ describe("SelectionServiceChooser", () => {
       expect(mocks.rerunJob).not.toHaveBeenCalled();
       expect(onOpenChange).not.toHaveBeenCalled();
       expect(reservedWindows[0].close).toHaveBeenCalled();
+      expect(mocks.delete).toHaveBeenCalledWith([groupPath]);
       expect(screen.queryByRole("alert")).toBeNull();
       expect(
         screen.getByRole("button", { name: "Viral Genome Tree" }),
@@ -714,6 +752,7 @@ describe("SelectionServiceChooser failure presentation", () => {
     reservedWindows = [];
     mocks.createFolder.mockReset().mockResolvedValue(undefined);
     mocks.createIdGroup.mockReset().mockResolvedValue(undefined);
+    mocks.delete.mockReset().mockResolvedValue(undefined);
     mocks.rerunJob.mockReset().mockReturnValue({ status: "opened" });
     mocks.reserveRerunWindow.mockReset().mockImplementation(reserveFakeWindow);
     mocks.refresh.mockReset();

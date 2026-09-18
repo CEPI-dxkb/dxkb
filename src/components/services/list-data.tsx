@@ -15,6 +15,7 @@ import {
   maxExportRows,
 } from "@/lib/data-api";
 import type { CollectionRequest, DataResource, DataSort } from "@/lib/data-api";
+import { maxSelectedRows } from "@/lib/data-api/validation";
 import { downloadResourceExport } from "@/components/views/resource-export";
 import {
   deriveTableFields,
@@ -304,15 +305,16 @@ function useListData({
 
   /**
    * Columns to project for an export. `__select__` is the checkbox column
-   * rather than a data field, so it is stripped; the full projection stands in
+   * rather than a data field, so it is stripped; the table fields stand in
    * when nothing else is visible, because the gateway's export operation
    * requires at least one field (`fields: fieldListSchema.min(1)`).
    */
   function exportProjection(visibleColumns: string[] | null): string[] {
-    const requested = (visibleColumns ?? projection).filter(
+    const tableFields = fields.map((field) => field.id);
+    const requested = (visibleColumns ?? tableFields).filter(
       (id) => id !== "__select__",
     );
-    return requested.length ? requested : projection;
+    return requested.length ? requested : tableFields;
   }
 
   async function handleDownloadAll(
@@ -395,12 +397,24 @@ function useListData({
 
     try {
       const selectedFields = exportProjection(visibleColumns);
-      const result = await dataRepository.selected(resource, {
-        ids,
-        fields: selectedFields,
-      });
+      const requestFields = selectedFields.includes(idField)
+        ? selectedFields
+        : [...selectedFields, idField];
+      const results = await Promise.all(
+        Array.from(
+          { length: Math.ceil(ids.length / maxSelectedRows) },
+          (_, index) =>
+            dataRepository.selected(resource, {
+              ids: ids.slice(
+                index * maxSelectedRows,
+                (index + 1) * maxSelectedRows,
+              ),
+              fields: requestFields,
+            }),
+        ),
+      );
       const orderById = new Map(ids.map((id, index) => [id, index]));
-      const orderedRows = [...result.rows].sort(
+      const orderedRows = results.flatMap((result) => result.rows).sort(
         (a, b) =>
           (orderById.get(String(a[idField])) ?? Number.MAX_VALUE) -
           (orderById.get(String(b[idField])) ?? Number.MAX_VALUE),

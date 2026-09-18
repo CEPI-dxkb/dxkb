@@ -166,6 +166,22 @@ describe("legacy search routing contract", () => {
     );
   });
 
+  it("drops Protein Structure member-mode parameters while preserving collection state", () => {
+    expect(
+      redirectHref(
+        {
+          type: "protein_structure",
+          q: "kinase",
+          accession: "1ABC",
+          path: "/workspace/file.pdb",
+          page: "2",
+          source: "legacy",
+        },
+        "kinase",
+      ),
+    ).toBe("/protein-structure?keyword=kinase&page=2&source=legacy");
+  });
+
   it("merges descriptor defaults without clobbering an explicit value", () => {
     expect(redirectHref({ type: "protein", q: "kinase" }, "kinase")).toBe(
       "/feature?keyword=kinase&filter=protein",

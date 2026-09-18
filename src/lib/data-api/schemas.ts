@@ -56,9 +56,9 @@ export const genomeRecordSchema = z.looseObject({
  *
  * Nothing else is declared, deliberately. `parseRows`
  * (`./repository.ts`) turns any row that disagrees with this schema into a 502
- * that blanks the whole page, and there is no genome_amr row fixture anywhere
- * in this repo to check a declaration against — so a declared type here can
- * only add a failure mode. `looseObject` passes every other AMR column through
+ * that blanks the whole page. The deterministic genome_amr fixture validates
+ * known test data, but it is not sufficient evidence to narrow every field the
+ * live backend may return. `looseObject` passes every other AMR column through
  * untouched, which is what the columns the UI reads already relied on.
  * This matches the other legacy-list resource (`genomeSequenceRecordSchema`)
  * and `ppiRecordSchema`; the heavily-declared schemas below are the ones with

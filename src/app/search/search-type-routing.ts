@@ -54,6 +54,7 @@ const legacyTypeAliases: Readonly<Record<string, string | undefined>> = {
  * becomes `keyword` (see `canonicalRedirectHref`).
  */
 const legacySearchOwnedParams = new Set(["type", "q"]);
+const proteinStructureMemberParams = new Set(["accession", "path"]);
 
 /**
  * Descriptors whose redirect narrows the carried parameters to the ones the
@@ -140,6 +141,11 @@ function canonicalRedirectHref(
 
   for (const [name, value] of Object.entries(params)) {
     if (value === undefined || legacySearchOwnedParams.has(name)) continue;
+    if (
+      descriptorId === "protein_structure" &&
+      proteinStructureMemberParams.has(name)
+    )
+      continue;
     if (carried && !carried.has(name)) continue;
     // An incoming `keyword` only survives when `q` did not already supply one,
     // and only as a single value: the destination reads `keyword` through

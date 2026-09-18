@@ -152,6 +152,20 @@ describe("legacy search route", () => {
     expect(screen.getByText(/enter a search term/i)).toBeInTheDocument();
   });
 
+  it.each([
+    ["unsupported", { type: "pathway", q: "---" }],
+    ["everything", { type: "everything", q: " / + " }],
+    ["legacy list", { type: "genome_sequence", q: "---" }],
+    ["canonical", { type: "genome", q: "---" }],
+  ])("prompts for normalized-empty %s searches", async (_label, params) => {
+    render(await GlobalSearch({ searchParams: Promise.resolve(params) }));
+
+    expect(screen.getByText(/enter a search term/i)).toBeInTheDocument();
+    expect(screen.queryByTestId("all-results")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("type-search")).not.toBeInTheDocument();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   it("offers the all-types results for a type with no view", async () => {
     render(
       await GlobalSearch({

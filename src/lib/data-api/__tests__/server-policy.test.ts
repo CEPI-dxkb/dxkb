@@ -151,27 +151,31 @@ describe("resolveServerDataRepository cache policy", () => {
 });
 
 describe("resolveServerDataRepository base URL resolution", () => {
-  it("falls back to NEXT_PUBLIC_DATA_API when DATA_API_URL is unset", async () => {
-    process.env.NEXT_PUBLIC_DATA_API = "https://public.example";
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
+  it.each(["", "   "])(
+    "falls back to NEXT_PUBLIC_DATA_API when DATA_API_URL is %j",
+    async (primary) => {
+      process.env.DATA_API_URL = primary;
+      process.env.NEXT_PUBLIC_DATA_API = "  https://public.example  ";
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
 
-    const { repository } = await resolveServerDataRepository({
-      readScope: "member",
-      notConfigured: notConfiguredForTest,
-      fetch: fetchMock,
-    });
-    await repository.member("genome", { operation: "member", id: "1.1" });
+      const { repository } = await resolveServerDataRepository({
+        readScope: "member",
+        notConfigured: notConfiguredForTest,
+        fetch: fetchMock,
+      });
+      await repository.member("genome", { operation: "member", id: "1.1" });
 
-    const [requested] = fetchMock.mock.calls[0] ?? [];
-    expect(requested instanceof URL ? requested.origin : requested).toBe(
-      "https://public.example",
-    );
-  });
+      const [requested] = fetchMock.mock.calls[0] ?? [];
+      expect(requested instanceof URL ? requested.origin : requested).toBe(
+        "https://public.example",
+      );
+    },
+  );
 
-  it("prefers DATA_API_URL over NEXT_PUBLIC_DATA_API when both are set", async () => {
-    process.env.DATA_API_URL = "https://preferred.example";
+  it("prefers and trims DATA_API_URL when both are set", async () => {
+    process.env.DATA_API_URL = "  https://preferred.example  ";
     process.env.NEXT_PUBLIC_DATA_API = "https://fallback.example";
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -192,6 +196,18 @@ describe("resolveServerDataRepository base URL resolution", () => {
 });
 
 describe("resolveServerDataRepository missing configuration", () => {
+  it("treats empty primary and fallback values as missing", async () => {
+    process.env.DATA_API_URL = " ";
+    process.env.NEXT_PUBLIC_DATA_API = "\t";
+
+    await expect(
+      resolveServerDataRepository({
+        readScope: "member",
+        notConfigured: notConfiguredForTest,
+      }),
+    ).rejects.toMatchObject({ code: "not_configured" });
+  });
+
   it("throws the caller's message with the 500/not_configured discriminator", async () => {
     const rejection = resolveServerDataRepository({
       readScope: "member",

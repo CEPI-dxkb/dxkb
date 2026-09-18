@@ -84,6 +84,8 @@ describe("data API contracts", () => {
     expect(resourceRegistry.genome_amr.fields.resistant_phenotype.facet).toBe(
       false,
     );
+    expect(resourceRegistry.genome_amr.fields.evidence.cardinality).toBe("multiple");
+    expect(resourceRegistry.genome_amr.fields.evidence.sortable).toBe(false);
     expect(resourceRegistry.genome_amr.fields.pmid.cardinality).toBe("multiple");
     expect(resourceRegistry.genome_amr.fields.pmid.sortable).toBe(false);
     expect(resourceRegistry.genome_amr.fields.antibiotic.sortable).toBe(true);
@@ -113,13 +115,15 @@ describe("data API contracts", () => {
     // Only `id` is required, so a missing one is what fails — not a column
     // whose type this repo cannot verify.
     expect(() => genomeAmrRecordSchema.parse({ antibiotic: "ampicillin" })).toThrow();
-    expect(() =>
-      validateDataApiRequest("genome_amr", {
-        operation: "collection",
-        facets: ["antibiotic"],
-        sort: { field: "pmid", direction: "asc" },
-      }),
-    ).toThrow(/pmid cannot sort genome_amr/);
+    for (const field of ["evidence", "pmid"]) {
+      expect(() =>
+        validateDataApiRequest("genome_amr", {
+          operation: "collection",
+          facets: ["antibiotic"],
+          sort: { field, direction: "asc" },
+        }),
+      ).toThrow(new RegExp(`${field} cannot sort genome_amr`));
+    }
   });
 
   it("registers Strain backend identity and multivalue accession fields", () => {

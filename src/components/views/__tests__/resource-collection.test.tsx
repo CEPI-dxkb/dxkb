@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
+import { maxSelectedRows } from "@/lib/data-api/validation";
 import { genomeCollectionProfile } from "@/lib/genome-view/profile";
 import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { CollectionState } from "@/lib/views/collection-state";
@@ -514,6 +515,68 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
   });
 
+  it("batches selected exports, restores ID order, and waits for every batch", async () => {
+    const ids = Array.from(
+      { length: maxSelectedRows + 1 },
+      (_, index) => `genome-${String(index)}`,
+    );
+    const selected = vi.fn(
+      (_resource: string, request: { ids: string[]; fields: string[] }) =>
+        Promise.resolve({
+          rows: [...request.ids]
+            .reverse()
+            .map((genome_id) => ({ genome_id, genome_name: genome_id })),
+        }),
+    );
+    const data = {
+      exportAll: vi.fn(),
+      selected,
+    } as unknown as DataRepository;
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadSelected as (
+          format: "csv",
+          ids: string[],
+          fields: string[],
+        ) => Promise<void>
+      )("csv", ids, ["genome_name"]);
+    });
+
+    expect(selected).toHaveBeenCalledTimes(2);
+    expect(selected.mock.calls.map((call) => call[1].ids.length)).toEqual([
+      maxSelectedRows,
+      1,
+    ]);
+    expect(selected.mock.calls.every((call) => call[1].fields.includes("genome_id"))).toBe(
+      true,
+    );
+    expect(downloadResourceExport).toHaveBeenCalledWith(
+      "genome",
+      expect.arrayContaining([
+        expect.objectContaining({ genome_id: ids[0] }),
+        expect.objectContaining({ genome_id: ids.at(-1) }),
+      ]),
+      genomeCollectionProfile.columns,
+      ["genome_name"],
+      "csv",
+      "all",
+      "genome",
+    );
+    const exportedRows = downloadResourceExport.mock.calls.at(-1)?.[1] as {
+      genome_id: string;
+    }[];
+    expect(exportedRows.map((exported) => exported.genome_id)).toEqual(ids);
+  });
+
   it("exports selected displayed columns without requiring the ID in the output", async () => {
     const data = repository();
     const selected = vi.spyOn(data, "selected");
@@ -538,7 +601,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
 
     expect(selected).toHaveBeenCalledWith("genome", {
       ids: ["83332.12"],
-      fields: ["genome_name"],
+      fields: ["genome_name", "genome_id"],
     });
     expect(downloadResourceExport).toHaveBeenCalledWith(
       "genome",

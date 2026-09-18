@@ -43,4 +43,9 @@ export {
   genomeScenarioOverrides,
 } from "./catchall";
 export { journeyOverrides } from "./journey";
-export { buildPpiRows, buildPpiOverrides, type MockPpiRow } from "./interactions";
+export {
+  buildPpiRows,
+  buildPpiOverrides,
+  selectPpiRows,
+  type MockPpiRow,
+} from "./interactions";

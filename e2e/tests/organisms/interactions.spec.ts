@@ -1,7 +1,9 @@
-import type { Request as PlaywrightRequest } from "@playwright/test";
-
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { buildPpiRows, buildPpiOverrides, emptyBackendFallbackOverrides } from "../../fixtures/overrides";
+import {
+  buildPpiRows,
+  buildPpiOverrides,
+  emptyBackendFallbackOverrides,
+} from "../../fixtures/overrides";
 import { TaxonInteractionsPage } from "../../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -36,7 +38,10 @@ test.describe("taxon interactions tab", () => {
     // so Sigma throws and the canvas never mounts. Chromium and WebKit ship
     // software GL and render it fine. Mirrors viewer-3d.spec.ts, which gates its
     // Mol* WebGL canvas assertion the same way.
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupInteractionsPage(page);
 
@@ -44,17 +49,25 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectCanvasVisible();
   });
 
-  test("Graph subtab preserves the workspace when there are no interactions", async ({ page }) => {
+  test("Graph subtab preserves the workspace when there are no interactions", async ({
+    page,
+  }) => {
     const interactionsPage = await setupInteractionsPage(page, []);
 
     await interactionsPage.switchToGraph();
     await interactionsPage.expectEmptyGraphWorkspace();
   });
 
-  test("layout dropdown shows the human-readable label, not the raw value", async ({ page, browserName }) => {
+  test("layout dropdown shows the human-readable label, not the raw value", async ({
+    page,
+    browserName,
+  }) => {
     // The action bar (and its layout Select) only mount once the graph has nodes,
     // which mounts SigmaCanvas — no WebGL in headless Firefox.
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupInteractionsPage(page);
     await interactionsPage.switchToGraph();
@@ -67,8 +80,14 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectLayoutLabel("Circular");
   });
 
-  test("selecting a node then an incident edge shows the detail panel headers", async ({ page, browserName }) => {
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+  test("selecting a node then an incident edge shows the detail panel headers", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupInteractionsPage(page);
     await interactionsPage.switchToGraph();
@@ -112,81 +131,11 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
   // observable row/node-count delta instead of an all-or-nothing assertion.
   const rows = buildPpiRows(2);
 
-  // Match independently of origin because NEXT_PUBLIC_DATA_API is embedded at build
-  // time and may point at either the loopback mock or the public API in a local build.
-  const ppiRequest = /(?:\/ppi\/|\/api\/data\/ppi(?:\?|$))/;
-
-  // buildPpiOverrides (used by the describe block above) always returns the
-  // full row set regardless of query — it can't prove filtering actually
-  // narrows anything. This route reads the keyword out of whichever request
-  // carries it and serves only rows whose serialized fields contain that text,
-  // so the same mock validates bugs #1, #2, and #3 regardless of which UI
-  // element wrote the keyword. Mirrors the query-aware epitope-facet mock in
-  // taxon-list-data.spec.ts.
-  //
-  // Both views reach the gateway at /api/data/ppi: the Table with a collection
-  // GET whose `keyword` is a query parameter, the Graph with a bulk-row POST
-  // whose `keyword` is a body field. Reading them apart is the point — a
-  // regression that puts one view back on its own predicate shows up as one of
-  // the two requests missing the keyword entirely.
-  function keywordFrom(request: PlaywrightRequest): string | undefined {
-    const url = new URL(request.url());
-    if (url.pathname === "/api/data/ppi") {
-      if (request.method() === "POST") {
-        const body = request.postDataJSON() as { keyword?: string } | null;
-        return body?.keyword;
-      }
-      return url.searchParams.get("keyword") ?? undefined;
-    }
-    // Upstream RQL keeps the legacy keyword(<text>*) clause shape.
-    return /keyword\(([^*)]+)\*?\)/.exec(decodeURIComponent(request.url()))?.[1];
-  }
-
   async function setupFilterableInteractionsPage(
     page: Parameters<typeof applyBackendMocks>[0],
   ): Promise<TaxonInteractionsPage> {
-    await applyBackendMocks(page, { overrides: [...emptyBackendFallbackOverrides] });
-
-    await page.route(ppiRequest, async (route) => {
-      const request = route.request();
-      const isGatewayRequest = new URL(request.url()).pathname === "/api/data/ppi";
-      if (!isGatewayRequest && request.method() !== "GET") return route.fallback();
-      const keyword = keywordFrom(request);
-      const matchingRows = keyword ? rows.filter((r) => JSON.stringify(r).includes(keyword)) : rows;
-
-      if (isGatewayRequest) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify(
-            request.method() === "POST"
-              ? { rows: matchingRows }
-              : {
-                  rows: matchingRows,
-                  total: matchingRows.length,
-                  facets: {},
-                  page: 1,
-                  pageSize: 200,
-                },
-          ),
-        });
-        return;
-      }
-
-      if (decodeURIComponent(request.url()).includes("limit(1)")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ response: { numFound: matchingRows.length } }),
-        });
-        return;
-      }
-
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(matchingRows),
-      });
+    await applyBackendMocks(page, {
+      overrides: [...buildPpiOverrides(rows), ...emptyBackendFallbackOverrides],
     });
 
     const interactionsPage = new TaxonInteractionsPage(page);
@@ -194,8 +143,14 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     return interactionsPage;
   }
 
-  test("filtering the table narrows the graph to the same subset (bug #1)", async ({ page, browserName }) => {
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+  test("filtering the table narrows the graph to the same subset (bug #1)", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupFilterableInteractionsPage(page);
 
@@ -208,15 +163,23 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
 
     const graphPanel = page.getByRole("tabpanel", { name: "Graph" });
     await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(graphPanel.getByText("fig|224914.16.peg.601")).not.toBeVisible();
+    await expect(
+      graphPanel.getByText("fig|224914.16.peg.601"),
+    ).not.toBeVisible();
   });
 
-  test("switching Table to Graph and back keeps the table filter applied (bug #3)", async ({ page, browserName }) => {
+  test("switching Table to Graph and back keeps the table filter applied (bug #3)", async ({
+    page,
+    browserName,
+  }) => {
     // Switching to Graph mounts SigmaCanvas, which headless Firefox can't give a
     // WebGL context — Sigma throws and takes the whole page down (no canvas
     // fallback; see the Graph subtab test above). Table↔Graph state survival is
     // covered on Chromium/WebKit, which ship software GL.
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupFilterableInteractionsPage(page);
 
@@ -234,7 +197,10 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     page,
     browserName,
   }) => {
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupFilterableInteractionsPage(page);
 
@@ -248,7 +214,9 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     await interactionsPage.filterGraphByKeyword("peg.600");
 
     await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(graphPanel.getByText("fig|224914.16.peg.601")).not.toBeVisible();
+    await expect(
+      graphPanel.getByText("fig|224914.16.peg.601"),
+    ).not.toBeVisible();
 
     await interactionsPage.switchToTable();
     await interactionsPage.expectTableKeywordValue("peg.600");

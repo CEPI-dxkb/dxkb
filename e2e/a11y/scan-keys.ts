@@ -1,3 +1,5 @@
+import ts from "typescript";
+
 import { scanTargets } from "./routes";
 
 /**
@@ -19,12 +21,9 @@ import { scanTargets } from "./routes";
  *
  * - It does not record *which* spec scans a key, so moving a surface between
  *   a11y specs keeps its entry valid.
- * - It only recognises a plain double-quoted literal in the call's own argument
- *   list. A key passed as a template literal, a single-quoted string, a
- *   variable or a concatenation is *not* recognised — the entry is reported as
- *   unreferenced. That direction is safe (it fails loudly rather than
- *   accepting), but if a key you are sure is scanned is rejected, this is why:
- *   pass it as a plain `"double-quoted"` literal.
+ * - It recognises direct string literal arguments, but not template literals,
+ *   variables or concatenations. Those forms fail closed and leave the entry
+ *   reported as unreferenced.
  *
  * Adding a surface is the other direction and is not enforced: an un-enumerated
  * surface only matters once someone baselines it, and the stale key message
@@ -59,115 +58,32 @@ export const nonRouteScanKeys: readonly string[] = [
   "file-viewer/json",
 ];
 
-/**
- * Remove line and block comments, leaving string and template literals intact.
- *
- * A lexical approximation, not a parser: it tracks quotes so a `//` inside a
- * string survives, and it declines to start a line comment on a backslash-
- * escaped slash so a regex literal ending `\//` is not mistaken for one. If it
- * ever over-strips, the consequence is that a real `assertNoBlocking*` call
- * disappears and its key is reported as unreferenced — loud, not silent. The
- * unsafe direction is under-stripping, which is what this exists to prevent.
- */
-function stripComments(source: string): string {
-  let out = "";
-  let i = 0;
-  while (i < source.length) {
-    const char = source[i];
-    const next = source[i + 1];
-    if (char === '"' || char === "'" || char === "`") {
-      out += char;
-      i++;
-      while (i < source.length) {
-        if (source[i] === "\\") {
-          out += source.slice(i, i + 2);
-          i += 2;
-          continue;
-        }
-        out += source[i];
-        const closed = source[i] === char;
-        i++;
-        if (closed) break;
-      }
-      continue;
-    }
-    if (char === "/" && next === "/" && source[i - 1] !== "\\") {
-      while (i < source.length && source[i] !== "\n") i++;
-      continue;
-    }
-    if (char === "/" && next === "*") {
-      i += 2;
-      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) i++;
-      i += 2;
-      continue;
-    }
-    out += char;
-    i++;
-  }
-  return out;
-}
-
-/**
- * Scan keys a spec source passes to an `assertNoBlocking*` call: the first
- * double-quoted literal at the *top level* of that call's own argument list.
- *
- * Three properties, each there because its absence miscredited a key:
- *
- * - Comments are stripped first, so neither a commented-out call nor a comment
- *   sitting inside a live call's argument list can supply a key.
- * - The argument list is walked with a bracket counter rather than matched with
- *   one regex, because the sweep also calls
- *   `assertNoBlockingViolations(violations, target.name, theme)` with no
- *   literal at all; a regex scanning forward for the next `"` would hand it an
- *   unrelated literal from further down the file.
- * - Only depth-1 literals count, so a nested call's or object literal's string
- *   — `assertNoBlocking(scanPage(page, "not-a-key"), name, theme)` — is not
- *   mistaken for the scan key.
- *
- * Calls with no qualifying literal contribute nothing.
- */
+/** Scan keys passed as direct string arguments to live `assertNoBlocking*` calls. */
 export function extractScannedKeys(source: string): string[] {
   const keys: string[] = [];
-  const stripped = stripComments(source);
-  const callPattern = /assertNoBlocking\w*\(/g;
-  let call: RegExpExecArray | null;
-  while ((call = callPattern.exec(stripped)) !== null) {
-    let depth = 1;
-    let quote: string | null = null;
-    let quoteDepth = 0;
-    let literal: string | null = null;
-    let current = "";
-    for (let i = call.index + call[0].length; i < stripped.length; i++) {
-      const char = stripped[i];
-      if (quote) {
-        if (char === "\\") {
-          current += stripped[i + 1] ?? "";
-          i++;
-        } else if (char === quote) {
-          if (quote === '"' && literal === null && quoteDepth === 1) {
-            literal = current;
-          }
-          quote = null;
-        } else {
-          current += char;
-        }
-        continue;
-      }
-      if (char === '"' || char === "'" || char === "`") {
-        quote = char;
-        quoteDepth = depth;
-        current = "";
-        continue;
-      }
-      if (char === "(" || char === "[" || char === "{") depth++;
-      else if (char === "]" || char === "}") depth--;
-      else if (char === ")") {
-        depth--;
-        if (depth === 0) break;
-      }
+  const supportedCallees = new Set([
+    "assertNoBlocking",
+    "assertNoBlockingViolations",
+  ]);
+  const sourceFile = ts.createSourceFile(
+    "a11y-spec.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TS,
+  );
+  const visit = (node: ts.Node): void => {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      supportedCallees.has(node.expression.text)
+    ) {
+      const scanKey = node.arguments[1];
+      if (ts.isStringLiteral(scanKey)) keys.push(scanKey.text);
     }
-    if (literal !== null) keys.push(literal);
-  }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
   return keys;
 }
 

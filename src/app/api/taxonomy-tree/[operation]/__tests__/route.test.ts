@@ -11,6 +11,7 @@ import {
   makeRouteContext,
   mockNextRequest,
   setTestSession,
+  testCookieStore,
 } from "@/test-helpers/api-route-helpers";
 
 import { GET } from "../route";
@@ -160,6 +161,20 @@ describe("taxonomy tree route", () => {
     ).resolves.toMatchObject({
       error: "Child counts are limited to 500 parents per request.",
     });
+  });
+
+  it("validates requests before configuration and session resolution", async () => {
+    delete process.env.DATA_API_URL;
+    delete process.env.NEXT_PUBLIC_DATA_API;
+
+    const children = await call("children", "?parentId=invalid");
+    const counts = await call("child-counts");
+
+    expect(children.status).toBe(400);
+    expect(counts.status).toBe(400);
+    await expect(json(children)).resolves.toMatchObject({ code: "invalid_request" });
+    await expect(json(counts)).resolves.toMatchObject({ code: "invalid_request" });
+    expect(testCookieStore.get).not.toHaveBeenCalled();
   });
 
   it("passes a malformed facet payload through as a 502 with its own detail", async () => {

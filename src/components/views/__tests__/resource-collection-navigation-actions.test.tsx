@@ -353,7 +353,7 @@ describe("ResourceCollection resource-navigation actions", () => {
     await waitFor(() => {
       expect(selected).toHaveBeenCalledWith("ppi", {
         ids: ["ppi-1", "ppi-2"],
-        fields: ["feature_id_a", "feature_id_b"],
+        fields: ["feature_id_a", "feature_id_b", "id"],
       });
     });
     // Legacy pools feature_id_a and feature_id_b across every selected row.

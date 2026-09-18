@@ -156,4 +156,6 @@ jobs:
           path: |
             .misc/playwright-report/
             .misc/test-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14

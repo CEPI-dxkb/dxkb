@@ -33,6 +33,22 @@ describe("resolveLink", () => {
     );
   });
 
+  it("does not fall back a missing named placeholder to a populated display field", () => {
+    expect(
+      resolveLink(
+        "/genome/{genome_id}",
+        { genome_name: "M. tuberculosis H37Rv" },
+        "genome_name",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("treats a literal row.value as a named field only outside the sentinel", () => {
+    expect(
+      resolveLink("/{value}/{other}", { value: "wrong", id: "right", other: 0 }, "id"),
+    ).toBe("/right/0");
+  });
+
   it("rejects the link when a row-aware placeholder has no matching field anywhere", () => {
     expect(
       resolveLink(
@@ -73,11 +89,15 @@ describe("classifyHref", () => {
     expect(classifyHref("http://example.com")).toBe("external");
   });
 
-  it("classifies a protocol-relative //host as unsafe, not internal", () => {
+  it("classifies browser-normalized network paths as unsafe, not internal", () => {
     // A browser resolves "//evil.com" as an absolute, cross-origin URL despite
     // the missing scheme — a bare startsWith("/") check would wrongly treat it
     // as same-origin and hand it straight to Link.
     expect(classifyHref("//evil.com")).toBe("unsafe");
+    expect(classifyHref("/\\evil.com")).toBe("unsafe");
+    expect(new URL("/\\evil.com", "https://app.example").origin).toBe(
+      "https://evil.com",
+    );
   });
 
   it("classifies a javascript: URI as unsafe, never internal", () => {

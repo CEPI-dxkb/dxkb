@@ -64,6 +64,16 @@ export function FilterBar({
       ),
   );
   const locallyRequestedKeywords = useRef<string | null>(null);
+  const previousFacetIds = useRef(
+    new Set(facetFields.filter((field) => field.facet).map((field) => field.id)),
+  );
+  const facetDefinition = facetFields
+    .filter((field) => field.facet)
+    .map(
+      (field) =>
+        `${field.id}:${field.facet_hidden === true ? "hidden" : "shown"}`,
+    )
+    .join("|");
   const syncExternalKeywords = useEffectEvent((value: string) => {
     if (locallyRequestedKeywords.current === value) {
       locallyRequestedKeywords.current = null;
@@ -77,6 +87,30 @@ export function FilterBar({
   useEffect(() => {
     if (keywordValue !== undefined) syncExternalKeywords(keywordValue);
   }, [keywordValue]);
+
+  const reconcileFacets = useEffectEvent(() => {
+    const priorFacetIds = previousFacetIds.current;
+    previousFacetIds.current = new Set(
+      facetFields.filter((field) => field.facet).map((field) => field.id),
+    );
+    setVisibleFacetIds((current) => {
+      const next = new Set<string>();
+      for (const field of facetFields) {
+        if (!field.facet) continue;
+        if (
+          current.has(field.id) ||
+          (!priorFacetIds.has(field.id) && field.facet_hidden !== true)
+        ) {
+          next.add(field.id);
+        }
+      }
+      return next;
+    });
+  });
+
+  useEffect(() => {
+    reconcileFacets();
+  }, [facetDefinition]);
 
   const updateFilters = (
     nextSelected: SelectedFilter[],

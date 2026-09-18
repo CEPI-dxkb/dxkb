@@ -535,11 +535,16 @@ describe("SearchActionBar (taxonomy)", () => {
   describe("callbacks", () => {
     afterEach(() => vi.restoreAllMocks());
 
-    it("opens the guide URL without retaining an opener", async () => {
-      const guideWindow = { opener: window };
+    it("opens the guide without an opener or referrer", async () => {
+      const click = vi.fn();
+      const link = { href: "", target: "", rel: "", click };
+      const guideWindow = {
+        opener: window,
+        document: { createElement: vi.fn(() => link) },
+      };
       const openSpy = vi
         .spyOn(window, "open")
-        .mockReturnValue(guideWindow as Window);
+        .mockReturnValue(guideWindow as unknown as Window);
       render(
         <SearchActionBar
           selectedCount={1}
@@ -548,8 +553,14 @@ describe("SearchActionBar (taxonomy)", () => {
         />,
       );
       await userEvent.click(screen.getByRole("button", { name: /guide/i }));
-      expect(openSpy).toHaveBeenCalledWith("https://example.test/guide", "_blank");
+      expect(openSpy).toHaveBeenCalledWith("about:blank", "_blank");
       expect(guideWindow.opener).toBeNull();
+      expect(link).toMatchObject({
+        href: "https://example.test/guide",
+        target: "_self",
+        rel: "noreferrer",
+      });
+      expect(click).toHaveBeenCalledOnce();
     });
 
     it("reports a blocked guide pop-up", async () => {

@@ -41,7 +41,7 @@ These workflows run automatically on every PR targeting `main`:
 | Build     | `.github/workflows/pnpm-build.yml`     | `pnpm build`     |
 | Test      | `.github/workflows/pnpm-test.yml`      | `pnpm test`      |
 | E2E       | `.github/workflows/pnpm-e2e.yml`       | `pnpm e2e`       |
-| A11y      | `.github/workflows/pnpm-a11y.yml`      | `pnpm a11y:*`    |
+| A11y      | `.github/workflows/pnpm-a11y.yml`      | `pnpm a11y:meta`, `pnpm a11y:routes`, `pnpm a11y:deep`, `pnpm a11y:keyboard`, `pnpm a11y:tripwire`, `pnpm a11y:primitives` |
 
 (Also present: `e2e-har-refresh.yml` and `sync-linux-snapshots.yml` for maintenance, not per-PR gates.)
 
@@ -114,15 +114,15 @@ Specs that must run logged-out should override with `test.use({ storageState: { 
 
 Two layers, both required for full isolation:
 
-1. **Browser-side** — `applyBackendMocks(page, { har, overrides })` from `e2e/mocks/backends.ts` intercepts requests made from the page via `page.route()`.
+1. **Browser-side** — `applyBackendMocks(page, { overrides })` from `e2e/mocks/backends.ts` intercepts requests made from the page via `page.route()`.
 2. **Server-side (loopback)** — Server Components and route handlers fetch through env vars (e.g. `APP_SERVICE_URL` and `USER_URL`) that `.env.e2e.test` rewrites to `http://127.0.0.1:${E2E_PORT}/api/e2e-mock/<service>`. The loopback handler returns endpoint-correct identity responses and deterministic service fixtures. Its dispatch is fail-closed: an unregistered path or JSON-RPC method gets a diagnostic `400` naming what is missing (grep the webServer log for `[api/e2e-mock] e2e-mock: `), never an empty success, so a new server-side backend call needs a fixture registered in `route.ts` as well as an env var in `.env.e2e.test`. Playwright's `page.route()` cannot see server-side fetches, so this layer is mandatory — and a green browser-side run is not evidence that the loopback is complete.
 
 Because of the env-loading dance, the Playwright `webServer` runs `node e2e/scripts/start-webserver.mjs ${port}` instead of `next start` directly. Run `pnpm build` before `pnpm e2e` (the wrapper does not rebuild).
 
 ### HAR Replay Modes
 
-- **Strict replay** — Pass a HAR path to `applyBackendMocks` and matching requests are served verbatim. Used for read-only journeys (e.g. `auth.spec.ts`).
-- **Body-aware journey replay** — Use `harOverridesFor(journey, { callIndex })` from `e2e/scripts/har-overrides.ts` when the same endpoint must return different bodies across sequential calls (e.g. workspace mutations that reflect uploads/folder creation in subsequent reads). See `e2e/tests/workspace-actions.spec.ts`.
+- **Strict HAR canary replay** — Add endpoint-specific setup overrides followed by `...harOverridesFor("journey.har")` inside `applyBackendMocks(page, { overrides: [...] })`. Do not layer `journeyOverrides`, `emptyBackendFallbackOverrides`, or another broad aggregate over replay; unrecorded traffic must fail loudly. See `e2e/README.md` and the HAR blocks in `workspace-browse.spec.ts` and `genome-assembly.spec.ts`.
+- **Body-aware journey replay** — `harOverridesFor("journey.har")` groups recorded entries by path, HTTP method, and JSON-RPC method. Repeated calls replay in HAR order through the generated override's body function; callers do not pass a second argument.
 - HAR files live in `e2e/fixtures/hars/` (committed). Record with `pnpm e2e:record <journey>` against a real backend (local only — never in CI).
 - Hand-written overrides live in `e2e/fixtures/overrides/` and run before HAR replay.
 

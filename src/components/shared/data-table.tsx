@@ -27,6 +27,10 @@ import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { getIdField } from "@/constants/resources";
 import {
+  classifyHref,
+  resolveLink,
+} from "@/components/detail-panel/metadata-link-policy";
+import {
   computeShiftRangeIds,
   estimateHeaderWidth,
   formatCellValue,
@@ -250,6 +254,42 @@ function SelectionHeader({
   );
 }
 
+function TableValueLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  const classification = classifyHref(href);
+  const stopRowNavigation = (event: React.MouseEvent) => {
+    event.stopPropagation();
+  };
+  if (classification === "external") {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        onClick={stopRowNavigation}
+      >
+        {children}
+      </a>
+    );
+  }
+  if (classification === "internal") {
+    return (
+      <Link href={href} className={className} onClick={stopRowNavigation}>
+        {children}
+      </Link>
+    );
+  }
+  return null;
+}
+
 function createColumnDefs(columns: DataTableColumn[]) {
   const definitions: ColumnDef<DataTableFeatures, DataRow>[] = [
     {
@@ -277,47 +317,43 @@ function createColumnDefs(columns: DataTableColumn[]) {
           return (
             <span className="flex min-w-0 scrollbar-none gap-x-2 overflow-x-auto whitespace-nowrap">
               {[...new Set(rawValue.map(String))].map((itemValue) => {
-                return (
-                  <Link
+                const itemHref = resolveLink(
+                  valueHref,
+                  { ...info.row.original, [column.id]: itemValue },
+                  column.id,
+                );
+                return itemHref ? (
+                  <TableValueLink
                     key={itemValue}
-                    href={valueHref.replace(
-                      "{value}",
-                      encodeURIComponent(itemValue),
-                    )}
+                    href={itemHref}
                     className="shrink-0 text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                    }}
                   >
                     {itemValue}
-                  </Link>
+                  </TableValueLink>
+                ) : (
+                  <span key={itemValue} className="shrink-0">
+                    {itemValue}
+                  </span>
                 );
               })}
             </span>
           );
         }
-        const scalarValueHref =
-          valueHref &&
-          (typeof displayValue === "string" ||
-            typeof displayValue === "number" ||
-            typeof displayValue === "bigint" ||
-            typeof displayValue === "boolean")
-            ? valueHref.replace(
-                "{value}",
-                encodeURIComponent(String(displayValue)),
-              )
-            : undefined;
+        const scalarValueHref = valueHref
+          ? resolveLink(
+              valueHref,
+              { ...info.row.original, [column.id]: displayValue },
+              column.id,
+            )
+          : undefined;
         const cellHref = scalarValueHref ?? href;
-        return cellHref ? (
-          <Link
+        return cellHref && classifyHref(cellHref) !== "unsafe" ? (
+          <TableValueLink
             href={cellHref}
             className="truncate text-primary underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
-            onClick={(event) => {
-              event.stopPropagation();
-            }}
           >
             {value as React.ReactNode}
-          </Link>
+          </TableValueLink>
         ) : (
           (value as React.ReactNode)
         );

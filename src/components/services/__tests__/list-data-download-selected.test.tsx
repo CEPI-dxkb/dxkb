@@ -132,6 +132,7 @@ describe("ListData selected export: repository boundary", () => {
       operation: "selected",
       ids: ["1.1", maliciousId],
     });
+    expect((captured.body as { fields: string[] }).fields).toContain("genome_id");
     // The malicious id travels intact, as one array element in a JSON body —
     // never spliced into a hand-built `rql`/query string field (which is what
     // the removed fallback did via string concatenation).
@@ -139,6 +140,68 @@ describe("ListData selected export: repository boundary", () => {
     expect(captured.body).not.toHaveProperty("query");
     // Never a direct call to the backend/NEXT_PUBLIC_DATA_API for this export.
     expect(captured.url).toBe(`${window.location.origin}/api/data/genome`);
+  });
+
+  it("does not serialize partial rows when any batch fails", async () => {
+    const user = userEvent.setup();
+    const ids = Array.from({ length: 501 }, (_, index) => String(index));
+    let requestCount = 0;
+    server.use(
+      http.post("/api/data/genome", async ({ request }) => {
+        requestCount += 1;
+        const body = (await request.json()) as { ids: string[] };
+        if (body.ids.length === 1) {
+          return HttpResponse.json(
+            { error: "Second batch failed.", code: "upstream_error" },
+            { status: 502 },
+          );
+        }
+        return HttpResponse.json({
+          rows: body.ids.map((genome_id) => ({ genome_id })),
+        });
+      }),
+    );
+    const alertSpy = vi
+      .spyOn(window, "alert")
+      .mockImplementation(() => undefined);
+    const objectUrl = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:download");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    renderListData("genome", ids);
+    await user.click(
+      await screen.findByRole("button", { name: /Download Selected \(CSV\)/i }),
+    );
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Second batch failed.");
+    });
+    expect(requestCount).toBe(2);
+    expect(objectUrl).not.toHaveBeenCalled();
+  });
+
+  it("uses table columns rather than detail-only fields when all columns are requested", async () => {
+    const user = userEvent.setup();
+    let body: { fields: string[] } | undefined;
+    server.use(
+      http.post("/api/data/serology", async ({ request }) => {
+        body = (await request.json()) as { fields: string[] };
+        return HttpResponse.json({ rows: [{ id: "serology-1" }] });
+      }),
+    );
+    spyOnDownload();
+
+    renderListData("serology", ["serology-1"]);
+    await user.click(
+      await screen.findByRole("button", { name: /Download Selected \(CSV\)/i }),
+    );
+
+    await waitFor(() => {
+      expect(body).toBeDefined();
+    });
+    expect(body?.fields).not.toContain("taxon_lineage_ids");
+    expect(body?.fields).toContain("project_identifier");
   });
 
   it("names the downloaded file with a -selected marker, not the all-rows name", async () => {
@@ -233,6 +296,43 @@ describe("ListData selected export: repository boundary", () => {
     const content = await download.text();
     expect(content).toContain("\t");
     expect(content).not.toMatch(/Plain Name[^\t\n]*,/);
+  });
+});
+
+describe("ListData all-row export projection", () => {
+  it("uses table columns rather than detail-only fields when all columns are requested", async () => {
+    const user = userEvent.setup();
+    let body: { fields: string[] } | undefined;
+    server.use(
+      http.get("/api/data/serology", () =>
+        HttpResponse.json({
+          rows: [{ id: "serology-1", project_identifier: "project-1" }],
+          total: 1,
+          facets: {},
+          page: 1,
+          pageSize: 200,
+        }),
+      ),
+      http.post("/api/data/serology", async ({ request }) => {
+        body = (await request.json()) as { fields: string[] };
+        return HttpResponse.json({
+          rows: [{ id: "serology-1", project_identifier: "project-1" }],
+        });
+      }),
+    );
+    spyOnDownload();
+    render(<ListData resource="serology" q="" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await screen.findByText(/Showing 1-1 of 1 results/);
+    await user.click(screen.getByRole("button", { name: "Download (CSV)" }));
+
+    await waitFor(() => {
+      expect(body).toBeDefined();
+    });
+    expect(body?.fields).not.toContain("taxon_lineage_ids");
+    expect(body?.fields).toContain("project_identifier");
   });
 });
 

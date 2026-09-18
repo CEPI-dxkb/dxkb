@@ -302,17 +302,17 @@ export function unionCollectionManagedParamNames(
   return union;
 }
 
-/** Convert a `URLSearchParams` into the plain record shape the parsers
- * expect, collapsing single-value entries and preserving repeats as arrays. */
+/** Convert a `URLSearchParams` into the record shape the parsers expect,
+ * collapsing single-value entries and preserving repeats as arrays. */
 export function toSearchParamsRecord(
   params: URLSearchParams,
 ): SearchParamsRecord {
-  const result: SearchParamsRecord = {};
-  for (const key of new Set(params.keys())) {
-    const selected = params.getAll(key);
-    result[key] = selected.length === 1 ? selected[0] : selected;
-  }
-  return result;
+  return Object.fromEntries(
+    [...new Set(params.keys())].map((key) => {
+      const selected = params.getAll(key);
+      return [key, selected.length === 1 ? selected[0] : selected];
+    }),
+  );
 }
 
 function mergeWithUnrelatedParams<Sort extends string>(

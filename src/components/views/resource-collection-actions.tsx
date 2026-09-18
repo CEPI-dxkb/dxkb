@@ -9,7 +9,12 @@ import type {
   DataTableColumn,
   DataTableRow,
 } from "@/components/shared/data-table";
-import { maxExportRows, type DataResource } from "@/lib/data-api";
+import {
+  maxExportRows,
+  serializeRql,
+  type DataResource,
+} from "@/lib/data-api";
+import { navigateReservedTab } from "@/lib/reserved-tab-navigation";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { genomeIdsFromStrains } from "@/lib/strain-view";
 import {
@@ -234,33 +239,6 @@ const selectionActionsConfigByResource = {
     }
   >
 >;
-
-/**
- * Send a reserved pop-up tab to its destination.
- *
- * Pop-up paths reserve their tab first — `window.open("about:blank", "_blank")`,
- * null-check the handle, then set `reservedWindow.opener = null` while the tab is
- * still same-origin and empty. This is the other half of that pattern: navigation.
- *
- * **Why an anchor click and not `reservedWindow.location.replace(href)`.** Both
- * navigate the tab, but `location.replace` sends a `Referer` — the reserved
- * `about:blank` inherits this page's URL as its referrer, so the destination learns
- * where the user came from. Clicking an `<a rel="noreferrer">` suppresses it, and also
- * guarantees the destination document gets no `window.opener` even if the assignment
- * above were ever dropped. `target="_self"` because this anchor lives *inside* the
- * reserved tab's own document, so the click has to navigate that tab rather than open
- * yet another one.
- *
- * Safe after an `await`: nothing has navigated the reserved tab, so its document is
- * still the same-origin `about:blank` this page created and can still be scripted.
- */
-function navigateReservedTab(reservedWindow: Window, href: string) {
-  const link = reservedWindow.document.createElement("a");
-  link.href = href;
-  link.target = "_self";
-  link.rel = "noreferrer";
-  link.click();
-}
 
 function openMemberTab(
   href: string,
@@ -510,6 +488,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
    * resolution would replace the IDs an already-open chooser is working with.
    */
   const pendingTaxonomyActionRef = useRef<SearchActionId | null>(null);
+  const pendingBiosetActionRef = useRef(false);
   const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
     [],
   );
@@ -618,6 +597,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       );
       return;
     }
+    if (pendingBiosetActionRef.current) return;
     if (selection.total > maxExportRows) {
       onError(
         `This selection contains ${selection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
@@ -630,6 +610,8 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       return;
     }
     resultsWindow.opener = null;
+    pendingBiosetActionRef.current = true;
+    setLoadingActionIds(["biosets"]);
     try {
       const rows = await resolveAllMatchingRows(["exp_id"]);
       const experimentIds = rows.flatMap((row) => {
@@ -657,6 +639,9 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
           "The selected Bioset results could not be loaded.",
         ),
       );
+    } finally {
+      pendingBiosetActionRef.current = false;
+      setLoadingActionIds([]);
     }
   };
 
@@ -678,7 +663,18 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     } else if (actionId === "features" && targets.selectedSequenceId) {
       openMemberTab(
         featureListHref({
-          rql: `and(eq(sequence_id,${targets.selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
+          rql: serializeRql("genome_feature", {
+            operator: "and",
+            operands: [
+              {
+                operator: "eq",
+                field: "sequence_id",
+                value: targets.selectedSequenceId,
+              },
+              { operator: "eq", field: "annotation", value: "PATRIC" },
+              { operator: "eq", field: "feature_type", value: "CDS" },
+            ],
+          }),
         }),
         "Features",
         onError,
@@ -719,6 +715,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         guideUrl={profile.guideUrl}
         hasNoAssociatedGenomes={targets.knownSingleStrainHasNoGenomes}
         disabledActions={resolveDisabledActions(profile.resource, targets)}
+        externalLoadingActionIds={loadingActionIds}
         hasSelectableServices={selectionActionsConfig.hasSelectableServices}
         columns={profile.columns}
         columnVisibility={columnVisibility}

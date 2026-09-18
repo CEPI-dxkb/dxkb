@@ -516,15 +516,18 @@ describe("genomeAmrRecord agrees with what the registry declares", () => {
   // BV-BRC core returns; no test may reach a live backend.
   const definition = getResourceDefinition("genome_amr");
 
-  it("matches the registry's pmid cardinality", () => {
-    // `multipleFields` itself is module-private; `cardinality` is the derived
-    // public surface `buildFields` computes from it, so dropping `pmid` from
-    // `multipleFields.genome_amr` flips this to "scalar" and fails here.
-    expect(definition.fields.pmid.cardinality).toBe("multiple");
-    expect(Array.isArray(genomeAmrRecord.pmid)).toBe(
-      definition.fields.pmid.cardinality === "multiple",
-    );
-  });
+  it.each(["evidence", "pmid"] as const)(
+    "matches the registry's %s cardinality",
+    (field) => {
+      // `multipleFields` itself is module-private; `cardinality` is the derived
+      // public surface `buildFields` computes from it, so dropping either field
+      // from `multipleFields.genome_amr` flips this to "scalar" and fails here.
+      expect(definition.fields[field].cardinality).toBe("multiple");
+      expect(Array.isArray(genomeAmrRecord[field])).toBe(
+        definition.fields[field].cardinality === "multiple",
+      );
+    },
+  );
 
   it("matches the registry's inferred type for every scalar field it carries", () => {
     // `measurement_value` and `testing_standard_year` are deliberately left

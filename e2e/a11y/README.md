@@ -20,9 +20,12 @@ pnpm a11y:meta           # route-registry accounting + suppression-key hygiene
 `.github/workflows/pnpm-a11y.yml` has a job for `a11y:routes`, `a11y:deep`,
 `a11y:keyboard`, `a11y:tripwire` and `a11y:primitives`, plus `a11y:meta` as a
 step of the routes-sweep job — so the registry-drift guardrail does not depend
-on the Firefox tripwire. `a11y:motion` and `a11y:mobile` have **no** CI job and
-are local-only gates today; run them before pushing a change that touches
-animation or responsive layout.
+on the Firefox tripwire.
+
+The tripwire projects do not filter by spec, so they also run
+`reduced-motion.spec.ts` in WebKit and Firefox. `a11y:motion` has no dedicated CI
+job, but reduced-motion therefore has cross-engine tripwire coverage. Only
+`a11y:mobile` is local-only today; run it before pushing responsive layout changes.
 
 `a11y:meta` is the one Playwright script that needs neither a build nor a browser: it runs
 under `playwright.a11y.meta.config.ts`, which declares no `webServer` and no
@@ -38,7 +41,7 @@ run in either order.
 | `.misc/a11y-results/` | the Playwright `a11y:*` scripts other than `a11y:meta` (not `a11y:primitives`, which is Vitest) | Playwright `outputDir`: traces, screenshots, videos. Cleared at the start of each run. |
 | `.misc/a11y-report/results.json` | the same scripts, under `CI=true` | JSON reporter output. Rewritten each run. |
 | `.misc/a11y-report/html/` | the same scripts | HTML report (`pnpm a11y:report`). |
-| `.misc/a11y-report/a11y-summary.json` | `teardown.ts` | Per-route/theme scan summary for **one** invocation. `pnpm a11y:baseline:update` reads it, so run the sweep immediately before that script. |
+| `.misc/a11y-report/a11y-summary.json` | `teardown.ts` | Per-route/theme scan summary for **one** invocation. `pnpm a11y:baseline:update` runs the route sweep itself, then reads this file. |
 | `.misc/a11y-meta-results/`, `.misc/a11y-meta-report/` | `a11y:meta` only | Kept separate on purpose — see above. |
 
 Only the scan records are per-invocation. `results.json` and
@@ -100,7 +103,7 @@ Rules:
 - **Critical violations may NEVER be baselined.**
 - Every entry requires a `ticket` reference.
 - The `"*"` wildcard route applies to all routes lacking a specific entry.
-- Run `pnpm a11y:baseline:update` (Phase 2) to regenerate counts from a live run.
+- Run `pnpm a11y:baseline:update` (Phase 2) to run the route sweep and regenerate counts from its summary.
 
 ## Adding a new route
 

@@ -521,6 +521,52 @@ describe("ResourceCollection Bioset actions", () => {
     expect(exportAll).not.toHaveBeenCalled();
   });
 
+  it("guards an all-pages Bioset lookup and recovers after rejection", async () => {
+    const user = userEvent.setup();
+    const { open, close } = reservedTab();
+    let rejectExport: ((reason: Error) => void) | undefined;
+    const exportAll = vi.fn(
+      () =>
+        new Promise<{ rows: { exp_id: string }[] }>((_resolve, reject) => {
+          rejectExport = reject;
+        }),
+    );
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      rows: [{ bioset_id: "bioset-1", exp_id: "00042" }],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 2,
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByRole("button", { name: "Biosets action" });
+    await user.click(button);
+    expect(button).toBeDisabled();
+    await user.click(button);
+    expect(exportAll).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledOnce();
+
+    rejectExport?.(new Error("lookup failed"));
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(close).toHaveBeenCalledOnce();
+
+    await user.click(button);
+    expect(exportAll).toHaveBeenCalledTimes(2);
+    expect(open).toHaveBeenCalledTimes(2);
+  });
+
   it("navigates the reserved Bioset tab with the IDs it resolved, not a later selection", async () => {
     const user = userEvent.setup();
     const { links, replace, close } = reservedTab();

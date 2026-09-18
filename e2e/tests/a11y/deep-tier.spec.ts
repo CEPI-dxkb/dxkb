@@ -39,15 +39,31 @@ async function assertNoBlocking(
 ): Promise<void> {
   const violations = await scanPage(page);
   const { blocking, warnings } = partition(violations);
-  const { remaining, suppressed } = applyBaseline(baselineMap, surfaceName, theme, blocking);
+  const { remaining, suppressed } = applyBaseline(
+    baselineMap,
+    surfaceName,
+    theme,
+    blocking,
+  );
   logWarnings(warnings, `${surfaceName} (${theme})`);
   if (suppressed.length > 0) {
-    console.info(`[a11y] ${surfaceName} (${theme}): ${String(suppressed.length)} suppressed`);
+    console.info(
+      `[a11y] ${surfaceName} (${theme}): ${String(suppressed.length)} suppressed`,
+    );
   }
-  recordScan({ route: surfaceName, theme, blocking: remaining, suppressed, warnings });
+  recordScan({
+    project: test.info().project.name,
+    route: surfaceName,
+    theme,
+    blocking: remaining,
+    suppressed,
+    warnings,
+  });
   expect(
     remaining,
-    remaining.length === 0 ? undefined : formatBlocking(remaining, `${surfaceName} (${theme})`),
+    remaining.length === 0
+      ? undefined
+      : formatBlocking(remaining, `${surfaceName} (${theme})`),
   ).toEqual([]);
 }
 
@@ -76,16 +92,24 @@ test.describe("a11y deep tier: service forms", () => {
 
   test("genome-assembly: file-picker dialog open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...workspacePopulatedOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     await page.goto("/services/genome-assembly");
     await page.waitForLoadState("networkidle");
 
     // Open the output folder picker (labeled "Output Folder" or similar).
-    const folderButton = page.getByRole("button", { name: /output folder|select folder|browse/i }).first();
+    const folderButton = page
+      .getByRole("button", { name: /output folder|select folder|browse/i })
+      .first();
     if (await folderButton.isVisible()) {
       await folderButton.click();
-      await page.getByRole("dialog").waitFor({ state: "visible", timeout: 5_000 });
+      await page
+        .getByRole("dialog")
+        .waitFor({ state: "visible", timeout: 5_000 });
     } else {
       test.skip();
     }
@@ -101,7 +125,11 @@ test.describe("a11y deep tier: service forms", () => {
 test.describe("a11y deep tier: workspace", () => {
   test("workspace: populated state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...workspacePopulatedOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -114,7 +142,11 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: empty state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspaceEmptyOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...workspaceEmptyOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -127,7 +159,11 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: details panel open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...workspacePopulatedOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -144,7 +180,11 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: new-folder dialog open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...workspacePopulatedOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -159,7 +199,11 @@ test.describe("a11y deep tier: workspace", () => {
 
   test("workspace: upload dialog open", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...workspacePopulatedOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...workspacePopulatedOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
@@ -178,7 +222,11 @@ test.describe("a11y deep tier: workspace", () => {
 test.describe("a11y deep tier: jobs", () => {
   test("jobs: populated state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...jobsOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...jobsOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
@@ -193,7 +241,11 @@ test.describe("a11y deep tier: jobs", () => {
 
   test("jobs: empty state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, ...jobsEmptyOverrides, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        ...jobsEmptyOverrides,
+        ...a11yBackendOverrides,
+      ],
     });
     const jobs = new JobsListPage(page);
     await jobs.goto();
@@ -257,14 +309,21 @@ test.describe("a11y deep tier: jobs", () => {
     await jobs.selectJob(runningJob.id);
     await jobs.killSelected();
 
-    const dialog = page.getByRole("dialog").filter({ hasText: /confirm|kill|stop/i });
+    const dialog = page
+      .getByRole("dialog")
+      .filter({ hasText: /confirm|kill|stop/i });
     if (await dialog.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await forEachTheme(page, async (theme) => {
         await assertNoBlocking(page, "jobs/kill-dialog", theme);
       });
     } else {
       // If no confirmation dialog, just verify the kill button itself was accessible.
-      test.info().annotations.push({ type: "note", description: "kill-dialog not present in this build" });
+      test
+        .info()
+        .annotations.push({
+          type: "note",
+          description: "kill-dialog not present in this build",
+        });
     }
   });
 });
@@ -273,12 +332,29 @@ test.describe("a11y deep tier: jobs", () => {
 
 test.describe("a11y deep tier: search", () => {
   const emptyDataApiResponse = Object.fromEntries(
-    ["taxonomy", "genome", "strain", "genome_feature", "sp_gene",
-     "protein_feature", "epitope", "protein_structure", "pathway",
-     "subsystem", "surveillance", "serology", "experiment",
-     "antibiotics", "genome_sequence"].map((type) => [
+    [
+      "taxonomy",
+      "genome",
+      "strain",
+      "genome_feature",
+      "sp_gene",
+      "protein_feature",
+      "epitope",
+      "protein_structure",
+      "pathway",
+      "subsystem",
+      "surveillance",
+      "serology",
+      "experiment",
+      "antibiotics",
+      "genome_sequence",
+    ].map((type) => [
       type,
-      { result: { response: { docs: [], numFound: 0, maxScore: 0, numFoundExact: true } } },
+      {
+        result: {
+          response: { docs: [], numFound: 0, maxScore: 0, numFoundExact: true },
+        },
+      },
     ]),
   );
 
@@ -290,7 +366,11 @@ test.describe("a11y deep tier: search", () => {
 
   test("search: no-results state", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, dataApiOverride, ...a11yBackendOverrides],
+      overrides: [
+        ...authSessionOverrides,
+        dataApiOverride,
+        ...a11yBackendOverrides,
+      ],
     });
     await page.goto("/search?type=everything&q=zzznoresultsxxx");
     await page.waitForLoadState("networkidle");
@@ -325,7 +405,9 @@ test.describe("a11y deep tier: command palette", () => {
       .getByRole("dialog", { name: /command palette/i })
       .waitFor({ state: "visible", timeout: 10_000 });
     // Wait for auto-focus: WebKit cmdk theme CSS can lag behind dialog visibility.
-    await expect(page.locator('[data-slot="command-input"]')).toBeFocused({ timeout: 5_000 });
+    await expect(page.locator('[data-slot="command-input"]')).toBeFocused({
+      timeout: 5_000,
+    });
 
     await forEachTheme(page, async (theme) => {
       await assertNoBlocking(page, "command-palette/open", theme);
@@ -407,7 +489,10 @@ test.describe("a11y deep tier: settings", () => {
 // cannot reach it. Cover it here by driving the click before scanning.
 
 test.describe("a11y deep tier: taxon interactions graph", () => {
-  test("interactions: Graph subtab has no blocking violations", async ({ page, browserName }) => {
+  test("interactions: Graph subtab has no blocking violations", async ({
+    page,
+    browserName,
+  }) => {
     // Sigma.js needs a WebGL context to mount its canvas. Headless Firefox and
     // WebKit cannot render it reliably, so Chromium carries this a11y coverage.
     // Mirrors interactions.spec.ts and viewer-3d.spec.ts.
@@ -448,7 +533,11 @@ const viewerItems = [
   { name: "config.json", type: "json", parentPath: e2eHomePath, size: 48 },
 ];
 
-function viewerContentOverride(namePattern: string, body: string, contentType: string) {
+function viewerContentOverride(
+  namePattern: string,
+  body: string,
+  contentType: string,
+) {
   return {
     url: new RegExp(`/api/workspace/view/.*${namePattern}`),
     method: "GET" as const,
@@ -462,11 +551,25 @@ test.describe("a11y deep tier: file viewer", () => {
     await applyBackendMocks(page, {
       overrides: [
         // Specific view URLs MUST precede the catch-all in buildWorkspaceOverrides.
-        viewerContentOverride("notes\\.txt", "Plain text notes.\nSecond line.\n", "text/plain"),
-        viewerContentOverride("table\\.csv", "name,count\nalpha,1\nbeta,2\n", "text/csv"),
-        viewerContentOverride("config\\.json", '{"hello":"world"}', "application/json"),
+        viewerContentOverride(
+          "notes\\.txt",
+          "Plain text notes.\nSecond line.\n",
+          "text/plain",
+        ),
+        viewerContentOverride(
+          "table\\.csv",
+          "name,count\nalpha,1\nbeta,2\n",
+          "text/csv",
+        ),
+        viewerContentOverride(
+          "config\\.json",
+          '{"hello":"world"}',
+          "application/json",
+        ),
         ...authSessionOverrides,
-        ...buildWorkspaceOverrides({ pathItems: { [e2eHomePath]: viewerItems } }),
+        ...buildWorkspaceOverrides({
+          pathItems: { [e2eHomePath]: viewerItems },
+        }),
         ...a11yBackendOverrides,
         ...journeyOverrides,
       ],

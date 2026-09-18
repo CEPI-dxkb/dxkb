@@ -233,11 +233,16 @@ describe("rerunJob", () => {
   let mockSetItem: ReturnType<typeof vi.fn>;
   let mockRemoveItem: ReturnType<typeof vi.fn>;
   let mockOpen: ReturnType<typeof vi.fn>;
+  let mockLink: { href: string; target: string; rel: string; click: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     mockSetItem = vi.fn();
     mockRemoveItem = vi.fn();
-    mockOpen = vi.fn();
+    mockLink = { href: "", target: "", rel: "", click: vi.fn() };
+    mockOpen = vi.fn(() => ({
+      opener: window,
+      document: { createElement: vi.fn(() => mockLink) },
+    }));
     vi.stubGlobal("sessionStorage", {
       setItem: mockSetItem,
       removeItem: mockRemoveItem,
@@ -250,7 +255,12 @@ describe("rerunJob", () => {
 
   it("opens with an opener for sessionStorage cloning, then severs it", () => {
     const params = { genome_id: "123" };
-    const rerunWindow = { opener: window };
+    const click = vi.fn();
+    const link = { href: "", target: "", rel: "", click };
+    const rerunWindow = {
+      opener: window,
+      document: { createElement: vi.fn(() => link) },
+    };
     mockOpen.mockReturnValue(rerunWindow);
 
     const result = rerunJob(params, "GenomeAssembly2");
@@ -259,11 +269,14 @@ describe("rerunJob", () => {
       "12345678",
       JSON.stringify(params),
     );
-    expect(mockOpen).toHaveBeenCalledWith(
-      "/services/genome-assembly?rerun_key=12345678",
-      "_blank",
-    );
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
     expect(rerunWindow.opener).toBeNull();
+    expect(link).toMatchObject({
+      href: "/services/genome-assembly?rerun_key=12345678",
+      target: "_self",
+      rel: "noreferrer",
+    });
+    expect(click).toHaveBeenCalledOnce();
     expect(result).toEqual({ status: "opened" });
   });
 
@@ -301,12 +314,14 @@ describe("rerunJob", () => {
 
   it("navigates a reserved tab and writes the payload into its own storage", () => {
     const setItem = vi.fn();
-    const replace = vi.fn();
+    const click = vi.fn();
+    const link = { href: "", target: "", rel: "", click };
+    const createElement = vi.fn(() => link);
     const resultWindow = {
       closed: false,
-      opener: window,
+      opener: null,
       sessionStorage: { setItem },
-      location: { replace },
+      document: { createElement },
     } as unknown as Window;
 
     const params = { genome_id: "123" };
@@ -316,9 +331,13 @@ describe("rerunJob", () => {
     // would never reach it.
     expect(mockSetItem).not.toHaveBeenCalled();
     expect(setItem).toHaveBeenCalledWith("12345678", JSON.stringify(params));
-    expect(replace).toHaveBeenCalledWith(
-      "/services/genome-assembly?rerun_key=12345678",
-    );
+    expect(createElement).toHaveBeenCalledWith("a");
+    expect(link).toMatchObject({
+      href: "/services/genome-assembly?rerun_key=12345678",
+      target: "_self",
+      rel: "noreferrer",
+    });
+    expect(click).toHaveBeenCalledOnce();
     expect(resultWindow.opener).toBeNull();
     expect(mockOpen).not.toHaveBeenCalled();
     expect(result).toEqual({ status: "opened" });
@@ -346,11 +365,12 @@ describe("rerunJob", () => {
     expect(setItem).not.toHaveBeenCalled();
   });
 
-  it("reserves a blank tab, and reports refusal as null", () => {
-    const reserved = {};
+  it("reserves a blank tab, clears its opener, and reports refusal as null", () => {
+    const reserved = { opener: window };
     mockOpen.mockReturnValue(reserved);
     expect(reserveRerunWindow()).toBe(reserved);
     expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+    expect(reserved.opener).toBeNull();
 
     mockOpen.mockReturnValue(null);
     expect(reserveRerunWindow()).toBeNull();
@@ -374,19 +394,15 @@ describe("rerunJob", () => {
   it("routes GeneTree with viral_genome tree_type to viral-genome-tree", () => {
     rerunJob({ tree_type: "viral_genome" }, "GeneTree");
 
-    expect(mockOpen).toHaveBeenCalledWith(
-      expect.stringContaining("/services/viral-genome-tree"),
-      "_blank",
-    );
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+    expect(mockLink.href).toContain("/services/viral-genome-tree");
   });
 
   it("routes GeneTree with other tree_type to gene-protein-tree", () => {
     rerunJob({ tree_type: "gene" }, "GeneTree");
 
-    expect(mockOpen).toHaveBeenCalledWith(
-      expect.stringContaining("/services/gene-protein-tree"),
-      "_blank",
-    );
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+    expect(mockLink.href).toContain("/services/gene-protein-tree");
   });
 
   it("maps various service IDs to correct routes", () => {
@@ -402,10 +418,8 @@ describe("rerunJob", () => {
     for (const [serviceId, expectedRoute] of testCases) {
       vi.clearAllMocks();
       rerunJob({}, serviceId);
-      expect(mockOpen).toHaveBeenCalledWith(
-        expect.stringContaining(expectedRoute),
-        "_blank",
-      );
+      expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+      expect(mockLink.href).toContain(expectedRoute);
     }
   });
 });

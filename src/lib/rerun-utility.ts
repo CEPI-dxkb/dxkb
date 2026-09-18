@@ -1,4 +1,5 @@
 import type { Library } from "@/types/services";
+import { navigateReservedTab } from "@/lib/reserved-tab-navigation";
 import {
   getPairedLibraryId,
   getPairedLibraryName,
@@ -104,7 +105,9 @@ export interface RerunJobOptions {
  * caller fail before it writes anything that would then be orphaned.
  */
 export function reserveRerunWindow(): Window | null {
-  return window.open("", "_blank");
+  const reserved = window.open("", "_blank");
+  if (reserved) reserved.opener = null;
+  return reserved;
 }
 
 /**
@@ -160,22 +163,22 @@ export function rerunJob(
     // here would never reach it. Write into the tab's own storage instead; it
     // survives the same-origin navigation below.
     resultWindow.sessionStorage.setItem(key, JSON.stringify(parameters));
-    resultWindow.location.replace(url);
-    resultWindow.opener = null;
+    navigateReservedTab(resultWindow, url);
     return { status: "opened" };
   }
 
   sessionStorage.setItem(key, JSON.stringify(parameters));
 
-  // The new tab needs an opener while it is created so the browser copies this
-  // tab's sessionStorage. Sever the reference immediately after that copy.
-  const rerunWindow = window.open(url, "_blank");
+  // Opening the blank tab clones this tab's sessionStorage. Navigate only after
+  // severing its opener so this path has the same no-referrer policy as a tab that
+  // was reserved before asynchronous work.
+  const rerunWindow = reserveRerunWindow();
   if (!rerunWindow) {
     // Nothing will ever read the payload, so do not strand it in sessionStorage.
     sessionStorage.removeItem(key);
     return { status: "blockedPopup", message: rerunPopupBlockedMessage };
   }
-  rerunWindow.opener = null;
+  navigateReservedTab(rerunWindow, url);
   return { status: "opened" };
 }
 

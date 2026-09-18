@@ -17,8 +17,9 @@ describe("isOverviewValueAvailable", () => {
     expect(isOverviewValueAvailable("")).toBe(false);
   });
 
-  it("treats an empty array as unavailable", () => {
+  it("treats an empty array or an array of blank strings as unavailable", () => {
     expect(isOverviewValueAvailable([])).toBe(false);
+    expect(isOverviewValueAvailable(["", "   "])).toBe(false);
   });
 
   it("treats an array containing only non-primitive items as unavailable", () => {
@@ -92,8 +93,8 @@ describe("formatOverviewValue", () => {
     expect(formatOverviewValue(false)).toBe("false");
   });
 
-  it("formats a scalar array joined by comma-space", () => {
-    expect(formatOverviewValue(["a", "b", "c"])).toBe("a, b, c");
+  it("formats a scalar array joined by comma-space without blank entries", () => {
+    expect(formatOverviewValue(["a", "", "  ", "b", "c"])).toBe("a, b, c");
   });
 
   it("formats a mixed array by dropping non-primitive items", () => {

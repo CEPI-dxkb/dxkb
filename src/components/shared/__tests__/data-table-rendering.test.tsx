@@ -187,10 +187,38 @@ describe("DataTable shared view seams", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "100/2" })).toHaveAttribute(
-      "href",
-      "https://example.test/100%2F2",
+    const link = screen.getByRole("link", { name: "100/2" });
+    expect(link).toHaveAttribute("href", "https://example.test/100%2F2");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("resolves named placeholders from the row and rejects unsafe templates", () => {
+    render(
+      <DataTable
+        id="row-aware-and-unsafe-links"
+        data={[
+          { id: "row-1", genome_id: "100/2", contigs: 4, unsafe: "shown" },
+        ]}
+        columns={[
+          {
+            id: "contigs",
+            label: "Contigs",
+            valueHref: "/genome/{genome_id}?tab=sequences",
+          },
+          { id: "unsafe", label: "Unsafe", valueHref: "/\\evil.test/{value}" },
+        ]}
+        totalItems={1}
+        resource="genome"
+        idField="id"
+      />,
     );
+
+    expect(screen.getByRole("link", { name: "4" })).toHaveAttribute(
+      "href",
+      "/genome/100%2F2?tab=sequences",
+    );
+    expect(screen.getByText("shown")).not.toHaveRole("link");
   });
 
   it("renders repeated multivalue links without duplicate React keys", () => {

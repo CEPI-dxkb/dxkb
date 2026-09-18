@@ -102,6 +102,9 @@ export default async function GlobalSearch({
     query = keywords.join(" ");
   }
 
+  query = query.trim();
+  if (!query) return <SearchPrompt />;
+
   // Now that we have the entire query formatted properly, let's figure out where
   // to send it. Every legacy type resolves through the descriptors, so marking a
   // descriptor canonical is all it takes to redirect its legacy URL.
@@ -119,7 +122,7 @@ export default async function GlobalSearch({
       return (
         <UnsupportedSearchType
           searchtype={target.searchtype}
-          keyword={keyword}
+          keyword={query}
         />
       );
     default: {

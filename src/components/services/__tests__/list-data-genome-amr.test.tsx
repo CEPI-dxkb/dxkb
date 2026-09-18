@@ -119,6 +119,9 @@ describe("ListData genome_amr collection", () => {
       screen.getByRole("button", { name: "Sort by Pubmed" }),
     ).toBeDisabled();
     expect(
+      screen.getByRole("button", { name: "Sort by Evidence" }),
+    ).toBeDisabled();
+    expect(
       screen.getByRole("button", { name: "Sort by Antibiotic" }),
     ).toBeEnabled();
   });
@@ -167,45 +170,50 @@ describe("ListData genome_amr facets", () => {
 });
 
 describe("ListData genome_amr selected export", () => {
-  it("surfaces the gateway's limit error for a selection above the per-request ceiling", async () => {
+  it("batches a selection above the per-request ceiling and restores its order", async () => {
     const user = userEvent.setup();
     stubGateway();
-    // The gateway caps `selected` at `maxSelectedRows` ids per request and
-    // `DataRepository.selected` sends them in one call, so a larger
-    // cross-page selection is rejected. It must reach the user, not vanish.
-    const tooMany = Array.from({ length: maxSelectedRows + 1 }, (_, index) =>
-      String(index),
+    const selectedIds = Array.from(
+      { length: maxSelectedRows + 1 },
+      (_, index) => `amr-${String(index)}`,
     );
+    const bodies: { ids: string[] }[] = [];
     server.use(
-      http.post(gateway, () =>
-        HttpResponse.json(
-          {
-            error: `Too big: expected array to have <=${String(maxSelectedRows)} items`,
-            code: "invalid_request",
-          },
-          { status: 400 },
-        ),
-      ),
+      http.post(gateway, async ({ request }) => {
+        const body = (await request.json()) as { ids: string[] };
+        bodies.push(body);
+        return HttpResponse.json({
+          rows: [...body.ids]
+            .reverse()
+            .map((id) => ({ ...amrRow, id, antibiotic: id })),
+        });
+      }),
     );
-    const alertSpy = vi
-      .spyOn(window, "alert")
-      .mockImplementation(() => undefined);
-    const objectUrl = vi
-      .spyOn(URL, "createObjectURL")
-      .mockReturnValue("blob:download");
+    let exported: Blob | undefined;
+    vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
+      exported = blob as Blob;
+      return "blob:download";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      () => undefined,
+    );
 
-    renderAmrList({ selectedIds: tooMany });
+    renderAmrList({ selectedIds });
 
     await user.click(
       await screen.findByRole("button", { name: /Download Selected \(CSV\)/i }),
     );
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalled();
+      expect(exported).toBeDefined();
     });
-    expect(alertSpy.mock.calls[0][0]).toContain(String(maxSelectedRows));
-    // No half-written file: the export never reaches the serializer.
-    expect(objectUrl).not.toHaveBeenCalled();
+    expect(bodies.map((body) => body.ids.length)).toEqual([maxSelectedRows, 1]);
+    expect(bodies.flatMap((body) => body.ids)).toEqual(selectedIds);
+    const lines = (await exported?.text())?.trim().split("\n") ?? [];
+    expect(lines.findIndex((line) => line.includes("amr-0"))).toBeLessThan(
+      lines.findIndex((line) => line.includes(`amr-${String(maxSelectedRows)}`)),
+    );
   });
 
   it("exports a selection within the ceiling", async () => {
@@ -265,6 +273,9 @@ describe("ListData genome_amr all-rows export", () => {
       expect(exported).toBeDefined();
     });
     expect(body).toMatchObject({ operation: "export", rql: query });
+    expect((body as { fields: string[] }).fields).toEqual(
+      expect.arrayContaining(["antibiotic", "evidence", "pmid"]),
+    );
     // The `pmid` list is serialized, not dropped.
     await expect(exported?.text()).resolves.toContain("12345");
   });

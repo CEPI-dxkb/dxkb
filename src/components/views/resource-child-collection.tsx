@@ -58,10 +58,8 @@ interface ResourceChildCollectionProps {
    * 1. It is the *general* form those four branches specialize. Each of them
    *    spreads a canonical profile and overrides `label`, `basePredicate`,
    *    `buildStructuralRql` and `exportFileName` — exactly what this branch
-   *    does. Deleting the general mechanism while keeping four near-duplicate
-   *    specializations is the wrong direction; folding them into it is the
-   *    "collection wrapper adapter" the review plan deferred, because the
-   *    `rowHref` casts those branches need keep it from being cast-free.
+   *    does. The `rowHref` casts those branches need currently prevent them
+   *    from sharing this branch without weakening their row types.
    * 2. It is the seam the export-contract tests need. The byte-identical
    *    CSV/TSV assertions in `__tests__/resource-child-collection.test.tsx` pin
    *    exact bytes against a two-column profile; routed through
@@ -115,6 +113,7 @@ function ScopedResourceChildCollection({
   });
   const isControlledServerKeyword =
     keywordMode === "server" && keywordValue !== undefined;
+  const exportFileName = label.toLowerCase();
   /**
    * A new keyword is a new result set, so the page index it was paged into no
    * longer means anything — page 3 of an unfiltered scope is routinely past the
@@ -158,7 +157,7 @@ function ScopedResourceChildCollection({
         rql,
         suppliedProfile.buildStructuralRql,
       ),
-      exportFileName: label.toLowerCase(),
+      exportFileName,
     };
   } else if (resource === "bioset") {
     profile = {
@@ -169,7 +168,7 @@ function ScopedResourceChildCollection({
         rql,
         biosetCollectionProfile.buildStructuralRql,
       ),
-      exportFileName: label.toLowerCase(),
+      exportFileName,
     };
   } else if (resource === "genome_feature") {
     profile = {
@@ -182,7 +181,7 @@ function ScopedResourceChildCollection({
       ),
       rowHref: (row) =>
         featureCollectionProfile.rowHref?.(row as FeatureViewRecord),
-      exportFileName: label.toLowerCase(),
+      exportFileName,
     };
   } else if (resource === "protein_feature") {
     profile = {
@@ -197,7 +196,7 @@ function ScopedResourceChildCollection({
         proteinFeatureCollectionProfile.rowHref?.(
           row as ProteinFeatureViewRecord,
         ),
-      exportFileName: label.toLowerCase(),
+      exportFileName,
     };
   } else if (resource === "protein_structure") {
     profile = {
@@ -212,7 +211,7 @@ function ScopedResourceChildCollection({
         proteinStructureCollectionProfile.rowHref?.(
           row as ProteinStructureViewRecord,
         ),
-      exportFileName: label.toLowerCase(),
+      exportFileName,
     };
   } else {
     if (!columns) {
@@ -227,7 +226,7 @@ function ScopedResourceChildCollection({
       columns,
       basePredicate: rql,
       guideUrl,
-      exportFileName: label.toLowerCase(),
+      exportFileName,
     };
   }
 

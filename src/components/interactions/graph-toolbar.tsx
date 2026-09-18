@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 
 import {
   KeywordSearch,
@@ -32,6 +32,8 @@ export function GraphToolbar({
   onFilterChange,
 }: GraphToolbarProps) {
   const [draft, setDraft] = useState(filterValue);
+  const draftRef = useRef(draft);
+  const isDraftCommittedRef = useRef(true);
   // Adopt the shared value whenever it changes elsewhere — the Table's box, or a
   // commit of our own — so the input never shows a stale search.
   const [previousValue, setPreviousValue] = useState(filterValue);
@@ -45,8 +47,14 @@ export function GraphToolbar({
   });
 
   useEffect(() => {
+    draftRef.current = filterValue;
+    isDraftCommittedRef.current = true;
+  }, [filterValue]);
+
+  useEffect(() => {
     if (draft === filterValue) return;
     const timeout = setTimeout(() => {
+      isDraftCommittedRef.current = true;
       commitKeyword(draft);
     }, keywordDebounceMs);
     return () => {
@@ -54,11 +62,21 @@ export function GraphToolbar({
     };
   }, [draft, filterValue]);
 
+  useEffect(() => {
+    return () => {
+      if (!isDraftCommittedRef.current) commitKeyword(draftRef.current);
+    };
+  }, []);
+
   return (
     <div className="mt-0 mb-2 flex flex-wrap items-center gap-2 p-1">
       <KeywordSearch
         value={draft}
-        onChange={setDraft}
+        onChange={(value) => {
+          draftRef.current = value;
+          isDraftCommittedRef.current = false;
+          setDraft(value);
+        }}
         placeholder="Search interaction results..."
       />
     </div>

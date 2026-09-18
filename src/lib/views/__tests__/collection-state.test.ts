@@ -379,6 +379,31 @@ describe("unionCollectionManagedParamNames", () => {
     expect(union.has("utm_source")).toBe(false);
   });
 
+  it("preserves __proto__ as an unrelated single or repeated query key", () => {
+    const single = toSearchParamsRecord(new URLSearchParams("__proto__=one"));
+    expect(Object.hasOwn(single, "__proto__")).toBe(true);
+    expect(single.__proto__).toBe("one");
+
+    const repeated = toSearchParamsRecord(
+      new URLSearchParams("__proto__=one&__proto__=two"),
+    );
+    expect(repeated.__proto__).toEqual(["one", "two"]);
+
+    expect(canonicalizeCollectionSearchParams(repeated, options).getAll("__proto__")).toEqual([
+      "one",
+      "two",
+    ]);
+    expect(
+      replaceCollectionSearchParams(repeated, parseCollectionState({}, options), options).getAll(
+        "__proto__",
+      ),
+    ).toEqual(["one", "two"]);
+    expect(updateCollectionSearchParams(repeated, { keyword: "flu" }, options).getAll("__proto__")).toEqual([
+      "one",
+      "two",
+    ]);
+  });
+
   it("clears every participating view's stray state on a cross-tab transition while preserving unrelated params", () => {
     // Mirrors what the organism landing shell does on a tab switch: compute
     // the union across every tab's options, then delete those names from the

@@ -352,16 +352,27 @@ export function SelectionServiceChooser({
       return;
     }
     setPendingService(service);
+    let groupPath: string | undefined;
+    const deleteTemporaryGroup = async () => {
+      if (!groupPath) return;
+      try {
+        await repository.delete([groupPath]);
+      } catch {
+        // Cleanup must not replace the launch failure shown to the user.
+      }
+    };
     try {
-      const groupPath = await createTemporaryGroup(workspaceUsername);
+      groupPath = await createTemporaryGroup(workspaceUsername);
       if (session !== sessionRef.current) {
         closeRerunWindow(resultWindow);
+        await deleteTemporaryGroup();
         return;
       }
       const { parameters, serviceId } = groupServiceLaunch(service, groupPath);
       const launch = rerunJob(parameters, serviceId, { resultWindow });
       if (launch.status !== "opened") {
         closeRerunWindow(resultWindow);
+        await deleteTemporaryGroup();
         setFailure({ message: launch.message });
         return;
       }
@@ -369,6 +380,7 @@ export function SelectionServiceChooser({
       onOpenChange(false);
     } catch (serviceError) {
       closeRerunWindow(resultWindow);
+      await deleteTemporaryGroup();
       if (session !== sessionRef.current) return;
       reportServiceError(serviceError);
     } finally {

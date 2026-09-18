@@ -4,6 +4,7 @@ import * as path from "path";
 import type { Violation } from "./gate";
 
 export interface ScanRecord {
+  project: string;
   route: string;
   theme: string;
   blocking: Violation[];
@@ -45,10 +46,11 @@ export function currentScansDir(): string {
 export function recordScan(record: ScanRecord): void {
   const scansDir = currentScansDir();
   fs.mkdirSync(scansDir, { recursive: true });
-  const safeName = `${record.route}__${record.theme}`.replace(
-    /[^a-z0-9_-]/gi,
-    "_",
-  );
+  const safeName =
+    `${record.project}__${record.route}__${record.theme}`.replace(
+      /[^a-z0-9_-]/gi,
+      "_",
+    );
   const filename = `${safeName}__${String(process.pid)}__${randomUUID()}.json`;
   fs.writeFileSync(path.join(scansDir, filename), JSON.stringify(record));
 }

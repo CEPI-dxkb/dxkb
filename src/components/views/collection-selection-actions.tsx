@@ -177,6 +177,8 @@ interface CollectionSelectionActionsProps {
   hasNoAssociatedGenomes?: boolean;
   /** Reasons the owning collection disables bar entries it dispatches itself. */
   disabledActions?: Partial<Record<SearchActionId, string>>;
+  /** Actions currently resolving in the owning collection. */
+  externalLoadingActionIds?: readonly SearchActionId[];
   /** False when no service accepts this collection's selection; SERVICES says so. */
   hasSelectableServices?: boolean;
   columns: readonly DataTableColumn[];
@@ -213,6 +215,7 @@ export function CollectionSelectionActions({
   guideUrl,
   hasNoAssociatedGenomes = false,
   disabledActions,
+  externalLoadingActionIds = [],
   hasSelectableServices = true,
   columns,
   columnVisibility,
@@ -417,7 +420,7 @@ export function CollectionSelectionActions({
         searchType={searchType}
         guideUrl={guideUrl}
         enabledActions={[...actionIds, ...(extraEnabledActionIds ?? [])]}
-        loadingActionIds={loadingActionIds}
+        loadingActionIds={[...loadingActionIds, ...externalLoadingActionIds]}
         actionPopovers={
           isAuthenticated
             ? undefined

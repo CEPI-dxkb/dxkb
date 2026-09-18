@@ -82,6 +82,7 @@ describe("InfoPanel — search variant", () => {
             strain: "A/test/1/2024",
             genome_ids: ["100.1", "100/2"],
             "4_ha": ["CY000001", "CY000002"],
+            s: ["S000001"],
           }}
         />,
       );
@@ -101,6 +102,10 @@ describe("InfoPanel — search variant", () => {
       expect(screen.getByRole("link", { name: "CY000002" })).toHaveAttribute(
         "rel",
         "noopener noreferrer",
+      );
+      expect(screen.getByRole("link", { name: "S000001" })).toHaveAttribute(
+        "href",
+        "https://www.ncbi.nlm.nih.gov/nuccore/S000001",
       );
     });
 

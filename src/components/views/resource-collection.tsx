@@ -23,6 +23,7 @@ import {
   type DataRepository,
   type DataResource,
 } from "@/lib/data-api";
+import { maxSelectedRows } from "@/lib/data-api/validation";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -249,15 +250,30 @@ export function ResourceCollection<Row extends DataTableRow>({
     const selectedFields = [...fields];
     if (!collection.isAllPagesSelected || hasLoadedKeyword) {
       const ids = [...displayedSelectedIds];
-      const rows: Record<string, unknown>[] = [];
-      for (let offset = 0; offset < ids.length; offset += 500) {
-        const result = await repository.selected(profile.resource, {
-          ids: ids.slice(offset, offset + 500),
-          fields: selectedFields,
-        });
-        rows.push(...result.rows);
-      }
-      return rows;
+      const requestFields = selectedFields.includes(profile.idField)
+        ? selectedFields
+        : [...selectedFields, profile.idField];
+      const batches = await Promise.all(
+        Array.from(
+          { length: Math.ceil(ids.length / maxSelectedRows) },
+          (_, index) =>
+            repository.selected(profile.resource, {
+              ids: ids.slice(
+                index * maxSelectedRows,
+                (index + 1) * maxSelectedRows,
+              ),
+              fields: requestFields,
+            }),
+        ),
+      );
+      const orderById = new Map(ids.map((id, index) => [id, index]));
+      return batches
+        .flatMap((batch) => batch.rows)
+        .sort(
+          (left, right) =>
+            (orderById.get(String(left[profile.idField])) ?? Number.MAX_VALUE) -
+            (orderById.get(String(right[profile.idField])) ?? Number.MAX_VALUE),
+        );
     }
 
     if (collection.isRefreshing) {
@@ -294,11 +310,27 @@ export function ResourceCollection<Row extends DataTableRow>({
         ? [...fields]
         : profile.columns.map((column) => column.id);
       const allFields = profile.columns.map((column) => column.id);
+      const requestFields = selectedFields.includes(profile.idField)
+        ? selectedFields
+        : [...selectedFields, profile.idField];
       const result = ids?.length
-        ? await repository.selected(profile.resource, {
-            ids: [...ids],
-            fields: selectedFields,
-          })
+        ? {
+            rows: (
+              await Promise.all(
+                Array.from(
+                  { length: Math.ceil(ids.length / maxSelectedRows) },
+                  (_, index) =>
+                    repository.selected(profile.resource, {
+                      ids: ids.slice(
+                        index * maxSelectedRows,
+                        (index + 1) * maxSelectedRows,
+                      ),
+                      fields: requestFields,
+                    }),
+                ),
+              )
+            ).flatMap((batch) => batch.rows),
+          }
         : await repository.exportAll(profile.resource, {
             rql: effectiveRql,
             keyword: requestState.keyword,
@@ -306,12 +338,23 @@ export function ResourceCollection<Row extends DataTableRow>({
             fields: hasLoadedKeyword ? allFields : selectedFields,
             sort: dataSort(state.sort),
           });
+      const orderById = ids
+        ? new Map(ids.map((id, index) => [id, index]))
+        : undefined;
       const exportedRows =
         hasLoadedKeyword && !ids
           ? result.rows.filter((row) =>
               matchesLoadedKeyword(row, normalizedLoadedKeyword),
             )
-          : result.rows;
+          : orderById
+            ? [...result.rows].sort(
+                (left, right) =>
+                  (orderById.get(String(left[profile.idField])) ??
+                    Number.MAX_VALUE) -
+                  (orderById.get(String(right[profile.idField])) ??
+                    Number.MAX_VALUE),
+              )
+            : result.rows;
       downloadResourceExport(
         profile.resource,
         exportedRows,

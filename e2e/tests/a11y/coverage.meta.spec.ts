@@ -262,7 +262,9 @@ test.describe("a11y suppression keys", () => {
       const source = await readFile(path.join(specDir, file), "utf8");
       for (const key of extractScannedKeys(source)) scanned.add(key);
     }
-    expect(sourceCount, "expected a11y spec sources to read").toBeGreaterThan(0);
+    expect(sourceCount, "expected a11y spec sources to read").toBeGreaterThan(
+      0,
+    );
     expect(
       scanned.size,
       "expected to extract scan keys from the a11y spec sources",
@@ -294,10 +296,13 @@ test.describe("a11y suppression keys", () => {
       // 4. A nested call's literal, and an object literal's.
       'assertNoBlockingViolations(scanPage(page, "nested-surface"), target.name, theme);',
       'assertNoBlocking(page, { include: "object-surface" }, theme);',
+      'assertNoBlocking("wrong-position", target.name, theme);',
       // 5. A `//` inside a string must not start a comment.
       'assertNoBlockingViolations(violations, "real//surface", theme);',
       // What should be picked up:
       'assertNoBlockingViolations(violations, "real-surface", theme);',
+      'helper.assertNoBlocking(page, "member-surface", theme);',
+      'assertNoBlockingUnexpected(page, "unsupported-surface", theme);',
       "assertNoBlockingViolations(violations, target.name, theme);",
       'assertNoBlocking(\n  page,\n  "multiline-surface",\n  theme,\n);',
     ].join("\n");
@@ -309,9 +314,7 @@ test.describe("a11y suppression keys", () => {
     ]);
   });
 
-  test("a key passed as anything but a plain double-quoted literal is rejected", () => {
-    // These fail *closed* — the key is reported unreferenced rather than
-    // credited. Pinned so the doc comment's list stays true.
+  test("only direct string literal arguments are accepted", () => {
     const source = [
       "assertNoBlocking(page, `template-surface`, theme);",
       "assertNoBlocking(page, 'single-quoted-surface', theme);",
@@ -319,9 +322,7 @@ test.describe("a11y suppression keys", () => {
       'assertNoBlocking(page, "pre" + "fix", theme);',
     ].join("\n");
 
-    // The concatenation contributes its first fragment, not the joined key —
-    // which is still a rejection of "prefix", the key someone meant.
-    expect(extractScannedKeys(source)).toEqual(["pre"]);
+    expect(extractScannedKeys(source)).toEqual(["single-quoted-surface"]);
   });
 });
 

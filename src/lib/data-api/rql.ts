@@ -272,6 +272,14 @@ export function parseRql(resource: DataResource, rql: string): RqlExpression {
 
 function serializeValue(value: RqlValue, field?: ResourceField): string {
   if (typeof value !== "string") return String(value);
+  if (value === "") {
+    if (field?.quote === "never") {
+      throw new DataApiValidationError(
+        "Empty strings cannot be serialized for an unquoted field.",
+      );
+    }
+    return '""';
+  }
   const encoded = encodeURIComponent(value).replace(
     /[!'()*]/g,
     (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,

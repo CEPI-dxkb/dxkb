@@ -9,4 +9,5 @@ export const epitopeMetadata = deriveFieldMetadata(epitopeFields, {
 
 export const epitopeAssayMetadata = deriveFieldMetadata(epitopeAssayFields, {
   resource: "epitope_assay",
+  adaptColumn: (column, field) => ({ ...column, valueHref: field.link }),
 });

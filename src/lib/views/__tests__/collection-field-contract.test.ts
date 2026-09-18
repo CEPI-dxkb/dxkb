@@ -441,6 +441,29 @@ describe("projection safety", () => {
 });
 
 describe("profile column adapters", () => {
+  it("forwards Epitope Assay and all four Genome metadata links", () => {
+    const assayColumns = new Map(
+      epitopeAssayMetadata.columns.map((column) => [column.id, column]),
+    );
+    const genomeColumns = new Map(
+      genomeMetadata.columns.map((column) => [column.id, column]),
+    );
+
+    expect(assayColumns.get("pmid")?.valueHref).toBe(
+      "https://pubmed.ncbi.nlm.nih.gov/{value}/",
+    );
+    expect(genomeColumns.get("genome_id")?.valueHref).toBe("/genome/{value}");
+    expect(genomeColumns.get("taxon_id")?.valueHref).toContain(
+      "ncbi.nlm.nih.gov/Taxonomy/Browser",
+    );
+    expect(genomeColumns.get("genbank_accessions")?.valueHref).toContain(
+      "ncbi.nlm.nih.gov/nuccore/{value}",
+    );
+    expect(genomeColumns.get("contigs")?.valueHref).toBe(
+      "/genome/{genome_id}?tab=sequences",
+    );
+  });
+
   it("keeps Strain's NCBI accession fallback links", () => {
     const columns = new Map(
       strainMetadata.columns.map((column) => [column.id, column]),

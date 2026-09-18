@@ -224,5 +224,26 @@ describe("typed RQL", () => {
         values: ["1.1", "", "2.2"],
       });
     });
+
+    it("round-trips explicit empty and mixed string values", () => {
+      for (const expression of [
+        { operator: "in", field: "genome_id", values: [""] },
+        { operator: "in", field: "genome_id", values: ["1.1", "", "2.2"] },
+      ] satisfies RqlIn[]) {
+        const serialized = serializeRql("genome", expression);
+        expect(parseRql("genome", serialized)).toEqual(expression);
+        expect(validateRql("genome", serialized)).toBe(serialized);
+      }
+    });
+
+    it("rejects empty values for fields whose policy forbids quoting", () => {
+      expect(() =>
+        serializeRql("serology", {
+          operator: "in",
+          field: "test_type",
+          values: [""],
+        }),
+      ).toThrow(/cannot be serialized for an unquoted field/);
+    });
   });
 });

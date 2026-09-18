@@ -186,6 +186,25 @@ test.describe("taxon strains actions", () => {
     await expect(page.getByRole("button", { name: "Features" })).toBeVisible();
   });
 
+  test("opens GUIDE without an opener or referrer", async ({ page, context }) => {
+    let referer: string | undefined;
+    await page.route("https://www.bv-brc.org/docs/**", async (route) => {
+      referer = route.request().headers()["referer"];
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Guide</title>",
+      });
+    });
+
+    const guideTab = context.waitForEvent("page");
+    await page.getByRole("button", { name: "GUIDE" }).click();
+    const opened = await guideTab;
+    await opened.waitForURL("https://www.bv-brc.org/docs/**");
+
+    expect(referer).toBeUndefined();
+    expect(await opened.evaluate(() => window.opener === null)).toBe(true);
+  });
+
   test("keeps the selection when a signed-out user launches BLAST", async ({
     page,
     context,
@@ -218,6 +237,12 @@ test.describe("taxon strains actions", () => {
     expect(
       await opened.evaluate((key) => sessionStorage.getItem(key), rerunKey),
     ).toContain("641501.3");
+    expect(
+      await opened.evaluate(() => ({
+        hasOpener: window.opener !== null,
+        referrer: document.referrer,
+      })),
+    ).toEqual({ hasOpener: false, referrer: "" });
     await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
   });
 

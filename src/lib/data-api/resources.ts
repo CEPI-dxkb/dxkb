@@ -135,11 +135,10 @@ const dateFields = new Set([
 const phraseFields = new Set(["strain", "pathogen_test_type"]);
 const multipleFields: Partial<Record<DataResource, ReadonlySet<string>>> = {
   taxonomy: new Set(["other_names", "lineage_ids", "lineage_names"]),
-  // An AMR row cites every publication supporting the phenotype, so `pmid`
-  // arrives as a list. Declaring it `multiple` is also what keeps the legacy
-  // Search table from offering a server sort on it, which Solr rejects for a
-  // multi-valued field.
-  genome_amr: new Set(["pmid"]),
+  // An AMR row can cite multiple evidence sources and publications, so both
+  // fields arrive as lists. Declaring them `multiple` is also what keeps the
+  // legacy Search table from offering server sorts that Solr rejects.
+  genome_amr: new Set(["evidence", "pmid"]),
   epitope: new Set(["assay_results", "host_name", "taxon_lineage_ids"]),
   surveillance: new Set(["pathogen_test_type", "taxon_lineage_ids"]),
   serology: new Set(["taxon_lineage_ids"]),

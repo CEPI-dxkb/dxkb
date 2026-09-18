@@ -9,6 +9,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { navigateReservedTab } from "@/lib/reserved-tab-navigation";
 import {
   TooltipProvider,
   Tooltip,
@@ -124,7 +125,10 @@ export function SearchActionBar({
                   : () => {
                       if (action.id === "guide") {
                         if (guideUrl) {
-                          const guideWindow = window.open(guideUrl, "_blank");
+                          const guideWindow = window.open(
+                            "about:blank",
+                            "_blank",
+                          );
                           if (!guideWindow) {
                             const message = "Allow pop-ups to open the user guide.";
                             if (onError) onError(message);
@@ -132,6 +136,7 @@ export function SearchActionBar({
                             return;
                           }
                           guideWindow.opener = null;
+                          navigateReservedTab(guideWindow, guideUrl);
                         }
                       } else {
                         onAction?.(action.id);

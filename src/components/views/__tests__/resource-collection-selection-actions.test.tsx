@@ -1,6 +1,10 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DataRepository, DataResource } from "@/lib/data-api";
+import {
+  parseRql,
+  type DataRepository,
+  type DataResource,
+} from "@/lib/data-api";
 import { experimentCollectionProfile } from "@/lib/experiment-view/profile";
 import { featureCollectionProfile } from "@/lib/feature-view/profile";
 import { genomeCollectionProfile } from "@/lib/genome-view/profile";
@@ -11,6 +15,7 @@ import { serologyCollectionProfile } from "@/lib/serology-view/profile";
 import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { visibleSearchActions } from "@/components/search/search-action-policy";
+import { maxSelectedRows } from "@/lib/data-api/validation";
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
@@ -236,6 +241,54 @@ describe("ResourceCollection sequence actions", () => {
     );
   });
 
+  it.each([
+    "seq,one",
+    "seq%two",
+    "seq three",
+    'seq"four',
+  ])("serializes a sequence ID containing RQL delimiters: %s", async (sequenceId) => {
+    const user = userEvent.setup();
+    const sequenceRow = { sequence_id: sequenceId, genome_id: "83332.12" };
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: sequenceId,
+      detail: sequenceRow,
+      rows: [sequenceRow],
+      selection: { [sequenceId]: true },
+      selectedIds: [sequenceId],
+    });
+    const open = vi.fn(() => ({ opener: window }));
+    vi.stubGlobal("open", open);
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "genome_sequence",
+          label: "Sequences",
+          idField: "sequence_id",
+          columns: [{ id: "sequence_id", label: "Sequence ID" }],
+        }}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "sequence_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Features action" }));
+    expect(open).toHaveBeenCalledOnce();
+    const href = String((open.mock.calls as unknown[][])[0][0]);
+    const rql = decodeURIComponent(href.split("rql=")[1] ?? "");
+    expect(rql).not.toBe("");
+    expect(parseRql("genome_feature", rql)).toEqual({
+      operator: "and",
+      operands: [
+        { operator: "eq", field: "sequence_id", value: sequenceId },
+        { operator: "eq", field: "annotation", value: "PATRIC" },
+        { operator: "eq", field: "feature_type", value: "CDS" },
+      ],
+    });
+  });
+
   it("resolves the selected Sequences' Genome IDs for the SERVICES chooser", async () => {
     const user = userEvent.setup();
     const sequenceRow = {
@@ -273,10 +326,68 @@ describe("ResourceCollection sequence actions", () => {
     await waitFor(() => {
       expect(selected).toHaveBeenCalledWith("genome_sequence", {
         ids: [sequenceRow.sequence_id],
-        fields: ["genome_id"],
+        fields: ["genome_id", "sequence_id"],
       });
     });
     expect(await screen.findByText("Selectable services")).toBeVisible();
+  });
+
+  it("batches action-row resolution above the transport limit", async () => {
+    const user = userEvent.setup();
+    const interactionIds = Array.from(
+      { length: maxSelectedRows + 1 },
+      (_, index) => `interaction-${String(index)}`,
+    );
+    const selected = vi.fn(
+      (_resource: string, request: { ids: string[]; fields: string[] }) =>
+        Promise.resolve({
+          rows: [...request.ids].reverse().map((id) => ({
+            id,
+            feature_id_a: "feature-a",
+            feature_id_b: "feature-b",
+          })),
+        }),
+    );
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      selection: Object.fromEntries(interactionIds.map((id) => [id, true])),
+      selectedIds: interactionIds,
+      total: interactionIds.length,
+    });
+
+    render(
+      <ResourceCollection
+        profile={{
+          resource: "ppi",
+          label: "Interactions",
+          idField: "id",
+          columns: [
+            { id: "feature_id_a", label: "Interactor A" },
+            { id: "feature_id_b", label: "Interactor B" },
+          ],
+        }}
+        repository={{ selected } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Interaction features action" }),
+    );
+    await waitFor(() => {
+      expect(selected).toHaveBeenCalledTimes(2);
+    });
+    expect(selected.mock.calls.map((call) => call[1].ids.length)).toEqual([
+      maxSelectedRows,
+      1,
+    ]);
+    expect(
+      selected.mock.calls.every((call) => call[1].fields.includes("id")),
+    ).toBe(true);
+    expect(push).toHaveBeenCalledWith(
+      "/feature?rql=in(feature_id%2C(feature-a%2Cfeature-b))",
+    );
   });
 });
 
@@ -366,7 +477,7 @@ describe("ResourceCollection selection actions", () => {
     await waitFor(() => {
       expect(selected).toHaveBeenCalledWith("sequence_feature", {
         ids: [sequenceFeatureRow.id],
-        fields: ["sf_name", "sf_id"],
+        fields: ["sf_name", "sf_id", "id"],
       });
     });
   });
@@ -429,7 +540,7 @@ describe("ResourceCollection selection actions", () => {
     await waitFor(() => {
       expect(selected).toHaveBeenCalledWith("epitope", {
         ids: [epitopeRow.epitope_id],
-        fields: ["epitope_sequence", "host_name"],
+        fields: ["epitope_sequence", "host_name", "epitope_id"],
       });
     });
   });

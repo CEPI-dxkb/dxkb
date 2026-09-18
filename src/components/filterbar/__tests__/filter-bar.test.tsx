@@ -57,7 +57,7 @@ function stubFacets() {
 function renderFilterBar(onFilterChange = vi.fn()) {
   stubFacets();
   const Wrapper = createQueryClientWrapper();
-  render(
+  const view = render(
     <Wrapper>
       <FilterBar
         facetFields={facetFields}
@@ -67,7 +67,7 @@ function renderFilterBar(onFilterChange = vi.fn()) {
       />
     </Wrapper>,
   );
-  return { onFilterChange };
+  return { onFilterChange, view, Wrapper };
 }
 
 async function openChooser(user: ReturnType<typeof userEvent.setup>) {
@@ -155,6 +155,62 @@ describe("FilterBar facet chooser", () => {
       screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
     ).toHaveAttribute("aria-checked", "true");
     expect(await screen.findByRole("button", { name: "DNA (7)" })).toBeInTheDocument();
+  });
+
+  it("reconciles visible facets when the resource field definition changes", async () => {
+    const user = userEvent.setup();
+    const { view, Wrapper } = renderFilterBar();
+    await openChooser(user);
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+    await user.keyboard("{Escape}");
+
+    const nextFields = [
+      { ...facetFields[0], label: "Sequence Type Updated" },
+      {
+        id: "new_visible",
+        label: "New Visible",
+        visible: true,
+        facet: true,
+        facet_hidden: false,
+      },
+      {
+        id: "new_hidden",
+        label: "New Hidden",
+        visible: true,
+        facet: true,
+        facet_hidden: true,
+      },
+    ];
+    view.rerender(
+      <Wrapper>
+        <FilterBar
+          facetFields={nextFields}
+          resource="genome_sequence"
+          query="keyword(influenza*)"
+          onFilterChange={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    const trigger = screen.getByRole("button", { name: "Facets" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("menuitemcheckbox", {
+        name: "Sequence Type Updated",
+      }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "New Visible" }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "New Hidden" }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.queryByRole("menuitemcheckbox", { name: "Mol Type" }),
+    ).not.toBeInTheDocument();
   });
 
   it("uses theme tokens for the chooser and panel, not hardcoded colours", async () => {

@@ -10,6 +10,7 @@ import {
   readTaxonChildCounts,
   readTaxonChildren,
 } from "@/lib/data-api/taxonomy-tree";
+import { maxRqlInValues } from "@/lib/data-api/rql";
 
 /**
  * Dedicated same-origin boundary for the Taxa Tree, deliberately *not* an
@@ -107,6 +108,22 @@ export async function GET(
 
   try {
     const params = request.nextUrl.searchParams;
+    const parentId =
+      operation === "children" ? parseParentId(params.get("parentId")) : null;
+    const parentIds =
+      operation === "child-counts"
+        ? params.getAll("parentId").map(parseParentId)
+        : [];
+    if (operation === "child-counts") {
+      if (parentIds.length === 0) {
+        throw new DataApiValidationError("At least one parentId is required.");
+      }
+      if (parentIds.length > maxRqlInValues) {
+        throw new DataApiValidationError(
+          `Child counts are limited to ${maxRqlInValues.toLocaleString()} parents per request.`,
+        );
+      }
+    }
     // Session lookup, env resolution, missing-configuration handling, and
     // repository construction come from `resolveServerDataRepository`, shared
     // with the Data API gateway and the page factory. The base-URL check and
@@ -128,14 +145,10 @@ export async function GET(
       operation === "children"
         ? await readTaxonChildren(
             repository,
-            parseParentId(params.get("parentId")),
+            parentId as number,
             request.signal,
           )
-        : await readTaxonChildCounts(
-            repository,
-            params.getAll("parentId").map((value) => parseParentId(value)),
-            request.signal,
-          );
+        : await readTaxonChildCounts(repository, parentIds, request.signal);
     // Both answers vary with the caller's token, which decides what the
     // upstream counts as a visible genome, so neither is shared-cacheable.
     return NextResponse.json(result, {

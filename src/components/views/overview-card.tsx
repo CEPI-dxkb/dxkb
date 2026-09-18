@@ -5,7 +5,7 @@ type OverviewPrimitiveValue = string | number | boolean | bigint;
 
 function isOverviewPrimitive(value: unknown): value is OverviewPrimitiveValue {
   return (
-    typeof value === "string" ||
+    (typeof value === "string" && value.trim() !== "") ||
     typeof value === "number" ||
     typeof value === "boolean" ||
     typeof value === "bigint"
@@ -41,7 +41,8 @@ function serializeOverviewObject(value: unknown): string | undefined {
  * never stringified as the meaningless "[object Object]".
  */
 export function isOverviewValueAvailable(value: unknown): boolean {
-  if (value == null || value === "") return false;
+  if (value == null) return false;
+  if (typeof value === "string") return isOverviewPrimitive(value);
   if (Array.isArray(value)) return value.some(isOverviewPrimitive);
   if (isOverviewPrimitive(value)) return true;
   return serializeOverviewObject(value) !== undefined;

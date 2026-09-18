@@ -582,7 +582,11 @@ export interface GenomeAmrFixtureRecord {
   genome_name: string;
   antibiotic: string;
   resistant_phenotype: string;
-  evidence: string;
+  /**
+   * Array-valued on the wire; declared by `multipleFields.genome_amr` in
+   * src/lib/data-api/resources.ts, like `pmid` below.
+   */
+  evidence: string[];
   /**
    * Array-valued on the wire — `genome_amr.pmid` is registry-declared
    * multi-valued (the `multipleFields.genome_amr` set in
@@ -623,7 +627,7 @@ export const genomeAmrRecord: GenomeAmrFixtureRecord = {
   genome_name: "Brucella suis 1330",
   antibiotic: "ampicillin",
   resistant_phenotype: "Resistant",
-  evidence: "Laboratory Method",
+  evidence: ["Laboratory Method"],
   pmid: ["12345678", "23456789"],
   measurement_value: "32",
   measurement_sign: ">=",

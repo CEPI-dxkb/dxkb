@@ -19,8 +19,7 @@ export default defineConfig(
       "coverage/**",
       "public/dist/**",
       "public/nextstrain-viewer.html",
-      "playwright-report/**",
-      "test-results/**",
+      ".misc/**",
       "next-env.d.ts"
     ],
   },
@@ -70,6 +69,50 @@ export default defineConfig(
         "warn",
         {
           ignoreRestArgs: true,
+        },
+      ],
+    },
+  },
+  {
+    // `src/lib/e2e-fixtures/**` holds deterministic Playwright fixture DATA.
+    // It lives under `src/` so the loopback mock route and the Vitest parity
+    // tests can import it, but nothing in the shipped application may: a
+    // client component importing it would bundle fake genomes into the
+    // browser payload. `server-only` is deliberately NOT used — Playwright's
+    // own Node process legitimately imports the browser override bundles that
+    // re-export these records, and `server-only` would break that.
+    //
+    // The allowlist below is the complete set of legitimate importers, and
+    // `src/__tests__/e2e-fixtures-import-boundary.test.ts` pins it: that test
+    // fails if this list and the files that actually import the module ever
+    // disagree, in either direction.
+    files: ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx,mts}"],
+    ignores: [
+      "src/lib/e2e-fixtures/**",
+      "src/app/api/e2e-mock/**",
+      "e2e/fixtures/overrides/**",
+    ],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/lib/e2e-fixtures",
+                "@/lib/e2e-fixtures/*",
+                // Directory glob, not two filenames: pinning `records` and
+                // `envelopes` by name left the relative-import form of any
+                // *third* fixture module unrestricted, so the zone enforced
+                // two filenames rather than the boundary the docs credit it
+                // with. Verified with a throwaway fixture module imported
+                // from e2e/pages/ both ways.
+                "**/e2e-fixtures/*",
+              ],
+              message:
+                "src/lib/e2e-fixtures is E2E fixture data. Only the e2e-mock route handler, the e2e/fixtures/overrides bundles, and the fixture module's own tests may import it.",
+            },
+          ],
         },
       ],
     },

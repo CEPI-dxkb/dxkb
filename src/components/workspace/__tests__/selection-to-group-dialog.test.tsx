@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import { SelectionToGroupDialog } from "../selection-to-group-dialog";
@@ -64,8 +64,15 @@ function renderDialog(
     onAppend: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
-  render(<SelectionToGroupDialog {...props} />);
-  return props;
+  const { rerender } = render(<SelectionToGroupDialog {...props} />);
+  return {
+    ...props,
+    /** Closes and reopens the dialog, which is what starts a new session. */
+    reopen: () => {
+      rerender(<SelectionToGroupDialog {...props} open={false} />);
+      rerender(<SelectionToGroupDialog {...props} open />);
+    },
+  };
 }
 
 describe("SelectionToGroupDialog", () => {
@@ -158,5 +165,69 @@ describe("SelectionToGroupDialog", () => {
 
     expect(screen.getByText("0 selected genomes")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Group" })).toBeDisabled();
+  });
+
+  describe("reopened dialog sessions", () => {
+    it("ignores a create that resolves after the dialog was reopened", async () => {
+      const create = Promise.withResolvers<undefined>();
+      const props = renderDialog({ onCreate: vi.fn(() => create.promise) });
+
+      await userEvent.type(screen.getByLabelText("Group name"), "Test Group");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create Group" }),
+      );
+      props.reopen();
+
+      await act(async () => {
+        create.resolve(undefined);
+        await create.promise;
+      });
+
+      // Closing here would have dismissed whatever the user opened afterwards.
+      expect(props.onOpenChange).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Create Group" })).toBeVisible();
+    });
+
+    it("ignores an append failure that arrives after the dialog was reopened", async () => {
+      const append = Promise.withResolvers<undefined>();
+      const props = renderDialog({
+        ids: ["1"],
+        onAppend: vi.fn(() => append.promise),
+      });
+
+      await userEvent.click(
+        screen.getByRole("tab", { name: "Existing Group" }),
+      );
+      await userEvent.click(screen.getByLabelText("Genome group"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Add to Group" }),
+      );
+      props.reopen();
+
+      // Pin what reopening produced: the popup is not kept mounted, so this is a
+      // brand-new form back on the New Group tab — not the one that submitted.
+      expect(screen.getByRole("tab", { name: "New Group" })).toHaveAttribute(
+        "aria-selected",
+        "true",
+      );
+      expect(screen.getByRole("button", { name: "Create Group" })).toBeVisible();
+
+      await act(async () => {
+        append.reject(new Error("Group already exists"));
+        await append.promise.catch(() => undefined);
+      });
+
+      // The new session is untouched by the old one's rejection, and still usable.
+      expect(screen.queryByText("Group already exists")).toBeNull();
+      expect(props.onOpenChange).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText("Group name"), {
+        target: { value: "Second Try" },
+      });
+      await userEvent.click(
+        screen.getByRole("button", { name: "Create Group" }),
+      );
+      expect(props.onCreate).toHaveBeenCalledWith("/user/home", "Second Try");
+      expect(props.onOpenChange).toHaveBeenCalledWith(false);
+    });
   });
 });

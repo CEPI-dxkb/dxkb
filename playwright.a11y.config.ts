@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { a11ySignedInStatePath } from "./e2e/auth/storage-state";
 
 const port = Number(process.env.E2E_PORT ?? 3020);
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${String(port)}`;
@@ -7,11 +8,31 @@ const isCi = Boolean(process.env.CI);
 // Same wrapper as playwright.config.ts — loads .env.e2e.* and starts next start.
 const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 
+// a11y specs minus coverage.meta.spec.ts, which is browser-free and runs under
+// playwright.a11y.meta.config.ts so it cannot clear this config's outputDir or
+// rewrite its JSON report.
+//
+// Every browser project restates this, because a project-level `testMatch`
+// replaces the config-level one rather than narrowing it. Without it the
+// browser projects also match the auth setup files below and run them as
+// ordinary tests — re-running a setup that `dependencies` has already
+// guaranteed, and doing it *concurrently with the tests that read the storage
+// state it writes*, because `fullyParallel` is on. The concurrency is the
+// defect; how many redundant executions it works out to depends on which
+// projects and files the invocation selects, so no count is asserted here.
+const a11ySpecs = /tests\/a11y\/(?!coverage\.meta\.spec\.ts$).*\.spec\.ts$/;
+
 export default defineConfig({
+  // globalSetup stamps the invocation with A11Y_RUN_ID; globalTeardown
+  // aggregates only that invocation's scan records. See e2e/a11y/report.ts.
+  globalSetup: "./e2e/a11y/setup.ts",
   globalTeardown: "./e2e/a11y/teardown.ts",
   testDir: "./e2e",
-  // Include a11y specs + auth setup files (setup projects need these to create e2e/.auth/user.json).
-  testMatch: [/tests\/a11y\/.*\.spec\.ts$/, /auth\/.*\.setup\.ts$/],
+  // a11y specs + auth setup files (setup projects need those to create the
+  // storage state below). coverage.meta.spec.ts is excluded on purpose: it is
+  // browser-free and runs under playwright.a11y.meta.config.ts, so it cannot
+  // clear this config's outputDir or rewrite its JSON report.
+  testMatch: [a11ySpecs, /auth\/.*\.setup\.ts$/],
   timeout: 60_000,
   fullyParallel: true,
   forbidOnly: isCi,
@@ -20,11 +41,14 @@ export default defineConfig({
   reporter: isCi
     ? [
         ["github"],
-        ["html", { open: "never" }],
-        ["json", { outputFile: "a11y-report/results.json" }],
+        ["html", { open: "never", outputFolder: ".misc/a11y-report/html" }],
+        ["json", { outputFile: ".misc/a11y-report/results.json" }],
       ]
-    : [["list"], ["html", { open: "never" }]],
-  outputDir: "a11y-results",
+    : [
+        ["list"],
+        ["html", { open: "never", outputFolder: ".misc/a11y-report/html" }],
+      ],
+  outputDir: ".misc/a11y-results",
   use: {
     baseURL,
     trace: "retain-on-failure",
@@ -34,8 +58,11 @@ export default defineConfig({
     contextOptions: { reducedMotion: "reduce" },
   },
   projects: [
-    // Auth setup — reuses the same setup scripts as playwright.config.ts.
-    // Writes e2e/.auth/user.json used by all a11y projects below.
+    // Auth setup — reuses the same setup scripts as playwright.config.ts, which
+    // resolve their destination from the project name so the two configs do not
+    // write the same file. Writes a11ySignedInStatePath, read by the four
+    // browser projects below (not by a11y-setup-public, which writes its own);
+    // `dependencies` runs it to completion first even under fullyParallel.
     {
       name: "a11y-setup-signed-in",
       testMatch: /auth\/signed-in\.setup\.ts$/,
@@ -50,9 +77,10 @@ export default defineConfig({
     // Deep scan: chromium — runs all a11y specs with full dual-theme.
     {
       name: "a11y-chromium",
+      testMatch: a11ySpecs,
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "e2e/.auth/user.json",
+        storageState: a11ySignedInStatePath,
       },
       dependencies: ["a11y-setup-signed-in"],
     },
@@ -61,17 +89,19 @@ export default defineConfig({
     // Specs use test.skip(({ projectName }) => !projectName.includes("tripwire") && ...) for filtering.
     {
       name: "a11y-webkit-tripwire",
+      testMatch: a11ySpecs,
       use: {
         ...devices["Desktop Safari"],
-        storageState: "e2e/.auth/user.json",
+        storageState: a11ySignedInStatePath,
       },
       dependencies: ["a11y-setup-signed-in"],
     },
     {
       name: "a11y-firefox-tripwire",
+      testMatch: a11ySpecs,
       use: {
         ...devices["Desktop Firefox"],
-        storageState: "e2e/.auth/user.json",
+        storageState: a11ySignedInStatePath,
       },
       dependencies: ["a11y-setup-signed-in"],
     },
@@ -79,9 +109,10 @@ export default defineConfig({
     // Mobile thin: chromium at Pixel 5 viewport — high-divergence routes only (Phase 3).
     {
       name: "a11y-mobile-chromium",
+      testMatch: a11ySpecs,
       use: {
         ...devices["Pixel 5"],
-        storageState: "e2e/.auth/user.json",
+        storageState: a11ySignedInStatePath,
       },
       dependencies: ["a11y-setup-signed-in"],
     },

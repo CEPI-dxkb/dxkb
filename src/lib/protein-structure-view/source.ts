@@ -38,6 +38,23 @@ function formatFromPath(path: string): StructureFormat {
   return "pdb";
 }
 
+/**
+ * Build the workspace-file `StructureSource` for an already-decoded workspace
+ * path. This is the single place extension detection, filename extraction,
+ * and per-segment URL encoding happen for workspace structure files, shared
+ * by the `/protein-structure?path=` view and the standalone
+ * `/viewer/structure/[[...path]]` catch-all route.
+ */
+export function buildWorkspaceStructureSource(path: string): StructureSource {
+  const normalizedPath = path.replace(/^\/+/, "");
+  return {
+    url: `/api/workspace/view/${encodePath(normalizedPath)}`,
+    format: formatFromPath(normalizedPath),
+    label: normalizedPath.split("/").filter(Boolean).pop() ?? normalizedPath,
+    kind: "workspace",
+  };
+}
+
 function firstUniProtAccession(
   value: string | readonly string[] | undefined,
 ): string | undefined {
@@ -92,13 +109,7 @@ export function resolveProteinStructureSources(
   }
 
   if (input.workspacePath?.trim()) {
-    const path = input.workspacePath.trim();
-    candidates.push({
-      url: `/api/workspace/view/${encodePath(path)}`,
-      format: formatFromPath(path),
-      label: path.split("/").filter(Boolean).pop() ?? path,
-      kind: "workspace",
-    });
+    candidates.push(buildWorkspaceStructureSource(input.workspacePath.trim()));
   }
 
   return candidates;

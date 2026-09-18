@@ -4,6 +4,7 @@ import { epitopeFields } from "@/constants/datafields/epitope";
 import { epitopeAssayFields } from "@/constants/datafields/epitope_assay";
 import { experimentFields } from "@/constants/datafields/experiment";
 import { genomeFields } from "@/constants/datafields/genome";
+import { genomeAmrFields } from "@/constants/datafields/genome_amr";
 import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
 import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
@@ -19,6 +20,7 @@ import {
   epitopeAssayRecordSchema,
   epitopeRecordSchema,
   experimentRecordSchema,
+  genomeAmrRecordSchema,
   genomeFeatureRecordSchema,
   genomeRecordSchema,
   genomeSequenceRecordSchema,
@@ -42,6 +44,7 @@ import type {
 const ids: Record<DataResource, string> = {
   taxonomy: "taxon_id",
   genome: "genome_id",
+  genome_amr: "id",
   genome_feature: "feature_id",
   epitope: "epitope_id",
   epitope_assay: "assay_id",
@@ -66,6 +69,7 @@ const alternateIdentifiers: Partial<Record<DataResource, readonly string[]>> = {
 const sourceFields: Partial<Record<DataResource, DataFieldMap>> = {
   taxonomy: taxonomyFields,
   genome: genomeFields,
+  genome_amr: genomeAmrFields,
   genome_feature: genomeFeatureFields,
   epitope: epitopeFields,
   epitope_assay: epitopeAssayFields,
@@ -131,6 +135,10 @@ const dateFields = new Set([
 const phraseFields = new Set(["strain", "pathogen_test_type"]);
 const multipleFields: Partial<Record<DataResource, ReadonlySet<string>>> = {
   taxonomy: new Set(["other_names", "lineage_ids", "lineage_names"]),
+  // An AMR row can cite multiple evidence sources and publications, so both
+  // fields arrive as lists. Declaring them `multiple` is also what keeps the
+  // legacy Search table from offering server sorts that Solr rejects.
+  genome_amr: new Set(["evidence", "pmid"]),
   epitope: new Set(["assay_results", "host_name", "taxon_lineage_ids"]),
   surveillance: new Set(["pathogen_test_type", "taxon_lineage_ids"]),
   serology: new Set(["taxon_lineage_ids"]),
@@ -190,6 +198,7 @@ const orderedOperators = [
 const schemas: Record<DataResource, ResourceDefinition["schema"]> = {
   taxonomy: taxonomyRecordSchema,
   genome: genomeRecordSchema,
+  genome_amr: genomeAmrRecordSchema,
   genome_feature: genomeFeatureRecordSchema,
   epitope: epitopeRecordSchema,
   epitope_assay: epitopeAssayRecordSchema,
@@ -222,17 +231,22 @@ function buildFields(resource: DataResource): Record<string, ResourceField> {
       const metadata = source
         ? Object.values(source).find((field) => field.field === name)
         : undefined;
+      // Sortability is derived from the cardinality this same pass just decided,
+      // not from a second `multipleFields` lookup. The two used to be computed
+      // independently from the same set, which left `field-metadata.ts`'s stated
+      // contract ("`sortable` + registry cardinality owns sortability") describing
+      // an intent the code only happened to satisfy.
+      const cardinality: ResourceField["cardinality"] = multipleFields[
+        resource
+      ]?.has(name)
+        ? "multiple"
+        : "scalar";
       return [
         name,
         {
           type: inferType(name),
-          cardinality: multipleFields[resource]?.has(name)
-            ? "multiple"
-            : "scalar",
-          selectable: true,
-          sortable:
-            !multipleFields[resource]?.has(name) &&
-            metadata?.sortable !== false,
+          cardinality,
+          sortable: cardinality === "scalar" && metadata?.sortable !== false,
           facet: metadata?.facet === true,
           quote:
             resource === "serology" && name === "test_type"

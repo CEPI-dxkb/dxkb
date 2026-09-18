@@ -2,7 +2,16 @@
 
 import { useEffect, useEffectEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { KeywordSearch } from "@/components/filterbar/keyword-search";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  KeywordSearch,
+  keywordDebounceMs,
+} from "@/components/filterbar/keyword-search";
 import { FacetColumn } from "@/components/filterbar/facet-column";
 import { SelectedFilters } from "@/components/filterbar/selected-filters";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
@@ -42,7 +51,6 @@ export function ResourceFilterBar({
           .map((definition) => definition.field),
       ),
   );
-  const [facetMenuOpen, setFacetMenuOpen] = useState(false);
 
   const externalKeyword = keyword ?? "";
   const [previousKeyword, setPreviousKeyword] = useState(externalKeyword);
@@ -62,7 +70,7 @@ export function ResourceFilterBar({
     if (keywordDraft === (keyword ?? "")) return;
     const timeout = setTimeout(() => {
       commitKeyword(keywordDraft);
-    }, 300);
+    }, keywordDebounceMs);
     return () => {
       clearTimeout(timeout);
     };
@@ -97,43 +105,37 @@ export function ResourceFilterBar({
         </div>
         <div className="flex items-center gap-2">
           {showFacets && definitions.length > 0 && (
-            <div className="relative">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setFacetMenuOpen((current) => !current);
-                }}
-                className="rounded border border-gray-400 px-2 py-1 text-xs hover:bg-gray-700"
-              >
-                Facets
-              </Button>
-              {facetMenuOpen && (
-                <div className="absolute right-0 z-50 mt-1 max-h-64 w-56 overflow-y-auto rounded border bg-background shadow-lg">
-                  {definitions.map((definition) => (
-                    <label
-                      key={definition.field}
-                      className="flex cursor-pointer items-center gap-2 px-2 py-1 text-xs hover:bg-muted"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={visibleFacets.has(definition.field)}
-                        onChange={() => {
-                          setVisibleFacets((current) => {
-                            const next = new Set(current);
-                            if (next.has(definition.field))
-                              next.delete(definition.field);
-                            else next.add(definition.field);
-                            return next;
-                          });
-                        }}
-                      />
-                      {definition.label}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded border px-2 py-1 text-xs hover:bg-muted"
+                  >
+                    Facets
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className="w-56">
+                {definitions.map((definition) => (
+                  <DropdownMenuCheckboxItem
+                    key={definition.field}
+                    checked={visibleFacets.has(definition.field)}
+                    onCheckedChange={(checked) => {
+                      setVisibleFacets((current) => {
+                        const next = new Set(current);
+                        if (checked) next.add(definition.field);
+                        else next.delete(definition.field);
+                        return next;
+                      });
+                    }}
+                  >
+                    {definition.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Button
             type="button"
@@ -147,20 +149,22 @@ export function ResourceFilterBar({
           >
             Clear All Filters
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setShowFacets((current) => !current);
-            }}
-            className="rounded border border-gray-400 px-2 py-1 text-xs whitespace-nowrap hover:bg-gray-700"
-          >
-            {showFacets ? "Hide Filters" : "Show Filters"}
-          </Button>
+          {definitions.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowFacets((current) => !current);
+              }}
+              className="rounded border px-2 py-1 text-xs whitespace-nowrap hover:bg-muted"
+            >
+              {showFacets ? "Hide Filters" : "Show Filters"}
+            </Button>
+          )}
         </div>
       </div>
-      {showFacets && (
-        <div className="flex max-h-30 gap-3 overflow-auto rounded bg-gray-800 p-2 text-[11px]">
+      {showFacets && definitions.length > 0 && (
+        <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-[11px]">
           {definitions
             .filter((definition) => visibleFacets.has(definition.field))
             .map((definition) => (

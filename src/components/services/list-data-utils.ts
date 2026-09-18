@@ -14,16 +14,24 @@ import { biosetFields } from "@/constants/datafields/bioset";
 import { epitopeFields } from "@/constants/datafields/epitope";
 import { experimentFields } from "@/constants/datafields/experiment";
 import { ppiFields } from "@/constants/datafields/ppi";
+import { resourceRegistry } from "@/lib/data-api";
+import type { DataResource } from "@/lib/data-api";
 
 export interface ColumnInfo {
   id: string;
   label: string;
   visible: boolean;
+  /**
+   * Whether the table may ask the gateway to sort on this column. Derived from
+   * `resourceRegistry`, which is the same value `validateSort` enforces at the
+   * gateway, so a sortable header can never produce a rejected request.
+   */
+  sortable: boolean;
   facet?: boolean;
   facet_hidden?: boolean;
 }
 
-export const resourceFields: Record<string, DataFieldMap | undefined> = {
+export const resourceFields: Partial<Record<DataResource, DataFieldMap>> = {
   genome: genomeFields,
   genome_amr: genomeAmrFields,
   genome_feature: genomeFeatureFields,
@@ -44,7 +52,11 @@ export const resourceFields: Record<string, DataFieldMap | undefined> = {
 const emptyFields: ColumnInfo[] = [];
 const tableFieldsByResource = new Map<string, ColumnInfo[]>();
 
-export function deriveTableFields(resource: string): ColumnInfo[] {
+/**
+ * The legacy table's columns: order, labels and initial visibility come from
+ * `datafields/*` (unchanged), sortability comes from the Data API registry.
+ */
+export function deriveTableFields(resource: DataResource): ColumnInfo[] {
   const cached = tableFieldsByResource.get(resource);
   if (cached) return cached;
 
@@ -53,6 +65,13 @@ export function deriveTableFields(resource: string): ColumnInfo[] {
     console.error(`No fields definition found for resource: ${resource}`);
     return emptyFields;
   }
+  // `resourceRegistry` derives its field map from the same `datafields/*`
+  // source, so every column below resolves to an entry here. The `hasOwn`
+  // guard reports a column that somehow does not as unsortable rather than
+  // letting the lookup miss decide: nothing proves the gateway would accept a
+  // sort on a field it has no metadata for. (The index type is not optional,
+  // so this cannot be written as `?.sortable ?? false`.)
+  const registryFields = resourceRegistry[resource].fields;
   const fields: ColumnInfo[] = [];
   for (const field of Object.values(fieldObj)) {
     if (field.show_in_table !== false) {
@@ -60,6 +79,9 @@ export function deriveTableFields(resource: string): ColumnInfo[] {
         id: field.field,
         label: field.label,
         visible: !field.hidden,
+        sortable: Object.hasOwn(registryFields, field.field)
+          ? registryFields[field.field].sortable
+          : false,
         facet: field.facet ?? false,
         facet_hidden: field.facet_hidden ?? true,
       });
@@ -67,6 +89,22 @@ export function deriveTableFields(resource: string): ColumnInfo[] {
   }
   tableFieldsByResource.set(resource, fields);
   return fields;
+}
+
+/**
+ * Every column the row payload must carry, whether or not it is shown: the
+ * detail panel renders `show_in_table: false` fields too, so narrowing this to
+ * the visible columns would blank them out.
+ */
+export function projectedFields(
+  resource: DataResource,
+  idField: string,
+): string[] {
+  const fieldMap = resourceFields[resource];
+  if (!fieldMap) return [idField];
+  return [
+    ...new Set([idField, ...Object.values(fieldMap).map((f) => f.field)]),
+  ];
 }
 
 export function findPageRow(
@@ -108,18 +146,28 @@ function exportValue(value: unknown, format: "csv" | "txt"): string {
   return `"${safe.replace(/"/g, "\"\"")}"`;
 }
 
+/**
+ * Serialize and download `rows` the caller already holds. Used for both
+ * all-rows exports (whose rows come from the Data API repository, or from the
+ * loaded page when the keyword filter is client-side) so a single serializer
+ * and a single filename shape covers every all-rows download.
+ */
 export function downloadLoadedResourceRows({
   resource,
   rows,
   format,
   visibleColumns,
   fields,
+  // Defaults to "all" so the existing handleDownloadAll call site keeps
+  // today's `${resource}-all.${format}` filename unchanged.
+  variant = "all",
 }: {
   resource: string;
   rows: readonly Record<string, unknown>[];
   format: "csv" | "txt";
   visibleColumns: string[] | null;
   fields: ColumnInfo[];
+  variant?: "all" | "selected";
 }): void {
   const requestedColumns =
     visibleColumns !== null ? visibleColumns : fields.map((field) => field.id);
@@ -136,61 +184,7 @@ export function downloadLoadedResourceRows({
   const objectUrl = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = objectUrl;
-  link.download = `${resource}-all.${format}`;
+  link.download = `${resource}-${variant}.${format}`;
   link.click();
   URL.revokeObjectURL(objectUrl);
-}
-
-export async function downloadResourceRows({
-  dataApi,
-  resource,
-  query,
-  totalItems,
-  format,
-  visibleColumns,
-  fields,
-}: {
-  dataApi: string;
-  resource: string;
-  query: string;
-  totalItems: number;
-  format: "csv" | "txt";
-  visibleColumns: string[] | null;
-  fields: ColumnInfo[];
-}): Promise<void> {
-  const requestedColumns =
-    visibleColumns !== null ? visibleColumns : fields.map((field) => field.id);
-  const columns = requestedColumns.filter((id) => id !== "__select__");
-  const selectClause = columns.length ? `&select(${columns.join(",")})` : "";
-  const response = await fetch(
-    `${dataApi}/${resource}/?${query}${selectClause}`,
-    {
-      headers: {
-        "Content-type": "application/rqlquery+x-www-form-urlencoded",
-        Accept: "application/json",
-        Range: `items=0-${String(totalItems)}`,
-        "X-Range": `items=0-${String(totalItems)}`,
-      },
-    },
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch all data: ${String(response.status)} ${response.statusText}`,
-    );
-  }
-  const payload = (await response.json()) as unknown;
-  const payloadObject = payload as Record<string, unknown>;
-  const rows = Array.isArray(payload)
-    ? payload
-    : ((payloadObject.items ??
-        payloadObject.response ??
-        payloadObject.rows ??
-        []) as Record<string, unknown>[]);
-  downloadLoadedResourceRows({
-    resource,
-    rows,
-    format,
-    visibleColumns,
-    fields,
-  });
 }

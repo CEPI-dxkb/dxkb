@@ -1,3 +1,7 @@
+import {
+  buildBrowserRpcError,
+  buildBrowserRpcSuccess,
+} from "@/lib/e2e-fixtures/envelopes";
 import type { JsonOverride } from "../../mocks/backends";
 
 export const e2eUsername = "e2e-test-user@patricbrc.org";
@@ -246,7 +250,7 @@ export function buildWorkspaceOverrides(
     },
     // Function body lets reflectUploads / reflectFolderCreates mutate `pathItems` between
     // calls (Workspace.create appends the new tuple, then the next Workspace.ls picks it up).
-    body: () => ({ result: mockWorkspaceLsResult({ pathItems }) }),
+    body: () => buildBrowserRpcSuccess(mockWorkspaceLsResult({ pathItems })),
   };
 
   const searchOverride: JsonOverride = {
@@ -266,19 +270,17 @@ export function buildWorkspaceOverrides(
         | { paths?: string[] }
         | undefined;
       const requestedPath = params?.paths?.[0] ?? `/${e2eUsername}/home/`;
-      return {
-        result: [
-          {
-            [requestedPath]: searchItems.map(workspaceTuple),
-          },
-        ],
-      };
+      return buildBrowserRpcSuccess([
+        {
+          [requestedPath]: searchItems.map(workspaceTuple),
+        },
+      ]);
     },
   };
 
   const listPermsOverride = workspaceRpcOverride(
     "Workspace.list_permissions",
-    { result: mockListPermissionsResult(Object.keys(pathItems)) },
+    buildBrowserRpcSuccess(mockListPermissionsResult(Object.keys(pathItems))),
   );
 
   const getOverride: JsonOverride = {
@@ -290,9 +292,9 @@ export function buildWorkspaceOverrides(
       const params = body.params?.[0] as { objects?: string[] } | undefined;
       return params?.objects?.includes(favoritesPath) ?? false;
     },
-    body: {
-      result: mockWorkspaceGetContent(JSON.stringify({ folders: favorites })),
-    },
+    body: buildBrowserRpcSuccess(
+      mockWorkspaceGetContent(JSON.stringify({ folders: favorites })),
+    ),
   };
 
   // Mirror back whatever filename the request asked to create. The two reflection flags
@@ -328,32 +330,30 @@ export function buildWorkspaceOverrides(
           ];
         }
       }
-      return {
-        result: [
+      return buildBrowserRpcSuccess([
+        [
           [
-            [
-              name,
-              type,
-              `${parentPath}/`,
-              "2026-04-20T00:00:00Z",
-              `id-${name}`,
-              e2eUsername,
-              0,
-              {},
-              {},
-              "o",
-              "n",
-              "http://127.0.0.1/shock/upload/stub",
-            ],
+            name,
+            type,
+            `${parentPath}/`,
+            "2026-04-20T00:00:00Z",
+            `id-${name}`,
+            e2eUsername,
+            0,
+            {},
+            {},
+            "o",
+            "n",
+            "http://127.0.0.1/shock/upload/stub",
           ],
         ],
-      };
+      ]);
     },
   };
 
   const updateMetaOverride = workspaceRpcOverride(
     "Workspace.update_auto_meta",
-    { result: [[]] },
+    buildBrowserRpcSuccess([[]]),
   );
 
   // Workspace.du fires whenever a folder is selected in the browser (the details panel
@@ -362,7 +362,7 @@ export function buildWorkspaceOverrides(
   // contract intact without forcing every spec that selects a folder to opt in.
   const duOverride = workspaceRpcOverride(
     "Workspace.du",
-    { result: [[]] },
+    buildBrowserRpcSuccess([[]]),
   );
 
   // Workspace.get serves two distinct UI flows:
@@ -391,7 +391,7 @@ export function buildWorkspaceOverrides(
         const item = findKnownItem(pathItems, p);
         return item ? [workspaceTuple(item)] : [];
       });
-      return { result: [perPath] };
+      return buildBrowserRpcSuccess([perPath]);
     },
   };
 
@@ -401,7 +401,7 @@ export function buildWorkspaceOverrides(
     matchBody: (parsed) =>
       (parsed as { method?: string } | null)?.method === "Workspace.get",
     status: 500,
-    body: { error: { code: -32000, message: "Object not found" } },
+    body: buildBrowserRpcError(-32000, "Object not found"),
   };
 
   // Fallback for any Workspace.* methods we haven't explicitly mocked. Off by default —
@@ -410,7 +410,7 @@ export function buildWorkspaceOverrides(
   const workspaceCatchall: JsonOverride = {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
-    body: { result: [[]] },
+    body: buildBrowserRpcSuccess([[]]),
   };
 
   return [
@@ -453,7 +453,7 @@ export const workspaceOverrides: JsonOverride[] = [
   {
     url: /\/services\/Workspace/,
     method: "POST",
-    body: { result: [mockWorkspaceItems] },
+    body: buildBrowserRpcSuccess([mockWorkspaceItems]),
   },
   {
     url: /\/api\/workspace\/view/,
@@ -482,16 +482,15 @@ export const workspaceErrorOverrides: JsonOverride[] = [
     method: "POST",
     matchBody: (parsed) =>
       (parsed as { method?: string } | null)?.method === "Workspace.ls",
-    body: {
-      error: { code: -32000, message: "Simulated workspace failure" },
-    },
+    body: buildBrowserRpcError(-32000, "Simulated workspace failure"),
   },
-  workspaceRpcOverride("Workspace.list_permissions", {
-    result: mockListPermissionsResult([e2eHomePath]),
-  }),
+  workspaceRpcOverride(
+    "Workspace.list_permissions",
+    buildBrowserRpcSuccess(mockListPermissionsResult([e2eHomePath])),
+  ),
   {
     url: /\/api\/services\/workspace(?:$|\?)/,
     method: "POST",
-    body: { result: [[]] },
+    body: buildBrowserRpcSuccess([[]]),
   },
 ];

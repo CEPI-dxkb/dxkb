@@ -30,11 +30,3 @@ export const rankConfig: Record<string, string> = {
   subtype: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700",
   strain: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-700",
 };
-
-// Content-Range header looks like "items 0-25/126"; the trailing number is the total.
-// Returns null when absent/unparseable so callers can fall back to page length.
-export function parseContentRangeTotal(header: string | null): number | null {
-  if (!header) return null;
-  const total = Number(header.split("/")[1]);
-  return Number.isFinite(total) ? total : null;
-}

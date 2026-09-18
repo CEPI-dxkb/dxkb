@@ -1,19 +1,18 @@
-import { eq, validateRql } from "@/lib/data-api";
+import { validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import {
+  structuralFilterRql,
+  taxonLineageFieldMap,
+} from "@/lib/views/structural-rql";
 
-import { genomeFields } from "@/constants/datafields/genome";
-import type { DataField } from "@/constants/datafields/types";
+import { genomeMetadata } from "./fields";
 
-export const genomeSorts = (Object.values(genomeFields) as DataField[])
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
-
-export type GenomeSort = string;
+export const genomeSorts = genomeMetadata.sorts;
 
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
@@ -33,7 +32,6 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     "isolation_country",
     "host_common_name",
   ],
-  filterFieldMap: { taxon_id: "taxon_lineage_ids" },
 };
 
 export function parseGenomeCollectionState(
@@ -44,30 +42,33 @@ export function parseGenomeCollectionState(
   return state;
 }
 
+// Derived from `friendlyFilters` so the two lists agree by construction: each
+// friendly filter name maps to itself, except the shared taxonomic-lineage
+// remap. Restating the six names here instead would let the lists drift.
+//
+// Genome pairs this with `unknownFilters: "drop"` (every other
+// structural-filter module passes unmapped names through unchanged). Note what
+// that does and does not buy, because deriving the table changed it: since
+// `parseCollectionState` only admits names in `friendlyFilters`, and every
+// admitted name is a key here by construction, "drop" is unreachable for
+// URL-derived state. It still guards a caller that hands `structuralFilterRql`
+// a hand-built `CollectionState`. A new friendly filter therefore reaches the
+// backend under its raw name automatically — which is the intended behaviour
+// for a field whose Solr name matches, but it is NOT a tripwire forcing this
+// table to be updated first. Add the entry when the Solr name differs.
+const genomeStructuralFieldMap: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    (genomeCollectionOptions.friendlyFilters ?? []).map((name) => [
+      name,
+      taxonLineageFieldMap[name] ?? name,
+    ]),
+  );
+
 export function genomeStructuralRql(
   state: CollectionState,
 ): string | undefined {
-  if (state.rql) return undefined;
-  const fields: Record<string, string> = {
-    taxon_id: "taxon_lineage_ids",
-    genome_status: "genome_status",
-    genome_quality: "genome_quality",
-    collection_year: "collection_year",
-    isolation_country: "isolation_country",
-    host_common_name: "host_common_name",
-  };
-  const clauses = Object.entries(state.filters).flatMap(
-    ([name, selectedValues]) => {
-      const field = fields[name];
-      if (!field) return [];
-      const predicates = selectedValues.map((value) =>
-        eq("genome", field, value),
-      );
-      return predicates.length === 1
-        ? predicates
-        : [`or(${predicates.join(",")})`];
-    },
-  );
-  if (clauses.length === 0) return undefined;
-  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+  return structuralFilterRql("genome", state, {
+    fieldMap: genomeStructuralFieldMap,
+    unknownFilters: "drop",
+  });
 }

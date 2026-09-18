@@ -12,23 +12,23 @@ interface FacetColumnProps {
 
 export function FacetColumn({ field, items, onSelect }: FacetColumnProps) {
   return (
-    <div className="max-w-48 shrink-0 text-xs text-white">
+    <div className="max-w-48 shrink-0 text-xs">
       {/* Title */}
-      <div className="mb-2 border-b border-gray-500 font-semibold">
+      <div className="mb-2 border-b font-semibold">
         {field.label}
       </div>
 
       {/* Values */}
       <div className="flex max-h-17.5 flex-col overflow-y-auto">
         {items.length === 0 && (
-          <div className="text-gray-400">No values</div>
+          <div className="text-muted-foreground">No values</div>
         )}
 
         {items.map((item) => (
           <button
             key={item.value}
             onClick={() => { onSelect(field.id, item.value); }}
-            className="rounded px-1 py-0.5 text-left hover:bg-gray-700"
+            className="rounded px-1 py-0.5 text-left hover:bg-muted"
           >
             {item.label} ({item.count})
           </button>

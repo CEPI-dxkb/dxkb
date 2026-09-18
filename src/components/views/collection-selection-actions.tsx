@@ -177,6 +177,8 @@ interface CollectionSelectionActionsProps {
   hasNoAssociatedGenomes?: boolean;
   /** Reasons the owning collection disables bar entries it dispatches itself. */
   disabledActions?: Partial<Record<SearchActionId, string>>;
+  /** Actions currently resolving in the owning collection. */
+  externalLoadingActionIds?: readonly SearchActionId[];
   /** False when no service accepts this collection's selection; SERVICES says so. */
   hasSelectableServices?: boolean;
   columns: readonly DataTableColumn[];
@@ -213,6 +215,7 @@ export function CollectionSelectionActions({
   guideUrl,
   hasNoAssociatedGenomes = false,
   disabledActions,
+  externalLoadingActionIds = [],
   hasSelectableServices = true,
   columns,
   columnVisibility,
@@ -381,6 +384,7 @@ export function CollectionSelectionActions({
   };
 
   const redirect = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const signInHref = `/sign-in?redirect=${encodeURIComponent(redirect)}`;
   const noGenomesReason = `No genomes are associated with this ${singularLabel.toLowerCase()}`;
   // While one owned action resolves, the others would overwrite the shared IDs, so
   // only the actions this component dispatches are disabled. Entries the owning
@@ -416,7 +420,7 @@ export function CollectionSelectionActions({
         searchType={searchType}
         guideUrl={guideUrl}
         enabledActions={[...actionIds, ...(extraEnabledActionIds ?? [])]}
-        loadingActionIds={loadingActionIds}
+        loadingActionIds={[...loadingActionIds, ...externalLoadingActionIds]}
         actionPopovers={
           isAuthenticated
             ? undefined
@@ -431,11 +435,7 @@ export function CollectionSelectionActions({
                       className="mt-1 w-full"
                       size="sm"
                       nativeButton={false}
-                      render={
-                        <Link
-                          href={`/sign-in?redirect=${encodeURIComponent(redirect)}`}
-                        />
-                      }
+                      render={<Link href={signInHref} />}
                     >
                       Sign In
                     </Button>
@@ -444,6 +444,7 @@ export function CollectionSelectionActions({
               }
         }
         disabledActions={resolvedDisabledActions}
+        onError={onError}
         onAction={(actionId) => {
           void runAction(actionId);
         }}
@@ -463,9 +464,7 @@ export function CollectionSelectionActions({
         ids={selectionIds}
         kind={idKind}
         workspaceUsername={user ? workspaceUsername(user) : undefined}
-        onRequireAuthentication={(serviceHref) => {
-          router.push(serviceHref);
-        }}
+        signInHref={signInHref}
       />
       {user && (
         <SelectionToGroupDialog

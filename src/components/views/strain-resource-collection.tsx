@@ -43,7 +43,6 @@ function StrainResourceCollectionContent({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
       prefetchNextPage
     />

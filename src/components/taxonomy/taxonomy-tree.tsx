@@ -23,6 +23,7 @@ import {
 } from "@tanstack/react-table";
 
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 import {
   fetchTaxonChildren,
@@ -181,7 +182,7 @@ function TaxonomyTreeInstance({
   const queryState = useQueries({
     queries: fetchParentIds.map((parentId) => ({
       queryKey: taxonChildrenKey(parentId),
-      queryFn: () => fetchTaxonChildren(parentId),
+      queryFn: ({ signal }) => fetchTaxonChildren(parentId, signal),
     })),
     combine: (results) => {
       const children = new Map<number, TaxonRecord[]>();
@@ -198,7 +199,10 @@ function TaxonomyTreeInstance({
               taxon_name: "",
               taxon_rank: "",
               __state: "error",
-              __message: query.error.message,
+              __message: formatUserFacingErrorMessage(
+                query.error,
+                "failed to load sub-taxa",
+              ),
             },
           ]);
         } else {

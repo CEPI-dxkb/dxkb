@@ -1,5 +1,3 @@
-import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
-import type { DataField } from "@/constants/datafields/types";
 import { eq, validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
@@ -8,10 +6,9 @@ import {
 } from "@/lib/views/collection-state";
 import { proteinFeatureRql } from "@/lib/views/child-resources";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import { featureMetadata } from "./fields";
 
-export const featureSorts = (Object.values(genomeFeatureFields) as DataField[])
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
+export const featureSorts = featureMetadata.sorts;
 
 export const recentGenomeFeatureRql =
   "and(eq(genome_id,*),genome(and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))))";

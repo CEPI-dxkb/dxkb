@@ -29,7 +29,7 @@ describe("POST /api/services/app-service/jobs/[id]/kill", () => {
 
     const request = mockNextRequest({ method: "POST" });
 
-    const response = await POST(request, makeRouteContext("job-1"));
+    const response = await POST(request, makeRouteContext({ id: "job-1" }));
     const data = (await response.json()) as { error?: string };
 
     expect(response.status).toBe(401);
@@ -44,7 +44,7 @@ describe("POST /api/services/app-service/jobs/[id]/kill", () => {
 
     const request = mockNextRequest({ method: "POST" });
 
-    const response = await POST(request, makeRouteContext("job-abc"));
+    const response = await POST(request, makeRouteContext({ id: "job-abc" }));
     const data = (await response.json()) as typeof killResult;
 
     expect(response.status).toBe(200);
@@ -56,7 +56,7 @@ describe("POST /api/services/app-service/jobs/[id]/kill", () => {
 
     const request = mockNextRequest({ method: "POST" });
 
-    await POST(request, makeRouteContext("specific-job-id"));
+    await POST(request, makeRouteContext({ id: "specific-job-id" }));
 
     expect(mockAppService.killJob).toHaveBeenCalledWith({
       job_id: "specific-job-id",
@@ -68,7 +68,7 @@ describe("POST /api/services/app-service/jobs/[id]/kill", () => {
 
     const request = mockNextRequest({ method: "POST" });
 
-    const response = await POST(request, makeRouteContext("job-fail"));
+    const response = await POST(request, makeRouteContext({ id: "job-fail" }));
     const data = (await response.json()) as { error?: string };
 
     expect(response.status).toBe(500);

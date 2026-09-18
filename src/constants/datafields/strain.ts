@@ -6,7 +6,7 @@ export const strainFields = {
     field: "taxon_id",
     hidden: true,
     group: "Genome Info",
-    link: "/view/Taxonomy/{value}",
+    link: "/taxonomy/{value}",
     facet: false,
     facet_hidden: true,
     search: true,

@@ -4,10 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { DataRepository } from "@/lib/data-api";
 import type { CollectionState } from "@/lib/views/collection-state";
 import { resourceCollectionPageSize } from "../collection-state";
-import {
-  selectedIdsFromSelection,
-  useResourceCollection,
-} from "../use-resource-collection";
+import { useResourceCollection } from "../use-resource-collection";
 
 const initialState: CollectionState = {
   filters: {},
@@ -40,21 +37,6 @@ function repository() {
     }),
   } as unknown as DataRepository;
 }
-
-describe("selectedIdsFromSelection", () => {
-  it("preserves selected IDs across pages", () => {
-    expect(selectedIdsFromSelection({ a: true, b: true, stale: true })).toEqual(
-      ["a", "b", "stale"],
-    );
-  });
-
-  it("keeps string identities distinct without numeric coercion", () => {
-    expect(selectedIdsFromSelection({ "0012": true, "12": true })).toEqual([
-      "12",
-      "0012",
-    ]);
-  });
-});
 
 describe("useResourceCollection", () => {
   it("omits repository and table sorting for the unsorted state", async () => {
@@ -110,6 +92,53 @@ describe("useResourceCollection", () => {
 
     rerender({ state: { ...initialState, keyword: "new query" } });
     expect(result.current.selectedIds).toEqual([]);
+  });
+
+  /**
+   * Serology and Surveillance row ids ARE digit-only strings ("000123" appears
+   * in serology-view.test.ts), so `"0012"` and `"12"` are two real, distinct
+   * selections that must not collapse into one.
+   *
+   * Today that is free: `selectedIds` is `Object.keys` over a
+   * `Record<string, boolean>`, and object keys cannot coerce. The guarantee
+   * disappears SILENTLY the moment selection state moves off
+   * `RowSelectionState` — to a `Map`, to a number keying, or to any dedupe
+   * that parses ids — and nothing else in the suite would fail. Hence the
+   * exact ids rather than a count.
+   *
+   * The expected order is deliberately NOT sorted: `"12"` is a canonical
+   * integer-index string and so enumerates ahead of the leading-zero keys
+   * regardless of insertion order, while `"0012"` and `"000123"` follow in
+   * insertion order. Alphabetical order would be the reverse, so a `.sort()`
+   * creeping into the derivation fails here.
+   */
+  it("keeps digit-only selection ids distinct, in enumeration order", async () => {
+    const data = repository();
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "serology",
+          idField: "id",
+          fields: ["id", "sample_identifier"],
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.setSelection({
+        "0012": true,
+        "12": true,
+        "000123": true,
+      });
+    });
+
+    expect(result.current.selectedIds).toEqual(["12", "0012", "000123"]);
   });
 
   it("does not prefetch the next page by default", async () => {
@@ -333,6 +362,79 @@ describe("useResourceCollection", () => {
       });
     });
     expect(member).toHaveBeenCalledWith(
+      "genome",
+      {
+        id: "100.1",
+        idField: "genome_id",
+        fields: ["genome_id", "genome_name", "host_name"],
+      },
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("issues a fresh request when the detail projection changes for the same selected ID", async () => {
+    const data = repository();
+    const member = vi.spyOn(data, "member").mockImplementation(
+      (_resource, request) =>
+        Promise.resolve({
+          row: request.fields?.includes("host_name")
+            ? {
+                genome_id: "100.1",
+                genome_name: "Projected detail",
+                host_name: "Human",
+              }
+            : { genome_id: "100.1", genome_name: "Projected detail" },
+        }),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const queryWrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client }, children);
+
+    const { result, rerender } = renderHook(
+      ({ detailFields }: { detailFields: readonly string[] }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          detailFields,
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      {
+        wrapper: queryWrapper,
+        initialProps: {
+          detailFields: ["genome_id", "genome_name"] as readonly string[],
+        },
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.setSelection({ "100.1": true });
+    });
+    await waitFor(() => {
+      expect(result.current.detail).toMatchObject({
+        genome_name: "Projected detail",
+      });
+    });
+    expect(result.current.detail).not.toHaveProperty("host_name");
+    expect(member).toHaveBeenCalledTimes(1);
+
+    // Same selected ID, but a view requesting a wider detail projection —
+    // must not be served the previous view's incompletely-projected record.
+    rerender({ detailFields: ["genome_id", "genome_name", "host_name"] });
+
+    await waitFor(() => {
+      expect(result.current.detail).toMatchObject({ host_name: "Human" });
+    });
+    expect(member).toHaveBeenCalledTimes(2);
+    expect(member).toHaveBeenLastCalledWith(
       "genome",
       {
         id: "100.1",

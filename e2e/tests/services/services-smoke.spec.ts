@@ -3,7 +3,7 @@ import {
   authSessionOverrides,
   workspaceOverrides,
   jobsOverrides,
-  permissiveBackendOverrides,
+  emptyBackendFallbackOverrides,
 } from "../../fixtures/overrides";
 
 interface ServiceCase {
@@ -49,7 +49,7 @@ test.describe("services — smoke (form renders with h1)", () => {
         ...authSessionOverrides,
         ...workspaceOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

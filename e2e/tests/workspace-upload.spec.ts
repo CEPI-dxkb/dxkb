@@ -66,7 +66,7 @@ test.describe("workspace upload", () => {
 // the recorded response regardless of the spec's filename;
 // `uploadedFilenameFromHar` recovers the recorder-generated name so re-records
 // don't require parallel edits. See `harOverridesFor` for the canary rationale
-// (no `permissiveBackendOverrides` here).
+// (no broad, unscoped aggregate here).
 test.describe("workspace upload via recorded HAR replay", () => {
   test("uploads a file and the recorded post-upload listing renders the new row", async ({
     page,

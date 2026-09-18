@@ -118,8 +118,11 @@ describe("Genome view contracts", () => {
   it("builds exact child predicates", () => {
     expect(genomeSequenceRql("83332.12")).toBe("eq(genome_id,83332.12)");
     expect(genomeDomainsRql("83332.12")).toBe("eq(genome_id,83332.12)");
+    // Symmetric on the interaction endpoints — a PPI row can file the scoped
+    // genome on either side. Endpoint coverage lives in
+    // src/lib/views/__tests__/interaction-predicates.test.ts.
     expect(genomeInteractionsRql("83332.12")).toBe(
-      "and(eq(genome_id_a,83332.12),eq(evidence,experimental))",
+      "and(or(eq(genome_id_a,83332.12),eq(genome_id_b,83332.12)),eq(evidence,experimental))",
     );
     expect(genomeFeatureRql("83332.12", "CDS")).toBe(
       "and(eq(genome_id,83332.12),eq(feature_type,CDS))",

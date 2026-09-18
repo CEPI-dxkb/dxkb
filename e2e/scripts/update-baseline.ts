@@ -1,13 +1,14 @@
 /**
  * Recalibrates maxNodes values in baseline.generated.ts from a live a11y scan.
  * Run via: pnpm a11y:baseline:update
- * Requires a11y-report/a11y-summary.json produced by pnpm a11y:routes.
+ * Requires the a11y summary (.misc/a11y-report/a11y-summary.json) produced by
+ * pnpm a11y:routes. That file covers exactly one `playwright test` invocation,
+ * so run the sweep immediately before this script.
  */
 import * as fs from "fs";
 import type { Violation } from "../a11y/gate";
-import type { ScanRecord } from "../a11y/report";
+import { a11ySummaryPath, type ScanRecord } from "../a11y/report";
 
-const summaryPath = "a11y-report/a11y-summary.json";
 const baselinePath = "e2e/a11y/baseline.generated.ts";
 const headroom = 5;
 
@@ -100,12 +101,12 @@ function updateBaseline(
 }
 
 function main(): void {
-  if (!fs.existsSync(summaryPath)) {
-    console.error(`${summaryPath} not found — run pnpm a11y:routes first.`);
+  if (!fs.existsSync(a11ySummaryPath)) {
+    console.error(`${a11ySummaryPath} not found — run pnpm a11y:routes first.`);
     process.exit(1);
   }
 
-  const records: ScanRecord[] = JSON.parse(fs.readFileSync(summaryPath, "utf8")) as ScanRecord[];
+  const records: ScanRecord[] = JSON.parse(fs.readFileSync(a11ySummaryPath, "utf8")) as ScanRecord[];
   const source = fs.readFileSync(baselinePath, "utf8");
 
   const { routeObs, wildcardObs } = buildObservedMaps(records);

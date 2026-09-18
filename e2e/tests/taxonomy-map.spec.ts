@@ -1,12 +1,12 @@
 import { test, expect, applyBackendMocks } from "../mocks/backends";
-import { permissiveBackendOverrides, workspaceOverrides } from "../fixtures/overrides";
+import { emptyBackendFallbackOverrides, workspaceOverrides } from "../fixtures/overrides";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("taxonomy geographic distribution map", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...workspaceOverrides, ...permissiveBackendOverrides],
+      overrides: [...workspaceOverrides, ...emptyBackendFallbackOverrides],
     });
   });
 

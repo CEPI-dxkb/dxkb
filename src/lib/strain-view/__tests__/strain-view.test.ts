@@ -1,6 +1,8 @@
 import {
   genomeIdsFromStrains,
+  isStrainAccessionField,
   parseStrainCollectionState,
+  strainAccessionUrlTemplate,
   strainCollectionProfile,
   strainStructuralRql,
   strainViewRecordSchema,
@@ -51,6 +53,22 @@ describe("Strain view contracts", () => {
         (column) => column.id === "genome_ids",
       )?.valueHref,
     ).toBe("/genome/{value}");
+  });
+
+  it("shares the NCBI accession policy with detail-only segment fields", () => {
+    expect(strainAccessionUrlTemplate).toBe(
+      "https://www.ncbi.nlm.nih.gov/nuccore/{value}",
+    );
+    for (const field of [
+      "genbank_accessions",
+      ...segmentFields,
+      "s",
+      "m",
+      "l",
+    ]) {
+      expect(isStrainAccessionField(field), field).toBe(true);
+    }
+    expect(isStrainAccessionField("genome_ids")).toBe(false);
   });
 
   it("uses typed phrase filters with OR within a field and AND across fields", () => {

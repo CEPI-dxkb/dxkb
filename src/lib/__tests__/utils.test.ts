@@ -1,4 +1,10 @@
-import { cn, noop, getFirstDefined } from "@/lib/utils";
+import {
+  cn,
+  formatUserFacingErrorMessage,
+  getFirstDefined,
+  maxUserFacingErrorMessageLength,
+  noop,
+} from "@/lib/utils";
 
 describe("cn", () => {
   it("combines multiple class names", () => {
@@ -61,5 +67,64 @@ describe("getFirstDefined", () => {
     const obj = { a: 0, b: false };
     expect(getFirstDefined(obj, "a")).toBe(0);
     expect(getFirstDefined(obj, "b")).toBe(false);
+  });
+});
+
+describe("formatUserFacingErrorMessage", () => {
+  it("keeps a real message intact", () => {
+    expect(
+      formatUserFacingErrorMessage(
+        new Error("Upstream failure: connection reset by peer"),
+        "fallback",
+      ),
+    ).toBe("Upstream failure: connection reset by peer");
+  });
+
+  it("falls back for a non-Error rejection", () => {
+    // `String(error)` put "[object Object]" in front of the user instead.
+    expect(formatUserFacingErrorMessage({ status: 502 }, "fallback")).toBe(
+      "fallback",
+    );
+    expect(formatUserFacingErrorMessage("socket reset", "fallback")).toBe(
+      "fallback",
+    );
+    expect(formatUserFacingErrorMessage(undefined, "fallback")).toBe(
+      "fallback",
+    );
+  });
+
+  it("falls back for an empty or whitespace-only Error message", () => {
+    // An empty string is falsy, so it can suppress a `{message && …}` render
+    // guard outright — and where the guard tests the error object instead, it
+    // paints an alert with no text in it.
+    expect(formatUserFacingErrorMessage(new Error(), "fallback")).toBe(
+      "fallback",
+    );
+    expect(formatUserFacingErrorMessage(new Error("   \n"), "fallback")).toBe(
+      "fallback",
+    );
+  });
+
+  it("trims surrounding whitespace off a real message", () => {
+    expect(
+      formatUserFacingErrorMessage(new Error("  upstream reset  "), "fallback"),
+    ).toBe("upstream reset");
+  });
+
+  it("leaves a message exactly at the presentation limit untouched", () => {
+    const boundary = "x".repeat(maxUserFacingErrorMessageLength);
+    expect(formatUserFacingErrorMessage(new Error(boundary), "fallback")).toBe(
+      boundary,
+    );
+  });
+
+  it("truncates past the presentation limit instead of replacing the message", () => {
+    const long = `Upstream failure: ${"x".repeat(400)}`;
+    const formatted = formatUserFacingErrorMessage(
+      new Error(long),
+      "fallback",
+    );
+    expect(formatted).toBe(`${long.slice(0, maxUserFacingErrorMessageLength)}…`);
+    expect(formatted).toContain("Upstream failure:");
   });
 });

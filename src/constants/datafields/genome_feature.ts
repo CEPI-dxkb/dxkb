@@ -26,7 +26,7 @@ export const genomeFeatureFields = {
         field: 'taxon_id', 
         hidden: true,
         group: 'Genome',
-        link: '/view/Taxonomy/{value}',
+        link: '/taxonomy/{value}',
         facet: false, 
         facet_hidden: false, 
         search: true   

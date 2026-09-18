@@ -55,19 +55,7 @@ describe("MolstarStatusOverlay", () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it("uses smaller icon and narrower text when compact is true", () => {
-    const { container } = render(
-      <MolstarStatusOverlay status="error" errorMessage="Error" onRetry={onRetry} compact />,
-    );
-
-    const icon = container.querySelector("svg");
-    expect(icon?.classList.contains("size-8")).toBe(true);
-
-    const message = screen.getByText("Error");
-    expect(message.classList.contains("max-w-xs")).toBe(true);
-  });
-
-  it("uses larger icon and wider text when compact is false", () => {
+  it("uses the size-10 icon and max-w-sm message width in the error state", () => {
     const { container } = render(
       <MolstarStatusOverlay status="error" errorMessage="Error" onRetry={onRetry} />,
     );

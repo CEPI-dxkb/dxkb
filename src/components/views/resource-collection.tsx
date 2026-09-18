@@ -1,27 +1,13 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
-import {
-  SearchActionBar,
-  type SearchActionId,
-} from "@/components/search/search-action-bar";
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
-import {
-  CollectionSelectionActions,
-  copyAndServicesSelectionActionIds,
-  featureSelectionActionIds,
-  interactionSelectionActionIds,
-  genomeSelectionActionIds,
-  sequenceSelectionActionIds,
-  servicesOnlySelectionActionIds,
-  strainSelectionActionIds,
-} from "./collection-selection-actions";
-import type { SelectionServiceKind } from "./selection-service-chooser";
+import { useResourceCollectionActions } from "./resource-collection-actions";
 import {
   DataTable,
   type DataTableColumn,
@@ -30,35 +16,14 @@ import {
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import {
   maxExportRows,
   type DataRepository,
   type DataResource,
 } from "@/lib/data-api";
-import {
-  biosetResultsHref,
-  epitopeHref,
-  epitopeIdFromRow,
-  experimentHref,
-  experimentIdFromRow,
-  featureHref,
-  featureIdFromRow,
-  featureListHref,
-  genomeHref,
-  genomeIdFromRow,
-  proteinStructureHref,
-  taxonomyHref,
-} from "@/lib/views/hrefs";
-import {
-  maxTaxonomyActionIds,
-  normalizeTaxonIds,
-  taxonomyActionLimitMessage,
-  taxonomyFeaturesHref,
-  taxonomyGenomesHref,
-} from "@/lib/taxonomy-view";
-import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
-import { genomeIdsFromStrains } from "@/lib/strain-view";
+import { maxSelectedRows } from "@/lib/data-api/validation";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -72,7 +37,6 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   idField: string;
   columns: readonly DataTableColumn[];
   detailFields?: readonly string[];
-  defaultSort: string;
   guideUrl?: string;
   basePredicate?: string;
   buildStructuralRql?: (state: CollectionState) => string | undefined;
@@ -81,196 +45,13 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   rowLinkField?: string;
   rowLinkFields?: readonly string[];
   serverKeywordMode?: "exact" | "prefix";
+  /**
+   * Overrides the export filename's base segment (otherwise `resource`).
+   * `ResourceChildCollection` sets this to the tab's label so a child tab's
+   * export stays named after the tab instead of the shared resource id.
+   */
+  exportFileName?: string;
 }
-
-/** Actions each resource enables. Read by both visibility and dispatch. */
-const taxonomyActionIds = [
-  "services",
-  "taxonOverview",
-  "genomes",
-  "features",
-] as const satisfies readonly SearchActionId[];
-
-const enabledActionsByResource: Partial<
-  Record<DataResource, readonly SearchActionId[]>
-> = {
-  taxonomy: taxonomyActionIds,
-  // Every resource in selectionActionsConfigByResource lives with
-  // CollectionSelectionActions instead, which owns its bar.
-};
-
-/**
- * Resources whose selection actions live with `CollectionSelectionActions`.
- * `idField` names the row field SERVICES, GENOMES and GROUP resolve from and `idKind`
- * says what it holds, so both are inert where `hasSelectableServices` is false and no
- * ID-backed action is owned. `extraEnabledActionIds` lists entries this component
- * dispatches but the shared config disables by default.
- */
-const selectionActionsConfigByResource = {
-  strain: {
-    searchType: "strain",
-    actionIds: strainSelectionActionIds,
-    extraEnabledActionIds: [],
-    idField: "genome_ids",
-    idKind: "genome",
-    singularLabel: "Strain",
-    hasSelectableServices: true,
-  },
-  genome: {
-    searchType: "genome",
-    actionIds: genomeSelectionActionIds,
-    extraEnabledActionIds: [],
-    idField: "genome_id",
-    idKind: "genome",
-    singularLabel: "Genome",
-    hasSelectableServices: true,
-  },
-  genome_feature: {
-    searchType: "genome_feature",
-    actionIds: featureSelectionActionIds,
-    // DWNLD, FEATURE and GENOME are enabled by default; FASTA and ID MAP stay
-    // disabled until a later PR wires them.
-    extraEnabledActionIds: [],
-    idField: "feature_id",
-    idKind: "feature",
-    singularLabel: "Feature",
-    hasSelectableServices: true,
-  },
-  genome_sequence: {
-    searchType: "genome_sequence",
-    actionIds: sequenceSelectionActionIds,
-    // DWNLD and GENOME are enabled by default; FEATURES is not, and FASTA and Browser
-    // stay disabled until a later PR wires them.
-    extraEnabledActionIds: ["features"],
-    idField: "genome_id",
-    idKind: "genome",
-    singularLabel: "Sequence",
-    hasSelectableServices: true,
-  },
-  protein_feature: {
-    searchType: "protein_feature",
-    actionIds: copyAndServicesSelectionActionIds,
-    extraEnabledActionIds: [],
-    idField: "genome_id",
-    idKind: "genome",
-    // "Domains and Motifs" has no plural suffix to strip.
-    singularLabel: "Domain or Motif",
-    hasSelectableServices: false,
-  },
-  protein_structure: {
-    searchType: "protein_structure",
-    actionIds: copyAndServicesSelectionActionIds,
-    extraEnabledActionIds: [],
-    idField: "genome_id",
-    idKind: "genome",
-    singularLabel: "Protein Structure",
-    hasSelectableServices: false,
-  },
-  sequence_feature: {
-    searchType: "sequence_feature",
-    actionIds: copyAndServicesSelectionActionIds,
-    // DWNLD is enabled by default; VARIANT TYPES stays disabled until a later PR
-    // wires it.
-    extraEnabledActionIds: [],
-    idField: "id",
-    idKind: "genome",
-    singularLabel: "Sequence Feature",
-    hasSelectableServices: false,
-  },
-  epitope: {
-    searchType: "epitope",
-    actionIds: copyAndServicesSelectionActionIds,
-    // DWNLD and EPITOPE are enabled by default.
-    extraEnabledActionIds: [],
-    idField: "epitope_id",
-    idKind: "genome",
-    singularLabel: "Epitope",
-    hasSelectableServices: false,
-  },
-  serology: {
-    searchType: "serology",
-    actionIds: copyAndServicesSelectionActionIds,
-    // DWNLD and SEROLOGY are enabled by default.
-    extraEnabledActionIds: [],
-    idField: "id",
-    idKind: "genome",
-    // "Serology" is already the singular the copied-rows toast wants.
-    singularLabel: "Serology",
-    hasSelectableServices: false,
-  },
-  surveillance: {
-    searchType: "surveillance",
-    actionIds: copyAndServicesSelectionActionIds,
-    // DWNLD and SRVLNCE are enabled by default; MAP stays disabled until a later
-    // PR wires it.
-    extraEnabledActionIds: [],
-    idField: "id",
-    idKind: "genome",
-    // "Surveillance" is already the singular the copied-rows toast wants.
-    singularLabel: "Surveillance",
-    hasSelectableServices: false,
-  },
-  ppi: {
-    searchType: "ppi",
-    actionIds: interactionSelectionActionIds,
-    // DWNLD is enabled by default; FASTA stays disabled until a later PR wires it.
-    extraEnabledActionIds: [],
-    // One Interaction row names two interactors, and legacy's FEATURES and GROUP both
-    // pool them.
-    idField: ["feature_id_a", "feature_id_b"],
-    idKind: "feature",
-    singularLabel: "Interaction",
-    hasSelectableServices: false,
-  },
-  experiment: {
-    searchType: "experiment",
-    actionIds: servicesOnlySelectionActionIds,
-    // DWNLD and EXPRMNT are enabled by default; BIOSETS stays disabled until a
-    // later PR wires the experiment-side gene list.
-    extraEnabledActionIds: [],
-    idField: "exp_id",
-    idKind: "genome",
-    singularLabel: "Experiment",
-    hasSelectableServices: false,
-  },
-  bioset: {
-    searchType: "bioset",
-    actionIds: servicesOnlySelectionActionIds,
-    // DWNLD is enabled by default; BIOSETS is dispatched by this collection even
-    // though the shared config disables it.
-    extraEnabledActionIds: ["biosets"],
-    idField: "bioset_id",
-    idKind: "genome",
-    singularLabel: "Bioset",
-    hasSelectableServices: false,
-  },
-} as const satisfies Partial<
-  Record<
-    DataResource,
-    {
-      searchType:
-        | "strain"
-        | "genome"
-        | "genome_feature"
-        | "genome_sequence"
-        | "protein_feature"
-        | "protein_structure"
-        | "sequence_feature"
-        | "epitope"
-        | "serology"
-        | "surveillance"
-        | "ppi"
-        | "experiment"
-        | "bioset";
-      actionIds: readonly SearchActionId[];
-      extraEnabledActionIds: readonly SearchActionId[];
-      idField: string | readonly string[];
-      idKind: SelectionServiceKind;
-      singularLabel: string;
-      hasSelectableServices: boolean;
-    }
-  >
->;
 
 function combinePredicates(...predicates: (string | undefined)[]) {
   const active = predicates.filter((predicate): predicate is string =>
@@ -282,12 +63,29 @@ function combinePredicates(...predicates: (string | undefined)[]) {
 }
 
 /**
- * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
- * or array-valued field of a row. Exported so a custom exporter can filter the rows
- * it fetches the same way the table filters the rows it shows. `keyword` must already
- * be trimmed and lower-cased.
+ * Per-sink fallbacks for `formatUserFacingErrorMessage`, used for a non-`Error`
+ * rejection and for an `Error` whose message is empty or whitespace-only. The
+ * shared helper owns the emptiness, non-`Error` and length decisions; only the
+ * wording — which names what actually failed — is decided here.
+ *
+ * An empty string would be falsy and suppress the `{exportError && (...)}` /
+ * `{collection.error && (...)}` render guards entirely, so neither may be blank.
+ * `useResourceCollectionActions` owns the matching fallback for its own sink.
  */
-export function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
+const genericExportErrorMessage =
+  "The requested export could not be created. Please try again.";
+const genericCollectionErrorMessage =
+  "The requested records could not be loaded. Please try again.";
+
+/**
+ * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
+ * or array-valued field of a row. `keyword` must already be trimmed and lower-cased.
+ *
+ * Module-private: this file now owns the only export implementation, so the table
+ * rows and the exported rows are filtered by the same call. (It used to be exported
+ * for `ResourceChildCollection`'s own exporter, which plan item 19 deleted.)
+ */
+function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
   return Object.values(row).some((value) => {
     const values = Array.isArray(value) ? value : [value];
     return values.some((item) =>
@@ -298,20 +96,6 @@ export function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
   });
 }
 
-export interface ResourceCollectionExportRequest {
-  format: "csv" | "txt";
-  selectedIds?: readonly string[];
-  fields: readonly string[] | null;
-  rql?: string;
-  /**
-   * Active loaded-mode keyword, trimmed and lower-cased, for a "download all" export.
-   * In loaded mode the keyword never reaches the request (it filters the loaded page
-   * client-side), so an exporter that ignores this downloads the unfiltered scope.
-   * Absent for selected-ID exports, which are already exact.
-   */
-  loadedKeyword?: string;
-}
-
 export interface ResourceCollectionProps<Row extends DataTableRow> {
   profile: ResourceCollectionProfile<Row>;
   repository: DataRepository;
@@ -319,14 +103,11 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   onStateChange: (state: CollectionState) => void;
   baseRql?: string;
   enableRowLinks?: boolean;
-  renderDetail?: (row: Row) => ReactNode;
-  showHeader?: boolean;
   keywordMode?: "server" | "loaded" | "refine";
   loadedKeywordValue?: string;
   onLoadedKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
   prefetchNextPage?: boolean;
-  onExport?: (request: ResourceCollectionExportRequest) => void | Promise<void>;
 }
 
 export function ResourceCollection<Row extends DataTableRow>({
@@ -336,28 +117,14 @@ export function ResourceCollection<Row extends DataTableRow>({
   onStateChange,
   baseRql,
   enableRowLinks = true,
-  renderDetail,
-  showHeader = true,
   keywordMode = "server",
   loadedKeywordValue,
   onLoadedKeywordChange,
   keywordPlaceholder,
   prefetchNextPage = false,
-  onExport,
 }: ResourceCollectionProps<Row>) {
   const [exportError, setExportError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [taxonomyServiceIds, setTaxonomyServiceIds] = useState<string[]>([]);
-  const [isTaxonomyServiceOpen, setIsTaxonomyServiceOpen] = useState(false);
-  /**
-   * The Taxonomy action currently resolving IDs. Overlapping runs would let the
-   * first one's cleanup clear the second one's spinner, and a later SERVICES
-   * resolution would replace the IDs an already-open chooser is working with.
-   */
-  const pendingTaxonomyActionRef = useRef<SearchActionId | null>(null);
-  const [loadingActionIds, setLoadingActionIds] = useState<SearchActionId[]>(
-    [],
-  );
   const [selectedRowsById, setSelectedRowsById] = useState<
     Partial<Record<string, Row>>
   >({});
@@ -436,91 +203,38 @@ export function ResourceCollection<Row extends DataTableRow>({
     !hasLoadedKeyword ||
     (collection.activeId !== null && displayedIdSet.has(collection.activeId));
   const displayedDetail = isDetailDisplayed ? detail : null;
-  const selectedGenomeId =
-    profile.resource === "genome"
-      ? isDetailDisplayed
-        ? collection.activeId
-        : null
-      : genomeIdFromRow(displayedDetail);
-  const knownSingleStrainHasNoGenomes =
-    profile.resource === "strain" &&
-    displayedSelectedIds.length === 1 &&
-    displayedDetail !== null &&
-    genomeIdsFromStrains([displayedDetail]).length === 0;
-  const selectedFeatureId = featureIdFromRow(displayedDetail);
-  const sequenceId = displayedDetail?.sequence_id;
-  const selectedSequenceId =
-    profile.resource === "genome_sequence" &&
-    (typeof sequenceId === "string" || typeof sequenceId === "number")
-      ? String(sequenceId)
-      : "";
-  const selectedEpitopeId = epitopeIdFromRow(displayedDetail);
-  const selectedExperimentId = experimentIdFromRow(displayedDetail);
-  const selectedPdbId = displayedDetail?.pdb_id;
-  const selectedStructureHref =
-    profile.resource === "protein_structure" &&
-    (typeof selectedPdbId === "string" || typeof selectedPdbId === "number")
-      ? proteinStructureHref(selectedPdbId)
-      : undefined;
-  const selectedMemberHref = displayedDetail
-    ? profile.rowHref?.(displayedDetail)
-    : undefined;
-  const selectedBiosetExperimentIds = collection.selectedIds.flatMap((id) => {
-    const selectedRow =
-      selectedRowsById[id] ??
-      displayedRows.find((row) => String(row[profile.idField]) === id);
-    const experimentId = experimentIdFromRow(selectedRow ?? null);
-    return experimentId ? [experimentId] : [];
-  });
-  const hasCompleteBiosetSelection =
-    selectedBiosetExperimentIds.length > 0 &&
-    selectedBiosetExperimentIds.length === collection.selectedIds.length;
-  const hasBiosetSelection =
-    profile.resource === "bioset" &&
-    (collection.isAllPagesSelected || hasCompleteBiosetSelection);
-  const hasIncompleteBiosetSelection =
-    profile.resource === "bioset" &&
-    !collection.isAllPagesSelected &&
-    collection.selectedIds.length > 0 &&
-    !hasCompleteBiosetSelection;
-
   const selectedActionCount = hasLoadedKeyword
     ? displayedSelectedIds.length
     : collection.isAllPagesSelected
       ? collection.total
       : collection.selectedIds.length;
 
-  const selectionActionsConfig =
-    profile.resource in selectionActionsConfigByResource
-      ? selectionActionsConfigByResource[
-          profile.resource as keyof typeof selectionActionsConfigByResource
-        ]
-      : undefined;
+  /**
+   * The row behind a selected ID. `selectedRowsById` remembers rows the table has
+   * since paged away from, so an action that needs a column of the selection still
+   * sees every picked row.
+   */
+  const selectedRowById = (id: string) =>
+    selectedRowsById[id] ??
+    (displayedRows.find((row) => String(row[profile.idField]) === id) as
+      | Row
+      | undefined);
 
   /**
-   * Reasons a collection's own rows cannot reach an action it otherwise dispatches:
-   * structure rows only reach the Genome, Feature and Structure members they carry,
-   * and Bioset rows need an experiment behind every selected row.
+   * Every row matching the current query, with the supplied fields. Scope, keyword
+   * and sort are the shell's, so an action that has to resolve a column the table
+   * does not hold asks for the column instead of rebuilding the query.
    */
-  const collectionDisabledActions =
-    profile.resource === "protein_structure"
-      ? {
-          genome: selectedGenomeId
-            ? undefined
-            : "No genome is associated with this structure",
-          feature: selectedFeatureId
-            ? undefined
-            : "No feature is associated with this structure",
-          structure: selectedStructureHref
-            ? undefined
-            : "A structure accession is required",
-        }
-      : hasIncompleteBiosetSelection
-        ? {
-            biosets:
-              "Some selected Biosets are not associated with experiments",
-          }
-        : undefined;
+  const resolveAllMatchingRows = async (fields: readonly string[]) => {
+    const result = await repository.exportAll(profile.resource, {
+      rql: effectiveRql,
+      keyword: requestState.keyword,
+      keywordMode: profile.serverKeywordMode,
+      fields: [...fields],
+      sort: dataSort(state.sort),
+    });
+    return result.rows;
+  };
 
   const resolveActionRows = async (
     fields: readonly string[],
@@ -536,15 +250,30 @@ export function ResourceCollection<Row extends DataTableRow>({
     const selectedFields = [...fields];
     if (!collection.isAllPagesSelected || hasLoadedKeyword) {
       const ids = [...displayedSelectedIds];
-      const rows: Record<string, unknown>[] = [];
-      for (let offset = 0; offset < ids.length; offset += 500) {
-        const result = await repository.selected(profile.resource, {
-          ids: ids.slice(offset, offset + 500),
-          fields: selectedFields,
-        });
-        rows.push(...result.rows);
-      }
-      return rows;
+      const requestFields = selectedFields.includes(profile.idField)
+        ? selectedFields
+        : [...selectedFields, profile.idField];
+      const batches = await Promise.all(
+        Array.from(
+          { length: Math.ceil(ids.length / maxSelectedRows) },
+          (_, index) =>
+            repository.selected(profile.resource, {
+              ids: ids.slice(
+                index * maxSelectedRows,
+                (index + 1) * maxSelectedRows,
+              ),
+              fields: requestFields,
+            }),
+        ),
+      );
+      const orderById = new Map(ids.map((id, index) => [id, index]));
+      return batches
+        .flatMap((batch) => batch.rows)
+        .sort(
+          (left, right) =>
+            (orderById.get(String(left[profile.idField])) ?? Number.MAX_VALUE) -
+            (orderById.get(String(right[profile.idField])) ?? Number.MAX_VALUE),
+        );
     }
 
     if (collection.isRefreshing) {
@@ -552,141 +281,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         "Wait for the current results to finish loading and try again.",
       );
     }
-    const result = await repository.exportAll(profile.resource, {
-      rql: effectiveRql,
-      keyword: requestState.keyword,
-      keywordMode: profile.serverKeywordMode,
-      fields: selectedFields,
-      sort: dataSort(state.sort),
-    });
-    return result.rows;
-  };
-
-  const resolveSelectedTaxonIds = async (): Promise<string[]> => {
-    if (!collection.isAllPagesSelected) {
-      return normalizeTaxonIds(displayedSelectedIds);
-    }
-    if (collection.total > maxTaxonomyActionIds) {
-      throw new Error(taxonomyActionLimitMessage());
-    }
-    const result = await repository.exportAll("taxonomy", {
-      rql: effectiveRql,
-      keyword: requestState.keyword,
-      keywordMode: profile.serverKeywordMode,
-      fields: ["taxon_id"],
-      sort: dataSort(state.sort),
-    });
-    return normalizeTaxonIds(result.rows.map((row) => row.taxon_id));
-  };
-
-  const runTaxonomyAction = async (actionId: SearchActionId) => {
-    setActionError(null);
-    if (pendingTaxonomyActionRef.current) return;
-    if (actionId === "services") {
-      // Opens an in-page dialog, so there is no tab to reserve.
-      pendingTaxonomyActionRef.current = actionId;
-      setLoadingActionIds([actionId]);
-      try {
-        setTaxonomyServiceIds(await resolveSelectedTaxonIds());
-        setIsTaxonomyServiceOpen(true);
-      } catch (error) {
-        setActionError(error instanceof Error ? error.message : String(error));
-      } finally {
-        pendingTaxonomyActionRef.current = null;
-        setLoadingActionIds([]);
-      }
-      return;
-    }
-    // Resolving an all-pages selection needs a network round-trip, after which
-    // browsers no longer treat window.open as user-initiated and block it. Reserve
-    // the tab inside the click and navigate it once the IDs are known.
-    const resultsWindow = window.open("about:blank", "_blank");
-    if (!resultsWindow) {
-      setActionError(`Allow pop-ups to open the selected ${profile.label}.`);
-      return;
-    }
-    resultsWindow.opener = null;
-    pendingTaxonomyActionRef.current = actionId;
-    setLoadingActionIds([actionId]);
-    try {
-      const ids = await resolveSelectedTaxonIds();
-      const href =
-        actionId === "taxonOverview" && ids.length === 1
-          ? taxonomyHref(ids[0])
-          : actionId === "genomes"
-            ? taxonomyGenomesHref(ids)
-            : actionId === "features" && ids.length === 1
-              ? taxonomyFeaturesHref(ids)
-              : null;
-      if (!href) {
-        resultsWindow.close();
-        return;
-      }
-      const link = resultsWindow.document.createElement("a");
-      link.href = href;
-      link.target = "_self";
-      link.rel = "noreferrer";
-      link.click();
-    } catch (error) {
-      resultsWindow.close();
-      setActionError(error instanceof Error ? error.message : String(error));
-    } finally {
-      pendingTaxonomyActionRef.current = null;
-      setLoadingActionIds([]);
-    }
-  };
-
-  const openBiosetResults = async () => {
-    setActionError(null);
-    if (!collection.isAllPagesSelected) {
-      window.open(
-        biosetResultsHref(selectedBiosetExperimentIds),
-        "_blank",
-        "noopener,noreferrer",
-      );
-      return;
-    }
-    if (collection.total > maxExportRows) {
-      setActionError(
-        `This selection contains ${collection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
-      );
-      return;
-    }
-    const resultsWindow = window.open("about:blank", "_blank");
-    if (!resultsWindow) {
-      setActionError("Allow pop-ups to open the selected Bioset results.");
-      return;
-    }
-    resultsWindow.opener = null;
-    try {
-      const result = await repository.exportAll(profile.resource, {
-        rql: effectiveRql,
-        keyword: requestState.keyword,
-        fields: ["exp_id"],
-        sort: dataSort(state.sort),
-      });
-      const experimentIds = result.rows.flatMap((row) => {
-        const experimentId = experimentIdFromRow(row);
-        return experimentId ? [experimentId] : [];
-      });
-      if (experimentIds.length !== result.rows.length) {
-        resultsWindow.close();
-        setActionError(
-          experimentIds.length === 0
-            ? "No experiments are associated with this selection."
-            : "Some selected Biosets are not associated with experiments.",
-        );
-        return;
-      }
-      resultsWindow.location.replace(biosetResultsHref(experimentIds));
-    } catch (error) {
-      resultsWindow.close();
-      setActionError(
-        error instanceof Error
-          ? error.message
-          : "The selected Bioset results could not be loaded.",
-      );
-    }
+    return resolveAllMatchingRows(selectedFields);
   };
 
   const exportRows = async (
@@ -711,26 +306,31 @@ export function ResourceCollection<Row extends DataTableRow>({
       return;
     }
     try {
-      if (onExport) {
-        await onExport({
-          format,
-          selectedIds: ids,
-          fields,
-          rql: effectiveRql,
-          loadedKeyword:
-            hasLoadedKeyword && !ids ? normalizedLoadedKeyword : undefined,
-        });
-        return;
-      }
       const selectedFields = fields
         ? [...fields]
         : profile.columns.map((column) => column.id);
       const allFields = profile.columns.map((column) => column.id);
+      const requestFields = selectedFields.includes(profile.idField)
+        ? selectedFields
+        : [...selectedFields, profile.idField];
       const result = ids?.length
-        ? await repository.selected(profile.resource, {
-            ids: [...ids],
-            fields: selectedFields,
-          })
+        ? {
+            rows: (
+              await Promise.all(
+                Array.from(
+                  { length: Math.ceil(ids.length / maxSelectedRows) },
+                  (_, index) =>
+                    repository.selected(profile.resource, {
+                      ids: ids.slice(
+                        index * maxSelectedRows,
+                        (index + 1) * maxSelectedRows,
+                      ),
+                      fields: requestFields,
+                    }),
+                ),
+              )
+            ).flatMap((batch) => batch.rows),
+          }
         : await repository.exportAll(profile.resource, {
             rql: effectiveRql,
             keyword: requestState.keyword,
@@ -738,84 +338,73 @@ export function ResourceCollection<Row extends DataTableRow>({
             fields: hasLoadedKeyword ? allFields : selectedFields,
             sort: dataSort(state.sort),
           });
+      const orderById = ids
+        ? new Map(ids.map((id, index) => [id, index]))
+        : undefined;
       const exportedRows =
         hasLoadedKeyword && !ids
           ? result.rows.filter((row) =>
               matchesLoadedKeyword(row, normalizedLoadedKeyword),
             )
-          : result.rows;
+          : orderById
+            ? [...result.rows].sort(
+                (left, right) =>
+                  (orderById.get(String(left[profile.idField])) ??
+                    Number.MAX_VALUE) -
+                  (orderById.get(String(right[profile.idField])) ??
+                    Number.MAX_VALUE),
+              )
+            : result.rows;
       downloadResourceExport(
         profile.resource,
         exportedRows,
         profile.columns,
         selectedFields,
         format,
+        "all",
+        profile.exportFileName ?? profile.resource,
       );
     } catch (error) {
       console.error("Resource export failed:", error);
       setExportError(
-        "The requested export could not be created. Please try again.",
+        formatUserFacingErrorMessage(error, genericExportErrorMessage),
       );
     }
   };
 
-  /** Dispatch for action-bar entries backed by the current selection. */
-  const dispatchAction = (actionId: SearchActionId) => {
-    if (
-      profile.resource === "taxonomy" &&
-      taxonomyActionIds.includes(actionId as (typeof taxonomyActionIds)[number])
-    ) {
-      void runTaxonomyAction(actionId);
-    } else if (actionId === "download") {
+  /**
+   * Everything resource-specific about the action bar. A hook rather than a
+   * component so its state lives in this instance: a collection error replaces the
+   * whole workspace, action bar included, with the alert below, and `actionDialogs` is
+   * rendered at section level as a sibling of the workspace, so an in-flight launch
+   * survives that. (Crossing the `md` breakpoint does not remount the slot — the
+   * workspace renders one stable subtree at every width.)
+   */
+  const { actionBar, actionDialogs } = useResourceCollectionActions({
+    profile,
+    selection: {
+      count: selectedActionCount,
+      ids: collection.selectedIds,
+      displayedIds: displayedSelectedIds,
+      isAllPagesSelected: collection.isAllPagesSelected,
+      total: collection.total,
+      rowById: selectedRowById,
+    },
+    detail: displayedDetail,
+    activeId: isDetailDisplayed ? collection.activeId : null,
+    columnVisibility,
+    resolveActionRows,
+    resolveAllMatchingRows,
+    onExportSelection: () => {
       void exportRows(
         "csv",
         displayedSelectedIds,
         null,
         collection.isAllPagesSelected,
       );
-    } else if (actionId === "biosets" && hasBiosetSelection) {
-      void openBiosetResults();
-    } else if (actionId === "genome" && selectedGenomeId) {
-      window.open(
-        genomeHref(selectedGenomeId),
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else if (actionId === "feature" && selectedFeatureId) {
-      window.open(
-        featureHref(selectedFeatureId),
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else if (actionId === "features" && selectedSequenceId) {
-      window.open(
-        featureListHref({
-          rql: `and(eq(sequence_id,${selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
-        }),
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else if (actionId === "structure" && selectedStructureHref) {
-      window.open(selectedStructureHref, "_blank", "noopener,noreferrer");
-    } else if (actionId === "epitope" && selectedEpitopeId) {
-      window.open(
-        epitopeHref(selectedEpitopeId),
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else if (actionId === "experiment" && selectedExperimentId) {
-      window.open(
-        experimentHref(selectedExperimentId),
-        "_blank",
-        "noopener,noreferrer",
-      );
-    } else if (
-      (actionId === "surveillance" || actionId === "serology") &&
-      selectedMemberHref
-    ) {
-      window.open(selectedMemberHref, "_blank", "noopener,noreferrer");
-    }
-  };
+    },
+    onError: setActionError,
+  });
 
   const detailContent = (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -829,8 +418,6 @@ export function ResourceCollection<Row extends DataTableRow>({
                 : String(collection.detailError)}
             </AlertDescription>
           </Alert>
-        ) : renderDetail && displayedDetail ? (
-          renderDetail(displayedDetail)
         ) : (
           <InfoPanel
             variant="search"
@@ -850,38 +437,9 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   return (
     <section
-      aria-label={showHeader ? undefined : profile.label}
-      aria-labelledby={
-        showHeader ? `${profile.resource}-collection-title` : undefined
-      }
+      aria-label={profile.label}
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
-      {showHeader && (
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1
-              id={`${profile.resource}-collection-title`}
-              className="text-xl font-semibold"
-            >
-              {profile.label}
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Browse {profile.label.toLowerCase()} records.
-            </p>
-          </div>
-          {profile.guideUrl && (
-            <a
-              className="text-primary text-sm underline underline-offset-2"
-              href={profile.guideUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Field guide
-            </a>
-          )}
-        </header>
-      )}
-
       <ResourceFilterBar
         keyword={
           keywordMode === "server"
@@ -942,9 +500,10 @@ export function ResourceCollection<Row extends DataTableRow>({
           <AlertTitle>Could not load {profile.label.toLowerCase()}</AlertTitle>
           <AlertDescription>
             <p>
-              {collection.error instanceof Error
-                ? collection.error.message
-                : String(collection.error)}
+              {formatUserFacingErrorMessage(
+                collection.error,
+                genericCollectionErrorMessage,
+              )}
             </p>
             <Button
               variant="outline"
@@ -965,59 +524,7 @@ export function ResourceCollection<Row extends DataTableRow>({
               : collection.isAllPagesSelected ||
                 collection.selectedIds.length > 0
           }
-          actionBar={
-            selectionActionsConfig ? (
-              <CollectionSelectionActions
-                searchType={selectionActionsConfig.searchType}
-                label={profile.label}
-                singularLabel={selectionActionsConfig.singularLabel}
-                actionIds={selectionActionsConfig.actionIds}
-                extraEnabledActionIds={
-                  selectionActionsConfig.extraEnabledActionIds
-                }
-                idField={selectionActionsConfig.idField}
-                idKind={selectionActionsConfig.idKind}
-                selectedCount={selectedActionCount}
-                guideUrl={profile.guideUrl}
-                hasNoAssociatedGenomes={knownSingleStrainHasNoGenomes}
-                disabledActions={collectionDisabledActions}
-                hasSelectableServices={
-                  selectionActionsConfig.hasSelectableServices
-                }
-                columns={profile.columns}
-                columnVisibility={columnVisibility}
-                resolveActionRows={resolveActionRows}
-                onError={setActionError}
-                onOtherAction={dispatchAction}
-              />
-            ) : (
-              <SearchActionBar
-                selectedCount={
-                  hasLoadedKeyword
-                    ? displayedSelectedIds.length
-                    : collection.isAllPagesSelected
-                      ? collection.total
-                      : collection.selectedIds.length
-                }
-                searchType={profile.resource}
-                guideUrl={profile.guideUrl}
-                enabledActions={
-                  enabledActionsByResource[profile.resource] ??
-                  (hasBiosetSelection ? ["biosets"] : undefined)
-                }
-                loadingActionIds={loadingActionIds}
-                disabledActions={
-                  hasIncompleteBiosetSelection
-                    ? {
-                        biosets:
-                          "Some selected Biosets are not associated with experiments",
-                      }
-                    : undefined
-                }
-                onAction={dispatchAction}
-              />
-            )
-          }
+          actionBar={actionBar}
           sidePanel={detailContent}
         >
           <DataTable
@@ -1075,13 +582,7 @@ export function ResourceCollection<Row extends DataTableRow>({
           />
         </ResourceWorkspace>
       )}
-      {profile.resource === "taxonomy" && (
-        <TaxonomyServiceChooser
-          open={isTaxonomyServiceOpen}
-          onOpenChange={setIsTaxonomyServiceOpen}
-          taxonIds={taxonomyServiceIds}
-        />
-      )}
+      {actionDialogs}
     </section>
   );
 }

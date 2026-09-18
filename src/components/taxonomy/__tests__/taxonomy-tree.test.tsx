@@ -42,7 +42,11 @@ vi.mock("@tanstack/react-virtual", () => ({
   }),
 }));
 
-const dataApi = "https://data.test/api";
+// The tree reads children and child counts from the same-origin
+// /api/taxonomy-tree route, so these handlers intercept relative paths — no
+// NEXT_PUBLIC_DATA_API origin is involved on the client any more.
+const childrenPath = "/api/taxonomy-tree/children";
+const childCountsPath = "/api/taxonomy-tree/child-counts";
 
 const rootTaxon: OrganismTaxonomy = {
   taxonId: 234,
@@ -87,48 +91,34 @@ const twoRootChildren: Record<number, TaxonRecord[]> = {
   ],
 };
 
-// parentId -> rows, served with a Content-Range covering the whole set in one page.
-// Also answers the tree's batched child-count request: in(parent_id,(…))&facet →
-// a facet_counts header with each listed parent's child count (from byParent), so
-// expand arrows appear for nodes that have children.
+// parentId -> rows, answering both route operations the tree calls:
+// /children?parentId=ID returns {rows}, and /child-counts?parentId=… returns
+// {counts} with each requested parent's child count (from byParent), so expand
+// arrows appear for nodes that have children. A parent with zero children is
+// reported as 0 here rather than omitted, which is what the route's upstream
+// mincount,1 would do — either way `getRowCanExpand` sees no positive count.
 function mockChildren(byParent: Record<number, TaxonRecord[]>) {
   server.use(
-    http.get(`${dataApi}/taxonomy/`, ({ request }) => {
-      const query = new URL(request.url).search;
-
-      if (query.includes("facet")) {
-        const inMatch = /in\(parent_id,\(([\d,]+)\)\)/.exec(query);
-        const ids = inMatch ? inMatch[1].split(",").map(Number) : [];
-        const flat = ids.flatMap((id) => [
-          String(id),
-          (byParent[id] ?? []).length,
-        ]);
-        return HttpResponse.json([], {
-          headers: {
-            "Content-Range": "items 0-0/0",
-            facet_counts: JSON.stringify({ facet_fields: { parent_id: flat } }),
-          },
-        });
-      }
-
-      const match = /eq\(parent_id,(\d+)\)/.exec(query);
-      const parentId = match ? Number(match[1]) : -1;
-      const rows = byParent[parentId] ?? [];
-      return HttpResponse.json(rows, {
-        headers: {
-          "Content-Range": `items 0-${String(rows.length)}/${String(rows.length)}`,
-        },
+    http.get(childCountsPath, ({ request }) => {
+      const ids = new URL(request.url).searchParams
+        .getAll("parentId")
+        .map(Number);
+      return HttpResponse.json({
+        counts: Object.fromEntries(
+          ids.map((id) => [String(id), (byParent[id] ?? []).length]),
+        ),
       });
+    }),
+    http.get(childrenPath, ({ request }) => {
+      const parentId = Number(
+        new URL(request.url).searchParams.get("parentId") ?? -1,
+      );
+      return HttpResponse.json({ rows: byParent[parentId] ?? [] });
     }),
   );
 }
 
-beforeEach(() => {
-  process.env.NEXT_PUBLIC_DATA_API = dataApi;
-});
-
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_DATA_API;
   // Release modifier keys so held state never leaks into the next test.
   fireEvent.keyUp(document, { key: "Shift" });
   fireEvent.keyUp(document, { key: "Control" });
@@ -181,27 +171,18 @@ describe("TaxonomyTree", () => {
 
   it("keeps a successful root usable when another root fails", async () => {
     server.use(
-      http.get(`${dataApi}/taxonomy/`, ({ request }) => {
-        const query = new URL(request.url).search;
-        if (query.includes("facet")) {
-          return HttpResponse.json([], {
-            headers: {
-              facet_counts: JSON.stringify({ facet_fields: { parent_id: [] } }),
-            },
-          });
-        }
-        if (query.includes("eq(parent_id,10239)")) {
+      http.get(childCountsPath, () => HttpResponse.json({ counts: {} })),
+      http.get(childrenPath, ({ request }) => {
+        const parentId = new URL(request.url).searchParams.get("parentId");
+        if (parentId === "10239") {
           return HttpResponse.json(
-            { message: "viral branch unavailable" },
-            { status: 500 },
+            { error: "viral branch unavailable", code: "upstream_error" },
+            { status: 502 },
           );
         }
-        return HttpResponse.json(
-          [child(235, "Brucella abortus", "species", 581)],
-          {
-            headers: { "Content-Range": "items 0-1/1" },
-          },
-        );
+        return HttpResponse.json({
+          rows: [child(235, "Brucella abortus", "species", 581)],
+        });
       }),
     );
 
@@ -212,7 +193,13 @@ describe("TaxonomyTree", () => {
     expect(
       await screen.findByRole("link", { name: "Brucella abortus" }),
     ).toBeInTheDocument();
-    expect(await screen.findByText(/error:.*500/i)).toBeInTheDocument();
+    // The route's specific upstream detail reaches the placeholder row rather
+    // than being replaced by a generic "failed to load sub-taxa".
+    expect(
+      await screen.findByText(
+        /error: taxonomy children 10239: viral branch unavailable/i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Brucella" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Viruses" })).toBeInTheDocument();
     expect(screen.getAllByRole("table")).toHaveLength(1);

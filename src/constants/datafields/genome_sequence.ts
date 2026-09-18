@@ -30,15 +30,24 @@ export const genomeSequenceFields = {
         facet_hidden: true, 
         search: true 
         },
-    sequence_id: { 
-        label: 'Sequence ID', 
-        field: 'sequence_id', 
+    sequence_id: {
+        label: 'Sequence ID',
+        field: 'sequence_id',
         hidden: true,
         group: 'Sequence Info',
-        link: '/view/FeatureList/?and(eq(annotation,PATRIC),eq(sequence_id,{value}),eq(feature_type,CDS))',
-        facet: false, 
-        facet_hidden: true, 
-        search: true  
+        // Canonicalized from the legacy `/view/FeatureList/?and(eq(annotation,PATRIC),
+        // eq(sequence_id,{value}),eq(feature_type,CDS))`. `src/proxy.ts`'s live
+        // `/view/*` redirect (`mapLegacyViewPath`) would map that exact path+query to
+        // this `/feature?rql=...` form (segment "feature", raw RQL query -> `rql=`), and
+        // `validateRql("genome_feature", "and(eq(annotation,PATRIC),eq(sequence_id,X),
+        // eq(feature_type,CDS))")` round-trips unchanged — this is the same
+        // annotation=PATRIC/feature_type=CDS pairing `feature-view/query.ts`'s
+        // `proteinFeatureRql` already uses. Written directly rather than left on the
+        // legacy redirect hop.
+        link: '/feature?rql=and(eq(annotation,PATRIC),eq(sequence_id,{value}),eq(feature_type,CDS))',
+        facet: false,
+        facet_hidden: true,
+        search: true
         },
     accession: { 
         label: 'Accession', 

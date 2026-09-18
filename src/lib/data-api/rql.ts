@@ -222,8 +222,26 @@ function parseExpression(
     if (!args[1].startsWith("(") || !args[1].endsWith(")")) {
       throw new DataApiValidationError("in values must be parenthesized.");
     }
-    const values = splitArguments(args[1].slice(1, -1));
-    if (values.length === 0 || values.length > maxRqlInValues)
+    const rawValues = args[1].slice(1, -1);
+    // `splitArguments` always returns at least one part (even for an empty
+    // string), so an empty argument list — in(field,()) — would otherwise be
+    // indistinguishable from a single quoted empty string — in(field,("")) —
+    // and pass the "at least one value" check below with a phantom "" value.
+    // Treat a blank (unquoted) interior as zero values; a quoted empty
+    // string still decodes to a real "" value, consistent with decodeValue()
+    // elsewhere in this file (e.g. eq(field,"") already yields "").
+    const values = rawValues.trim() === "" ? [] : splitArguments(rawValues);
+    // A blank slot embedded between commas — in(field,(1,,3)) — or a stray
+    // leading/trailing comma — in(field,(1,3,)) or in(field,(,1,3)) —
+    // survives splitArguments as an unquoted "" element instead of reducing
+    // the argument count, so it must be rejected the same way as a fully
+    // blank interior. A *quoted* empty string element is the two-character
+    // string `""`, not an empty string, so it is unaffected by this check.
+    if (
+      values.length === 0 ||
+      values.length > maxRqlInValues ||
+      values.some((value) => value === "")
+    )
       throw new DataApiValidationError(
         `in requires 1 to ${maxRqlInValues.toLocaleString()} values.`,
       );
@@ -254,6 +272,14 @@ export function parseRql(resource: DataResource, rql: string): RqlExpression {
 
 function serializeValue(value: RqlValue, field?: ResourceField): string {
   if (typeof value !== "string") return String(value);
+  if (value === "") {
+    if (field?.quote === "never") {
+      throw new DataApiValidationError(
+        "Empty strings cannot be serialized for an unquoted field.",
+      );
+    }
+    return '""';
+  }
   const encoded = encodeURIComponent(value).replace(
     /[!'()*]/g,
     (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,

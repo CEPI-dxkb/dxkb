@@ -1,37 +1,12 @@
-import type { DataTableColumn } from "@/components/shared/data-table";
 import type { ResourceCollectionProfile } from "@/components/views";
-import { genomeFeatureFields } from "@/constants/datafields/genome_feature";
-import type { DataField } from "@/constants/datafields/types";
 import { featureHref } from "@/lib/views/hrefs";
+import { featureMetadata } from "./fields";
 import { featureStructuralRql } from "./query";
 import type { FeatureViewRecord } from "./schema";
 
-function tableColumn(definition: DataField): DataTableColumn {
-  return {
-    id: definition.field,
-    label: definition.label,
-    visible: !definition.hidden,
-    sortable: definition.sortable ?? true,
-  };
-}
-
-const fields: DataField[] = Object.values(genomeFeatureFields);
-
-export const featureColumns: readonly DataTableColumn[] = fields
-  .filter((field) => field.show_in_table !== false && !field.hidden)
-  .map(tableColumn);
-
-export const featureDetailFields = fields.map((field) => field.field);
-
-// High-cardinality hidden facets (product, gene, families, GO) make the upstream
-// combined query time out. Fetch the established visible facets only.
-export const featureFacets = fields
-  .filter((field) => field.facet && field.facet_hidden !== true)
-  .map((field) => ({
-    field: field.field,
-    label: field.label,
-    initiallyVisible: field.facet_hidden !== true,
-  }));
+const featureColumns = featureMetadata.columns;
+const featureDetailFields = featureMetadata.detailFields;
+const featureFacets = featureMetadata.facets;
 
 export const featureCollectionProfile: ResourceCollectionProfile<FeatureViewRecord> = {
   resource: "genome_feature",
@@ -39,7 +14,6 @@ export const featureCollectionProfile: ResourceCollectionProfile<FeatureViewReco
   idField: "feature_id",
   columns: featureColumns,
   detailFields: featureDetailFields,
-  defaultSort: "unsorted",
   basePredicate: "eq(feature_id,*)",
   guideUrl: "https://www.bv-brc.org/docs/quick_references/organisms_taxon/features.html",
   buildStructuralRql: featureStructuralRql,

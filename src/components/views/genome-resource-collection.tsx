@@ -36,7 +36,6 @@ export function GenomeResourceCollection({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
     />
   );

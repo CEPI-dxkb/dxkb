@@ -5,6 +5,8 @@ export interface JsonOverrideBodyContext {
   parsedBody: unknown;
   /** 0-based count of how many times this override has been served on the current page. */
   callIndex: number;
+  requestUrl: string;
+  method: string;
 }
 
 /**
@@ -199,7 +201,12 @@ export async function applyBackendMocks(
           ? (override.body as (ctx: JsonOverrideBodyContext) => unknown)
           : null;
       const resolvedBody: unknown = bodyFn
-        ? bodyFn({ parsedBody, callIndex: counter.value })
+        ? bodyFn({
+            parsedBody,
+            callIndex: counter.value,
+            requestUrl: request.url(),
+            method: request.method(),
+          })
         : override.body;
       counter.value += 1;
       await route.fulfill({

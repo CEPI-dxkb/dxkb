@@ -4,73 +4,81 @@ import { server } from "@/test-helpers/msw-server";
 import {
   fetchTaxonChildCounts,
   fetchTaxonChildren,
+  taxonChildCountsKey,
+  taxonChildrenKey,
 } from "../use-taxon-children";
 
-const dataApi = "https://data.test/api";
+/**
+ * These fetchers now go through the same-origin `/api/taxonomy-tree` route, so
+ * MSW intercepts a relative path rather than an external Data API host. That
+ * is the point of the change: the transport carries no `NEXT_PUBLIC_DATA_API`
+ * origin baked in at build time, so it can be redirected at runtime (which is
+ * what makes the E2E loopback reachable).
+ *
+ * The malformed-`facet_counts` rejections these tests used to own now live
+ * server-side in `src/lib/data-api/__tests__/taxonomy-tree.test.ts`. What is
+ * covered here is that their messages still reach the caller intact.
+ */
+const childrenPath = "/api/taxonomy-tree/children";
+const childCountsPath = "/api/taxonomy-tree/child-counts";
 
-beforeEach(() => {
-  process.env.NEXT_PUBLIC_DATA_API = dataApi;
+describe("taxonChildrenKey", () => {
+  it("keys on the parent id", () => {
+    expect(taxonChildrenKey(235)).toEqual(["taxon-children", 235]);
+  });
 });
 
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_DATA_API;
+describe("taxonChildCountsKey", () => {
+  it("is order-independent", () => {
+    expect(taxonChildCountsKey([236, 235])).toEqual(
+      taxonChildCountsKey([235, 236]),
+    );
+  });
 });
 
 describe("fetchTaxonChildren", () => {
-  it("stitches multiple pages into one array", async () => {
-    let callCount = 0;
+  it("requests the parent id same-origin and returns the route's rows", async () => {
+    let requestUrl = "";
     server.use(
-      http.get(`${dataApi}/taxonomy/`, () => {
-        callCount++;
-        if (callCount === 1) {
-          return HttpResponse.json(
-            [
-              { taxon_id: 1, taxon_name: "Alpha", taxon_rank: "genus" },
-              { taxon_id: 2, taxon_name: "Beta", taxon_rank: "genus" },
-            ],
-            { headers: { "Content-Range": "items 0-1/3" } },
-          );
-        }
-        return HttpResponse.json(
-          [{ taxon_id: 3, taxon_name: "Gamma", taxon_rank: "genus" }],
-          { headers: { "Content-Range": "items 2-2/3" } },
-        );
-      }),
-    );
-
-    const children = await fetchTaxonChildren(235);
-    expect(children).toHaveLength(3);
-    expect(callCount).toBe(2);
-    expect(children.map((c) => c.taxon_id)).toEqual([1, 2, 3]);
-  });
-
-  it("stops early when a page returns zero items (safety net)", async () => {
-    let callCount = 0;
-    server.use(
-      http.get(`${dataApi}/taxonomy/`, () => {
-        callCount++;
-        if (callCount === 1) {
-          return HttpResponse.json(
-            [{ taxon_id: 1, taxon_name: "Alpha", taxon_rank: "genus" }],
-            // total claims 5 but subsequent page returns nothing
-            { headers: { "Content-Range": "items 0-0/5" } },
-          );
-        }
-        return HttpResponse.json([], {
-          headers: { "Content-Range": "items 1-0/5" },
+      http.get(childrenPath, ({ request }) => {
+        requestUrl = request.url;
+        return HttpResponse.json({
+          rows: [
+            { taxon_id: "235", taxon_name: "Brucella abortus" },
+            { taxon_id: "236", taxon_name: "Brucella melitensis" },
+          ],
         });
       }),
     );
 
-    const children = await fetchTaxonChildren(235);
-    expect(children).toHaveLength(1);
-    expect(callCount).toBe(2);
+    const children = await fetchTaxonChildren(234);
+
+    expect(children.map((child) => child.taxon_id)).toEqual(["235", "236"]);
+    const url = new URL(requestUrl);
+    expect(url.origin).toBe(window.location.origin);
+    expect(url.pathname).toBe(childrenPath);
+    expect(url.searchParams.get("parentId")).toBe("234");
   });
 
-  it("throws with status and statusText on HTTP error", async () => {
+  it("keeps the route's specific message in the thrown error", async () => {
+    server.use(
+      http.get(childrenPath, () =>
+        HttpResponse.json(
+          { error: "viral branch unavailable", code: "upstream_error" },
+          { status: 502 },
+        ),
+      ),
+    );
+
+    await expect(fetchTaxonChildren(10239)).rejects.toThrow(
+      "taxonomy children 10239: viral branch unavailable",
+    );
+  });
+
+  it("falls back to the status line when there is no JSON body", async () => {
     server.use(
       http.get(
-        `${dataApi}/taxonomy/`,
+        childrenPath,
         () =>
           new HttpResponse(null, {
             status: 503,
@@ -84,130 +92,104 @@ describe("fetchTaxonChildren", () => {
     );
   });
 
-  it("throws when NEXT_PUBLIC_DATA_API is not set", async () => {
-    delete process.env.NEXT_PUBLIC_DATA_API;
+  it("rejects a response with no rows array instead of returning undefined", async () => {
+    server.use(http.get(childrenPath, () => HttpResponse.json({})));
+
     await expect(fetchTaxonChildren(235)).rejects.toThrow(
-      "NEXT_PUBLIC_DATA_API environment variable is not configured",
+      "taxonomy children 235: response has no rows array",
     );
+  });
+
+  it("rejects when the request is aborted", async () => {
+    server.use(http.get(childrenPath, () => HttpResponse.json({ rows: [] })));
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      fetchTaxonChildren(235, controller.signal),
+    ).rejects.toThrow();
   });
 });
 
 describe("fetchTaxonChildCounts", () => {
-  it("parses the facet_counts header into a parentId -> count map", async () => {
+  it("turns the route's counts object into a parentId -> count map", async () => {
+    let requestUrl = "";
     server.use(
-      http.get(
-        `${dataApi}/taxonomy/`,
-        () =>
-          // Flat [id, count, id, count, …] array, exactly as SOLR returns it.
-          new HttpResponse("[]", {
-            headers: {
-              "Content-Range": "items 0-0/0",
-              facet_counts: JSON.stringify({
-                facet_fields: { parent_id: ["235", 3, "236", 0] },
-              }),
-            },
-          }),
+      http.get(childCountsPath, ({ request }) => {
+        requestUrl = request.url;
+        return HttpResponse.json({ counts: { 235: 3, 236: 0 } });
+      }),
+    );
+
+    const counts = await fetchTaxonChildCounts([235, 236]);
+
+    expect(counts.get(235)).toBe(3);
+    expect(counts.get(236)).toBe(0);
+    expect(
+      new URL(requestUrl).searchParams.getAll("parentId"),
+    ).toEqual(["235", "236"]);
+  });
+
+  it("leaves a parent the route omitted out of the map (no expand arrow)", async () => {
+    server.use(
+      http.get(childCountsPath, () =>
+        HttpResponse.json({ counts: { 235: 3 } }),
       ),
     );
 
     const counts = await fetchTaxonChildCounts([235, 236]);
+
     expect(counts.get(235)).toBe(3);
-    expect(counts.get(236)).toBe(0);
+    expect(counts.has(236)).toBe(false);
   });
 
   it("returns an empty map without fetching when given no ids", async () => {
-    const handler = vi.fn(() => HttpResponse.json([]));
-    server.use(http.get(`${dataApi}/taxonomy/`, handler));
+    const handler = vi.fn(() => HttpResponse.json({ counts: {} }));
+    server.use(http.get(childCountsPath, handler));
 
     const counts = await fetchTaxonChildCounts([]);
+
     expect(counts.size).toBe(0);
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it("throws when the facet_counts header is absent", async () => {
+  /**
+   * The eight distinct messages the route's eleven malformed-facet rejections
+   * produce (several shapes share one message — see
+   * `src/lib/data-api/__tests__/taxonomy-tree.test.ts`, which owns the
+   * rejection-by-rejection coverage). The assertion here is narrower: whatever
+   * the route diagnosed, the caller still sees that exact text, prefix
+   * included, rather than a generic failure — a malformed payload must never
+   * degrade into "this parent has no children".
+   */
+  it.each([
+    "missing facet_counts header",
+    "invalid facet_counts JSON",
+    "missing facet_fields.parent_id",
+    "expected parent/count pairs",
+    "invalid parent id not-an-id",
+    "invalid child count -1",
+    "unexpected parent id 999",
+    "duplicate parent id 235",
+  ])("surfaces the route's %s rejection verbatim", async (detail) => {
     server.use(
-      http.get(
-        `${dataApi}/taxonomy/`,
-        () =>
-          new HttpResponse("[]", {
-            headers: { "Content-Range": "items 0-0/0" },
-          }),
+      http.get(childCountsPath, () =>
+        HttpResponse.json(
+          { error: detail, code: "malformed_response" },
+          { status: 502 },
+        ),
       ),
     );
 
     await expect(fetchTaxonChildCounts([235])).rejects.toThrow(
-      "taxonomy child counts: missing facet_counts header",
+      `taxonomy child counts: ${detail}`,
     );
   });
 
-  it.each([
-    ["invalid JSON", "not-json", "invalid facet_counts JSON"],
-    [
-      "missing parent_id facet",
-      JSON.stringify({ facet_fields: {} }),
-      "missing facet_fields.parent_id",
-    ],
-    [
-      "odd pair list",
-      JSON.stringify({ facet_fields: { parent_id: ["235"] } }),
-      "expected parent/count pairs",
-    ],
-    [
-      "invalid parent id",
-      JSON.stringify({ facet_fields: { parent_id: ["not-an-id", 1] } }),
-      "invalid parent id",
-    ],
-    [
-      "invalid count",
-      JSON.stringify({ facet_fields: { parent_id: ["235", -1] } }),
-      "invalid child count",
-    ],
-    [
-      "non-primitive parent id",
-      JSON.stringify({ facet_fields: { parent_id: [[], 1] } }),
-      "invalid parent id",
-    ],
-    [
-      "boolean count",
-      JSON.stringify({ facet_fields: { parent_id: ["235", true] } }),
-      "invalid child count",
-    ],
-    [
-      "empty parent id",
-      JSON.stringify({ facet_fields: { parent_id: ["", 1] } }),
-      "invalid parent id",
-    ],
-    [
-      "null count",
-      JSON.stringify({ facet_fields: { parent_id: ["235", null] } }),
-      "invalid child count",
-    ],
-    [
-      "unexpected parent",
-      JSON.stringify({ facet_fields: { parent_id: ["999", 1] } }),
-      "unexpected parent id 999",
-    ],
-    [
-      "duplicate parent",
-      JSON.stringify({ facet_fields: { parent_id: ["235", 1, "235", 2] } }),
-      "duplicate parent id 235",
-    ],
-  ])("throws for %s", async (_case, facetCounts, expected) => {
+  it("falls back to the status line when there is no JSON body", async () => {
     server.use(
       http.get(
-        `${dataApi}/taxonomy/`,
-        () =>
-          new HttpResponse("[]", { headers: { facet_counts: facetCounts } }),
-      ),
-    );
-
-    await expect(fetchTaxonChildCounts([235])).rejects.toThrow(expected);
-  });
-
-  it("preserves the HTTP status and statusText in the thrown error", async () => {
-    server.use(
-      http.get(
-        `${dataApi}/taxonomy/`,
+        childCountsPath,
         () =>
           new HttpResponse(null, {
             status: 500,
@@ -219,5 +201,27 @@ describe("fetchTaxonChildCounts", () => {
     await expect(fetchTaxonChildCounts([235])).rejects.toThrow(
       "taxonomy child counts: 500 Internal Server Error",
     );
+  });
+
+  it("rejects a counts payload that is not an object of counts", async () => {
+    server.use(
+      http.get(childCountsPath, () => HttpResponse.json({ counts: [] })),
+    );
+
+    await expect(fetchTaxonChildCounts([235])).rejects.toThrow(
+      "taxonomy child counts: response has no counts object",
+    );
+  });
+
+  it("rejects when the request is aborted", async () => {
+    server.use(
+      http.get(childCountsPath, () => HttpResponse.json({ counts: {} })),
+    );
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      fetchTaxonChildCounts([235], controller.signal),
+    ).rejects.toThrow();
   });
 });

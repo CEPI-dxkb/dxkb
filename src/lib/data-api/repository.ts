@@ -162,7 +162,17 @@ function upstreamMessage(payload: unknown, status: number): string {
 
 function normalizeRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) return payload;
-  if (!payload || typeof payload !== "object") return [];
+  if (!payload || typeof payload !== "object") {
+    // A successful response whose body is `null`, a bare string/number/
+    // boolean, or unparseable JSON (the request layer maps a JSON parse
+    // failure to `null`) is an upstream protocol failure, not an empty
+    // result — surface it instead of caching/rendering a fake "no results".
+    throw new DataApiError(
+      "Malformed data service response.",
+      502,
+      "malformed_response",
+    );
+  }
   const object = payload as {
     response?: unknown;
     items?: unknown;
@@ -366,6 +376,73 @@ export class ServerDataRepository {
     };
   }
 
+  /**
+   * Ranged read whose *response headers* the caller needs, with rows validated
+   * by the resource schema. The generic operations above expose only a parsed
+   * body, because their contract is entirely in the body; the Taxa Tree's is
+   * not — it pages on `Content-Range`.
+   *
+   * `clause` is appended to the query verbatim and does NOT pass through
+   * `validateRql`, so every caller must build it from values it has already
+   * validated server-side. Its only caller today is `./taxonomy-tree.ts`,
+   * whose two clauses are built from positive integers that
+   * `/api/taxonomy-tree/[operation]` parsed with a digits-only pattern.
+   *
+   * `start`/`end` go straight into the `Range`/`X-Range` headers, so the
+   * caller owns its own window — including the upstream's *exclusive* range
+   * end, the same convention `collection` relies on when it asks for
+   * `start+size` to get `size` rows. This method knows no row limit of its
+   * own and therefore shares none with `collection` (`pageSize`) or `export`
+   * (`maxExportRows`).
+   */
+  async rangedRows(
+    resource: DataResource,
+    clause: string,
+    start: number,
+    end: number,
+    signal?: AbortSignal,
+  ): Promise<{ rows: Record<string, unknown>[]; headers: Headers }> {
+    const url = this.url(resource);
+    appendQuery(url, clause);
+    const { payload, headers } = await this.requestWithHeaders(
+      url,
+      start,
+      end,
+      signal,
+      "application/json",
+    );
+    return { rows: this.parseRows(resource, normalizeRows(payload)), headers };
+  }
+
+  /**
+   * Ranged read for a query whose answer is entirely in the response headers
+   * and whose body the caller does not read — a facet-only request. The body
+   * is still consumed, because an error response carries its message there,
+   * but it is neither normalized nor schema-validated: a facet request asks
+   * for the narrowest range there is, so whatever row the upstream happens to
+   * include is incidental and must not be able to fail the request.
+   *
+   * Same `clause` contract as {@link rangedRows}.
+   */
+  async rangedHeaders(
+    resource: DataResource,
+    clause: string,
+    start: number,
+    end: number,
+    signal?: AbortSignal,
+  ): Promise<Headers> {
+    const url = this.url(resource);
+    appendQuery(url, clause);
+    const { headers } = await this.requestWithHeaders(
+      url,
+      start,
+      end,
+      signal,
+      "application/json",
+    );
+    return headers;
+  }
+
   private url(resource: DataResource): URL {
     const base = this.options.baseUrl.replace(/\/$/, "");
     return new URL(`${base}/${resource}/`);
@@ -380,6 +457,27 @@ export class ServerDataRepository {
     method = "GET",
     body?: string,
   ): Promise<unknown> {
+    const { payload } = await this.requestWithHeaders(
+      url,
+      start,
+      end,
+      signal,
+      accept,
+      method,
+      body,
+    );
+    return payload;
+  }
+
+  private async requestWithHeaders(
+    url: URL,
+    start: number,
+    end: number,
+    signal: AbortSignal | undefined,
+    accept: string,
+    method = "GET",
+    body?: string,
+  ): Promise<{ payload: unknown; headers: Headers }> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
         "Authenticated data service requests require HTTPS.",
@@ -440,7 +538,7 @@ export class ServerDataRepository {
         code,
       );
     }
-    return payload;
+    return { payload, headers: response.headers };
   }
 
   private parseRows(

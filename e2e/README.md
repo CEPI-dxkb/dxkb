@@ -24,8 +24,9 @@ Override the port with `E2E_PORT=3030 pnpm e2e --project=chromium`. The wrapper 
 ```
 e2e/
   auth/                         # Playwright setup projects (storageState generators)
-    signed-in.setup.ts          # Seeds mocked auth cookies → e2e/.auth/user.json
+    signed-in.setup.ts          # Seeds mocked auth cookies → e2e/.auth/<config>-signed-in.json
     public.setup.ts             # Empty storageState for public specs
+    storage-state.ts            # Per-config storage-state paths (keyed by setup project name)
   mocks/
     backends.ts                 # applyBackendMocks(page, { overrides })
   pages/                        # Page-object helpers (SignInPage, …) — import from "../pages"
@@ -40,7 +41,7 @@ e2e/
     workspace.spec.ts           # Signed-in workspace browsing
     services/services-smoke.spec.ts  # Parametrized h1 smoke for all 21 services
     jobs.spec.ts                # Jobs list + detail
-    a11y.spec.ts                # axe-core sweep on home, sign-in, workspace, jobs, genome-assembly
+    a11y/                       # Accessibility suite — own config, see e2e/a11y/README.md
     viewer-3d.spec.ts           # Mol* /viewer/structure container + WebGL canvas paint
     search-keyboard.spec.ts     # Navbar SearchBar keyboard journey + clipboard paste
     visual/visual.spec.ts       # Screenshot baselines
@@ -58,7 +59,23 @@ Non-backend requests (Next.js assets, fonts, CDN) always pass through regardless
 
 Call `applyBackendMocks(page, { overrides })` in a `beforeEach`. **Strict is the default.** If you genuinely need to let real backend calls through for an exploratory test, pass `strict: false`.
 
-The permissive catch-all `permissiveBackendOverrides` (from `e2e/fixtures/overrides`) covers `/api/auth/`, `/api/services/`, `/api/workspace/`, and the four backend hosts with generic 200 responses — use it as the last spread in your override list for the "I just want the page to render" case, after specific fixtures.
+`emptyBackendFallbackOverrides` (from `e2e/fixtures/overrides`) covers `/api/auth/`, `/api/services/`, `/api/workspace/` with generic, data-free 200 responses — spread it last in your override list so it answers anything a more specific override in your list didn't. It never returns named business data, so it's safe to include in any spec regardless of what that spec is testing.
+
+#### Canonical fixture records (`e2e/fixtures/overrides/catchall.ts`)
+
+The populated business-entity fixtures inside `catchall.ts` (genome, taxonomy, epitope, experiment, surveillance, serology, protein structure, etc.) are built from typed, dependency-free records in `src/lib/e2e-fixtures/records.ts` and wrapped per-transport by `src/lib/e2e-fixtures/envelopes.ts`. The **same** records back the server-side loopback mock (`src/app/api/e2e-mock/[...path]/route.ts`) — before this module existed, each layer hand-rolled its own copy and they drifted (e.g. epitope `host_name` was an array in one file and a bare string in the other). `src/lib/e2e-fixtures/__tests__/records.test.ts` parses every record with the production Zod schemas from `src/lib/data-api/schemas.ts`. `src/lib/e2e-fixtures/__tests__/transport-parity.test.ts` calls the real server-side `route.ts` handler and compares its response against the real, statically-defined bodies in the matching `catchall.ts` bundle — it imports `catchall.ts` directly (a type-only `import type` keeps the Playwright runtime out of that import chain, so this works fine from a Vitest test). For each of the 7 resources it covers, it diffs the gateway GET entry, the gateway POST entry (except `genome`'s, which is a dynamic function, not a static literal), and the e2e-mock loopback GET entry where one exists with real data (`experiment`, `surveillance`, `serology`) — see the test file's own doc comment for the exact per-resource breakdown. A future edit that re-inlines a diverging literal into any of those covered call sites fails loudly instead of drifting silently.
+
+`records.ts` also owns the fixtures that are not `/api/data` resources: the BV-BRC *website* API tables `organismTaxonomyRecords` and `organismSummaryRecords` (keyed by taxon id, the pair behind every organism landing page and `/taxonomy/<id>`), the Brucella PPI rows and their collection total, and a `genome_amr` row. The two organism tables are kept 1:1 and their counts kept in agreement by `records.test.ts` — a taxon present in one and missing from the other renders half a page, which is exactly how `/taxonomy/1763` used to reach the framework error boundary.
+
+**Import boundary.** `src/lib/e2e-fixtures/**` may only be imported from `src/lib/e2e-fixtures/**`, `src/app/api/e2e-mock/**`, and `e2e/fixtures/overrides/**`. A `no-restricted-imports` zone in `eslint.config.mjs` enforces it and `src/__tests__/e2e-fixtures-import-boundary.test.ts` pins the allowlist against the files that actually import the module, in both directions. `server-only` is deliberately not used: Playwright's own Node process imports the override bundles that re-export these records.
+
+`catchall.ts` exports two kinds of things — import the most specific one your spec needs:
+
+- **`emptyBackendFallbackOverrides`** — generic, data-free responses (`/api/auth/`, `/api/services/`, `/api/workspace/`). Safe anywhere; never returns named business data a test didn't ask for.
+- **Named resource scenario bundles** — one per resource (`genomeScenarioOverrides`, `epitopeScenarioOverrides`, `taxonomyScenarioOverrides`, `experimentScenarioOverrides`, `biosetScenarioOverrides`, `surveillanceScenarioOverrides`, `serologyScenarioOverrides`, `proteinStructureScenarioOverrides`, `proteinFeatureScenarioOverrides`, `genomeFeatureScenarioOverrides`, `genomeSequenceScenarioOverrides`, `strainScenarioOverrides`, `epitopeAssayScenarioOverrides`). Every journey/view/smoke/visual spec in the suite imports the specific bundle(s) it actually exercises, plus `emptyBackendFallbackOverrides` for everything else, instead of a blanket catch-all.
+- **`taxonomyTreeScenarioOverrides`** — the one named bundle scoped to a *boundary* rather than a resource. The Taxa Tree reads from its own same-origin route (`/api/taxonomy-tree/children` and `/api/taxonomy-tree/child-counts`), not from `/api/data/taxonomy`, so `taxonomyScenarioOverrides` does not cover it. The bundle is data-free (`{rows: []}` / `{counts: {}}`), so it is what a spec imports when it mounts the tree *incidentally* and only needs the strict guard satisfied — that guard aborts an unmocked `/api/**` request and fails the test on teardown (`e2e/tests/organisms/all.spec.ts` and the a11y sweep use it this way). A spec that exercises the tree itself does not import this bundle: it supplies its own content-bearing entries for both operations, since an empty `{rows}`/`{counts}` earlier in the list would win under first-match ordering and leave every node a leaf. See `e2e/tests/taxonomy-tree.spec.ts`.
+
+`namedResourceScenarioOverrides` and `apiCatchallOverrides` compose all the named bundles (± the empty fallback) as internal, unexported building blocks — nothing outside `catchall.ts` imports them. **`a11yBackendOverrides`** is the one broad, unscoped aggregate this module exports (every named bundle + the empty fallback + external-host stubs), reserved for the accessibility sweep (`e2e/tests/a11y/*.spec.ts`), which scans dozens of routes spanning every resource type in one pass. Do not import it outside `e2e/tests/a11y/`.
 
 ### Server-side backends: loopback isolation
 
@@ -69,10 +86,15 @@ To fix this the test server runs through a wrapper that seeds the right env vars
 - **`e2e/scripts/start-webserver.mjs`** is what `playwright.config.ts`'s `webServer.command` launches. It resolves the port (CLI arg > `E2E_PORT` > `3020`), then reads `.env.e2e.local` (optional) followed by `.env.e2e.test` (required) via `node:util`'s `parseEnv`, merging each key into `process.env` under `node --env-file=` semantics (existing values win). Values can reference `${E2E_PORT}`; the wrapper substitutes the resolved port at load time so the committed file stays port-agnostic. Finally it spawns `next start -p <port>` — it does **not** run `next build`, because a cold build exceeds Playwright's webServer timeout and blocks targeted runs. Run `pnpm build` yourself first. We can't just use `node --env-file=` here because that flag leaks into `NODE_OPTIONS` and Next's build worker threads reject `NODE_OPTIONS` containing `--env-file` (`ERR_WORKER_INVALID_EXEC_ARGV`).
 - **`.env.e2e.test`** (committed, loaded by the wrapper) points every backend URL at a loopback mock: `http://127.0.0.1:${E2E_PORT}/api/e2e-mock/<service>`.
 - **`.env.e2e.local`** (gitignored, loaded by the wrapper if present) is for local-only overrides. Because the wrapper loads `.env.e2e.local` **before** `.env.e2e.test`, any key set in the local file wins over the committed default. A shell-exported variable beats both.
-- **`src/app/api/e2e-mock/[...path]/route.ts`** answers those loopback requests. `GET → 200 {}`, `POST → 200 {"id":1,"jsonrpc":"2.0","result":[[]]}`. Hits are logged as `[api/e2e-mock] <METHOD> /<path>` so fixtures can be promoted into overrides later.
+- **`src/app/api/e2e-mock/[...path]/route.ts`** answers those loopback requests, and its dispatch is **fail-closed**. Every path / JSON-RPC-method combination it serves is named in the module; anything else gets a `400` whose `reason` says exactly what is missing, and the same reason is written to the webServer log as `[api/e2e-mock] e2e-mock: …`. So `grep '\[api/e2e-mock\] e2e-mock: ' <playwright output>` is how you find out whether a run hit a fixture gap. Every rejection carries that prefix **by construction**: callers pass a label, never a whole `error` string, and `rejectionError()` builds it — the JSON-RPC branch included, which answers with an error envelope rather than that body. Two kinds of non-2xx deliberately stay outside the prefix, because they are fixture behaviour rather than gaps and folding them in would make the grep useless: the `E2E_MOCK_ENABLED` guard's 404, and `identity.ts`'s 401/404 for bad credentials and an unknown user. Only the 401s are asserted by a spec (`auth.spec.ts`); the 404 is a catch-all for any unrecognised `user/<id>`, so it doubles as the fixture gap for a profile this mock does not model. That is harmless today because `getProfile` is only ever called for the session user, but a spec that seeds a second user would hit a real gap this grep cannot see. `route.test.ts` pins both halves — one test drives all eight rejection branches through the prefix, and a second scans the route module's source so a new branch cannot answer 4xx on its own without failing. It never answers an unknown request with an empty success — a silent `{}` renders a real page with no data, so a spec passes asserting nothing (or, as `/taxonomy/1763` did, renders an error boundary that gets recorded as a page defect). Hits are logged as `[api/e2e-mock] <METHOD> /<path><query>`.
+  - `GET` — identity, `phylo-manifest`, the `bvbrc-website` taxonomy/summary/genome fixtures, and the `data/<core>` Solr fixtures.
+  - `POST` — `bvbrc-website/genome_amr` (with body validation), the identity endpoints, and the four JSON-RPC calls in `loopbackRpcResults` (`workspace` → `Workspace.ls` / `Workspace.get`; `app-service` → `AppService.query_task_summary_filtered` / `query_app_summary_filtered`). Those four answer empty, each with a comment stating why empty is the correct answer for that contract; they are the only combinations an instrumented run of the full Chromium suite plus `pnpm a11y` observed reaching the loopback.
+  - `PUT` / `DELETE` — nothing. The same instrumented run recorded no PUT or DELETE reaching the handler at all.
 - The handler is guarded by `E2E_MOCK_ENABLED=1` (set in `.env.e2e.test`). Without that flag every handler returns 404, so a production build that somehow shipped this file can't serve fake data.
 
-If you add a new server-side backend dependency, add its env var to `.env.e2e.test` pointing at `/api/e2e-mock/<something>`. No code changes needed beyond that.
+If you add a new server-side backend dependency, add its env var to `.env.e2e.test` pointing at `/api/e2e-mock/<something>` **and** register the path (and, for JSON-RPC, the method) in `route.ts`. The env var alone is no longer enough: the handler is fail-closed, so an unregistered call gets a `400` naming itself rather than a silent success. That failure is the point — it tells you which fixture to write.
+
+Do not infer from a green browser-side run that the loopback is complete. `page.route()` cannot see a Server Component's fetch, and `emptyBackendFallbackOverrides` deliberately swallows broad auth/services/workspace families before they leave the page. The two accommodations are separate: the browser-side empty fallback exists so a spec need not declare traffic it does not care about; the loopback has no equivalent and must not grow one.
 
 ## Page objects
 
@@ -120,9 +142,11 @@ await applyBackendMocks(page, {
     // server-side profile validation.
     ...authSessionOverrides,
     ...harOverridesFor("workspace-browse.har"),
-    // Mops up anything the HAR didn't capture (future code paths) so strict
-    // mode doesn't fail the test on an unrelated unmocked request.
-    ...permissiveBackendOverrides,
+    // No fallback layered on top — not `emptyBackendFallbackOverrides`, not a
+    // broad aggregate. `emptyBackendFallbackOverrides` answers `/api/workspace/`
+    // with `{items: []}`, which is exactly the traffic this replay's strict-mode
+    // canary watches; layering it here would turn a loud unmocked-request
+    // failure (missing HAR coverage) into a silent empty-state timeout instead.
   ],
 });
 
@@ -148,7 +172,7 @@ Each group opens its own PR (`chore/e2e-har-refresh-read-only` / `chore/e2e-har-
 
 ## Visual regression
 
-Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences.
+Baselines live in `e2e/__snapshots__/`, one per `(spec, browser, platform)` triple. Chromium is strict (zero-pixel diff). Firefox and WebKit allow `maxDiffPixelRatio: 0.05` to absorb font/AA differences — which also means those two engines keep passing against a materially outdated baseline, so their images need refreshing deliberately rather than when a job goes red.
 
 We commit both `*-linux.png` (for CI on `ubuntu-latest`) and `*-darwin.png` (for local Macs) so visual tests work out of the box on both. Windows contributors regenerate their own `*-win32.png` locally and are not expected to commit them.
 
@@ -191,6 +215,40 @@ This is the only way to get byte-exact parity with GitHub Actions runners.
 
 Review the PNG diffs in the PR before merging.
 
+### A `pkg.version` bump reddens every full-page chromium snapshot
+
+`next.config.ts` inlines `package.json`'s version as `NEXT_PUBLIC_APP_VERSION` and `src/components/navbars/desktop-navbar.tsx` renders it as a `v0.0.0` badge. The badge's glyph advance widths change with the digits, which shifts every navbar item to the left of the flex-grown search box by about a pixel — roughly 2100-2400 differing pixels on any `fullPage` snapshot, which chromium's zero tolerance rejects.
+
+So a version bump alone turns the chromium visual job red for a change nobody made to the UI. That is expected, not a regression: refresh the baselines (`-darwin` locally, `-linux` from the failing CI run) as part of the bump. If this becomes tiresome, the fix is to pin `NEXT_PUBLIC_APP_VERSION` for the E2E build — masking the badge does not work, because the items to its right still shift when its intrinsic width changes.
+
+### Adjudicating a drift: the failure's pixel count is not the region list
+
+`toHaveScreenshot` counts pixels through pixelmatch at `threshold: 0.2`, which ignores differences below roughly a greyscale delta of 53. A change can therefore repaint most of the page and contribute **zero** to the reported count. When the `#ffffff` → `#f7f7f7` page background landed, it changed 636,261 px on `sign-in` and 557,125 px on `genome-assembly` — over half of each image — and Playwright reported 2450 and 3501 differing pixels, none of them the background.
+
+When you adjudicate a drift, enumerate the regions from an **exact** byte comparison of baseline vs actual (a histogram of `oldColor -> newColor` transitions finds the sub-threshold ones immediately), not from the failure message. Treating the reported count as the region list is how a full-page repaint gets waved through as "a few pixels of text AA". The same trap is worse on firefox and webkit, whose `maxDiffPixelRatio: 0.05` hides perceptible changes too.
+
+### `--update-snapshots=all` ignores tolerance
+
+`=all` rewrites every baseline the run touches, **including ones that were passing** — which on firefox and webkit means ones that were passing inside `maxDiffPixelRatio: 0.05`. That is how an image nobody adjudicated ends up rewritten alongside the ones they did.
+
+A bare `--update-snapshots` does **not** do this: Playwright's default preset is `changed`, which rewrites only the baselines whose comparison fails. So `pnpm e2e:update-snapshots` is the safe form, and `=all` is an explicit opt-in to overwriting images you never looked at. Reach for it only once you have adjudicated every image in the selection.
+
+### The baseline sets are not in step, per file
+
+Refreshing one platform and not the other leaves a baseline that disagrees with head on the platform you skipped, and — at chromium's zero tolerance — a red job for the next person. When a change requires new baselines, refresh **both** sets in the same PR: `-darwin` locally, `-linux` from that PR's failing CI run.
+
+The committed sets are currently a patchwork. This is the measured per-file state, not a generalisation, because the generalisations are all false:
+
+**Version badge and navbar.** The Chromium and WebKit Darwin sets are current (`v0.4.1`, navbar `Organisms / Services / Workspace / Resources`). In `-firefox-darwin`, `-firefox-linux` and `-webkit-linux`, the three organism-landing images read **`v0.3.3` with the current navbar**, `genome-assembly` and `home` read `v0.2.6` (firefox-darwin) or `v0.2.7` (the other two), and `jobs` / `sign-in` / `workspace` read `v0.2.6` with a navbar whose first item is the since-removed **"Getting started"**. So of the 16 firefox images, 6 are at v0.3.3 and 7 carry the old navbar — do not assume a whole set shares one vintage.
+
+**`home`'s statistics fixture is fixed, but four baselines still need refresh.** The Chromium and WebKit Darwin baselines now render the deterministic Taxonomy and Protein Structure totals. Refresh the Linux and Firefox Darwin baselines in native CI so every image reflects the same values; do not use Apple-Silicon/QEMU output for Linux.
+
+**The `jobs` snapshot now waits for its two fixture rows and masks its live timestamp.** The Chromium and WebKit Darwin baselines have been refreshed to the loaded state. The Linux and Firefox Darwin baselines still predate that deterministic contract and must be refreshed in native CI; until then they can remain green under the browser-level tolerance despite showing stale content.
+
+**`-webkit-darwin` is ahead of `-webkit-linux`.** Seven of the eight webkit darwin baselines were refreshed to match head; the linux set was not, and cannot be from a Mac. Both need the same CI run as firefox.
+
+**Firefox cannot be regenerated locally at all**: `browserType.launch: Timeout 180000ms exceeded` with `sandbox_extension_issue_file_to_process … Operation not permitted`, reproducible on an untouched route. Both firefox sets need a CI run.
+
 ## Browser matrix
 
 Every PR runs three jobs via GitHub Actions (`.github/workflows/pnpm-e2e.yml`): chromium, firefox, webkit. Each shard caches its own browser binary in `~/.cache/ms-playwright`. Reports upload as artifacts on failure.
@@ -211,7 +269,7 @@ Two paths, depending on what the agent needs to do.
 
 ## Cross-cutting specs
 
-**`a11y.spec.ts`** — runs `@axe-core/playwright` on home, sign-in, workspace, the genome-assembly form, and jobs, plus a dedicated check on the open command palette dialog. Fails on `serious` or `critical` violations; logs `moderate`/`minor` ones via `console.warn`. After DXKBCORE-133 the `knownBaselineViolations` allowlist is `[]`; only add IDs back with a linked ticket and a target removal date.
+**`tests/a11y/`** — the accessibility suite does not run under `playwright.config.ts` at all (`testMatch` excludes it). It has its own configs, scripts and gate; see `e2e/a11y/README.md` for the runbook.
 
 **`viewer-3d.spec.ts`** — drives `/viewer/structure/<path>`, mocks `/api/workspace/view/...` with a minimal one-atom PDB, and asserts the page chrome + Mol* container render. The full WebGL canvas-paint assertion is gated on Mol*'s own runtime probe — if Mol* surfaces "WebGL does not seem to be available" (e.g. headless Chromium without GPU), the paint test self-skips. Firefox and WebKit are skipped wholesale because their headless WebGL stacks are unreliable.
 

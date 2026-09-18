@@ -40,11 +40,10 @@ export async function resolveCompoundSample<
     pageSize: 2,
     facets: [options.discriminatorField],
   });
-  const records = result.rows.map(options.parseRecord);
-  if (result.total === 0 || records.length === 0)
+  if (result.total === 0 || result.rows.length === 0)
     return { status: "not-found" };
-  if (result.total === 1 && records.length === 1)
-    return { status: "unique", record: records[0] };
+  if (result.total === 1 && result.rows.length === 1)
+    return { status: "unique", record: options.parseRecord(result.rows[0]) };
   const discriminatorValues = (result.facets[options.discriminatorField] ?? [])
     .filter(({ count }) => count === 1)
     .map(({ value }) => String(value))

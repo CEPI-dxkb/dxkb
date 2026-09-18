@@ -64,33 +64,35 @@ export function canonicalProteinStructureQuery(
     : `/protein-structure?${query.toString()}`;
 }
 
-function decodeWorkspacePath(path: string): string | undefined {
-  try {
-    return path.split("/").map(decodeURIComponent).join("/");
-  } catch {
-    return undefined;
-  }
-}
-
-function workspacePathError(
-  path: string,
-  decodedPath: string | undefined,
-): string | undefined {
+/**
+ * Validate an already-decoded workspace path (Next's `searchParams` decode
+ * query values once, before this ever runs — see `decoded params` note on
+ * `parseProteinStructureMode`). Do not decode here: a literal `%2F` in a
+ * filename would otherwise be turned into a real `/`, splitting one segment
+ * into two and resolving a different file than the one named.
+ */
+function workspacePathError(path: string): string | undefined {
   if (!path.startsWith("/")) return "Workspace path must be absolute.";
   if (path.length > 1024) return "Workspace path is too long.";
-  if (
-    decodedPath === undefined ||
-    decodedPath.includes("\0") ||
-    decodedPath.split("/").includes("..")
-  ) {
+  if (path.includes("\0") || path.split("/").includes("..")) {
     return "Workspace path contains an invalid segment.";
   }
-  if (!/\.(?:pdb|cif|mmcif|bcif)$/i.test(decodedPath)) {
+  if (!/\.(?:pdb|cif|mmcif|bcif)$/i.test(path)) {
     return "Workspace path must identify an uncompressed PDB, CIF, mmCIF, or BCIF structure file.";
   }
   return undefined;
 }
 
+/**
+ * `params` values come from a page's `searchParams` prop. Unlike a dynamic
+ * route param, `searchParams` are decoded consistently at every entry point,
+ * so treat every value here as the final decoded string — do not decode
+ * again, or a literal `%25`/`%2F` in an accession or workspace path becomes a
+ * different character than the one the user typed.
+ *
+ * A page component's `params` are the opposite case and DO need decoding —
+ * see `readRouteParam` in `src/lib/views/route-params.ts`.
+ */
 export function parseProteinStructureMode(
   params: SearchParamsRecord,
 ): ProteinStructureMode {
@@ -131,15 +133,12 @@ export function parseProteinStructureMode(
       : { kind: "accession", accessions };
   }
   if (paths.length === 1) {
-    const decodedPath = decodeWorkspacePath(paths[0]);
-    const error = workspacePathError(paths[0], decodedPath);
-    if (error || decodedPath === undefined) {
-      return {
-        kind: "invalid",
-        reason: error ?? "Workspace path contains an invalid segment.",
-      };
+    const path = paths[0];
+    const error = workspacePathError(path);
+    if (error) {
+      return { kind: "invalid", reason: error };
     }
-    return { kind: "path", path: decodedPath };
+    return { kind: "path", path };
   }
   return { kind: "collection" };
 }

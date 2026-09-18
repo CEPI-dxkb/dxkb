@@ -6,6 +6,7 @@ import { resourceRegistry } from "../resources";
 import {
   epitopeAssayRecordSchema,
   epitopeRecordSchema,
+  genomeAmrRecordSchema,
   genomeRecordSchema,
   proteinStructureRecordSchema,
   serologyRecordSchema,
@@ -26,7 +27,12 @@ describe("data API contracts", () => {
     );
     for (const resource of dataResources) {
       const definition = resourceRegistry[resource];
-      expect(definition.fields[definition.idField].selectable).toBe(true);
+      expect(() =>
+        validateDataApiRequest(resource, {
+          operation: "collection",
+          fields: [definition.idField],
+        }),
+      ).not.toThrow();
       expect(() => definition.schema.parse({})).toThrow();
     }
   });
@@ -67,6 +73,57 @@ describe("data API contracts", () => {
     expect(resourceRegistry.serology.fields.taxon_lineage_ids.sortable).toBe(
       false,
     );
+  });
+
+  it("registers AMR phenotypes so the legacy Search list has a validated boundary", () => {
+    // genome_amr reaches the Data API gateway from `/search?type=genome_amr`,
+    // the one surviving legacy list besides genome_sequence. Without a registry
+    // entry the gateway 404s it and that route cannot load a single row.
+    expect(resourceRegistry.genome_amr.idField).toBe("id");
+    expect(resourceRegistry.genome_amr.fields.antibiotic.facet).toBe(true);
+    expect(resourceRegistry.genome_amr.fields.resistant_phenotype.facet).toBe(
+      false,
+    );
+    expect(resourceRegistry.genome_amr.fields.evidence.cardinality).toBe("multiple");
+    expect(resourceRegistry.genome_amr.fields.evidence.sortable).toBe(false);
+    expect(resourceRegistry.genome_amr.fields.pmid.cardinality).toBe("multiple");
+    expect(resourceRegistry.genome_amr.fields.pmid.sortable).toBe(false);
+    expect(resourceRegistry.genome_amr.fields.antibiotic.sortable).toBe(true);
+    // The schema declares only `id` (plus the shared optional taxonomy keys),
+    // so a row keeps every other AMR column verbatim — including the shapes
+    // that have no in-repo fixture to check a declaration against: a
+    // multi-publication `pmid` list and a non-numeric measurement.
+    expect(
+      genomeAmrRecordSchema.parse({
+        id: "amr-row-1",
+        genome_id: "1.1",
+        antibiotic: "ampicillin",
+        resistant_phenotype: "Resistant",
+        measurement_value: ">=32",
+        evidence: ["Laboratory Method"],
+        pmid: ["12345", "67890"],
+      }),
+    ).toEqual({
+      id: "amr-row-1",
+      genome_id: "1.1",
+      antibiotic: "ampicillin",
+      resistant_phenotype: "Resistant",
+      measurement_value: ">=32",
+      evidence: ["Laboratory Method"],
+      pmid: ["12345", "67890"],
+    });
+    // Only `id` is required, so a missing one is what fails — not a column
+    // whose type this repo cannot verify.
+    expect(() => genomeAmrRecordSchema.parse({ antibiotic: "ampicillin" })).toThrow();
+    for (const field of ["evidence", "pmid"]) {
+      expect(() =>
+        validateDataApiRequest("genome_amr", {
+          operation: "collection",
+          facets: ["antibiotic"],
+          sort: { field, direction: "asc" },
+        }),
+      ).toThrow(new RegExp(`${field} cannot sort genome_amr`));
+    }
   });
 
   it("registers Strain backend identity and multivalue accession fields", () => {
@@ -208,6 +265,12 @@ describe("data API contracts", () => {
         sort: { field: "password", direction: "asc" },
       }),
     ).toThrow(/cannot sort/);
+    expect(() =>
+      validateDataApiRequest("genome", {
+        operation: "collection",
+        facets: ["genome_id"],
+      }),
+    ).toThrow(/cannot be used/);
   });
 
   it("enforces paging and bulk operation bounds", () => {

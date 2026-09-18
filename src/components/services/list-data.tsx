@@ -1,30 +1,49 @@
 "use client";
 
-import { useDeferredValue, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useDeferredValue, useEffect, useEffectEvent, useState } from "react";
 import { DataTable } from "@/components/shared/data-table";
 import type { RowSelectionState, SortingState } from "@tanstack/react-table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { noop } from "@/lib/utils";
+import { formatUserFacingErrorMessage, noop } from "@/lib/utils";
 import { getIdField } from "@/constants/resources";
 import { detailPanelQueryKey } from "@/components/genome/genome-detail-panel-utils";
 import { FilterBar } from "@/components/filterbar/filter-bar";
+import { combineRql } from "@/components/filterbar/filter-utils";
+import {
+  DataRepository,
+  collectionQueryOptions,
+  maxExportRows,
+} from "@/lib/data-api";
+import type { CollectionRequest, DataResource, DataSort } from "@/lib/data-api";
+import { maxSelectedRows } from "@/lib/data-api/validation";
+import { downloadResourceExport } from "@/components/views/resource-export";
 import {
   deriveTableFields,
   downloadLoadedResourceRows,
-  downloadResourceRows,
   findPageRow,
   isSameResourceQuery,
-  resourceFields,
+  projectedFields,
 } from "./list-data-utils";
+
+// The sanctioned browser-side Data API entrypoint (`/api/data/<resource>`) for
+// every read this list makes. Stateless wrapper around fetch, so a single
+// module-level instance is the established pattern (see e.g.
+// genome-resource-collection.tsx, use-interactions.ts).
+const dataRepository = new DataRepository();
 
 // Stable empty-rows reference so DataTable's memoized body comparator (prev.data === next.data)
 // isn't defeated by a fresh [] on every render when there are no results.
 const emptyRows: Record<string, unknown>[] = [];
 
+// One page is also the gateway's per-request ceiling (`pageSize` in
+// src/lib/data-api/validation.ts), so a larger value here would be rejected.
+const pageSize = 200;
+
+const staleTimeMs = 5 * 60 * 1000;
+
 interface ListDataProps {
   q: string;
-  resource: string; // 'genome', 'gene', etc.
+  resource: DataResource;
   onSelectionChange?: (ids: string[]) => void;
   onSelectedRowChange?: (row: Record<string, unknown> | null) => void;
   rowSelection?: RowSelectionState;
@@ -100,16 +119,7 @@ function useListData({
     columns: fields,
   };
 
-  const searchParams = useSearchParams();
-  const searchtype = searchParams.get("type") ?? "";
   const cleanQ = q.split("#")[0];
-  const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
-  if (!DataAPI) {
-    throw new Error(
-      "NEXT_PUBLIC_DATA_API environment variable is not configured",
-    );
-  }
-  const pageSize = 200;
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
@@ -157,187 +167,80 @@ function useListData({
     }
   }
 
-  const sortingKey =
+  // DataTable only offers a sort header for a column the registry declares
+  // sortable, which is the same value the gateway's `validateSort` enforces.
+  const sort: DataSort | undefined =
     sorting.length > 0
-      ? `${sorting[0].id}:${sorting[0].desc ? "desc" : "asc"}`
-      : "none";
+      ? {
+          field: sorting[0].id,
+          direction: sorting[0].desc ? "desc" : "asc",
+        }
+      : undefined;
+  const sortingKey = sort ? `${sort.field}:${sort.direction}` : "none";
 
-  const combinedQuery =
-    !filter || filter === "false"
-      ? cleanQ
-      : !cleanQ
-        ? filter
-        : `and(${cleanQ},${filter})`;
+  const combinedQuery = combineRql(cleanQ, filter);
+  const projection = projectedFields(resource, idField);
 
-  interface MetaResponse {
-    response?: { numFound?: number };
-  }
+  const collectionRequest: Omit<CollectionRequest, "operation"> = {
+    rql: combinedQuery || undefined,
+    page: pageIndex + 1,
+    pageSize,
+    sort,
+    fields: projection,
+  };
 
-  // Fetch metadata (numFound)
+  // One request carries both the page of rows and the matching total, so the
+  // separate count read this replaced is gone.
   const {
-    data: metaData,
-    isLoading: metaLoading,
-    error: metaError,
-  } = useQuery<MetaResponse>({
-    queryKey: ["genome-meta", resource, combinedQuery, searchtype],
-    queryFn: async () => {
-      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
-      const res = await fetch(`${baseURL}&limit(1)`, {
-        headers: { Accept: "application/solr+json" },
-      });
-      if (!res.ok)
-        throw new Error(
-          `Failed to fetch metadata (${String(res.status)} ${res.statusText})`,
-        );
-      return res.json() as Promise<MetaResponse>;
-    },
-    staleTime: 5 * 60 * 1000,
+    data: collection,
+    isLoading,
+    isPlaceholderData,
+    error,
+  } = useQuery({
+    ...collectionQueryOptions(dataRepository, resource, collectionRequest),
+    // Keep the previous page's rows during a refetch for smooth pagination —
+    // but ONLY within the same resource. `collectionQueryOptions` defaults to
+    // `keepPreviousData`, which on a resource change bleeds the old resource's
+    // rows into a table now keyed by the new resource's idField and produces
+    // duplicate/undefined React keys. `dataQueryKeys.collection` puts the
+    // resource at index 1 of the key, which is what `isSameResourceQuery` reads.
+    placeholderData: (previousData, previousQuery) =>
+      isSameResourceQuery(previousQuery?.queryKey, resource)
+        ? previousData
+        : undefined,
+    staleTime: staleTimeMs,
   });
 
-  // Compute totalItems safely
-  const totalItems = metaData?.response?.numFound ?? 0;
+  const totalItems = collection?.total ?? 0;
 
   const notifyTotalItems = (node: HTMLSpanElement | null) => {
     if (node) onTotalItemsChange?.(totalItems);
   };
 
-  // Fetch current page of data
-  const {
-    data: pageData,
-    isLoading: dataLoading,
-    isPlaceholderData,
-    error: dataError,
-  } = useQuery<Record<string, unknown>[]>({
-    queryKey: [
-      "genome-full",
-      resource,
-      combinedQuery,
-      pageIndex,
-      sortingKey,
-      searchtype,
-      totalItems,
-    ],
-    queryFn: async () => {
-      if (totalItems === 0) return [];
-
-      // Derive sort param from sortingKey (already in queryKey) to avoid stale closure
-      const start = pageIndex * pageSize;
-      const end = start + pageSize;
-
-      const baseURL = `${DataAPI}/${resource}/?${combinedQuery}`;
-      const sortClause =
-        sortingKey !== "none"
-          ? (() => {
-              const [field, dir] = sortingKey.split(":");
-              return `&sort(${dir === "desc" ? "-" : "+"}${field})`;
-            })()
-          : "";
-      const fieldMap = resourceFields[resource];
-      const selectIds = fieldMap
-        ? [
-            ...new Set([
-              idField,
-              ...Object.values(fieldMap).map((f) => f.field),
-            ]),
-          ]
-        : [idField];
-      const selectClause = `&select(${selectIds.join(",")})`;
-      const url = `${baseURL}${sortClause}${selectClause}`;
-
-      const res = await fetch(url, {
-        headers: {
-          "Content-type": "application/rqlquery+x-www-form-urlencoded",
-          Accept: "application/json",
-          Range: `items=${String(start)}-${String(end)}`,
-          "X-Range": `items=${String(start)}-${String(end)}`,
-        },
-      });
-      if (!res.ok)
-        throw new Error(
-          `Failed to fetch genome data (${String(res.status)} ${res.statusText})`,
-        );
-      return res.json() as Promise<Record<string, unknown>[]>;
-    },
-    enabled: totalItems > 0,
-    // Keep previous page's rows during refetch for smooth pagination — but ONLY
-    // within the same resource. On a tab switch (e.g. genome → strain) the query
-    // key's resource changes; bleeding the old resource's rows into a table now
-    // keyed by the new resource's idField produces duplicate/undefined React keys
-    // (genome rows share a `strain`, or lack it entirely). Drop the placeholder
-    // when the resource differs so the table renders empty until real rows land.
-    placeholderData: (previousData, previousQuery) =>
-      isSameResourceQuery(previousQuery?.queryKey, resource)
-        ? previousData
-        : undefined,
-    staleTime: 5 * 60 * 1000,
+  // Prefetch adjacent pages so navigation is instant once the current page is
+  // cached. An effect event reads the current request without adding the
+  // freshly-built request object to the dependency list below, which would
+  // re-run this on every render.
+  const prefetchPage = useEffectEvent((index: number) => {
+    if (index < 0 || index * pageSize >= totalItems) return;
+    void queryClient
+      .query({
+        ...collectionQueryOptions(dataRepository, resource, {
+          ...collectionRequest,
+          page: index + 1,
+        }),
+        staleTime: staleTimeMs,
+      })
+      .catch(noop);
   });
 
-  // Prefetch adjacent pages so navigation is instant once the current page is cached.
   useEffect(() => {
     if (!totalItems) return;
-    const fieldMap = resourceFields[resource];
-    const selectIds = fieldMap
-      ? [...new Set([idField, ...Object.values(fieldMap).map((f) => f.field)])]
-      : [idField];
-    const sortClause =
-      sortingKey !== "none"
-        ? (() => {
-            const [field, dir] = sortingKey.split(":");
-            return `&sort(${dir === "desc" ? "-" : "+"}${field})`;
-          })()
-        : "";
-    const prefetchURL = `${DataAPI}/${resource}/?${combinedQuery}${sortClause}&select(${selectIds.join(",")})`;
+    prefetchPage(pageIndex + 1);
+    prefetchPage(pageIndex - 1);
+  }, [pageIndex, totalItems, combinedQuery, sortingKey, resource]);
 
-    const prefetch = (idx: number) => {
-      if (idx < 0 || idx * pageSize >= totalItems) return;
-      const start = idx * pageSize;
-      const end = start + pageSize;
-      void queryClient
-        .query({
-          queryKey: [
-            "genome-full",
-            resource,
-            combinedQuery,
-            idx,
-            sortingKey,
-            searchtype,
-            totalItems,
-          ],
-          queryFn: async () => {
-            const res = await fetch(prefetchURL, {
-              headers: {
-                "Content-type": "application/rqlquery+x-www-form-urlencoded",
-                Accept: "application/json",
-                Range: `items=${String(start)}-${String(end)}`,
-                "X-Range": `items=${String(start)}-${String(end)}`,
-              },
-            });
-            if (!res.ok)
-              throw new Error(
-                `Failed to fetch genome data (${String(res.status)} ${res.statusText})`,
-              );
-            return res.json() as Promise<Record<string, unknown>[]>;
-          },
-          staleTime: 5 * 60 * 1000,
-        })
-        .catch(noop);
-    };
-    prefetch(pageIndex + 1);
-    prefetch(pageIndex - 1);
-  }, [
-    pageIndex,
-    totalItems,
-    combinedQuery,
-    sortingKey,
-    searchtype,
-    resource,
-    queryClient,
-    idField,
-    DataAPI,
-    pageSize,
-  ]);
-
-  const loadedRows = pageData ?? emptyRows;
+  const loadedRows = collection?.rows ?? emptyRows;
   const displayedRows = keywordMode === "loaded" && deferredLoadedKeyword
     ? loadedRows.filter((row) =>
         Object.values(row).some((value) => {
@@ -351,10 +254,9 @@ function useListData({
   const displayedTotal = keywordMode === "loaded" && deferredLoadedKeyword
     ? displayedRows.length
     : totalItems;
-  const errorMessage =
-    (metaError ?? dataError)
-      ? `Error: ${(metaError ?? dataError)?.message ?? "Unknown error"} — Query: ${JSON.stringify(q)}`
-      : undefined;
+  const errorMessage = error
+    ? `Error: ${formatUserFacingErrorMessage(error, "Unknown error")} — Query: ${JSON.stringify(q)}`
+    : undefined;
 
   const handleRowSelectionChange = (newSelection: RowSelectionState) => {
     // Apply new selection from table. Avoiding aggressive ignores here so
@@ -370,9 +272,9 @@ function useListData({
 
     // Pre-populate the detail panel's query cache from already-fetched page data so
     // GenomeDetailPanel renders instantly (no loading flash) without an extra fetch.
-    if (selectedIds.length === 1 && pageData) {
+    if (selectedIds.length === 1 && collection) {
       const id = selectedIds[0];
-      const row = findPageRow(pageData, idField, id);
+      const row = findPageRow(collection.rows, idField, id);
       if (row) queryClient.setQueryData(detailPanelQueryKey(resource, id), row);
       onSelectedRowChange?.(row ?? null);
     } else {
@@ -387,11 +289,10 @@ function useListData({
     onAllPagesSelectionChange?.(selected);
 
     onSelectedRowChange?.(null);
-    if (selected) {
-      // When selecting all pages, notify parent with all item IDs
-      // For now, we'll just set the flag - actual implementation would need to fetch all IDs
-    } else {
-      // When deselecting all pages, clear selection
+    if (!selected) {
+      // When deselecting all pages, clear the per-row selection too. Selecting
+      // all pages only raises the flag: the export path reads the flag rather
+      // than a materialized id list, so there is nothing to fetch here.
       setRowSelection({});
       onSelectionChange?.([]);
     }
@@ -401,6 +302,20 @@ function useListData({
     // Update page index (this will call parent's setPageIndex if controlled)
     setPageIndex(newPage);
   };
+
+  /**
+   * Columns to project for an export. `__select__` is the checkbox column
+   * rather than a data field, so it is stripped; the table fields stand in
+   * when nothing else is visible, because the gateway's export operation
+   * requires at least one field (`fields: fieldListSchema.min(1)`).
+   */
+  function exportProjection(visibleColumns: string[] | null): string[] {
+    const tableFields = fields.map((field) => field.id);
+    const requested = (visibleColumns ?? tableFields).filter(
+      (id) => id !== "__select__",
+    );
+    return requested.length ? requested : tableFields;
+  }
 
   async function handleDownloadAll(
     format: "csv" | "txt",
@@ -413,11 +328,16 @@ function useListData({
       return;
     }
 
-    // Check if the exported result set exceeds the download limit
-    const DOWNLOAD_LIMIT = 50000;
-    if (exportTotal > DOWNLOAD_LIMIT) {
+    // `DataRepository.exportAll` hard-requests `limit: maxExportRows, offset: 0`
+    // with no paging, so without this guard a larger result set would ship as a
+    // silently short file. Refuse and name the real limit instead. (The path
+    // this replaced fetched upstream directly and never compared the returned
+    // row count against the total, so it could not tell a complete export from
+    // a truncated one either way — see `use-interactions.ts` for the same
+    // defect written down.)
+    if (!hasLoadedKeyword && exportTotal > maxExportRows) {
       alert(
-        `The download limit is ${DOWNLOAD_LIMIT.toLocaleString()} rows. Your query returned ${String(exportTotal)} rows. Please refine your search to download fewer results.`,
+        `This export matches ${exportTotal.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,
       );
       return;
     }
@@ -433,18 +353,88 @@ function useListData({
         });
         return;
       }
-      await downloadResourceRows({
-        dataApi: DataAPI ?? "",
+      const result = await dataRepository.exportAll(resource, {
+        rql: combinedQuery || undefined,
+        fields: exportProjection(visibleColumns),
+        sort,
+      });
+      downloadLoadedResourceRows({
         resource,
-        query: combinedQuery,
-        totalItems,
+        rows: result.rows,
         format,
         visibleColumns,
         fields,
       });
     } catch (error) {
       console.error("Download all failed:", error);
-      alert("Failed to download all results. See console for details.");
+      alert(
+        formatUserFacingErrorMessage(
+          error,
+          "Failed to download all results. See console for details.",
+        ),
+      );
+    }
+  }
+
+  // Selected-row export goes through the Data API repository (`/api/data/<resource>`),
+  // never a direct fetch to the backend. Rows come back in whatever order the
+  // upstream service returns them, so they're re-sorted to match `ids` — the order
+  // the caller (and the user's selection) presented them in — before serializing.
+  //
+  // Order-preservation caveat (applied equally to the DataTable-internal
+  // `selectedItemsOrder` Map this replaced): `ids` ultimately comes from
+  // `Object.keys(rowSelection)` in handleRowSelectionChange above. Plain JS objects
+  // enumerate keys that look like canonical array indices (e.g. "0", "5") in
+  // ascending numeric order *before* any insertion-ordered string keys, regardless
+  // of click order. This is a pre-existing, inherent quirk of object key enumeration,
+  // not something introduced or fixed here.
+  async function handleDownloadSelected(
+    format: "csv" | "txt",
+    ids: string[],
+    visibleColumns: string[] | null,
+  ): Promise<void> {
+    if (ids.length === 0) return;
+
+    try {
+      const selectedFields = exportProjection(visibleColumns);
+      const requestFields = selectedFields.includes(idField)
+        ? selectedFields
+        : [...selectedFields, idField];
+      const results = await Promise.all(
+        Array.from(
+          { length: Math.ceil(ids.length / maxSelectedRows) },
+          (_, index) =>
+            dataRepository.selected(resource, {
+              ids: ids.slice(
+                index * maxSelectedRows,
+                (index + 1) * maxSelectedRows,
+              ),
+              fields: requestFields,
+            }),
+        ),
+      );
+      const orderById = new Map(ids.map((id, index) => [id, index]));
+      const orderedRows = results.flatMap((result) => result.rows).sort(
+        (a, b) =>
+          (orderById.get(String(a[idField])) ?? Number.MAX_VALUE) -
+          (orderById.get(String(b[idField])) ?? Number.MAX_VALUE),
+      );
+      downloadResourceExport(
+        resource,
+        orderedRows,
+        fields,
+        selectedFields,
+        format,
+        "selected",
+      );
+    } catch (error) {
+      console.error("Download selected failed:", error);
+      alert(
+        formatUserFacingErrorMessage(
+          error,
+          "Failed to download selected results. See console for details.",
+        ),
+      );
     }
   }
 
@@ -458,9 +448,6 @@ function useListData({
         keywordValue={keywordMode === "loaded" ? loadedKeyword : keywordValue}
         onKeywordChange={keywordMode === "loaded" ? setLoadedKeyword : onKeywordChange}
         keywordMode={keywordMode}
-        keywordPlaceholder={
-          resource === "ppi" ? "Search interaction results..." : undefined
-        }
         onFilterChange={(rql) => {
           setFilter(rql);
           setPageIndex(0);
@@ -493,7 +480,8 @@ function useListData({
           isAllPagesSelected={isAllPagesSelected}
           onAllPagesSelectionChange={handleAllPagesSelectionChange}
           onDownloadAll={handleDownloadAll}
-          isLoading={metaLoading || dataLoading || isPlaceholderData}
+          onDownloadSelected={handleDownloadSelected}
+          isLoading={isLoading || isPlaceholderData}
           selectedIds={selectedIds ?? []}
         />
       </div>

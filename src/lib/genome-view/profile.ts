@@ -1,34 +1,11 @@
-import type { DataTableColumn } from "@/components/shared/data-table";
 import type { ResourceCollectionProfile } from "@/components/views";
-import { genomeFields } from "@/constants/datafields/genome";
-import type { DataField } from "@/constants/datafields/types";
+import { genomeMetadata } from "./fields";
 import { genomeStructuralRql } from "./query";
 import type { GenomeViewRecord } from "./schema";
 
-function tableColumn(definition: DataField): DataTableColumn {
-  return {
-    id: definition.field,
-    label: definition.label,
-    visible: !definition.hidden,
-    sortable: definition.sortable ?? true,
-  };
-}
-
-const fields: DataField[] = Object.values(genomeFields);
-
-export const genomeColumns: readonly DataTableColumn[] = fields
-  .filter((field) => field.show_in_table !== false)
-  .map(tableColumn);
-
-export const genomeDetailFields = fields.map((field) => field.field);
-
-export const genomeFacets = fields
-  .filter((field) => field.facet)
-  .map((field) => ({
-    field: field.field,
-    label: field.label,
-    initiallyVisible: field.facet_hidden !== true,
-  }));
+const genomeColumns = genomeMetadata.columns;
+const genomeDetailFields = genomeMetadata.detailFields;
+const genomeFacets = genomeMetadata.facets;
 
 export const genomeCollectionProfile: ResourceCollectionProfile<GenomeViewRecord> =
   {
@@ -37,7 +14,6 @@ export const genomeCollectionProfile: ResourceCollectionProfile<GenomeViewRecord
     idField: "genome_id",
     columns: genomeColumns,
     detailFields: genomeDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(genome_id,*)",
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/genomes.html",

@@ -139,8 +139,8 @@ export function ResourceWorkspace({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
           </div>
-          <aside className="shrink-0">
-            <div className="flex h-full min-h-0 w-20 shrink-0 flex-col rounded-l-lg border-l bg-muted max-md:h-auto max-md:w-full max-md:flex-row max-md:rounded-l-none max-md:border-t max-md:border-l-0">
+          <aside className="shrink-0 max-md:max-h-20 max-md:min-w-0">
+            <div className="flex h-full min-h-0 w-20 shrink-0 flex-col rounded-l-lg border-l bg-muted max-md:h-20 max-md:w-full max-md:flex-row max-md:rounded-l-none max-md:border-t max-md:border-l-0">
               <div className="border-b p-2 max-md:border-r max-md:border-b-0">
                 <Button
                   variant="ghost"
@@ -161,7 +161,7 @@ export function ResourceWorkspace({
                   </span>
                 </Button>
               </div>
-              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-1.5 py-2 max-md:flex">
+              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-1.5 py-2 max-md:min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden">
                 {actionBar}
               </div>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -39,6 +40,7 @@ export interface SearchActionBarProps {
   loadingActionIds?: SearchActionId[];
   actionPopovers?: Partial<Record<SearchActionId, ReactNode>>;
   onAction?: (actionId: SearchActionId) => void;
+  onError?: (message: string) => void;
 }
 
 export function SearchActionBar({
@@ -50,6 +52,7 @@ export function SearchActionBar({
   loadingActionIds,
   actionPopovers,
   onAction,
+  onError,
 }: SearchActionBarProps) {
   const visibleActions = visibleSearchActions({
     searchType,
@@ -76,7 +79,7 @@ export function SearchActionBar({
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1 max-md:flex-row">
         {visibleActions.map((action) => {
           const renderKey = action.configKey ?? action.id;
           const Icon = action.icon;
@@ -113,19 +116,23 @@ export function SearchActionBar({
             <Button
               key={renderKey}
               variant="secondary"
-              className="h-15 w-full flex-col gap-1 font-normal"
+              className="h-15 w-full flex-col gap-1 font-normal max-md:w-16 max-md:shrink-0"
               disabled={disabled}
               onClick={
                 popoverContent
                   ? undefined
                   : () => {
                       if (action.id === "guide") {
-                        if (guideUrl)
-                          window.open(
-                            guideUrl,
-                            "_blank",
-                            "noopener,noreferrer",
-                          );
+                        if (guideUrl) {
+                          const guideWindow = window.open(guideUrl, "_blank");
+                          if (!guideWindow) {
+                            const message = "Allow pop-ups to open the user guide.";
+                            if (onError) onError(message);
+                            else toast.error(message);
+                            return;
+                          }
+                          guideWindow.opener = null;
+                        }
                       } else {
                         onAction?.(action.id);
                       }
@@ -143,7 +150,7 @@ export function SearchActionBar({
                   render={
                     <Button
                       variant="secondary"
-                      className="h-15 w-full flex-col gap-1 font-normal"
+                      className="h-15 w-full flex-col gap-1 font-normal max-md:w-16 max-md:shrink-0"
                       disabled={showSpinner}
                     >
                       {actionContent}
@@ -161,7 +168,7 @@ export function SearchActionBar({
             <Tooltip key={renderKey}>
               <TooltipTrigger
                 render={
-                  <span className="inline-flex w-full cursor-not-allowed">
+                  <span className="inline-flex w-full cursor-not-allowed max-md:w-16 max-md:shrink-0">
                     {buttonEl}
                   </span>
                 }

@@ -51,9 +51,11 @@ the run that does the overwriting.
 Scan records are written to `.misc/a11y-report/scans/<A11Y_RUN_ID>/` and the
 global teardown aggregates and removes only that directory. `setup.ts` assigns
 the id in the config process before any worker forks, which is how every worker
-and the teardown agree on it. A run that records no scans (for example a
-setup-project-only invocation) leaves the previous summary untouched rather than
-replacing it with an empty one.
+and the teardown agree on it. Identical retry records are deduplicated; conflicting
+records with the same route/theme key fail teardown so two surfaces cannot silently
+share a baseline. A run that records no scans (for example a setup-project-only
+invocation) leaves the previous summary untouched rather than replacing it with an
+empty one.
 
 ## Architecture
 
@@ -66,7 +68,7 @@ replacing it with an empty one.
 | `theme.ts` | `forEachTheme()` — light/dark in-test loop |
 | `routes.ts` | Route entry types + the route table, plus the `coveredPageFiles` and `scanTargets` views derived from it |
 | `scan-keys.ts` | The set of valid baseline/`reflowSkip` keys + the stale-key guard `coverage.meta.spec.ts` runs |
-| `report.ts` | `recordScan()` + the artifact paths; writes one JSON file per route/theme under the current run id |
+| `report.ts` | `recordScan()` + the artifact paths; writes one uniquely named JSON record per scan under the current run id |
 | `setup.ts` / `teardown.ts` | Playwright global setup/teardown: stamp the invocation, then aggregate its scans into `a11y-summary.json` |
 
 ## Gate rules

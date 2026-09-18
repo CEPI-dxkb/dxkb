@@ -82,6 +82,31 @@ describe("api/e2e-mock catch-all — enabled", () => {
     process.env.E2E_MOCK_ENABLED = "1";
   });
 
+  it.each([
+    ["taxonomy", "", 23456],
+    [
+      "taxonomy",
+      "and(eq(taxon_rank,species),eq(lineage,*Viruses*))&",
+      23456,
+    ],
+    ["protein_structure", "", 4567],
+  ])(
+    "returns the deterministic %s total for a statistics count request",
+    async (core, filter, expectedCount) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/data/${core}/?${filter}limit(1)`,
+          headers: { Accept: "application/solr+json" },
+        }),
+        ctx(["data", core]),
+      );
+
+      await expect(resp.json()).resolves.toMatchObject({
+        response: { numFound: expectedCount, docs: [] },
+      });
+    },
+  );
+
   it("returns protein structure fixtures for collections and exact members", async () => {
     const unfilteredResp = await GET(
       mockNextRequest({

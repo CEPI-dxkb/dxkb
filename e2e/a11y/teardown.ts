@@ -23,11 +23,16 @@ export default function globalTeardown(): void {
     (f) => JSON.parse(fs.readFileSync(path.join(scansDir, f), "utf8")) as ScanRecord,
   );
 
-  // Deduplicate by route+theme (same test may run in multiple workers).
+  // Retries may repeat an identical scan. Different evidence under one key means two
+  // surfaces collided and must be named separately rather than silently dropping one.
   const seen = new Map<string, ScanRecord>();
-  for (const r of records) {
-    const key = `${r.route}::${r.theme}`;
-    if (!seen.has(key)) seen.set(key, r);
+  for (const record of records) {
+    const key = `${record.route}::${record.theme}`;
+    const previous = seen.get(key);
+    if (previous && JSON.stringify(previous) !== JSON.stringify(record)) {
+      throw new Error(`Conflicting accessibility scan records for ${key}`);
+    }
+    seen.set(key, record);
   }
 
   const summary = [...seen.values()].sort(

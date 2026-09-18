@@ -24,6 +24,17 @@ function expectActionButtons(expected: readonly ExpectedAction[]) {
 }
 
 describe("SearchActionBar (taxonomy)", () => {
+  it("uses a horizontal fixed-width action row below md", () => {
+    const { container } = render(
+      <SearchActionBar selectedCount={1} searchType="taxonomy" />,
+    );
+
+    expect(container.firstElementChild).toHaveClass("max-md:flex-row");
+    expect(
+      screen.getByRole("button", { name: /taxon\s*overview/i }),
+    ).toHaveClass("max-md:w-16", "max-md:shrink-0");
+  });
+
   describe("maxSelection", () => {
     it("shows single-select-only actions when exactly one row is selected", () => {
       render(<SearchActionBar selectedCount={1} searchType="taxonomy" />);
@@ -524,8 +535,11 @@ describe("SearchActionBar (taxonomy)", () => {
   describe("callbacks", () => {
     afterEach(() => vi.restoreAllMocks());
 
-    it("opens the guide URL in a new tab on Guide click", async () => {
-      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+    it("opens the guide URL without retaining an opener", async () => {
+      const guideWindow = { opener: window };
+      const openSpy = vi
+        .spyOn(window, "open")
+        .mockReturnValue(guideWindow as Window);
       render(
         <SearchActionBar
           selectedCount={1}
@@ -534,10 +548,24 @@ describe("SearchActionBar (taxonomy)", () => {
         />,
       );
       await userEvent.click(screen.getByRole("button", { name: /guide/i }));
-      expect(openSpy).toHaveBeenCalledWith(
-        "https://example.test/guide",
-        "_blank",
-        "noopener,noreferrer",
+      expect(openSpy).toHaveBeenCalledWith("https://example.test/guide", "_blank");
+      expect(guideWindow.opener).toBeNull();
+    });
+
+    it("reports a blocked guide pop-up", async () => {
+      const onError = vi.fn();
+      vi.spyOn(window, "open").mockReturnValue(null);
+      render(
+        <SearchActionBar
+          selectedCount={1}
+          searchType="taxonomy"
+          guideUrl="https://example.test/guide"
+          onError={onError}
+        />,
+      );
+      await userEvent.click(screen.getByRole("button", { name: /guide/i }));
+      expect(onError).toHaveBeenCalledWith(
+        "Allow pop-ups to open the user guide.",
       );
     });
 

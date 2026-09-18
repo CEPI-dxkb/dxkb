@@ -299,18 +299,6 @@ test.describe("a11y deep tier: search", () => {
       await assertNoBlocking(page, "search/no-results", theme);
     });
   });
-
-  test("search: default state (no query)", async ({ page }) => {
-    await applyBackendMocks(page, {
-      overrides: [...authSessionOverrides, dataApiOverride, ...a11yBackendOverrides],
-    });
-    await page.goto("/search");
-    await page.waitForLoadState("networkidle");
-
-    await forEachTheme(page, async (theme) => {
-      await assertNoBlocking(page, "search/default", theme);
-    });
-  });
 });
 
 // ── Command palette (interaction state) ──────────────────────────────────────────

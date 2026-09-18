@@ -441,6 +441,7 @@ export function CollectionSelectionActions({
               }
         }
         disabledActions={resolvedDisabledActions}
+        onError={onError}
         onAction={(actionId) => {
           void runAction(actionId);
         }}

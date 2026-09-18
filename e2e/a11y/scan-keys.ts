@@ -29,10 +29,6 @@ import { scanTargets } from "./routes";
  * Adding a surface is the other direction and is not enforced: an un-enumerated
  * surface only matters once someone baselines it, and the stale key message
  * says what to do at that point.
- *
- * `search/default` is intentionally absent: the deep-tier suite scans a surface
- * under that name, but it is also a `routes.ts` variant target, so it is
- * already a known key.
  */
 export const nonRouteScanKeys: readonly string[] = [
   // Component surfaces scanned by routes-sweep.spec.ts ("a11y component surfaces").

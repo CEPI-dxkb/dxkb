@@ -152,7 +152,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("ResourceCollection resource-navigation actions", () => {
   it("projects row links and opens the Genome action in a new tab", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
     render(
       <ResourceCollection
@@ -167,12 +167,27 @@ describe("ResourceCollection resource-navigation actions", () => {
       screen.getByRole("link", { name: "E. coli fixture" }),
     ).toHaveAttribute("href", "/genome/83332.12");
     await user.click(screen.getByRole("button", { name: "Genome action" }));
-    expect(open).toHaveBeenCalledWith(
-      "/genome/83332.12",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(open).toHaveBeenCalledWith("/genome/83332.12", "_blank");
+    expect(open.mock.results[0].value).toMatchObject({ opener: null });
     expect(push).not.toHaveBeenCalled();
+  });
+
+  it("reports a blocked member-navigation pop-up", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal("open", vi.fn(() => null));
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Genome action" }));
+    expect(
+      await screen.findByText("Allow pop-ups to open the selected Genome."),
+    ).toBeVisible();
   });
 
   it("enables the Strain Genomes action and opens its canonical Genome list in the same tab", async () => {
@@ -226,7 +241,7 @@ describe("ResourceCollection resource-navigation actions", () => {
 
   it("opens the selected Experiment member in a new tab", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
@@ -250,13 +265,12 @@ describe("ResourceCollection resource-navigation actions", () => {
     expect(open).toHaveBeenCalledWith(
       "/experiment/00042",
       "_blank",
-      "noopener,noreferrer",
     );
   });
 
   it("opens the selected feature member in a new tab", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
@@ -290,7 +304,6 @@ describe("ResourceCollection resource-navigation actions", () => {
     expect(open).toHaveBeenCalledWith(
       "/feature/canonical-feature",
       "_blank",
-      "noopener,noreferrer",
     );
     expect(push).not.toHaveBeenCalled();
   });
@@ -355,7 +368,7 @@ describe("ResourceCollection resource-navigation actions", () => {
 
   it("opens the selected Surveillance member with its test type", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
@@ -396,7 +409,6 @@ describe("ResourceCollection resource-navigation actions", () => {
     expect(open).toHaveBeenCalledWith(
       "/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen",
       "_blank",
-      "noopener,noreferrer",
     );
     expect(push).not.toHaveBeenCalled();
   });

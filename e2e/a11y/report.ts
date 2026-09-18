@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
 import type { Violation } from "./gate";
@@ -48,6 +49,6 @@ export function recordScan(record: ScanRecord): void {
     /[^a-z0-9_-]/gi,
     "_",
   );
-  const filename = `${safeName}__${String(process.pid)}.json`;
+  const filename = `${safeName}__${String(process.pid)}__${randomUUID()}.json`;
   fs.writeFileSync(path.join(scansDir, filename), JSON.stringify(record));
 }

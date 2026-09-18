@@ -245,6 +245,11 @@ describe("ResourceWorkspace layout", () => {
     expect(panelShares()).toStrictEqual(["55", "45"]);
     expect(panelGroup().style.flexDirection).toBe("column");
     expect(separator()).toHaveAttribute("aria-orientation", "horizontal");
+    const actionStrip = screen.getByText("Actions").closest("aside");
+    expect(actionStrip?.className).toContain("max-md:max-h-20");
+    expect(actionStrip?.querySelector(".scrollbar-themed")?.className).toContain(
+      "max-md:overflow-x-auto",
+    );
     // Detail panel 25–60% ⇒ content panel 40–75%, currently 55%.
     expect(resizeWindow()).toStrictEqual(["40", "55", "75"]);
 

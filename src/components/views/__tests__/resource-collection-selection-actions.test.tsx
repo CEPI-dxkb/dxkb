@@ -191,7 +191,7 @@ describe("ResourceCollection sequence actions", () => {
       selectedIds: [sequenceRow.sequence_id],
     });
     const selected = vi.fn(() => Promise.resolve({ rows: [sequenceRow] }));
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
 
     render(
@@ -228,13 +228,11 @@ describe("ResourceCollection sequence actions", () => {
       1,
       "/genome/83332.12",
       "_blank",
-      "noopener,noreferrer",
     );
     expect(open).toHaveBeenNthCalledWith(
       2,
       "/feature?rql=and(eq(sequence_id%2C83332.12.con.0001)%2Ceq(annotation%2CPATRIC)%2Ceq(feature_type%2CCDS))",
       "_blank",
-      "noopener,noreferrer",
     );
   });
 
@@ -375,7 +373,7 @@ describe("ResourceCollection selection actions", () => {
 
   it("enables COPY, DWNLD and an empty SERVICES chooser for Epitopes", async () => {
     const user = userEvent.setup();
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
     const epitopeRow = {
       epitope_id: "15/780",
@@ -425,7 +423,6 @@ describe("ResourceCollection selection actions", () => {
     expect(open).toHaveBeenCalledWith(
       "/epitope/15%2F780",
       "_blank",
-      "noopener,noreferrer",
     );
 
     await user.click(screen.getByRole("button", { name: "Download action" }));
@@ -546,7 +543,7 @@ describe("ResourceCollection selection actions", () => {
       selection: { "AF-A0A502BNJ0-F1": true },
       selectedIds: ["AF-A0A502BNJ0-F1"],
     });
-    const open = vi.fn();
+    const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
 
     render(
@@ -576,7 +573,6 @@ describe("ResourceCollection selection actions", () => {
     expect(open).toHaveBeenCalledWith(
       "/protein-structure?accession=AF-A0A502BNJ0-F1",
       "_blank",
-      "noopener,noreferrer",
     );
   });
 

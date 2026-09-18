@@ -53,6 +53,22 @@ describe("SearchBar", () => {
       ).toBeInTheDocument();
     });
 
+    it("gives multiple search type controls unique ids", () => {
+      const queryClient = new QueryClient();
+      render(
+        <QueryClientProvider client={queryClient}>
+          <SearchBar />
+          <SearchBar />
+        </QueryClientProvider>,
+      );
+
+      const ids = screen
+        .getAllByRole("combobox", { name: /search type/i })
+        .map((element) => element.id);
+      expect(ids.every(Boolean)).toBe(true);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
     it("renders with custom placeholder", () => {
       renderSearchBar({ placeholder: "Custom search" });
       expect(screen.getByPlaceholderText("Custom search")).toBeInTheDocument();

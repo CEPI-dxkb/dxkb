@@ -53,11 +53,12 @@ test.describe("visual regression", () => {
 
   test("jobs page matches snapshot", async ({ page }) => {
     await page.goto("/jobs");
-    await page.waitForLoadState("networkidle");
-    // Jobs table has a live-updating "duration" cell for running jobs → ~1% pixel drift is expected.
+    await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0);
+    await expect(page.getByText("job-001", { exact: true })).toBeVisible();
+    await expect(page.getByText("job-002", { exact: true })).toBeVisible();
     await expect(page).toHaveScreenshot("jobs.png", {
       fullPage: true,
-      maxDiffPixelRatio: 0.02,
+      mask: [page.getByTestId("jobs-last-updated")],
     });
   });
 });

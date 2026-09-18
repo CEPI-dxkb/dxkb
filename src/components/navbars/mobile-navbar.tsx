@@ -369,7 +369,7 @@ const useMobileNavbar = () => {
             </SheetContent>
           </Sheet>
 
-          <Link id="dxkb-logo" href="/">
+          <Link id="dxkb-logo-mobile" href="/">
             <Logo
               variant="logo-icon"
               width={474}

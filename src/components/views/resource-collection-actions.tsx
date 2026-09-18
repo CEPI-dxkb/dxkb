@@ -238,13 +238,9 @@ const selectionActionsConfigByResource = {
 /**
  * Send a reserved pop-up tab to its destination.
  *
- * The three Taxonomy/Bioset pop-up paths reserve their tab first —
- * `window.open("about:blank", "_blank")`, null-check the handle, then
- * `reservedWindow.opener = null` while the tab is still same-origin and empty. This is
- * the other half of that pattern: the navigation itself. (The seven single-row
- * member-navigation opens in `dispatchAction` do *not* reserve; they still pass
- * `"noopener,noreferrer"` and discard the handle, so they cannot detect a blocked
- * pop-up. Converting them is tracked separately.)
+ * Pop-up paths reserve their tab first — `window.open("about:blank", "_blank")`,
+ * null-check the handle, then set `reservedWindow.opener = null` while the tab is
+ * still same-origin and empty. This is the other half of that pattern: navigation.
  *
  * **Why an anchor click and not `reservedWindow.location.replace(href)`.** Both
  * navigate the tab, but `location.replace` sends a `Referer` — the reserved
@@ -264,6 +260,19 @@ function navigateReservedTab(reservedWindow: Window, href: string) {
   link.target = "_self";
   link.rel = "noreferrer";
   link.click();
+}
+
+function openMemberTab(
+  href: string,
+  label: string,
+  onError: (message: string) => void,
+) {
+  const resultsWindow = window.open(href, "_blank");
+  if (!resultsWindow) {
+    onError(`Allow pop-ups to open the selected ${label}.`);
+    return;
+  }
+  resultsWindow.opener = null;
 }
 
 /**
@@ -663,48 +672,36 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     } else if (actionId === "biosets" && targets.hasBiosetSelection) {
       void openBiosetResults();
     } else if (actionId === "genome" && targets.selectedGenomeId) {
-      window.open(
-        genomeHref(targets.selectedGenomeId),
-        "_blank",
-        "noopener,noreferrer",
-      );
+      openMemberTab(genomeHref(targets.selectedGenomeId), "Genome", onError);
     } else if (actionId === "feature" && targets.selectedFeatureId) {
-      window.open(
-        featureHref(targets.selectedFeatureId),
-        "_blank",
-        "noopener,noreferrer",
-      );
+      openMemberTab(featureHref(targets.selectedFeatureId), "Feature", onError);
     } else if (actionId === "features" && targets.selectedSequenceId) {
-      window.open(
+      openMemberTab(
         featureListHref({
           rql: `and(eq(sequence_id,${targets.selectedSequenceId}),eq(annotation,PATRIC),eq(feature_type,CDS))`,
         }),
-        "_blank",
-        "noopener,noreferrer",
+        "Features",
+        onError,
       );
     } else if (actionId === "structure" && targets.selectedStructureHref) {
-      window.open(
-        targets.selectedStructureHref,
-        "_blank",
-        "noopener,noreferrer",
-      );
+      openMemberTab(targets.selectedStructureHref, "Protein Structure", onError);
     } else if (actionId === "epitope" && targets.selectedEpitopeId) {
-      window.open(
-        epitopeHref(targets.selectedEpitopeId),
-        "_blank",
-        "noopener,noreferrer",
-      );
+      openMemberTab(epitopeHref(targets.selectedEpitopeId), "Epitope", onError);
     } else if (actionId === "experiment" && targets.selectedExperimentId) {
-      window.open(
+      openMemberTab(
         experimentHref(targets.selectedExperimentId),
-        "_blank",
-        "noopener,noreferrer",
+        "Experiment",
+        onError,
       );
     } else if (
       (actionId === "surveillance" || actionId === "serology") &&
       targets.selectedMemberHref
     ) {
-      window.open(targets.selectedMemberHref, "_blank", "noopener,noreferrer");
+      openMemberTab(
+        targets.selectedMemberHref,
+        actionId === "surveillance" ? "Surveillance record" : "Serology record",
+        onError,
+      );
     }
   };
 
@@ -743,6 +740,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         guideUrl={profile.guideUrl}
         enabledActions={enabledActionsByResource[profile.resource]}
         loadingActionIds={loadingActionIds}
+        onError={onError}
         onAction={dispatchAction}
       />
     ),

@@ -192,6 +192,19 @@ function maybeSolrCount(
   if (segments[0] !== "data" || segments.length < 2) return null;
   const core = segments[1];
   const query = parseFixtureQuery(request);
+  const isStatisticsCount =
+    query.clauses.includes("limit(1)") &&
+    ((core === "taxonomy" &&
+      (query.clauses.length === 1 ||
+        query.clauses.includes(
+          "and(eq(taxon_rank,species),eq(lineage,*Viruses*))",
+        ))) ||
+      (core === "protein_structure" && query.clauses.length === 1));
+  if (isStatisticsCount) {
+    return buildLoopbackSolrEnvelope([], {
+      numFound: e2eDeterministicCounts[core],
+    });
+  }
   if (core === "taxonomy") {
     const taxonId = equalsValue(query, "taxon_id");
     const matchesKeyword = hasKeyword(query, "influenza");

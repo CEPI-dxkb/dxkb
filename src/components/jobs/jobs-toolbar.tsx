@@ -209,7 +209,7 @@ export function JobsToolbar({
 
         <div className="ml-auto flex items-center gap-2">
           {lastUpdatedText && (
-            <span className="text-xs text-muted-foreground">
+            <span data-testid="jobs-last-updated" className="inline-block w-36 text-right text-xs text-muted-foreground">
               Last updated: {lastUpdatedText}
             </span>
           )}

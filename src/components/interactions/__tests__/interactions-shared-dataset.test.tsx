@@ -46,8 +46,8 @@ vi.mock("@/components/shared/data-table", () => ({
       </button>
       <table>
         <tbody>
-          {data.map((row, index) => (
-            <tr key={index}>
+          {data.map((row) => (
+            <tr key={String(row.id)}>
               {columns.map((column) => {
                 const value = row[column.id];
                 return (

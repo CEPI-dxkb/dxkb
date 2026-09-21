@@ -155,11 +155,12 @@ export function ResourceCollection<Row extends DataTableRow>({
           }
         : onStateChange,
   });
+  const rowLinkFields = new Set(
+    profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField],
+  );
   const columns = profile.columns.map((column) =>
     enableRowLinks &&
-    (
-      profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField]
-    ).includes(column.id) &&
+    rowLinkFields.has(column.id) &&
     profile.rowHref
       ? {
           ...column,

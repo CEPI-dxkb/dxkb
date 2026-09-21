@@ -2,6 +2,45 @@ import { Children, type FocusEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
+interface LegendAppearance {
+  className: string;
+  style?: React.CSSProperties;
+}
+
+function legendAppearance(
+  isPill: boolean,
+  active: boolean,
+  dimmed: boolean,
+  color: string,
+): LegendAppearance {
+  let className = isPill
+    ? "border-border text-foreground/70"
+    : "text-foreground/70";
+  let style: React.CSSProperties | undefined;
+
+  if (active && !dimmed) {
+    className = "text-foreground";
+    style = {
+      backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
+      ...(isPill ? { borderColor: color } : {}),
+    };
+  } else if (dimmed) {
+    className = cn(
+      isPill && "border-border",
+      "text-foreground/40",
+      active ? "opacity-40" : "opacity-30",
+    );
+    if (active) {
+      style = {
+        backgroundColor:
+          "color-mix(in srgb, var(--foreground) 30%, transparent)",
+      };
+    }
+  }
+
+  return { className, style };
+}
+
 interface ChartLegendPillProps {
   label: string;
   color: string;
@@ -32,41 +71,27 @@ export function ChartLegendPill({
   onClick,
 }: ChartLegendPillProps) {
   const isPill = variant === "pill";
+  const typographyClass = isPill ? "text-xs" : "text-[12px]";
+  const shapeClass = isPill
+    ? "rounded-full border px-2 py-0.5"
+    : "w-full rounded px-1.5 py-0.5";
+  const appearance = legendAppearance(isPill, active, dimmed, color);
+
   return (
     <button
       type="button"
       aria-pressed={ariaPressed}
-      aria-label={Children.count(children) > 0 ? undefined : (ariaLabel ?? label)}
+      aria-label={
+        Children.count(children) > 0 ? undefined : (ariaLabel ?? label)
+      }
       data-active={active ? "true" : undefined}
       className={cn(
         "flex cursor-default items-center gap-1.5 transition-colors",
-        isPill ? "text-xs" : "text-[12px]",
-        isPill
-          ? "rounded-full border px-2 py-0.5"
-          : "w-full rounded px-1.5 py-0.5",
-        dimmed && active
-          ? isPill
-            ? "border-border text-foreground/40 opacity-40"
-            : "text-foreground/40 opacity-40"
-          : dimmed
-          ? isPill
-            ? "border-border text-foreground/40 opacity-30"
-            : "text-foreground/40 opacity-30"
-          : active
-            ? "text-foreground"
-            : isPill
-              ? "border-border text-foreground/70"
-              : "text-foreground/70",
+        typographyClass,
+        shapeClass,
+        appearance.className,
       )}
-      style={
-        active && !dimmed
-          ? isPill
-            ? { borderColor: color, backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }
-            : { backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)` }
-          : active && dimmed
-            ? { backgroundColor: "color-mix(in srgb, var(--foreground) 30%, transparent)" }
-            : undefined
-      }
+      style={appearance.style}
       onMouseEnter={onActivate}
       onMouseLeave={onDeactivate}
       onFocus={(event) => {
@@ -80,7 +105,8 @@ export function ChartLegendPill({
         className="inline-block size-2.5 shrink-0 rounded-full"
         style={{
           background: color,
-          border: "1px solid color-mix(in srgb, var(--foreground) 70%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--foreground) 70%, transparent)",
         }}
         aria-hidden="true"
       />

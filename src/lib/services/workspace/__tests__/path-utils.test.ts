@@ -1,6 +1,7 @@
 import {
   buildEncodedSegmentPath,
   buildHomePath,
+  buildWorkspaceBreadcrumbs,
   canWriteToCurrentDir,
   computeWorkspacePaths,
   encodeWorkspaceSegment,
@@ -8,6 +9,9 @@ import {
   itemHasWriteAccess,
   parsePathSegments,
   sanitizePathSegment,
+  workspaceItemDestination,
+  workspaceParentDestination,
+  workspaceRootDestination,
   workspaceUsername,
 } from "@/lib/services/workspace/path-utils";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
@@ -230,6 +234,130 @@ describe("buildEncodedSegmentPath", () => {
 
   it("handles single segment", () => {
     expect(buildEncodedSegmentPath(["user@bvbrc"])).toBe("user@bvbrc");
+  });
+});
+
+describe("workspace table destinations", () => {
+  it("builds folder destinations for each view mode", () => {
+    const item = {
+      name: "my folder",
+      path: "/bob@bvbrc/shared/my folder",
+    };
+
+    expect(
+      workspaceItemDestination(
+        { mode: "home", path: "parent", username: "alice@bvbrc" },
+        item,
+      ),
+    ).toBe("/workspace/alice@bvbrc/home/parent/my%20folder");
+    expect(
+      workspaceItemDestination(
+        { mode: "shared", path: "", username: "alice@bvbrc" },
+        item,
+      ),
+    ).toBe("/workspace/bob@bvbrc/shared/my%20folder");
+    expect(
+      workspaceItemDestination(
+        { mode: "public", path: "", username: "" },
+        item,
+      ),
+    ).toBe("/workspace/public/bob@bvbrc/shared/my%20folder");
+  });
+
+  it("builds parent destinations at mode boundaries", () => {
+    expect(
+      workspaceParentDestination({
+        mode: "home",
+        path: "parent/child",
+        username: "alice@bvbrc",
+      }),
+    ).toBe("/workspace/alice@bvbrc/home/parent");
+    expect(
+      workspaceParentDestination({
+        mode: "shared",
+        path: "bob@bvbrc",
+        username: "bob@bvbrc",
+        sharedRootUsername: "alice@bvbrc",
+      }),
+    ).toBe("/workspace/alice@bvbrc");
+    expect(
+      workspaceParentDestination({
+        mode: "public",
+        path: "bob@bvbrc",
+        username: "bob@bvbrc",
+      }),
+    ).toBe("/workspace/public");
+  });
+
+  it("builds the leading-row workspace destination", () => {
+    expect(workspaceRootDestination("alice@bvbrc")).toBe(
+      "/workspace/alice@bvbrc",
+    );
+    expect(workspaceRootDestination("")).toBe("/workspace/shared");
+  });
+});
+
+describe("buildWorkspaceBreadcrumbs", () => {
+  it("describes home breadcrumbs and shortens the current username", () => {
+    expect(
+      buildWorkspaceBreadcrumbs({
+        mode: "home",
+        path: "my folder/child",
+        username: "alice@bvbrc",
+        currentUsername: "alice",
+      }),
+    ).toEqual([
+      {
+        label: "alice",
+        href: "/workspace/alice@bvbrc",
+        icon: "home",
+        muted: true,
+      },
+      {
+        label: "home",
+        href: "/workspace/alice@bvbrc/home",
+        muted: true,
+      },
+      {
+        label: "my folder",
+        href: "/workspace/alice@bvbrc/home/my%20folder",
+        muted: true,
+      },
+      { label: "child", href: undefined, muted: false },
+    ]);
+  });
+
+  it("describes public and shared roots with their navigation policy", () => {
+    expect(
+      buildWorkspaceBreadcrumbs({
+        mode: "public",
+        path: "",
+        username: "",
+      }),
+    ).toEqual([
+      {
+        label: "Public Workspaces",
+        href: undefined,
+        icon: "public",
+        muted: false,
+      },
+    ]);
+    expect(
+      buildWorkspaceBreadcrumbs({
+        mode: "shared",
+        path: "bob@bvbrc/folder",
+        username: "bob@bvbrc",
+        currentUsername: "alice",
+        workspaceRootUsername: "alice@bvbrc",
+      }),
+    ).toEqual([
+      {
+        label: "bob@bvbrc",
+        href: "/workspace/alice@bvbrc",
+        muted: true,
+      },
+      { label: "folder", href: undefined, muted: false },
+    ]);
   });
 });
 

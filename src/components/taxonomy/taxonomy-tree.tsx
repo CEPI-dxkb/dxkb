@@ -38,6 +38,11 @@ import {
   taxonomyTableFeatures,
   type TaxonomyTableFeatures,
 } from "./taxonomy-tree-columns";
+import {
+  retainSelectedRecords,
+  selectRange,
+  toggleSelected,
+} from "./taxonomy-selection";
 import { taxonomyRowHeight, TreeTableView } from "./taxonomy-tree-view";
 
 const maxOpenParam = 20;
@@ -92,19 +97,6 @@ function resolveUpdater<T>(updater: Updater<T>, current: T): T {
   return typeof updater === "function"
     ? (updater as (value: T) => T)(current)
     : updater;
-}
-
-function toggleSelected(
-  selected: RowSelectionState,
-  rowId: string,
-): RowSelectionState {
-  const next = { ...selected };
-  if (rowId in next) {
-    Reflect.deleteProperty(next, rowId);
-  } else {
-    next[rowId] = true;
-  }
-  return next;
 }
 
 function usePersistedExpansion(
@@ -223,15 +215,11 @@ function TaxonomyTreeInstance({
 
   let tableRows: Row<TaxonomyTableFeatures, TaxonRecord>[] = [];
   function commitSelection(nextSelected: RowSelectionState) {
-    const records = new Map(selection.records);
-    for (const row of tableRows) {
-      if (row.id in nextSelected && !isPlaceholder(row.original)) {
-        records.set(row.id, row.original);
-      }
-    }
-    for (const id of records.keys()) {
-      if (!(id in nextSelected)) records.delete(id);
-    }
+    const records = retainSelectedRecords(
+      selection.records,
+      nextSelected,
+      tableRows,
+    );
     setSelection({ selected: nextSelected, records });
     onSelect?.([...records.values()]);
   }
@@ -246,20 +234,14 @@ function TaxonomyTreeInstance({
   ): boolean {
     const anchorId = lastSelectedIdRef.current;
     if (!shiftHeld || !anchorId) return false;
-    const anchorIndex = tableRows.findIndex(
-      (candidate) => candidate.id === anchorId,
+    const next = selectRange(
+      tableRows,
+      anchorId,
+      row.id,
+      selection.selected,
+      merge,
     );
-    const clickedIndex = tableRows.findIndex(
-      (candidate) => candidate.id === row.id,
-    );
-    if (anchorIndex === -1 || clickedIndex === -1) return false;
-    const next: RowSelectionState = merge ? { ...selection.selected } : {};
-    const from = Math.min(anchorIndex, clickedIndex);
-    const to = Math.max(anchorIndex, clickedIndex);
-    for (let index = from; index <= to; index++) {
-      const candidate = tableRows[index];
-      if (candidate.getCanSelect()) next[candidate.id] = true;
-    }
+    if (!next) return false;
     commitSelection(next);
     return true;
   }
@@ -272,11 +254,10 @@ function TaxonomyTreeInstance({
     commitSelection(toggleSelected(selection.selected, row.id));
   }
 
-  const tableData = useMemo(() => {
-    void queryState.version;
-    void knownChildCounts;
-    return [...rootRecords];
-  }, [rootRecords, queryState.version, knownChildCounts]);
+  const tableData = useMemo(
+    () => [...rootRecords],
+    [rootRecords, queryState.version, knownChildCounts],
+  );
 
   const table = useTable({
     features: taxonomyTableFeatures,

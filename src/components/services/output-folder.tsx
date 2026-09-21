@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useEffectEvent, useRef, useState } from "react";
+import React from "react";
 
 import {
   Tooltip,
@@ -9,13 +9,12 @@ import {
   TooltipProvider,
 } from "@/components/ui/tooltip";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { checkWorkspaceObjectExists } from "@/lib/services/workspace/validation";
+import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { HelpCircle } from "lucide-react";
 
-const debounceMs = 350;
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
 const validationErrorMessage =
@@ -35,13 +34,10 @@ interface OutputFolderProps {
   onValidationChange?: (valid: boolean) => void;
 }
 
-function buildFullPath(outputFolderPath: string, name: string): string {
-  const base = outputFolderPath.replace(/\/$/, "");
-  const trimmed = name.trim();
-  return trimmed ? `${base}/${trimmed}` : "";
-}
-
-function isSelectableOutputFolder(object: { name: string; path: string }): boolean {
+function isSelectableOutputFolder(object: {
+  name: string;
+  path: string;
+}): boolean {
   const hasHiddenPathSegment = object.path
     .split("/")
     .some((segment) => segment.startsWith("."));
@@ -60,102 +56,14 @@ const OutputFolder = ({
   outputFolderPath = "",
   onValidationChange,
 }: OutputFolderProps) => {
-  const [isChecking, setIsChecking] = useState(false);
-  const [nameTaken, setNameTaken] = useState(false);
-  const [validationError, setValidationError] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const checkIdRef = useRef(0);
-  const notifyValidation = useEffectEvent((valid: boolean) => {
-    onValidationChange?.(valid);
-  });
-
-  const runCheck = useEffectEvent(
-    async (folderPath: string, name: string, checkId: number) => {
-      const fullPath = buildFullPath(folderPath, name);
-      if (!fullPath) {
-        setNameTaken(false);
-        notifyValidation(true);
-        return;
-      }
-
-      abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      setIsChecking(true);
-      setNameTaken(false);
-      setValidationError(false);
-
-      try {
-        const exists = await checkWorkspaceObjectExists(fullPath, {
-          signal: controller.signal,
-        });
-
-        if (controller.signal.aborted || checkId !== checkIdRef.current) return;
-
-        setIsChecking(false);
-        setNameTaken(exists);
-        notifyValidation(!exists);
-      } catch {
-        if (controller.signal.aborted || checkId !== checkIdRef.current) return;
-
-        setIsChecking(false);
-        setValidationError(true);
-        notifyValidation(false);
-      }
-    },
-  );
-
   const needsValidation =
     variant === "name" && !!outputFolderPath.trim() && !!value.trim();
-  const validationKey = needsValidation ? `${outputFolderPath}\0${value}` : "";
-  const [pendingValidationKey, setPendingValidationKey] = useState("");
-  const pendingValidation =
-    needsValidation && pendingValidationKey !== validationKey;
-  const [prevValidationKey, setPrevValidationKey] = useState(validationKey);
-  const [prevNeedsValidation, setPrevNeedsValidation] =
-    useState(needsValidation);
-  if (prevValidationKey !== validationKey) {
-    setPrevValidationKey(validationKey);
-    setPendingValidationKey("");
-    setNameTaken(false);
-    setValidationError(false);
-  }
-  if (prevNeedsValidation && !needsValidation) {
-    setPrevNeedsValidation(needsValidation);
-    setIsChecking(false);
-    setNameTaken(false);
-    setValidationError(false);
-  } else if (prevNeedsValidation !== needsValidation) {
-    setPrevNeedsValidation(needsValidation);
-  }
-
-  useEffect(() => {
-    const checkId = ++checkIdRef.current;
-    abortControllerRef.current?.abort();
-    if (!needsValidation) {
-      notifyValidation(true);
-      return;
-    }
-
-    notifyValidation(false);
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
-    debounceRef.current = setTimeout(() => {
-      debounceRef.current = null;
-      setPendingValidationKey(validationKey);
-      void runCheck(outputFolderPath, value, checkId);
-    }, debounceMs);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-      abortControllerRef.current?.abort();
-    };
-  }, [needsValidation, outputFolderPath, value, validationKey]);
+  const validation = useOutputNameValidation({
+    enabled: needsValidation,
+    outputFolderPath,
+    outputName: value,
+    onValidationChange,
+  });
 
   const resolvedTitle = variant === "default" ? "Output Folder" : "Output Name";
 
@@ -214,22 +122,18 @@ const OutputFolder = ({
                 value={value}
                 onChange={(e) => onChange?.(e.target.value)}
                 disabled={disabled}
-                aria-invalid={
-                  pendingValidation ||
-                  isChecking ||
-                  nameTaken ||
-                  validationError
-                }
+                aria-invalid={validation.isInvalid}
                 aria-label={resolvedTitle}
               />
             </div>
           )}
         </div>
         {variant === "name" &&
-          !isChecking &&
-          (nameTaken || validationError) && (
-            <p className="text-sm text-destructive" role="alert">
-              {validationError ? validationErrorMessage : nameTakenMessage}
+          (validation.status === "taken" || validation.status === "error") && (
+            <p className="text-destructive text-sm" role="alert">
+              {validation.status === "error"
+                ? validationErrorMessage
+                : nameTakenMessage}
             </p>
           )}
       </div>

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isProtectedPagePath } from "@/lib/auth/routes";
+import {
+  isProtectedPagePath,
+  protectedPageRequestHeader,
+} from "@/lib/auth/routes";
 import { hasSessionCookies } from "@/lib/auth/server/cookies";
 import { mapLegacyViewPath } from "@/lib/views/legacy-redirect";
 import { viewSegments } from "@/lib/views/view-registry";
@@ -39,6 +42,10 @@ export function proxy(request: NextRequest) {
       signInUrl.searchParams.set("redirect", pathname + search);
       return NextResponse.redirect(signInUrl);
     }
+
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(protectedPageRequestHeader, pathname + search);
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   return NextResponse.next();

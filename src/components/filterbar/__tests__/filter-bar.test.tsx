@@ -54,13 +54,16 @@ function stubFacets() {
   );
 }
 
-function renderFilterBar(onFilterChange = vi.fn()) {
+function renderFilterBar(
+  onFilterChange = vi.fn(),
+  fields = facetFields,
+) {
   stubFacets();
   const Wrapper = createQueryClientWrapper();
   const view = render(
     <Wrapper>
       <FilterBar
-        facetFields={facetFields}
+        facetFields={fields}
         resource="genome_sequence"
         query="keyword(influenza*)"
         onFilterChange={onFilterChange}
@@ -157,12 +160,15 @@ describe("FilterBar facet chooser", () => {
     expect(await screen.findByRole("button", { name: "DNA (7)" })).toBeInTheDocument();
   });
 
-  it("reconciles visible facets when the resource field definition changes", async () => {
+  it("derives visibility from current definitions and preserves overrides when facets return", async () => {
     const user = userEvent.setup();
     const { view, Wrapper } = renderFilterBar();
     await openChooser(user);
     await user.click(
       screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
     );
     await user.keyboard("{Escape}");
 
@@ -211,6 +217,68 @@ describe("FilterBar facet chooser", () => {
     expect(
       screen.queryByRole("menuitemcheckbox", { name: "Mol Type" }),
     ).not.toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    view.rerender(
+      <Wrapper>
+        <FilterBar
+          facetFields={nextFields.slice(1)}
+          resource="genome_sequence"
+          query="keyword(influenza*)"
+          onFilterChange={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    const reducedTrigger = screen.getByRole("button", { name: "Facets" });
+    reducedTrigger.focus();
+    await user.keyboard("{Enter}");
+    expect(
+      screen.queryByRole("menuitemcheckbox", {
+        name: "Sequence Type Updated",
+      }),
+    ).not.toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    view.rerender(
+      <Wrapper>
+        <FilterBar
+          facetFields={facetFields}
+          resource="genome_sequence"
+          query="keyword(influenza*)"
+          onFilterChange={vi.fn()}
+        />
+      </Wrapper>,
+    );
+    const restoredTrigger = screen.getByRole("button", { name: "Facets" });
+    restoredTrigger.focus();
+    await user.keyboard("{Enter}");
+
+    expect(
+      await screen.findByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("resets facet visibility overrides on remount", async () => {
+    const user = userEvent.setup();
+    const { view } = renderFilterBar();
+    await openChooser(user);
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+
+    view.unmount();
+    renderFilterBar();
+    await openChooser(user);
+
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
+    ).toHaveAttribute("aria-checked", "false");
   });
 
   it("uses theme tokens for the chooser and panel, not hardcoded colours", async () => {

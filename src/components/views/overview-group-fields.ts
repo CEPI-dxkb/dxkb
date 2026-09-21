@@ -1,5 +1,8 @@
 import type { DataFieldMap } from "@/constants/datafields/types";
-import { formatOverviewValue, isOverviewValueAvailable } from "./overview-card";
+import {
+  formatOverviewValue,
+  isOverviewValueAvailable,
+} from "./overview-value-policy";
 
 /**
  * A field ready for `OverviewSection`, already reduced to display text.

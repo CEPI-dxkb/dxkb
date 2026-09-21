@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { requireAuthSessionOrRedirect } from "@/lib/auth/server/route";
+import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 
 export default async function WorkspacePage() {
-  const { userId } = await requireAuthSessionOrRedirect("/workspace");
+  const { id: userId } = await requireCurrentUserOrRedirect("/workspace");
   redirect(`/workspace/${encodeWorkspaceSegment(userId)}/home`);
 }

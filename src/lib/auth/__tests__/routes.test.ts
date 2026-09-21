@@ -6,8 +6,10 @@ describe("isProtectedPagePath", () => {
     expect(isProtectedPagePath("/services/genome-annotation")).toBe(true);
   });
 
-  it("returns false for /services exactly (index page)", () => {
+  it("returns false for the /services index only", () => {
     expect(isProtectedPagePath("/services")).toBe(false);
+    expect(isProtectedPagePath("/services/")).toBe(false);
+    expect(isProtectedPagePath("/services-old")).toBe(false);
   });
 
   it("returns true for /workspace paths", () => {
@@ -28,10 +30,17 @@ describe("isProtectedPagePath", () => {
     expect(isProtectedPagePath("/workspace/workshop/some-event")).toBe(false);
   });
 
-  it("does not match paths that share the prefix but are different routes", () => {
+  it("protects workspace paths that resemble the public exceptions", () => {
     expect(isProtectedPagePath("/workspace/publicXYZ")).toBe(true);
     expect(isProtectedPagePath("/workspace/workshops")).toBe(true);
     expect(isProtectedPagePath("/workspace/publicity")).toBe(true);
+  });
+
+  it("does not classify unrelated prefix lookalikes as protected", () => {
+    expect(isProtectedPagePath("/workspaces")).toBe(false);
+    expect(isProtectedPagePath("/jobs-board")).toBe(false);
+    expect(isProtectedPagePath("/settings-guide")).toBe(false);
+    expect(isProtectedPagePath("/viewers")).toBe(false);
   });
 
   it("returns true for /jobs paths", () => {

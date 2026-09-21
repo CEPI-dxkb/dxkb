@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { DataApiError } from "@/lib/data-api/repository";
 import { canonicalGenomeTab, isGenomeId } from "@/lib/genome-view";
 import { getGenome } from "@/lib/genome-view/server";
+import { genomeHref } from "@/lib/views/hrefs";
+import type { SearchParamsRecord } from "@/lib/views/rql";
 import {
   readRouteParam,
   type RouteParamSource,
 } from "@/lib/views/route-params";
+import { canonicalizeMemberTabQuery } from "@/lib/views/search-params";
 import { GenomeMember } from "./genome-member";
-import { GenomeTabCanonicalizer } from "./genome-tab-canonicalizer";
 
 interface GenomePageProps {
   params: Promise<{ genomeId: string }>;
-  searchParams: Promise<{ tab?: string | string[] }>;
+  searchParams: Promise<SearchParamsRecord>;
 }
 
 async function loadGenome(rawGenomeId: string, source: RouteParamSource) {
@@ -59,15 +60,11 @@ export default async function GenomePage({
   const [{ genomeId }, query] = await Promise.all([params, searchParams]);
   const genome = await loadGenome(genomeId, "page");
   const activeTab = canonicalGenomeTab(query.tab, genome);
-  return (
-    <>
-      <Suspense fallback={null}>
-        <GenomeTabCanonicalizer
-          requestedTab={query.tab}
-          activeTab={activeTab}
-        />
-        <GenomeMember genome={genome} activeTab={activeTab} />
-      </Suspense>
-    </>
-  );
+  const canonicalQuery = canonicalizeMemberTabQuery(query, activeTab);
+  if (canonicalQuery !== null) {
+    redirect(
+      `${genomeHref(genome.genome_id)}${canonicalQuery ? `?${canonicalQuery}` : ""}`,
+    );
+  }
+  return <GenomeMember genome={genome} activeTab={activeTab} />;
 }

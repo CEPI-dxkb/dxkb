@@ -37,7 +37,7 @@ import {
   metaCATSInput,
 } from "@/lib/services/info/meta-cats";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
@@ -67,6 +67,11 @@ import {
 import { metaCatsService } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-service";
 import { fetchFeaturesFromGroup } from "@/lib/services/feature";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
+import {
+  MetaCatsAlignmentFilesSection,
+  MetaCatsAutoGroupingSection,
+  MetaCatsFeatureGroupsSection,
+} from "./meta-cats-input-sections";
 
 const emptyAutoGroups: NonNullable<MetaCatsFormData["auto_groups"]> = [];
 const emptyFeatureGroups: string[] = [];
@@ -131,7 +136,6 @@ function useMetaCATSPage() {
     form.store,
     (state) => state.values.groups ?? emptyFeatureGroups,
   );
-  const outputPath = useSelector(form.store, (s) => s.values.output_path);
   const canSubmit = useSelector(form.store, (s) => s.canSubmit);
 
   const runtime = useServiceRuntime({
@@ -451,35 +455,27 @@ function useMetaCATSPage() {
                 )}
               </form.Field>
 
-              <div className="flex flex-col space-y-4">
-                <form.Field name="output_path">
-                  {(field) => (
-                    <FieldItem>
-                      <OutputFolder
-                        required={true}
-                        value={field.state.value}
-                        onChange={field.handleChange}
+              <form.Field name="output_path">
+                {(outputPathField) => (
+                  <form.Field name="output_file">
+                    {(outputNameField) => (
+                      <ServiceOutputFields
+                        outputPath={{
+                          value: outputPathField.state.value,
+                          onChange: outputPathField.handleChange,
+                          errors: <FieldErrors field={outputPathField} />,
+                        }}
+                        outputName={{
+                          value: outputNameField.state.value,
+                          onChange: outputNameField.handleChange,
+                          errors: <FieldErrors field={outputNameField} />,
+                        }}
+                        onOutputNameValidationChange={setIsOutputNameValid}
                       />
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
-                </form.Field>
-                <form.Field name="output_file">
-                  {(field) => (
-                    <FieldItem>
-                      <OutputFolder
-                        variant="name"
-                        required={true}
-                        value={field.state.value}
-                        onChange={field.handleChange}
-                        outputFolderPath={outputPath}
-                        onValidationChange={setIsOutputNameValid}
-                      />
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
-                </form.Field>
-              </div>
+                    )}
+                  </form.Field>
+                )}
+              </form.Field>
             </div>
           </CardContent>
         </Card>
@@ -532,8 +528,7 @@ function useMetaCATSPage() {
               </form.Field>
 
               {/* Auto Grouping Section */}
-              {inputType === "auto" && (
-                <div className="space-y-4">
+              <MetaCatsAutoGroupingSection active={inputType === "auto"}>
                   {/* Metadata Selection */}
                   <div className="flex flex-wrap gap-4">
                     <form.Field name="metadata_group">
@@ -825,12 +820,10 @@ function useMetaCATSPage() {
                       )}
                     </form.Field>
                   </div>
-                </div>
-              )}
+              </MetaCatsAutoGroupingSection>
 
               {/* Feature Groups Section */}
-              {inputType === "groups" && (
-                <div className="mt-4 space-y-4">
+              <MetaCatsFeatureGroupsSection active={inputType === "groups"}>
                   {/* Feature Group Selector */}
                   <div className="space-y-2">
                     <Label className="service-card-label">
@@ -920,12 +913,10 @@ function useMetaCATSPage() {
                       )}
                     </form.Field>
                   </div>
-                </div>
-              )}
+              </MetaCatsFeatureGroupsSection>
 
               {/* Alignment File Section */}
-              {inputType === "files" && (
-                <div className="mt-4 space-y-4">
+              <MetaCatsAlignmentFilesSection active={inputType === "files"}>
                   {/* Alignment File Selector */}
                   <form.Field name="alignment_file">
                     {(field) => (
@@ -981,8 +972,7 @@ function useMetaCATSPage() {
                       </FieldItem>
                     )}
                   </form.Field>
-                </div>
-              )}
+              </MetaCatsAlignmentFilesSection>
             </div>
           </CardContent>
         </Card>

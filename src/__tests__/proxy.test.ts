@@ -80,11 +80,17 @@ describe("proxy", () => {
       expect(location.searchParams.get("redirect")).toBe("/services/blast?param=value");
     });
 
-    it("allows protected pages with valid session cookies", () => {
-      const request = buildRequest("/services/blast", validSession);
+    it("forwards the complete request URL for authoritative server validation", () => {
+      const request = buildRequest(
+        "/services/blast?query=alpha%20beta&filter=a%2Fb",
+        validSession,
+      );
       const response = proxy(request);
 
       expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(
+        response.headers.get("x-middleware-request-x-dxkb-request-path"),
+      ).toBe("/services/blast?query=alpha%20beta&filter=a%2Fb");
     });
   });
 

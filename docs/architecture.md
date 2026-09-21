@@ -50,19 +50,20 @@ it reads through `readRouteParam` now.)
 ## Auth system (`src/lib/auth/`) — server-first identity
 
 - `client.ts` — concrete browser functions for retained `/api/auth/*` mutations and profile operations
-- `provider.tsx` — `<AuthBoundary user={user}>`, `useAuth()` derived identity, `useAuthActions()` mutations, and the minimal client route guard
-- `routes.ts` — protected page classification used by the proxy and client guard
+- `provider.tsx` — `<AuthBoundary user={user}>`, `useAuth()` derived identity, and `useAuthActions()` mutations
+- `routes.ts` — protected page classification used by the proxy; protected route-group layouts enforce the policy authoritatively through `server/page-auth.ts`
 - `types.ts` — browser-safe `AuthUser`, upstream `UserProfile`, credentials, sessions, and `Result` types
 - `server/actions.ts` — named auth operations such as `signIn`, `signOut`, `startImpersonation`, and cached `getCurrentUser`
 - `server/session.ts` — sole owner of HttpOnly session and SU backup cookie reads/writes
 - `server/cookies.ts` — Edge-safe cookie names and optimistic cookie-presence check
 - `server/route.ts` — authenticated route wrapping and direct session reads for routes and Server Components
+- `server/page-auth.ts` — authoritative protected-page redirect helper used by the narrowest protected layouts; it validates `getCurrentUser()` and preserves the proxy-forwarded path and query
 - `server/adapters/bvbrc-identity.ts` — named BV-BRC identity protocol calls
 
 Notes:
 
 - This is custom BV-BRC authentication, not Better Auth. Server rendering validates cookies through `getCurrentUser()` and passes the browser-safe user into `<AuthBoundary>`; the browser does not fetch a session on mount and never receives the BV-BRC token.
-- `src/proxy.ts` delegates page classification to `isProtectedPagePath()`. It optimistically checks cookie presence; Server Components and protected API handlers perform authoritative validation.
+- `src/proxy.ts` delegates page classification to `isProtectedPagePath()`. It optimistically checks cookie presence and forwards the server-visible path plus query to protected layouts; `requireCurrentUserOrRedirect()` in `server/page-auth.ts` validates the user before protected content renders. URL fragments cannot be preserved because browsers do not send them in HTTP requests.
 - The active session cookies are `bvbrc_token`, `bvbrc_user_id`, and optional `bvbrc_realm`, all HttpOnly, SameSite Strict, path `/`, and Secure in production. Explicit sign-out is a redirecting Server Action, not an `/api/auth/sign-out` route.
 - `/api/auth/*` wire contracts are documented in `docs/auth-api.md`. Every auth failure uses `{error, code}`.
 

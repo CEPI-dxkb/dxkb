@@ -22,7 +22,6 @@ import {
   type Table as TanStackTable,
 } from "@tanstack/react-table";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
 import { getIdField } from "@/constants/resources";
@@ -38,18 +37,13 @@ import {
 
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 
-import {
-  Table,
-  TableHeader,
-  TableRow,
-  TableHead,
-  TableBody,
-  TableCell,
-} from "@/components/ui/table";
+import { Table, TableRow, TableBody, TableCell } from "@/components/ui/table";
 
 import clsx from "clsx";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataTableControls } from "./data-table-controls";
+import { DataTableFooter } from "./data-table-footer";
+import { DataTableHeader } from "./data-table-header";
 
 export function DataTable(props: DataTableProps) {
   "use no memo";
@@ -127,6 +121,7 @@ const dataTableFeatures = tableFeatures({
 
 type DataTableFeatures = typeof dataTableFeatures;
 type DataRow = DataTableRow;
+export type DataTableInstance = ReactTable<DataTableFeatures, DataRow>;
 
 function getTableMeta(table: TanStackTable<DataTableFeatures, DataRow>) {
   const meta = table.options.meta;
@@ -309,7 +304,8 @@ function createColumnDefs(columns: DataTableColumn[]) {
       header: column.label,
       cell: (info: CellContext<DataTableFeatures, DataRow>) => {
         const rawValue = info.getValue();
-        const displayValue = rawValue ?? column.fallbackValue?.(info.row.original);
+        const displayValue =
+          rawValue ?? column.fallbackValue?.(info.row.original);
         const value = formatCellValue(displayValue);
         const href = column.href?.(info.row.original);
         const valueHref = column.valueHref;
@@ -493,14 +489,6 @@ function useDataTableContent(
     Record<string, boolean>
   >({});
   const columnVisibility = controlledVisibility ?? internalColumnVisibility;
-  const [showColumnMenu, setShowColumnMenu] = useState(false);
-
-  const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
-
-  // Track which download button is currently downloading
-  const [downloadingButton, setDownloadingButton] = useState<string | null>(
-    null,
-  );
 
   const [internalRowSelection, setInternalRowSelection] =
     useState<RowSelectionState>({});
@@ -540,33 +528,7 @@ function useDataTableContent(
 
   const lastSelectedIdRef = useRef<string | null>(null);
 
-  const [onlyVisibleColumns, setOnlyVisibleColumns] = useState(false);
-
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLTableSectionElement>(null);
-  const justResizedRef = useRef(false);
-  const columnMenuRef = useRef<HTMLDivElement>(null);
-  const controlsRef = useRef<HTMLDivElement>(null);
-  const footerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        columnMenuRef.current &&
-        !columnMenuRef.current.contains(event.target as Node)
-      ) {
-        setShowColumnMenu(false);
-      }
-    };
-
-    if (showColumnMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showColumnMenu]);
 
   const activeColumnSizing = sizingByKey[sizingKey] ?? emptyColumnSizing;
   const measuredSizingKeysRef = useRef(new Set<string>());
@@ -823,152 +785,6 @@ function useDataTableContent(
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
 
-  // Handle column drag start
-  const handleDragStart = (e: React.DragEvent, columnId: string) => {
-    setDraggedColumn(columnId);
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  // Handle column drag over
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  // Handle column drop
-  const handleDrop = (e: React.DragEvent, targetColumnId: string) => {
-    e.preventDefault();
-
-    if (!draggedColumn || draggedColumn === targetColumnId) {
-      setDraggedColumn(null);
-      return;
-    }
-
-    const allColumns = table.getAllLeafColumns();
-    const columnIds = allColumns.map((col) => col.id);
-
-    const draggedIndex = columnIds.indexOf(draggedColumn);
-    const targetIndex = columnIds.indexOf(targetColumnId);
-
-    if (draggedIndex === -1 || targetIndex === -1) {
-      setDraggedColumn(null);
-      return;
-    }
-
-    // Create new column order
-    const newOrder = [...columnIds];
-    const [removed] = newOrder.splice(draggedIndex, 1);
-    newOrder.splice(targetIndex, 0, removed);
-
-    // Update column order
-    onColumnOrderChange?.(newOrder);
-    setDraggedColumn(null);
-  };
-
-  // Handle drag end
-  const handleDragEnd = () => {
-    setDraggedColumn(null);
-  };
-
-  const handleDownload = async (
-    format: "csv" | "txt",
-    onlySelected = false,
-  ) => {
-    // Set downloading state
-    const buttonKey = `${format}-${onlySelected ? "selected" : "all"}`;
-    setDownloadingButton(buttonKey);
-
-    try {
-      // If downloading selected and all pages are selected, download all data
-      if (onlySelected && isAllPagesSelected && onDownloadAll) {
-        const allCols = table.getAllLeafColumns();
-        const visibleCols = onlyVisibleColumns
-          ? allCols.filter(
-              (col) => col.getIsVisible() && col.id !== "__select__",
-            )
-          : allCols.filter((col) => col.id !== "__select__");
-
-        const visibleColumnIds = visibleCols.map((col) => col.id);
-        await onDownloadAll(
-          format,
-          onlyVisibleColumns ? visibleColumnIds : null,
-        );
-        return;
-      }
-
-      // If downloading all data and onDownloadAll is provided, use it
-      if (!onlySelected && onDownloadAll) {
-        const allCols = table.getAllLeafColumns();
-        const visibleCols = onlyVisibleColumns
-          ? allCols.filter(
-              (col) => col.getIsVisible() && col.id !== "__select__",
-            )
-          : allCols.filter((col) => col.id !== "__select__");
-
-        const visibleColumnIds = visibleCols.map((col) => col.id);
-        await onDownloadAll(
-          format,
-          onlyVisibleColumns ? visibleColumnIds : null,
-        );
-        return;
-      }
-
-      // Otherwise, use the local download logic (for selected rows or when onDownloadAll is not provided)
-      const allCols = table.getAllLeafColumns();
-      const visibleCols = onlyVisibleColumns
-        ? allCols.filter((col) => col.getIsVisible() && col.id !== "__select__")
-        : allCols.filter((col) => col.id !== "__select__");
-
-      if (onlySelected) {
-        if (!isAllPagesSelected && (!selectedIds || selectedIds.length === 0))
-          return;
-
-        const selectedColumnIds = visibleCols.map((col) => col.id);
-        if (onDownloadSelected) {
-          await onDownloadSelected(
-            format,
-            selectedIds ?? [],
-            onlyVisibleColumns ? selectedColumnIds : null,
-          );
-        }
-        return;
-      }
-
-      // Below the selected-rows return: that path delegates to
-      // `onDownloadSelected`, which builds its own header row, so computing
-      // these above the branch was work thrown away on every such export.
-      const headers = visibleCols.map((col) => col.columnDef.header as string);
-      const rowsToExport = table.getPrePaginatedRowModel().rows;
-
-      const content = [
-        headers.join(","),
-        ...rowsToExport.map((row) =>
-          visibleCols
-            .map((col) => {
-              return csvExportValue(row.getValue<unknown>(col.id));
-            })
-            .join(","),
-        ),
-      ].join("\n");
-
-      downloadFile(`${resource}.${format}`, content);
-    } catch (error) {
-      console.error("Download failed:", error);
-    } finally {
-      setDownloadingButton(null);
-    }
-  };
-
-  // "Download Selected" is only meaningful when something can actually fulfil
-  // it: a caller-supplied onDownloadSelected, or (when every page is selected)
-  // onDownloadAll, which handleDownload routes that case to instead. Without
-  // this gate the buttons would render for a caller that wires selectedIds
-  // but not onDownloadSelected, and clicking them would silently no-op now
-  // that DataTable no longer has a built-in export fallback.
-  const canDownloadSelected =
-    Boolean(onDownloadSelected) ||
-    (isAllPagesSelected && Boolean(onDownloadAll));
-
   // Now that all the setup is done, let's render the table!
   return (
     <div className="relative flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden border-0 text-xs">
@@ -1017,120 +833,15 @@ function useDataTableContent(
           </div>
         </div>
       )}
-      <div className="mb-2 flex w-full justify-end px-5" ref={controlsRef}>
-        <div className="relative inline-block text-left" ref={columnMenuRef}>
-          {" "}
-          {/* This is the button for changing the visibility of columns in the table */}
-          <Button
-            className="mr-2 flex w-full justify-end rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-            onClick={() => {
-              setShowColumnMenu((prev) => !prev);
-            }}
-          >
-            Columns ▾
-          </Button>
-          {showColumnMenu && (
-            <div className="ring-opacity-5 absolute left-0 z-50 mt-1 w-40 rounded-md bg-background shadow-lg ring-1 ring-border">
-              <div className="max-h-64 overflow-auto py-1 text-xs">
-                {table.getAllColumns().map((column) =>
-                  column.id === "__select__" ? null : (
-                    <label
-                      key={column.id}
-                      className="flex cursor-pointer items-center space-x-2 px-2 py-1 text-foreground hover:bg-muted"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={column.getIsVisible()}
-                        onChange={() => {
-                          column.toggleVisibility();
-                        }}
-                      />
-                      <span>{column.columnDef.header as string}</span>
-                    </label>
-                  ),
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Download buttons */}
-        {showExportControls && (
-          <>
-            <Button
-              onClick={() => {
-                void handleDownload("csv");
-              }}
-              className="mx-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-              disabled={downloadingButton !== null}
-            >
-              {downloadingButton === "csv-all" ? (
-                <span className="text-red-600">Downloading...</span>
-              ) : (
-                "Download (CSV)"
-              )}
-            </Button>
-            <Button
-              onClick={() => {
-                void handleDownload("txt");
-              }}
-              className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-              disabled={downloadingButton !== null}
-            >
-              {downloadingButton === "txt-all" ? (
-                <span className="text-red-600">Downloading...</span>
-              ) : (
-                "Download (TXT)"
-              )}
-            </Button>
-
-            {/* These next two only show up if rows are selected and something can export them */}
-            {((selectedIds?.length ?? 0) > 0 || isAllPagesSelected) &&
-              canDownloadSelected && (
-                <>
-                  <Button
-                    onClick={() => {
-                      void handleDownload("csv", true);
-                    }}
-                    className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                    disabled={downloadingButton !== null}
-                  >
-                    {downloadingButton === "csv-selected" ? (
-                      <span className="text-red-600">Downloading...</span>
-                    ) : (
-                      "Download Selected (CSV)"
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      void handleDownload("txt", true);
-                    }}
-                    className="mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                    disabled={downloadingButton !== null}
-                  >
-                    {downloadingButton === "txt-selected" ? (
-                      <span className="text-red-600">Downloading...</span>
-                    ) : (
-                      "Download Selected (TXT)"
-                    )}
-                  </Button>
-                </>
-              )}
-
-            <label className="ml-4 flex items-center text-xs text-foreground">
-              <input
-                type="checkbox"
-                checked={onlyVisibleColumns}
-                onChange={() => {
-                  setOnlyVisibleColumns((prev) => !prev);
-                }}
-                className="mr-1"
-              />
-              Download Displayed Columns Only
-            </label>
-          </>
-        )}
-      </div>
+      <DataTableControls
+        table={table}
+        resource={resource}
+        selectedIds={selectedIds}
+        isAllPagesSelected={isAllPagesSelected}
+        onDownloadAll={onDownloadAll}
+        onDownloadSelected={onDownloadSelected}
+        showExportControls={showExportControls}
+      />
       <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded border border-border">
         <div
           className={clsx(
@@ -1155,168 +866,10 @@ function useDataTableContent(
               style={{ borderSpacing: 0 }}
               disableScrollWrapper={true}
             >
-              <TableHeader
-                ref={headerRef}
-                className="border-border bg-muted text-foreground"
-                style={{
-                  position: "sticky",
-                  top: 0,
-                  zIndex: 30,
-                }}
-              >
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow
-                    key={headerGroup.id}
-                    className="flex border-y border-border bg-muted"
-                  >
-                    {headerGroup.headers.map((header) => {
-                      const column = header.column;
-                      const minSize = column.columnDef.minSize ?? 40;
-                      const maxSize = column.columnDef.maxSize ?? 1000;
-                      const resizeWithKeyboard = (delta: number) => {
-                        const size = Math.min(
-                          maxSize,
-                          Math.max(minSize, column.getSize() + delta),
-                        );
-                        table.setColumnSizing((current) => ({
-                          ...current,
-                          [column.id]: size,
-                        }));
-                      };
-                      return (
-                        <TableHead
-                          key={header.id}
-                          colSpan={header.colSpan}
-                          aria-sort={
-                            column.id === "__select__" || !column.getCanSort()
-                              ? undefined
-                              : column.getIsSorted() === "asc"
-                                ? "ascending"
-                                : column.getIsSorted() === "desc"
-                                  ? "descending"
-                                  : "none"
-                          }
-                          className={clsx(
-                            "group relative border-r border-foreground/20 bg-muted text-foreground",
-                            column.id === "__select__"
-                              ? "flex h-auto! items-center justify-center p-0"
-                              : "h-auto! min-h-7! cursor-pointer px-2 py-0 align-middle text-xs leading-tight font-bold whitespace-normal",
-                          )}
-                          style={{
-                            width: `var(--col-${column.id}-size)`,
-                            minWidth: `var(--col-${column.id}-size)`,
-                            maxWidth: `var(--col-${column.id}-size)`,
-                            ...(column.id === "__select__" && {
-                              position: "sticky",
-                              left: 0,
-                              zIndex: 1,
-                            }),
-                          }}
-                        >
-                          {column.id === "__select__" ? (
-                            // Checkbox column - no sorting or dragging
-                            <div className="flex size-full items-center justify-center py-0">
-                              <table.FlexRender header={header} />
-                            </div>
-                          ) : (
-                            // Regular column - sortable and draggable
-                            <>
-                              <div
-                                className="relative flex size-full items-center py-0 pr-0.5"
-                                draggable={true}
-                                onDragStart={(e) => {
-                                  handleDragStart(e, column.id);
-                                }}
-                                onDragOver={handleDragOver}
-                                onDrop={(e) => {
-                                  handleDrop(e, column.id);
-                                }}
-                                onDragEnd={handleDragEnd}
-                                style={{
-                                  cursor: "move",
-                                  opacity:
-                                    draggedColumn === column.id ? 0.5 : 1,
-                                  backgroundColor:
-                                    draggedColumn && draggedColumn !== column.id
-                                      ? "transparent"
-                                      : "",
-                                }}
-                              >
-                                <button
-                                  type="button"
-                                  disabled={!column.getCanSort()}
-                                  aria-label={`Sort by ${String(column.columnDef.header)}`}
-                                  className="flex size-full items-center text-left leading-tight select-none focus-visible:outline-2 focus-visible:outline-offset-1 disabled:cursor-default"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    if (justResizedRef.current) return;
-                                    column.getToggleSortingHandler()?.(event);
-                                  }}
-                                >
-                                  <table.FlexRender header={header} />
-                                  {column.getIsSorted() === "asc" && (
-                                    <ChevronUp className="ml-0.5 inline-block size-3 align-text-bottom" />
-                                  )}
-                                  {column.getIsSorted() === "desc" && (
-                                    <ChevronDown className="ml-0.5 inline-block size-3 align-text-bottom" />
-                                  )}
-                                </button>
-                              </div>
-                              {column.getCanResize() && (
-                                <div
-                                  role="separator"
-                                  aria-orientation="vertical"
-                                  aria-label={`Resize ${column.id} column`}
-                                  aria-valuemin={minSize}
-                                  aria-valuemax={maxSize}
-                                  aria-valuenow={column.getSize()}
-                                  tabIndex={0}
-                                  onKeyDown={(event) => {
-                                    if (event.key === "ArrowLeft") {
-                                      event.preventDefault();
-                                      resizeWithKeyboard(-10);
-                                    } else if (event.key === "ArrowRight") {
-                                      event.preventDefault();
-                                      resizeWithKeyboard(10);
-                                    }
-                                  }}
-                                  onMouseDown={(e) => {
-                                    e.stopPropagation();
-                                    justResizedRef.current = false;
-                                    header.getResizeHandler()(e);
-                                    const onUp = () => {
-                                      justResizedRef.current = true;
-                                      setTimeout(() => {
-                                        justResizedRef.current = false;
-                                      }, 100);
-                                      window.removeEventListener(
-                                        "mouseup",
-                                        onUp,
-                                      );
-                                    };
-                                    window.addEventListener("mouseup", onUp);
-                                  }}
-                                  className="absolute top-0 right-0 z-30 flex h-full w-2 cursor-col-resize touch-none select-none"
-                                  style={{ transform: "translateX(50%)" }}
-                                >
-                                  <div
-                                    className={clsx(
-                                      "mx-auto h-full w-1 transition-opacity",
-                                      header.column.getIsResizing()
-                                        ? "bg-blue-500 opacity-100"
-                                        : "bg-muted-foreground opacity-0 group-hover:opacity-100",
-                                    )}
-                                  />
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
+              <DataTableHeader
+                table={table}
+                onColumnOrderChange={onColumnOrderChange}
+              />
 
               <DataTableBody
                 table={table}
@@ -1337,110 +890,15 @@ function useDataTableContent(
           </div>
         </div>
 
-        <div
-          className="z-10 w-full border-t border-border bg-muted py-1 shadow-sm"
-          ref={footerRef}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-y-1 px-2">
-            <div className="shrink-0 text-xs">
-              {(() => {
-                const { pageIndex, pageSize } = table.state.pagination;
-                const totalRows = totalItems;
-                const hasResults = totalItems > 0;
-                const start = hasResults ? pageIndex * pageSize + 1 : 0;
-                const end = hasResults
-                  ? isLoading
-                    ? Math.min(start + pageSize - 1, totalRows)
-                    : data.length > 0
-                      ? Math.min(start + data.length - 1, totalRows)
-                      : 0
-                  : 0;
-
-                const selectedCount = isAllPagesSelected
-                  ? totalItems
-                  : (totalSelectedCount ?? Object.keys(rowSelection).length);
-
-                return (
-                  <div className="flex flex-col">
-                    <span>
-                      Showing {start}-{end} of {totalRows} results
-                    </span>
-                    {selectedCount > 0 && (
-                      <span className="font-semibold text-blue-600">
-                        {isAllPagesSelected
-                          ? `All ${String(totalItems)} results selected`
-                          : `${String(selectedCount)} selected`}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-            <nav
-              className="flex flex-wrap items-center gap-x-1"
-              aria-label={`${resource} results pagination`}
-            >
-              <Button
-                onClick={() => {
-                  table.previousPage();
-                }}
-                disabled={!table.getCanPreviousPage()}
-                aria-label="Previous page"
-                className="border border-border px-2 py-0.5 disabled:opacity-50"
-              >
-                {"Prev"}
-              </Button>
-              {(() => {
-                const pageCount = table.getPageCount();
-                const currentPage = table.state.pagination.pageIndex;
-                const pages: number[] = [];
-
-                if (pageCount > 0) pages.push(0);
-                for (let i = currentPage - 2; i <= currentPage + 2; i++) {
-                  if (i > 0 && i < pageCount - 1) pages.push(i);
-                }
-                if (pageCount > 1) pages.push(pageCount - 1);
-                const uniquePages = [...new Set(pages)].sort((a, b) => a - b);
-
-                return uniquePages.map((page, idx) => {
-                  const prev = idx > 0 ? uniquePages[idx - 1] : undefined;
-                  const showDots = prev !== undefined && page - prev > 1;
-                  return (
-                    <span key={page} className="flex items-center gap-x-1">
-                      {showDots && (
-                        <span className="text-muted-foreground">...</span>
-                      )}
-                      <Button
-                        onClick={() => {
-                          table.setPageIndex(page);
-                        }}
-                        className={clsx(
-                          "border bg-background px-2 py-0.5 text-foreground",
-                          currentPage === page
-                            ? "bg-primary/15 font-bold"
-                            : "bg-background",
-                        )}
-                        aria-current={currentPage === page ? "page" : undefined}
-                      >
-                        {page + 1}
-                      </Button>
-                    </span>
-                  );
-                });
-              })()}
-              <Button
-                onClick={() => {
-                  table.nextPage();
-                }}
-                disabled={!table.getCanNextPage()}
-                aria-label="Next page"
-                className="border border-border px-2 py-0.5 disabled:opacity-50"
-              >
-                {"Next"}
-              </Button>
-            </nav>
-          </div>
-        </div>
+        <DataTableFooter
+          table={table}
+          resource={resource}
+          totalItems={totalItems}
+          dataLength={data.length}
+          isLoading={isLoading}
+          isAllPagesSelected={isAllPagesSelected}
+          totalSelectedCount={totalSelectedCount}
+        />
       </div>
     </div>
   );
@@ -1618,7 +1076,7 @@ function DataTableBody({
                       : undefined
                   }
                   className={clsx(
-                    "flex items-center truncate border border-border",
+                    "border-border flex items-center truncate border",
                     cell.column.id === "__select__"
                       ? clsx(
                           "justify-center p-0",
@@ -1736,33 +1194,4 @@ function computeAutoColumnSizes(
   }
 
   return sizes;
-}
-
-function csvExportValue(value: unknown): string {
-  if (value == null) return "";
-  const quoted = typeof value === "string" || typeof value === "object";
-  let serialized: string;
-  if (typeof value === "string") serialized = value;
-  else if (typeof value === "object") serialized = JSON.stringify(value);
-  else if (
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint"
-  )
-    serialized = String(value);
-  else return "";
-
-  const cleaned = serialized.replace(/\r\n|\n|\r/g, " ");
-  const safe = /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
-  return quoted ? `"${safe.replace(/"/g, "\"\"")}"` : safe;
-}
-
-function downloadFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const link = document.createElement("a");
-  const objectUrl = URL.createObjectURL(blob);
-  link.href = objectUrl;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(objectUrl);
 }

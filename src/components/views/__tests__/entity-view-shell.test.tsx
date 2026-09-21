@@ -2,12 +2,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const pushSpy = vi.fn();
-const searchParamsRef = { current: new URLSearchParams() };
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushSpy }),
-  usePathname: () => "/records/alpha",
-  useSearchParams: () => searchParamsRef.current,
 }));
 
 import { EntityViewShell, type EntityViewTab } from "../entity-view-shell";
@@ -58,7 +55,7 @@ function renderShell(
 
 beforeEach(() => {
   pushSpy.mockClear();
-  searchParamsRef.current = new URLSearchParams();
+  window.history.replaceState(null, "", "/records/alpha");
 });
 
 it("renders title, breadcrumbs, header content, metadata, actions, and content", () => {
@@ -74,29 +71,32 @@ it("renders title, breadcrumbs, header content, metadata, actions, and content",
   expect(screen.getByText("Active content")).toBeInTheDocument();
 });
 
-it("uses canonical tab URLs and preserves unrelated parameters", async () => {
+it("uses the latest browser URL and updates only the tab parameter", async () => {
   const user = userEvent.setup();
-  searchParamsRef.current = new URLSearchParams("filter=open&page=2");
-  const { unmount } = renderShell();
+  renderShell();
   const desktopNav = screen.getByRole("navigation", { name: "Entity views" });
 
+  window.history.replaceState(
+    null,
+    "",
+    "/records/beta?filter=open&page=2#results",
+  );
   await user.click(within(desktopNav).getByRole("button", { name: "Records" }));
   expect(pushSpy).toHaveBeenCalledWith(
-    "/records/alpha?filter=open&page=2&tab=records",
+    "/records/beta?filter=open&page=2&tab=records#results",
   );
 
-  unmount();
-  searchParamsRef.current = new URLSearchParams(
-    "filter=open&tab=records&page=2",
+  window.history.replaceState(
+    null,
+    "",
+    "/records/gamma?filter=closed&tab=records&page=3",
   );
-  renderShell("scroll", "records");
-  const nextDesktopNav = screen.getByRole("navigation", {
-    name: "Entity views",
-  });
   await user.click(
-    within(nextDesktopNav).getByRole("button", { name: "Summary" }),
+    within(desktopNav).getByRole("button", { name: "Summary" }),
   );
-  expect(pushSpy).toHaveBeenLastCalledWith("/records/alpha?filter=open&page=2");
+  expect(pushSpy).toHaveBeenLastCalledWith(
+    "/records/gamma?filter=closed&page=3",
+  );
 });
 
 it("exposes disabled reasons and prevents disabled navigation", async () => {

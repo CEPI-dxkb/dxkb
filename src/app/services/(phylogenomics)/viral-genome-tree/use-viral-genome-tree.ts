@@ -43,10 +43,6 @@ export function useViralGenomeTree() {
     onSubmit: async ({ value }) => runtime.submitFormData(value),
   });
   const sequences = useSelector(form.store, (state) => state.values.sequences);
-  const outputPath = useSelector(
-    form.store,
-    (state) => state.values.output_path,
-  );
   const canSubmit = useSelector(form.store, (state) => state.canSubmit);
 
   useEffect(() => {
@@ -330,7 +326,6 @@ export function useViralGenomeTree() {
 
   return {
     form,
-    outputPath,
     canSubmit,
     isOutputNameValid,
     setIsOutputNameValid,

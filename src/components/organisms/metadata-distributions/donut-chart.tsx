@@ -317,6 +317,227 @@ function buildInterpData(
   return result;
 }
 
+function legendTooltipAnchor(arc: ArcDatum, rect: DOMRect) {
+  const uniformScale = Math.min(
+    rect.width / chartSize,
+    rect.height / chartSize,
+  );
+  const letterboxX = (rect.width - chartSize * uniformScale) / 2;
+  const letterboxY = (rect.height - chartSize * uniformScale) / 2;
+  const midAngle = (arc.startAngle + arc.endAngle) / 2;
+  const anchorRadius = Math.cos(midAngle) > 0 ? outerRadius : innerRadius;
+  const svgX = Math.sin(midAngle) * anchorRadius + chartCenter + arc.popX;
+  const svgY = -Math.cos(midAngle) * anchorRadius + chartCenter + arc.popY;
+  const clientX = rect.left + letterboxX + svgX * uniformScale;
+  const clientY = rect.top + letterboxY + svgY * uniformScale;
+  const halfTooltipWidth = tooltipEstimatedWidth / 2;
+  const clampedX = Math.max(
+    rect.left + halfTooltipWidth,
+    Math.min(clientX, rect.right - halfTooltipWidth),
+  );
+
+  return {
+    left: clampedX,
+    top: clientY,
+    caretOffset: clientX - clampedX,
+  };
+}
+
+function DonutChartTabs({
+  tabs,
+  activeIndex,
+  onChange,
+}: {
+  tabs: DonutChartTab[];
+  activeIndex: number;
+  onChange: (index: number) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const check = () => {
+      setCanScrollLeft(element.scrollLeft > 0);
+      setCanScrollRight(
+        element.scrollLeft + element.clientWidth < element.scrollWidth - 1,
+      );
+    };
+    check();
+    element.addEventListener("scroll", check);
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(check);
+      observer.observe(element);
+      return () => {
+        observer.disconnect();
+        element.removeEventListener("scroll", check);
+      };
+    }
+    return () => {
+      element.removeEventListener("scroll", check);
+    };
+  }, [tabs]);
+
+  const scrollable = canScrollLeft || canScrollRight;
+  const scrollBy = (delta: number) => {
+    scrollRef.current?.scrollBy({ left: delta, behavior: "smooth" });
+  };
+  const scrollButtonClass =
+    "transition-[max-width,opacity] duration-300 ease-in-out";
+
+  return (
+    <div className="bg-muted/50 ml-auto flex min-w-0 items-center gap-0.5 rounded-md p-0.5">
+      <div
+        className={cn(
+          "shrink-0 overflow-hidden",
+          scrollable ? scrollButtonClass : "hidden",
+          scrollable &&
+            (canScrollLeft ? "max-w-6 opacity-100" : "max-w-0 opacity-0"),
+        )}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          onClick={() => {
+            scrollBy(-80);
+          }}
+          aria-label="Scroll tabs left"
+        >
+          <ChevronLeft className="size-3.5" />
+        </Button>
+      </div>
+      <div
+        ref={scrollRef}
+        className="flex min-w-0 flex-1 overflow-x-auto"
+        style={{ scrollbarWidth: "none" }}
+      >
+        <div className="flex flex-nowrap items-center gap-0.5">
+          {tabs.map((tab, index) => (
+            <Button
+              key={tab.label}
+              type="button"
+              variant={index === activeIndex ? "default" : "ghost"}
+              size="xs"
+              aria-pressed={index === activeIndex}
+              onClick={() => {
+                onChange(index);
+              }}
+              className="shrink-0"
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div
+        className={cn(
+          "shrink-0 overflow-hidden",
+          scrollable ? scrollButtonClass : "hidden",
+          scrollable &&
+            (canScrollRight ? "max-w-6 opacity-100" : "max-w-0 opacity-0"),
+        )}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          onClick={() => {
+            scrollBy(80);
+          }}
+          aria-label="Scroll tabs right"
+        >
+          <ChevronRight className="size-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function DonutChartLegend({
+  slices,
+  colorFor,
+  activeId,
+  hiddenIds,
+  hasData,
+  layout,
+  onActivate,
+  onDeactivate,
+  onToggle,
+}: {
+  slices: DonutChartDatum[];
+  colorFor: (id: string) => string;
+  activeId: string | null;
+  hiddenIds: ReadonlySet<string>;
+  hasData: boolean;
+  layout: "bottom" | "side";
+  onActivate: (id: string) => void;
+  onDeactivate: () => void;
+  onToggle: (id: string) => void;
+}) {
+  const isSide = layout === "side";
+
+  return (
+    <div
+      className={
+        isSide
+          ? "flex min-w-0 flex-1 flex-col justify-center gap-0.5"
+          : "flex flex-wrap justify-center gap-1.5"
+      }
+      style={{ animation: "donut-legend-up 0.4s 0.4s ease-out both" }}
+    >
+      {slices.map((slice) => {
+        const isHidden = hiddenIds.has(slice.id);
+        const activate = hasData
+          ? () => {
+              onActivate(slice.id);
+            }
+          : undefined;
+        const toggle = hasData
+          ? () => {
+              onToggle(slice.id);
+            }
+          : undefined;
+
+        return (
+          <ChartLegendPill
+            key={slice.id}
+            label={slice.label}
+            color={colorFor(slice.id)}
+            active={activeId === slice.id}
+            dimmed={isHidden}
+            variant={isSide ? "row" : "pill"}
+            ariaPressed={!isHidden}
+            ariaLabel={
+              !isSide && hasData
+                ? `${slice.label}: ${numberFormatter.format(slice.value)}`
+                : undefined
+            }
+            onActivate={activate}
+            onDeactivate={hasData ? onDeactivate : undefined}
+            onClick={toggle}
+          >
+            {isSide ? (
+              <>
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {slice.label}
+                </span>
+                {hasData && (
+                  <span className="tabular-nums">
+                    {numberFormatter.format(slice.value)}
+                  </span>
+                )}
+              </>
+            ) : undefined}
+          </ChartLegendPill>
+        );
+      })}
+    </div>
+  );
+}
+
 function useDonutChart({
   title,
   data,
@@ -427,36 +648,6 @@ function useDonutChart({
     setHoveredId(willUnhide ? id : null);
   };
 
-  const tabsScrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-
-  useEffect(() => {
-    const el = tabsScrollRef.current;
-    if (!el) return;
-    const check = () => {
-      setCanScrollLeft(el.scrollLeft > 0);
-      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-    };
-    check();
-    el.addEventListener("scroll", check);
-    if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(check);
-      ro.observe(el);
-      return () => {
-        ro.disconnect();
-        el.removeEventListener("scroll", check);
-      };
-    }
-    return () => {
-      el.removeEventListener("scroll", check);
-    };
-  }, [tabs]);
-
-  const scrollTabsBy = (delta: number) => {
-    tabsScrollRef.current?.scrollBy({ left: delta, behavior: "smooth" });
-  };
-
   const deactivateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const activateHover = (id: string) => {
@@ -513,32 +704,9 @@ function useDonutChart({
       return;
     }
 
-    const uniformScale = Math.min(
-      rect.width / chartSize,
-      rect.height / chartSize,
-    );
-    const letterboxX = (rect.width - chartSize * uniformScale) / 2;
-    const letterboxY = (rect.height - chartSize * uniformScale) / 2;
-    // Anchor at the highest (minimum-Y) point of the arc face at midAngle,
-    // accounting for pop translation. For upper-half arcs (cos > 0) the outer
-    // rim is higher on screen than the inner rim, so use outerRadius. For
-    // lower-half arcs (cos < 0) the inner rim is higher; use innerRadius.
-    const midAngle = (arc.startAngle + arc.endAngle) / 2;
-    const anchorRadius = Math.cos(midAngle) > 0 ? outerRadius : innerRadius;
-    const svgX = Math.sin(midAngle) * anchorRadius + chartCenter + arc.popX;
-    const svgY = -Math.cos(midAngle) * anchorRadius + chartCenter + arc.popY;
-    const clientX = rect.left + letterboxX + svgX * uniformScale;
-    const clientY = rect.top + letterboxY + svgY * uniformScale;
-    // Clamp the tooltip center to stay within the SVG bounds so it doesn't
-    // extend into the legend column. Shift the caret by the same amount so
-    // it still points at the arc's actual position.
-    const half = tooltipEstimatedWidth / 2;
-    const clampedX = Math.max(
-      rect.left + half,
-      Math.min(clientX, rect.right - half),
-    );
-    setLegendCaretOffsetPx(clientX - clampedX);
-    showTooltipForArc(arc, clampedX, clientY);
+    const anchor = legendTooltipAnchor(arc, rect);
+    setLegendCaretOffsetPx(anchor.caretOffset);
+    showTooltipForArc(arc, anchor.left, anchor.top);
   };
 
   const activateFromLegend = (id: string) => {
@@ -606,86 +774,11 @@ function useDonutChart({
             {title}
           </h3>
           {tabs && tabs.length > 1 && (
-            <div className="ml-auto flex min-w-0 items-center gap-0.5 rounded-md bg-muted/50 p-0.5">
-              {(() => {
-                const scrollable = canScrollLeft || canScrollRight;
-                return (
-                  <>
-                    <div
-                      className={cn(
-                        "shrink-0 overflow-hidden",
-                        !scrollable
-                          ? "hidden"
-                          : "transition-[max-width,opacity] duration-300 ease-in-out",
-                        scrollable &&
-                          (canScrollLeft
-                            ? "max-w-6 opacity-100"
-                            : "max-w-0 opacity-0"),
-                      )}
-                    >
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => {
-                          scrollTabsBy(-80);
-                        }}
-                        aria-label="Scroll tabs left"
-                      >
-                        <ChevronLeft className="size-3.5" />
-                      </Button>
-                    </div>
-                    <div
-                      ref={tabsScrollRef}
-                      className="flex min-w-0 flex-1 overflow-x-auto"
-                      style={{ scrollbarWidth: "none" }}
-                    >
-                      <div className="flex flex-nowrap items-center gap-0.5">
-                        {tabs.map((tab, i) => (
-                          <Button
-                            key={tab.label}
-                            type="button"
-                            variant={i === activeTabIndex ? "default" : "ghost"}
-                            size="xs"
-                            aria-pressed={i === activeTabIndex}
-                            onClick={() => {
-                              handleTabChange(i);
-                            }}
-                            className="shrink-0"
-                          >
-                            {tab.label}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    <div
-                      className={cn(
-                        "shrink-0 overflow-hidden",
-                        !scrollable
-                          ? "hidden"
-                          : "transition-[max-width,opacity] duration-300 ease-in-out",
-                        scrollable &&
-                          (canScrollRight
-                            ? "max-w-6 opacity-100"
-                            : "max-w-0 opacity-0"),
-                      )}
-                    >
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() => {
-                          scrollTabsBy(80);
-                        }}
-                        aria-label="Scroll tabs right"
-                      >
-                        <ChevronRight className="size-3.5" />
-                      </Button>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
+            <DonutChartTabs
+              tabs={tabs}
+              activeIndex={activeTabIndex}
+              onChange={handleTabChange}
+            />
           )}
         </div>
         {errorMessage ? (
@@ -773,97 +866,24 @@ function useDonutChart({
               </g>
             </svg>
 
-            {layout === "side" ? (
-              <div
-                className="flex min-w-0 flex-1 flex-col justify-center gap-0.5"
-                style={{ animation: "donut-legend-up 0.4s 0.4s ease-out both" }}
-              >
-                {slices.map((slice) => {
-                  const isHidden = hiddenIds.has(slice.id);
-                  return (
-                    <ChartLegendPill
-                      key={slice.id}
-                      label={slice.label}
-                      color={colorScale(slice.id)}
-                      active={activeId === slice.id}
-                      dimmed={isHidden}
-                      variant="row"
-                      ariaPressed={!isHidden}
-                      onActivate={
-                        hasData
-                          ? () => {
-                              activateFromLegend(slice.id);
-                            }
-                          : undefined
-                      }
-                      onDeactivate={hasData ? deactivate : undefined}
-                      onClick={
-                        hasData
-                          ? () => {
-                              toggleSlice(slice.id);
-                            }
-                          : undefined
-                      }
-                    >
-                      <span className="min-w-0 flex-1 truncate text-left">
-                        {slice.label}
-                      </span>
-                      {hasData && (
-                        <span className="tabular-nums">
-                          {numberFormatter.format(slice.value)}
-                        </span>
-                      )}
-                    </ChartLegendPill>
-                  );
-                })}
-              </div>
-            ) : (
-              <div
-                className="flex flex-wrap justify-center gap-1.5"
-                style={{ animation: "donut-legend-up 0.4s 0.4s ease-out both" }}
-              >
-                {slices.map((slice) => {
-                  const isHidden = hiddenIds.has(slice.id);
-                  return (
-                    <ChartLegendPill
-                      key={slice.id}
-                      label={slice.label}
-                      color={colorScale(slice.id)}
-                      active={activeId === slice.id}
-                      dimmed={isHidden}
-                      ariaPressed={!isHidden}
-                      ariaLabel={
-                        hasData
-                          ? `${slice.label}: ${numberFormatter.format(slice.value)}`
-                          : slice.label
-                      }
-                      onActivate={
-                        hasData
-                          ? () => {
-                              activateFromLegend(slice.id);
-                            }
-                          : undefined
-                      }
-                      onDeactivate={hasData ? deactivate : undefined}
-                      onClick={
-                        hasData
-                          ? () => {
-                              toggleSlice(slice.id);
-                            }
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            )}
+            <DonutChartLegend
+              slices={slices}
+              colorFor={(id) => colorScale(id)}
+              activeId={activeId}
+              hiddenIds={hiddenIds}
+              hasData={hasData}
+              layout={layout}
+              onActivate={activateFromLegend}
+              onDeactivate={deactivate}
+              onToggle={toggleSlice}
+            />
           </div>
         )}
       </CardContent>
       {tooltipData && (
         <div
           role="status"
-          className="pointer-events-none fixed z-50 rounded-md border border-foreground/80 bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
+          className="border-foreground/80 bg-popover text-popover-foreground pointer-events-none fixed z-50 rounded-md border px-2 py-1 text-xs shadow-md"
           style={
             activationSource === "legend"
               ? // Center exactly on the anchor via transform (avoids width-
@@ -891,7 +911,7 @@ function useDonutChart({
           {activationSource === "legend" && (
             <span
               aria-hidden="true"
-              className="absolute size-3 border border-foreground/80 bg-popover"
+              className="border-foreground/80 bg-popover absolute size-3 border"
               style={{
                 bottom: -7,
                 left: `calc(50% + ${String(legendCaretOffsetPx)}px)`,
@@ -904,7 +924,7 @@ function useDonutChart({
             />
           )}
           {tooltipData.label}: {numberFormatter.format(tooltipData.value)}
-          <span className="ml-1 text-muted-foreground">
+          <span className="text-muted-foreground ml-1">
             ({tooltipData.pct}%)
           </span>
         </div>

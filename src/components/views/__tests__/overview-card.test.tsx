@@ -1,11 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import Link from "next/link";
+import { OverviewCard, OverviewField } from "../overview-card";
 import {
-  OverviewCard,
-  OverviewField,
   formatOverviewValue,
   isOverviewValueAvailable,
-} from "../overview-card";
+} from "../overview-value-policy";
 
 describe("isOverviewValueAvailable", () => {
   it("treats null and undefined as unavailable", () => {

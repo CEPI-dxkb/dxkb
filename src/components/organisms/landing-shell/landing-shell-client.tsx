@@ -3,63 +3,18 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { startTransition, useState, type ReactNode } from "react";
-import { epitopeCollectionOptions } from "@/lib/epitope-view";
-import { experimentCollectionOptions } from "@/lib/experiment-view";
-import { featureCollectionOptions } from "@/lib/feature-view";
-import { genomeCollectionOptions } from "@/lib/genome-view";
-import { proteinFeatureCollectionOptions } from "@/lib/protein-feature-view";
-import { proteinStructureCollectionOptions } from "@/lib/protein-structure-view";
-import { serologyCollectionOptions } from "@/lib/serology-view";
-import { strainCollectionOptions } from "@/lib/strain-view";
-import { surveillanceCollectionOptions } from "@/lib/surveillance-view";
 import {
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
-  type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 
 import { LandingNav } from "./landing-nav";
 import { LandingMobileNav } from "./landing-mobile-nav";
+import { organismTabCollectionOptions } from "./organism-tab-collection-options";
 import type {
   OrganismLandingNavItem,
   OrganismViewKey,
 } from "@/components/organisms/types";
-
-/**
- * Collection-state options for every organism-tab view, keyed by its
- * `OrganismViewKey`. A tab either keeps its own filter/keyword/refine/sort/
- * page state in the URL (an entry here) or doesn't (`null`). Because
- * `OrganismViewKey` is a closed union, this record must list every tab key
- * or the file fails to compile — so a future tab that gains its own
- * `useCollectionUrlState` can't be silently missed the way this task's own
- * cross-tab cleanup bug crept in, and this can't drift out of sync with a
- * second hand-maintained list the way the pre-fix code and its test once
- * did.
- */
-export const organismTabCollectionOptionsByView: Record<
-  OrganismViewKey,
-  CollectionStateOptions | null
-> = {
-  overview: null,
-  phylogeny: null,
-  "taxa-tree": null,
-  genomes: genomeCollectionOptions,
-  sequences: null,
-  features: featureCollectionOptions,
-  "protein-structures": proteinStructureCollectionOptions,
-  "domains-and-motifs": proteinFeatureCollectionOptions,
-  epitopes: epitopeCollectionOptions,
-  experiments: experimentCollectionOptions,
-  interactions: null,
-  strains: strainCollectionOptions,
-  surveillance: surveillanceCollectionOptions,
-  serology: serologyCollectionOptions,
-  sfvt: null,
-};
-
-const organismTabCollectionOptions = Object.values(
-  organismTabCollectionOptionsByView,
-).filter((options): options is CollectionStateOptions => options !== null);
 
 interface LandingShellClientProps {
   displayName: string;

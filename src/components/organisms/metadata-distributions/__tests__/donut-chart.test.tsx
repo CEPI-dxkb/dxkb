@@ -27,7 +27,10 @@ const outerRadius = 66;
 // immediately on render.
 beforeEach(() => {
   vi.spyOn(window, "requestAnimationFrame").mockImplementation(
-    (cb: FrameRequestCallback) => { cb(0); return 0; },
+    (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    },
   );
   vi.spyOn(window, "cancelAnimationFrame").mockImplementation(vi.fn());
 });
@@ -159,7 +162,9 @@ describe("DonutChart", () => {
       clientY: chartCenter,
     });
     // deactivate() schedules a 40ms timer — advance past it
-    act(() => { vi.advanceTimersByTime(50); });
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
 
     vi.useRealTimers();
@@ -182,9 +187,9 @@ describe("DonutChart", () => {
       />,
     );
 
-    expect(
-      document.querySelector("path > title"),
-    ).toHaveTextContent("Salmonella: 48,185");
+    expect(document.querySelector("path > title")).toHaveTextContent(
+      "Salmonella: 48,185",
+    );
   });
 
   it("renders an empty chart and gray legend", () => {
@@ -202,7 +207,9 @@ describe("DonutChart", () => {
       }),
     ).toHaveAttribute("fill", "var(--muted-foreground)");
 
-    const placeholder = screen.getByRole("button", { name: "No data available" });
+    const placeholder = screen.getByRole("button", {
+      name: "No data available",
+    });
     fireEvent.mouseEnter(placeholder);
     fireEvent.focus(placeholder);
     fireEvent.click(placeholder);
@@ -212,7 +219,10 @@ describe("DonutChart", () => {
 
   it("renders a non-degenerate annulus path for a single positive slice", () => {
     render(
-      <DonutChart title="Genus" data={[{ label: "Salmonella", value: 48185 }]} />,
+      <DonutChart
+        title="Genus"
+        data={[{ label: "Salmonella", value: 48185 }]}
+      />,
     );
 
     const path = document.querySelector("path");
@@ -267,7 +277,9 @@ describe("DonutChart", () => {
     // deactivate() uses a 40ms timer — highlight should still be present before it fires
     expect(pill).toHaveAttribute("data-active", "true");
 
-    act(() => { vi.advanceTimersByTime(50); });
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
     expect(pill).not.toHaveAttribute("data-active");
 
     vi.useRealTimers();
@@ -317,13 +329,76 @@ describe("DonutChart", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the title as an h3 heading (WCAG 1.3.1)", () => {
+  it("resets hidden legend items when changing tabs", () => {
+    render(
+      <DonutChart
+        title="Taxonomic Distribution"
+        tabs={[
+          {
+            label: "Genus",
+            data: [
+              { label: "Alpha", value: 10 },
+              { label: "Beta", value: 5 },
+            ],
+          },
+          { label: "Species", data: [{ label: "Gamma", value: 7 }] },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Alpha: 10" }));
+    expect(screen.getByRole("button", { name: "Alpha: 10" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Species" }));
+    fireEvent.click(screen.getByRole("button", { name: "Genus" }));
+
+    expect(screen.getByRole("button", { name: "Alpha: 10" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("clamps legend tooltips to the chart and keeps the caret on the arc", () => {
     render(
       <DonutChart
         title="Genus"
-        data={[{ label: "Alpha", value: 10 }]}
+        data={[
+          { label: "Alpha", value: 75 },
+          { label: "Beta", value: 25 },
+        ]}
       />,
     );
+
+    const svg = screen.getByRole("img", { name: "Genus distribution" });
+    vi.spyOn(svg, "getBoundingClientRect").mockReturnValue({
+      left: 100,
+      top: 20,
+      width: chartSize,
+      height: chartSize,
+      right: 100 + chartSize,
+      bottom: 20 + chartSize,
+      x: 100,
+      y: 20,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.focus(screen.getByRole("button", { name: "Alpha: 75" }));
+
+    const tooltip = screen.getByRole("status");
+    expect(tooltip).toHaveStyle({
+      left: "180px",
+      transform: "translateX(-50%)",
+    });
+    expect(
+      tooltip.querySelector('[aria-hidden="true"]')?.getAttribute("style"),
+    ).toMatch(/left: calc\(50% \+ 52\.32\d+px\)/);
+  });
+
+  it("renders the title as an h3 heading (WCAG 1.3.1)", () => {
+    render(<DonutChart title="Genus" data={[{ label: "Alpha", value: 10 }]} />);
 
     expect(
       screen.getByRole("heading", { level: 3, name: "Genus" }),

@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { SearchIcon, Loader2Icon, ChevronDownIcon } from "lucide-react";
+import { SearchIcon, ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { TaxonomySuggestionContent } from "@/components/taxonomy/taxonomy-suggestion-content";
 import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
 
 interface TaxonNameSelectorProps extends TaxonomySelectorProps {
@@ -265,7 +266,7 @@ export function TaxonNameSelector({
   return (
     <div className={cn("relative w-full", className)}>
       <div ref={inputRef} className="relative">
-        <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
           placeholder={placeholder}
           value={inputValue}
@@ -291,7 +292,7 @@ export function TaxonNameSelector({
           type="button"
           aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
           onClick={handleManualDropdownToggle}
-          className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 size-4 -translate-y-1/2 transition-colors"
         >
           <ChevronDownIcon
             className={`size-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}
@@ -300,50 +301,33 @@ export function TaxonNameSelector({
 
         {/* Live Search Dropdown */}
         {showDropdown && (
-          <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50">
-            {error ? (
-              <div className="p-4 text-sm text-destructive">Error: {error}</div>
-            ) : loading ? (
-              <div className="flex items-center justify-center p-4">
-                <Loader2Icon className="mr-2 size-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">
-                  Searching...
-                </span>
-              </div>
-            ) : displayResults.length > 0 ? (
-              displayResults.map((item) => (
-                <button
-                  type="button"
-                  key={item.taxon_id}
-                  className="flex w-full cursor-pointer items-center justify-between p-2 text-left hover:bg-accent"
-                  onClick={() => {
-                    handleSelect(item);
-                  }}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      [{item.taxon_rank || "unknown"}] {item.taxon_name}
-                    </span>
-                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>ID: {item.taxon_id}</span>
-                      {item.division && <span>• {item.division}</span>}
-                    </span>
-                  </span>
-                </button>
-              ))
-            ) : (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                {searchQuery
+          <div className="scrollbar-thumb-muted-foreground/20 bg-popover hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50 absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-track-transparent overflow-y-auto rounded-md border shadow-md">
+            <TaxonomySuggestionContent
+              results={displayResults}
+              loading={loading}
+              error={error}
+              emptyMessage={
+                searchQuery
                   ? `No taxonomy found for: ${searchQuery}`
-                  : "No results found"}
-              </p>
-            )}
+                  : "No results found"
+              }
+              renderPrimary={(item) =>
+                `[${item.taxon_rank || "unknown"}] ${item.taxon_name}`
+              }
+              renderSecondary={(item) => (
+                <span className="flex items-center gap-2">
+                  <span>ID: {item.taxon_id}</span>
+                  {item.division && <span>• {item.division}</span>}
+                </span>
+              )}
+              onSelect={handleSelect}
+            />
           </div>
         )}
       </div>
 
       {touched && required && !isValid && (
-        <p className="mt-1 text-sm text-destructive">
+        <p className="text-destructive mt-1 text-sm">
           Taxonomy Name must be provided.
         </p>
       )}

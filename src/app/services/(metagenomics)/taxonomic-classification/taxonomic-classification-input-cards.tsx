@@ -1,31 +1,18 @@
 "use client";
 
-import { ChevronRight, HelpCircle } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { TaxonomicClassificationController } from "./use-taxonomic-classification-controller";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import SelectedItemsTable from "@/components/services/selected-items-table";
+import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FieldErrors } from "@/components/ui/tanstack-form";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { extractSampleIdFromPath } from "@/lib/forms/service-library-rules";
-import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 import { taxonomyClassificationInput } from "@/lib/services/info/taxonomic-classification";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 
@@ -190,36 +177,10 @@ export function ClassificationSelectedLibrariesCard({
 }) {
   return (
     <div className="md:col-span-5">
-      <Card className="h-full">
-        <CardHeader className="service-card-header">
-          <CardTitle className="service-card-title">
-            Selected Libraries
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger aria-label="Help: place read files using arrow buttons">
-                  <HelpCircle className="service-card-tooltip-icon" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Place read files here using the arrow buttons</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Place read files here using the arrow buttons.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="service-card-content">
-          <SelectedItemsTable
-            items={controller.selectedLibraries.map((library) => ({
-              id: library.id,
-              name: library.name,
-              type: getLibraryTypeLabel(library.type),
-            }))}
-            onRemove={controller.removeLibrary}
-          />
-        </CardContent>
-      </Card>
+      <SelectedLibrariesCard
+        items={controller.selectedLibraries}
+        onRemove={controller.removeLibrary}
+      />
     </div>
   );
 }

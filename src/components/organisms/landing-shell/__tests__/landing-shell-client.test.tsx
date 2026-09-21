@@ -12,10 +12,8 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@tanstack/react-hotkeys", () => ({ useHotkey: vi.fn() }));
 
-import {
-  LandingShellClient,
-  organismTabCollectionOptionsByView,
-} from "../landing-shell-client";
+import { LandingShellClient } from "../landing-shell-client";
+import { organismTabCollectionOptionsByView } from "../organism-tab-collection-options";
 
 // Derived from the same exhaustive, compiler-enforced record the component
 // uses — not a second hand-maintained list — so this can't drift out of

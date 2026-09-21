@@ -82,18 +82,17 @@ export function CollectionCopyDialog({
     setError(null);
     try {
       await onCopy(choice.columnMode, choice.includeHeaders);
-      if (session !== sessionRef.current) return;
-      onOpenChange(false);
+      if (session === sessionRef.current) onOpenChange(false);
     } catch (copyError) {
-      if (session !== sessionRef.current) return;
-      setError(
-        copyError instanceof Error
-          ? copyError.message
-          : `Unable to copy selected ${label.toLowerCase()}`,
-      );
-    } finally {
-      if (session === sessionRef.current) setCopyingChoice(null);
+      if (session === sessionRef.current) {
+        setError(
+          copyError instanceof Error
+            ? copyError.message
+            : `Unable to copy selected ${label.toLowerCase()}`,
+        );
+      }
     }
+    if (session === sessionRef.current) setCopyingChoice(null);
   };
 
   return (

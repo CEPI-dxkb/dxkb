@@ -3,7 +3,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { ServiceHeader } from "@/components/services/service-header";
@@ -27,14 +27,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown } from "lucide-react";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import OutputFolder from "@/components/services/output-folder";
+import { ServiceOutputFields } from "@/components/services/service-output-fields";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
-import {
-  fetchGenomeGroupMembers,
-  validateViralGenomes,
-} from "@/lib/services/genome";
+import { validateGenomeGroup } from "./validate-genome-group";
 import { useFeatureGroupOptions } from "@/hooks/services/use-feature-group-options";
 import { useGenomeGroupOptions } from "@/hooks/services/use-genome-group-options";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
@@ -43,10 +40,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   msaSNPAnalysisInfo,
-  msaSNPAnalysisParameters,
-  msaSNPAnalysisSelectSequences,
   msaSNPAnalysisStartWith,
 } from "@/lib/services/info/msa-snp-analysis";
+import {
+  MsaParametersCard,
+  MsaReferenceSequenceCard,
+  MsaSequenceSelectionCard,
+} from "./msa-snp-analysis-cards";
 import * as MsaSnpAnalysis from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-schema";
 import * as MsaSnpAnalysisUtils from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 import { msaSnpAnalysisService } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-service";
@@ -57,8 +57,6 @@ const emptyGenomeGroups: string[] = [];
 
 function useMSAandSNPAnalysisPage() {
   const [_selectedFeatureGroupObject, setSelectedFeatureGroupObject] =
-    useState<WorkspaceObject | null>(null);
-  const [_selectedGenomeGroupObject, setSelectedGenomeGroupObject] =
     useState<WorkspaceObject | null>(null);
   const [selectedFastaObject, setSelectedFastaObject] =
     useState<WorkspaceObject | null>(null);
@@ -83,11 +81,13 @@ function useMSAandSNPAnalysisPage() {
   const [showStrategy, setShowStrategy] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
+  const genomeGroupValidationRequest = useRef(0);
 
   function handleReset() {
+    genomeGroupValidationRequest.current += 1;
+    setIsValidatingGenomeGroup(false);
     form.reset(MsaSnpAnalysis.defaultMsaSnpAnalysisFormValues);
     setSelectedFeatureGroupObject(null);
-    setSelectedGenomeGroupObject(null);
     setSelectedFastaObject(null);
     setSelectedAlignedFastaObject(null);
     setSelectedFeatureId("");
@@ -119,7 +119,6 @@ function useMSAandSNPAnalysisPage() {
     form.store,
     (state) => state.values.select_genomegroup ?? emptyGenomeGroups,
   );
-  const outputPath = useSelector(form.store, (s) => s.values.output_path);
   const canSubmit = useSelector(form.store, (s) => s.canSubmit);
 
   const runtime = useServiceRuntime({
@@ -263,6 +262,73 @@ function useMSAandSNPAnalysisPage() {
     form.setFieldValue("ref_string", valid ? validation.trimFasta : "");
   }
 
+  async function validateAndSelectGenomeGroup(
+    object: WorkspaceObject | null,
+  ) {
+    const inputValue = object?.path;
+    if (!inputValue) {
+      genomeGroupValidationRequest.current += 1;
+        setIsValidatingGenomeGroup(false);
+      return;
+    }
+
+    const request = ++genomeGroupValidationRequest.current;
+    setIsValidatingGenomeGroup(true);
+
+    try {
+      const validation = await validateGenomeGroup(inputValue, {
+        maxGenomes: MsaSnpAnalysis.maxGenomes,
+        maxGenomeLength: MsaSnpAnalysis.maxGenomeLength,
+      });
+      if (request !== genomeGroupValidationRequest.current) return;
+
+      if (validation.status !== "valid") {
+        if (validation.status === "empty") {
+          toast.error("Empty genome group", {
+            description: "The selected genome group is empty.",
+            closeButton: true,
+          });
+        } else if (validation.status === "too-large") {
+          toast.error("Genome group too large", {
+            description: `The genome group has ${String(validation.genomeCount)} genomes, but the maximum is ${String(MsaSnpAnalysis.maxGenomes)}.`,
+            closeButton: true,
+          });
+        } else {
+          toast.error("Genome group validation failed", {
+            description: validation.message,
+            duration: 10000,
+            closeButton: true,
+          });
+        }
+        setIsValidatingGenomeGroup(false);
+        return;
+      }
+
+      const changed = form.state.values.select_genomegroup?.[0] !== inputValue;
+      form.setFieldValue("select_genomegroup", [inputValue]);
+        if (changed) {
+        setSelectedGenomeId("");
+        if (form.state.values.ref_type === "genome_id") {
+          form.setFieldValue("ref_string", "");
+        }
+      }
+    } catch (error) {
+      if (request !== genomeGroupValidationRequest.current) return;
+      console.error("Failed to validate genome group:", error);
+      toast.error("Validation error", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to validate genome group",
+        closeButton: true,
+      });
+    }
+
+    if (request === genomeGroupValidationRequest.current) {
+      setIsValidatingGenomeGroup(false);
+    }
+  }
+
   const {
     features: featureOptions,
     isLoading: isLoadingFeatures,
@@ -392,19 +458,7 @@ function useMSAandSNPAnalysisPage() {
         </Card>
 
         {/* Select sequences */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
-              Select sequences:
-              <DialogInfoPopup
-                title={msaSNPAnalysisSelectSequences.title}
-                description={msaSNPAnalysisSelectSequences.description}
-                sections={msaSNPAnalysisSelectSequences.sections}
-              />
-            </RequiredFormCardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
+        <MsaSequenceSelectionCard>
             {inputStatus === "unaligned" ? (
               <div className="space-y-4">
                 <form.Field name="input_type">
@@ -542,96 +596,8 @@ function useMSAandSNPAnalysisPage() {
                     <WorkspaceObjectSelector
                       preset="genomeGroup"
                       placeholder="Select viral genome group"
-                      onSelectedObjectChange={(
-                        object: WorkspaceObject | null,
-                      ) => {
-                        if (!object || !object.path) {
-                          setSelectedGenomeGroupObject(null);
-                          return;
-                        }
-
-                        const inputValue = object.path;
-
-                        setIsValidatingGenomeGroup(true);
-
-                        void (async () => {
-                          try {
-                            // Fetch genome group members to get genome IDs
-                            const genomes =
-                              await fetchGenomeGroupMembers(inputValue);
-
-                            if (genomes.length === 0) {
-                              toast.error("Empty genome group", {
-                                description:
-                                  "The selected genome group is empty.",
-                                closeButton: true,
-                              });
-                              return;
-                            }
-
-                            if (genomes.length > MsaSnpAnalysis.maxGenomes) {
-                              toast.error("Genome group too large", {
-                                description: `The genome group has ${String(genomes.length)} genomes, but the maximum is ${String(MsaSnpAnalysis.maxGenomes)}.`,
-                                closeButton: true,
-                              });
-                              return;
-                            }
-
-                            const genomeIds = genomes.map((g) => g.genome_id);
-
-                            // Validate viral genomes
-                            const validation = await validateViralGenomes(
-                              genomeIds,
-                              {
-                                maxGenomeLength: MsaSnpAnalysis.maxGenomeLength,
-                              },
-                            );
-
-                            if (!validation.allValid) {
-                              const errorMessages = Object.values(
-                                validation.errors,
-                              ).filter(Boolean);
-                              const errorMsg =
-                                errorMessages.length > 0
-                                  ? errorMessages.join("\n")
-                                  : "Invalid genome group. Please check that all genomes are viruses with single contigs.";
-
-                              toast.error("Genome group validation failed", {
-                                description: errorMsg,
-                                duration: 10000,
-                                closeButton: true,
-                              });
-                              return;
-                            }
-
-                            // Replace the existing group (only one group allowed)
-                            const changed = selectGenomegroup[0] !== inputValue;
-                            form.setFieldValue("select_genomegroup", [
-                              inputValue,
-                            ]);
-                            setSelectedGenomeGroupObject(null);
-                            if (changed) {
-                              setSelectedGenomeId("");
-                              if (refType === "genome_id") {
-                                form.setFieldValue("ref_string", "");
-                              }
-                            }
-                          } catch (error) {
-                            console.error(
-                              "Failed to validate genome group:",
-                              error,
-                            );
-                            const errorMessage =
-                              error instanceof Error
-                                ? error.message
-                                : "Failed to validate genome group";
-                            toast.error("Validation error", {
-                              description: errorMessage,
-                              closeButton: true,
-                            });
-                          }
-                          setIsValidatingGenomeGroup(false);
-                        })();
+                      onSelectedObjectChange={(object) => {
+                        void validateAndSelectGenomeGroup(object);
                       }}
                       value={selectGenomegroup[0]}
                     />
@@ -783,18 +749,10 @@ function useMSAandSNPAnalysisPage() {
                 </form.Field>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </MsaSequenceSelectionCard>
 
         {/* Reference Sequence */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
-              Select a reference sequence:
-            </RequiredFormCardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
+        <MsaReferenceSequenceCard>
             <div className="space-y-4">
               <form.Field name="ref_type">
                 {(field) => (
@@ -1074,23 +1032,10 @@ function useMSAandSNPAnalysisPage() {
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
+        </MsaReferenceSequenceCard>
 
         {/* Parameters */}
-        <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
-              Parameters:
-              <DialogInfoPopup
-                title={msaSNPAnalysisParameters.title}
-                description={msaSNPAnalysisParameters.description}
-                sections={msaSNPAnalysisParameters.sections}
-              />
-            </RequiredFormCardTitle>
-          </CardHeader>
-
-          <CardContent className="service-card-content">
+        <MsaParametersCard>
             <div className="space-y-4">
               <form.Field name="aligner">
                 {(field) => (
@@ -1192,38 +1137,29 @@ function useMSAandSNPAnalysisPage() {
                 </Collapsible>
               )}
 
-              <div className="flex flex-col space-y-4">
-                <form.Field name="output_path">
-                  {(field) => (
-                    <FieldItem>
-                      <OutputFolder
-                        required={true}
-                        value={field.state.value}
-                        onChange={field.handleChange}
+              <form.Field name="output_path">
+                {(outputPathField) => (
+                  <form.Field name="output_file">
+                    {(outputNameField) => (
+                      <ServiceOutputFields
+                        outputPath={{
+                          value: outputPathField.state.value,
+                          onChange: outputPathField.handleChange,
+                          errors: <FieldErrors field={outputPathField} />,
+                        }}
+                        outputName={{
+                          value: outputNameField.state.value,
+                          onChange: outputNameField.handleChange,
+                          errors: <FieldErrors field={outputNameField} />,
+                        }}
+                        onOutputNameValidationChange={setIsOutputNameValid}
                       />
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
-                </form.Field>
-                <form.Field name="output_file">
-                  {(field) => (
-                    <FieldItem>
-                      <OutputFolder
-                        variant="name"
-                        required={true}
-                        value={field.state.value}
-                        onChange={field.handleChange}
-                        outputFolderPath={outputPath}
-                        onValidationChange={setIsOutputNameValid}
-                      />
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
-                </form.Field>
-              </div>
+                    )}
+                  </form.Field>
+                )}
+              </form.Field>
             </div>
-          </CardContent>
-        </Card>
+        </MsaParametersCard>
 
         {/* Form Controls */}
         <div className="service-form-controls">

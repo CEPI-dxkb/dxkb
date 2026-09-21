@@ -2,5 +2,58 @@
   "$schema": "https://react.doctor/schema/config.json",
   "rules": {
     "react-hooks-js/incompatible-library": "off"
+  },
+  "ignore": {
+    "overrides": [
+      {
+        "files": [
+          "src/components/organisms/geo-distribution/geo-distribution-client.tsx",
+          "src/components/services/sra-run-accession-with-validation.tsx",
+          "src/components/workspace/copy-to-dialog.tsx",
+          "src/components/workspace/workspace-mini-browser.tsx",
+          "src/hooks/services/workspace/use-workspace-directory.ts"
+        ],
+        "rules": ["react-doctor/no-high-complexity-react-function"]
+      },
+      {
+        "files": ["src/components/detail-panel/metadata-link.tsx"],
+        "rules": ["react-doctor/anchor-has-content"]
+      },
+      {
+        "files": ["src/components/services/single-genome-selector.tsx"],
+        "rules": ["react-doctor/no-adjust-state-on-prop-change"]
+      },
+      {
+        "files": [
+          "src/components/interactions/__tests__/interactions-shared-dataset.test.tsx"
+        ],
+        "rules": ["react-doctor/no-array-index-as-key"]
+      },
+      {
+        "files": ["src/components/phylogeny/archaeopteryx-phylogeny.tsx"],
+        "rules": ["react-doctor/effect-observer-needs-disconnect"]
+      },
+      {
+        "files": ["src/components/phylogeny/viral-tree-picker.tsx"],
+        "rules": ["react-doctor/shadcn-icon-button-requires-label"]
+      },
+      {
+        "files": ["src/components/services/list-data.tsx"],
+        "rules": ["react-doctor/no-pass-live-state-to-parent"]
+      },
+      {
+        "files": ["src/components/views/resource-collection.tsx"],
+        "rules": ["react-doctor/js-set-map-lookups"]
+      },
+      {
+        "files": [
+          "src/lib/auth/client.ts",
+          "src/lib/auth/server/adapters/bvbrc-identity.ts"
+        ],
+        "rules": [
+          "react-doctor/no-fetch-response-used-without-status-check"
+        ]
+      }
+    ]
   }
 }

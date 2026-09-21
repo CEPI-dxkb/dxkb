@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import {
@@ -10,19 +9,13 @@ import {
   useUserWorkspaces,
 } from "@/hooks/services/workspace/use-shared-with-user";
 import { cn } from "@/lib/utils";
-import { hasWriteAccess } from "@/lib/services/workspace/helpers";
-import { isFolderType, isFolder } from "@/lib/services/workspace/utils";
+import {
+  buildMiniBrowserItems,
+  normalizePath,
+  usernameFromWorkspaceRoot,
+} from "@/lib/services/workspace/mini-browser-items";
+import { isFolderType } from "@/lib/services/workspace/utils";
 import { WorkspaceMiniBrowserTable } from "./workspace-mini-browser-table";
-
-function usernameFromWorkspaceRoot(workspaceRoot: string): string {
-  return workspaceRoot.replace(/^\//, "").split("@")[0] ?? "";
-}
-
-function normalizePath(path: string | null | undefined): string {
-  if (!path) return "/";
-  const trimmed = path.replace(/\/+$/, "");
-  return trimmed || "/";
-}
 
 export interface WorkspaceMiniBrowserProps {
   initialPath: string;
@@ -67,29 +60,13 @@ function useMiniBrowserItems({
     staleTime: 60 * 1000,
   });
 
-  let items: WorkspaceItem[];
-  if (isAtRoot) {
-    const byPath = new Map<string, WorkspaceItem>();
-    const shared = (sharedQuery.data ?? []).filter(hasWriteAccess);
-    for (const item of [...(userWorkspacesQuery.data ?? []), ...shared]) {
-      if (!byPath.has(item.path)) byPath.set(item.path, item);
-    }
-    items = Array.from(byPath.values());
-  } else {
-    items = pathQuery.data ?? [];
-  }
-
-  if (mode === "folders-only") {
-    items = items.filter((item) => isFolder(item.type));
-  }
-  if (!showHidden) {
-    items = items.filter((item) => !item.name.startsWith("."));
-  }
-  items = [...items].sort((a, b) => {
-    const aFolder = isFolderType(a.type);
-    const bFolder = isFolderType(b.type);
-    if (aFolder !== bFolder) return aFolder ? -1 : 1;
-    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+  const items = buildMiniBrowserItems({
+    isAtRoot,
+    userWorkspaces: userWorkspacesQuery.data ?? [],
+    shared: sharedQuery.data ?? [],
+    pathItems: pathQuery.data ?? [],
+    mode,
+    showHidden,
   });
 
   return {

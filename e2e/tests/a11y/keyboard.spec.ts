@@ -12,7 +12,7 @@ import {
   authSessionOverrides,
   workspacePopulatedOverrides,
   jobsOverrides,
-  permissiveBackendOverrides,
+  a11yBackendOverrides,
 } from "../../fixtures/overrides";
 import { WorkspacePage } from "../../pages/workspace-page";
 import { JobsListPage } from "../../pages/jobs-list-page";
@@ -53,7 +53,7 @@ test.describe("keyboard: home page", () => {
   }) => {
     await context.clearCookies();
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...a11yBackendOverrides],
     });
     await page.goto("/");
     await page.waitForLoadState("networkidle");
@@ -89,7 +89,7 @@ test.describe("keyboard: sign-in page", () => {
   }) => {
     await context.clearCookies();
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...a11yBackendOverrides],
     });
     await page.goto("/sign-in");
     await page.waitForLoadState("networkidle");
@@ -140,7 +140,7 @@ test.describe("keyboard: workspace dialogs (WCAG 2.1.2 — no trap)", () => {
       overrides: [
         ...authSessionOverrides,
         ...workspacePopulatedOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     const wp = new WorkspacePage(page);
@@ -201,7 +201,7 @@ test.describe("keyboard: workspace dialogs (WCAG 2.1.2 — no trap)", () => {
       overrides: [
         ...authSessionOverrides,
         ...workspacePopulatedOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     const wp = new WorkspacePage(page);
@@ -229,7 +229,7 @@ test.describe("keyboard: jobs kill dialog (WCAG 2.1.2)", () => {
       overrides: [
         ...authSessionOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     const jobs = new JobsListPage(page);
@@ -290,7 +290,7 @@ test.describe("keyboard: command palette (WCAG 2.1.1)", () => {
         ...authSessionOverrides,
         ...workspacePopulatedOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     await page.goto("/jobs");

@@ -1,33 +1,12 @@
-import type { DataTableColumn } from "@/components/shared/data-table";
 import type { ResourceCollectionProfile } from "@/components/views";
-import { serologyFields } from "@/constants/datafields/serology";
-import type { DataField } from "@/constants/datafields/types";
 import { serologyHref } from "@/lib/views/hrefs";
+import { serologyMetadata } from "./fields";
 import { serologyStructuralRql } from "./query";
 import type { SerologyViewRecord } from "./schema";
 
-function tableColumn(definition: DataField): DataTableColumn {
-  return {
-    id: definition.field,
-    label: definition.label,
-    visible: !definition.hidden,
-    sortable: definition.sortable ?? true,
-  };
-}
-
-const fields: DataField[] = Object.values(serologyFields);
-
-export const serologyColumns = fields
-  .filter((field) => field.show_in_table !== false)
-  .map(tableColumn);
-export const serologyDetailFields = fields.map((field) => field.field);
-export const serologyFacets = fields
-  .filter((field) => field.facet)
-  .map((field) => ({
-    field: field.field,
-    label: field.label,
-    initiallyVisible: field.facet_hidden !== true,
-  }));
+const serologyColumns = serologyMetadata.columns;
+const serologyDetailFields = serologyMetadata.detailFields;
+const serologyFacets = serologyMetadata.facets;
 
 export const serologyCollectionProfile: ResourceCollectionProfile<SerologyViewRecord> =
   {
@@ -36,7 +15,6 @@ export const serologyCollectionProfile: ResourceCollectionProfile<SerologyViewRe
     idField: "id",
     columns: serologyColumns,
     detailFields: serologyDetailFields,
-    defaultSort: "unsorted",
     basePredicate: "eq(id,*)",
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/serology_data.html",

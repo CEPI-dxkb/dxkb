@@ -1,7 +1,7 @@
 import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
   workspaceOverrides,
-  permissiveBackendOverrides,
+  emptyBackendFallbackOverrides,
 } from "../fixtures/overrides";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -11,7 +11,7 @@ test.describe("public routes (no auth)", () => {
     await applyBackendMocks(page, {
       overrides: [
         ...workspaceOverrides,
-        ...permissiveBackendOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

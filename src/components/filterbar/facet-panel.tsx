@@ -3,50 +3,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { FacetColumn } from "./facet-column";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataRepository, collectionQueryOptions } from "@/lib/data-api";
+import type { DataResource } from "@/lib/data-api";
 
-interface FacetItem {
-  label: string;
-  value: string;
-  count: number;
-}
+// Same-origin Data API entrypoint (`/api/data/<resource>`). Stateless wrapper
+// around fetch, so one module-level instance is the established pattern.
+const dataRepository = new DataRepository();
 
-interface ColumnField {
-  id: string;
-  label: string;
-  facet?: boolean;
-  facet_hidden?: boolean;
-}
+// A facet read wants counts, not rows, so it asks for the smallest page the
+// gateway allows (`pageSize` is validated as >= 1) and ignores the rows.
+const facetPageSize = 1;
 
 interface FacetPanelProps {
-  fields: ColumnField[];
+  /**
+   * The facets to render, which is also exactly the set counts are requested
+   * for. The caller owns which facets are shown (`FilterBar`'s chooser), so a
+   * collapsed facet costs no facet work upstream.
+   */
+  fields: { id: string; label: string }[];
+  /** RQL predicate the facet counts are computed over. */
   query: string;
-  resource: string;
+  resource: DataResource;
   onSelect: (field: string, value: string) => void;
-}
-
-// ------------------------------
-// Parse Solr facet response
-// ------------------------------
-function parseFacetCounts(
-  facets: Record<string, (string | number)[]>,
-): Record<string, FacetItem[]> {
-  const out: Record<string, FacetItem[]> = {};
-
-  Object.keys(facets).forEach((cat) => {
-    const data = facets[cat];
-    out[cat] = [];
-
-    for (let i = 0; i < data.length - 1; i += 2) {
-      const label = String(data[i]);
-      out[cat].push({
-        label,
-        value: label,
-        count: Number(data[i + 1]),
-      });
-    }
-  });
-
-  return out;
 }
 
 export function FacetPanel({
@@ -55,43 +33,33 @@ export function FacetPanel({
   resource,
   onSelect,
 }: FacetPanelProps) {
-  const DataAPI = process.env.NEXT_PUBLIC_DATA_API;
+  const validFieldIds = fields
+    .map((field) => field.id)
+    .filter((id) => id.trim());
 
-  const visibleFields: ColumnField[] = [];
-  const validFieldIds: string[] = [];
-  for (const field of fields) {
-    if (field.id.trim()) validFieldIds.push(field.id);
-    if (field.facet && !field.facet_hidden) visibleFields.push(field);
-  }
+  const request = {
+    rql: query || undefined,
+    pageSize: facetPageSize,
+    facets: validFieldIds,
+  };
 
   const {
-    data: facets,
+    data: collection,
     error,
     isLoading,
-  } = useQuery<Record<string, FacetItem[]>>({
-    queryKey: ["facets", resource, query, validFieldIds],
-    queryFn: async ({ signal }) => {
-      const facetStr = `facet(${validFieldIds.join(",")},(mincount,1),(limit,100))`;
-      const rql = [query || "", "limit(1)", facetStr].filter(Boolean).join("&");
-      const res = await fetch(`${DataAPI as string}/${resource}/?${rql}`, {
-        signal,
-        headers: { Accept: "application/solr+json" },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const json = (await res.json()) as {
-        facet_counts?: { facet_fields?: Record<string, (string | number)[]> };
-      };
-      return parseFacetCounts(json.facet_counts?.facet_fields ?? {});
-    },
-    enabled: !!DataAPI && !!resource && validFieldIds.length > 0,
-    // Keep previous data visible during background refetch — no flash or spinner
-    placeholderData: (prev) => prev,
+  } = useQuery({
+    // Same shared options `list-data.tsx` spreads, so the key and the call are
+    // built in one place. Its `keepPreviousData` default is what keeps the
+    // previous counts on screen during a background refetch — no flash, no
+    // spinner — so only `enabled` and the facet-specific stale window differ.
+    ...collectionQueryOptions(dataRepository, resource, request),
+    enabled: validFieldIds.length > 0,
     staleTime: 30_000,
   });
 
   if (error) {
     return (
-      <div className="flex max-h-30 items-center rounded bg-gray-800 p-2 text-[11px] text-gray-400">
+      <div className="flex max-h-30 items-center rounded bg-background p-2 text-[11px] text-muted-foreground">
         Facets unavailable
       </div>
     );
@@ -99,14 +67,14 @@ export function FacetPanel({
 
   if (isLoading) {
     return (
-      <div className="flex max-h-30 gap-3 overflow-auto rounded bg-gray-800 p-2 text-[11px]">
-        {visibleFields.map((field) => (
+      <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-[11px]">
+        {fields.map((field) => (
           <div key={field.id} className="shrink-0">
-            <Skeleton className="mb-2 h-3 w-24 bg-gray-600" />
+            <Skeleton className="mb-2 h-3 w-24" />
             <div className="flex flex-col gap-1">
-              <Skeleton className="h-3.5 w-32 bg-gray-700" />
-              <Skeleton className="h-3.5 w-24 bg-gray-700" />
-              <Skeleton className="h-3.5 w-28 bg-gray-700" />
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3.5 w-28" />
             </div>
           </div>
         ))}
@@ -115,12 +83,16 @@ export function FacetPanel({
   }
 
   return (
-    <div className="flex max-h-30 gap-3 overflow-auto rounded bg-gray-800 p-2 text-[11px]">
-      {visibleFields.map((field) => (
+    <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-[11px]">
+      {fields.map((field) => (
         <FacetColumn
           key={field.id}
           field={field}
-          items={facets?.[field.id] ?? []}
+          items={(collection?.facets[field.id] ?? []).map((bucket) => ({
+            label: String(bucket.value),
+            value: String(bucket.value),
+            count: bucket.count,
+          }))}
           onSelect={onSelect}
         />
       ))}

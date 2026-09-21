@@ -1,5 +1,9 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { buildPpiRows, buildPpiOverrides, permissiveBackendOverrides } from "../../fixtures/overrides";
+import {
+  buildPpiRows,
+  buildPpiOverrides,
+  emptyBackendFallbackOverrides,
+} from "../../fixtures/overrides";
 import { TaxonInteractionsPage } from "../../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -11,7 +15,7 @@ async function setupInteractionsPage(
   rows = buildPpiRows(3),
 ) {
   await applyBackendMocks(page, {
-    overrides: [...buildPpiOverrides(rows), ...permissiveBackendOverrides],
+    overrides: [...buildPpiOverrides(rows), ...emptyBackendFallbackOverrides],
   });
 
   const interactionsPage = new TaxonInteractionsPage(page);
@@ -34,7 +38,10 @@ test.describe("taxon interactions tab", () => {
     // so Sigma throws and the canvas never mounts. Chromium and WebKit ship
     // software GL and render it fine. Mirrors viewer-3d.spec.ts, which gates its
     // Mol* WebGL canvas assertion the same way.
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupInteractionsPage(page);
 
@@ -42,17 +49,25 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectCanvasVisible();
   });
 
-  test("Graph subtab preserves the workspace when there are no interactions", async ({ page }) => {
+  test("Graph subtab preserves the workspace when there are no interactions", async ({
+    page,
+  }) => {
     const interactionsPage = await setupInteractionsPage(page, []);
 
     await interactionsPage.switchToGraph();
     await interactionsPage.expectEmptyGraphWorkspace();
   });
 
-  test("layout dropdown shows the human-readable label, not the raw value", async ({ page, browserName }) => {
+  test("layout dropdown shows the human-readable label, not the raw value", async ({
+    page,
+    browserName,
+  }) => {
     // The action bar (and its layout Select) only mount once the graph has nodes,
     // which mounts SigmaCanvas — no WebGL in headless Firefox.
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupInteractionsPage(page);
     await interactionsPage.switchToGraph();
@@ -65,8 +80,14 @@ test.describe("taxon interactions tab", () => {
     await interactionsPage.expectLayoutLabel("Circular");
   });
 
-  test("selecting a node then an incident edge shows the detail panel headers", async ({ page, browserName }) => {
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+  test("selecting a node then an incident edge shows the detail panel headers", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupInteractionsPage(page);
     await interactionsPage.switchToGraph();
@@ -84,7 +105,7 @@ test.describe("taxon interactions tab", () => {
   });
 });
 
-// ─── Filter sync between Table and Graph subviews ────────────────────────────
+// ─── Keyword sync between Table and Graph subviews ───────────────────────────
 // Regression: filter state lived only inside ListData (src/components/services/
 // list-data.tsx), local to the Table subview. Switching to Graph never saw it
 // (bug #1). Root cause of bug #3 runs deeper than a missing prop: FilterBar
@@ -94,74 +115,27 @@ test.describe("taxon interactions tab", () => {
 // subtree remounts — and base-ui's Tabs.Panel unmounts inactive panels by
 // default (keepMounted: false), remounting Table's FilterBar on every
 // switch-back. Fix: `keepMounted` on the Table panel only (interactions-
-// subview-shell.tsx) so Table's own state survives untouched; the shell reads
-// Table's current filter read-only (onFilterChange, notify-only — see
-// list-data.tsx's third filter mode) and passes it into Graph as `tableFilter`,
-// which Graph combines with its own independent keyword box (bug #2) — see
-// interactions-graph.tsx and its unit tests for the query-combination
-// coverage. This spec exercises the real cross-tab DOM mount/unmount and
-// actual FilterBar remount behavior that jsdom unit tests (which mock
-// TaxonDataPanel/InteractionsGraph) can't faithfully reproduce.
+// subview-shell.tsx) so Table's own state survives untouched, with the shell
+// owning the one keyword both views edit.
+//
+// The shared keyword is now a *request* predicate on both sides: the shell
+// hands the same `rql` and keyword text to the Table's collection request and
+// to the Graph's bulk-row request, both through the Data API gateway. It used
+// to filter only the Table's loaded 200-row page while running a real backend
+// query for the Graph, so one input could stand for two datasets. This spec
+// exercises the real cross-tab DOM mount/unmount and actual FilterBar remount
+// behavior that jsdom unit tests can't faithfully reproduce.
 test.describe("taxon interactions tab: filter sync between Table and Graph", () => {
   // Second row's interactor differs from the first (fig|224914.16.peg.600 vs .601) —
   // filtering to "peg.600" narrows from all rows to exactly one, giving an
   // observable row/node-count delta instead of an all-or-nothing assertion.
   const rows = buildPpiRows(2);
 
-  // Match independently of origin because NEXT_PUBLIC_DATA_API is embedded at build
-  // time and may point at either the loopback mock or the public API in a local build.
-  const ppiRequest = /(?:\/ppi\/|\/api\/data\/ppi(?:\?|$))/;
-
-  // buildPpiOverrides (used by the describe block above) always returns the
-  // full row set regardless of query — it can't prove filtering actually
-  // narrows anything. This route inspects the request URL for a
-  // `keyword(<text>*)` clause (the shape buildRql produces — filter-utils.ts —
-  // for both the table's FilterBar and the graph's own keyword box) and
-  // serves only rows whose serialized fields contain that text, so the same
-  // mock validates bugs #1, #2, and #3 regardless of which UI element wrote
-  // the keyword. Mirrors the query-aware epitope-facet mock in
-  // taxon-list-data.spec.ts.
   async function setupFilterableInteractionsPage(
     page: Parameters<typeof applyBackendMocks>[0],
   ): Promise<TaxonInteractionsPage> {
-    await applyBackendMocks(page, { overrides: [...permissiveBackendOverrides] });
-
-    await page.route(ppiRequest, async (route) => {
-      if (route.request().method() !== "GET") return route.fallback();
-      const url = decodeURIComponent(route.request().url());
-      const keyword = /keyword\(([^*)]+)\*?\)/.exec(url)?.[1];
-      const matchingRows = keyword ? rows.filter((r) => JSON.stringify(r).includes(keyword)) : rows;
-
-      const isGatewayRequest = new URL(route.request().url()).pathname === "/api/data/ppi";
-      if (isGatewayRequest) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            rows: matchingRows,
-            total: matchingRows.length,
-            facets: {},
-            page: 1,
-            pageSize: 200,
-          }),
-        });
-        return;
-      }
-
-      if (url.includes("limit(1)")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ response: { numFound: matchingRows.length } }),
-        });
-        return;
-      }
-
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(matchingRows),
-      });
+    await applyBackendMocks(page, {
+      overrides: [...buildPpiOverrides(rows), ...emptyBackendFallbackOverrides],
     });
 
     const interactionsPage = new TaxonInteractionsPage(page);
@@ -169,8 +143,14 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     return interactionsPage;
   }
 
-  test("filtering the table narrows the graph to the same subset (bug #1)", async ({ page, browserName }) => {
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+  test("filtering the table narrows the graph to the same subset (bug #1)", async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupFilterableInteractionsPage(page);
 
@@ -183,15 +163,23 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
 
     const graphPanel = page.getByRole("tabpanel", { name: "Graph" });
     await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(graphPanel.getByText("fig|224914.16.peg.601")).not.toBeVisible();
+    await expect(
+      graphPanel.getByText("fig|224914.16.peg.601"),
+    ).not.toBeVisible();
   });
 
-  test("switching Table to Graph and back keeps the table filter applied (bug #3)", async ({ page, browserName }) => {
+  test("switching Table to Graph and back keeps the table filter applied (bug #3)", async ({
+    page,
+    browserName,
+  }) => {
     // Switching to Graph mounts SigmaCanvas, which headless Firefox can't give a
     // WebGL context — Sigma throws and takes the whole page down (no canvas
     // fallback; see the Graph subtab test above). Table↔Graph state survival is
     // covered on Chromium/WebKit, which ship software GL.
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupFilterableInteractionsPage(page);
 
@@ -209,7 +197,10 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     page,
     browserName,
   }) => {
-    test.skip(browserName === "firefox", "Headless Firefox has no WebGL for Sigma.js to render into");
+    test.skip(
+      browserName === "firefox",
+      "Headless Firefox has no WebGL for Sigma.js to render into",
+    );
 
     const interactionsPage = await setupFilterableInteractionsPage(page);
 
@@ -223,7 +214,9 @@ test.describe("taxon interactions tab: filter sync between Table and Graph", () 
     await interactionsPage.filterGraphByKeyword("peg.600");
 
     await expect(graphPanel.getByText("fig|224914.16.peg.600")).toBeVisible();
-    await expect(graphPanel.getByText("fig|224914.16.peg.601")).not.toBeVisible();
+    await expect(
+      graphPanel.getByText("fig|224914.16.peg.601"),
+    ).not.toBeVisible();
 
     await interactionsPage.switchToTable();
     await interactionsPage.expectTableKeywordValue("peg.600");

@@ -1,8 +1,4 @@
-export {
-  DataExportError,
-  DataRepository,
-  DataRepositoryError,
-} from "./client";
+export { DataRepository, DataRepositoryError } from "./client";
 export {
   collectionQueryOptions,
   dataQueryKeys,
@@ -19,6 +15,7 @@ export {
   epitopeAssayRecordSchema,
   epitopeRecordSchema,
   experimentRecordSchema,
+  genomeAmrRecordSchema,
   genomeFeatureRecordSchema,
   genomeRecordSchema,
   genomeSequenceRecordSchema,

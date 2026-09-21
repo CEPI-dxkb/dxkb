@@ -1,10 +1,26 @@
 import {
+  allTermSearchTypes,
   searchDescriptors,
   searchHref,
   searchTypeForLocation,
+  searchTypes,
 } from "./search-info";
 
 describe("search descriptors", () => {
+  // Specialty Genes, Pathways, and Subsystems have no destination of their own
+  // and are deliberately absent from the legacy type menu, but the
+  // all-data-types result page still queries and labels them. Deleting the
+  // descriptors would silently drop three cards from that page.
+  it.each(["sp_gene", "pathway", "subsystem"])(
+    "keeps the destination-less %s descriptor for the all-data-types page",
+    (id) => {
+      expect(allTermSearchTypes.map((descriptor) => descriptor.id)).toContain(
+        id,
+      );
+      expect(searchTypes.map((descriptor) => descriptor.id)).not.toContain(id);
+    },
+  );
+
   it("resolves every canonical search destination back to its search type", () => {
     for (const descriptor of searchDescriptors) {
       if (descriptor.route.status !== "canonical") continue;

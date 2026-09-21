@@ -1,29 +1,38 @@
-import { buildRql } from "../filter-utils";
+import { parseRql, validateRql } from "@/lib/data-api";
+import { buildRql, combineRql } from "../filter-utils";
 
-// Regression: Solr string fields (epitope_type, assay_results, etc.) split an
-// unquoted multi-word eq() value into separate ANDed terms —
-// `eq(epitope_type,Linear peptide)` becomes `epitope_type:Linear AND
-// epitope_type:peptide`, which matches nothing. Every facet click across every
-// resource (genome, strain, epitope, surveillance, ...) goes through this one
-// buildRql(), so quoting eq() values here fixes the bug for all views at once.
+// `buildRql` builds the predicate for the legacy Search filter bar
+// (`filter-bar.tsx`), which is the only consumer: the modern collection views
+// build their filters structurally and serialize them with `serializeRql`.
+// Its output is sent to the same-origin Data API gateway as `rql`, so every
+// assertion below is paired with the gateway's own `validateRql` — what the
+// upstream service finally receives is that re-serialized form, not this one.
 describe("buildRql", () => {
-  it("quotes a multi-word eq() value so Solr treats it as one phrase", () => {
+  it("percent-encodes an eq() value and leaves the quoting to the gateway", () => {
     const rql = buildRql({
       selected: [{ field: "epitope_type", value: "Linear peptide", op: "eq" }],
       keywords: [],
     });
-    expect(rql).toBe("eq(epitope_type,%22Linear%20peptide%22)");
+    expect(rql).toBe("eq(epitope_type,Linear%20peptide)");
+    // Regression: this used to wrap the value in `%22`, which decoded to a
+    // value whose content was `"Linear peptide"` — quote characters included —
+    // so Solr matched on the quotes instead of the phrase. The gateway adds
+    // the phrase quoting itself, exactly once.
+    expect(validateRql("epitope", rql)).toBe(
+      'eq(epitope_type,"Linear%20peptide")',
+    );
   });
 
-  it("quotes a single-word eq() value the same way (matches legacy convention)", () => {
+  it("leaves a single-word eq() value unquoted through the gateway", () => {
     const rql = buildRql({
       selected: [{ field: "genome_status", value: "Complete", op: "eq" }],
       keywords: [],
     });
-    expect(rql).toBe("eq(genome_status,%22Complete%22)");
+    expect(rql).toBe("eq(genome_status,Complete)");
+    expect(validateRql("genome", rql)).toBe("eq(genome_status,Complete)");
   });
 
-  it("quotes each branch of an or() group for the same field", () => {
+  it("groups repeated values for one field into an or()", () => {
     const rql = buildRql({
       selected: [
         { field: "epitope_type", value: "Linear peptide", op: "eq" },
@@ -32,11 +41,14 @@ describe("buildRql", () => {
       keywords: [],
     });
     expect(rql).toBe(
-      "or(eq(epitope_type,%22Linear%20peptide%22),eq(epitope_type,%22Discontinuous%20peptide%22))",
+      "or(eq(epitope_type,Linear%20peptide),eq(epitope_type,Discontinuous%20peptide))",
+    );
+    expect(validateRql("epitope", rql)).toBe(
+      'or(eq(epitope_type,"Linear%20peptide"),eq(epitope_type,"Discontinuous%20peptide"))',
     );
   });
 
-  it("quotes eq() values across different fields joined with and()", () => {
+  it("joins different fields with and()", () => {
     const rql = buildRql({
       selected: [
         { field: "epitope_type", value: "Linear peptide", op: "eq" },
@@ -45,35 +57,59 @@ describe("buildRql", () => {
       keywords: [],
     });
     expect(rql).toBe(
-      "and(eq(epitope_type,%22Linear%20peptide%22),eq(host_name,%22Homo%20sapiens%2C%20human%22))",
+      "and(eq(epitope_type,Linear%20peptide),eq(host_name,Homo%20sapiens%2C%20human))",
+    );
+    // The comma inside the value stays encoded, so it is never read as an
+    // argument separator.
+    expect(validateRql("epitope", rql)).toBe(
+      'and(eq(epitope_type,"Linear%20peptide"),eq(host_name,"Homo%20sapiens%2C%20human"))',
     );
   });
 
-  it("does not quote between() values (numeric ranges, not string phrase matches)", () => {
+  it("encodes parentheses inside an eq() value", () => {
     const rql = buildRql({
-      selected: [{ field: "genome_length", value: ["100", "200"], op: "between" }],
+      selected: [
+        { field: "host_name", value: "Mus musculus B10.A(4R", op: "eq" },
+      ],
       keywords: [],
     });
-    expect(rql).toBe("between(genome_length,100,200)");
+    expect(rql).toBe("eq(host_name,Mus%20musculus%20B10.A%284R)");
+    expect(validateRql("epitope", rql)).toBe(
+      'eq(host_name,"Mus%20musculus%20B10.A%284R")',
+    );
   });
 
-  it("escapes parentheses inside a quoted eq() value", () => {
-    const rql = buildRql({
-      selected: [{ field: "host_name", value: "Mus musculus B10.A(4R", op: "eq" }],
-      keywords: [],
+  it("builds a prefix keyword clause the gateway accepts", () => {
+    const rql = buildRql({ selected: [], keywords: ["influenza"] });
+    expect(rql).toBe("keyword(influenza*)");
+    // The gateway re-encodes `*` as `%2A`; the decoded value is unchanged.
+    expect(parseRql("genome", validateRql("genome", rql))).toEqual({
+      operator: "keyword",
+      value: "influenza*",
     });
-    expect(rql).toBe("eq(host_name,%22Mus%20musculus%20B10.A%284R%22)");
-  });
-
-  it("does not quote gt() values (numeric comparison, not a phrase match)", () => {
-    const rql = buildRql({
-      selected: [{ field: "genome_length", value: "100", op: "gt" }],
-      keywords: [],
-    });
-    expect(rql).toBe("gt(genome_length,100)");
   });
 
   it("returns empty string when nothing is selected", () => {
     expect(buildRql({ selected: [], keywords: [] })).toBe("");
+  });
+});
+
+describe("combineRql", () => {
+  it("returns the single non-empty clause unchanged", () => {
+    expect(combineRql("keyword(influenza*)", "")).toBe("keyword(influenza*)");
+    expect(combineRql("", "eq(mol_type,DNA)")).toBe("eq(mol_type,DNA)");
+    expect(combineRql(undefined, undefined)).toBe("");
+  });
+
+  // Regression: the facet request used to join the base query and the filter
+  // with `&`, the legacy transport separator. The gateway parses `rql` as a
+  // single RQL expression, so that form is rejected outright.
+  it("conjoins clauses with and(), which the gateway parses", () => {
+    const combined = combineRql("keyword(influenza*)", "eq(mol_type,DNA)");
+    expect(combined).toBe("and(keyword(influenza*),eq(mol_type,DNA))");
+    expect(() => validateRql("genome_sequence", combined)).not.toThrow();
+    expect(() =>
+      validateRql("genome_sequence", "keyword(influenza*)&eq(mol_type,DNA)"),
+    ).toThrow();
   });
 });

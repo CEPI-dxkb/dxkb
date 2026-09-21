@@ -1,14 +1,25 @@
 import { notFound, redirect } from "next/navigation";
 import { DataApiError } from "@/lib/data-api/repository";
+import { readRouteParam, type RouteParamSource } from "./route-params";
 
 export type CompoundSampleQuery = Record<string, string | string[] | undefined>;
 
 type FoundLookup = { status: "unique" } | { status: "ambiguous" };
 
+/**
+ * Resolve a compound-sample route's record from its raw `params.sampleId`.
+ *
+ * `source` says which entry point read `params.sampleId`, because Next
+ * delivers the two different encodings of it — see `readRouteParam` in
+ * `./route-params.ts` for the mechanism and the Next-internals citation. The
+ * returned `sampleId` is the real identifier; use it for titles, canonical
+ * hrefs and child props, never the raw param.
+ */
 export async function loadCompoundSamplePage<TFound extends FoundLookup>(
   rawSampleId: string,
   discriminator: string | undefined,
   options: {
+    source: RouteParamSource;
     isSampleId: (sampleId: string) => boolean;
     lookup: (
       sampleId: string,
@@ -16,13 +27,7 @@ export async function loadCompoundSamplePage<TFound extends FoundLookup>(
     ) => Promise<TFound | { status: "not-found" }>;
   },
 ): Promise<{ sampleId: string; result: TFound }> {
-  let sampleId: string;
-
-  try {
-    sampleId = decodeURIComponent(rawSampleId);
-  } catch {
-    notFound();
-  }
+  const sampleId = readRouteParam(rawSampleId, options.source);
   if (!options.isSampleId(sampleId)) notFound();
 
   try {
@@ -30,8 +35,7 @@ export async function loadCompoundSamplePage<TFound extends FoundLookup>(
     if (result.status === "not-found") notFound();
     return { sampleId, result };
   } catch (error) {
-    if (error instanceof DataApiError && [401, 403, 404].includes(error.status))
-      notFound();
+    if (error instanceof DataApiError && error.status === 404) notFound();
     throw error;
   }
 }

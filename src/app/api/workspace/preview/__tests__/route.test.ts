@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
 import { GET } from "../[...path]/route";
 
 // Mock resolveWorkspaceDownload — the preview route depends on it
@@ -33,7 +36,7 @@ function makeResolvedDownload(
 }
 
 function makeParams(path: string[]) {
-  return { params: Promise.resolve({ path }) };
+  return makeRouteContext({ path });
 }
 
 describe("GET /api/workspace/preview/[...path]", () => {

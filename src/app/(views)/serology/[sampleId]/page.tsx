@@ -24,7 +24,7 @@ export async function generateMetadata({
   const { sampleId: decodedSampleId, result } = await loadCompoundSamplePage(
     sampleId,
     scalarQueryParam(query.test_type),
-    { isSampleId: isSerologySampleId, lookup: getSerology },
+    { source: "metadata", isSampleId: isSerologySampleId, lookup: getSerology },
   );
   return {
     title: `${decodedSampleId} | Serology`,
@@ -44,7 +44,7 @@ export default async function SerologyPage({
   const { sampleId: decodedSampleId, result } = await loadCompoundSamplePage(
     sampleId,
     testType,
-    { isSampleId: isSerologySampleId, lookup: getSerology },
+    { source: "page", isSampleId: isSerologySampleId, lookup: getSerology },
   );
   canonicalizeCompoundSampleUrl(decodedSampleId, query, {
     discriminatorParam: "test_type",

@@ -1,27 +1,23 @@
-import { proteinFeatureFields } from "@/constants/datafields/protein_feature";
-import type { DataField } from "@/constants/datafields/types";
-import { eq, validateRql } from "@/lib/data-api";
+import { validateRql } from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import { structuralFilterRql } from "@/lib/views/structural-rql";
+import { proteinFeatureMetadata } from "./fields";
 
-const fields: DataField[] = Object.values(proteinFeatureFields);
-
-export const proteinFeatureSorts = fields
-  .filter((field) => field.show_in_table !== false && field.sortable !== false)
-  .flatMap((field) => [`${field.field}:asc`, `${field.field}:desc`]);
-
-const facetFields = fields
-  .filter((field) => field.facet)
-  .map((field) => field.field);
+export const proteinFeatureSorts = proteinFeatureMetadata.sorts;
 
 export const proteinFeatureCollectionOptions: CollectionStateOptions = {
   defaultSort: "unsorted",
   sortAllowlist: ["unsorted", ...proteinFeatureSorts],
-  friendlyFilters: ["genome_id", "feature_id", ...facetFields],
+  friendlyFilters: [
+    "genome_id",
+    "feature_id",
+    ...proteinFeatureMetadata.facetFields,
+  ],
   legacyRqlFilter: true,
 };
 
@@ -36,19 +32,5 @@ export function parseProteinFeatureCollectionState(
 export function proteinFeatureStructuralRql(
   state: CollectionState,
 ): string | undefined {
-  if (state.rql) return undefined;
-  const clauses = Object.entries(state.filters).flatMap(([field, selected]) => {
-    const predicates = selected.map((value) =>
-      eq("protein_feature", field, value),
-    );
-    return predicates.length === 0
-      ? []
-      : [
-          predicates.length === 1
-            ? predicates[0]
-            : `or(${predicates.join(",")})`,
-        ];
-  });
-  if (clauses.length === 0) return undefined;
-  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+  return structuralFilterRql("protein_feature", state);
 }

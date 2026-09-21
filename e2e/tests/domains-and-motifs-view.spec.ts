@@ -1,15 +1,23 @@
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  proteinFeatureScenarioOverrides,
+} from "../fixtures/overrides";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import { DomainsAndMotifsPage } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
+
+const domainsAndMotifsOverrides = [
+  ...proteinFeatureScenarioOverrides,
+  ...emptyBackendFallbackOverrides,
+];
 
 test.describe("Domains and Motifs view", () => {
   test("renders the list-only collection with canonical links and no Deprecated scope", async ({
     page,
   }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...domainsAndMotifsOverrides],
     });
     const domainsAndMotifsPage = new DomainsAndMotifsPage(page);
 
@@ -26,7 +34,7 @@ test.describe("Domains and Motifs view", () => {
 
   test("redirects both legacy list aliases", async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...domainsAndMotifsOverrides],
     });
     const domainsAndMotifsPage = new DomainsAndMotifsPage(page);
 

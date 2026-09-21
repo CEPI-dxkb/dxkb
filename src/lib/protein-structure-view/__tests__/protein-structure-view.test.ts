@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
 import {
+  buildWorkspaceStructureSource,
   canonicalProteinStructureQuery,
   isAlphaFoldId,
   isPdbId,
@@ -89,9 +90,13 @@ describe("Protein Structure view contracts", () => {
     }
   });
 
-  it("canonicalizes encoded workspace paths before source resolution", () => {
+  it("passes already-decoded workspace paths straight through (Next decodes searchParams once)", () => {
+    // `%20`/`%2E` here are literal characters the workspace item is named
+    // with — this is what a real `searchParams.path` value looks like after
+    // Next.js has already decoded it once. `parseProteinStructureMode` must
+    // not decode it again.
     const mode = parseProteinStructureMode({
-      path: "/user%20name/home/model%2Ebcif",
+      path: "/user name/home/model.bcif",
     });
 
     expect(mode).toEqual({
@@ -110,7 +115,7 @@ describe("Protein Structure view contracts", () => {
     }
   });
 
-  it("validates workspace paths before source resolution", () => {
+  it("validates workspace paths without re-decoding them", () => {
     expect(
       parseProteinStructureMode({ path: "relative/model.pdb" }),
     ).toMatchObject({ kind: "invalid" });
@@ -124,21 +129,171 @@ describe("Protein Structure view contracts", () => {
     if (compressedPath.kind === "invalid") {
       expect(compressedPath.reason).toContain("uncompressed");
     }
+    // An actual ".." segment (what Next would hand us after decoding a real
+    // `%2e%2e` traversal attempt in the raw URL) is still rejected.
     expect(
       parseProteinStructureMode({ path: "/user/../model.pdb" }),
     ).toMatchObject({ kind: "invalid" });
     expect(
-      parseProteinStructureMode({ path: "/user/%2e%2e/model.pdb" }),
-    ).toMatchObject({ kind: "invalid" });
-    expect(
-      parseProteinStructureMode({ path: "/user/folder%2f../model.pdb" }),
-    ).toMatchObject({ kind: "invalid" });
-    expect(
-      parseProteinStructureMode({ path: "/user/%E0%A4%A/model.pdb" }),
-    ).toMatchObject({ kind: "invalid" });
-    expect(
       parseProteinStructureMode({ path: `/user/${"a".repeat(1024)}.pdb` }),
     ).toMatchObject({ kind: "invalid" });
+  });
+
+  it("treats literal percent text and traversal-looking names as valid, not corrupted or rejected", () => {
+    // A folder literally named "%2e%2e" is not an actual ".." segment and
+    // must not be decoded into one.
+    expect(
+      parseProteinStructureMode({ path: "/user/%2e%2e/model.pdb" }),
+    ).toEqual({ kind: "path", path: "/user/%2e%2e/model.pdb" });
+
+    // A filename containing literal "%2F" text must not be split into two
+    // segments — that would resolve a different file than the one named.
+    expect(
+      parseProteinStructureMode({ path: "/user/folder%2f../model.pdb" }),
+    ).toEqual({ kind: "path", path: "/user/folder%2f../model.pdb" });
+
+    // Percent text that looks malformed, but was never re-decoded, must not
+    // be rejected as an invalid segment.
+    expect(
+      parseProteinStructureMode({ path: "/user/%E0%A4%A/model.pdb" }),
+    ).toEqual({ kind: "path", path: "/user/%E0%A4%A/model.pdb" });
+
+    // A name that merely contains ".." (not an exact ".." segment) is a
+    // valid name, not a traversal attempt.
+    expect(
+      parseProteinStructureMode({ path: "/user/..hidden/model.pdb" }),
+    ).toEqual({ kind: "path", path: "/user/..hidden/model.pdb" });
+    expect(
+      parseProteinStructureMode({ path: "/user/home/model..old.pdb" }),
+    ).toEqual({ kind: "path", path: "/user/home/model..old.pdb" });
+
+    // Spaces are valid.
+    expect(
+      parseProteinStructureMode({ path: "/user/my folder/model.pdb" }),
+    ).toEqual({ kind: "path", path: "/user/my folder/model.pdb" });
+  });
+
+  it("resolves a workspace path containing literal %2F to the exact file it names (query-param entrypoint)", () => {
+    const mode = parseProteinStructureMode({
+      path: "/user/home/weird%2Ffile.pdb",
+    });
+    expect(mode).toEqual({ kind: "path", path: "/user/home/weird%2Ffile.pdb" });
+    if (mode.kind !== "path") throw new Error("expected path mode");
+
+    const [resolved] = resolveProteinStructureSources({
+      workspacePath: mode.path,
+    });
+    expect(resolved).toEqual({
+      url: "/api/workspace/view/user/home/weird%252Ffile.pdb",
+      format: "pdb",
+      label: "weird%2Ffile.pdb",
+      kind: "workspace",
+    });
+    // A single decode (what the workspace proxy route/Next.js itself
+    // performs) must land back on the exact original file name, not split
+    // it into an extra path segment.
+    expect(resolved.url.split("/").map(decodeURIComponent).join("/")).toBe(
+      "/api/workspace/view/user/home/weird%2Ffile.pdb",
+    );
+  });
+
+  it.each([
+    ["/user/home/model.pdb", "pdb"],
+    ["/user/home/model.PDB", "pdb"],
+    ["/user/home/model.cif", "mmcif"],
+    ["/user/home/model.CIF", "mmcif"],
+    ["/user/home/model.mmcif", "mmcif"],
+    ["/user/home/model.MMCIF", "mmcif"],
+    ["/user/home/model.bcif", "bcif"],
+    ["/user/home/model.BCIF", "bcif"],
+  ])(
+    "accepts the supported structure extension in %s (case-insensitive)",
+    (path, format) => {
+      expect(parseProteinStructureMode({ path })).toEqual({
+        kind: "path",
+        path,
+      });
+      expect(
+        resolveProteinStructureSources({ workspacePath: path }),
+      ).toEqual([expect.objectContaining({ format })]);
+    },
+  );
+
+  describe("buildWorkspaceStructureSource (shared by both structure entrypoints)", () => {
+    it("preserves spaces and literal percent text", () => {
+      expect(
+        buildWorkspaceStructureSource("/user name/home/model 1.cif"),
+      ).toEqual({
+        url: "/api/workspace/view/user%20name/home/model%201.cif",
+        format: "mmcif",
+        label: "model 1.cif",
+        kind: "workspace",
+      });
+
+      expect(
+        buildWorkspaceStructureSource("/user/home/100%done.pdb"),
+      ).toEqual({
+        url: "/api/workspace/view/user/home/100%25done.pdb",
+        format: "pdb",
+        label: "100%done.pdb",
+        kind: "workspace",
+      });
+    });
+
+    it("preserves a literal %2F in a filename instead of splitting it into a new segment", () => {
+      const source = buildWorkspaceStructureSource(
+        "/user/home/weird%2Ffile.pdb",
+      );
+      expect(source).toEqual({
+        url: "/api/workspace/view/user/home/weird%252Ffile.pdb",
+        format: "pdb",
+        label: "weird%2Ffile.pdb",
+        kind: "workspace",
+      });
+      expect(source.url.split("/").map(decodeURIComponent).join("/")).toBe(
+        "/api/workspace/view/user/home/weird%2Ffile.pdb",
+      );
+    });
+
+    it("does not alter traversal-looking names", () => {
+      expect(
+        buildWorkspaceStructureSource("/user/..hidden/model.pdb"),
+      ).toEqual({
+        url: "/api/workspace/view/user/..hidden/model.pdb",
+        format: "pdb",
+        label: "model.pdb",
+        kind: "workspace",
+      });
+    });
+
+    it.each([
+      ["model.pdb", "pdb"],
+      ["model.PDB", "pdb"],
+      ["model.cif", "mmcif"],
+      ["model.CIF", "mmcif"],
+      ["model.mmcif", "mmcif"],
+      ["model.MMCIF", "mmcif"],
+      ["model.bcif", "bcif"],
+      ["model.BCIF", "bcif"],
+    ])("detects the format of %s case-insensitively as %s", (fileName, format) => {
+      expect(
+        buildWorkspaceStructureSource(`/user/home/${fileName}`),
+      ).toMatchObject({ format, label: fileName });
+    });
+
+    it("mirrors the catch-all viewer route's path-array-to-source pipeline", () => {
+      // The `/viewer/structure/[[...path]]` route hands page.tsx an array of
+      // already per-segment-decoded strings; the page joins them with "/"
+      // and builds the same source. A literal "%2F" inside one segment must
+      // survive as text, not be misread as an extra separator.
+      const segments = ["alice@bvbrc", "home", "weird%2Ffile.pdb"];
+      expect(buildWorkspaceStructureSource(segments.join("/"))).toEqual({
+        url: "/api/workspace/view/alice%40bvbrc/home/weird%252Ffile.pdb",
+        format: "pdb",
+        label: "weird%2Ffile.pdb",
+        kind: "workspace",
+      });
+    });
   });
 
   it("supports collection URL state and exact structural filters", () => {

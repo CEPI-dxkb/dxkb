@@ -87,9 +87,3 @@ export const legacyViewTargets = Object.fromEntries(
       ]),
   ]),
 ) as Record<string, LegacyViewTarget | undefined>;
-
-export const legacyToSegment: Record<string, string> = Object.fromEntries(
-  Object.entries(legacyViewTargets).flatMap(([name, target]) =>
-    target ? [[name, target.segment]] : [],
-  ),
-);

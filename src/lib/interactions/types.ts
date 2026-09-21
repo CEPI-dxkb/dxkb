@@ -1,27 +1,8 @@
 import type { RefObject } from "react";
 
-export interface PpiRecord {
-  id: string;
-  interactor_a: string;
-  interactor_b: string;
-  interactor_type_a?: string;
-  interactor_type_b?: string;
-  interactor_desc_a?: string;
-  interactor_desc_b?: string;
-  feature_id_a?: string;
-  feature_id_b?: string;
-  gene_a?: string;
-  gene_b?: string;
-  genome_name_a?: string;
-  genome_name_b?: string;
-  refseq_locus_tag_a?: string;
-  refseq_locus_tag_b?: string;
-  domain_a?: string;
-  domain_b?: string;
-  evidence?: string | string[];
-  interaction_type?: string | string[];
-  detection_method?: string | string[];
-}
+// A PPI row's shape is owned by the zod schema that validates it, so the graph
+// cannot drift from what it actually accepts off the wire.
+export type { PpiRecord } from "./schema";
 
 export interface GNode {
   id: string;

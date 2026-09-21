@@ -26,7 +26,6 @@ export function TaxonomyResourceCollection({
       repository={repository}
       state={initialState}
       onStateChange={setState}
-      showHeader={false}
       keywordMode="refine"
       prefetchNextPage
     />

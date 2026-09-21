@@ -1,4 +1,10 @@
-import { mockNextRequest } from "@/test-helpers/api-route-helpers";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  makeRouteContext,
+  mockNextRequest,
+} from "@/test-helpers/api-route-helpers";
+import { brucellaPpiTotal } from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
 
 interface RouteContext {
@@ -6,7 +12,7 @@ interface RouteContext {
 }
 
 function ctx(path: string[]): RouteContext {
-  return { params: Promise.resolve({ path }) };
+  return makeRouteContext({ path });
 }
 
 interface SolrPivotEntry {
@@ -76,17 +82,30 @@ describe("api/e2e-mock catch-all — enabled", () => {
     process.env.E2E_MOCK_ENABLED = "1";
   });
 
-  it("GET returns 200 with empty object", async () => {
-    const resp = await GET(
-      mockNextRequest({
-        url: "http://localhost:3020/api/e2e-mock/app-service/foo",
-      }),
-      ctx(["app-service", "foo"]),
-    );
+  it.each([
+    ["taxonomy", "", 23456],
+    [
+      "taxonomy",
+      "and(eq(taxon_rank,species),eq(lineage,*Viruses*))&",
+      23456,
+    ],
+    ["protein_structure", "", 4567],
+  ])(
+    "returns the deterministic %s total for a statistics count request",
+    async (core, filter, expectedCount) => {
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/data/${core}/?${filter}limit(1)`,
+          headers: { Accept: "application/solr+json" },
+        }),
+        ctx(["data", core]),
+      );
 
-    expect(resp.status).toBe(200);
-    expect((await resp.json()) as unknown).toEqual({});
-  });
+      await expect(resp.json()).resolves.toMatchObject({
+        response: { numFound: expectedCount, docs: [] },
+      });
+    },
+  );
 
   it("returns protein structure fixtures for collections and exact members", async () => {
     const unfilteredResp = await GET(
@@ -350,24 +369,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     );
   });
 
-  it("POST returns 200 with JSON-RPC-shaped empty result", async () => {
-    const resp = await POST(
-      mockNextRequest({
-        method: "POST",
-        body: { id: 1, jsonrpc: "2.0", method: "Workspace.ls", params: [] },
-        url: "http://localhost:3020/api/e2e-mock/workspace",
-      }),
-      ctx(["workspace"]),
-    );
-
-    expect(resp.status).toBe(200);
-    expect((await resp.json()) as unknown).toEqual({
-      id: 1,
-      jsonrpc: "2.0",
-      result: [[]],
-    });
-  });
-
   it("GET returns a valid BV-BRC profile for server-side session hydration", async () => {
     const resp = await GET(
       mockNextRequest({
@@ -485,25 +486,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     },
   );
 
-  it("POST handles non-JSON bodies without throwing", async () => {
-    const resp = await POST(
-      mockNextRequest({
-        method: "POST",
-        url: "http://localhost:3020/api/e2e-mock/upload",
-        headers: { "Content-Type": "text/plain" },
-        rawBody: "raw text",
-      }),
-      ctx(["upload"]),
-    );
-
-    expect(resp.status).toBe(200);
-    expect((await resp.json()) as unknown).toEqual({
-      id: 1,
-      jsonrpc: "2.0",
-      result: [[]],
-    });
-  });
-
   it("GET returns the Genome collection fixture for the expected MERS query", async () => {
     const resp = await GET(
       mockNextRequest({
@@ -563,33 +545,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect((await resp.json()) as unknown).toMatchObject({
       response: { docs: [] },
     });
-  });
-
-  it("PUT returns 200 with empty object", async () => {
-    const resp = await PUT(
-      mockNextRequest({
-        method: "PUT",
-        body: {},
-        url: "http://localhost:3020/api/e2e-mock/foo",
-      }),
-      ctx(["foo"]),
-    );
-
-    expect(resp.status).toBe(200);
-    expect((await resp.json()) as unknown).toEqual({});
-  });
-
-  it("DELETE returns 200 with empty object", async () => {
-    const resp = await DELETE(
-      mockNextRequest({
-        method: "DELETE",
-        url: "http://localhost:3020/api/e2e-mock/foo/bar",
-      }),
-      ctx(["foo", "bar"]),
-    );
-
-    expect(resp.status).toBe(200);
-    expect((await resp.json()) as unknown).toEqual({});
   });
 
   it("GET returns the reference_genome array fixture (not a SOLR envelope)", async () => {
@@ -721,7 +676,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect(resp.status).toBe(400);
     expect((await resp.json()) as unknown).toMatchObject({
       error: expect.stringContaining(
-        "unhandled bvbrc-website/genome query",
+        "unhandled bvbrc-website request",
       ) as unknown,
       reason: expect.stringContaining(
         "unsupported pivot key 'state_province,wrong_field'",
@@ -740,7 +695,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect(resp.status).toBe(400);
     expect((await resp.json()) as unknown).toMatchObject({
       error: expect.stringContaining(
-        "unhandled bvbrc-website/genome query",
+        "unhandled bvbrc-website request",
       ) as unknown,
       reason: expect.stringContaining(
         "unsupported pivot key 'state_province,county,wrong_field'",
@@ -858,7 +813,7 @@ describe("api/e2e-mock catch-all — enabled", () => {
     expect(resp.status).toBe(400);
     expect((await resp.json()) as unknown).toMatchObject({
       error: expect.stringContaining(
-        "unhandled bvbrc-website/genome query",
+        "unhandled bvbrc-website request",
       ) as unknown,
     });
   });
@@ -900,23 +855,6 @@ describe("api/e2e-mock catch-all — enabled", () => {
       });
     },
   );
-
-  it("POST returns 400 for endpoints outside the allowlisted namespaces", async () => {
-    const resp = await POST(
-      mockNextRequest({
-        method: "POST",
-        body: { something: 1 },
-        url: "http://localhost:3020/api/e2e-mock/mystery-endpoint",
-      }),
-      ctx(["mystery-endpoint"]),
-    );
-
-    expect(resp.status).toBe(400);
-    expect((await resp.json()) as unknown).toMatchObject({
-      error: expect.stringContaining("unhandled POST endpoint") as unknown,
-      path: "mystery-endpoint",
-    });
-  });
 
   it("POST returns SOLR-shaped genome_amr fixture for a well-formed AMR body", async () => {
     const body =
@@ -986,6 +924,367 @@ describe("api/e2e-mock catch-all — enabled", () => {
       reason: expect.stringContaining(
         "facet((pivot,(antibiotic,resistant_phenotype))",
       ) as unknown,
+    });
+  });
+});
+
+/**
+ * Fail-closed dispatch.
+ *
+ * Every combination this mock answers is named here, and every namespace that
+ * used to be permissive is probed with something it does not know. A guard
+ * that only ever sees the happy path is not a guard, so each retained empty
+ * operation is paired with a rejection case in the same namespace.
+ */
+describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
+  beforeEach(() => {
+    process.env.E2E_MOCK_ENABLED = "1";
+  });
+
+  function post(path: string[], body: unknown) {
+    return POST(
+      mockNextRequest({
+        method: "POST",
+        body,
+        url: `http://localhost:3020/api/e2e-mock/${path.join("/")}`,
+      }),
+      ctx(path),
+    );
+  }
+
+  function rpc(path: string[], method: string) {
+    return post(path, { id: 1, jsonrpc: "2.0", method, params: [] });
+  }
+
+  // The complete retained set: namespace, method, and the empty result the
+  // mock documents as correct for that contract.
+  it.each([
+    ["workspace", "Workspace.ls", [{}]],
+    ["workspace", "Workspace.get", [[]]],
+    ["app-service", "AppService.query_task_summary_filtered", {}],
+    ["app-service", "AppService.query_app_summary_filtered", {}],
+  ])(
+    "POST %s answers %s with its named empty result",
+    async (namespace, method, result) => {
+      const resp = await rpc([namespace], method);
+
+      expect(resp.status).toBe(200);
+      expect((await resp.json()) as unknown).toEqual({
+        id: 1,
+        jsonrpc: "2.0",
+        result,
+      });
+    },
+  );
+
+  it.each(["workspace", "app-service"])(
+    "POST %s rejects an RPC method it has no fixture for",
+    async (namespace) => {
+      const resp = await rpc([namespace], "Namespace.no_such_method");
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toEqual({
+        id: 1,
+        jsonrpc: "2.0",
+        error: {
+          code: -32601,
+          message: expect.stringContaining(
+            `no fixture for JSON-RPC method 'Namespace.no_such_method' at endpoint '${namespace}'`,
+          ) as unknown,
+        },
+      });
+    },
+  );
+
+  it.each([
+    "service",
+    "services",
+    "data",
+    "data-service",
+    "sra-validation",
+    "minhash",
+    "upload",
+  ])(
+    "POST rejects the formerly permissive %s namespace outright",
+    async (namespace) => {
+      const resp = await rpc([namespace], "Some.method");
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toMatchObject({
+        error: {
+          message: expect.stringContaining(
+            `no JSON-RPC endpoint '${namespace}' is mocked`,
+          ) as unknown,
+        },
+      });
+    },
+  );
+
+  it("POST rejects a sub-path of a retained namespace it has no fixture for", async () => {
+    const resp = await rpc(["workspace", "unexpected"], "Workspace.ls");
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      error: {
+        message: expect.stringContaining(
+          "no JSON-RPC endpoint 'workspace/unexpected' is mocked",
+        ) as unknown,
+      },
+    });
+  });
+
+  it("POST rejects a non-JSON body without throwing", async () => {
+    const resp = await POST(
+      mockNextRequest({
+        method: "POST",
+        url: "http://localhost:3020/api/e2e-mock/upload",
+        headers: { "Content-Type": "text/plain" },
+        rawBody: "raw text",
+      }),
+      ctx(["upload"]),
+    );
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      error: "e2e-mock: unhandled POST endpoint",
+      reason: "request body carried no JSON-RPC method",
+      path: "upload",
+    });
+  });
+
+  it("POST rejects a JSON body with no method field", async () => {
+    const resp = await post(["mystery-endpoint"], { something: 1 });
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      error: "e2e-mock: unhandled POST endpoint",
+      path: "mystery-endpoint",
+    });
+  });
+
+  it("GET rejects an unknown path and names the path and query", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/app-service/foo?limit(1)",
+      }),
+      ctx(["app-service", "foo"]),
+    );
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      error: "e2e-mock: unhandled GET endpoint",
+      path: "app-service/foo",
+      query: "?limit(1)",
+      reason: expect.stringContaining("no GET fixture") as unknown,
+    });
+  });
+
+  it("GET rejects a data core with no fixture and names the core", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/no_such_core/?eq(id,1)",
+      }),
+      ctx(["data", "no_such_core"]),
+    );
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      error: "e2e-mock: unhandled GET endpoint",
+      reason: expect.stringContaining(
+        "no fixture for data core 'no_such_core'",
+      ) as unknown,
+    });
+  });
+
+  it.each([
+    ["taxonomy/999999", "no taxonomy fixture for taxon 999999"],
+    [
+      "data/summary_by_taxon/999999",
+      "no summary_by_taxon fixture for taxon 999999",
+    ],
+    ["some/other/endpoint", "no fixture for bvbrc-website endpoint"],
+  ])(
+    "GET rejects the unmocked bvbrc-website endpoint %s",
+    async (endpoint, reason) => {
+      const path = ["bvbrc-website", ...endpoint.split("/")];
+      const resp = await GET(
+        mockNextRequest({
+          url: `http://localhost:3020/api/e2e-mock/${path.join("/")}`,
+        }),
+        ctx(path),
+      );
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toMatchObject({
+        error: "e2e-mock: unhandled bvbrc-website request",
+        reason: expect.stringContaining(reason) as unknown,
+      });
+    },
+  );
+
+  it.each([
+    ["PUT", PUT],
+    ["DELETE", DELETE],
+  ])(
+    "%s rejects every path — no fixture is registered",
+    async (name, handler) => {
+      const resp = await handler(
+        mockNextRequest({
+          method: name,
+          url: "http://localhost:3020/api/e2e-mock/workspace/anything",
+        }),
+        ctx(["workspace", "anything"]),
+      );
+
+      expect(resp.status).toBe(400);
+      expect((await resp.json()) as unknown).toMatchObject({
+        error: `e2e-mock: unhandled ${name} endpoint`,
+        path: "workspace/anything",
+        reason: expect.stringContaining(`add a ${name} branch`) as unknown,
+      });
+    },
+  );
+
+  it("logs every rejection branch under the prefix e2e/README.md documents", async () => {
+    // The README tells a reader to grep the webServer log for
+    // "[api/e2e-mock] e2e-mock: ". That grep is only trustworthy if EVERY
+    // rejection is in it, so this drives all eight — including the
+    // `genome_amr` body-validation branch, which is the one that sat outside
+    // the prefix while a comment claimed none did.
+    const logged: string[] = [];
+    const spy = vi
+      .spyOn(console, "error")
+      .mockImplementation((...args: unknown[]) => {
+        logged.push(args.map(String).join(" "));
+      });
+
+    // 1. unknown JSON-RPC method inside a mocked endpoint
+    await rpc(["workspace"], "Workspace.no_such_method");
+    // 2. unmocked JSON-RPC endpoint
+    await rpc(["mystery"], "Some.method");
+    // 3. POST with no JSON-RPC method at all
+    await post(["mystery"], { something: 1 });
+    // 4. unknown GET path
+    await GET(
+      mockNextRequest({ url: "http://localhost:3020/api/e2e-mock/nowhere" }),
+      ctx(["nowhere"]),
+    );
+    // 5. unmocked bvbrc-website GET endpoint
+    await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/taxonomy/999999",
+      }),
+      ctx(["bvbrc-website", "taxonomy", "999999"]),
+    );
+    // 6. invalid bvbrc-website/genome_amr POST body
+    await POST(
+      mockNextRequest({
+        method: "POST",
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/genome_amr/",
+        headers: {
+          "Content-Type": "application/rqlquery+x-www-form-urlencoded",
+        },
+        rawBody: "eq(genome_id,*)",
+      }),
+      ctx(["bvbrc-website", "genome_amr"]),
+    );
+    // 7 + 8. PUT and DELETE
+    await PUT(
+      mockNextRequest({
+        method: "PUT",
+        url: "http://localhost:3020/api/e2e-mock/nowhere",
+      }),
+      ctx(["nowhere"]),
+    );
+    await DELETE(
+      mockNextRequest({
+        method: "DELETE",
+        url: "http://localhost:3020/api/e2e-mock/nowhere",
+      }),
+      ctx(["nowhere"]),
+    );
+    spy.mockRestore();
+
+    expect(logged).toHaveLength(8);
+    for (const line of logged) {
+      expect(line).toMatch(/^\[api\/e2e-mock\] e2e-mock: /);
+    }
+  });
+
+  it("routes every 4xx in the module through the two prefixed helpers", () => {
+    // The test above can only cover branches someone remembered to add to
+    // it. This one is the completeness half: a new branch that builds its
+    // own `NextResponse` with a status literal — and therefore its own log
+    // line, or none — fails here even if nobody updates the list above.
+    // `disabledResponse` is the one allowed exception: the
+    // `E2E_MOCK_ENABLED` guard is a refusal to serve, not a missing fixture.
+    const source = readFileSync(join(__dirname, "..", "route.ts"), "utf8");
+    const allowed = [
+      "function disabledResponse",
+      "function unhandledResponse",
+      "function unhandledRpcResponse",
+    ];
+    let remaining = source;
+    for (const declaration of allowed) {
+      const start = remaining.indexOf(declaration);
+      expect(
+        start,
+        `\`${declaration}\` is gone from route.ts — this scan allowlists it by name, so rename it here too or the scan silently stops covering it.`,
+      ).not.toBe(-1);
+      const end = remaining.indexOf("\n}\n", start);
+      remaining = remaining.slice(0, start) + remaining.slice(end);
+    }
+    // Strip comments before scanning so prose mentioning a status code (the
+    // JsonRpcClient note, the module header) is not read as a branch.
+    const code = remaining
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "");
+
+    expect(
+      [...code.matchAll(/status:\s*\d{3}/g)].map((m) => m[0]),
+      "a 4xx/5xx status literal outside the allowed helpers: route it through `unhandledResponse` or `unhandledRpcResponse` so it carries the rejection prefix, or add its enclosing function to `allowed` above with a comment saying why it is not a fixture gap.",
+    ).toEqual([]);
+  });
+
+  it("GET reports the canonical ppi total for an unnarrowed count", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/ppi/?eq(id,*)",
+      }),
+      ctx(["data", "ppi"]),
+    );
+
+    expect(resp.status).toBe(200);
+    expect((await resp.json()) as unknown).toMatchObject({
+      response: { numFound: brucellaPpiTotal },
+    });
+  });
+
+  it("GET still serves /taxonomy/1763's landing fixtures rather than rejecting", async () => {
+    // The page that used to render an error boundary. Both endpoints have to
+    // answer, because the landing page fetches them together.
+    const taxonomy = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/taxonomy/1763",
+      }),
+      ctx(["bvbrc-website", "taxonomy", "1763"]),
+    );
+    const summary = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/bvbrc-website/data/summary_by_taxon/1763",
+      }),
+      ctx(["bvbrc-website", "data", "summary_by_taxon", "1763"]),
+    );
+
+    expect(taxonomy.status).toBe(200);
+    expect((await taxonomy.json()) as unknown).toMatchObject({
+      taxon_id: 1763,
+      taxon_name: "Mycobacterium",
+      taxon_rank: "genus",
+    });
+    expect(summary.status).toBe(200);
+    expect((await summary.json()) as unknown).toMatchObject({
+      count: expect.any(Number) as unknown,
     });
   });
 });

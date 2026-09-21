@@ -211,14 +211,6 @@ export const searchTypes = searchDescriptors
   .filter((descriptor) => descriptor.pickerOrder !== undefined)
   .toSorted((a, b) => (a.pickerOrder ?? 0) - (b.pickerOrder ?? 0));
 
-export const searchTabsByType: Readonly<
-  Record<string, Readonly<Record<string, string>>>
-> = Object.fromEntries(
-  searchDescriptors.flatMap((descriptor) =>
-    descriptor.tabs ? [[descriptor.id, descriptor.tabs]] : [],
-  ),
-);
-
 export const allTermSearchTypes = searchDescriptors
   .filter((descriptor) => descriptor.allTermOrder !== undefined)
   .toSorted((a, b) => (a.allTermOrder ?? 0) - (b.allTermOrder ?? 0));

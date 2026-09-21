@@ -45,7 +45,6 @@ function ProteinStructureResourceCollectionContent({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
       prefetchNextPage
     />

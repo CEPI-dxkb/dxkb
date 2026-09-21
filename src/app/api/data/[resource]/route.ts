@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readSession } from "@/lib/auth/server/session";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { DataApiError, ServerDataRepository } from "@/lib/data-api/repository";
 import {
   DataApiValidationError,
   isDataResource,
 } from "@/lib/data-api/resources";
-import type { DataApiRequest, DataSort } from "@/lib/data-api/types";
+import {
+  dataApiErrorResponse,
+  dataApiNotConfiguredMessage,
+} from "@/lib/data-api/route-errors";
+import {
+  anonymousMemberRevalidateSeconds,
+  readScopeForOperation,
+  resolveServerDataRepository,
+} from "@/lib/data-api/server-policy";
+import type { DataApiRequest, DataResource, DataSort } from "@/lib/data-api/types";
 import {
   maxRequestBytes,
   validateDataApiRequest,
@@ -15,30 +22,54 @@ import {
 const rateLimitMax = 120;
 const rateLimitWindowMs = 60_000;
 
-function errorResponse(error: unknown): NextResponse {
-  if (error instanceof DataApiValidationError) {
-    return NextResponse.json(
-      { error: error.message, code: "invalid_request" },
-      { status: error.status },
-    );
-  }
-  if (error instanceof DataApiError) {
-    return NextResponse.json(
-      { error: error.message, code: error.code },
-      { status: error.status },
-    );
-  }
-  if (error instanceof DOMException && error.name === "AbortError") {
-    return NextResponse.json(
-      { error: "Data request was aborted.", code: "aborted" },
-      { status: 499 },
-    );
-  }
-  console.error("Data API gateway failed:", error);
+/**
+ * Single response contract for every oversized-body rejection path (a
+ * declared Content-Length over the cap, or the byte-capped read below hitting
+ * the cap while streaming a chunked or understated-length body). All three
+ * paths used to diverge: some returned 413, one threw a validation error that
+ * turned into 400. One shape now, one status, for equivalent input.
+ */
+function oversizedBodyResponse(): NextResponse {
   return NextResponse.json(
-    { error: "The data service request failed.", code: "internal_error" },
-    { status: 500 },
+    { error: "Request body is too large.", code: "invalid_request" },
+    { status: 413 },
   );
+}
+
+/**
+ * Reads `request`'s body up to `maxBytes`, tracking the running byte count as
+ * chunks arrive instead of buffering the whole stream and measuring it
+ * afterwards. Returns the decoded text on success, or `null` as soon as the
+ * running total exceeds `maxBytes` — the reader is cancelled at that point,
+ * so a chunked or understated-Content-Length body that lies about its size
+ * is never fully consumed.
+ */
+async function readCappedBody(
+  request: NextRequest,
+  maxBytes: number,
+): Promise<string | null> {
+  const stream = request.body;
+  if (!stream) return "";
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    combined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(combined);
 }
 
 function parseSort(value: string | null): DataSort | undefined {
@@ -117,51 +148,69 @@ function limited(request: NextRequest, resource: string): NextResponse | null {
   );
 }
 
+/**
+ * `data:${clientIp}:${resourceName}` is the rate-limit key, so a resource
+ * name straight from the URL must be allowlist-checked before it ever reaches
+ * `limited()` — otherwise an attacker can mint one rate-limit bucket per
+ * garbage path segment: the same unbounded-map growth that
+ * `src/lib/rate-limit.ts`'s `pruneExpiredBuckets` sweep (gated on
+ * `pruneThreshold` and `pruneIntervalMs`) exists to bound.
+ */
+function unsupportedResourceResponse(resourceName: string): NextResponse {
+  return NextResponse.json(
+    { error: `Unsupported data resource: ${resourceName}`, code: "not_found" },
+    { status: 404 },
+  );
+}
+
 async function execute(
   request: NextRequest,
-  resourceName: string,
+  resourceName: DataResource,
   operation: DataApiRequest,
 ): Promise<NextResponse> {
-  if (!isDataResource(resourceName)) {
-    return NextResponse.json(
-      {
-        error: `Unsupported data resource: ${resourceName}`,
-        code: "not_found",
-      },
-      { status: 404 },
-    );
-  }
-  const blocked = limited(request, resourceName);
-  if (blocked) return blocked;
-
   try {
     const validated = validateDataApiRequest(resourceName, operation);
-    const session = await readSession();
-    const publicMember = validated.operation === "member" && !session;
-    const baseUrl =
-      process.env.DATA_API_URL ?? process.env.NEXT_PUBLIC_DATA_API;
-    if (!baseUrl) throw new Error("DATA_API_URL is not configured.");
-    const repository = new ServerDataRepository({
-      baseUrl,
-      token: session?.token,
-      cache: publicMember ? "force-cache" : "no-store",
-      revalidate: publicMember ? 300 : undefined,
+    // Session lookup, env resolution, missing-configuration handling,
+    // repository construction, and cache policy all come from
+    // `resolveServerDataRepository`, shared with the page factory
+    // (`createServerDataRepository`) and the Taxa Tree route. This route used
+    // to reimplement all five, and disagreed with the factory on anonymous
+    // collections and on E2E mode.
+    //
+    // What stays here: the sanitized client-facing message paired with an
+    // operator-facing log. The actionable detail is the env var name, which
+    // belongs in the operator's log rather than in a response any caller —
+    // signed in or not — can read. The distinct `not_configured` code is what
+    // tells a client this is a deployment problem and not a failed request;
+    // without it the catch-all below would answer "The data service request
+    // failed." with nothing to act on.
+    const { repository, sharedCache } = await resolveServerDataRepository({
+      readScope: readScopeForOperation(validated.operation),
+      notConfigured: {
+        message: dataApiNotConfiguredMessage,
+        log: "Data API gateway is not configured: set DATA_API_URL (or NEXT_PUBLIC_DATA_API).",
+      },
     });
     const result = await repository.execute(
       resourceName,
       validated,
       request.signal,
     );
+    // `sharedCache` is true only for an anonymous, non-E2E member read; the
+    // shared window below is the same constant the repository's own
+    // `next.revalidate` uses, so the two cannot drift. `Vary: Cookie` stays on
+    // both branches: a response that is private today becomes shareable the
+    // moment the caller signs out, and the cache has to be told that.
     return NextResponse.json(result, {
       headers: {
-        "Cache-Control": publicMember
-          ? "public, max-age=0, s-maxage=300"
+        "Cache-Control": sharedCache
+          ? `public, max-age=0, s-maxage=${String(anonymousMemberRevalidateSeconds)}`
           : "private, no-store",
         Vary: "Cookie",
       },
     });
   } catch (error) {
-    return errorResponse(error);
+    return dataApiErrorResponse(error);
   }
 }
 
@@ -170,10 +219,13 @@ export async function GET(
   context: { params: Promise<{ resource: string }> },
 ): Promise<NextResponse> {
   const { resource } = await context.params;
+  if (!isDataResource(resource)) return unsupportedResourceResponse(resource);
+  const blocked = limited(request, resource);
+  if (blocked) return blocked;
   try {
     return await execute(request, resource, parseGetRequest(request));
   } catch (error) {
-    return errorResponse(error);
+    return dataApiErrorResponse(error);
   }
 }
 
@@ -182,17 +234,19 @@ export async function POST(
   context: { params: Promise<{ resource: string }> },
 ): Promise<NextResponse> {
   const { resource } = await context.params;
+  if (!isDataResource(resource)) return unsupportedResourceResponse(resource);
+
+  // Admission checks — rate limit, then declared size — run before any body
+  // read, so a rejected request never pays for one.
+  const blocked = limited(request, resource);
+  if (blocked) return blocked;
+
   const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > maxRequestBytes) {
-    return NextResponse.json(
-      { error: "Request body is too large.", code: "invalid_request" },
-      { status: 413 },
-    );
-  }
+  if (contentLength > maxRequestBytes) return oversizedBodyResponse();
+
   try {
-    const text = await request.text();
-    if (new TextEncoder().encode(text).length > maxRequestBytes)
-      throw new DataApiValidationError("Request body is too large.");
+    const text = await readCappedBody(request, maxRequestBytes);
+    if (text === null) return oversizedBodyResponse();
     const body: unknown = JSON.parse(text);
     if (
       !body ||
@@ -206,7 +260,7 @@ export async function POST(
     }
     return await execute(request, resource, body as DataApiRequest);
   } catch (error) {
-    return errorResponse(
+    return dataApiErrorResponse(
       error instanceof SyntaxError
         ? new DataApiValidationError("Request body must be valid JSON.")
         : error,

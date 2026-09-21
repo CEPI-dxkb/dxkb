@@ -16,11 +16,15 @@ import { surveillanceFields } from "@/constants/datafields/surveillance";
 import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import { ppiFields } from "@/constants/datafields/ppi";
 import type { DataFieldMap } from "@/constants/datafields/types";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import { DetailPanel, type DetailField } from "./index";
+import { isLinkValue, resolveLink } from "./metadata-link-policy";
+import { renderMetadataLink, renderMetadataLinkButton } from "./metadata-link";
 import { formatOwner, formatFileSize } from "@/lib/services/workspace/helpers";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
+import {
+  isStrainAccessionField,
+  strainAccessionUrlTemplate,
+} from "@/lib/strain-view/link-policy";
 import { getItemFullPath } from "./info-panel-utils";
 import { WorkspaceItemHeader } from "@/components/workspace/workspace-item-header";
 import { WorkspaceItemDetails } from "@/components/workspace/workspace-item-details";
@@ -791,21 +795,6 @@ function renderSearchInfoPanel(
     linkText?: string;
   }
   const allowedFieldIds = new Set(allowedFields);
-  const strainAccessionFields = new Set([
-    "genbank_accessions",
-    "1_pb2",
-    "2_pb1",
-    "3_pa",
-    "4_ha",
-    "5_np",
-    "6_na",
-    "7_mp",
-    "8_ns",
-    "s",
-    "m",
-    "l",
-    "other_segments",
-  ]);
   const displayColumns: DisplayColumn[] = Object.values(fieldFile).map((o) => ({
     id: o.field,
     label: o.label,
@@ -813,8 +802,8 @@ function renderSearchInfoPanel(
     group: o.group,
     link:
       o.link ??
-      (activeTab === "strain" && strainAccessionFields.has(o.field)
-        ? "https://www.ncbi.nlm.nih.gov/nuccore/{value}"
+      (activeTab === "strain" && isStrainAccessionField(o.field)
+        ? strainAccessionUrlTemplate
         : undefined),
     linkType: o.linkType,
     linkText: o.linkText,
@@ -828,32 +817,6 @@ function renderSearchInfoPanel(
     acc[g].push(item);
     return acc;
   }, {});
-
-  function resolveLink(
-    template: string,
-    row: Record<string, unknown>,
-    fallbackField: string,
-  ) {
-    return template.replace(/{([^}]+)}/g, (_, key: string) => {
-      const value = row[key] ?? row[fallbackField] ?? "";
-      const primitive =
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-          ? value
-          : "";
-      return encodeURIComponent(String(primitive));
-    });
-  }
-
-  function toAbsoluteUrl(url: string): string {
-    try {
-      new URL(url);
-      return url;
-    } catch {
-      return new URL(url, "https://www.dxkb.org").href;
-    }
-  }
 
   return (
     <DetailPanel>
@@ -871,90 +834,75 @@ function renderSearchInfoPanel(
             const fields: DetailField[] = items.map((item) => {
               const fieldId = item.id;
               const rawValue = selectedRow?.[fieldId];
-              if (item.link) {
-                const resolved = toAbsoluteUrl(
-                  resolveLink(item.link, selectedRow ?? {}, fieldId),
-                );
 
-                if (item.linkType === "button") {
-                  return {
-                    label: item.label,
-                    value: rawValue,
-                    render: () => (
-                      <Button
-                        onClick={() =>
-                          window.open(resolved, "_blank", "noopener,noreferrer")
-                        }
-                        className="rounded border-black bg-primary px-2 py-1 text-sm text-secondary"
-                      >
-                        {item.linkText ?? "View"}
-                      </Button>
+              if (!item.link) {
+                return { label: item.label, value: rawValue };
+              }
+              const linkTemplate = item.link;
+
+              if (Array.isArray(rawValue)) {
+                const resolvedValues = rawValue
+                  .filter(isLinkValue)
+                  .map((value) => ({
+                    value,
+                    href: resolveLink(
+                      linkTemplate,
+                      { ...selectedRow, [fieldId]: value },
+                      fieldId,
                     ),
-                  };
+                  }));
+                // Every item resolved to nothing (e.g. every value was an empty
+                // string): fall back to `value: undefined` so the row is
+                // suppressed like any other unavailable field, instead of
+                // rendering a populated label next to an empty <span>.
+                if (!resolvedValues.some((entry) => entry.href !== undefined)) {
+                  return { label: item.label, value: undefined };
                 }
-
-                const linkTemplate = item.link;
-                if (linkTemplate && Array.isArray(rawValue)) {
-                  const values = rawValue.filter(
-                    function isLinkValue(
-                      value,
-                    ): value is string | number | boolean {
-                      return (
-                        typeof value === "string" ||
-                        typeof value === "number" ||
-                        typeof value === "boolean"
-                      );
-                    },
-                  );
-                  return {
-                    label: item.label,
-                    value: rawValue,
-                    render: function renderArrayLinks() {
-                      return (
-                        <span className="flex flex-wrap gap-x-2 gap-y-1">
-                          {values.map(function renderLink(value, index) {
-                            const href = resolveLink(
-                              linkTemplate,
-                              { ...selectedRow, [fieldId]: value },
-                              fieldId,
-                            );
-                            const isExternal = /^https?:\/\//.test(href);
-                            return isExternal ? (
-                              <a
-                                key={`${String(value)}-${String(index)}`}
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline hover:text-blue-800"
-                              >
-                                {String(value)}
-                              </a>
-                            ) : (
-                              <Link
-                                key={`${String(value)}-${String(index)}`}
-                                href={href}
-                                className="text-blue-600 underline hover:text-blue-800"
-                              >
-                                {String(value)}
-                              </Link>
-                            );
-                          })}
-                        </span>
-                      );
-                    },
-                  };
-                }
-
                 return {
                   label: item.label,
                   value: rawValue,
-                  href: resolved,
+                  render: function renderArrayLinks() {
+                    return (
+                      <span className="flex flex-wrap gap-x-2 gap-y-1">
+                        {resolvedValues.map(function renderLink(
+                          { value, href },
+                          index,
+                        ) {
+                          if (href === undefined) return null;
+                          return renderMetadataLink(
+                            href,
+                            String(value),
+                            `${String(value)}-${String(index)}`,
+                          );
+                        })}
+                      </span>
+                    );
+                  },
+                };
+              }
+
+              const href = resolveLink(
+                linkTemplate,
+                selectedRow ?? {},
+                fieldId,
+              );
+              if (href === undefined) {
+                return { label: item.label, value: rawValue };
+              }
+
+              if (item.linkType === "button") {
+                return {
+                  label: item.label,
+                  value: rawValue,
+                  render: () =>
+                    renderMetadataLinkButton(href, item.linkText ?? "View"),
                 };
               }
 
               return {
                 label: item.label,
                 value: rawValue,
+                render: () => renderMetadataLink(href, String(rawValue)),
               };
             });
 

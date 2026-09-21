@@ -4,7 +4,11 @@ import {
   buildPairedLibraries,
   buildSingleLibraries,
   buildSraLibraries,
+  closeRerunWindow,
   rerunJob,
+  rerunPopupBlockedMessage,
+  rerunWindowClosedMessage,
+  reserveRerunWindow,
 } from "@/lib/rerun-utility";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -227,12 +231,23 @@ describe("buildSraLibraries", () => {
 
 describe("rerunJob", () => {
   let mockSetItem: ReturnType<typeof vi.fn>;
+  let mockRemoveItem: ReturnType<typeof vi.fn>;
   let mockOpen: ReturnType<typeof vi.fn>;
+  let mockLink: { href: string; target: string; rel: string; click: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     mockSetItem = vi.fn();
-    mockOpen = vi.fn();
-    vi.stubGlobal("sessionStorage", { setItem: mockSetItem, getItem: vi.fn() });
+    mockRemoveItem = vi.fn();
+    mockLink = { href: "", target: "", rel: "", click: vi.fn() };
+    mockOpen = vi.fn(() => ({
+      opener: window,
+      document: { createElement: vi.fn(() => mockLink) },
+    }));
+    vi.stubGlobal("sessionStorage", {
+      setItem: mockSetItem,
+      removeItem: mockRemoveItem,
+      getItem: vi.fn(),
+    });
     vi.stubGlobal("window", { open: mockOpen });
     // Mock crypto.randomUUID for deterministic key generation
     vi.stubGlobal("crypto", { randomUUID: () => "12345678-abcd-efgh-ijkl-mnopqrstuvwx" });
@@ -240,49 +255,154 @@ describe("rerunJob", () => {
 
   it("opens with an opener for sessionStorage cloning, then severs it", () => {
     const params = { genome_id: "123" };
-    const rerunWindow = { opener: window };
+    const click = vi.fn();
+    const link = { href: "", target: "", rel: "", click };
+    const rerunWindow = {
+      opener: window,
+      document: { createElement: vi.fn(() => link) },
+    };
     mockOpen.mockReturnValue(rerunWindow);
 
-    rerunJob(params, "GenomeAssembly2");
+    const result = rerunJob(params, "GenomeAssembly2");
 
     expect(mockSetItem).toHaveBeenCalledWith(
       "12345678",
       JSON.stringify(params),
     );
-    expect(mockOpen).toHaveBeenCalledWith(
-      "/services/genome-assembly?rerun_key=12345678",
-      "_blank",
-    );
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
     expect(rerunWindow.opener).toBeNull();
+    expect(link).toMatchObject({
+      href: "/services/genome-assembly?rerun_key=12345678",
+      target: "_self",
+      rel: "noreferrer",
+    });
+    expect(click).toHaveBeenCalledOnce();
+    expect(result).toEqual({ status: "opened" });
   });
 
-  it("shows toast error for unsupported service", async () => {
+  it("returns an unsupported service to the caller without reporting it itself", async () => {
     const { toast } = await import("sonner");
-    rerunJob({}, "UnsupportedService");
+    const result = rerunJob({}, "UnsupportedService");
 
-    expect(toast.error).toHaveBeenCalledWith(
-      "The UnsupportedService service is not currently supported in DXKB",
-    );
+    expect(result).toEqual({
+      status: "unsupportedService",
+      message:
+        "The UnsupportedService service is not currently supported in DXKB",
+    });
+    // It used to toast *and* return the message, so a caller that rendered
+    // `launch.message` inline reported the same failure twice.
+    expect(toast.error).not.toHaveBeenCalled();
     expect(mockSetItem).not.toHaveBeenCalled();
     expect(mockOpen).not.toHaveBeenCalled();
+  });
+
+  it("reports a blocked pop-up and strands no payload behind it", async () => {
+    const { toast } = await import("sonner");
+    mockOpen.mockReturnValue(null);
+
+    const result = rerunJob({ genome_id: "123" }, "GenomeAssembly2");
+
+    expect(result).toEqual({
+      status: "blockedPopup",
+      message: rerunPopupBlockedMessage,
+    });
+    // Nothing will ever read the key, so it must not linger in sessionStorage.
+    expect(mockRemoveItem).toHaveBeenCalledWith("12345678");
+    // The choosers show this inline next to their retry button instead.
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("navigates a reserved tab and writes the payload into its own storage", () => {
+    const setItem = vi.fn();
+    const click = vi.fn();
+    const link = { href: "", target: "", rel: "", click };
+    const createElement = vi.fn(() => link);
+    const resultWindow = {
+      closed: false,
+      opener: null,
+      sessionStorage: { setItem },
+      document: { createElement },
+    } as unknown as Window;
+
+    const params = { genome_id: "123" };
+    const result = rerunJob(params, "GenomeAssembly2", { resultWindow });
+
+    // The reserved tab cloned this tab's storage when it opened, so writing here
+    // would never reach it.
+    expect(mockSetItem).not.toHaveBeenCalled();
+    expect(setItem).toHaveBeenCalledWith("12345678", JSON.stringify(params));
+    expect(createElement).toHaveBeenCalledWith("a");
+    expect(link).toMatchObject({
+      href: "/services/genome-assembly?rerun_key=12345678",
+      target: "_self",
+      rel: "noreferrer",
+    });
+    expect(click).toHaveBeenCalledOnce();
+    expect(resultWindow.opener).toBeNull();
+    expect(mockOpen).not.toHaveBeenCalled();
+    expect(result).toEqual({ status: "opened" });
+  });
+
+  it("reports a reserved tab the user closed before the launch resolved", () => {
+    const setItem = vi.fn();
+    const resultWindow = {
+      closed: true,
+      sessionStorage: { setItem },
+    } as unknown as Window;
+
+    const result = rerunJob({}, "GenomeAssembly2", { resultWindow });
+
+    // Telling the user to allow pop-ups would be wrong advice for a tab they
+    // closed, so the status has to say which happened rather than carrying the
+    // closed-tab message under the `blockedPopup` discriminant.
+    expect(result).toEqual({
+      status: "windowClosed",
+      message: rerunWindowClosedMessage,
+    });
+    expect(result).not.toEqual(
+      expect.objectContaining({ message: rerunPopupBlockedMessage }),
+    );
+    expect(setItem).not.toHaveBeenCalled();
+  });
+
+  it("reserves a blank tab, clears its opener, and reports refusal as null", () => {
+    const reserved = { opener: window };
+    mockOpen.mockReturnValue(reserved);
+    expect(reserveRerunWindow()).toBe(reserved);
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+    expect(reserved.opener).toBeNull();
+
+    mockOpen.mockReturnValue(null);
+    expect(reserveRerunWindow()).toBeNull();
+  });
+
+  it("swallows a close failure so the launch error still reaches the user", () => {
+    const close = vi.fn();
+    closeRerunWindow({ close } as unknown as Window);
+    expect(close).toHaveBeenCalled();
+
+    closeRerunWindow(null);
+    expect(() => {
+      closeRerunWindow({
+        close: () => {
+          throw new Error("close failed");
+        },
+      } as unknown as Window);
+    }).not.toThrow();
   });
 
   it("routes GeneTree with viral_genome tree_type to viral-genome-tree", () => {
     rerunJob({ tree_type: "viral_genome" }, "GeneTree");
 
-    expect(mockOpen).toHaveBeenCalledWith(
-      expect.stringContaining("/services/viral-genome-tree"),
-      "_blank",
-    );
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+    expect(mockLink.href).toContain("/services/viral-genome-tree");
   });
 
   it("routes GeneTree with other tree_type to gene-protein-tree", () => {
     rerunJob({ tree_type: "gene" }, "GeneTree");
 
-    expect(mockOpen).toHaveBeenCalledWith(
-      expect.stringContaining("/services/gene-protein-tree"),
-      "_blank",
-    );
+    expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+    expect(mockLink.href).toContain("/services/gene-protein-tree");
   });
 
   it("maps various service IDs to correct routes", () => {
@@ -298,10 +418,8 @@ describe("rerunJob", () => {
     for (const [serviceId, expectedRoute] of testCases) {
       vi.clearAllMocks();
       rerunJob({}, serviceId);
-      expect(mockOpen).toHaveBeenCalledWith(
-        expect.stringContaining(expectedRoute),
-        "_blank",
-      );
+      expect(mockOpen).toHaveBeenCalledWith("", "_blank");
+      expect(mockLink.href).toContain(expectedRoute);
     }
   });
 });

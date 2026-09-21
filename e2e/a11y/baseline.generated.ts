@@ -28,7 +28,7 @@ const generatedBaseline: BaselineMap = {
       "aria-command-name": { maxNodes: 99, ticket: "DXKBCORE-133" },
       // Dark-theme CSS variables produce insufficient contrast ratios across
       // multiple surfaces (navbar, tabs, badges, cards). Tracked for a
-      // dark-theme contrast audit. Ticket: DXKBCORE-174 — calibrated to observed max of 74 (taxonomy/virus).
+      // dark-theme contrast audit. Ticket: DXKBCORE-174 — calibrated to observed max of 74 (taxonomy/brucella).
       "color-contrast": { maxNodes: 80, ticket: "DXKBCORE-174" },
       // SVG circular icons on organisms pages lack <title> / role="img" in dark theme too.
       // Ticket: DXKBCORE-175 — calibrated to observed max of 48 nodes (same as light).
@@ -36,9 +36,6 @@ const generatedBaseline: BaselineMap = {
       // Same switch/toggle issue as light theme — Base UI Checkbox/Switch
       // root span receives no htmlFor association in dark theme scans.
       "aria-toggle-field-name": { maxNodes: 10, ticket: "DXKBCORE-176" },
-      // taxonomy/bacteria mock error causes missing lang and title in dark theme.
-      "document-title": { maxNodes: 1, ticket: "DXKBCORE-177" },
-      "html-has-lang": { maxNodes: 1, ticket: "DXKBCORE-177" },
     },
   },
   // organisms-viruses dark has more color-contrast nodes than the wildcard cap (106 vs 80)
@@ -49,22 +46,16 @@ const generatedBaseline: BaselineMap = {
       "color-contrast": { maxNodes: 110, ticket: "DXKBCORE-174" },
     },
   },
-  // taxonomy/virus dark exceeds the wildcard 80-node cap (94 observed) because the
-  // AMR chart legend pills and view-tab search components add dark-mode contrast nodes
-  // beyond what existed before the merge. Ticket: DXKBCORE-174
-  "taxonomy/virus": {
-    "dxkb-dark": {
-      "color-contrast": { maxNodes: 100, ticket: "DXKBCORE-174" },
-    },
-  },
-  // taxonomy/bacteria renders an error page when mock data lacks taxon_name,
-  // causing missing <title> and missing html[lang]. Ticket: DXKBCORE-177
-  "taxonomy/bacteria": {
-    "dxkb-light": {
-      "document-title": { maxNodes: 1, ticket: "DXKBCORE-177" },
-      "html-has-lang": { maxNodes: 1, ticket: "DXKBCORE-177" },
-    },
-  },
+  // The taxonomy entry's two variants (234 Brucella, 1763 Mycobacterium) have
+  // no route-specific entry: both scan 7 dark-theme color-contrast nodes,
+  // well inside the wildcard cap. The 100-node override the old
+  // `taxonomy/virus` key carried is gone rather than renamed — carrying an
+  // unused suppression forward is how a cap stops meaning anything.
+  //
+  // The DXKBCORE-177 document-title / html-has-lang suppressions that used to
+  // sit here (and on the wildcard dark entry) recorded a MOCK gap, not a page
+  // defect: /taxonomy/1763 had no taxonomy fixture and rendered the framework
+  // error boundary. It renders a real page now, so those entries are gone.
 };
 
 // Routes with pre-existing WCAG 1.4.10 reflow failures at 320px viewport width.
@@ -87,8 +78,11 @@ export const reflowSkip: ReflowSkipMap = {
   "related-resources": { ticket: "DXKBCORE-178" },
   team: { ticket: "DXKBCORE-178" },
   updates: { ticket: "DXKBCORE-178" },
-  search: { ticket: "DXKBCORE-178" },
-  "taxonomy/virus": { ticket: "DXKBCORE-178" },
+  // `search` became two variants (Overview prompt / unsupported type); both
+  // inherit the same pre-existing mobile-navbar overflow as every entry above.
+  "search/default": { ticket: "DXKBCORE-178" },
+  "search/unsupported-type": { ticket: "DXKBCORE-178" },
+  "taxonomy/brucella": { ticket: "DXKBCORE-178" },
   "organisms-all": { ticket: "DXKBCORE-178" },
   "organisms-bacteria": { ticket: "DXKBCORE-178" },
   "organisms-viruses": { ticket: "DXKBCORE-178" },
@@ -105,17 +99,22 @@ export const reflowSkip: ReflowSkipMap = {
   epitope: { ticket: "DXKBCORE-178" },
   surveillance: { ticket: "DXKBCORE-178" },
   serology: { ticket: "DXKBCORE-178" },
-  "experiment-singular": { ticket: "DXKBCORE-178" },
   "strain-list": { ticket: "DXKBCORE-178" },
   "domains-and-motifs": { ticket: "DXKBCORE-178" },
-  experiment: { ticket: "DXKBCORE-178" },
   "protein-structure": { ticket: "DXKBCORE-178" },
+  // The bare `experiment` and `experiment-singular` keys that used to sit here
+  // stopped matching when both entries gained variants: the sweep keys those
+  // scans `experiment/{experiments,biosets}` and
+  // `experiment-singular/{overview,biosets}`. All four scan clean at 320px, so
+  // the exemptions are gone rather than renamed — carrying an unused
+  // suppression forward is how an exemption stops meaning anything. The
+  // stale-key guard in coverage.meta.spec.ts is what caught them.
 };
 
 // ── Warn-tier tracking (DoD item 6) ──────────────────────────────────────────
 // These rule IDs were observed in warn-tier (best-practice / WCAG 2.2 AA) during
 // the first real sweep. All are tracked under DXKBCORE-174; the report artifact
-// (a11y-report/a11y-summary.json) enumerates every instance per route/theme.
+// (.misc/a11y-report/a11y-summary.json) enumerates every instance per route/theme.
 //
 // Rule IDs → brief description → ticket:
 //   heading-order              — Heading levels should only increase by one        → DXKBCORE-174

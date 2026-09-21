@@ -56,10 +56,6 @@ export class EpitopePage {
     await expect(this.memberLink(epitopeId)).toBeVisible();
   }
 
-  async expectMemberAbsent(epitopeId: string): Promise<void> {
-    await expect(this.memberLink(epitopeId)).toHaveCount(0);
-  }
-
   async expectNoResults(): Promise<void> {
     await expect(this.page.getByText("No results")).toBeVisible();
   }

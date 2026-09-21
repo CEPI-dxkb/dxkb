@@ -3,6 +3,7 @@ import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
 import { getCurrentUser } from "@/lib/auth/server/actions";
 import { getRequiredEnv } from "@/lib/env";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
+import { readRouteParam } from "@/lib/views/route-params";
 
 interface WorkspaceUsernamePageProps {
   params: Promise<{ username: string }>;
@@ -14,7 +15,7 @@ interface WorkspaceUsernamePageProps {
  */
 export default async function WorkspaceUsernamePage({ params }: WorkspaceUsernamePageProps) {
   const resolved = await params;
-  const username = decodeURIComponent(resolved.username);
+  const username = readRouteParam(resolved.username, "page");
   if (!username) {
     redirect("/workspace/home");
   }

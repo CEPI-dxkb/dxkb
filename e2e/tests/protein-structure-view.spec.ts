@@ -1,4 +1,7 @@
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  proteinStructureScenarioOverrides,
+} from "../fixtures/overrides";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import { ProteinStructurePage } from "../pages";
 
@@ -24,7 +27,8 @@ test.describe("Protein Structure view", () => {
           headers: { "Content-Type": "chemical/x-pdb" },
           body: minimalPdb,
         },
-        ...permissiveBackendOverrides,
+        ...proteinStructureScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

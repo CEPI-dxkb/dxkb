@@ -37,7 +37,6 @@ export function ExperimentResourceCollection({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
     />
   );

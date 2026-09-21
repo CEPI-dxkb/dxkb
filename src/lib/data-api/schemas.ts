@@ -48,6 +48,27 @@ export const genomeRecordSchema = z.looseObject({
   patric_cds: stringOrNumber.optional(),
 });
 
+/**
+ * AMR phenotype rows. `id` is the genome_amr core's own document identifier —
+ * the same field `src/constants/resources.ts` already keys the legacy table on,
+ * and the only column the list needs to render a row at all (it is the React
+ * key and the selection id).
+ *
+ * Nothing else is declared, deliberately. `parseRows`
+ * (`./repository.ts`) turns any row that disagrees with this schema into a 502
+ * that blanks the whole page. The deterministic genome_amr fixture validates
+ * known test data, but it is not sufficient evidence to narrow every field the
+ * live backend may return. `looseObject` passes every other AMR column through
+ * untouched, which is what the columns the UI reads already relied on.
+ * This matches the other legacy-list resource (`genomeSequenceRecordSchema`)
+ * and `ppiRecordSchema`; the heavily-declared schemas below are the ones with
+ * real fixtures in `src/lib/e2e-fixtures/records.ts`.
+ */
+export const genomeAmrRecordSchema = z.looseObject({
+  id: identifier,
+  ...optionalTaxonomy,
+});
+
 export const genomeFeatureRecordSchema = z.looseObject({
   feature_id: identifier,
   patric_id: z.string().optional(),

@@ -44,7 +44,6 @@ export function SurveillanceResourceCollection({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
       prefetchNextPage
     />

@@ -154,6 +154,8 @@ jobs:
         with:
           name: playwright-report-${{ matrix.browser }}
           path: |
-            playwright-report/
-            test-results/
+            .misc/playwright-report/
+            .misc/test-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14

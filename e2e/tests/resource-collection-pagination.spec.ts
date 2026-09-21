@@ -1,6 +1,27 @@
 import type { JsonOverride } from "../mocks/backends";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  epitopeScenarioOverrides,
+  genomeFeatureScenarioOverrides,
+  genomeScenarioOverrides,
+  proteinFeatureScenarioOverrides,
+  serologyScenarioOverrides,
+  surveillanceScenarioOverrides,
+} from "../fixtures/overrides";
+
+// This spec parametrizes over six different resource collection pages; each
+// case's own memberOverride/collectionOverrides win first-match, so the
+// bundles below only need to cover shell rendering, not the exact assertions.
+const resourceCollectionOverrides = [
+  ...genomeScenarioOverrides,
+  ...genomeFeatureScenarioOverrides,
+  ...epitopeScenarioOverrides,
+  ...surveillanceScenarioOverrides,
+  ...proteinFeatureScenarioOverrides,
+  ...serologyScenarioOverrides,
+  ...emptyBackendFallbackOverrides,
+];
 import { ResourceCollectionPage } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -138,7 +159,7 @@ for (const testCase of cases) {
       overrides: [
         memberOverride,
         ...collectionOverrides,
-        ...permissiveBackendOverrides,
+        ...resourceCollectionOverrides,
       ],
     });
     const collectionPage = new ResourceCollectionPage(

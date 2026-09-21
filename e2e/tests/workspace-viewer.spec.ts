@@ -98,7 +98,7 @@ test.describe("workspace viewer", () => {
 // JSON-RPC envelope around it. Three sequential `Workspace.get` entries
 // (favorites x2, then the e2e-fixtures folder lookup) replay in HAR order
 // via `callIndex`. See `harOverridesFor` for the canary rationale (no
-// `permissiveBackendOverrides` here).
+// broad, unscoped aggregate here).
 test.describe("workspace viewer via recorded HAR replay", () => {
   test("opens readme.txt and renders the recorded file content", async ({ page }) => {
     await applyBackendMocks(page, {

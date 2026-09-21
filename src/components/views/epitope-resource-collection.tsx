@@ -37,7 +37,6 @@ export function EpitopeResourceCollection({
       onStateChange={setState}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
-      showHeader={false}
       keywordMode={keywordMode}
     />
   );

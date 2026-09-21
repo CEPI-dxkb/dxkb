@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { e2eSignedInStatePath } from "./e2e/auth/storage-state";
 
 const port = Number(process.env.E2E_PORT ?? 3020);
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${String(port)}`;
@@ -17,6 +18,19 @@ const isCi = Boolean(process.env.CI);
 // threads reject NODE_OPTIONS containing --env-file.
 const webServerCommand = `node e2e/scripts/start-webserver.mjs ${String(port)}`;
 
+// Every *report and artifact* folder this config writes lives under /.misc,
+// per AGENTS.md's file-structure rule — this html report and `outputDir`
+// below. Two paths it writes sit outside /.misc on purpose and are not
+// artifacts: `snapshotDir` (`e2e/__snapshots__`, committed visual baselines —
+// .gitignore says so in place) and the `e2e/.auth/` storage state (gitignored
+// at .gitignore's `/e2e/.auth/`).
+//
+// The html reporter would otherwise default to `playwright-report/` at the
+// repo root, which breaks that rule and is also the default
+// playwright.a11y.config.ts would land on, so both configs set it explicitly
+// rather than sharing one directory.
+const htmlReportDir = ".misc/playwright-report";
+
 export default defineConfig({
   testDir: "./e2e",
   // Excludes tests/a11y/ — those run via playwright.a11y.config.ts (pnpm a11y).
@@ -25,8 +39,10 @@ export default defineConfig({
   forbidOnly: isCi,
   retries: isCi ? 2 : 0,
   workers: isCi ? 2 : undefined,
-  reporter: isCi ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "never" }]],
-  outputDir: "test-results",
+  reporter: isCi
+    ? [["github"], ["html", { open: "never", outputFolder: htmlReportDir }]]
+    : [["list"], ["html", { open: "never", outputFolder: htmlReportDir }]],
+  outputDir: ".misc/test-results",
   snapshotDir: "e2e/__snapshots__",
   expect: {
     toHaveScreenshot: {
@@ -56,7 +72,7 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "e2e/.auth/user.json",
+        storageState: e2eSignedInStatePath,
       },
       dependencies: ["setup-signed-in"],
     },
@@ -64,7 +80,7 @@ export default defineConfig({
       name: "firefox",
       use: {
         ...devices["Desktop Firefox"],
-        storageState: "e2e/.auth/user.json",
+        storageState: e2eSignedInStatePath,
       },
       dependencies: ["setup-signed-in"],
       expect: {
@@ -79,7 +95,7 @@ export default defineConfig({
       name: "webkit",
       use: {
         ...devices["Desktop Safari"],
-        storageState: "e2e/.auth/user.json",
+        storageState: e2eSignedInStatePath,
       },
       dependencies: ["setup-signed-in"],
       expect: {

@@ -1,5 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleIdentityGet, handleIdentityPost } from "./identity";
+import {
+  allOrganismsSummaryRecord,
+  ambiguousSerologyRecords,
+  ambiguousSurveillanceRecords,
+  bacteriaSummaryRecord,
+  brucellaPpiTotal,
+  epitopeRecord,
+  experimentRecord,
+  findOrganismSummaryRecord,
+  findOrganismTaxonomyRecord,
+  genomeRecord,
+  proteinStructureRecords,
+  serologyRecord,
+  surveillanceRecord,
+  taxonomyRecord,
+  virusesSummaryRecord,
+} from "@/lib/e2e-fixtures/records";
+import {
+  buildLoopbackRpcError,
+  buildLoopbackRpcSuccess,
+  buildLoopbackSolrEnvelope,
+} from "@/lib/e2e-fixtures/envelopes";
+import { jsonRpcErrorCodes } from "@/lib/jsonrpc-client";
+import {
+  equalsValue,
+  hasCall,
+  hasClause,
+  hasKeyword,
+  parseFixtureQuery,
+  type FixtureQuery,
+} from "./query";
 
 /**
  * Loopback mock for Playwright e2e only.
@@ -13,6 +44,24 @@ import { handleIdentityGet, handleIdentityPost } from "./identity";
  *
  * Guarded by E2E_MOCK_ENABLED=1 so a production deploy that somehow ships
  * this file still can't be tricked into serving fake backend responses.
+ *
+ * ## Dispatch is fail-closed
+ *
+ * Every method answers ONLY the path / RPC-method combinations named below.
+ * Anything else gets a diagnostic non-2xx naming the combination that was
+ * missing, never an empty success. A silent `{}` is worse than a failure
+ * here: it renders a real page with no data, so a spec passes while
+ * asserting nothing, or — as `/taxonomy/1763` did for the a11y suite —
+ * renders an error boundary that gets recorded as a page defect.
+ *
+ * The retained empty results are named, per-method, with the reason each one
+ * is legitimately empty. They were found by instrumenting this handler and
+ * running the full Chromium suite plus `pnpm a11y`; anything they did not
+ * observe is rejected. Browser-side strict mode cannot substitute for that
+ * measurement — `page.route()` never sees a Server Component's fetch, and the
+ * browser fallback bundle (`emptyBackendFallbackOverrides`) deliberately
+ * swallows broad auth/services/workspace families before they ever leave the
+ * page. The two accommodations are separate on purpose.
  */
 
 function isEnabled(): boolean {
@@ -35,6 +84,86 @@ function logHit(method: string, path: string, extra?: string): void {
   console.log(`[api/e2e-mock] ${method} /${path}${tail}`);
 }
 
+/**
+ * Prefix on every rejection this mock emits.
+ *
+ * `e2e/README.md` documents `grep '[api/e2e-mock] e2e-mock: '` as the way to
+ * find out whether a Playwright run hit a fixture gap. That grep is only
+ * trustworthy if no branch can answer non-2xx without it, so the label
+ * callers pass is never the whole string — {@link rejectionError} builds it.
+ * A caller cannot opt out by writing its own `error` string, which is exactly
+ * how the `genome_amr` body-validation branch ended up outside the grep for a
+ * round while a comment claimed every branch was inside it.
+ *
+ * Deliberately NOT carried by two other kinds of non-2xx in this module:
+ *
+ *   - {@link disabledResponse}'s 404 — the `E2E_MOCK_ENABLED` runtime guard,
+ *     which is a refusal to serve at all, not a missing fixture.
+ *   - `identity.ts`'s 401/404s — MODELLED responses (bad credentials, unknown
+ *     user) that specs assert on. They are fixture behaviour, not gaps, and
+ *     surfacing them as diagnostics would make the grep useless.
+ *
+ * `src/app/api/e2e-mock/[...path]/__tests__/route.test.ts` pins both halves:
+ * it drives every rejection branch through the prefix, and it scans this
+ * module's source so a future branch cannot add a bare `status:` literal
+ * outside these helpers without failing.
+ */
+/**
+ * Every rejection this module answers carries this prefix, because callers
+ * pass a bare label and {@link rejectionError} builds the string.
+ *
+ * The completeness test in `__tests__/route.test.ts` enforces that by scanning
+ * *this file*, so the guarantee ends at the module boundary: `identity.ts`
+ * already returns its own 401/404 from this directory. A rejection helper has
+ * to stay here, or that scan has to grow to cover wherever it moves.
+ */
+const rejectionPrefix = "e2e-mock: ";
+
+function rejectionError(label: string): string {
+  return `${rejectionPrefix}${label}`;
+}
+
+function logRejection(error: string, reason: string): void {
+  console.error(`[api/e2e-mock] ${error}: ${reason}`);
+}
+
+/**
+ * The diagnostic body this mock returns for a non-JSON-RPC rejection.
+ *
+ * `reason` always names the specific combination that was missing, because
+ * `JsonRpcClient` and `ServerDataRepository` both collapse a non-2xx into
+ * their own generic message — the webServer log is where whoever is reading a
+ * failing Playwright run will actually find out what to add.
+ */
+function unhandledResponse(
+  label: string,
+  reason: string,
+  context: Record<string, unknown> = {},
+): NextResponse {
+  const error = rejectionError(label);
+  logRejection(error, reason);
+  return NextResponse.json({ error, reason, ...context }, { status: 400 });
+}
+
+/**
+ * The same rejection for a JSON-RPC caller, in its own transport's error
+ * shape. `JsonRpcClient` throws `HTTP error! status: 400` on a non-2xx
+ * without reading the body, so the reason reaches a human through the log
+ * line above; the envelope keeps the wire contract honest for anything that
+ * does read it.
+ */
+function unhandledRpcResponse(label: string, reason: string): NextResponse {
+  const error = rejectionError(label);
+  logRejection(error, reason);
+  return NextResponse.json(
+    buildLoopbackRpcError(
+      jsonRpcErrorCodes.METHOD_NOT_FOUND,
+      `${error}: ${reason}`,
+    ),
+    { status: 400 },
+  );
+}
+
 const e2eDeterministicCounts: Record<string, number> = {
   genome: 12345,
   genome_feature: 67890,
@@ -43,188 +172,7 @@ const e2eDeterministicCounts: Record<string, number> = {
   protein_structure: 4567,
   protein_feature: 8901,
   experiment: 1,
-  ppi: 4358,
-};
-
-const taxonomyRecordFixture = {
-  taxon_id: "11520",
-  taxon_name: "Influenza A virus",
-  taxon_rank: "species",
-  other_names: ["Influenza A"],
-  genetic_code: 1,
-  lineage_ids: ["10239", "11308", "11520"],
-  lineage_names: ["Viruses", "Orthornavirae", "Influenza A virus"],
-  parent_id: "11320",
-  division: "Viruses",
-  description: "Influenza A virus taxonomy record",
-  genomes: 42,
-};
-
-const proteinStructureRecordFixtures = [
-  {
-    pdb_id: "6VXX",
-    title: "SARS-CoV-2 spike glycoprotein",
-    organism_name: "Severe acute respiratory syndrome coronavirus 2",
-    taxon_id: 2697049,
-    taxon_lineage_ids: [10239, 2697049],
-    taxon_lineage_names: ["Viruses", "Betacoronavirus pandemicum"],
-    genome_id: "2697049.42",
-    patric_id: "fig|2697049.42.peg.1",
-    uniprotkb_accession: ["P0DTC2"],
-    gene: "S",
-    product: "surface glycoprotein",
-    sequence_md5: "e2e6vxxsequence",
-    method: "Electron microscopy",
-    resolution: 2.8,
-    pmid: 32155444,
-    institution: ["University of Texas at Austin"],
-    authors: ["Walls AC"],
-    release_date: "2020-03-25",
-    file_path: "/PDB/6VXX.pdb",
-    date_inserted: "2024-01-01",
-  },
-  {
-    pdb_id: "7BV2",
-    title: "RNA-dependent RNA polymerase in complex with remdesivir",
-    organism_name: "Severe acute respiratory syndrome coronavirus 2",
-    taxon_id: 2697049,
-    method: "Electron microscopy",
-    resolution: 2.5,
-    release_date: "2020-05-20",
-    file_path: "/PDB/7BV2.pdb",
-    date_inserted: "2024-01-02",
-  },
-];
-
-const epitopeRecordFixture = {
-  epitope_id: "15780",
-  epitope_type: "Discontinuous peptide",
-  epitope_sequence: "A1, C4, D8",
-  organism: "Influenza A virus",
-  taxon_id: 11520,
-  taxon_lineage_ids: [10239, 11520],
-  protein_name: "Hemagglutinin",
-  protein_accession: "P03452",
-  host_name: "Human",
-  total_assays: 2,
-  assay_results: ["Positive", "Negative"],
-  bcell_assays: 2,
-  tcell_assays: 0,
-  mhc_assays: 0,
-  comments: "Discontinuous residues",
-  date_inserted: "2024-01-01",
-};
-
-const experimentRecordFixture = {
-  exp_id: "2000000",
-  study_name: "E2E host response study",
-  study_title: "Host response to viral infection",
-  study_description: "A deterministic experiment fixture.",
-  study_pi: "Ada Scientist",
-  study_institution: "Research Institute",
-  exp_name: "E2E-RNA-1",
-  exp_title: "RNA response experiment",
-  exp_description: "Differential expression after infection.",
-  public_repository: "GEO",
-  public_identifier: "GSE2000000",
-  pmid: "12345678",
-  exp_type: "Transcript Quantification",
-  measurement_technique: "RNA-Seq",
-  organism: ["Middle East respiratory syndrome-related coronavirus"],
-  taxon_id: [1335626],
-  taxon_lineage_ids: [10239, 1335626],
-  strain: ["E2E strain"],
-  treatment_type: ["Infectious Agent"],
-  treatment_name: ["Virus infection"],
-  samples: 6,
-  biosets: 1,
-  genome_id: ["1282460.2049"],
-  date_inserted: "2024-01-01",
-};
-
-const surveillanceRecordFixture = {
-  id: "surveillance-backend-901",
-  sample_identifier: "sample/1",
-  contributing_institution: "Sentinel Health Laboratory",
-  sample_material: "Nasal swab",
-  collection_date: "2024-07",
-  collection_year: 2024,
-  collection_country: "Australia",
-  collection_state_province: "New South Wales",
-  collection_latitude: "-33.45",
-  collection_longitude: "151.2",
-  pathogen_test_type: ["RAT/antigen"],
-  pathogen_test_result: ["Positive"],
-  pathogen_test_interpretation: ["Detected"],
-  pathogen_type: "SARS-CoV-2",
-  host_identifier: "host-42",
-  host_common_name: "Human",
-};
-
-const ambiguousSurveillanceFixtures = [
-  {
-    id: "surveillance-backend-902",
-    sample_identifier: "ambiguous-sample",
-    pathogen_test_type: ["PCR"],
-  },
-  {
-    id: "surveillance-backend-903",
-    sample_identifier: "ambiguous-sample",
-    pathogen_test_type: ["RAT/antigen"],
-  },
-];
-
-const serologyRecordFixture = {
-  id: "serology-backend-901",
-  sample_identifier: "000123",
-  contributing_institution: "Sentinel Serology Laboratory",
-  host_identifier: "host-42",
-  host_type: "Human",
-  host_species: "Homo sapiens",
-  host_common_name: "Human",
-  collection_date: "2024-07",
-  collection_year: 2024,
-  collection_country: "Australia",
-  collection_state: "New South Wales",
-  test_type: "ELISA/IgG test",
-  test_result: "Detected",
-  test_interpretation: "Evidence of prior exposure; confirm clinically",
-  serotype: "H1N1",
-};
-
-const ambiguousSerologyFixtures = [
-  {
-    id: "serology-backend-902",
-    sample_identifier: "ambiguous-serology",
-    test_type: "Western blot",
-  },
-  {
-    id: "serology-backend-903",
-    sample_identifier: "ambiguous-serology",
-    test_type: "ELISA/IgG test",
-  },
-];
-
-const genomeRecordFixture = {
-  genome_id: "1282460.2049",
-  genome_name: "Middle East respiratory syndrome-related coronavirus isolate",
-  strain: "MERS-CoV",
-  superkingdom: "Viruses",
-  genome_status: "Complete",
-  genome_quality: "Good",
-  genome_length: 30_119,
-  contigs: 1,
-  cds: 11,
-  collection_year: 2012,
-  isolation_country: "Saudi Arabia",
-  host_common_name: "Human",
-  genbank_accessions: ["JX869059"],
-  taxon_id: 1335626,
-  taxon_lineage_ids: [10239, 1335626],
-  taxon_lineage_names: [
-    "Viruses",
-    "Middle East respiratory syndrome-related coronavirus",
-  ],
+  ppi: brucellaPpiTotal,
 };
 
 function maybeSolrCount(
@@ -234,289 +182,151 @@ function maybeSolrCount(
   | {
       response: {
         numFound: number;
-        docs: Record<string, unknown>[];
+        docs: unknown[];
       };
       facet_counts?: { facet_fields: Record<string, unknown[]> };
     }
-  | Record<string, unknown>[]
+  | unknown[]
   | null {
   const segments = path.split("/").filter(Boolean);
   if (segments[0] !== "data" || segments.length < 2) return null;
   const core = segments[1];
-  const query = decodeURIComponent(new URL(request.url).search);
+  const query = parseFixtureQuery(request);
+  const isStatisticsCount =
+    query.clauses.includes("limit(1)") &&
+    ((core === "taxonomy" &&
+      (query.clauses.length === 1 ||
+        query.clauses.includes(
+          "and(eq(taxon_rank,species),eq(lineage,*Viruses*))",
+        ))) ||
+      (core === "protein_structure" && query.clauses.length === 1));
+  if (isStatisticsCount) {
+    return buildLoopbackSolrEnvelope([], {
+      numFound: e2eDeterministicCounts[core],
+    });
+  }
   if (core === "taxonomy") {
-    const taxonId = query.match(/eq\(taxon_id,([^)&]+)\)/)?.[1];
-    const matchesKeyword = query.includes("keyword(influenza)");
+    const taxonId = equalsValue(query, "taxon_id");
+    const matchesKeyword = hasKeyword(query, "influenza");
     const docs =
-      taxonId === "*" || taxonId === taxonomyRecordFixture.taxon_id || matchesKeyword
-        ? [taxonomyRecordFixture]
+      taxonId === "*" || taxonId === taxonomyRecord.taxon_id || matchesKeyword
+        ? [taxonomyRecord]
         : [];
     if (request.headers.get("accept") === "application/json") return docs;
-    return {
-      response: { numFound: docs.length, docs },
-      facet_counts: {
+    return buildLoopbackSolrEnvelope(docs, {
+      facetCounts: {
         facet_fields: {
           taxon_rank: ["species", docs.length],
           genetic_code: [1, docs.length],
           division: ["Viruses", docs.length],
         },
       },
-    };
+    });
   }
   if (core === "serology") {
-    const isAmbiguous = query.includes(
-      "eq(sample_identifier,ambiguous-serology)",
-    );
-    const hasTestTypeFilter = query.includes("eq(test_type,");
-    const requestedTestType = ambiguousSerologyFixtures
-      .map((fixture) => fixture.test_type)
-      .find((testType) => query.includes(`eq(test_type,${testType})`));
+    const sampleIdentifier = equalsValue(query, "sample_identifier");
+    const requestedTestType = equalsValue(query, "test_type");
+    const isAmbiguous =
+      sampleIdentifier === ambiguousSerologyRecords[0].sample_identifier;
+    // An unmatched discriminator filters to zero rows rather than falling
+    // back to the whole ambiguous set — that is what makes the "no such test
+    // type" branch of the ambiguity page reachable.
     const docs = isAmbiguous
-      ? requestedTestType
-        ? ambiguousSerologyFixtures.filter(
+      ? requestedTestType === undefined
+        ? ambiguousSerologyRecords
+        : ambiguousSerologyRecords.filter(
             (fixture) => fixture.test_type === requestedTestType,
           )
-        : hasTestTypeFilter
-          ? []
-          : ambiguousSerologyFixtures
-      : query.includes("eq(sample_identifier,000123)") ||
-          query.includes("keyword(antibody*)")
-        ? [serologyRecordFixture]
+      : sampleIdentifier === serologyRecord.sample_identifier ||
+          hasKeyword(query, "antibody*")
+        ? [serologyRecord]
         : [];
     if (request.headers.get("accept") === "application/json") return docs;
-    return {
-      response: { numFound: docs.length, docs },
-      facet_counts: {
+    return buildLoopbackSolrEnvelope(docs, {
+      facetCounts: {
         facet_fields: {
           test_type: isAmbiguous
             ? docs.flatMap((fixture) => [fixture.test_type, 1])
             : ["ELISA/IgG test", 1],
         },
       },
-    };
+    });
   }
   if (core === "experiment") {
-    const experimentId = query.match(/eq\(exp_id,([^)&]+)\)/)?.[1];
+    const experimentId = equalsValue(query, "exp_id");
     const docs =
       experimentId && experimentId !== "*"
-        ? experimentId === experimentRecordFixture.exp_id
-          ? [experimentRecordFixture]
+        ? experimentId === experimentRecord.exp_id
+          ? [experimentRecord]
           : []
-        : [experimentRecordFixture];
+        : [experimentRecord];
     if (request.headers.get("accept") === "application/json") return docs;
-    return { response: { numFound: docs.length, docs } };
+    return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "protein_structure") {
-    const accession = query.match(/eq\(pdb_id,([^)&]+)\)/)?.[1];
+    const accession = equalsValue(query, "pdb_id");
     const docs =
       accession === "*"
-        ? proteinStructureRecordFixtures
+        ? proteinStructureRecords
         : accession
-          ? proteinStructureRecordFixtures.filter(
+          ? proteinStructureRecords.filter(
               (record) => record.pdb_id === accession,
             )
-          : proteinStructureRecordFixtures;
+          : proteinStructureRecords;
     if (request.headers.get("accept") === "application/json") return docs;
-    return { response: { numFound: docs.length, docs } };
+    return buildLoopbackSolrEnvelope(docs);
   }
   if (core === "surveillance") {
-    const isAmbiguous = query.includes(
-      "eq(sample_identifier,ambiguous-sample)",
-    );
-    const hasTestTypeFilter = query.includes("eq(pathogen_test_type,");
-    const requestedTestType = ambiguousSurveillanceFixtures
-      .flatMap((fixture) => fixture.pathogen_test_type)
-      .find((testType) =>
-        query.includes(`eq(pathogen_test_type,"${testType}")`),
-      );
+    const sampleIdentifier = equalsValue(query, "sample_identifier");
+    const requestedTestType = equalsValue(query, "pathogen_test_type");
+    const isAmbiguous =
+      sampleIdentifier === ambiguousSurveillanceRecords[0].sample_identifier;
     const docs = isAmbiguous
-      ? requestedTestType
-        ? ambiguousSurveillanceFixtures.filter((fixture) =>
+      ? requestedTestType === undefined
+        ? ambiguousSurveillanceRecords
+        : ambiguousSurveillanceRecords.filter((fixture) =>
             fixture.pathogen_test_type.includes(requestedTestType),
           )
-        : hasTestTypeFilter
-          ? []
-          : ambiguousSurveillanceFixtures
-      : query.includes("eq(sample_identifier,sample/1)")
-        ? [surveillanceRecordFixture]
-        : query.includes("keyword(sentinel*)")
-          ? [surveillanceRecordFixture]
-          : [];
+      : sampleIdentifier === surveillanceRecord.sample_identifier ||
+          hasKeyword(query, "sentinel*")
+        ? [surveillanceRecord]
+        : [];
     if (request.headers.get("accept") === "application/json") return docs;
-    return {
-      response: { numFound: docs.length, docs },
-      facet_counts: {
+    return buildLoopbackSolrEnvelope(docs, {
+      facetCounts: {
         facet_fields: {
           pathogen_test_type: isAmbiguous
             ? docs.flatMap((fixture) => [fixture.pathogen_test_type[0], 1])
             : ["RAT/antigen", 1],
         },
       },
-    };
+    });
   }
   const numFound = e2eDeterministicCounts[core];
   if (typeof numFound !== "number") return null;
   const isGenomeFixtureQuery =
     core === "genome" &&
-    (query.includes("eq(genome_id,1282460.2049)") ||
-      (query.includes("keyword(MERS*)") &&
-        query.includes("sort(+genome_name,+genome_id)")));
+    (equalsValue(query, "genome_id") === genomeRecord.genome_id ||
+      (hasKeyword(query, "MERS*") &&
+        hasClause(query, "sort(+genome_name,+genome_id)")));
   const itemRange = (
     request.headers.get("range") ?? request.headers.get("x-range")
   )?.match(/^items=(\d+)-(\d+)$/i);
   const includesFixtureRow =
     !itemRange || (Number(itemRange[1]) <= 0 && Number(itemRange[2]) >= 0);
   const isEpitopeFixtureQuery =
-    core === "epitope" && query.includes("eq(epitope_id,15780)");
-  const docs = includesFixtureRow
+    core === "epitope" &&
+    equalsValue(query, "epitope_id") === epitopeRecord.epitope_id;
+  const docs: unknown[] = includesFixtureRow
     ? isGenomeFixtureQuery
-      ? [genomeRecordFixture]
+      ? [genomeRecord]
       : isEpitopeFixtureQuery
-        ? [epitopeRecordFixture]
+        ? [epitopeRecord]
         : []
     : [];
   if (request.headers.get("accept") === "application/json") return docs;
-  return { response: { numFound, docs } };
+  return buildLoopbackSolrEnvelope(docs, { numFound });
 }
-
-const bacteriaSummaryFixture = {
-  count: 1337420,
-  unique_family: 391,
-  unique_genus: 5432,
-  unique_species: 82915,
-  CDS: 482001224,
-  mat_peptide: 23144,
-  PDB: 9821,
-};
-
-const virusesSummaryFixture = {
-  count: 890123,
-  unique_family: 212,
-  unique_genus: 2841,
-  unique_species: 14302,
-  CDS: 12803441,
-  mat_peptide: 419820,
-  PDB: 3201,
-};
-
-const allOrganismsSummaryFixture = {
-  count: 9800000,
-  unique_family: 1204,
-  unique_genus: 41200,
-  unique_species: 510000,
-  CDS: 980000000,
-  mat_peptide: 450000,
-  PDB: 21000,
-};
-
-const bacteriaTaxonomyFixture = {
-  taxon_id: 2,
-  taxon_name: "Bacteria",
-  lineage_names: ["cellular organisms", "Bacteria"],
-  lineage_ids: [131567, 2],
-  taxon_rank: "superkingdom",
-  genomes: 1337420,
-};
-
-const virusesTaxonomyFixture = {
-  taxon_id: 10239,
-  taxon_name: "Viruses",
-  lineage_names: ["Viruses"],
-  lineage_ids: [10239],
-  taxon_rank: "superkingdom",
-  genomes: virusesSummaryFixture.count,
-};
-
-const cellularOrganismsTaxonomyFixture = {
-  taxon_id: 131567,
-  taxon_name: "cellular organisms",
-  lineage_names: ["cellular organisms"],
-  lineage_ids: [131567],
-  taxon_rank: "no rank",
-  genomes: allOrganismsSummaryFixture.count,
-};
-
-const brucellaTaxonomyFixture = {
-  taxon_id: 234,
-  taxon_name: "Brucella",
-  lineage_names: [
-    "cellular organisms",
-    "Bacteria",
-    "Pseudomonadota",
-    "Alphaproteobacteria",
-    "Hyphomicrobiales",
-    "Brucellaceae",
-    "Brucella",
-  ],
-  lineage_ids: [131567, 2, 1224, 28211, 356, 118882, 234],
-  taxon_rank: "genus",
-  genomes: 1909,
-};
-
-// Influenza A virus — lineage includes "Orthomyxoviridae" so hasStrains = true.
-// Used by the strains-tab e2e tests which need a taxon where the Strains tab is enabled.
-const influenzaATaxonomyFixture = {
-  taxon_id: 11520,
-  taxon_name: "Influenza A virus",
-  lineage_names: [
-    "Viruses",
-    "Orthornavirae",
-    "Negarnaviricota",
-    "Insthoviricetes",
-    "Articulavirales",
-    "Orthomyxoviridae",
-    "Alphainfluenzavirus",
-    "Influenza A virus",
-  ],
-  lineage_ids: [
-    10239, 2497569, 2497570, 2497583, 2499399, 11308, 2499397, 11520,
-  ],
-  taxon_rank: "species",
-  genomes: 245000,
-};
-
-// Alphainfluenzavirus influenzae — lineage includes "Alphainfluenzavirus influenzae"
-// so hasSerology = true. Used by the serology-tab e2e test.
-const alphainfluenzavirusInfluenzaeTaxonomyFixture = {
-  taxon_id: 2955291,
-  taxon_name: "Alphainfluenzavirus influenzae",
-  lineage_names: [
-    "Viruses",
-    "Riboviria",
-    "Orthornavirae",
-    "Negarnaviricota",
-    "Polyploviricotina",
-    "Insthoviricetes",
-    "Articulavirales",
-    "Orthomyxoviridae",
-    "Alphainfluenzavirus",
-    "Alphainfluenzavirus influenzae",
-  ],
-  lineage_ids: [
-    10239, 2559587, 2732396, 2497569, 2497571, 2497577, 2499411, 11308, 197911,
-    2955291,
-  ],
-  taxon_rank: "species",
-  genomes: 1876178,
-};
-
-// Caliciviridae — virus family used by domains-and-motifs e2e tests.
-const caliciviridaeTaxonomyFixture = {
-  taxon_id: 11974,
-  taxon_name: "Caliciviridae",
-  lineage_names: [
-    "Viruses",
-    "Riboviria",
-    "Orthornavirae",
-    "Pisuviricota",
-    "Pisoniviricetes",
-    "Picornavirales",
-    "Caliciviridae",
-  ],
-  lineage_ids: [10239, 2559587, 2732396, 2732408, 2732506, 464095, 11974],
-  taxon_rank: "family",
-  genomes: 86222,
-};
 
 const sharedFacetFixtures: Record<string, (string | number)[]> = {
   genus: [
@@ -678,25 +488,11 @@ const sharedFacetFixtures: Record<string, (string | number)[]> = {
   ],
 };
 
-function facetFieldFromRequest(request: NextRequest): string | null {
-  const url = new URL(request.url);
-  const candidates = [
-    url.search,
-    ...Array.from(url.searchParams.keys()),
-    ...Array.from(url.searchParams.values()),
-  ].map((value) => {
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      return value;
-    }
-  });
-
-  for (const candidate of candidates) {
-    const match = candidate.match(/\(field,([^),=]+)\)/);
+function facetFieldFromQuery(query: FixtureQuery): string | null {
+  for (const clause of query.clauses) {
+    const match = /\(field,([^),=]+)\)/.exec(clause);
     if (match?.[1]) return match[1];
   }
-
   return null;
 }
 
@@ -706,32 +502,18 @@ interface PivotKey {
   tertiary?: string;
 }
 
-function pivotKeyFromRequest(request: NextRequest): PivotKey | null {
-  const url = new URL(request.url);
-  const candidates = [
-    url.search,
-    ...Array.from(url.searchParams.keys()),
-    ...Array.from(url.searchParams.values()),
-  ].map((value) => {
-    try {
-      return decodeURIComponent(value);
-    } catch {
-      return value;
-    }
-  });
-
-  for (const candidate of candidates) {
+function pivotKeyFromQuery(query: FixtureQuery): PivotKey | null {
+  for (const clause of query.clauses) {
     // `[^,)]+` prevents `(...,foo)),(mincount,1)` from being misread as a
     // 3-level pivot by greedily consuming the close paren of the inner pivot.
-    const triple = candidate.match(/\(pivot,\(([^,)]+),([^,)]+),([^,)]+)\)\)/);
+    const triple = /\(pivot,\(([^,)]+),([^,)]+),([^,)]+)\)\)/.exec(clause);
     if (triple?.[1] && triple[2] && triple[3]) {
       return { primary: triple[1], secondary: triple[2], tertiary: triple[3] };
     }
-    const match = candidate.match(/\(pivot,\(([^,)]+),([^,)]+)\)\)/);
+    const match = /\(pivot,\(([^,)]+),([^,)]+)\)\)/.exec(clause);
     if (match?.[1] && match[2])
       return { primary: match[1], secondary: match[2] };
   }
-
   return null;
 }
 
@@ -1065,42 +847,50 @@ function maybeBvBrcWebsite(
   if (segments[0] !== "bvbrc-website") return null;
   const endpoint = segments.slice(1).join("/");
 
-  if (endpoint === "data/summary_by_taxon/2")
-    return { kind: "ok", body: bacteriaSummaryFixture };
-  if (endpoint === "data/summary_by_taxon/10239")
-    return { kind: "ok", body: virusesSummaryFixture };
-  if (endpoint === "data/summary_by_taxon/131567")
-    return { kind: "ok", body: allOrganismsSummaryFixture };
-  if (endpoint === "taxonomy/2")
-    return { kind: "ok", body: bacteriaTaxonomyFixture };
-  if (endpoint === "taxonomy/10239")
-    return { kind: "ok", body: virusesTaxonomyFixture };
-  if (endpoint === "taxonomy/131567")
-    return { kind: "ok", body: cellularOrganismsTaxonomyFixture };
-  if (endpoint === "taxonomy/234")
-    return { kind: "ok", body: brucellaTaxonomyFixture };
-  if (endpoint === "taxonomy/11520")
-    return { kind: "ok", body: influenzaATaxonomyFixture };
-  if (endpoint === "taxonomy/11974")
-    return { kind: "ok", body: caliciviridaeTaxonomyFixture };
-  if (endpoint === "taxonomy/2955291")
-    return { kind: "ok", body: alphainfluenzavirusInfluenzaeTaxonomyFixture };
+  // Both landing-page endpoints are table lookups keyed by taxon id, so
+  // "which taxa this mock knows" is one fact in
+  // src/lib/e2e-fixtures/records.ts rather than a branch per taxon here.
+  const summaryTaxonId = endpoint.match(
+    /^data\/summary_by_taxon\/(\d+)\/?$/,
+  )?.[1];
+  if (summaryTaxonId) {
+    const summary = findOrganismSummaryRecord(summaryTaxonId);
+    return summary
+      ? { kind: "ok", body: summary }
+      : {
+          kind: "unhandled",
+          reason: `no summary_by_taxon fixture for taxon ${summaryTaxonId} — add one to organismSummaryRecords in src/lib/e2e-fixtures/records.ts`,
+        };
+  }
+
+  const websiteTaxonId = endpoint.match(/^taxonomy\/(\d+)\/?$/)?.[1];
+  if (websiteTaxonId) {
+    const taxon = findOrganismTaxonomyRecord(websiteTaxonId);
+    return taxon
+      ? { kind: "ok", body: taxon }
+      : {
+          kind: "unhandled",
+          reason: `no taxonomy fixture for taxon ${websiteTaxonId} — add one to organismTaxonomyRecords in src/lib/e2e-fixtures/records.ts`,
+        };
+  }
   if (endpoint === "genome" || endpoint === "genome/") {
-    const url = new URL(request.url);
-    const query = decodeURIComponent(url.search);
+    const query = parseFixtureQuery(request);
 
     // Reference-genomes endpoint: BV-BRC returns a bare array of docs
     // (json(nl,map)), not the SOLR envelope shape.
-    if (query.includes("reference_genome,*") && query.includes("select(")) {
+    if (
+      equalsValue(query, "reference_genome") === "*" &&
+      hasCall(query, "select")
+    ) {
       return { kind: "ok", body: referenceGenomesFixture };
     }
 
-    // Use a strict regex to avoid substring collisions as fixture IDs grow
-    // (e.g. "234" should not match a taxon "1234").
-    const taxonMatch = query.match(/eq\(taxon_lineage_ids,(\d+)\)/);
-    const taxonId = taxonMatch ? Number(taxonMatch[1]) : null;
+    // Parsed equality, not a substring: a fixture taxon "234" must not match
+    // a request for taxon "1234".
+    const rawTaxonId = equalsValue(query, "taxon_lineage_ids");
+    const taxonId = /^\d+$/.test(rawTaxonId ?? "") ? Number(rawTaxonId) : null;
 
-    const pivot = pivotKeyFromRequest(request);
+    const pivot = pivotKeyFromQuery(query);
     if (pivot) {
       const pivotKey = pivot.tertiary
         ? `${pivot.primary},${pivot.secondary},${pivot.tertiary}`
@@ -1135,13 +925,13 @@ function maybeBvBrcWebsite(
       }
       return { kind: "ok", body: solrPivot(pivot.primary, pivot.secondary) };
     }
-    const field = facetFieldFromRequest(request);
+    const field = facetFieldFromQuery(query);
     if (!field) {
       return { kind: "unhandled", reason: "no pivot or facet field" };
     }
-    let count = bacteriaSummaryFixture.count;
-    if (taxonId === 10239) count = virusesSummaryFixture.count;
-    else if (taxonId === 131567) count = allOrganismsSummaryFixture.count;
+    let count = bacteriaSummaryRecord.count;
+    if (taxonId === 10239) count = virusesSummaryRecord.count;
+    else if (taxonId === 131567) count = allOrganismsSummaryRecord.count;
     if (field === "isolation_country" && taxonId === 234) {
       return {
         kind: "ok",
@@ -1158,7 +948,10 @@ function maybeBvBrcWebsite(
     return { kind: "ok", body: solrFacet(field, count) };
   }
 
-  return null;
+  return {
+    kind: "unhandled",
+    reason: `no fixture for bvbrc-website endpoint '${endpoint}'`,
+  };
 }
 
 export async function GET(
@@ -1167,51 +960,98 @@ export async function GET(
 ): Promise<NextResponse> {
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
-  logHit("GET", path);
+  logHit("GET", path, new URL(request.url).search);
   if (path === "phylo-manifest") {
     return NextResponse.json({ trees: { "2955291": "influenza" } });
   }
   const identityResponse = handleIdentityGet(path);
   if (identityResponse) return identityResponse;
+  const search = new URL(request.url).search;
   const bvBrcWebsite = maybeBvBrcWebsite(path, request);
   if (bvBrcWebsite) {
     if (bvBrcWebsite.kind === "unhandled") {
-      // Fail loudly so e2e tests surface fixture gaps instead of silently
-      // rendering empty data.
-      return NextResponse.json(
-        {
-          error: "e2e-mock: unhandled bvbrc-website/genome query",
-          reason: bvBrcWebsite.reason,
-          query: new URL(request.url).search,
-        },
-        { status: 400 },
+      return unhandledResponse(
+        "unhandled bvbrc-website request",
+        bvBrcWebsite.reason,
+        { path, query: search },
       );
     }
     return NextResponse.json(bvBrcWebsite.body);
   }
   const solr = maybeSolrCount(path, request);
   if (solr) return NextResponse.json(solr);
-  return NextResponse.json({});
+
+  const segments = path.split("/").filter(Boolean);
+  const reason =
+    segments[0] === "data"
+      ? `no fixture for data core '${segments[1] ?? ""}' — add it to e2eDeterministicCounts or give it a named branch in maybeSolrCount`
+      : `no GET fixture is registered for this path`;
+  return unhandledResponse("unhandled GET endpoint", reason, {
+    path,
+    query: search,
+  });
 }
 
-// Permissive POST fallback is reserved for the known JSON-RPC / service
-// namespaces wired through .env.e2e.test so an unexpected POST routed through
-// this mock fails loudly rather than silently returning success. The
-// `bvbrc-website` namespace is intentionally excluded from this fallback —
-// the only supported POST endpoint there is `genome_amr`, which is handled
-// explicitly by `maybeBvBrcWebsitePost` above this fallback. Every other
-// `bvbrc-website` POST still fails loudly.
-const postAllowedNamespaces = new Set([
-  "workspace",
-  "app-service",
-  "service",
-  "services",
-  "data",
-  "data-service",
-  "sra-validation",
-  "minhash",
-  "upload",
-]);
+/**
+ * The JSON-RPC calls this mock answers, full path → method → `result`.
+ *
+ * Keyed on the WHOLE path, not its first segment: the old allowlist tested
+ * only the first segment, so `POST /workspace/anything` was accepted as
+ * readily as `POST /workspace`.
+ *
+ * This replaces a blanket `{result: [[]]}` for any POST landing in one of
+ * nine namespaces. Every entry here was OBSERVED reaching the loopback during
+ * an instrumented run of the full Chromium suite and `pnpm a11y`; every
+ * method absent from it is rejected, including inside these two namespaces.
+ * The other seven namespaces the old allowlist carried — `service`,
+ * `services`, `data`, `data-service`, `sra-validation`, `minhash`, `upload` —
+ * were never reached by a POST in that run and are gone rather than kept
+ * "just in case". Five of them (`services`, `data`, `data-service`,
+ * `sra-validation`, `minhash`) still have a `.env.e2e.test` variable pointing
+ * here, so a real caller can still arrive and will get a diagnostic naming
+ * itself instead of a fake success. `service` and `upload` never had one and
+ * were unreachable even before this change.
+ *
+ * `bvbrc-website` is deliberately not here: its one POST endpoint,
+ * `genome_amr`, is handled by `maybeBvBrcWebsitePost` with its own body
+ * validation, and it is not JSON-RPC.
+ *
+ * Each result is empty, and each is empty for a stated reason. An empty
+ * result that is merely *convenient* belongs in a named fixture instead.
+ */
+const loopbackRpcResults: Record<string, Record<string, unknown>> = {
+  workspace: {
+    // Server-rendered workspace surfaces (favourites, path resolution) list a
+    // path before any spec-specific browser override exists. `result[0]` is
+    // the path → tuples map; an empty map is "this path holds nothing", which
+    // is what every `parseLsResult*` caller renders as an empty folder. Specs
+    // that need real items mock `/api/services/workspace` in the browser.
+    "Workspace.ls": [{}],
+    // `result[0]` is the per-requested-object array. Empty means "no object
+    // metadata", which resolve/availability callers treat as "not present" —
+    // the same answer the real service gives for an unknown path.
+    "Workspace.get": [[]],
+  },
+  "app-service": {
+    // `/api/services/app-service/jobs/task-summary` and `/app-summary` are
+    // server routes with no browser override, so they reach the loopback on
+    // every jobs render. Both contracts are `Record<string, number>`; an
+    // empty record is "no jobs in any state", and the jobs specs that assert
+    // on counts mock `/jobs/summary` in the browser instead.
+    "AppService.query_task_summary_filtered": {},
+    "AppService.query_app_summary_filtered": {},
+  },
+};
+
+function findRpcResult(
+  endpoint: string,
+  method: string,
+): { result: unknown } | undefined {
+  if (!Object.hasOwn(loopbackRpcResults, endpoint)) return undefined;
+  const methods = loopbackRpcResults[endpoint];
+  if (!Object.hasOwn(methods, method)) return undefined;
+  return { result: methods[method] };
+}
 
 export async function POST(
   request: NextRequest,
@@ -1233,12 +1073,10 @@ export async function POST(
   const bvBrcWebsitePost = await maybeBvBrcWebsitePost(path, request);
   if (bvBrcWebsitePost) {
     if (bvBrcWebsitePost.kind === "unhandled") {
-      return NextResponse.json(
-        {
-          error: "e2e-mock: invalid bvbrc-website/genome_amr POST",
-          reason: bvBrcWebsitePost.reason,
-        },
-        { status: 400 },
+      return unhandledResponse(
+        "invalid bvbrc-website/genome_amr POST",
+        bvBrcWebsitePost.reason,
+        { path },
       );
     }
     return NextResponse.json(bvBrcWebsitePost.body);
@@ -1247,15 +1085,49 @@ export async function POST(
   const identityResponse = await handleIdentityPost(path, request, rpcMethod);
   if (identityResponse) return identityResponse;
 
-  const firstSegment = path.split("/").filter(Boolean)[0] ?? "";
-  if (!postAllowedNamespaces.has(firstSegment)) {
-    return NextResponse.json(
-      { error: "e2e-mock: unhandled POST endpoint", path },
-      { status: 400 },
+  const endpoint = path.split("/").filter(Boolean).join("/");
+  if (rpcMethod === undefined) {
+    // Not JSON-RPC at all (a form upload, or a malformed body). There is no
+    // method name to dispatch on, so answer in the plain diagnostic shape.
+    return unhandledResponse(
+      "unhandled POST endpoint",
+      "request body carried no JSON-RPC method",
+      { path },
     );
   }
 
-  return NextResponse.json({ id: 1, jsonrpc: "2.0", result: [[]] });
+  const matched = findRpcResult(endpoint, rpcMethod);
+  if (!matched) {
+    const reason = Object.hasOwn(loopbackRpcResults, endpoint)
+      ? `no fixture for JSON-RPC method '${rpcMethod}' at endpoint '${endpoint}'`
+      : `no JSON-RPC endpoint '${endpoint}' is mocked`;
+    return unhandledRpcResponse("unhandled JSON-RPC call", reason);
+  }
+
+  return NextResponse.json(buildLoopbackRpcSuccess(matched.result));
+}
+
+/**
+ * No PUT or DELETE fixture exists, so both reject everything.
+ *
+ * These used to return `{}` unconditionally, with no path check at all.
+ * Instrumenting the handler and running the full Chromium suite plus
+ * `pnpm a11y` recorded not one PUT or DELETE reaching it, so there is no
+ * behaviour to preserve — only a hole to close. Both handlers stay exported:
+ * without them Next answers 405 with no explanation of why, and the point is
+ * for the first real caller to be told what to add and where.
+ *
+ * There is deliberately no empty fixture table to "add an entry to" — the
+ * first real caller needs a handler shaped like its own contract, the way
+ * `loopbackRpcResults` is shaped like JSON-RPC, not a row in a map whose
+ * value type nobody has designed yet.
+ */
+function rejectMutation(method: string, path: string): NextResponse {
+  return unhandledResponse(
+    `unhandled ${method} endpoint`,
+    `no ${method} fixture is registered — add a ${method} branch to src/app/api/e2e-mock/[...path]/route.ts`,
+    { path },
+  );
 }
 
 export async function PUT(
@@ -1265,7 +1137,7 @@ export async function PUT(
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("PUT", path);
-  return NextResponse.json({});
+  return rejectMutation("PUT", path);
 }
 
 export async function DELETE(
@@ -1275,5 +1147,5 @@ export async function DELETE(
   if (!isEnabled()) return disabledResponse();
   const path = await resolvePath(context.params);
   logHit("DELETE", path);
-  return NextResponse.json({});
+  return rejectMutation("DELETE", path);
 }

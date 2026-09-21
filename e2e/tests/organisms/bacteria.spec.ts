@@ -1,5 +1,9 @@
 import { test, expect, applyBackendMocks } from "../../mocks/backends";
-import { permissiveBackendOverrides, workspaceOverrides } from "../../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  genomeScenarioOverrides,
+  workspaceOverrides,
+} from "../../fixtures/overrides";
 import { OrganismLandingPage } from "../../pages/organism-landing-page";
 
 test.use({ storageState: { cookies: [], origins: [] } });
@@ -10,7 +14,7 @@ test.describe("bacteria organism landing page — mobile pill nav", () => {
 
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...workspaceOverrides, ...permissiveBackendOverrides],
+      overrides: [...workspaceOverrides, ...genomeScenarioOverrides, ...emptyBackendFallbackOverrides],
     });
   });
 
@@ -69,7 +73,8 @@ test.describe("bacteria organism landing page", () => {
           headers: { "Content-Range": "items 0-0/0" },
         },
         ...workspaceOverrides,
-        ...permissiveBackendOverrides,
+        ...genomeScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
       ],
     });
   });

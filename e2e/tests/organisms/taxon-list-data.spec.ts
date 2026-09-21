@@ -4,8 +4,30 @@ import {
   applyBackendMocks,
   type JsonOverride,
 } from "../../mocks/backends";
-import { permissiveBackendOverrides } from "../../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  epitopeScenarioOverrides,
+  genomeFeatureScenarioOverrides,
+  genomeScenarioOverrides,
+  strainScenarioOverrides,
+} from "../../fixtures/overrides";
 import { TaxonPage } from "../../pages";
+
+// This spec exercises strain (default beforeEach fixture), genome, genome
+// feature, and epitope tabs across several describe blocks below — each tab's
+// own test either reads this default data or replaces it with a local, more
+// specific override that wins first-match, so one shared bundle covers the
+// whole file instead of the full unscoped catch-all. genomeFeatureScenarioOverrides
+// was an undeclared dependency found while narrowing this spec: the "features"
+// local-filtering case's initial render needs it even though its own test
+// layers a local page.route() on top for the filtered-count assertion.
+const taxonListDataOverrides = [
+  ...strainScenarioOverrides,
+  ...genomeScenarioOverrides,
+  ...genomeFeatureScenarioOverrides,
+  ...epitopeScenarioOverrides,
+  ...emptyBackendFallbackOverrides,
+];
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -25,7 +47,7 @@ const influenzaTaxonId = "11520";
 test.describe("taxon strains actions", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...taxonListDataOverrides],
     });
     await page.goto(`/taxonomy/${influenzaTaxonId}?tab=strains`);
     await expect(page.getByText("A/California/04/2009").first()).toBeVisible({
@@ -164,6 +186,25 @@ test.describe("taxon strains actions", () => {
     await expect(page.getByRole("button", { name: "Features" })).toBeVisible();
   });
 
+  test("opens GUIDE without an opener or referrer", async ({ page, context }) => {
+    let referer: string | undefined;
+    await page.route("https://www.bv-brc.org/docs/**", async (route) => {
+      referer = route.request().headers()["referer"];
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Guide</title>",
+      });
+    });
+
+    const guideTab = context.waitForEvent("page");
+    await page.getByRole("button", { name: "GUIDE" }).click();
+    const opened = await guideTab;
+    await opened.waitForURL("https://www.bv-brc.org/docs/**");
+
+    expect(referer).toBeUndefined();
+    expect(await opened.evaluate(() => window.opener === null)).toBe(true);
+  });
+
   test("keeps the selection when a signed-out user launches BLAST", async ({
     page,
     context,
@@ -196,6 +237,12 @@ test.describe("taxon strains actions", () => {
     expect(
       await opened.evaluate((key) => sessionStorage.getItem(key), rerunKey),
     ).toContain("641501.3");
+    expect(
+      await opened.evaluate(() => ({
+        hasOpener: window.opener !== null,
+        referrer: document.referrer,
+      })),
+    ).toEqual({ hasOpener: false, referrer: "" });
     await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
   });
 
@@ -223,7 +270,7 @@ test.describe("taxon strains actions", () => {
 test.describe("taxon strains tab: data API error handling", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [strainApi500, ...permissiveBackendOverrides],
+      overrides: [strainApi500, ...taxonListDataOverrides],
     });
   });
 
@@ -289,7 +336,7 @@ test.describe("taxon data table: checkbox-column selection", () => {
   }) => {
     const rows = buildProteinFeatureRows(3);
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...taxonListDataOverrides],
     });
     await page.route(pfGateway, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
@@ -335,7 +382,7 @@ test.describe("taxon domains-and-motifs: Download Selected sends POST not GET", 
       overrides: [
         { url: pfGateway, method: "GET", body: proteinFeatureCollection(rows) },
         { url: pfGateway, method: "POST", body: { rows } },
-        ...permissiveBackendOverrides,
+        ...taxonListDataOverrides,
       ],
     });
 
@@ -380,7 +427,7 @@ test.describe("taxon domains-and-motifs: Download Selected sends POST not GET", 
       overrides: [
         { url: pfGateway, method: "GET", body: proteinFeatureCollection(rows) },
         { url: pfGateway, method: "POST", body: { rows } },
-        ...permissiveBackendOverrides,
+        ...taxonListDataOverrides,
       ],
     });
 
@@ -417,15 +464,19 @@ test.describe("taxon domains-and-motifs: Download Selected sends POST not GET", 
 });
 
 // ─── Facet click regression: multi-word eq() values must be quoted ───────────
-// Regression: buildRql() (src/components/filterbar/filter-utils.ts) built eq()
-// clauses with unquoted values. Solr string fields (e.g. epitope_type) split an
-// unquoted multi-word value into separate ANDed terms —
-// `eq(epitope_type,Linear peptide)` becomes `epitope_type:Linear AND
-// epitope_type:peptide`, matching nothing — so clicking any multi-word facet
-// value hung the table at "Showing 0-0 of 0 results" forever. Fix: quote eq()
-// values. buildRql() is shared by every resource's FilterBar (genome, strain,
-// epitope, surveillance, ...), so this one test on the epitope tab exercises
-// the fix for all views — the bug and the fix live in one shared function.
+// Regression: a facet click built an eq() clause with an unquoted value. Solr
+// string fields (e.g. epitope_type) split an unquoted multi-word value into
+// separate ANDed terms — `eq(epitope_type,Linear peptide)` becomes
+// `epitope_type:Linear AND epitope_type:peptide`, matching nothing — so
+// clicking any multi-word facet value hung the table at
+// "Showing 0-0 of 0 results" forever.
+//
+// The quoting now happens in exactly one place for every view: `serializeValue`
+// in src/lib/data-api/rql.ts, which the gateway applies to a structural filter
+// (this tab, via ResourceFilterBar) and to a raw `rql` string alike (the legacy
+// /search list, whose `buildRql` deliberately sends values unquoted). This tab
+// is the ResourceFilterBar side; filter-utils.test.ts pairs the legacy side
+// with the same serializer.
 const epitopeGateway = /\/api\/data\/epitope(?:\?|$)/;
 
 function buildEpitopeRows(count: number, epitopeType: string) {
@@ -477,7 +528,7 @@ test.describe("taxon collection tabs: local keyword filtering", () => {
       page,
     }) => {
       await applyBackendMocks(page, {
-        overrides: [...permissiveBackendOverrides],
+        overrides: [...taxonListDataOverrides],
       });
       const collectionRequests: string[] = [];
       page.on("request", (request) => {
@@ -523,7 +574,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
     page,
   }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...taxonListDataOverrides],
     });
     const collectionRequests: string[] = [];
     page.on("request", (request) => {
@@ -554,7 +605,7 @@ test.describe("taxon epitopes tab: local filtering and facets", () => {
     page,
   }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...taxonListDataOverrides],
     });
 
     // The gateway exposes one combined rows/count/facets response. Only a

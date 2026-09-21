@@ -12,12 +12,14 @@ vi.mock("@/components/views", () => ({
     resource,
     rql,
     guideUrl,
+    keywordMode,
     keywordValue,
     onKeywordChange,
   }: {
     resource: string;
     rql: string;
     guideUrl?: string;
+    keywordMode?: string;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
   }) => {
@@ -28,8 +30,9 @@ vi.mock("@/components/views", () => ({
       <div
         data-testid="table-panel"
         data-resource={resource}
-        data-q={rql}
+        data-rql={rql}
         data-guide={guideUrl}
+        data-keyword-mode={keywordMode}
         data-keyword={keywordValue}
       >
         <button onClick={() => onKeywordChange?.("fromTable")}>
@@ -42,25 +45,15 @@ vi.mock("@/components/views", () => ({
 
 vi.mock("../interactions-graph", () => ({
   InteractionsGraph: ({
-    taxonId,
-    q,
-    tableFilter,
+    rql,
     keywordValue,
     onKeywordChange,
   }: {
-    taxonId: number;
-    q: string;
-    tableFilter?: string;
+    rql: string;
     keywordValue?: string;
     onKeywordChange?: (value: string) => void;
   }) => (
-    <div
-      data-testid="graph-panel"
-      data-taxon-id={taxonId}
-      data-q={q}
-      data-table-filter={tableFilter}
-      data-keyword={keywordValue}
-    >
+    <div data-testid="graph-panel" data-rql={rql} data-keyword={keywordValue}>
       <button onClick={() => { onKeywordChange?.("fromGraph"); }}>set-from-graph</button>
     </div>
   ),
@@ -74,24 +67,22 @@ describe("InteractionsSubviewShell", () => {
   it("forwards the table and graph data contracts and mounts the graph lazily", () => {
     render(
       <InteractionsSubviewShell
-        taxonId={943}
-        q="eq(evidence,experimental)"
+        rql="eq(evidence,experimental)"
         guideUrl="https://example.test/guide"
       />,
     );
 
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-resource", "ppi");
-    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-q", "eq(evidence,experimental)");
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", "eq(evidence,experimental)");
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-guide", "https://example.test/guide");
     expect(screen.queryByTestId("graph-panel")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-taxon-id", "943");
-    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-q", "eq(evidence,experimental)");
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute("data-rql", "eq(evidence,experimental)");
   });
 
   it("keeps the Table subview mounted across a switch to Graph and back (bug #3 root cause)", () => {
-    render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
     expect(tableMountCount).toBe(1);
 
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
@@ -105,21 +96,37 @@ describe("InteractionsSubviewShell", () => {
     expect(screen.getByTestId("table-panel").parentElement).not.toHaveAttribute("inert");
   });
 
-  it("hands the graph the keyword text, not a second RQL clause for it (bug #1)", () => {
-    render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
-
-    fireEvent.click(screen.getByText("set-from-table"));
+  it("scopes both views on one predicate, with the URL fragment stripped once", () => {
+    render(
+      <InteractionsSubviewShell rql="eq(evidence,experimental)#view_tab=interactions" />,
+    );
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
 
-    // The graph owns keyword encoding (one wildcard clause per term). A keyword-only
-    // tableFilter here produced a second, differently-encoded clause.
-    const graph = screen.getByTestId("graph-panel");
-    expect(graph).toHaveAttribute("data-keyword", "fromTable");
-    expect(graph).not.toHaveAttribute("data-table-filter");
+    // Stripping in the Graph only (as it once did) left the Table querying the
+    // raw string, so the two views could scope differently before a keyword was
+    // even typed.
+    expect(screen.getByTestId("table-panel")).toHaveAttribute(
+      "data-rql",
+      "eq(evidence,experimental)",
+    );
+    expect(screen.getByTestId("graph-panel")).toHaveAttribute(
+      "data-rql",
+      "eq(evidence,experimental)",
+    );
+  });
+
+  it("leaves the Table's keyword on the request rather than filtering the loaded page", () => {
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
+
+    // Loaded mode filtered only the 200 rows already on screen while the Graph
+    // ran a real backend query, so the shared box meant two different things.
+    expect(screen.getByTestId("table-panel")).not.toHaveAttribute(
+      "data-keyword-mode",
+    );
   });
 
   it("shares keyword text between Table and Graph in both directions", () => {
-    render(<InteractionsSubviewShell taxonId={943} q="eq(evidence,experimental)" />);
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
 
     fireEvent.click(screen.getByText("set-from-table"));
     fireEvent.click(screen.getByRole("tab", { name: "Graph" }));

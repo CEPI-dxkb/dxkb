@@ -1,4 +1,8 @@
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  biosetScenarioOverrides,
+  emptyBackendFallbackOverrides,
+  experimentScenarioOverrides,
+} from "../fixtures/overrides";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import { ExperimentPage } from "../pages";
 
@@ -6,7 +10,13 @@ test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Experiment view", () => {
   test.beforeEach(async ({ page }) => {
-    await applyBackendMocks(page, { overrides: [...permissiveBackendOverrides] });
+    await applyBackendMocks(page, {
+      overrides: [
+        ...experimentScenarioOverrides,
+        ...biosetScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
+      ],
+    });
   });
 
   test("shows Biosets for matching collection Experiments", async ({ page }) => {

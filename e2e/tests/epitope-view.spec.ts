@@ -1,4 +1,8 @@
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  epitopeAssayScenarioOverrides,
+  epitopeScenarioOverrides,
+} from "../fixtures/overrides";
 import { applyBackendMocks, expect, test } from "../mocks/backends";
 import { EpitopePage } from "../pages";
 
@@ -7,7 +11,11 @@ test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Epitope view", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [
+        ...epitopeScenarioOverrides,
+        ...epitopeAssayScenarioOverrides,
+        ...emptyBackendFallbackOverrides,
+      ],
     });
   });
 

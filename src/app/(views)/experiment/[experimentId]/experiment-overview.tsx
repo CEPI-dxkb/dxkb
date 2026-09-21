@@ -1,118 +1,57 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
 import { ExternalLink } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MetadataLink } from "@/components/detail-panel/metadata-link";
+import {
+  OverviewSection,
+  formatOverviewValue,
+  isOverviewValueAvailable,
+  type OverviewSectionField,
+} from "@/components/views";
 import type { ExperimentViewRecord } from "@/lib/experiment-view";
 import { experimentHref, genomeHref } from "@/lib/views/hrefs";
-
-interface FieldProps {
-  label: string;
-  value: unknown;
-}
 
 interface LinkItem {
   href?: string;
   label: string;
 }
 
-interface LinkFieldProps {
-  label: string;
-  items: LinkItem[];
-  external?: boolean;
-}
-
-interface MetadataCardProps {
-  title: string;
-  children: ReactNode;
-}
-
 interface ExperimentOverviewProps {
   experiment: ExperimentViewRecord;
 }
 
-function isAvailable(value: unknown): boolean {
-  return (
-    value != null && value !== "" && (!Array.isArray(value) || value.length > 0)
-  );
-}
-
-function display(value: unknown): string {
-  if (Array.isArray(value)) return value.map(String).join(", ");
-  if (!isAvailable(value)) return "Not available";
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint"
-  )
-    return String(value);
-  return JSON.stringify(value) || "Not available";
-}
-
-function Field({ label, value }: FieldProps) {
-  if (!isAvailable(value)) return null;
-  return (
-    <div>
-      <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
-      </dt>
-      <dd className="mt-0.5 wrap-break-word">{display(value)}</dd>
-    </div>
-  );
-}
-
-function LinkField({ label, items, external = false }: LinkFieldProps) {
+/**
+ * A field holding zero or more links laid out inline. Each destination goes
+ * through the shared `MetadataLink` boundary, which decides internal versus
+ * external and renders the new-tab icon only for a destination it classified
+ * as external — this field no longer carries its own `external` flag, so a
+ * caller cannot disagree with the classifier about what a URL is.
+ */
+function linkListField(
+  label: string,
+  items: readonly LinkItem[],
+): OverviewSectionField {
   const availableItems = items.filter((item) => item.label !== "");
-  if (availableItems.length === 0) return null;
-
-  return (
-    <div>
-      <dt className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
-      </dt>
-      <dd className="mt-0.5 flex flex-wrap gap-x-2 wrap-break-word">
-        {availableItems.map((item) =>
-          item.href ? (
-            external ? (
-              <a
-                key={`${item.href}-${item.label}`}
-                className="inline-flex items-center gap-1 text-primary underline"
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {item.label}
-                <ExternalLink className="size-3" aria-hidden="true" />
-              </a>
-            ) : (
-              <Link
-                key={`${item.href}-${item.label}`}
-                className="text-primary underline"
-                href={item.href}
-              >
-                {item.label}
-              </Link>
-            )
-          ) : (
-            <span key={item.label}>{item.label}</span>
-          ),
-        )}
-      </dd>
-    </div>
-  );
-}
-
-function MetadataCard({ title, children }: MetadataCardProps) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <dl className="grid gap-4 sm:grid-cols-2">{children}</dl>
-      </CardContent>
-    </Card>
-  );
+  return {
+    label,
+    value: availableItems,
+    available: availableItems.length > 0,
+    className: "mt-0.5 flex flex-wrap gap-x-2 wrap-break-word",
+    children: availableItems.map((item) =>
+      item.href ? (
+        <MetadataLink
+          key={`${item.href}-${item.label}`}
+          href={item.href}
+          className="inline-flex items-center gap-1"
+          externalIndicator={
+            <ExternalLink className="size-3" aria-hidden="true" />
+          }
+        >
+          {item.label}
+        </MetadataLink>
+      ) : (
+        <span key={item.label}>{item.label}</span>
+      ),
+    ),
+  };
 }
 
 function repositoryHref(
@@ -142,93 +81,100 @@ export function ExperimentOverview({ experiment }: ExperimentOverviewProps) {
   );
   return (
     <div className="grid gap-4 pb-6 xl:grid-cols-2">
-      <MetadataCard title="Study">
-        <Field label="Study name" value={experiment.study_name} />
-        <Field label="Study title" value={experiment.study_title} />
-        <Field label="Description" value={experiment.study_description} />
-        <Field label="Principal investigator" value={experiment.study_pi} />
-        <Field label="Institution" value={experiment.study_institution} />
-      </MetadataCard>
-      <MetadataCard title="Experiment">
-        <Field label="Experiment ID" value={experiment.exp_id} />
-        <Field label="Name" value={experiment.exp_name} />
-        <Field label="Title" value={experiment.exp_title} />
-        <Field label="Description" value={experiment.exp_description} />
-        <Field label="Point of contact" value={experiment.exp_poc} />
-        <Field label="Experimenters" value={experiment.experimenters} />
-        <Field label="Type" value={experiment.exp_type} />
-        <Field
-          label="Measurement technique"
-          value={experiment.measurement_technique}
-        />
-      </MetadataCard>
-      <MetadataCard title="Repository and publication">
-        <Field label="Public repository" value={experiment.public_repository} />
-        <LinkField
-          label="Public identifier"
-          items={
+      <OverviewSection
+        title="Study"
+        fields={[
+          { label: "Study name", value: experiment.study_name },
+          { label: "Study title", value: experiment.study_title },
+          { label: "Description", value: experiment.study_description },
+          { label: "Principal investigator", value: experiment.study_pi },
+          { label: "Institution", value: experiment.study_institution },
+        ]}
+      />
+      <OverviewSection
+        title="Experiment"
+        fields={[
+          { label: "Experiment ID", value: experiment.exp_id },
+          { label: "Name", value: experiment.exp_name },
+          { label: "Title", value: experiment.exp_title },
+          { label: "Description", value: experiment.exp_description },
+          { label: "Point of contact", value: experiment.exp_poc },
+          { label: "Experimenters", value: experiment.experimenters },
+          { label: "Type", value: experiment.exp_type },
+          {
+            label: "Measurement technique",
+            value: experiment.measurement_technique,
+          },
+        ]}
+      />
+      <OverviewSection
+        title="Repository and publication"
+        fields={[
+          { label: "Public repository", value: experiment.public_repository },
+          linkListField(
+            "Public identifier",
             experiment.public_identifier
               ? [{ href: publicHref, label: experiment.public_identifier }]
-              : []
-          }
-          external
-        />
-        <LinkField
-          label="PubMed"
-          items={
+              : [],
+          ),
+          linkListField(
+            "PubMed",
             experiment.pmid != null
               ? [
                   {
                     href: `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(String(experiment.pmid))}/`,
-                    label: display(experiment.pmid),
+                    label: formatOverviewValue(experiment.pmid),
                   },
                 ]
-              : []
-          }
-          external
-        />
-      </MetadataCard>
-      <MetadataCard title="Organism and treatment">
-        <Field label="Organism" value={experiment.organism} />
-        <Field label="Strain" value={experiment.strain} />
-        <LinkField
-          label="Genome"
-          items={genomeIds.map((genomeId) => ({
-            href: genomeHref(genomeId),
-            label: genomeId,
-          }))}
-        />
-        <Field label="Treatment type" value={experiment.treatment_type} />
-        <Field label="Treatment name" value={experiment.treatment_name} />
-        <Field label="Treatment amount" value={experiment.treatment_amount} />
-        <Field
-          label="Treatment duration"
-          value={experiment.treatment_duration}
-        />
-      </MetadataCard>
-      <MetadataCard title="Samples and biosets">
-        <Field label="Samples" value={experiment.samples} />
-        <LinkField
-          label="Biosets"
-          items={
-            isAvailable(experiment.biosets)
+              : [],
+          ),
+        ]}
+      />
+      <OverviewSection
+        title="Organism and treatment"
+        fields={[
+          { label: "Organism", value: experiment.organism },
+          { label: "Strain", value: experiment.strain },
+          linkListField(
+            "Genome",
+            genomeIds.map((genomeId) => ({
+              href: genomeHref(genomeId),
+              label: genomeId,
+            })),
+          ),
+          { label: "Treatment type", value: experiment.treatment_type },
+          { label: "Treatment name", value: experiment.treatment_name },
+          { label: "Treatment amount", value: experiment.treatment_amount },
+          { label: "Treatment duration", value: experiment.treatment_duration },
+        ]}
+      />
+      <OverviewSection
+        title="Samples and biosets"
+        fields={[
+          { label: "Samples", value: experiment.samples },
+          linkListField(
+            "Biosets",
+            isOverviewValueAvailable(experiment.biosets)
               ? [
                   {
                     href: `${experimentHref(experiment.exp_id)}?tab=biosets`,
-                    label: display(experiment.biosets),
+                    label: formatOverviewValue(experiment.biosets),
                   },
                 ]
-              : []
-          }
-        />
-      </MetadataCard>
-      <MetadataCard title="Additional metadata">
-        <Field label="Date added" value={experiment.date_inserted} />
-        <Field
-          label="Additional metadata"
-          value={experiment.additional_metadata}
-        />
-      </MetadataCard>
+              : [],
+          ),
+        ]}
+      />
+      <OverviewSection
+        title="Additional metadata"
+        fields={[
+          { label: "Date added", value: experiment.date_inserted },
+          {
+            label: "Additional metadata",
+            value: experiment.additional_metadata,
+          },
+        ]}
+      />
     </div>
   );
 }

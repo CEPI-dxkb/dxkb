@@ -3,8 +3,12 @@
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
-import { useInteractions } from "@/lib/interactions/use-interactions";
-import { buildRql } from "@/components/filterbar/filter-utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  interactionsGraphRowLimit,
+  useInteractions,
+} from "@/lib/interactions/use-interactions";
 import { toGraph } from "@/lib/interactions/to-graph";
 import {
   buildGraphSelectionIndex,
@@ -12,6 +16,7 @@ import {
   selectSubgraphs,
 } from "@/lib/interactions/graph-selections";
 import { defaultLayout } from "@/lib/interactions/renderer-capabilities";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 import type {
   GEdge,
   GNode,
@@ -20,6 +25,7 @@ import type {
   GraphSelection,
   HubSelection,
   LayoutName,
+  PpiRecord,
   SubgraphSelection,
 } from "@/lib/interactions/types";
 
@@ -43,44 +49,28 @@ const SigmaCanvas = dynamic<GraphCanvasProps>(
 );
 
 const emptySelection: GraphSelection = { nodes: [], edges: [] };
+const emptyRows: PpiRecord[] = [];
 
 interface InteractionsGraphProps {
-  taxonId: number;
-  q: string;
   /**
-   * Extra RQL predicate to intersect with `q`, e.g. a facet selection. The shared
-   * keyword is NOT passed here — it arrives as `keywordValue` and is encoded once,
-   * below, so the graph cannot end up with two clauses for the same text.
+   * The subview's scoping predicate, already normalized by the shell. The shared
+   * keyword is NOT folded in here — it arrives as `keywordValue` and travels as
+   * the request's own `keyword`, exactly as it does for the Table, so both views
+   * resolve one input to one dataset.
    */
-  tableFilter?: string;
+  rql: string;
   keywordValue: string;
   onKeywordChange: (value: string) => void;
 }
 
 export function InteractionsGraph({
-  taxonId,
-  q,
-  tableFilter,
+  rql,
   keywordValue,
   onKeywordChange,
 }: InteractionsGraphProps) {
-  const cleanQ = q.split("#")[0];
-  const keywordFilter = buildRql({
-    selected: [],
-    keywords: keywordValue.trim().split(/\s+/).filter(Boolean),
-  });
-  const parts = [cleanQ, tableFilter, keywordFilter].filter(
-    (part): part is string => Boolean(part) && part !== "false",
-  );
-  const combinedQuery =
-    parts.length === 0
-      ? ""
-      : parts.length === 1
-        ? parts[0]
-        : `and(${parts.join(",")})`;
-  const { data, isPending, isError, error } = useInteractions(
-    taxonId,
-    combinedQuery,
+  const { data, isPending, isError, error, refetch } = useInteractions(
+    rql,
+    keywordValue,
   );
   const [layout, setLayout] = useState<LayoutName>(defaultLayout);
   const [selection, setSelection] = useState<GraphSelection>(emptySelection);
@@ -89,12 +79,13 @@ export function InteractionsGraph({
   const [activeHub, setActiveHub] = useState<HubSelection | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
-  const [graphSource, setGraphSource] = useState({ combinedQuery, data });
+  const [graphSource, setGraphSource] = useState({ rql, keywordValue, data });
   if (
-    graphSource.combinedQuery !== combinedQuery ||
+    graphSource.rql !== rql ||
+    graphSource.keywordValue !== keywordValue ||
     graphSource.data !== data
   ) {
-    setGraphSource({ combinedQuery, data });
+    setGraphSource({ rql, keywordValue, data });
     setSelection(emptySelection);
     setActiveSubgraph(null);
     setActiveHub(null);
@@ -102,7 +93,7 @@ export function InteractionsGraph({
 
   // React Compiler preserves these derived identities while their inputs are stable,
   // avoiding graph reloads when only selection state changes.
-  const graph = data ? toGraph(data) : { nodes: [], edges: [] };
+  const graph = toGraph(data?.rows ?? emptyRows);
   const selectionIndex = buildGraphSelectionIndex(graph.nodes, graph.edges);
 
   function handleLayoutChange(name: LayoutName) {
@@ -133,11 +124,30 @@ export function InteractionsGraph({
     return (
       <div className="flex h-full min-h-0 flex-col">
         {toolbar}
-        <div className="flex flex-1 items-center justify-center text-sm text-destructive">
-          {error instanceof Error
-            ? error.message
-            : "Failed to load interactions."}
-        </div>
+        {/* Same shape, wording and retry affordance as the Table subview's load
+            error (`ResourceCollection`): a gateway 502 is transient for both
+            views, and leaving only this one without a retry made a tab switch
+            the sole way back. */}
+        <Alert variant="destructive">
+          <AlertTitle>Could not load interactions</AlertTitle>
+          <AlertDescription>
+            <p>
+              {formatUserFacingErrorMessage(
+                error,
+                "Failed to load interactions.",
+              )}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void refetch();
+              }}
+            >
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -180,6 +190,21 @@ export function InteractionsGraph({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {toolbar}
+      {/* The row ceiling used to be a silent `Range` header: a query matching
+          more interactions than the graph can draw looked like a complete
+          answer. Say so, and point at the view that can show the rest. */}
+      {data.isTruncated && (
+        <Alert className="mb-2">
+          <AlertTitle>
+            Showing the first{" "}
+            {interactionsGraphRowLimit.toLocaleString()} interactions
+          </AlertTitle>
+          <AlertDescription>
+            This search matches more interactions than the graph can draw.
+            Narrow it, or use the Table subview to see them all.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex min-h-0 flex-1">
         <div className="flex w-60 shrink-0 flex-col rounded-tl-md border-x border-t bg-card">
           <div className="border-b p-3">

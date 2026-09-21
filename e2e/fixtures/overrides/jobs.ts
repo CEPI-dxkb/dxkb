@@ -100,8 +100,6 @@ interface BuildJobsOverridesOptions {
   killResponse?: unknown;
   /** Response for the submit POST. Defaults to a freshly-generated job. */
   submitResponse?: unknown;
-  /** Fails the enumerate endpoint with a 500 when true. */
-  simulateFailure?: boolean;
 }
 
 export function buildJobsOverrides(
@@ -120,9 +118,7 @@ export function buildJobsOverrides(
   overrides.push({
     url: /\/api\/services\/app-service\/jobs\/enumerate-tasks-filtered$/,
     method: "POST",
-    ...(options.simulateFailure
-      ? { status: 500, body: { message: "Simulated jobs failure" } }
-      : { body: { jobs, totalTasks: jobs.length } }),
+    body: { jobs, totalTasks: jobs.length },
   });
 
   overrides.push({
@@ -184,8 +180,3 @@ export const jobsListOverrides: JsonOverride[] = buildJobsOverrides({
 });
 
 export const jobsEmptyOverrides: JsonOverride[] = buildJobsOverrides({ jobs: [] });
-
-export const jobsErrorOverrides: JsonOverride[] = buildJobsOverrides({
-  jobs: [],
-  simulateFailure: true,
-});

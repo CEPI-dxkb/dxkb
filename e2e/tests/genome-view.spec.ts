@@ -1,12 +1,24 @@
 import { applyBackendMocks, expect, test } from "../mocks/backends";
-import { permissiveBackendOverrides } from "../fixtures/overrides";
+import {
+  emptyBackendFallbackOverrides,
+  genomeFeatureScenarioOverrides,
+  genomeScenarioOverrides,
+  genomeSequenceScenarioOverrides,
+} from "../fixtures/overrides";
+
+const genomeViewOverrides = [
+  ...genomeScenarioOverrides,
+  ...genomeFeatureScenarioOverrides,
+  ...genomeSequenceScenarioOverrides,
+  ...emptyBackendFallbackOverrides,
+];
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe("Genome view", () => {
   test.beforeEach(async ({ page }) => {
     await applyBackendMocks(page, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...genomeViewOverrides],
     });
   });
 
@@ -164,7 +176,7 @@ test.describe("Genome view", () => {
       page.getByRole("button", { name: /^G\s*GENOME$/i }).click(),
     ]).then(([opened]) => opened);
     await applyBackendMocks(genomePage, {
-      overrides: [...permissiveBackendOverrides],
+      overrides: [...genomeViewOverrides],
     });
 
     await expect(genomePage).toHaveURL(/\/genome\/1282460\.2049$/);

@@ -103,6 +103,34 @@ describe("Feature member route", () => {
     ).toMatchObject({ title: `${feature.patric_id} | Feature` });
   });
 
+  it("resolves one identifier from both entry points for a percent-bearing ID", async () => {
+    // The two entry points receive DIFFERENT encodings of the same segment:
+    // the page component gets `encodeURIComponent(id)`, `generateMetadata`
+    // gets the matcher's decoded `id`. `loadFeature` used to decode both, so
+    // an id containing a literal percent escape resolved to a different
+    // record in the title than in the body. Feeding both the same string
+    // cannot catch that — each gets what Next actually gives it.
+    const percentId = "fig|1282460.2049.peg.1%2F5";
+    mocks.getFeature.mockResolvedValue({
+      feature: { ...feature, patric_id: percentId },
+      usedAlternateId: false,
+    });
+
+    await FeaturePage({
+      params: Promise.resolve({ featureId: encodeURIComponent(percentId) }),
+      searchParams: Promise.resolve({}),
+    });
+    await generateMetadata({
+      params: Promise.resolve({ featureId: percentId }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const requestedIds = mocks.getFeature.mock.calls.map(
+      (call: unknown[]) => call[0],
+    );
+    expect(requestedIds).toEqual([percentId, percentId]);
+  });
+
   it("renders exact-feature interactions", async () => {
     render(
       await FeaturePage({

@@ -3,7 +3,7 @@ import {
   authSessionOverrides,
   workspaceOverrides,
   jobsOverrides,
-  permissiveBackendOverrides,
+  a11yBackendOverrides,
 } from "../../fixtures/overrides";
 import { awaitSettled } from "../../a11y/settle";
 import { scanPage, formatBlocking, logWarnings } from "../../a11y/axe-scan";
@@ -14,9 +14,9 @@ import { forEachTheme } from "../../a11y/theme";
 import generatedBaseline, { reflowSkip } from "../../a11y/baseline.generated";
 import { isReflowSkipped } from "../../a11y/baseline";
 import { recordScan } from "../../a11y/report";
-import { routes } from "../../a11y/routes";
+import { scanTargets } from "../../a11y/routes";
 import type { BaselineMap } from "../../a11y/baseline";
-import type { RouteEntry, RouteVariant } from "../../a11y/routes";
+import type { RouteEntry } from "../../a11y/routes";
 import type { JsonOverride } from "../../mocks/backends";
 import auspiceDataset from "../../fixtures/overrides/organisms/phylogeny/auspice-tree-map-v2.json" with { type: "json" };
 
@@ -43,6 +43,7 @@ function assertNoBlockingViolations(
     );
   }
   recordScan({
+    project: test.info().project.name,
     route: routeKey,
     theme,
     blocking: remaining,
@@ -57,38 +58,15 @@ function assertNoBlockingViolations(
   ).toEqual([]);
 }
 
-interface ScanTarget {
-  route: RouteEntry;
-  name: string;
-  path: string;
-  prepare?: RouteEntry["prepare"] | RouteVariant["prepare"];
-}
-
-// Flatten routes × variants into individual scan targets, skipping redirect-only entries.
-const scanTargets: ScanTarget[] = routes.flatMap((route) => {
-  if (route.redirectOnly) return [];
-  if (!route.variants?.length) {
-    return [
-      { route, name: route.name, path: route.path, prepare: route.prepare },
-    ];
-  }
-  return route.variants.map((v) => ({
-    route,
-    name: `${route.name}/${v.nameSuffix}`,
-    path: v.path,
-    prepare: v.prepare ?? route.prepare,
-  }));
-});
-
 function buildOverrides(route: RouteEntry): JsonOverride[] {
   if (route.unauthenticated) {
-    return [...permissiveBackendOverrides];
+    return [...a11yBackendOverrides];
   }
   return [
     ...authSessionOverrides,
     ...(route.needsWorkspace ? workspaceOverrides : []),
     ...(route.needsJobs ? jobsOverrides : []),
-    ...permissiveBackendOverrides,
+    ...a11yBackendOverrides,
   ];
 }
 
@@ -115,6 +93,8 @@ test.describe("a11y route sweep", () => {
         overrides: buildOverrides(target.route),
       });
       await page.goto(target.path);
+      // Generic readiness (load state, fonts, skeleton detach) is awaitSettled's
+      // job; the target's composed prepare hook adds only page-specific waits.
       await awaitSettled(page, target.route.settle);
       await target.prepare?.(page);
 
@@ -157,7 +137,7 @@ test.describe("a11y component surfaces", () => {
   }) => {
     await context.clearCookies();
     await applyBackendMocks(page, {
-      overrides: [...workspaceOverrides, ...permissiveBackendOverrides],
+      overrides: [...workspaceOverrides, ...a11yBackendOverrides],
     });
     await page.goto("/taxonomy/234");
 
@@ -209,7 +189,7 @@ test.describe("a11y component surfaces", () => {
         ...authSessionOverrides,
         ...workspaceOverrides,
         ...jobsOverrides,
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     await page.goto("/jobs");
@@ -284,7 +264,7 @@ test.describe("a11y component surfaces", () => {
           body: { error: "dataset not found" },
         },
         { url: "/api/charon/getDataset", body: auspiceDataset },
-        ...permissiveBackendOverrides,
+        ...a11yBackendOverrides,
       ],
     });
     // Basemap tiles are the one outbound host the viewer needs; serve a 1×1 PNG.

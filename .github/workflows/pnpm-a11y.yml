@@ -50,18 +50,36 @@ jobs:
           # NEXT_PUBLIC_* inlines at build time, so the loopback Data API (mirrored
           # from .env.e2e.test, loaded only at server-start and thus unreachable by
           # client bundles) must be baked here for client-side fetches like the
-          # taxonomy tree and interactions graph — otherwise useInteractions/
-          # useTaxonChildren throw and crash the page. Matches pnpm-e2e.yml; keep
-          # port 3020 in sync with playwright.a11y.config.ts / start-webserver.mjs.
+          # taxonomy tree — otherwise useTaxonChildren throws and crashes the
+          # page. (The interactions graph no longer needs it: it loads through the
+          # same-origin Data API gateway.) Matches pnpm-e2e.yml; keep port 3020 in
+          # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
 
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
+      # coverage.meta.spec.ts is the single enforcement point for "routes.ts is the
+      # one coverage list" plus the baseline/reflowSkip stale-key guard. It is
+      # attached to this job rather than given one of its own because it checks the
+      # same registry the sweep below consumes, and a new job would repeat the whole
+      # install for a check that runs in seconds.
+      #
+      # Its position relative to the sweep no longer affects the artifacts either
+      # step produces. `pnpm a11y:meta` runs under playwright.a11y.meta.config.ts,
+      # which has its own outputDir (.misc/a11y-meta-results/) and JSON report
+      # (.misc/a11y-meta-report/), so the outputDir Playwright clears at the start
+      # of a run and the JSON file its reporter rewrites are never the sweep's.
+      # Both steps still carry `!cancelled()` so neither failure masks the other.
+      #
+      # It needs no browser, no web server and no build: nothing in the spec
+      # navigates, so the config declares no webServer and the step sets no
+      # browser-cache HOME or server env.
+      - name: Check route registry coverage accounting (browser-free)
+        if: ${{ !cancelled() }}
+        run: pnpm a11y:meta
         env:
           CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Run routes sweep (chromium)
+        if: ${{ !cancelled() }}
         run: pnpm a11y:routes
         env:
           CI: "true"
@@ -74,8 +92,12 @@ jobs:
         with:
           name: a11y-report-routes-sweep
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
+            .misc/a11y-meta-report/
+            .misc/a11y-meta-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-deep-tier:
@@ -104,16 +126,11 @@ jobs:
           # NEXT_PUBLIC_* inlines at build time, so the loopback Data API (mirrored
           # from .env.e2e.test, loaded only at server-start and thus unreachable by
           # client bundles) must be baked here for client-side fetches like the
-          # taxonomy tree and interactions graph — otherwise useInteractions/
-          # useTaxonChildren throw and crash the page. Matches pnpm-e2e.yml; keep
-          # port 3020 in sync with playwright.a11y.config.ts / start-webserver.mjs.
+          # taxonomy tree — otherwise useTaxonChildren throws and crashes the
+          # page. (The interactions graph no longer needs it: it loads through the
+          # same-origin Data API gateway.) Matches pnpm-e2e.yml; keep port 3020 in
+          # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
-
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Run deep-tier tests (chromium)
         run: pnpm a11y:deep
@@ -128,8 +145,10 @@ jobs:
         with:
           name: a11y-report-deep-tier
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-keyboard:
@@ -158,16 +177,11 @@ jobs:
           # NEXT_PUBLIC_* inlines at build time, so the loopback Data API (mirrored
           # from .env.e2e.test, loaded only at server-start and thus unreachable by
           # client bundles) must be baked here for client-side fetches like the
-          # taxonomy tree and interactions graph — otherwise useInteractions/
-          # useTaxonChildren throw and crash the page. Matches pnpm-e2e.yml; keep
-          # port 3020 in sync with playwright.a11y.config.ts / start-webserver.mjs.
+          # taxonomy tree — otherwise useTaxonChildren throws and crashes the
+          # page. (The interactions graph no longer needs it: it loads through the
+          # same-origin Data API gateway.) Matches pnpm-e2e.yml; keep port 3020 in
+          # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
-
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Run keyboard tests (chromium)
         run: pnpm a11y:keyboard
@@ -182,8 +196,10 @@ jobs:
         with:
           name: a11y-report-keyboard
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-tripwire:
@@ -212,16 +228,11 @@ jobs:
           # NEXT_PUBLIC_* inlines at build time, so the loopback Data API (mirrored
           # from .env.e2e.test, loaded only at server-start and thus unreachable by
           # client bundles) must be baked here for client-side fetches like the
-          # taxonomy tree and interactions graph — otherwise useInteractions/
-          # useTaxonChildren throw and crash the page. Matches pnpm-e2e.yml; keep
-          # port 3020 in sync with playwright.a11y.config.ts / start-webserver.mjs.
+          # taxonomy tree — otherwise useTaxonChildren throws and crashes the
+          # page. (The interactions graph no longer needs it: it loads through the
+          # same-origin Data API gateway.) Matches pnpm-e2e.yml; keep port 3020 in
+          # sync with playwright.a11y.config.ts / start-webserver.mjs.
           NEXT_PUBLIC_DATA_API: "http://127.0.0.1:3020/api/e2e-mock/data"
-
-      - name: Set up auth state
-        run: pnpm exec playwright test --config playwright.a11y.config.ts --project=a11y-setup-signed-in
-        env:
-          CI: "true"
-          WORKSPACE_GUIDE_URL: "https://www.bv-brc.org/docs/quick_references/workspace_groups_upload.html"
 
       - name: Run cross-engine tripwire (webkit + firefox)
         run: pnpm a11y:tripwire
@@ -236,8 +247,10 @@ jobs:
         with:
           name: a11y-report-tripwire
           path: |
-            a11y-report/
-            a11y-results/
+            .misc/a11y-report/
+            .misc/a11y-results/
+          if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
 
   a11y-primitives:

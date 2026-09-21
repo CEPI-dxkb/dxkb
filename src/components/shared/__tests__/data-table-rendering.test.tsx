@@ -2,10 +2,8 @@ import { useState } from "react";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
 import { DataTable } from "../data-table";
 import { formatCellValue } from "../data-table-utils";
-import { server } from "@/test-helpers/msw-server";
 
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: ({
@@ -189,10 +187,38 @@ describe("DataTable shared view seams", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "100/2" })).toHaveAttribute(
-      "href",
-      "https://example.test/100%2F2",
+    const link = screen.getByRole("link", { name: "100/2" });
+    expect(link).toHaveAttribute("href", "https://example.test/100%2F2");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("resolves named placeholders from the row and rejects unsafe templates", () => {
+    render(
+      <DataTable
+        id="row-aware-and-unsafe-links"
+        data={[
+          { id: "row-1", genome_id: "100/2", contigs: 4, unsafe: "shown" },
+        ]}
+        columns={[
+          {
+            id: "contigs",
+            label: "Contigs",
+            valueHref: "/genome/{genome_id}?tab=sequences",
+          },
+          { id: "unsafe", label: "Unsafe", valueHref: "/\\evil.test/{value}" },
+        ]}
+        totalItems={1}
+        resource="genome"
+        idField="id"
+      />,
     );
+
+    expect(screen.getByRole("link", { name: "4" })).toHaveAttribute(
+      "href",
+      "/genome/100%2F2?tab=sequences",
+    );
+    expect(screen.getByText("shown")).not.toHaveRole("link");
   });
 
   it("renders repeated multivalue links without duplicate React keys", () => {
@@ -733,214 +759,27 @@ describe("DataTable empty state", () => {
   });
 });
 
-// ─── Download Selected: POST regression ──────────────────────────────────────
-// Regression: download-selected used a GET request with the RQL query in the URL.
-// With 200 selected rows the URL exceeded browser/server limits → net::ERR_FAILED.
-// Fix: POST with query in body (Content-type: application/rqlquery+x-www-form-urlencoded).
-
-describe("DataTable download selected: POST regression", () => {
-  const DATA_API = "https://data.test";
-
-  const dlColumns = [
-    { id: "source", label: "Source", visible: true },
-    { id: "product", label: "Product", visible: true },
-  ];
-
-  const twoRows = [
-    { id: "aaaa-0001", source: "PRINTS", product: "polyprotein" },
-    { id: "aaaa-0002", source: "Pfam", product: "capsid" },
-  ];
-
-  beforeAll(() => {
-    process.env.NEXT_PUBLIC_DATA_API = DATA_API;
-    global.ResizeObserver = class ResizeObserver {
-      observe = vi.fn();
-      unobserve = vi.fn();
-      disconnect = vi.fn();
-    };
-    // jsdom doesn't implement URL.createObjectURL; downloadFile() calls it.
-    global.URL.createObjectURL = vi.fn(() => "blob:mock");
-    global.URL.revokeObjectURL = vi.fn();
-  });
-
-  afterAll(() => {
-    delete process.env.NEXT_PUBLIC_DATA_API;
-  });
-
-  it("uses POST not GET when downloading selected rows", async () => {
-    const user = userEvent.setup();
-    let requestMethod = "";
-    server.use(
-      http.post(`${DATA_API}/protein_feature/`, ({ request }) => {
-        requestMethod = request.method;
-        return HttpResponse.json(twoRows);
-      }),
-    );
-
-    render(
-      <DataTable
-        id="dl-method"
-        data={twoRows}
-        columns={dlColumns}
-        totalItems={2}
-        resource="protein_feature"
-        selectedIds={["aaaa-0001", "aaaa-0002"]}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(() => {
-      expect(requestMethod).toBe("POST");
-    });
-  });
-
-  it("sends RQL query in POST body, not in URL query string", async () => {
-    const user = userEvent.setup();
-    let capturedUrl = "";
-    let capturedBody = "";
-    server.use(
-      http.post(`${DATA_API}/protein_feature/`, async ({ request }) => {
-        capturedUrl = request.url;
-        capturedBody = await request.text();
-        return HttpResponse.json(twoRows);
-      }),
-    );
-
-    render(
-      <DataTable
-        id="dl-body"
-        data={twoRows}
-        columns={dlColumns}
-        totalItems={2}
-        resource="protein_feature"
-        selectedIds={["aaaa-0001", "aaaa-0002"]}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(() => {
-      expect(capturedBody).toBeTruthy();
-    });
-
-    expect(capturedBody).toBe("or(eq(id,aaaa-0001),eq(id,aaaa-0002))");
-    expect(capturedUrl).not.toContain("or(eq(id,");
-  });
-
-  it("Range header matches selected count", async () => {
-    const user = userEvent.setup();
-    let rangeHeader = "";
-    server.use(
-      http.post(`${DATA_API}/protein_feature/`, ({ request }) => {
-        rangeHeader = request.headers.get("Range") ?? "";
-        return HttpResponse.json(twoRows);
-      }),
-    );
-
-    render(
-      <DataTable
-        id="dl-range"
-        data={twoRows}
-        columns={dlColumns}
-        totalItems={2}
-        resource="protein_feature"
-        selectedIds={["aaaa-0001", "aaaa-0002"]}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(() => {
-      expect(rangeHeader).toBeTruthy();
-    });
-    expect(rangeHeader).toBe("items=0-2");
-  });
-
-  it("uses correct id field per resource: genome_id for genome", async () => {
-    const user = userEvent.setup();
-    let capturedBody = "";
-    server.use(
-      http.post(`${DATA_API}/genome/`, async ({ request }) => {
-        capturedBody = await request.text();
-        return HttpResponse.json([]);
-      }),
-    );
-
-    render(
-      <DataTable
-        id="dl-genome"
-        data={[{ genome_id: "1234.1", source: "ref", product: "genome" }]}
-        columns={[{ id: "source", label: "Source", visible: true }]}
-        totalItems={1}
-        resource="genome"
-        selectedIds={["1234.1"]}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(() => {
-      expect(capturedBody).toBeTruthy();
-    });
-    expect(capturedBody).toBe("or(eq(genome_id,1234.1))");
-  });
-
-  it("regression: 200 selected IDs fit in POST body (GET URL would have caused ERR_FAILED)", async () => {
-    const user = userEvent.setup();
-    const ids = Array.from(
-      { length: 200 },
-      (_, i) => `id-${String(i).padStart(4, "0")}`,
-    );
-    const rows = ids.map((id) => ({ id, source: "Pfam", product: "poly" }));
-    let capturedBody = "";
-
-    server.use(
-      http.post(`${DATA_API}/protein_feature/`, async ({ request }) => {
-        capturedBody = await request.text();
-        return HttpResponse.json(rows);
-      }),
-    );
-
-    render(
-      <DataTable
-        id="dl-200"
-        data={rows.slice(0, 5)}
-        columns={dlColumns}
-        totalItems={200}
-        resource="protein_feature"
-        selectedIds={ids}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(
-      () => {
-        expect(capturedBody).toBeTruthy();
-      },
-      { timeout: 5000 },
-    );
-
-    expect(capturedBody).toMatch(/^or\(/);
-    // First and last IDs present — a GET URL would have hit length limits and lost some
-    expect(capturedBody).toContain("id-0000");
-    expect(capturedBody).toContain("id-0199");
-  });
+// ─── Download Selected: capability gate ───────────────────────────────────────
+// Regression: DataTable used to fall back to an unsafe raw fetch to
+// NEXT_PUBLIC_DATA_API (with hand-built RQL, an unvalidated response envelope,
+// and comma-joined output even for .txt) whenever a caller wired selectedIds
+// without an onDownloadSelected handler. That fallback has been removed:
+// DataTable now requires a caller-supplied export path for selected rows and
+// hides the "Download Selected" buttons entirely when nothing can fulfil them,
+// rather than rendering a button whose click would silently no-op.
+describe("DataTable download selected: capability gate", () => {
+  const dlColumns = [{ id: "value", label: "Value" }];
+  const oneRow = [{ id: "aaaa-0001", value: "A" }];
 
   it("Download Selected button absent when selectedIds is empty", () => {
     render(
       <DataTable
         id="dl-empty"
-        data={twoRows}
+        data={oneRow}
         columns={dlColumns}
-        totalItems={2}
+        totalItems={1}
         resource="protein_feature"
+        idField="id"
         selectedIds={[]}
       />,
     );
@@ -949,111 +788,104 @@ describe("DataTable download selected: POST regression", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("triggers anchor click (file download) after successful POST", async () => {
+  it("hides Download Selected buttons when rows are selected but no onDownloadSelected is supplied", () => {
+    render(
+      <DataTable
+        id="dl-no-handler"
+        data={oneRow}
+        columns={dlColumns}
+        totalItems={1}
+        resource="protein_feature"
+        idField="id"
+        selectedIds={["aaaa-0001"]}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /Download Selected/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Download Selected buttons once onDownloadSelected is supplied", () => {
+    render(
+      <DataTable
+        id="dl-handler"
+        data={oneRow}
+        columns={dlColumns}
+        totalItems={1}
+        resource="protein_feature"
+        idField="id"
+        selectedIds={["aaaa-0001"]}
+        onDownloadSelected={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows Download Selected buttons when every page is selected and onDownloadAll can fulfil it, even without onDownloadSelected", () => {
+    render(
+      <DataTable
+        id="dl-allpages"
+        data={oneRow}
+        columns={dlColumns}
+        totalItems={50}
+        resource="protein_feature"
+        idField="id"
+        isAllPagesSelected={true}
+        onDownloadAll={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+// ─── Download all: local fallback when onDownloadAll is not supplied ─────────
+// Unlike the selected-rows fallback removed above, DataTable's "download every
+// currently-loaded row" fallback is still a live, legitimate path: it never
+// touches the network (no fetch, safe or otherwise) — it just serializes the
+// table's own pre-paginated row model client-side via csvExportValue and
+// downloadFile(). similar-genome-finder's results-section.tsx renders
+// <DataTable> with no onDownloadAll, so its "Download (CSV)"/"(TXT)" buttons
+// go through exactly this branch. This is the one place in the suite that
+// still needs to prove the blob/anchor-click download mechanism actually
+// fires, now that the selected-rows POST-regression block (which used to
+// cover the same mechanism for a since-deleted path) is gone.
+describe("DataTable download all: local fallback when onDownloadAll is not supplied", () => {
+  it("triggers anchor click (file download) when no onDownloadAll is provided", async () => {
     const user = userEvent.setup();
+    const createObjectURLSpy = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:mock");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
     const clickSpy = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => {
         /* no-op */
       });
 
-    server.use(
-      http.post(`${DATA_API}/protein_feature/`, () =>
-        HttpResponse.json([
-          { id: "aaaa-0001", source: "PRINTS", product: "polyprotein" },
-        ]),
-      ),
-    );
-
     render(
       <DataTable
-        id="dl-file"
-        data={twoRows}
-        columns={dlColumns}
-        totalItems={2}
+        id="dl-all-local-fallback"
+        data={[{ id: "aaaa-0001", value: "A" }]}
+        columns={[{ id: "value", label: "Value" }]}
+        totalItems={1}
         resource="protein_feature"
-        selectedIds={["aaaa-0001"]}
+        idField="id"
       />,
     );
 
     await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
+      screen.getByRole("button", { name: /^Download \(CSV\)$/i }),
     );
+
     await waitFor(() => {
       expect(clickSpy).toHaveBeenCalled();
     });
-    clickSpy.mockRestore();
-  });
-
-  it("logs error and does not crash when POST returns 500", async () => {
-    const user = userEvent.setup();
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {
-      /* no-op */
-    });
-
-    server.use(
-      http.post(
-        `${DATA_API}/protein_feature/`,
-        () => new HttpResponse(null, { status: 500 }),
-      ),
-    );
-
-    render(
-      <DataTable
-        id="dl-500"
-        data={twoRows}
-        columns={dlColumns}
-        totalItems={2}
-        resource="protein_feature"
-        selectedIds={["aaaa-0001"]}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(() => {
-      expect(errorSpy).toHaveBeenCalledWith(
-        "Download selected failed:",
-        expect.any(Error),
-      );
-    });
-    errorSpy.mockRestore();
-  });
-
-  it("handles {items:[...]} response envelope and still downloads", async () => {
-    const user = userEvent.setup();
-    const clickSpy = vi
-      .spyOn(HTMLAnchorElement.prototype, "click")
-      .mockImplementation(() => {
-        /* no-op */
-      });
-
-    server.use(
-      http.post(`${DATA_API}/protein_feature/`, () =>
-        HttpResponse.json({
-          items: [{ id: "aaaa-0001", source: "PRINTS", product: "poly" }],
-        }),
-      ),
-    );
-
-    render(
-      <DataTable
-        id="dl-envelope"
-        data={twoRows}
-        columns={dlColumns}
-        totalItems={2}
-        resource="protein_feature"
-        selectedIds={["aaaa-0001"]}
-      />,
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    );
-    await waitFor(() => {
-      expect(clickSpy).toHaveBeenCalled();
-    });
+    expect(createObjectURLSpy).toHaveBeenCalled();
+    createObjectURLSpy.mockRestore();
     clickSpy.mockRestore();
   });
 });

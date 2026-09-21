@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
-import { safeDecode } from "@/lib/url";
 
 /**
  * Build a safe Content-Disposition header value.
@@ -13,7 +12,9 @@ export function contentDisposition(
   disposition: "inline" | "attachment",
   filename: string,
 ): string {
-  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
+  const asciiFallback = filename
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/["\\]/g, "_");
   const base = `${disposition}; filename="${asciiFallback}"`;
 
   if (asciiFallback !== filename) {
@@ -30,8 +31,19 @@ export interface ResolvedDownload {
   contentType: string;
 }
 
+/**
+ * `segments` come from a catch-all ROUTE HANDLER's `params.path`. Route
+ * handlers never go through `getDynamicParam()`, so they receive the route
+ * matcher's already-decoded segments — do not decode again here, or a
+ * literal `%2F` in a file name becomes a real `/`, splitting one segment
+ * into two and resolving a different (nonexistent) workspace path.
+ *
+ * This is NOT true of a page component's params, which arrive re-encoded.
+ * Do not copy this comment onto one — see `readRouteParam` in
+ * `src/lib/views/route-params.ts`.
+ */
 export function buildWorkspacePath(segments: string[]): string {
-  return "/" + segments.map((s) => safeDecode(s)).join("/");
+  return "/" + segments.join("/");
 }
 
 /**
@@ -107,8 +119,7 @@ export async function resolveWorkspaceDownload(
     );
   }
 
-  const lastSegment = segments[segments.length - 1] ?? "download";
-  const filename = safeDecode(lastSegment);
+  const filename = segments[segments.length - 1] ?? "download";
   const contentType = getMimeType(filename);
 
   return { shockResponse, filename, contentType };

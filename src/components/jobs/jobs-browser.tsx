@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FlexRender, type Row } from "@tanstack/react-table";
 import clsx from "clsx";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, TriangleAlert } from "lucide-react";
 import {
@@ -339,9 +340,14 @@ function useJobsBrowser() {
       case "view":
         handleDoubleClick(job);
         break;
-      case "rerun":
-        rerunJob(job.parameters, job.app);
+      case "rerun": {
+        // Every failure — a pop-up blocker refusing the tab, an unsupported
+        // service — would otherwise look like a rerun that opened. `rerunJob`
+        // reports nothing itself, so the toast has to cover all of them.
+        const launch = rerunJob(job.parameters, job.app);
+        if (launch.status !== "opened") toast.error(launch.message);
         break;
+      }
       case "show":
         if (job.output_path) {
           const segments = job.output_path

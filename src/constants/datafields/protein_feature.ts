@@ -63,7 +63,7 @@ export const proteinFeatureFields = {
     field: "refseq_locus_tag",
     hidden: false,
     group: "Sequence Info",
-    link: "http://www.ncbi.nlm.nih.gov/protein/?term={value}",
+    link: "https://www.ncbi.nlm.nih.gov/protein/?term={value}",
     facet: false,
     facet_hidden: true,
     search: true,

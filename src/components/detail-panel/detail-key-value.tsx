@@ -6,9 +6,13 @@ export interface DetailField {
   value: unknown;
   /** Render "date" to auto-format ISO strings */
   format?: "date";
-  /** Render value as a link */
-  href?: string;
-  /** Custom renderer — overrides default text rendering */
+  /**
+   * Custom renderer — overrides default text rendering. The sole mechanism for
+   * link fields: the caller (`info-panel.tsx`) routes the destination through
+   * the `./metadata-link` boundary, which classifies internal versus external
+   * and returns the built `Link`/`<a>` element supplied here, so this component
+   * stays free of routing and URL-classification concerns.
+   */
   render?: () => ReactNode;
 }
 
@@ -29,21 +33,10 @@ export function DetailKeyValueTable({ fields }: { fields: DetailField[] }) {
   return (
     <table className="w-full">
       <tbody>
-        {visibleFields.map(({ label, value, format, href, render }) => {
+        {visibleFields.map(({ label, value, format, render }) => {
           let display: ReactNode;
           if (render) {
             display = render();
-          } else if (href) {
-            display = (
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800"
-              >
-                {String(value)}
-              </a>
-            );
           } else if (format === "date" && typeof value === "string") {
             display = formatDate(value);
           } else if (

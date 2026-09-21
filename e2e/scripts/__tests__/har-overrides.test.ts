@@ -145,17 +145,32 @@ describe("harOverridesFor", () => {
     const body = overrides[0].body;
     if (typeof body !== "function") throw new Error("expected body function");
     const bodyFn = body as (ctx: JsonOverrideBodyContext) => unknown;
-    expect(bodyFn({ callIndex: 0, parsedBody: null })).toBe(
-      '{"result":"before"}',
-    );
-    expect(bodyFn({ callIndex: 1, parsedBody: null })).toBe(
-      '{"result":"after"}',
-    );
+    expect(
+      bodyFn({
+        callIndex: 0,
+        parsedBody: null,
+        requestUrl: "https://example.test",
+        method: "GET",
+      }),
+    ).toBe('{"result":"before"}');
+    expect(
+      bodyFn({
+        callIndex: 1,
+        parsedBody: null,
+        requestUrl: "https://example.test",
+        method: "GET",
+      }),
+    ).toBe('{"result":"after"}');
     // Beyond the recorded sequence, freeze on the last entry rather than
     // returning undefined and serving an empty body.
-    expect(bodyFn({ callIndex: 7, parsedBody: null })).toBe(
-      '{"result":"after"}',
-    );
+    expect(
+      bodyFn({
+        callIndex: 7,
+        parsedBody: null,
+        requestUrl: "https://example.test",
+        method: "GET",
+      }),
+    ).toBe('{"result":"after"}');
   });
 
   it("strips sensitive headers and preserves the rest", () => {

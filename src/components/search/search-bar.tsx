@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense, type SyntheticEvent } from "react";
+import { useId, useState, Suspense, type SyntheticEvent } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -77,6 +77,7 @@ function SearchBarForm({
 }: SearchBarProps & { initialType?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const typeId = useId();
 
   const [inputValue, setInputValue] = useState(initialValue);
   const [selected, setSelected] = useState(initialType);
@@ -110,7 +111,7 @@ function SearchBarForm({
           }}
         >
           <SelectTrigger
-            id="type"
+            id={typeId}
             aria-label="Search type"
             className={`${size === "lg" ? "h-auto py-6" : ""} min-w-30 rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-sm text-foreground shadow-none focus:ring-0`}
           >

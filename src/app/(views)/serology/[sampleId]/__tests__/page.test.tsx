@@ -30,7 +30,27 @@ const record = {
   host_species: "Homo sapiens",
 };
 
-function props(
+/**
+ * Next gives the two entry points DIFFERENT encodings of the same segment, so
+ * these helpers take the real identifier and produce what each one actually
+ * receives. Feeding one string to both would prove nothing — see
+ * `readRouteParam` in `src/lib/views/route-params.ts`.
+ *
+ * The page component's params come from `getDynamicParam()`, which
+ * percent-ENCODES the matched value before user code sees it.
+ */
+function pageProps(
+  sampleId = "000123",
+  query: Record<string, string | string[] | undefined> = {},
+) {
+  return {
+    params: Promise.resolve({ sampleId: encodeURIComponent(sampleId) }),
+    searchParams: Promise.resolve(query),
+  };
+}
+
+/** `generateMetadata` reads the route matcher's already-decoded params. */
+function metadataProps(
   sampleId = "000123",
   query: Record<string, string | string[] | undefined> = {},
 ) {
@@ -48,7 +68,7 @@ describe("Serology member page", () => {
 
   it("preserves a digit-only sample ID and renders grouped source values", async () => {
     render(
-      await SerologyPage(props("000123", { test_type: "ELISA/IgG test" })),
+      await SerologyPage(pageProps("000123", { test_type: "ELISA/IgG test" })),
     );
 
     expect(mocks.getSerology).toHaveBeenCalledWith("000123", "ELISA/IgG test");
@@ -61,7 +81,7 @@ describe("Serology member page", () => {
       screen.getAllByText("Evidence of prior exposure; confirm clinically"),
     ).toHaveLength(2);
     expect(screen.getByText("Host")).toBeInTheDocument();
-    await expect(generateMetadata(props())).resolves.toMatchObject({
+    await expect(generateMetadata(metadataProps())).resolves.toMatchObject({
       title: "000123 | Serology",
     });
   });
@@ -71,7 +91,9 @@ describe("Serology member page", () => {
       status: "ambiguous",
       testTypes: ["ELISA/IgG test", "Western blot"],
     });
-    render(await SerologyPage(props("sample%2F1")));
+    // The identifier is "sample/1"; the page component receives the
+    // percent-encoded form Next re-encodes for user code.
+    render(await SerologyPage(pageProps("sample/1")));
 
     expect(
       screen.getByRole("heading", { name: "Choose a serology test" }),
@@ -87,7 +109,7 @@ describe("Serology member page", () => {
   it("canonicalizes repeated discriminator and obsolete tab parameters", async () => {
     await expect(
       SerologyPage(
-        props("000123", {
+        pageProps("000123", {
           test_type: ["ELISA", "Western blot"],
           tab: "overview",
           source: "legacy",
@@ -97,21 +119,48 @@ describe("Serology member page", () => {
     expect(mocks.getSerology).toHaveBeenCalledWith("000123", undefined);
   });
 
-  it("uses notFound for malformed, absent, and inaccessible records", async () => {
-    await expect(SerologyPage(props("%E0%A4%A"))).rejects.toThrow(
-      "NEXT_NOT_FOUND",
+  it("preserves a sample ID containing literal percent text instead of over-decoding it", async () => {
+    // The identifier really is "sample%2Fone". The page component receives it
+    // double-encoded and must decode exactly once; `generateMetadata`
+    // receives it as-is and must not decode at all.
+    render(
+      await SerologyPage(
+        pageProps("sample%2Fone", { test_type: "ELISA/IgG test" }),
+      ),
     );
-    mocks.getSerology.mockResolvedValueOnce({ status: "not-found" });
-    await expect(SerologyPage(props())).rejects.toThrow("NEXT_NOT_FOUND");
-    mocks.getSerology.mockRejectedValueOnce(new DataApiError("Forbidden", 403));
-    await expect(SerologyPage(props())).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(mocks.getSerology).toHaveBeenCalledWith(
+      "sample%2Fone",
+      "ELISA/IgG test",
+    );
+    await expect(
+      generateMetadata(metadataProps("sample%2Fone")),
+    ).resolves.toMatchObject({ title: "sample%2Fone | Serology" });
   });
 
-  it("preserves upstream errors", async () => {
+  it("uses notFound only for the absent-record sentinel and an upstream 404", async () => {
+    await expect(SerologyPage(pageProps(""))).rejects.toThrow("NEXT_NOT_FOUND");
+    mocks.getSerology.mockResolvedValueOnce({ status: "not-found" });
+    await expect(SerologyPage(pageProps())).rejects.toThrow("NEXT_NOT_FOUND");
+    mocks.getSerology.mockRejectedValueOnce(
+      new DataApiError("Record not found upstream", 404),
+    );
+    await expect(SerologyPage(pageProps())).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("preserves upstream authentication, authorization, and service errors instead of disguising them as not-found", async () => {
+    mocks.getSerology.mockRejectedValueOnce(
+      new DataApiError("Session token expired", 401),
+    );
+    await expect(SerologyPage(pageProps())).rejects.toThrow(
+      "Session token expired",
+    );
+    mocks.getSerology.mockRejectedValueOnce(new DataApiError("Forbidden", 403));
+    await expect(SerologyPage(pageProps())).rejects.toThrow("Forbidden");
     mocks.getSerology.mockRejectedValueOnce(
       new DataApiError("Serology backend unavailable", 503),
     );
-    await expect(SerologyPage(props())).rejects.toThrow(
+    await expect(SerologyPage(pageProps())).rejects.toThrow(
       "Serology backend unavailable",
     );
   });

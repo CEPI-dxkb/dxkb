@@ -133,7 +133,7 @@ test.describe("a11y deep tier: workspace", () => {
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
-    await awaitSettled(page);
+    await awaitSettled(page, { awaitPanelLayout: true });
 
     await forEachTheme(page, async (theme) => {
       await assertNoBlocking(page, "workspace/populated", theme);
@@ -150,7 +150,7 @@ test.describe("a11y deep tier: workspace", () => {
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
-    await awaitSettled(page);
+    await awaitSettled(page, { awaitPanelLayout: true });
 
     await forEachTheme(page, async (theme) => {
       await assertNoBlocking(page, "workspace/empty", theme);
@@ -167,7 +167,7 @@ test.describe("a11y deep tier: workspace", () => {
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
-    await awaitSettled(page);
+    await awaitSettled(page, { awaitPanelLayout: true });
 
     // Select the first file to open the details panel.
     await wp.selectFile("sample.fastq");
@@ -188,7 +188,7 @@ test.describe("a11y deep tier: workspace", () => {
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
-    await awaitSettled(page);
+    await awaitSettled(page, { awaitPanelLayout: true });
 
     await wp.openNewFolder();
 
@@ -207,7 +207,7 @@ test.describe("a11y deep tier: workspace", () => {
     });
     const wp = new WorkspacePage(page);
     await wp.goto();
-    await awaitSettled(page);
+    await awaitSettled(page, { awaitPanelLayout: true });
 
     await wp.openUpload();
 

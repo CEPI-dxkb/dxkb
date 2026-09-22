@@ -1,5 +1,7 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
+import { awaitPanelLayoutCommitted } from "../a11y/settle";
+
 /**
  * Page object for `/workspace/*` routes. Encapsulates the selectors the browser exposes for
  * breadcrumbs, toolbar actions, rows, and the details panel so specs can express intent rather
@@ -52,12 +54,27 @@ export class WorkspacePage {
     await this.rowByName(name).first().dblclick();
   }
 
+  /**
+   * Block until the shell's panel group has stopped moving.
+   *
+   * The toolbar sits inside that group, and the group collapses the details
+   * panel from a client effect after the data has already loaded. A click
+   * issued in that window puts `mousedown` on the button and `mouseup`
+   * wherever the button used to be, so no `click` is synthesised at all and
+   * the dialog silently never opens. Every toolbar action below waits first.
+   */
+  private async awaitToolbarStable(): Promise<void> {
+    await awaitPanelLayoutCommitted(this.page);
+  }
+
   async openUpload(): Promise<void> {
+    await this.awaitToolbarStable();
     await this.uploadButton.click();
     await expect(this.page.getByRole("dialog").getByText(/^upload$/i)).toBeVisible();
   }
 
   async openNewFolder(): Promise<void> {
+    await this.awaitToolbarStable();
     await this.newFolderButton.click();
     // Wait for the dialog's title heading specifically — "Create Folder" also
     // appears as the confirm button, so target the heading role to disambiguate.

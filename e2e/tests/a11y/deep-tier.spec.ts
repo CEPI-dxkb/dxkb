@@ -55,6 +55,7 @@ async function assertNoBlocking(
     project: test.info().project.name,
     route: surfaceName,
     theme,
+    retry: test.info().retry,
     blocking: remaining,
     suppressed,
     warnings,

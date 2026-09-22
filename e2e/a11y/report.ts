@@ -7,6 +7,7 @@ export interface ScanRecord {
   project: string;
   route: string;
   theme: string;
+  retry: number;
   blocking: Violation[];
   suppressed: Violation[];
   warnings: Violation[];

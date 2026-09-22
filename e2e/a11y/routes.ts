@@ -654,6 +654,15 @@ export const routes: RouteEntry[] = [
     path: "/workspace/workshop",
     pages: ["workspace/workshop/page.tsx"],
     needsWorkspace: true,
+    prepare: async (page) => {
+      await page.waitForURL(/\/workspace\/public\/ARWattam@patricbrc\.org\//, {
+        timeout: 10_000,
+      });
+      await awaitSettled(page, {
+        skeletonSelector: '[data-slot="skeleton"]',
+        awaitPanelLayout: true,
+      });
+    },
   },
 
   // Redirect-only workspace routes — not scanned, just counted for meta-test accounting.

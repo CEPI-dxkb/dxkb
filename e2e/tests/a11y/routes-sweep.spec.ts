@@ -46,6 +46,7 @@ function assertNoBlockingViolations(
     project: test.info().project.name,
     route: routeKey,
     theme,
+    retry: test.info().retry,
     blocking: remaining,
     suppressed,
     warnings,

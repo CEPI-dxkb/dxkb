@@ -33,16 +33,20 @@ export default function globalTeardown(): void {
 }
 
 export function summarizeScanRecords(records: ScanRecord[]): ScanRecord[] {
-  // Retries may repeat an identical scan. Different evidence under one key means two
-  // surfaces collided and must be named separately rather than silently dropping one.
+  // Keep the latest retry's evidence. A failed attempt can legitimately differ
+  // from the passing retry that Playwright reports as the final test result.
   const seen = new Map<string, ScanRecord>();
   for (const record of records) {
     const key = `${record.project}::${record.route}::${record.theme}`;
     const previous = seen.get(key);
-    if (previous && JSON.stringify(previous) !== JSON.stringify(record)) {
+    if (!previous || record.retry > previous.retry) {
+      seen.set(key, record);
+      continue;
+    }
+    if (record.retry < previous.retry) continue;
+    if (JSON.stringify(previous) !== JSON.stringify(record)) {
       throw new Error(`Conflicting accessibility scan records for ${key}`);
     }
-    seen.set(key, record);
   }
 
   return [...seen.values()].sort(

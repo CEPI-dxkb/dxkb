@@ -47,14 +47,34 @@ const panelHandleSelector = '[data-slot="resizable-handle"]';
  *     reads as "element(s) not found" against the *dialog* — pointing away
  *     from the layout that actually caused it.
  *
- * The post-condition is the commit itself, and the separator's `aria-valuenow`
- * is its one directly observable signal: react-resizable-panels computes that
- * value from the same store update that applies the collapse, so the attribute
- * appearing means the layout has been applied. Polling the group's own box
- * would prove nothing — it spans the viewport and never moves (`0,72,1280`
- * throughout) while its children reflow underneath. A fixed `extraMs` would
- * also mask both symptoms, but only while the pause happens to outlast the
- * commit.
+ * The post-condition is the commit itself. Three conditions together stand in
+ * for it, and the third is what makes the set sufficient:
+ *
+ *   1. Every handle carries `aria-valuenow`. react-resizable-panels computes
+ *      that value from the same store update that applies a layout, so its
+ *      absence means no layout has been applied yet.
+ *   2. That value agrees with measured geometry — the `aria-controls` panel's
+ *      share of the group's panel extent, within 1.5pp. Presence alone is the
+ *      weaker claim: the library re-derives the attribute on every store
+ *      update, including ones that *revert* a layout (a `ResizeObserver`
+ *      callback arriving while `defaultLayoutDeferred` is still set discards
+ *      the committed layout and recomputes from `defaultSize`). Agreement ties
+ *      the attribute to the boxes the toolbar is actually positioned by.
+ *   3. Geometry is unchanged from the previous animation frame, so a layout
+ *      still in motion does not satisfy 1 and 2 mid-flight.
+ *
+ * Polling the group's own box would prove nothing — it spans the viewport and
+ * never moves (`0,72,1280` throughout) while its children reflow underneath. A
+ * fixed `extraMs` would mask both symptoms, but only while the pause happens to
+ * outlast the commit.
+ *
+ * On the measured workspace load the collapse is a single DOM write: React
+ * flushes the group's registration and the shell's collapse in one layout-effect
+ * pass, so no 60/40 intermediate is ever written (0 such frames across 497
+ * samples, at both 1x and 20x CPU throttle; the attribute and the collapsed
+ * geometry appear together at ~249ms and ~4129ms respectively). Conditions 2
+ * and 3 therefore cost nothing on the happy path — they remove the dependence
+ * on that batching holding.
  *
  * No-ops on pages with no panel group, so it is safe on any route.
  */
@@ -65,12 +85,57 @@ export async function awaitPanelLayoutCommitted(
   if ((await page.locator(panelGroupSelector).count()) === 0) return;
   await page.waitForFunction(
     ([handleSel, groupSel]) => {
-      // A group may legitimately render no handle (single panel); treat that as
-      // committed rather than hanging until timeout.
+      // A group may legitimately render no handle (single panel, or a details
+      // panel gated behind an expanded flag); treat that as committed rather
+      // than hanging until timeout.
       if (!document.querySelector(groupSel)) return true;
-      const handles = document.querySelectorAll(handleSel);
+      const handles = Array.from(document.querySelectorAll(handleSel));
       if (handles.length === 0) return true;
-      return Array.from(handles).every((h) => h.hasAttribute("aria-valuenow"));
+
+      // Panel extent along the group's main axis, as a fraction of the group's
+      // total panel extent. Vertical groups size by height, horizontal by width.
+      const extentOf = (el: Element, vertical: boolean) => {
+        const box = el.getBoundingClientRect();
+        return vertical ? box.height : box.width;
+      };
+
+      const signature: string[] = [];
+      const agreed = handles.every((handle) => {
+        const valueNow = handle.getAttribute("aria-valuenow");
+        const controls = handle.getAttribute("aria-controls");
+        if (valueNow === null || controls === null) return false;
+
+        const group = handle.closest(groupSel);
+        if (!group) return false;
+        const vertical =
+          getComputedStyle(group).flexDirection.startsWith("column");
+        const panels = Array.from(group.querySelectorAll("[data-panel]"));
+        const total = panels.reduce(
+          (sum, panel) => sum + extentOf(panel, vertical),
+          0,
+        );
+        // A group with no measurable extent has not been laid out at all.
+        if (total <= 0) return false;
+        const target = panels.find((panel) => panel.id === controls);
+        if (!target) return false;
+
+        const measured = (extentOf(target, vertical) / total) * 100;
+        signature.push(
+          panels.map((p) => Math.round(extentOf(p, vertical))).join(","),
+        );
+        // 1.5pp absorbs the library's own rounding plus subpixel layout; it is
+        // far tighter than the 60 -> 100 transitions this needs to exclude.
+        return Math.abs(Number(valueNow) - measured) <= 1.5;
+      });
+      if (!agreed) return false;
+
+      // Require the same geometry twice running, so a layout mid-flight cannot
+      // satisfy the agreement check on a single frame and pass.
+      const w = window as unknown as { __panelLayoutSignature?: string };
+      const current = signature.join("|");
+      const stable = w.__panelLayoutSignature === current;
+      w.__panelLayoutSignature = current;
+      return stable;
     },
     [panelHandleSelector, panelGroupSelector] as const,
     { timeout, polling: "raf" },

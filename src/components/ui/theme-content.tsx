@@ -27,7 +27,11 @@ export function ThemeContent({
 
   if (!mounted) {
     return (
-      <Skeleton className="mx-auto h-8 w-3xl items-center justify-center" aria-label="Content loading" />
+      <Skeleton
+        className="mx-auto h-8 w-3xl items-center justify-center"
+        role="status"
+        aria-label="Content loading"
+      />
     );
   }
 

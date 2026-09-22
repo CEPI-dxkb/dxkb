@@ -42,7 +42,11 @@ export function ExperimentBiosetCollection({
 
   if (experimentIds.isPending && hasExperimentScope) {
     return (
-      <Skeleton className="m-4 min-h-96 flex-1" aria-label="Loading Biosets" />
+      <Skeleton
+        className="m-4 min-h-96 flex-1"
+        role="status"
+        aria-label="Loading Biosets"
+      />
     );
   }
   if (experimentIds.error) {

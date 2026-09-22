@@ -27,8 +27,8 @@ const formSchema = z.object({
   username: z.string().min(1, {
     error: "Username is required",
   }),
-  password: z.string().min(8, {
-    error: "Password of at least 8 characters is required",
+  password: z.string().min(1, {
+    error: "Password is required",
   }),
 });
 

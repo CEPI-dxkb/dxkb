@@ -24,13 +24,32 @@ test.describe("auth (signed out)", () => {
     await expect(page).toHaveURL(/redirect=%2Fworkspace/);
   });
 
-  test("short password shows zod validation error", async ({ page }) => {
-    await applyBackendMocks(page, { overrides: [...journeyOverrides] });
+  test("allows a one-character legacy password", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [
+        {
+          url: "/api/auth/sign-in/email",
+          method: "POST",
+          status: 401,
+          body: { message: "Invalid username or password" },
+        },
+        ...journeyOverrides,
+      ],
+    });
     const signIn = new SignInPage(page);
     await signIn.goto();
-    await signIn.fill("e2e@example.com", "short");
+
+    const signInRequest = page.waitForRequest(
+      (req) =>
+        req.url().endsWith("/api/auth/sign-in/email") &&
+        req.method() === "POST",
+    );
+    await signIn.fill("legacy@example.com", "p");
     await signIn.submit();
-    await signIn.expectValidationError(/at least 8 characters/i);
+    expect((await signInRequest).postDataJSON()).toMatchObject({
+      username: "legacy@example.com",
+      password: "p",
+    });
   });
 
   test("submits the canonical sign-in request", async ({ page }) => {

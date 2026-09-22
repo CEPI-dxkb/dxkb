@@ -56,6 +56,21 @@ describe("normalizeLegacyKeyword", () => {
       );
     });
 
+    it.each([
+      ['"EC 2.1.1.1" extra"', '"EC 2.1.1.1" extra'],
+      ['stray" "EC 2.1.1.1"', 'stray "EC 2.1.1.1"'],
+    ])(
+      "preserves a valid phrase when another quote in %j is unmatched",
+      (keyword, expected) => {
+        const normalized = normalizeLegacyKeyword(keyword);
+
+        expect(normalized).toBe(expected);
+        expect(searchToQuery(normalized)).toContain(
+          "keyword(%22EC%202.1.1.1%22)",
+        );
+      },
+    );
+
     it("strips every quote when removing embedded ones orphans a partner", () => {
       expect(normalizeLegacyKeyword('a"b c" d')).toBe("ab c d");
     });

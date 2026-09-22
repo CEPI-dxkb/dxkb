@@ -35,7 +35,7 @@ function options(
     total: 2,
     isRefreshing: false,
     hasLoadedKeyword: false,
-    displayedRows: [],
+    loadedKeyword: "",
     rql: "eq(owner,public)",
     keyword: "coli",
     sort: { field: "genome_name", direction: "asc" as const },
@@ -79,24 +79,39 @@ describe("useResourceCollectionExport", () => {
     );
   });
 
-  // Loaded mode exports the rows already on screen. It must not refetch:
-  // `exportAll` is capped at maxExportRows, so a refetch-then-filter would draw
-  // matches only from the first page of a large collection.
-  it("exports the displayed rows for a loaded keyword without refetching", async () => {
+  it("exports loaded-keyword matches from every page", async () => {
     const { data, exportAll } = repository();
-    const displayedRows = [{ genome_id: "2", genome_name: "DNA gyrase" }];
+    exportAll.mockResolvedValue({
+      rows: [
+        { genome_id: "1", genome_name: "DNA gyrase A" },
+        { genome_id: "2", genome_name: "Unrelated protein" },
+        { genome_id: "201", genome_name: "DNA gyrase B" },
+      ],
+    });
     const { result } = renderHook(() =>
       useResourceCollectionExport(
-        options(data, { hasLoadedKeyword: true, displayedRows }),
+        options(data, {
+          hasLoadedKeyword: true,
+          loadedKeyword: "gyrase",
+        }),
       ),
     );
 
     await act(() => result.current.exportRows("txt", undefined, ["genome_id"]));
 
-    expect(exportAll).not.toHaveBeenCalled();
+    expect(exportAll).toHaveBeenCalledWith("genome", {
+      rql: "eq(owner,public)",
+      keyword: undefined,
+      keywordMode: undefined,
+      fields: ["genome_id", "genome_name"],
+      sort: { field: "genome_name", direction: "asc" },
+    });
     expect(downloadResourceExport).toHaveBeenCalledWith(
       "genome",
-      displayedRows,
+      [
+        { genome_id: "1", genome_name: "DNA gyrase A" },
+        { genome_id: "201", genome_name: "DNA gyrase B" },
+      ],
       columns,
       ["genome_id"],
       "txt",
@@ -105,21 +120,13 @@ describe("useResourceCollectionExport", () => {
     );
   });
 
-  // Regression: the size guard read `total`, which is the UNFILTERED
-  // collection total (the collection strips the keyword from the server
-  // request). A view filtered down to a few visible matches inside a large
-  // collection was refused, quoting a row count the user never sees.
-  it("exports a small keyword-filtered view inside an oversized collection", async () => {
+  it("refuses a loaded-keyword export when the source exceeds the export limit", async () => {
     const { data, exportAll } = repository();
-    const displayedRows = [
-      { genome_id: "1", genome_name: "DNA gyrase A" },
-      { genome_id: "2", genome_name: "DNA gyrase B" },
-    ];
     const { result } = renderHook(() =>
       useResourceCollectionExport(
         options(data, {
           hasLoadedKeyword: true,
-          displayedRows,
+          loadedKeyword: "gyrase",
           total: 40_000,
         }),
       ),
@@ -127,17 +134,9 @@ describe("useResourceCollectionExport", () => {
 
     await act(() => result.current.exportRows("csv"));
 
-    expect(result.current.exportError).toBeNull();
+    expect(result.current.exportError).toContain("40,000");
     expect(exportAll).not.toHaveBeenCalled();
-    expect(downloadResourceExport).toHaveBeenCalledWith(
-      "genome",
-      displayedRows,
-      columns,
-      ["genome_id", "genome_name"],
-      "csv",
-      "all",
-      "genome",
-    );
+    expect(downloadResourceExport).not.toHaveBeenCalled();
   });
 
   it("reports refresh and size guards without requesting rows", async () => {

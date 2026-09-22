@@ -1,38 +1,50 @@
-function countQuotes(value: string): number {
-  return (value.match(/"/g) ?? []).length;
-}
-
 /**
  * Remove quotes that cannot act as phrase delimiters.
  *
- * WHY: `searchToQuery`'s parser treats every `"` as a delimiter, and its
- * opening-quote branch *assigns* instead of appending (`state.exp = '"'`),
+ * WHY: `searchToQuery`'s parser treats every `\"` as a delimiter, and its
+ * opening-quote branch *assigns* instead of appending (`state.exp = '\"'`),
  * so a quote in the middle of a token discards everything accumulated before
- * it — `foo"bar` searches for `"bar` and silently loses `foo`. An unterminated
- * quote is just as bad: the `"` survives into the emitted `keyword()` term and
- * Solr is asked to match a literal quote character. Fixing the parser would
- * change the parse for every one of its callers, so the stray quotes are
- * removed here, before the string ever reaches it.
+ * it. Unmatched quotes can likewise survive into a `keyword()` term. Fixing the
+ * parser would change every caller, so unusable quotes are removed here.
  *
- * Balanced quotes sitting at token boundaries are genuine phrase delimiters
- * and are preserved, so `"EC 2.1.1.1"` still searches as a single phrase.
+ * A phrase opener must begin a token and its closer must end one. Pairing those
+ * delimiters individually preserves valid phrases even when another quote is
+ * embedded or unmatched.
  */
 function normalizeStrayQuotes(query: string): string {
-  const quoteCount = countQuotes(query);
-  if (quoteCount === 0) return query;
+  const openingQuotes: number[] = [];
+  const pairedQuotes = new Set<number>();
 
-  // Odd count: at least one quote can never be matched, so none of them can be
-  // trusted as a delimiter.
-  if (quoteCount % 2 === 1) return query.replace(/"/g, "");
+  for (let index = 0; index < query.length; index++) {
+    if (query[index] !== '"') continue;
 
-  // Even count: drop only the quotes wedged inside a token (non-whitespace on
-  // both sides). That can orphan a partner quote, so re-check the parity.
-  // The preceding character is captured rather than matched with a lookbehind
-  // because `tsconfig.json` targets ES2017.
-  const withoutEmbedded = query.replace(/(\S)"(?=\S)/g, "$1");
-  return countQuotes(withoutEmbedded) % 2 === 0
-    ? withoutEmbedded
-    : withoutEmbedded.replace(/"/g, "");
+    const isFirstCharacter = index === 0;
+    const isLastCharacter = index === query.length - 1;
+    const canOpen =
+      (isFirstCharacter || /\s/.test(query[index - 1])) &&
+      !isLastCharacter &&
+      !/\s/.test(query[index + 1]);
+    const canClose =
+      !isFirstCharacter &&
+      !/\s/.test(query[index - 1]) &&
+      (isLastCharacter || /\s/.test(query[index + 1]));
+
+    if (canClose && openingQuotes.length > 0) {
+      const openingQuote = openingQuotes.pop();
+      if (openingQuote !== undefined) pairedQuotes.add(openingQuote);
+      pairedQuotes.add(index);
+    } else if (canOpen) {
+      openingQuotes.push(index);
+    }
+  }
+
+  let normalized = "";
+  for (let index = 0; index < query.length; index++) {
+    if (query[index] !== '"' || pairedQuotes.has(index)) {
+      normalized += query[index];
+    }
+  }
+  return normalized;
 }
 
 /** Normalize a legacy global-search keyword for the Solr query parser. */

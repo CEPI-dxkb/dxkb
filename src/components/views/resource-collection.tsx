@@ -7,7 +7,10 @@ import { InfoPanel } from "@/components/detail-panel/info-panel";
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { ResourceWorkspace } from "./resource-workspace";
 import { useResourceCollectionActions } from "./resource-collection-actions";
-import { useResourceCollectionExport } from "./use-resource-collection-export";
+import {
+  matchesLoadedKeyword,
+  useResourceCollectionExport,
+} from "./use-resource-collection-export";
 import { useResourceCollectionRowResolution } from "./use-resource-collection-row-resolution";
 import {
   DataTable,
@@ -67,25 +70,6 @@ function combinePredicates(...predicates: (string | undefined)[]) {
  */
 const genericCollectionErrorMessage =
   "The requested records could not be loaded. Please try again.";
-
-/**
- * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
- * or array-valued field of a row. `keyword` must already be trimmed and lower-cased.
- *
- * Module-private: this file now owns the only export implementation, so the table
- * rows and the exported rows are filtered by the same call. (It used to be exported
- * for `ResourceChildCollection`'s own exporter, which plan item 19 deleted.)
- */
-function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
-  return Object.values(row).some((value) => {
-    const values = Array.isArray(value) ? value : [value];
-    return values.some((item) =>
-      String(item ?? "")
-        .toLowerCase()
-        .includes(keyword),
-    );
-  });
-}
 
 export interface ResourceCollectionProps<Row extends DataTableRow> {
   profile: ResourceCollectionProfile<Row>;
@@ -228,7 +212,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     total: collection.total,
     isRefreshing: collection.isRefreshing,
     hasLoadedKeyword,
-    displayedRows,
+    loadedKeyword: normalizedLoadedKeyword,
     rql: effectiveRql,
     keyword: requestState.keyword,
     keywordMode: profile.serverKeywordMode,

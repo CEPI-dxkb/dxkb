@@ -544,22 +544,23 @@ describe("ResourceChildCollection scope changes", () => {
     ).toContain("eq(genome_id,83332.12)");
   });
 
-  it("exports the loaded-keyword matches on screen without refetching", async () => {
-    // A download-all in loaded mode serializes the rows already loaded and
-    // filtered on screen. It used to refetch through exportAll and filter the
-    // response, but exportAll is capped at maxExportRows, so the "every page"
-    // it promised was really just the first page of a large collection — and
-    // the size guard, reading the unfiltered total, refused small filtered
-    // views. The unrelated row below proves the keyword filter still applies.
+  it("exports loaded-keyword matches from every page", async () => {
     useResourceCollection.mockReturnValue(
       realCollectionResult({
         rows: [
           { pdb_id: "1ABC", title: "Influenza A polymerase" },
           { pdb_id: "2DEF", title: "Unrelated structure" },
         ],
-        total: 40_000,
+        total: 2,
       }),
     );
+    exportAll.mockResolvedValueOnce({
+      rows: [
+        { pdb_id: "1ABC", title: "Influenza A polymerase" },
+        { pdb_id: "2DEF", title: "Unrelated structure" },
+        { pdb_id: "3GHI", title: "Later influenza structure" },
+      ],
+    });
     useRealResourceCollection.current = true;
     const download = spyOnDownload();
 
@@ -581,8 +582,9 @@ describe("ResourceChildCollection scope changes", () => {
 
     const content = await download.text();
     expect(content).toContain("Influenza A polymerase");
+    expect(content).toContain("Later influenza structure");
     expect(content).not.toContain("Unrelated structure");
-    expect(exportAll).not.toHaveBeenCalled();
+    expect(exportAll).toHaveBeenCalled();
   });
 
   it("leaves a selected-ID export unfiltered", async () => {

@@ -64,6 +64,28 @@ export function WorkspaceToolbar({
   isAtRoot = false,
   onNewWorkspace,
 }: WorkspaceToolbarProps) {
+  const newFolderButton = (
+    <Button
+      variant="outline"
+      onClick={onNewFolder}
+      disabled={!onNewFolder}
+      title={onNewFolder ? "Create a new folder" : undefined}
+    >
+      <FolderPlus className="size-4" data-icon="inline-start" />
+      New Folder
+    </Button>
+  );
+  const uploadButton = (
+    <Button
+      variant="outline"
+      onClick={onUpload}
+      disabled={!onUpload}
+      title={onUpload ? "Upload a file to the workspace" : undefined}
+    >
+      <Upload className="size-4" data-icon="inline-start" />
+      Upload
+    </Button>
+  );
   const filterSearchSection = (
     <div className="flex min-w-0 items-center gap-2">
       <Select
@@ -164,43 +186,35 @@ export function WorkspaceToolbar({
           Refresh
         </Button>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger render={<span className="inline-flex" />}>
-              <Button
-                variant="outline"
-                onClick={onNewFolder}
-                disabled={!onNewFolder}
-                title={onNewFolder ? "Create a new folder" : undefined}
-              >
-                <FolderPlus className="size-4" data-icon="inline-start" />
-                New Folder
-              </Button>
-            </TooltipTrigger>
-            {!onNewFolder && (
-              <TooltipContent>You do not have write access in this directory</TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        {onNewFolder ? (
+          newFolderButton
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                {newFolderButton}
+              </TooltipTrigger>
+              <TooltipContent>
+                You do not have write access in this directory
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger render={<span className="inline-flex" />}>
-              <Button
-                variant="outline"
-                onClick={onUpload}
-                disabled={!onUpload}
-                title={onUpload ? "Upload a file to the workspace" : undefined}
-              >
-                <Upload className="size-4" data-icon="inline-start" />
-                Upload
-              </Button>
-            </TooltipTrigger>
-            {!onUpload && (
-              <TooltipContent>You do not have write access in this directory</TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
+        {onUpload ? (
+          uploadButton
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger render={<span className="inline-flex" />}>
+                {uploadButton}
+              </TooltipTrigger>
+              <TooltipContent>
+                You do not have write access in this directory
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
     </div>
   );

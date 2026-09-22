@@ -28,7 +28,7 @@ concurrency:
 jobs:
   sync-linux-snapshots:
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.62.0-jammy
+    container: mcr.microsoft.com/playwright:v1.63.0-jammy
     # Only runs for PRs from the same repo — GITHUB_TOKEN cannot push to forks
     if: github.event.pull_request.head.repo.full_name == github.repository
     permissions:
@@ -101,7 +101,7 @@ jobs:
     # Run even when sync-linux-snapshots is skipped (fork PRs)
     if: always()
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.62.0-jammy
+    container: mcr.microsoft.com/playwright:v1.63.0-jammy
 
     strategy:
       fail-fast: false

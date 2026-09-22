@@ -179,7 +179,7 @@ overrides:
   phyloxml@1.0.0>sax: 1.6.1
 
 patchedDependencies:
-  archaeopteryx@2.3.2: 8c08cbe2712e6d6d761a417316fcc9c632d87b4583ab0e053695c1103f655027
+  archaeopteryx@2.3.2: 20f43fd590ac9e7baf810c4c2e6c66d6944a4df7cf1523d7a96fbceda0a8d18c
   auspice@2.73.2: 86bdd5368f21ec378285c678e1bc1b54bacfb9c9fb9eaf7853efe3d14c05bceb
   molstar: a80c534bab8094a7ca7103c40d6638c0f7127db69d2ac212a1ce6a951f3bc3da
   phyloxml@1.0.0: 4eddfc18ff2113aad48c985883da338442f7a61c7435a1229a3e089a4682c47c
@@ -289,7 +289,7 @@ importers:
         version: 4.0.0(@types/react@19.3.0)(react@19.3.0)
       archaeopteryx:
         specifier: 2.3.2
-        version: 2.3.2(patch_hash=8c08cbe2712e6d6d761a417316fcc9c632d87b4583ab0e053695c1103f655027)
+        version: 2.3.2(patch_hash=20f43fd590ac9e7baf810c4c2e6c66d6944a4df7cf1523d7a96fbceda0a8d18c)
       boring-avatars:
         specifier: ^2.0.4
         version: 2.0.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -12655,7 +12655,7 @@ snapshots:
 
   aproba@1.2.0: {}
 
-  archaeopteryx@2.3.2(patch_hash=8c08cbe2712e6d6d761a417316fcc9c632d87b4583ab0e053695c1103f655027):
+  archaeopteryx@2.3.2(patch_hash=20f43fd590ac9e7baf810c4c2e6c66d6944a4df7cf1523d7a96fbceda0a8d18c):
     dependencies:
       canvg: 3.0.11
       d3: 3.5.17

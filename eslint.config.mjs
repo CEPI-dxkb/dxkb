@@ -125,6 +125,9 @@ export default defineConfig(
     // incompatible hook without mitigation will still warn.
     files: [
       "src/components/shared/data-table.tsx",
+      "src/components/shared/data-table-header.tsx",
+      "src/components/shared/data-table-controls.tsx",
+      "src/components/shared/data-table-footer.tsx",
       "src/components/workspace/file-viewer/viewers/csv-viewer.tsx",
       "src/components/organisms/reference-genomes/reference-genomes-client.tsx",
       "src/components/taxonomy/taxonomy-tree.tsx",

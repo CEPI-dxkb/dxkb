@@ -3,8 +3,8 @@
 import {
   type ReactNode,
   type RefObject,
-  useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -34,32 +34,30 @@ export function AnchoredSuggestionPortal({
     if (!open || !anchorRef.current) return;
 
     const anchorRect = anchorRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - anchorRect.bottom;
     const preferredHeight = 256;
     const minHeight = 160;
     const gap = 4;
 
-    if (spaceBelow >= preferredHeight) {
+    // The gap is part of the space the dropdown consumes, so subtract it once
+    // and let both the threshold checks and the resulting heights use that
+    // same budget. Adding the gap to `top` while sizing against the un-gapped
+    // space overflows the viewport by up to `gap` pixels.
+    const availableBelow = window.innerHeight - anchorRect.bottom - gap;
+
+    if (availableBelow >= minHeight) {
       setRect({
         top: anchorRect.bottom + gap,
         left: anchorRect.left,
         width: anchorRect.width,
-        maxHeight: preferredHeight,
+        maxHeight: Math.min(preferredHeight, availableBelow),
       });
       return;
     }
 
-    if (spaceBelow >= minHeight) {
-      setRect({
-        top: anchorRect.bottom + gap,
-        left: anchorRect.left,
-        width: anchorRect.width,
-        maxHeight: Math.max(spaceBelow - gap, minHeight),
-      });
-      return;
-    }
-
-    const maxHeight = Math.max(anchorRect.top - gap, minHeight);
+    // Flip up. Clamp to the space actually above the anchor so `top` can never
+    // go negative and push the dropdown off the top of the viewport.
+    const availableAbove = anchorRect.top - gap;
+    const maxHeight = Math.min(preferredHeight, Math.max(availableAbove, 0));
     setRect({
       top: anchorRect.top - maxHeight - gap,
       left: anchorRect.left,
@@ -68,7 +66,10 @@ export function AnchoredSuggestionPortal({
     });
   });
 
-  useEffect(() => {
+  // Layout effect, not a passive effect: `rect` is intentionally retained
+  // while closed, so measuring after paint would render one frame at the
+  // previous (possibly scrolled-away) position on reopen.
+  useLayoutEffect(() => {
     if (!open) return;
     updateLayout();
     window.addEventListener("scroll", updateLayout, true);

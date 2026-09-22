@@ -13,8 +13,22 @@ export function DataTableHeader({
   table,
   onColumnOrderChange,
 }: DataTableHeaderProps) {
+  // Extracted out of useDataTableContent, which carries "use no memo". The
+  // compiler otherwise keys the header cells (sort chevrons included) on
+  // `table` identity alone, and the table instance is only unstable by
+  // accident (see the useTable call in data-table.tsx) — memoize the options
+  // there and the sort indicators freeze.
+  "use no memo";
+
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   const justResizedRef = useRef(false);
+  // Reordering is only possible when the parent owns the column order:
+  // `data-table.tsx` passes `onColumnOrderChange: undefined` to `useTable`
+  // when this prop is absent, which makes `table.setColumnOrder` a no-op too.
+  // Without a callback there is nowhere for a drop to land, so we withhold the
+  // drag affordance entirely rather than show a grab cursor that discards the
+  // drop.
+  const canReorder = Boolean(onColumnOrderChange);
 
   const handleDrop = (event: React.DragEvent, targetColumnId: string) => {
     event.preventDefault();
@@ -62,6 +76,38 @@ export function DataTableHeader({
                 [column.id]: size,
               }));
             };
+            // One entry point for both pointer kinds. TanStack's resize handler
+            // branches on `isTouchStartEvent` to decide whether to arm
+            // touchmove/touchend or mousemove/mouseup, so a touchstart must
+            // reach it directly — forwarding a synthetic mousedown would leave
+            // the touch path permanently unarmed.
+            const startResize = (
+              event: React.MouseEvent | React.TouchEvent,
+            ) => {
+              event.stopPropagation();
+              justResizedRef.current = false;
+              header.getResizeHandler()(event);
+              // Mirror TanStack's branch: the "just resized, swallow the next
+              // click" window has to close on whichever gesture actually ends.
+              // Listening only for mouseup meant a touch resize-drag left the
+              // flag false and fell through to the sort toggle below.
+              const endEventNames =
+                event.type === "touchstart"
+                  ? (["touchend", "touchcancel"] as const)
+                  : (["mouseup"] as const);
+              const onEnd = () => {
+                justResizedRef.current = true;
+                setTimeout(() => {
+                  justResizedRef.current = false;
+                }, 100);
+                for (const name of endEventNames) {
+                  window.removeEventListener(name, onEnd);
+                }
+              };
+              for (const name of endEventNames) {
+                window.addEventListener(name, onEnd);
+              }
+            };
             return (
               <TableHead
                 key={header.id}
@@ -100,23 +146,25 @@ export function DataTableHeader({
                   <>
                     <div
                       className="relative flex size-full items-center py-0 pr-0.5"
-                      draggable={true}
-                      onDragStart={(event) => {
-                        setDraggedColumn(column.id);
-                        event.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = "move";
-                      }}
-                      onDrop={(event) => {
-                        handleDrop(event, column.id);
-                      }}
-                      onDragEnd={() => {
-                        setDraggedColumn(null);
-                      }}
+                      draggable={canReorder}
+                      {...(canReorder && {
+                        onDragStart: (event: React.DragEvent) => {
+                          setDraggedColumn(column.id);
+                          event.dataTransfer.effectAllowed = "move";
+                        },
+                        onDragOver: (event: React.DragEvent) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        },
+                        onDrop: (event: React.DragEvent) => {
+                          handleDrop(event, column.id);
+                        },
+                        onDragEnd: () => {
+                          setDraggedColumn(null);
+                        },
+                      })}
                       style={{
-                        cursor: "move",
+                        cursor: canReorder ? "move" : undefined,
                         opacity: draggedColumn === column.id ? 0.5 : 1,
                         backgroundColor:
                           draggedColumn && draggedColumn !== column.id
@@ -162,19 +210,8 @@ export function DataTableHeader({
                             resizeWithKeyboard(10);
                           }
                         }}
-                        onMouseDown={(event) => {
-                          event.stopPropagation();
-                          justResizedRef.current = false;
-                          header.getResizeHandler()(event);
-                          const onUp = () => {
-                            justResizedRef.current = true;
-                            setTimeout(() => {
-                              justResizedRef.current = false;
-                            }, 100);
-                            window.removeEventListener("mouseup", onUp);
-                          };
-                          window.addEventListener("mouseup", onUp);
-                        }}
+                        onMouseDown={startResize}
+                        onTouchStart={startResize}
                         className="absolute top-0 right-0 z-30 flex h-full w-2 cursor-col-resize touch-none select-none"
                         style={{ transform: "translateX(50%)" }}
                       >

@@ -55,8 +55,7 @@ vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
 }));
 
 import { CollectionSelectionActions } from "../collection-selection-actions";
-
-const actionIds = ["copyRows", "services", "genomes", "group"] as const;
+import { strainSelectionActionIds } from "../collection-selection-action-ids";
 
 /** Strain is the interesting shape: one row's `genome_ids` fans out to many IDs. */
 function renderStrainActions(
@@ -66,7 +65,7 @@ function renderStrainActions(
     <CollectionSelectionActions
       searchType="strain"
       label="Strains"
-      actionIds={actionIds}
+      actionIds={strainSelectionActionIds}
       idField="genome_ids"
       selectedCount={2}
       columns={[{ id: "strain", label: "Strain" }]}

@@ -3,11 +3,7 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { deriveTableFields } from "../list-data-utils";
-import {
-  getExportProjection,
-  orderSelectedRows,
-  useListDataExport,
-} from "../use-list-data-export";
+import { getExportProjection, useListDataExport } from "../use-list-data-export";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -26,22 +22,6 @@ describe("getExportProjection", () => {
     expect(getExportProjection(fields, ["__select__"])).toEqual(
       fields.map((field) => field.id),
     );
-  });
-});
-
-describe("orderSelectedRows", () => {
-  it("matches selection order and leaves unknown rows last", () => {
-    expect(
-      orderSelectedRows(
-        [{ genome_id: "unknown" }, { genome_id: "2.2" }, { genome_id: "1.1" }],
-        ["1.1", "2.2"],
-        "genome_id",
-      ),
-    ).toEqual([
-      { genome_id: "1.1" },
-      { genome_id: "2.2" },
-      { genome_id: "unknown" },
-    ]);
   });
 });
 
@@ -98,10 +78,12 @@ describe("useListDataExport", () => {
       ids: ["1.1", "2.2"],
       fields: ["genome_name", "genome_id"],
     });
-    const content = await exportedBlob?.text();
-    expect(content?.indexOf("First")).toBeLessThan(
-      content?.indexOf("Second") ?? 0,
-    );
+    // Assert presence before position: `indexOf` returns -1 for an absent
+    // string, so comparing positions alone passes when "First" was dropped.
+    const content = (await exportedBlob?.text()) ?? "";
+    expect(content).toContain("First");
+    expect(content).toContain("Second");
+    expect(content.indexOf("First")).toBeLessThan(content.indexOf("Second"));
   });
 
   it("exports loaded keyword rows without a repository request", async () => {

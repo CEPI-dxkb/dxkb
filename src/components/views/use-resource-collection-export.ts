@@ -29,8 +29,15 @@ interface UseResourceCollectionExportOptions {
   total: number;
   isRefreshing: boolean;
   hasLoadedKeyword: boolean;
-  normalizedLoadedKeyword: string;
-  matchesLoadedKeyword: (row: DataTableRow, keyword: string) => boolean;
+  /**
+   * The rows currently on screen — already keyword-filtered by the caller in
+   * loaded mode. An all-rows export in loaded mode serializes exactly these,
+   * because `total` counts the unfiltered collection (the caller strips the
+   * keyword from the server request) and `exportAll` is capped at
+   * `maxExportRows`: refetching would both refuse small filtered exports and,
+   * once the cap is reached, draw matches only from the first page of results.
+   */
+  displayedRows: readonly DataTableRow[];
   rql?: string;
   keyword?: string;
   keywordMode?: "exact" | "prefix";
@@ -46,8 +53,7 @@ export function useResourceCollectionExport({
   total,
   isRefreshing,
   hasLoadedKeyword,
-  normalizedLoadedKeyword,
-  matchesLoadedKeyword,
+  displayedRows,
   rql,
   keyword,
   keywordMode,
@@ -64,13 +70,18 @@ export function useResourceCollectionExport({
     setExportError(null);
     const ids = isAllPagesSelected ? undefined : selectedIds;
     if (ids && ids.length === 0) return;
-    if (!ids && isRefreshing) {
+    // Loaded mode exports the rows already on screen, so neither the refresh
+    // guard nor the size guard applies: both speak for a refetch that no longer
+    // happens, and `total` is the unfiltered collection total, which would
+    // refuse a handful of visible matches inside a large result set.
+    const exportsLoadedRows = hasLoadedKeyword && !ids?.length;
+    if (!ids && isRefreshing && !exportsLoadedRows) {
       setExportError(
         "Wait for the current results to finish loading before exporting.",
       );
       return;
     }
-    if (!ids?.length && total > maxExportRows) {
+    if (!ids?.length && !exportsLoadedRows && total > maxExportRows) {
       setExportError(
         `This export matches ${total.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,
       );
@@ -81,30 +92,28 @@ export function useResourceCollectionExport({
       const selectedFields = fields
         ? [...fields]
         : columns.map((column) => column.id);
-      const allFields = columns.map((column) => column.id);
-      const rows = ids?.length
-        ? await fetchSelectedRows(
-            repository,
-            resource,
-            idField,
-            ids,
-            selectedFields,
-          )
-        : (
-            await repository.exportAll(resource, {
-              rql,
-              keyword,
-              keywordMode,
-              fields: hasLoadedKeyword ? allFields : selectedFields,
-              sort,
-            })
-          ).rows;
-      const exportedRows =
-        hasLoadedKeyword && !ids
-          ? rows.filter((row) =>
-              matchesLoadedKeyword(row, normalizedLoadedKeyword),
-            )
-          : rows;
+      let exportedRows: readonly DataTableRow[];
+      if (ids?.length) {
+        exportedRows = await fetchSelectedRows(
+          repository,
+          resource,
+          idField,
+          ids,
+          selectedFields,
+        );
+      } else if (exportsLoadedRows) {
+        exportedRows = displayedRows;
+      } else {
+        exportedRows = (
+          await repository.exportAll(resource, {
+            rql,
+            keyword,
+            keywordMode,
+            fields: selectedFields,
+            sort,
+          })
+        ).rows;
+      }
       downloadResourceExport(
         resource,
         exportedRows,

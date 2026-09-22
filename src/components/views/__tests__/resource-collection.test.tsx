@@ -836,7 +836,13 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     expect(dataTableProps.totalItems).toBe(160);
   });
 
-  it("clears hidden selections and exports loaded-keyword matches from every page", async () => {
+  // Loaded mode exports the rows already on screen. It used to refetch through
+  // exportAll and filter the response, but exportAll is capped at
+  // maxExportRows, so that drew "every page" only from the first 10,000 rows
+  // while the size guard — reading the UNFILTERED total — refused small
+  // filtered views outright. `laterMatch` stays in the repository response to
+  // prove the refetch no longer happens.
+  it("clears hidden selections and exports the loaded-keyword matches on screen", async () => {
     const user = userEvent.setup();
     const laterMatch = {
       genome_id: "83332.14",
@@ -919,12 +925,9 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       )("csv", null);
     });
 
-    expect(exportAll).toHaveBeenCalledWith("genome", {
-      rql: "eq(genome_status,Complete)",
-      keyword: undefined,
-      fields: genomeCollectionProfile.columns.map((column) => column.id),
-      sort: { field: "genome_length", direction: "desc" },
-    });
+    // No refetch: `laterMatch` sits in the repository's exportAll response and
+    // must not reach the file, and `total` (401) never gates the export.
+    expect(exportAll).not.toHaveBeenCalled();
     expect(selected).not.toHaveBeenCalled();
     expect(downloadResourceExport).toHaveBeenCalledWith(
       "genome",
@@ -934,13 +937,15 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
           genome_name: "DNA gyrase fixture",
           genome_length: 5678,
         },
-        laterMatch,
       ],
       genomeCollectionProfile.columns,
       genomeCollectionProfile.columns.map((column) => column.id),
       "csv",
       "all",
       "genome",
+    );
+    expect(downloadResourceExport.mock.lastCall?.[1]).not.toContainEqual(
+      laterMatch,
     );
   });
 

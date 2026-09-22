@@ -264,6 +264,58 @@ describe("workspace table destinations", () => {
     ).toBe("/workspace/public/bob@bvbrc/shared/my%20folder");
   });
 
+  it("prefers basePath over path for home destinations", () => {
+    const item = { name: "child", path: "/alice@bvbrc/home/ignored/child" };
+
+    expect(
+      workspaceItemDestination(
+        {
+          mode: "home",
+          path: "results/myjob",
+          username: "alice@bvbrc",
+          basePath: "results/.myjob",
+        },
+        item,
+      ),
+    ).toBe("/workspace/alice@bvbrc/home/results/.myjob/child");
+  });
+
+  it("ignores basePath outside home mode", () => {
+    const item = { name: "child", path: "/bob@bvbrc/shared/child" };
+
+    expect(
+      workspaceItemDestination(
+        {
+          mode: "shared",
+          path: "bob@bvbrc/shared",
+          username: "alice@bvbrc",
+          basePath: "bob@bvbrc/.shared",
+        },
+        item,
+      ),
+    ).toBe("/workspace/bob@bvbrc/shared/child");
+    expect(
+      workspaceItemDestination(
+        {
+          mode: "public",
+          path: "bob@bvbrc/shared",
+          username: "",
+          basePath: "bob@bvbrc/.shared",
+        },
+        item,
+      ),
+    ).toBe("/workspace/public/bob@bvbrc/shared/child");
+  });
+
+  it("omits the username segment from home destinations when username is empty", () => {
+    expect(
+      workspaceItemDestination(
+        { mode: "home", path: "parent", username: "" },
+        { name: "child", path: "/parent/child" },
+      ),
+    ).toBe("/workspace/home/parent/child");
+  });
+
   it("builds parent destinations at mode boundaries", () => {
     expect(
       workspaceParentDestination({

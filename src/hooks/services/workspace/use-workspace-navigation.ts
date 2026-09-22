@@ -3,10 +3,7 @@
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { WorkspaceViewMode } from "@/types/workspace-browser";
 import { isFolderType } from "@/lib/services/workspace/utils";
-import {
-  encodeWorkspaceSegment,
-  sanitizePathSegment,
-} from "@/lib/services/workspace/path-utils";
+import { workspaceItemDestination } from "@/lib/services/workspace/path-utils";
 
 export interface UseWorkspaceNavigationOptions {
   mode: WorkspaceViewMode;
@@ -25,36 +22,10 @@ export function useWorkspaceNavigation({
   router,
   clearSelection,
 }: UseWorkspaceNavigationOptions) {
-  const isHome = mode === "home";
-  const isPublic = mode === "public";
-
   const navigateToItem = (item: WorkspaceItem) => {
-    if (isHome) {
-      const base = basePath ?? path;
-      const segments = base
-        ? base.split("/").map(sanitizePathSegment).filter(Boolean)
-        : [];
-      segments.push(sanitizePathSegment(item.name));
-      const encoded = segments.map(encodeWorkspaceSegment).join("/");
-      const homeBase = `/workspace/${encodeWorkspaceSegment(username)}/home`;
-      router.push(`${homeBase}/${encoded}`);
-    } else if (isPublic) {
-      const segments = item.path
-        .replace(/^\//, "")
-        .split("/")
-        .map(sanitizePathSegment)
-        .filter(Boolean);
-      const encoded = segments.map(encodeWorkspaceSegment).join("/");
-      router.push(`/workspace/public/${encoded}`);
-    } else {
-      const segments = item.path
-        .replace(/^\//, "")
-        .split("/")
-        .map(sanitizePathSegment)
-        .filter(Boolean);
-      const encoded = segments.map(encodeWorkspaceSegment).join("/");
-      router.push(`/workspace/${encoded}`);
-    }
+    router.push(
+      workspaceItemDestination({ mode, username, path, basePath }, item),
+    );
     clearSelection();
   };
 

@@ -544,19 +544,24 @@ describe("ResourceChildCollection scope changes", () => {
     ).toContain("eq(genome_id,83332.12)");
   });
 
-  it("filters a download-all export by the active loaded keyword", async () => {
-    // Plan item 14: this now runs through ResourceCollection's own exportRows
-    // (the child's onExport override and its saveRows serializer are gone), so
-    // the render is real rather than driven through the light stub.
-    exportAll.mockResolvedValueOnce({
-      rows: [
-        { pdb_id: "1ABC", title: "Influenza A polymerase" },
-        { pdb_id: "2DEF", title: "Unrelated structure" },
-      ],
-    });
-    useResourceCollection.mockReturnValue(realCollectionResult());
+  it("exports the loaded-keyword matches on screen without refetching", async () => {
+    // A download-all in loaded mode serializes the rows already loaded and
+    // filtered on screen. It used to refetch through exportAll and filter the
+    // response, but exportAll is capped at maxExportRows, so the "every page"
+    // it promised was really just the first page of a large collection — and
+    // the size guard, reading the unfiltered total, refused small filtered
+    // views. The unrelated row below proves the keyword filter still applies.
+    useResourceCollection.mockReturnValue(
+      realCollectionResult({
+        rows: [
+          { pdb_id: "1ABC", title: "Influenza A polymerase" },
+          { pdb_id: "2DEF", title: "Unrelated structure" },
+        ],
+        total: 40_000,
+      }),
+    );
     useRealResourceCollection.current = true;
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+    const download = spyOnDownload();
 
     render(
       <ResourceChildCollection
@@ -574,21 +579,10 @@ describe("ResourceChildCollection scope changes", () => {
       screen.getByRole("button", { name: "Real export all" }),
     );
 
-    // Every profile column is requested so the keyword can be matched against
-    // fields the export itself does not include.
-    await waitFor(() => {
-      expect(exportAll).toHaveBeenCalledWith(
-        "protein_structure",
-        expect.objectContaining({ rql: "eq(genome_id,83332.12)" }),
-      );
-    });
-    const request = exportAll.mock.lastCall?.[1] as
-      { fields: string[] } | undefined;
-    expect(request?.fields).toContain("pdb_id");
-    expect(request?.fields).toContain("title");
-    expect(request?.fields.length).toBeGreaterThan(1);
-    expect(click).toHaveBeenCalled();
-    click.mockRestore();
+    const content = await download.text();
+    expect(content).toContain("Influenza A polymerase");
+    expect(content).not.toContain("Unrelated structure");
+    expect(exportAll).not.toHaveBeenCalled();
   });
 
   it("leaves a selected-ID export unfiltered", async () => {

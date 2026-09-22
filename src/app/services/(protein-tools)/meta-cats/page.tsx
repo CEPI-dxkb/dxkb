@@ -67,11 +67,7 @@ import {
 import { metaCatsService } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-service";
 import { fetchFeaturesFromGroup } from "@/lib/services/feature";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
-import {
-  MetaCatsAlignmentFilesSection,
-  MetaCatsAutoGroupingSection,
-  MetaCatsFeatureGroupsSection,
-} from "./meta-cats-input-sections";
+import { MetaCatsInputSection } from "./meta-cats-input-sections";
 
 const emptyAutoGroups: NonNullable<MetaCatsFormData["auto_groups"]> = [];
 const emptyFeatureGroups: string[] = [];
@@ -528,7 +524,10 @@ function useMetaCATSPage() {
               </form.Field>
 
               {/* Auto Grouping Section */}
-              <MetaCatsAutoGroupingSection active={inputType === "auto"}>
+              <MetaCatsInputSection
+                active={inputType === "auto"}
+                className="space-y-4"
+              >
                   {/* Metadata Selection */}
                   <div className="flex flex-wrap gap-4">
                     <form.Field name="metadata_group">
@@ -820,10 +819,10 @@ function useMetaCATSPage() {
                       )}
                     </form.Field>
                   </div>
-              </MetaCatsAutoGroupingSection>
+              </MetaCatsInputSection>
 
               {/* Feature Groups Section */}
-              <MetaCatsFeatureGroupsSection active={inputType === "groups"}>
+              <MetaCatsInputSection active={inputType === "groups"}>
                   {/* Feature Group Selector */}
                   <div className="space-y-2">
                     <Label className="service-card-label">
@@ -913,10 +912,10 @@ function useMetaCATSPage() {
                       )}
                     </form.Field>
                   </div>
-              </MetaCatsFeatureGroupsSection>
+              </MetaCatsInputSection>
 
               {/* Alignment File Section */}
-              <MetaCatsAlignmentFilesSection active={inputType === "files"}>
+              <MetaCatsInputSection active={inputType === "files"}>
                   {/* Alignment File Selector */}
                   <form.Field name="alignment_file">
                     {(field) => (
@@ -972,7 +971,7 @@ function useMetaCATSPage() {
                       </FieldItem>
                     )}
                   </form.Field>
-              </MetaCatsAlignmentFilesSection>
+              </MetaCatsInputSection>
             </div>
           </CardContent>
         </Card>

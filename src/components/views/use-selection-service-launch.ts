@@ -184,27 +184,31 @@ async function launchGroupBackedService({
   onSettled,
 }: GroupBackedLaunchOptions): Promise<void> {
   let groupPath: string | undefined;
+  // Reads `groupPath` at call time: it is still undefined on the catch path when
+  // createTemporaryGroup itself threw, and deleteTemporaryGroup no-ops on that.
+  const teardown = async () => {
+    closeRerunWindow(resultWindow);
+    await deleteTemporaryGroup(groupPath);
+  };
+
   try {
     groupPath = await createTemporaryGroup();
     if (!isCurrentSession(session)) {
-      closeRerunWindow(resultWindow);
-      await deleteTemporaryGroup(groupPath);
+      await teardown();
       return;
     }
 
     const { parameters, serviceId } = groupServiceLaunch(service, groupPath);
     const launch = rerunJob(parameters, serviceId, { resultWindow });
     if (launch.status !== "opened") {
-      closeRerunWindow(resultWindow);
-      await deleteTemporaryGroup(groupPath);
+      await teardown();
       onLaunchFailure(launch.message);
       return;
     }
 
     onSuccess();
   } catch (serviceError) {
-    closeRerunWindow(resultWindow);
-    await deleteTemporaryGroup(groupPath);
+    await teardown();
     if (!isCurrentSession(session)) return;
     onFailure(serviceError);
   } finally {

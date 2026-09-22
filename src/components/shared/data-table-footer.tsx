@@ -49,6 +49,13 @@ export function DataTableFooter({
   isAllPagesSelected,
   totalSelectedCount,
 }: DataTableFooterProps) {
+  // Extracted out of useDataTableContent, which carries "use no memo". The
+  // compiler otherwise keys the pager on `table` identity alone (it emits
+  // `if ($[n] !== table) { t = table.getCanPreviousPage(); }`), and the table
+  // instance is only unstable by accident (see the useTable call in
+  // data-table.tsx) — memoize the options there and Prev/Next freeze.
+  "use no memo";
+
   const { pageIndex, pageSize } = table.state.pagination;
   const { start, end } = getPageRange(
     pageIndex,

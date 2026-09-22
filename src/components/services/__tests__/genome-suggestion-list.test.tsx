@@ -49,4 +49,36 @@ describe("GenomeSuggestionList", () => {
     expect(onSelect).toHaveBeenCalledWith(suggestions[1]);
     expect(screen.getByText(/83332\.12 • K-12/)).toBeVisible();
   });
+
+  it("keeps the highlight background when itemClassName sets its own", () => {
+    render(
+      <GenomeSuggestionList
+        suggestions={suggestions}
+        isLoading={false}
+        error={null}
+        emptyMessage={null}
+        highlightedIndex={1}
+        itemRefs={{ current: [] }}
+        onSelect={vi.fn()}
+        onHighlight={vi.fn()}
+        itemClassName="rounded-md border-0 bg-transparent text-sm"
+      />,
+    );
+
+    // tailwind-merge resolves conflicting background utilities last-wins, so
+    // the highlight class has to come after the caller's `bg-transparent`.
+    const highlighted = screen.getByRole("button", {
+      name: /Bacillus subtilis/i,
+    });
+    expect(highlighted).toHaveClass("bg-accent");
+    expect(highlighted).not.toHaveClass("bg-transparent");
+
+    // Non-conflicting caller classes must still survive the reorder.
+    expect(highlighted).toHaveClass("rounded-md", "border-0", "text-sm");
+
+    // Unhighlighted rows keep the caller's background.
+    const other = screen.getByRole("button", { name: /Escherichia coli/i });
+    expect(other).toHaveClass("bg-transparent");
+    expect(other).not.toHaveClass("bg-accent");
+  });
 });

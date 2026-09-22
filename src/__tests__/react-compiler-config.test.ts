@@ -5,6 +5,12 @@ const repoRoot = resolve(__dirname, "..", "..");
 
 const optOutFiles = [
   "src/components/shared/data-table.tsx",
+  // Extracted out of data-table.tsx's useDataTableContent, which is itself
+  // opted out. Each child keys derived values off `table` identity, which is
+  // only unstable because useTable receives a fresh options literal.
+  "src/components/shared/data-table-header.tsx",
+  "src/components/shared/data-table-controls.tsx",
+  "src/components/shared/data-table-footer.tsx",
   "src/components/workspace/file-viewer/viewers/csv-viewer.tsx",
   "src/components/organisms/reference-genomes/reference-genomes-client.tsx",
   "src/components/taxonomy/taxonomy-tree.tsx",

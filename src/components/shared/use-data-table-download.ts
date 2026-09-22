@@ -88,24 +88,29 @@ async function downloadDataTable({
     return;
   }
 
+  // Matches the sibling serializers in `views/resource-export.ts` and
+  // `services/list-data-utils.ts`: CSV is comma-delimited, TXT is tab-delimited.
+  // This block used to join on "," for both, so a ".txt" download was a CSV.
+  const separator = format === "csv" ? "," : "\t";
   const headers = exportColumns.map(
     (column) => column.columnDef.header as string,
   );
   const rows = table.getPrePaginatedRowModel().rows;
   const content = [
-    headers.join(","),
+    headers.join(separator),
     ...rows.map((row) =>
       exportColumns
-        .map((column) => csvExportValue(row.getValue<unknown>(column.id)))
-        .join(","),
+        .map((column) =>
+          csvExportValue(row.getValue<unknown>(column.id), format),
+        )
+        .join(separator),
     ),
   ].join("\n");
   downloadFile(`${resource}.${format}`, content);
 }
 
-function csvExportValue(value: unknown): string {
+function csvExportValue(value: unknown, format: DownloadFormat): string {
   if (value == null) return "";
-  const quoted = typeof value === "string" || typeof value === "object";
   let serialized: string;
   if (typeof value === "string") serialized = value;
   else if (typeof value === "object") serialized = JSON.stringify(value);
@@ -118,8 +123,12 @@ function csvExportValue(value: unknown): string {
   else return "";
 
   const cleaned = serialized.replace(/\r\n|\n|\r/g, " ");
+  // TXT emits bare values, so an embedded tab would otherwise inject a column
+  // break into the very format the delimiter fix above repairs. Quoting and
+  // formula-guarding are CSV-only, mirroring `resource-export.ts`.
+  if (format === "txt") return cleaned.replaceAll("\t", " ");
   const safe = /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
-  return quoted ? `"${safe.replace(/"/g, '""')}"` : safe;
+  return `"${safe.replaceAll('"', '""')}"`;
 }
 
 function downloadFile(filename: string, content: string) {

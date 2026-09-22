@@ -1,13 +1,13 @@
 "use client";
 
 import { downloadResourceExport } from "@/components/views/resource-export";
+import { fetchSelectedRows } from "@/components/views/use-resource-collection-row-resolution";
 import {
   DataRepository,
   maxExportRows,
   type DataResource,
   type DataSort,
 } from "@/lib/data-api";
-import { maxSelectedRows } from "@/lib/data-api/validation";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { downloadLoadedResourceRows, type ColumnInfo } from "./list-data-utils";
 
@@ -35,19 +35,6 @@ export function getExportProjection(
     (id) => id !== "__select__",
   );
   return requested.length ? requested : tableFields;
-}
-
-export function orderSelectedRows(
-  rows: Record<string, unknown>[],
-  ids: string[],
-  idField: string,
-): Record<string, unknown>[] {
-  const orderById = new Map(ids.map((id, index) => [id, index]));
-  return rows.sort(
-    (a, b) =>
-      (orderById.get(String(a[idField])) ?? Number.MAX_VALUE) -
-      (orderById.get(String(b[idField])) ?? Number.MAX_VALUE),
-  );
 }
 
 export function useListDataExport({
@@ -123,26 +110,15 @@ export function useListDataExport({
 
     try {
       const selectedFields = exportProjection(visibleColumns);
-      const requestFields = selectedFields.includes(idField)
-        ? selectedFields
-        : [...selectedFields, idField];
-      const results = await Promise.all(
-        Array.from(
-          { length: Math.ceil(ids.length / maxSelectedRows) },
-          (_, index) =>
-            dataRepository.selected(resource, {
-              ids: ids.slice(
-                index * maxSelectedRows,
-                (index + 1) * maxSelectedRows,
-              ),
-              fields: requestFields,
-            }),
-        ),
-      );
-      const orderedRows = orderSelectedRows(
-        results.flatMap((result) => result.rows),
-        ids,
+      // Shared with the resource-collection export path: one implementation of
+      // the `maxSelectedRows` batching, identity-field injection and
+      // selection-order restore, rather than two copies that can drift.
+      const orderedRows = await fetchSelectedRows(
+        dataRepository,
+        resource,
         idField,
+        ids,
+        selectedFields,
       );
       downloadResourceExport(
         resource,

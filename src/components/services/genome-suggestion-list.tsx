@@ -63,9 +63,12 @@ export function GenomeSuggestionList({
         type="button"
         className={cn(
           "hover:bg-accent flex w-full flex-col items-start gap-1 px-4 py-2 text-left",
+          // Caller overrides come before the state classes so a caller-supplied
+          // background (e.g. `bg-transparent`) cannot strip the keyboard
+          // highlight via tailwind-merge's last-wins resolution.
+          itemClassName,
           disabled && "cursor-not-allowed opacity-60",
           highlightedIndex === index && "bg-accent",
-          itemClassName,
         )}
         aria-disabled={disabled || undefined}
         onClick={() => {

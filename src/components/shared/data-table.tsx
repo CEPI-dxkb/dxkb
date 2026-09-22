@@ -570,6 +570,12 @@ function useDataTableContent(
 
   const [columnDefs] = useState(() => createColumnDefs(columns));
 
+  // This options object MUST stay a fresh literal per render. `useTable`
+  // returns a new instance whenever the options or state change, and
+  // DataTableHeader/Controls/Footer are compiled with "use no memo" precisely
+  // because they key derived values (sort chevrons, Prev/Next disabled state,
+  // the column menu) off `table` identity. Memoizing this object would look
+  // like a harmless optimisation and would silently freeze those controls.
   const table = useTable({
     features: dataTableFeatures,
     data,

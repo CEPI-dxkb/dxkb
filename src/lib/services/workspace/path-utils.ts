@@ -22,6 +22,13 @@ interface WorkspaceNavigationInput {
   path: string;
   username: string;
   sharedRootUsername?: string;
+  /**
+   * Overrides `path` when building home-mode child destinations. Job-result
+   * views pass the dot-prefixed relative path (see `getDotPathRelative`) so
+   * children resolve under `.{jobName}` rather than the display path.
+   * Ignored in shared/public modes, which derive the URL from `item.path`.
+   */
+  basePath?: string;
 }
 
 interface WorkspaceBreadcrumbInput {
@@ -204,7 +211,7 @@ export function workspaceItemDestination(
   if (input.mode === "shared") {
     return `/workspace/${buildEncodedSegmentPath(parsePathSegments(item.path))}`;
   }
-  const segments = parsePathSegments(input.path);
+  const segments = parsePathSegments(input.basePath ?? input.path);
   segments.push(sanitizePathSegment(item.name));
   return `${bases.home}/${buildEncodedSegmentPath(segments)}`;
 }
@@ -246,6 +253,26 @@ function formatBreadcrumbLabel(
   return safe.startsWith(`${currentUsername}@`) ? currentUsername : safe;
 }
 
+/**
+ * Map path segments to breadcrumb descriptors. Every mode shares the same
+ * label/muted policy (the last segment is the current location: unlinked and
+ * unmuted); only the href differs, so each caller supplies its own builder.
+ */
+function segmentCrumbs(
+  segments: string[],
+  currentUsername: string | undefined,
+  hrefFor: (index: number) => string,
+): WorkspaceBreadcrumbDescriptor[] {
+  return segments.map((segment, index) => {
+    const isLast = index === segments.length - 1;
+    return {
+      label: formatBreadcrumbLabel(segment, currentUsername),
+      href: isLast ? undefined : hrefFor(index),
+      muted: !isLast,
+    };
+  });
+}
+
 export function buildWorkspaceBreadcrumbs({
   mode,
   path,
@@ -277,37 +304,26 @@ export function buildWorkspaceBreadcrumbs({
         icon: "public",
         muted: segments.length > 0,
       },
-      ...segments.map((segment, index) => {
-        const isLast = index === segments.length - 1;
-        return {
-          label: formatBreadcrumbLabel(segment, currentUsername),
-          href: isLast
-            ? undefined
-            : `/workspace/public/${buildEncodedSegmentPath(
-                segments.slice(0, index + 1),
-              )}`,
-          muted: !isLast,
-        };
-      }),
+      ...segmentCrumbs(
+        segments,
+        currentUsername,
+        (index) =>
+          `/workspace/public/${buildEncodedSegmentPath(
+            segments.slice(0, index + 1),
+          )}`,
+      ),
     ];
   }
 
   if (mode === "shared") {
-    return segments.map((segment, index) => {
-      const isLast = index === segments.length - 1;
-      const myRoot = workspaceRootUsername || currentUsername;
-      return {
-        label: formatBreadcrumbLabel(segment, currentUsername),
-        href: isLast
-          ? undefined
-          : index === 0 && myRoot
-            ? `/workspace/${encodeWorkspaceSegment(myRoot)}`
-            : `/workspace/${buildEncodedSegmentPath(
-                segments.slice(0, index + 1),
-              )}`,
-        muted: !isLast,
-      };
-    });
+    const myRoot = workspaceRootUsername || currentUsername;
+    return segmentCrumbs(segments, currentUsername, (index) =>
+      // The first shared segment is another user's root; link it to *our* root
+      // so the crumb walks back into the current user's workspace.
+      index === 0 && myRoot
+        ? `/workspace/${encodeWorkspaceSegment(myRoot)}`
+        : `/workspace/${buildEncodedSegmentPath(segments.slice(0, index + 1))}`,
+    );
   }
 
   const homeBase = username
@@ -325,18 +341,12 @@ export function buildWorkspaceBreadcrumbs({
       href: segments.length === 0 ? undefined : homeBase,
       muted: segments.length > 0,
     },
-    ...segments.map((segment, index) => {
-      const isLast = index === segments.length - 1;
-      return {
-        label: formatBreadcrumbLabel(segment, currentUsername),
-        href: isLast
-          ? undefined
-          : `${homeBase}/${buildEncodedSegmentPath(
-              segments.slice(0, index + 1),
-            )}`,
-        muted: !isLast,
-      };
-    }),
+    ...segmentCrumbs(
+      segments,
+      currentUsername,
+      (index) =>
+        `${homeBase}/${buildEncodedSegmentPath(segments.slice(0, index + 1))}`,
+    ),
   ];
 }
 

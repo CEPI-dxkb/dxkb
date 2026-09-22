@@ -13,6 +13,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dna, Bug, Microscope, Activity, Database } from "lucide-react";
+import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
 import { searchToQuery } from "@/app/search/search-to-query";
 import ResultsOverview from "@/components/search/results-overview";
 import {
@@ -63,52 +64,9 @@ function getSearchResultsHref(dataType: string, query: string): string | null {
     : null;
 }
 
-// ---- make this top-level (outside components) ----
-function processQuery(query: string) {
-  let processedQuery = query.replace(/'/g, "").replace(/:/g, " ");
-
-  processedQuery = processedQuery
-    .replace(/\(\+\)/g, " ")
-    .replace(/\(-\)/g, " ")
-    .replace(/,|\+|-|=|<|>|\\|\//g, " ");
-
-  if (
-    processedQuery.charAt(0) == '"' &&
-    processedQuery.match(/\(|\)|\[|\]|\{|\}/)
-  ) {
-    processedQuery = processedQuery.replace(/"/g, "");
-  }
-
-  if (
-    processedQuery.charAt(0) != '"' ||
-    processedQuery.match(/\(|\)|\[|\]|\{|\}/)
-  ) {
-    const keywords = processedQuery.split(/\s|\(|\)|\[|\]|\{|\}/);
-
-    for (let i = 0; i < keywords.length; i++) {
-      if (
-        keywords[i].charAt(0) != '"' &&
-        keywords[i].charAt(keywords[i].length - 1) != '"'
-      ) {
-        if (
-          keywords[i].match(/^fig\|[0-9]+/) ||
-          keywords[i].match(/[0-9]+\.[0-9]+/) ||
-          keywords[i].match(/[0-9]+$/)
-        ) {
-          keywords[i] = `"${keywords[i]}"`;
-        }
-      }
-    }
-    processedQuery = keywords.join(" ");
-  }
-
-  return searchToQuery(processedQuery);
-}
-// ---------------------------------------------------
-
 async function fetchSearchResults(query: string): Promise<SearchResults> {
   const searchPayload: Record<string, unknown> = {};
-  const processedQuery = processQuery(query);
+  const processedQuery = searchToQuery(normalizeLegacyKeyword(query));
 
   allTermSearchTypes.forEach(({ id: searchType }) => {
     let typeQuery = processedQuery;

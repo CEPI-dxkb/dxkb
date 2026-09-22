@@ -233,7 +233,7 @@ index 4d4e405e..469d0f59 100644
 +                }
 +            });
          });
-@@ -8539,3 +8548,15 @@ if (!phyloXml) {
+@@ -8539,3 +8556,15 @@ if (!phyloXml) {
      archaeopteryx.getSelectedNodes = function () {
          return Array.from(_selectedNodes);
      };

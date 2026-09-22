@@ -69,7 +69,7 @@ export interface FileTableColumnMeta {
   sortField?: string;
 }
 
-export const fileTableFeatures = tableFeatures({
+const fileTableFeatures = tableFeatures({
   columnOrderingFeature,
   columnSizingFeature,
   columnResizingFeature,

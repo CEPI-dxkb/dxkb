@@ -17,7 +17,6 @@ import { useWorkspaceSelection } from "@/hooks/services/workspace/use-workspace-
 import { useWorkspaceNavigation } from "@/hooks/services/workspace/use-workspace-navigation";
 import { useWorkspaceActionDispatch } from "@/hooks/services/workspace/use-workspace-action-dispatch";
 import { useWorkspaceDialogHandlers } from "@/hooks/services/workspace/use-workspace-dialog-handlers";
-import { JobMetadataCard } from "./job-metadata-card";
 import { useJobResultData } from "@/hooks/services/workspace/use-job-result-data";
 import { getDotPathRelative } from "@/lib/services/workspace/helpers";
 import {
@@ -25,17 +24,15 @@ import {
   canWriteToCurrentDir as computeCanWriteToCurrentDir,
   computeWorkspacePaths,
 } from "@/lib/services/workspace/path-utils";
-import { WorkspaceBreadcrumbs } from "./workspace-breadcrumbs";
-import { WorkspaceToolbar } from "./workspace-toolbar";
+import type { WorkspaceDataTableHandle } from "./workspace-file-table";
 import {
-  WorkspaceDataTable,
-  type WorkspaceDataTableHandle,
-} from "./workspace-file-table";
+  WorkspaceBrowserLoading,
+  WorkspaceBrowserPresentation,
+} from "./workspace-browser-presentation";
 import {
   WorkspaceActionBar,
   type WorkspaceActionId,
 } from "./workspace-action-bar";
-import { WorkspaceShell } from "./workspace-shell";
 import { WorkspaceDialogs } from "./workspace-dialogs";
 import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
@@ -50,7 +47,6 @@ import {
   encodeWorkspaceSegment,
   workspaceUsername,
 } from "@/lib/services/workspace/path-utils";
-import { Skeleton } from "@/components/ui/skeleton";
 import { pickDirectoryMode } from "./workspace-directory-mode";
 
 type PublicWorkspaceLevel = "root" | "user" | "path";
@@ -330,33 +326,25 @@ function useWorkspaceBrowser({
 
   // --- Early returns ---
 
-  const loadingSkeleton = (viewMode: "home" | "shared") => (
-    <div className="flex min-h-[calc(100vh-12rem)] w-full flex-col overflow-hidden">
-      <div className="min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
-        <Skeleton className="h-5 w-64" />
-        <Skeleton className="h-8 w-full" />
-      </div>
-      <div className="min-h-0 flex-1">
-        <WorkspaceDataTable
-          items={[]}
-          isLoading={true}
-          path={path}
-          sort={{ field: "name", direction: "asc" }}
-          onSortChange={noop}
-          viewMode={viewMode}
-          username={username}
-        />
-      </div>
-    </div>
-  );
-
   if (!isPublic && path && path.trim() !== "" && resolveQuery.isLoading) {
-    return loadingSkeleton(isHome ? "home" : "shared");
+    return (
+      <WorkspaceBrowserLoading
+        path={path}
+        username={username}
+        viewMode={isHome ? "home" : "shared"}
+      />
+    );
   }
 
   if (!isPublic && !currentUser) {
     if (mode === "shared" && !authChecked) {
-      return loadingSkeleton("shared");
+      return (
+        <WorkspaceBrowserLoading
+          path={path}
+          username={username}
+          viewMode="shared"
+        />
+      );
     }
     return (
       <Alert variant="destructive">
@@ -383,8 +371,11 @@ function useWorkspaceBrowser({
     ...(isFavoriting ? (["favorite"] as const) : []),
   ];
 
+  const canCreateItems =
+    !isPublic && !isJobResultView && (isHome || canWriteToCurrentDir);
+
   return (
-    <WorkspaceShell
+    <WorkspaceBrowserPresentation
       selectedItems={selectedItems}
       actionBar={
         <WorkspaceActionBar
@@ -399,143 +390,92 @@ function useWorkspaceBrowser({
           onAction={handleAction}
         />
       }
-    >
-      {!isPublic && !isJobResultView && (
-        <WorkspaceDialogs
-          currentUserWorkspaceRoot={currentUserWorkspaceRoot}
-          currentDirectoryPath={currentDirectoryPath}
-          isDialogLoading={isDialogLoading}
-          onConfirmDelete={handleConfirmDelete}
-          onCopyConfirm={handleCopyConfirm}
-          onCreateFolder={handleCreateFolder}
-          onCreateWorkspace={handleCreateWorkspace}
-          onEditTypeConfirm={handleEditTypeConfirm}
-          onRefetch={refetch}
-        />
-      )}
-      <div className="@container min-w-0 shrink-0 space-y-4 overflow-hidden p-4">
-        <WorkspaceBreadcrumbs
-          path={path}
-          username={username}
-          itemCount={items.length}
-          viewMode={
-            isPublic
-              ? "public"
-              : isHome
-                ? "home"
-                : isAtSharedRoot
-                  ? "root"
-                  : "shared"
-          }
-          currentUsername={currentUser}
-          workspaceRootUsername={isHome ? undefined : myWorkspaceRoot}
-        />
-        <WorkspaceToolbar
-          searchQuery={isJobResultView ? "" : searchQuery}
-          onSearchChange={isJobResultView ? noop : setSearchQuery}
-          typeFilter={isJobResultView ? "all" : typeFilter}
-          onTypeFilterChange={isJobResultView ? noop : setTypeFilter}
-          onRefresh={() => {
-            if (isJobResultView) void resolveQuery.refetch();
-            refetch();
-          }}
-          isRefreshing={isFetching}
-          showHiddenFiles={isJobResultView ? true : showHiddenFiles}
-          onShowHiddenFilesChange={isJobResultView ? noop : setShowHiddenFiles}
-          onNewFolder={
-            !isPublic && !isJobResultView && (isHome || canWriteToCurrentDir)
-              ? () => {
-                  dialogDispatch({ type: "OPEN_CREATE_FOLDER" });
-                }
-              : undefined
-          }
-          onUpload={
-            !isPublic && !isJobResultView && (isHome || canWriteToCurrentDir)
-              ? () => {
-                  dialogDispatch({ type: "OPEN_UPLOAD" });
-                }
-              : undefined
-          }
-          isAtRoot={isAtSharedRoot}
-          onNewWorkspace={
-            !isPublic && !isJobResultView && isAtSharedRoot
-              ? () => {
-                  dialogDispatch({ type: "OPEN_CREATE_WORKSPACE" });
-                }
-              : undefined
-          }
-        />
-        {enabled && error && (
-          <Alert variant="destructive">
-            <AlertCircle className="size-4" />
-            <AlertDescription>
-              {isPublic
-                ? "Failed to load public workspaces"
-                : isHome
-                  ? "Failed to load workspace contents"
-                  : "Failed to load shared folders"}
-              : {error.message}
-            </AlertDescription>
-          </Alert>
-        )}
-      </div>
-      {isJobResultView ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden border-border pb-4">
-          <div className="px-4">
-            {resolveQuery.data && (
-              <JobMetadataCard
-                resolvedJobMeta={resolveQuery.data}
-                className="px-4"
-              />
-            )}
-          </div>
-          <div className="min-h-0 flex-1">
-            <WorkspaceDataTable
-              ref={tableRef}
-              items={processedItems}
-              isLoading={isLoading}
-              path={path}
-              sort={sort}
-              onSortChange={setSort}
-              viewMode={isHome ? "home" : "shared"}
-              username={username}
-              sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
-              selectedPaths={selectedPaths}
-              onSelect={handleSelectItem}
-              onItemDoubleClick={handleItemDoubleClick}
-              onClearSelection={clearSelection}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1">
-          <WorkspaceDataTable
-            ref={tableRef}
-            items={processedItems}
-            isLoading={isLoading}
-            path={path}
-            sort={sort}
-            onSortChange={setSort}
-            viewMode={isPublic ? "public" : isHome ? "home" : "shared"}
-            username={username}
-            sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
-            memberCountByPath={memberCountByPath}
-            favoritePaths={isHome ? favoritePaths : undefined}
-            selectedPaths={selectedPaths}
-            onSelect={handleSelectItem}
-            onItemDoubleClick={handleItemDoubleClick}
-            onClearSelection={clearSelection}
+      dialogs={
+        !isPublic && !isJobResultView ? (
+          <WorkspaceDialogs
+            currentUserWorkspaceRoot={currentUserWorkspaceRoot}
+            currentDirectoryPath={currentDirectoryPath}
+            isDialogLoading={isDialogLoading}
+            onConfirmDelete={handleConfirmDelete}
+            onCopyConfirm={handleCopyConfirm}
+            onCreateFolder={handleCreateFolder}
+            onCreateWorkspace={handleCreateWorkspace}
+            onEditTypeConfirm={handleEditTypeConfirm}
+            onRefetch={refetch}
           />
-        </div>
-      )}
-      <WorkspaceNotFoundDialog
-        open={pathNotFound && !notFoundDismissed}
-        onOpenChange={(open) => {
-          if (!open) setDismissedPath(path);
-        }}
-        onConfirm={handleNotFoundConfirm}
-      />
-    </WorkspaceShell>
+        ) : null
+      }
+      notFoundDialog={
+        <WorkspaceNotFoundDialog
+          open={pathNotFound && !notFoundDismissed}
+          onOpenChange={(open) => {
+            if (!open) setDismissedPath(path);
+          }}
+          onConfirm={handleNotFoundConfirm}
+        />
+      }
+      path={path}
+      username={username}
+      itemCount={items.length}
+      currentUsername={currentUser}
+      workspaceRootUsername={isHome ? undefined : myWorkspaceRoot}
+      toolbar={{
+        searchQuery: isJobResultView ? "" : searchQuery,
+        onSearchChange: isJobResultView ? noop : setSearchQuery,
+        typeFilter: isJobResultView ? "all" : typeFilter,
+        onTypeFilterChange: isJobResultView ? noop : setTypeFilter,
+        onRefresh: () => {
+          if (isJobResultView) void resolveQuery.refetch();
+          refetch();
+        },
+        isRefreshing: isFetching,
+        showHiddenFiles: isJobResultView ? true : showHiddenFiles,
+        onShowHiddenFilesChange: isJobResultView ? noop : setShowHiddenFiles,
+        onNewFolder: canCreateItems
+          ? () => {
+              dialogDispatch({ type: "OPEN_CREATE_FOLDER" });
+            }
+          : undefined,
+        onUpload: canCreateItems
+          ? () => {
+              dialogDispatch({ type: "OPEN_UPLOAD" });
+            }
+          : undefined,
+        onNewWorkspace:
+          !isPublic && !isJobResultView && isAtSharedRoot
+            ? () => {
+                dialogDispatch({ type: "OPEN_CREATE_WORKSPACE" });
+              }
+            : undefined,
+      }}
+      enabled={enabled}
+      error={error}
+      view={
+        isJobResultView
+          ? {
+              kind: "jobResult",
+              source: isHome ? "home" : "shared",
+              resolvedJobMeta: resolveQuery.data ?? null,
+            }
+          : isPublic
+            ? { kind: "public" }
+            : isHome
+              ? { kind: "home" }
+              : { kind: "shared", atRoot: isAtSharedRoot }
+      }
+      tableRef={tableRef}
+      items={processedItems}
+      isLoading={isLoading}
+      sort={sort}
+      onSortChange={setSort}
+      sharedRootUsername={isHome ? undefined : myWorkspaceRoot}
+      memberCountByPath={memberCountByPath}
+      favoritePaths={isHome ? favoritePaths : undefined}
+      selectedPaths={selectedPaths}
+      onSelect={handleSelectItem}
+      onItemDoubleClick={handleItemDoubleClick}
+      onClearSelection={clearSelection}
+    />
   );
 }
 

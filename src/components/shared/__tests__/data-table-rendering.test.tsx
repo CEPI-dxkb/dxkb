@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { RowSelectionState } from "@tanstack/react-table";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DataTable } from "../data-table";
 import { formatCellValue } from "../data-table-utils";
@@ -888,6 +888,96 @@ describe("DataTable download all: local fallback when onDownloadAll is not suppl
     createObjectURLSpy.mockRestore();
     clickSpy.mockRestore();
   });
+
+  // Regression: this fallback interpolated `format` into the filename but
+  // always joined on "," and always quoted strings, so "Download (TXT)"
+  // produced a comma-delimited, CSV-quoted file named .txt. Both sibling
+  // serializers (views/resource-export.ts, services/list-data-utils.ts) use a
+  // tab for TXT and emit bare values, and both strip embedded tabs.
+  function captureLocalDownload() {
+    let blob: Blob | undefined;
+    let filename: string | undefined;
+    vi.spyOn(URL, "createObjectURL").mockImplementation((value) => {
+      blob = value as Blob;
+      return "blob:mock";
+    });
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      function (this: HTMLAnchorElement) {
+        filename = this.download;
+      },
+    );
+    return { text: () => blob?.text(), filename: () => filename };
+  }
+
+  function renderLocalFallbackTable(value: string) {
+    render(
+      <DataTable
+        id="dl-all-local-delimiter"
+        data={[{ id: "aaaa-0001", value, other: "B" }]}
+        columns={[
+          { id: "value", label: "Value" },
+          { id: "other", label: "Other" },
+        ]}
+        totalItems={1}
+        resource="protein_feature"
+        idField="id"
+      />,
+    );
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("delimits a TXT download with tabs and leaves values unquoted", async () => {
+    const user = userEvent.setup();
+    const download = captureLocalDownload();
+    renderLocalFallbackTable("A");
+
+    await user.click(
+      screen.getByRole("button", { name: /^Download \(TXT\)$/i }),
+    );
+
+    await waitFor(() => {
+      expect(download.filename()).toBe("protein_feature.txt");
+    });
+    await expect(download.text()).resolves.toBe("Value\tOther\nA\tB");
+  });
+
+  it("replaces a tab inside a TXT cell so it cannot forge a column break", async () => {
+    const user = userEvent.setup();
+    const download = captureLocalDownload();
+    renderLocalFallbackTable("A\tforged");
+
+    await user.click(
+      screen.getByRole("button", { name: /^Download \(TXT\)$/i }),
+    );
+
+    await waitFor(() => {
+      expect(download.filename()).toBe("protein_feature.txt");
+    });
+    await expect(download.text()).resolves.toBe(
+      "Value\tOther\nA forged\tB",
+    );
+  });
+
+  it("keeps CSV comma-delimited and quoted", async () => {
+    const user = userEvent.setup();
+    const download = captureLocalDownload();
+    renderLocalFallbackTable("A, comma");
+
+    await user.click(
+      screen.getByRole("button", { name: /^Download \(CSV\)$/i }),
+    );
+
+    await waitFor(() => {
+      expect(download.filename()).toBe("protein_feature.csv");
+    });
+    await expect(download.text()).resolves.toBe(
+      'Value,Other\n"A, comma","B"',
+    );
+  });
 });
 
 // ─── "Downloading..." indicator: onDownloadAll regression ────────────────────
@@ -1062,5 +1152,166 @@ describe("DataTable 'Downloading...' indicator via onDownloadAll", () => {
     });
     expect(screen.queryByText("Downloading...")).not.toBeInTheDocument();
     errorSpy.mockRestore();
+  });
+});
+
+// Column reordering only works when the parent owns the order: data-table.tsx
+// passes `onColumnOrderChange: undefined` to useTable when the prop is absent,
+// which also makes table.setColumnOrder a no-op. Offering a drag affordance in
+// that case produces a grab cursor and a drag preview whose drop is discarded.
+describe("DataTable column drag affordance", () => {
+  const reorderColumns = [
+    { id: "strain_name", label: "Strain Name", visible: true },
+    { id: "public_id", label: "Public ID", visible: true },
+  ];
+  const reorderRows = [{ genome_id: "100.1", strain_name: "A", public_id: "B" }];
+
+  function dragWrapperFor(headerName: RegExp) {
+    const header = screen.getByRole("columnheader", { name: headerName });
+    const wrapper = header.querySelector<HTMLElement>("div[draggable]");
+    if (!wrapper) throw new Error("Header has no draggable wrapper element");
+    return wrapper;
+  }
+
+  it("makes headers draggable with a move cursor when onColumnOrderChange is supplied", () => {
+    render(
+      <DataTable
+        id="reorderable"
+        data={reorderRows}
+        columns={reorderColumns}
+        totalItems={1}
+        resource="genome"
+        onColumnOrderChange={vi.fn()}
+      />,
+    );
+
+    const wrapper = dragWrapperFor(/Strain Name/);
+    expect(wrapper).toHaveAttribute("draggable", "true");
+    expect(wrapper.style.cursor).toBe("move");
+  });
+
+  it("does not make headers draggable when onColumnOrderChange is absent", () => {
+    render(
+      <DataTable
+        id="not-reorderable"
+        data={reorderRows}
+        columns={reorderColumns}
+        totalItems={1}
+        resource="genome"
+      />,
+    );
+
+    const wrapper = dragWrapperFor(/Strain Name/);
+    expect(wrapper).toHaveAttribute("draggable", "false");
+    expect(wrapper.style.cursor).toBe("");
+  });
+
+  it("ignores a drop on a non-reorderable table instead of reordering", async () => {
+    const user = userEvent.setup();
+    render(
+      <DataTable
+        id="not-reorderable-drop"
+        data={reorderRows}
+        columns={reorderColumns}
+        totalItems={1}
+        resource="genome"
+      />,
+    );
+
+    const source = dragWrapperFor(/Strain Name/);
+    const target = dragWrapperFor(/Public ID/);
+    await user.pointer([
+      { target: source, keys: "[MouseLeft>]" },
+      { target },
+      { keys: "[/MouseLeft]" },
+    ]);
+
+    const headerNames = screen
+      .getAllByRole("columnheader")
+      .map((cell) => cell.textContent);
+    expect(headerNames).toEqual(
+      expect.arrayContaining(["Strain Name", "Public ID"]),
+    );
+  });
+});
+
+// TanStack's getResizeHandler branches on isTouchStartEvent to decide whether
+// to arm touchmove/touchend or mousemove/mouseup. Only onMouseDown was wired,
+// so the touch path was never armed while `touch-none` still suppressed
+// panning over the separator.
+describe("DataTable resize handle pointer wiring", () => {
+  const resizeColumns = [
+    { id: "strain_name", label: "Strain Name", visible: true },
+  ];
+  const resizeRows = [{ genome_id: "100.1", strain_name: "A" }];
+
+  function renderResizable(onSortingChange?: (sorting: unknown) => void) {
+    render(
+      <DataTable
+        id="resizable"
+        data={resizeRows}
+        columns={resizeColumns}
+        totalItems={1}
+        resource="genome"
+        onSortingChange={onSortingChange}
+      />,
+    );
+    return screen.getByRole("separator", {
+      name: "Resize strain_name column",
+    });
+  }
+
+  it("starts a resize from a touchstart, not only a mousedown", () => {
+    const handle = renderResizable();
+    const addSpy = vi.spyOn(document, "addEventListener");
+
+    fireEvent.touchStart(handle, {
+      touches: [{ clientX: 100, clientY: 0 }],
+    });
+
+    const armed = addSpy.mock.calls.map((call) => call[0]);
+    expect(armed).toContain("touchmove");
+    expect(armed).toContain("touchend");
+    addSpy.mockRestore();
+    fireEvent.touchEnd(handle, { touches: [], changedTouches: [] });
+  });
+
+  it("still arms the mouse path from a mousedown", () => {
+    const handle = renderResizable();
+    const addSpy = vi.spyOn(document, "addEventListener");
+
+    fireEvent.mouseDown(handle, { clientX: 100 });
+
+    const armed = addSpy.mock.calls.map((call) => call[0]);
+    expect(armed).toContain("mousemove");
+    expect(armed).toContain("mouseup");
+    addSpy.mockRestore();
+    fireEvent.mouseUp(window, { clientX: 100 });
+  });
+
+  it("suppresses the sort toggle after a touch resize drag ends", async () => {
+    vi.useFakeTimers();
+    try {
+      const onSortingChange = vi.fn();
+      const handle = renderResizable(onSortingChange);
+      const sortButton = screen.getByRole("button", {
+        name: "Sort by Strain Name",
+      });
+
+      fireEvent.touchStart(handle, { touches: [{ clientX: 100, clientY: 0 }] });
+      fireEvent.touchEnd(window, { touches: [], changedTouches: [] });
+
+      // justResizedRef is latched by the touchend listener, so the click that
+      // a touch gesture synthesises must not reach getToggleSortingHandler.
+      fireEvent.click(sortButton);
+      expect(onSortingChange).not.toHaveBeenCalled();
+
+      // …and the suppression window closes again afterwards.
+      await vi.advanceTimersByTimeAsync(150);
+      fireEvent.click(sortButton);
+      expect(onSortingChange).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

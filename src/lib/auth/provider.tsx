@@ -1,18 +1,11 @@
 "use client";
 
-import {
-  createContext,
-  Suspense,
-  useContext,
-  useEffect,
-  type ReactNode,
-} from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { createContext, useContext, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import * as authClient from "@/lib/auth/client";
-import { isProtectedPagePath } from "@/lib/auth/routes";
 import type {
   AuthUser,
   ProfilePatch,
@@ -28,13 +21,7 @@ export interface AuthBoundaryProps {
 }
 
 export function AuthBoundary({ children, user }: AuthBoundaryProps) {
-  return (
-    <AuthContext.Provider value={user}>
-      <Suspense fallback={user ? children : null}>
-        <ProtectedRouteGuard user={user}>{children}</ProtectedRouteGuard>
-      </Suspense>
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={user}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
@@ -127,26 +114,4 @@ export function useAuthActions() {
       authClient.changePassword(currentPassword, newPassword),
     updateProfile,
   };
-}
-
-function ProtectedRouteGuard({
-  user,
-  children,
-}: {
-  user: AuthUser | null;
-  children: ReactNode;
-}) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const isProtected = isProtectedPagePath(pathname);
-
-  useEffect(() => {
-    if (user || !isProtected) return;
-    const query = searchParams.toString();
-    const fullPath = query ? `${pathname}?${query}` : pathname;
-    router.replace(`/sign-in?redirect=${encodeURIComponent(fullPath)}`);
-  }, [user, isProtected, pathname, router, searchParams]);
-
-  return !user && isProtected ? null : children;
 }

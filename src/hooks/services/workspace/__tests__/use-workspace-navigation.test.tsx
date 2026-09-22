@@ -6,10 +6,9 @@ vi.mock("@/lib/services/workspace/utils", () => ({
   isFolderType: vi.fn((type: string) => type === "folder"),
 }));
 
-vi.mock("@/lib/services/workspace/path-utils", () => ({
-  encodeWorkspaceSegment: vi.fn((s: string) => s),
-  sanitizePathSegment: vi.fn((s: string) => s),
-}));
+// `path-utils` is deliberately NOT mocked: the hook delegates URL building to
+// the real `workspaceItemDestination`, so these expectations double as proof
+// that the helper and the hook agree on every mode.
 
 const makeItem = (
   overrides: Partial<WorkspaceItem>,

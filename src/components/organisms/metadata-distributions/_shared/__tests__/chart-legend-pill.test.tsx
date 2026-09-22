@@ -180,6 +180,44 @@ describe("ChartLegendPill", () => {
     expect(button).toHaveTextContent("410,373");
   });
 
+  it.each([
+    {
+      name: "inactive pill",
+      props: { active: false, dimmed: false, variant: "pill" as const },
+      classes: ["border-border", "text-foreground/70"],
+      opacity: "",
+    },
+    {
+      name: "dimmed pill",
+      props: { active: false, dimmed: true, variant: "pill" as const },
+      classes: ["border-border", "text-foreground/40", "opacity-30"],
+      opacity: "",
+    },
+    {
+      name: "active dimmed row",
+      props: { active: true, dimmed: true, variant: "row" as const },
+      classes: ["text-foreground/40", "opacity-40"],
+      opacity: "color-mix(in srgb, var(--foreground) 30%, transparent)",
+    },
+  ])("preserves the $name appearance", ({ props, classes, opacity }) => {
+    render(<ChartLegendPill label="Alpha" color="red" {...props} />);
+
+    const button = screen.getByRole("button");
+    expect(button).toHaveClass(...classes);
+    if (opacity) expect(button.style.backgroundColor).toBe(opacity);
+  });
+
+  it("uses the slice color for an active pill border and background", () => {
+    render(<ChartLegendPill label="Alpha" color="red" active />);
+
+    const button = screen.getByRole("button");
+    expect(button).toHaveClass("text-foreground");
+    expect(button.style.borderColor).toBe("red");
+    expect(button.style.backgroundColor).toBe(
+      "color-mix(in srgb, red 12%, transparent)",
+    );
+  });
+
   it("renders the swatch with a contrast-meeting border (WCAG 1.4.11)", () => {
     render(
       <ChartLegendPill

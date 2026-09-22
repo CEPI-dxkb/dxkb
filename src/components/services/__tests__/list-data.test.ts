@@ -244,6 +244,47 @@ describe("downloadLoadedResourceRows", () => {
     );
   });
 
+  // Regression: this serializer sent an array through JSON.stringify, so
+  // `taxon_lineage_names` left the all-rows button as ["Bacteria",...] while
+  // the selected-rows button (views/resource-export.ts) wrote "Bacteria; ...".
+  // "; " is the documented legacy encoding, so both buttons must agree on it.
+  it("joins array values with the legacy '; ' separator, matching the selected-rows export", async () => {
+    const download = captureDownload();
+
+    downloadLoadedResourceRows({
+      resource: "genome",
+      rows: [{ taxon_lineage_names: ["Bacteria", "Proteobacteria"] }],
+      format: "txt",
+      visibleColumns: ["taxon_lineage_names"],
+      fields: [
+        {
+          id: "taxon_lineage_names",
+          label: "Lineage",
+          visible: true,
+          sortable: false,
+        },
+      ],
+    });
+
+    await expect(download.text()).resolves.toBe(
+      "Lineage\nBacteria; Proteobacteria",
+    );
+  });
+
+  it("still JSON-encodes a non-array object value", async () => {
+    const download = captureDownload();
+
+    downloadLoadedResourceRows({
+      resource: "genome",
+      rows: [{ meta: { a: 1 } }],
+      format: "txt",
+      visibleColumns: ["meta"],
+      fields: [{ id: "meta", label: "Meta", visible: true, sortable: false }],
+    });
+
+    await expect(download.text()).resolves.toBe('Meta\n{"a":1}');
+  });
+
   it("writes headers only for an empty displayed-column selection", async () => {
     const download = captureDownload();
 

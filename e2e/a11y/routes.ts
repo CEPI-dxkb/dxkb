@@ -615,7 +615,17 @@ export const routes: RouteEntry[] = [
       // see {@link PrepareHook}. Exposure is largest on the tripwire
       // projects, whose firefox half cannot be launched on this machine at all
       // (`e2e/README.md`), so the combined script only ever runs green in CI.
-      await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
+      //
+      // `awaitPanelLayout` covers a second, later gap that skeleton-detach does
+      // not: the shell's ResizablePanelGroup collapses the details panel from a
+      // client effect *after* the rows have painted, and the server-rendered
+      // separator carries `role="separator"` with no `aria-valuenow` until that
+      // commit lands — a `critical` aria-required-attr hit on a state that is
+      // gone a few hundred ms later. See `awaitPanelLayoutCommitted` in ./settle.
+      await awaitSettled(page, {
+        skeletonSelector: '[data-slot="skeleton"]',
+        awaitPanelLayout: true,
+      });
     },
   },
   // Public workspace listing (no auth required to VIEW, but authenticated user sees their context)
@@ -644,6 +654,15 @@ export const routes: RouteEntry[] = [
     path: "/workspace/workshop",
     pages: ["workspace/workshop/page.tsx"],
     needsWorkspace: true,
+    prepare: async (page) => {
+      await page.waitForURL(/\/workspace\/public\/ARWattam@patricbrc\.org\//, {
+        timeout: 10_000,
+      });
+      await awaitSettled(page, {
+        skeletonSelector: '[data-slot="skeleton"]',
+        awaitPanelLayout: true,
+      });
+    },
   },
 
   // Redirect-only workspace routes — not scanned, just counted for meta-test accounting.

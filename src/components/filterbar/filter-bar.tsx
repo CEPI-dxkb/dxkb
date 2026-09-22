@@ -32,6 +32,8 @@ interface FilterBarProps {
   keywordMode?: "server" | "loaded";
 }
 
+type FacetVisibilityOverride = "shown" | "hidden";
+
 export function FilterBar({
   facetFields,
   onFilterChange,
@@ -53,27 +55,10 @@ export function FilterBar({
   };
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
   const [showFacets, setShowFacets] = useState(false);
-  // Which facets the chooser currently shows. Seeded from each field's
-  // `facet_hidden` flag, so the initial set matches the legacy default.
-  const [visibleFacetIds, setVisibleFacetIds] = useState(
-    () =>
-      new Set(
-        facetFields
-          .filter((field) => field.facet && !field.facet_hidden)
-          .map((field) => field.id),
-      ),
-  );
+  const [facetVisibilityOverrides, setFacetVisibilityOverrides] = useState<
+    Map<string, FacetVisibilityOverride>
+  >(() => new Map());
   const locallyRequestedKeywords = useRef<string | null>(null);
-  const previousFacetIds = useRef(
-    new Set(facetFields.filter((field) => field.facet).map((field) => field.id)),
-  );
-  const facetDefinition = facetFields
-    .filter((field) => field.facet)
-    .map(
-      (field) =>
-        `${field.id}:${field.facet_hidden === true ? "hidden" : "shown"}`,
-    )
-    .join("|");
   const syncExternalKeywords = useEffectEvent((value: string) => {
     if (locallyRequestedKeywords.current === value) {
       locallyRequestedKeywords.current = null;
@@ -87,30 +72,6 @@ export function FilterBar({
   useEffect(() => {
     if (keywordValue !== undefined) syncExternalKeywords(keywordValue);
   }, [keywordValue]);
-
-  const reconcileFacets = useEffectEvent(() => {
-    const priorFacetIds = previousFacetIds.current;
-    previousFacetIds.current = new Set(
-      facetFields.filter((field) => field.facet).map((field) => field.id),
-    );
-    setVisibleFacetIds((current) => {
-      const next = new Set<string>();
-      for (const field of facetFields) {
-        if (!field.facet) continue;
-        if (
-          current.has(field.id) ||
-          (!priorFacetIds.has(field.id) && field.facet_hidden !== true)
-        ) {
-          next.add(field.id);
-        }
-      }
-      return next;
-    });
-  });
-
-  useEffect(() => {
-    reconcileFacets();
-  }, [facetDefinition]);
 
   const updateFilters = (
     nextSelected: SelectedFilter[],
@@ -130,9 +91,19 @@ export function FilterBar({
   };
 
   const configurableFacetFields = facetFields.filter((field) => field.facet);
-  const activeFacetFields = configurableFacetFields.filter((field) =>
-    visibleFacetIds.has(field.id),
-  );
+  const visibleFacetIds = new Set<string>();
+  const activeFacetFields: ColumnField[] = [];
+  for (const field of configurableFacetFields) {
+    const override = facetVisibilityOverrides.get(field.id);
+    const isVisible =
+      override === undefined
+        ? field.facet_hidden !== true
+        : override === "shown";
+    if (isVisible) {
+      visibleFacetIds.add(field.id);
+      activeFacetFields.push(field);
+    }
+  }
 
   const filterRql = buildRql({
     selected,
@@ -193,10 +164,9 @@ export function FilterBar({
                     key={field.id}
                     checked={visibleFacetIds.has(field.id)}
                     onCheckedChange={(checked) => {
-                      setVisibleFacetIds((current) => {
-                        const next = new Set(current);
-                        if (checked) next.add(field.id);
-                        else next.delete(field.id);
+                      setFacetVisibilityOverrides((current) => {
+                        const next = new Map(current);
+                        next.set(field.id, checked ? "shown" : "hidden");
                         return next;
                       });
                     }}

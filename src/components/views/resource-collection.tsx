@@ -5,9 +5,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { InfoPanel } from "@/components/detail-panel/info-panel";
 import { ResourceFilterBar } from "./resource-filter-bar";
-import { downloadResourceExport } from "./resource-export";
 import { ResourceWorkspace } from "./resource-workspace";
 import { useResourceCollectionActions } from "./resource-collection-actions";
+import {
+  matchesLoadedKeyword,
+  useResourceCollectionExport,
+} from "./use-resource-collection-export";
+import { useResourceCollectionRowResolution } from "./use-resource-collection-row-resolution";
 import {
   DataTable,
   type DataTableColumn,
@@ -18,12 +22,7 @@ import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
-import {
-  maxExportRows,
-  type DataRepository,
-  type DataResource,
-} from "@/lib/data-api";
-import { maxSelectedRows } from "@/lib/data-api/validation";
+import type { DataRepository, DataResource } from "@/lib/data-api";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -63,38 +62,14 @@ function combinePredicates(...predicates: (string | undefined)[]) {
 }
 
 /**
- * Per-sink fallbacks for `formatUserFacingErrorMessage`, used for a non-`Error`
+ * Per-sink fallback for `formatUserFacingErrorMessage`, used for a non-`Error`
  * rejection and for an `Error` whose message is empty or whitespace-only. The
  * shared helper owns the emptiness, non-`Error` and length decisions; only the
- * wording — which names what actually failed — is decided here.
- *
- * An empty string would be falsy and suppress the `{exportError && (...)}` /
- * `{collection.error && (...)}` render guards entirely, so neither may be blank.
- * `useResourceCollectionActions` owns the matching fallback for its own sink.
+ * wording that names what failed is decided here. Export and action hooks own
+ * the matching fallbacks for their sinks.
  */
-const genericExportErrorMessage =
-  "The requested export could not be created. Please try again.";
 const genericCollectionErrorMessage =
   "The requested records could not be loaded. Please try again.";
-
-/**
- * Loaded-mode keyword matching: a case-insensitive substring test over every scalar
- * or array-valued field of a row. `keyword` must already be trimmed and lower-cased.
- *
- * Module-private: this file now owns the only export implementation, so the table
- * rows and the exported rows are filtered by the same call. (It used to be exported
- * for `ResourceChildCollection`'s own exporter, which plan item 19 deleted.)
- */
-function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
-  return Object.values(row).some((value) => {
-    const values = Array.isArray(value) ? value : [value];
-    return values.some((item) =>
-      String(item ?? "")
-        .toLowerCase()
-        .includes(keyword),
-    );
-  });
-}
 
 export interface ResourceCollectionProps<Row extends DataTableRow> {
   profile: ResourceCollectionProfile<Row>;
@@ -123,11 +98,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   keywordPlaceholder,
   prefetchNextPage = false,
 }: ResourceCollectionProps<Row>) {
-  const [exportError, setExportError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [selectedRowsById, setSelectedRowsById] = useState<
-    Partial<Record<string, Row>>
-  >({});
   const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
   const loadedKeyword = loadedKeywordValue ?? internalLoadedKeyword;
   const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
@@ -168,11 +139,12 @@ export function ResourceCollection<Row extends DataTableRow>({
           }
         : onStateChange,
   });
+  const rowLinkFields = new Set(
+    profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField],
+  );
   const columns = profile.columns.map((column) =>
     enableRowLinks &&
-    (
-      profile.rowLinkFields ?? [profile.rowLinkField ?? profile.idField]
-    ).includes(column.id) &&
+    rowLinkFields.has(column.id) &&
     profile.rowHref
       ? {
           ...column,
@@ -209,168 +181,43 @@ export function ResourceCollection<Row extends DataTableRow>({
       ? collection.total
       : collection.selectedIds.length;
 
-  /**
-   * The row behind a selected ID. `selectedRowsById` remembers rows the table has
-   * since paged away from, so an action that needs a column of the selection still
-   * sees every picked row.
-   */
-  const selectedRowById = (id: string) =>
-    selectedRowsById[id] ??
-    (displayedRows.find((row) => String(row[profile.idField]) === id) as
-      | Row
-      | undefined);
-
-  /**
-   * Every row matching the current query, with the supplied fields. Scope, keyword
-   * and sort are the shell's, so an action that has to resolve a column the table
-   * does not hold asks for the column instead of rebuilding the query.
-   */
-  const resolveAllMatchingRows = async (fields: readonly string[]) => {
-    const result = await repository.exportAll(profile.resource, {
-      rql: effectiveRql,
-      keyword: requestState.keyword,
-      keywordMode: profile.serverKeywordMode,
-      fields: [...fields],
-      sort: dataSort(state.sort),
-    });
-    return result.rows;
-  };
-
-  const resolveActionRows = async (
-    fields: readonly string[],
-    maxRows: number,
-    actionLabel: string,
-  ): Promise<Record<string, unknown>[]> => {
-    if (selectedActionCount > maxRows) {
-      throw new Error(
-        `${actionLabel} supports at most ${maxRows.toLocaleString()} ${profile.label}. Narrow the selection and try again.`,
-      );
-    }
-
-    const selectedFields = [...fields];
-    if (!collection.isAllPagesSelected || hasLoadedKeyword) {
-      const ids = [...displayedSelectedIds];
-      const requestFields = selectedFields.includes(profile.idField)
-        ? selectedFields
-        : [...selectedFields, profile.idField];
-      const batches = await Promise.all(
-        Array.from(
-          { length: Math.ceil(ids.length / maxSelectedRows) },
-          (_, index) =>
-            repository.selected(profile.resource, {
-              ids: ids.slice(
-                index * maxSelectedRows,
-                (index + 1) * maxSelectedRows,
-              ),
-              fields: requestFields,
-            }),
-        ),
-      );
-      const orderById = new Map(ids.map((id, index) => [id, index]));
-      return batches
-        .flatMap((batch) => batch.rows)
-        .sort(
-          (left, right) =>
-            (orderById.get(String(left[profile.idField])) ?? Number.MAX_VALUE) -
-            (orderById.get(String(right[profile.idField])) ?? Number.MAX_VALUE),
-        );
-    }
-
-    if (collection.isRefreshing) {
-      throw new Error(
-        "Wait for the current results to finish loading and try again.",
-      );
-    }
-    return resolveAllMatchingRows(selectedFields);
-  };
-
-  const exportRows = async (
-    format: "csv" | "txt",
-    selectedIds?: readonly string[],
-    fields: readonly string[] | null = null,
-    isAllPagesSelected = false,
-  ) => {
-    setExportError(null);
-    const ids = isAllPagesSelected ? undefined : selectedIds;
-    if (ids && ids.length === 0) return;
-    if (!ids && collection.isRefreshing) {
-      setExportError(
-        "Wait for the current results to finish loading before exporting.",
-      );
-      return;
-    }
-    if (!ids?.length && collection.total > maxExportRows) {
-      setExportError(
-        `This export matches ${collection.total.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,
-      );
-      return;
-    }
-    try {
-      const selectedFields = fields
-        ? [...fields]
-        : profile.columns.map((column) => column.id);
-      const allFields = profile.columns.map((column) => column.id);
-      const requestFields = selectedFields.includes(profile.idField)
-        ? selectedFields
-        : [...selectedFields, profile.idField];
-      const result = ids?.length
-        ? {
-            rows: (
-              await Promise.all(
-                Array.from(
-                  { length: Math.ceil(ids.length / maxSelectedRows) },
-                  (_, index) =>
-                    repository.selected(profile.resource, {
-                      ids: ids.slice(
-                        index * maxSelectedRows,
-                        (index + 1) * maxSelectedRows,
-                      ),
-                      fields: requestFields,
-                    }),
-                ),
-              )
-            ).flatMap((batch) => batch.rows),
-          }
-        : await repository.exportAll(profile.resource, {
-            rql: effectiveRql,
-            keyword: requestState.keyword,
-            keywordMode: profile.serverKeywordMode,
-            fields: hasLoadedKeyword ? allFields : selectedFields,
-            sort: dataSort(state.sort),
-          });
-      const orderById = ids
-        ? new Map(ids.map((id, index) => [id, index]))
-        : undefined;
-      const exportedRows =
-        hasLoadedKeyword && !ids
-          ? result.rows.filter((row) =>
-              matchesLoadedKeyword(row, normalizedLoadedKeyword),
-            )
-          : orderById
-            ? [...result.rows].sort(
-                (left, right) =>
-                  (orderById.get(String(left[profile.idField])) ??
-                    Number.MAX_VALUE) -
-                  (orderById.get(String(right[profile.idField])) ??
-                    Number.MAX_VALUE),
-              )
-            : result.rows;
-      downloadResourceExport(
-        profile.resource,
-        exportedRows,
-        profile.columns,
-        selectedFields,
-        format,
-        "all",
-        profile.exportFileName ?? profile.resource,
-      );
-    } catch (error) {
-      console.error("Resource export failed:", error);
-      setExportError(
-        formatUserFacingErrorMessage(error, genericExportErrorMessage),
-      );
-    }
-  };
+  const sort = dataSort(state.sort);
+  const {
+    rowById: selectedRowById,
+    rememberSelectedRows,
+    resolveActionRows,
+    resolveAllMatchingRows,
+  } = useResourceCollectionRowResolution({
+    repository,
+    resource: profile.resource,
+    idField: profile.idField,
+    label: profile.label,
+    displayedRows: displayedRows as Row[],
+    displayedSelectedIds,
+    selectedActionCount,
+    isAllPagesSelected: collection.isAllPagesSelected,
+    hasLoadedKeyword,
+    isRefreshing: collection.isRefreshing,
+    rql: effectiveRql,
+    keyword: requestState.keyword,
+    keywordMode: profile.serverKeywordMode,
+    sort,
+  });
+  const { exportError, exportRows } = useResourceCollectionExport({
+    repository,
+    resource: profile.resource,
+    idField: profile.idField,
+    columns: profile.columns,
+    exportFileName: profile.exportFileName,
+    total: collection.total,
+    isRefreshing: collection.isRefreshing,
+    hasLoadedKeyword,
+    loadedKeyword: normalizedLoadedKeyword,
+    rql: effectiveRql,
+    keyword: requestState.keyword,
+    keywordMode: profile.serverKeywordMode,
+    sort,
+  });
 
   /**
    * Everything resource-specific about the action bar. A hook rather than a
@@ -559,17 +406,7 @@ export function ResourceCollection<Row extends DataTableRow>({
             onSortingChange={collection.setSorting}
             onRowSelectionChange={(selection) => {
               collection.setSelection(selection);
-              setSelectedRowsById((current) => {
-                const next: Record<string, Row> = {};
-                for (const id of Object.keys(selection)) {
-                  const selectedRow =
-                    (displayedRows.find(
-                      (row) => String(row[profile.idField]) === id,
-                    ) as Row | undefined) ?? current[id];
-                  if (selectedRow) next[id] = selectedRow;
-                }
-                return next;
-              });
+              rememberSelectedRows(selection);
             }}
             onDownloadAll={(format, fields) =>
               exportRows(format, undefined, fields)

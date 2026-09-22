@@ -7,9 +7,13 @@ const mocks = vi.hoisted(() => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
+  redirect: vi.fn((href: string) => {
+    throw new Error(`NEXT_REDIRECT:${href}`);
+  }),
 }));
 vi.mock("next/navigation", () => ({
   notFound: mocks.notFound,
+  redirect: mocks.redirect,
   usePathname: () => "/genome/83332.12",
   useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
@@ -52,6 +56,7 @@ describe("Genome member route", () => {
   beforeEach(() => {
     mocks.getGenome.mockReset();
     mocks.notFound.mockClear();
+    mocks.redirect.mockClear();
     mocks.getGenome.mockResolvedValue({
       genome_id: "83332.12",
       genome_name: "E. coli",
@@ -100,6 +105,7 @@ describe("Genome member route", () => {
         searchParams: Promise.resolve({}),
       }),
     ).toMatchObject({ title: "E. coli | Genome" });
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
   it("renders exact-scope child tabs", async () => {
@@ -119,6 +125,19 @@ describe("Genome member route", () => {
     expect(
       screen.queryByText("Browse sequences records."),
     ).not.toBeInTheDocument();
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ tab: "missing", source: "search" }, "?source=search"],
+    [{ tab: "overview" }, ""],
+  ])("redirects a non-canonical tab query on the server", async (query, suffix) => {
+    await expect(
+      GenomePage({
+        params: Promise.resolve({ genomeId: "83332.12" }),
+        searchParams: Promise.resolve(query),
+      }),
+    ).rejects.toThrow(`NEXT_REDIRECT:/genome/83332.12${suffix}`);
   });
 
   it("renders exact-genome domains and motifs", async () => {

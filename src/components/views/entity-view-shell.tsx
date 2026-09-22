@@ -1,7 +1,7 @@
 "use client";
 
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { startTransition, useState, type ReactNode } from "react";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
@@ -41,9 +41,7 @@ export function EntityViewShell<Key extends string>({
   layout = "scroll",
   children,
 }: EntityViewShellProps<Key>) {
-  const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [navCollapsed, setNavCollapsed] = useState(false);
   const navItems = tabs.map((tab) => ({ ...tab, icon: tab.icon ?? null }));
 
@@ -56,11 +54,10 @@ export function EntityViewShell<Key extends string>({
   const navigate = (key: Key) => {
     const tab = tabs.find((item) => item.key === key);
     if (tab?.enabled === false) return;
-    const next = new URLSearchParams(searchParams.toString());
-    if (key === defaultTab) next.delete("tab");
-    else next.set("tab", key);
-    const query = next.toString();
-    router.push(query ? `${pathname}?${query}` : pathname);
+    const url = new URL(window.location.href);
+    if (key === defaultTab) url.searchParams.delete("tab");
+    else url.searchParams.set("tab", key);
+    router.push(`${url.pathname}${url.search}${url.hash}`);
   };
 
   const header = (

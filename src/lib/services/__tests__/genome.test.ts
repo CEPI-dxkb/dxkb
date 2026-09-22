@@ -5,6 +5,7 @@ import {
   fetchGenomesByIds,
   fetchAllGenomeIds,
   getGenomeIdsFromGroup,
+  maxViralValidationIdsPerRequest,
   validateViralGenomes,
   fetchGenomeGroupMembers,
 } from "@/lib/services/genome";
@@ -596,6 +597,152 @@ describe("genome service", () => {
         "Missing superkingdom",
       );
       expect(result.errors.missing_superkingdom).toContain("g1");
+    });
+
+    it("sends a single request when ids fit in one batch", async () => {
+      const requestBodies: string[][] = [];
+      server.use(
+        http.post(
+          "/api/services/genome/validate-viral",
+          async ({ request }) => {
+            const body = (await request.json()) as { genome_ids?: string[] };
+            requestBodies.push(body.genome_ids ?? []);
+            return HttpResponse.json({ results: [] });
+          },
+        ),
+      );
+
+      await validateViralGenomes(
+        Array.from({ length: maxViralValidationIdsPerRequest }, (_, index) =>
+          String(index),
+        ),
+      );
+
+      expect(requestBodies).toHaveLength(1);
+      expect(requestBodies[0]).toHaveLength(maxViralValidationIdsPerRequest);
+    });
+
+    // Regression: the validate-viral route builds one in(genome_id,(...)) GET
+    // clause from whatever it receives, so an unbatched 5,000-id call produced a
+    // ~50KB URL that the upstream data API rejects.
+    it("chunks large id lists and merges the results", async () => {
+      const genomeIds = Array.from({ length: 1050 }, (_, index) =>
+        String(index),
+      );
+      const requestBatches: string[][] = [];
+      server.use(
+        http.post(
+          "/api/services/genome/validate-viral",
+          async ({ request }) => {
+            const body = (await request.json()) as { genome_ids?: string[] };
+            const batch = body.genome_ids ?? [];
+            requestBatches.push(batch);
+            return HttpResponse.json({
+              results: batch.map((genomeId) => ({
+                genome_id: genomeId,
+                superkingdom: "Viruses",
+                contigs: 1,
+                genome_length: 1000,
+              })),
+            });
+          },
+        ),
+      );
+
+      const result = await validateViralGenomes(genomeIds);
+
+      expect(requestBatches).toHaveLength(
+        Math.ceil(genomeIds.length / maxViralValidationIdsPerRequest),
+      );
+      expect(
+        requestBatches.every(
+          (batch) => batch.length <= maxViralValidationIdsPerRequest,
+        ),
+      ).toBe(true);
+      expect(requestBatches.flat()).toEqual(genomeIds);
+      expect(result.allValid).toBe(true);
+      expect(result.errors).toEqual({});
+      expect(result.results.map((genome) => genome.genome_id)).toEqual(
+        genomeIds,
+      );
+    });
+
+    it("reports genomes missing from any batch", async () => {
+      const genomeIds = Array.from({ length: 450 }, (_, index) =>
+        String(index),
+      );
+      server.use(
+        http.post(
+          "/api/services/genome/validate-viral",
+          async ({ request }) => {
+            const body = (await request.json()) as { genome_ids?: string[] };
+            const batch = body.genome_ids ?? [];
+            return HttpResponse.json({
+              // Drop the last id of every batch, including the final partial one.
+              results: batch.slice(0, -1).map((genomeId) => ({
+                genome_id: genomeId,
+                superkingdom: "Viruses",
+                contigs: 1,
+                genome_length: 1000,
+              })),
+            });
+          },
+        ),
+      );
+
+      const result = await validateViralGenomes(genomeIds);
+
+      expect(result.allValid).toBe(false);
+      expect(result.errors.missing_genomes_error).toContain("3 genomes");
+      expect(result.errors.missing_genomes_error).toContain("199");
+    });
+
+    it("flags a bad genome that only appears in a later batch", async () => {
+      const genomeIds = Array.from({ length: 300 }, (_, index) =>
+        String(index),
+      );
+      server.use(
+        http.post(
+          "/api/services/genome/validate-viral",
+          async ({ request }) => {
+            const body = (await request.json()) as { genome_ids?: string[] };
+            return HttpResponse.json({
+              results: (body.genome_ids ?? []).map((genomeId) => ({
+                genome_id: genomeId,
+                superkingdom: genomeId === "299" ? "Bacteria" : "Viruses",
+                contigs: 1,
+                genome_length: 1000,
+              })),
+            });
+          },
+        ),
+      );
+
+      const result = await validateViralGenomes(genomeIds);
+
+      expect(result.allValid).toBe(false);
+      expect(result.errors.kingdom_error).toContain("299");
+    });
+
+    it("propagates a failure from any batch", async () => {
+      let callCount = 0;
+      server.use(
+        http.post("/api/services/genome/validate-viral", () => {
+          callCount += 1;
+          return callCount === 2
+            ? HttpResponse.json(
+                { error: "BV-BRC genome validation failed: 502 Bad Gateway" },
+                { status: 502 },
+              )
+            : HttpResponse.json({ results: [] });
+        }),
+      );
+
+      await expect(
+        validateViralGenomes(
+          Array.from({ length: 400 }, (_, index) => String(index)),
+        ),
+      ).rejects.toThrow("BV-BRC genome validation failed: 502 Bad Gateway");
     });
   });
 });

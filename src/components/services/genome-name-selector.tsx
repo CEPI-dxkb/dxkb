@@ -5,6 +5,7 @@ import { Search, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
 import { cn } from "@/lib/utils";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
 import { toast } from "sonner";
@@ -160,7 +161,7 @@ export function GenomeNameSelector({
       {title && <Label className="service-card-label">{title}</Label>}
       <div className="flex items-start gap-2">
         <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             ref={inputRef}
             value={query}
@@ -186,57 +187,25 @@ export function GenomeNameSelector({
               showEmptyState) && (
               <div
                 ref={dropdownRef}
-                className="absolute z-50 mt-1 max-h-64 w-full scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40"
+                className="scrollbar-thumb-muted-foreground/20 bg-popover hover:scrollbar-thumb-muted-foreground/40 absolute z-50 mt-1 max-h-64 w-full scrollbar-thin scrollbar-track-transparent overflow-y-auto rounded-md border shadow-md"
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center p-4">
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                    <span className="text-sm text-muted-foreground">
-                      Searching...
-                    </span>
-                  </div>
-                ) : error ? (
-                  <div className="p-4 text-sm text-destructive">{error}</div>
-                ) : suggestions.length > 0 ? (
-                  suggestions.map((genome, index) => {
-                    const isDuplicate = existingGenomeIds.has(genome.genome_id);
-                    const isHighlighted = highlightedIndex === index;
-                    return (
-                      <button
-                        key={genome.genome_id}
-                        ref={(el) => {
-                          itemRefs.current[index] = el;
-                        }}
-                        type="button"
-                        className={cn(
-                          "flex w-full flex-col items-start gap-1 px-4 py-2 text-left hover:bg-accent",
-                          isDuplicate && "cursor-not-allowed opacity-60",
-                          isHighlighted && "bg-accent",
-                        )}
-                        onClick={() => {
-                          if (!isDuplicate) handleDropdownClick(genome);
-                        }}
-                        onMouseEnter={() => {
-                          setHighlightedIndex(index);
-                        }}
-                      >
-                        <span className="truncate text-sm font-medium">
-                          {genome.genome_name}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {genome.genome_id}
-                          {genome.strain ? ` • ${genome.strain}` : ""}
-                        </span>
-                      </button>
-                    );
-                  })
-                ) : showEmptyState ? (
-                  <p className="py-4 text-center text-sm text-muted-foreground">
-                    No genomes found for {'"'}
-                    {query.trim()}
-                    {'"'}
-                  </p>
-                ) : null}
+                <GenomeSuggestionList
+                  suggestions={suggestions}
+                  isLoading={isLoading}
+                  error={error}
+                  emptyMessage={
+                    showEmptyState
+                      ? `No genomes found for "${query.trim()}"`
+                      : null
+                  }
+                  highlightedIndex={highlightedIndex}
+                  itemRefs={itemRefs}
+                  onSelect={handleDropdownClick}
+                  onHighlight={setHighlightedIndex}
+                  isDisabled={(genome) =>
+                    existingGenomeIds.has(genome.genome_id)
+                  }
+                />
               </div>
             )}
         </div>
@@ -258,9 +227,9 @@ export function GenomeNameSelector({
         </Button>
       </div>
       {helperText && (
-        <p className="text-xs text-muted-foreground">{helperText}</p>
+        <p className="text-muted-foreground text-xs">{helperText}</p>
       )}
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         Selected {selectedGenomeIds.length}/{maxSelections}
       </p>
     </div>

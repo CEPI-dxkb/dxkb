@@ -39,81 +39,6 @@ import {
   type SelectionServiceKind,
 } from "./selection-service-chooser";
 
-/** Actions the Strain collection owns. Visibility and dispatch read the same list. */
-export const strainSelectionActionIds = [
-  "copyRows",
-  "services",
-  "genomes",
-  "group",
-] as const satisfies readonly SearchActionId[];
-
-/**
- * Actions the Genome collection owns. `genomes` is absent because the rows already
- * are the genome list, and `genome` stays with ResourceCollection's member dispatch.
- */
-export const genomeSelectionActionIds = [
-  "copyRows",
-  "services",
-  "group",
-] as const satisfies readonly SearchActionId[];
-
-/**
- * Actions the Sequence collection owns. `download`, `genome` and `features` stay with
- * ResourceCollection's export and member dispatch, and FASTA and Browser keep their
- * "not ready" tooltip until a later PR wires them.
- */
-export const sequenceSelectionActionIds = [
-  "copyRows",
-  "services",
-  "group",
-] as const satisfies readonly SearchActionId[];
-
-/**
- * Actions the Feature collection owns. `download`, `feature` and `genome` stay with
- * ResourceCollection's export and member dispatch, and FASTA and ID MAP keep their
- * "not ready" tooltip until a later PR wires them.
- */
-export const featureSelectionActionIds = [
-  "copyRows",
-  "services",
-  "group",
-] as const satisfies readonly SearchActionId[];
-
-/**
- * Actions the Protein Structure, Domains and Motifs, SFVT, Epitope, Serology and
- * Surveillance collections own. Their SERVICES button opens the chooser with no
- * selectable services (legacy runs nothing from these tabs); `download`, `genome`,
- * `feature`, `structure`, `epitope`, `serology` and `surveillance` stay with
- * ResourceCollection's export and member dispatch.
- */
-export const copyAndServicesSelectionActionIds = [
-  "copyRows",
-  "services",
-] as const satisfies readonly SearchActionId[];
-
-/**
- * Actions the Interaction collection owns. FEATURES pools both interactors of every
- * selected row, which is also what GROUP writes to its Feature Group; `download` stays
- * with ResourceCollection's export and FASTA keeps its "not ready" tooltip until a
- * later PR wires it.
- */
-export const interactionSelectionActionIds = [
-  "copyRows",
-  "services",
-  "ppiFeatures",
-  "group",
-] as const satisfies readonly SearchActionId[];
-
-/**
- * Actions the Experiment and Bioset collections own. Legacy leaves COPY ROWS out of
- * both containers' `validContainerTypes` and runs no service from them, so SERVICES is
- * all that is left; `download`, `experiment` and `biosets` stay with
- * ResourceCollection's export and member dispatch.
- */
-export const servicesOnlySelectionActionIds = [
-  "services",
-] as const satisfies readonly SearchActionId[];
-
 /**
  * Workspace group each ID kind writes to. `title` also names the default folder
  * (`Genome Groups` / `Feature Groups`), matching legacy.
@@ -314,11 +239,12 @@ export function CollectionSelectionActions({
           }),
         );
         if (!href || href.length > selectionListMaxUrlLength) {
-          throw new Error(
+          onError(
             "This selection contains too many genome IDs to open safely. Narrow the selection or create a Genome Group.",
           );
+        } else {
+          router.push(href);
         }
-        router.push(href);
       } else if (actionId === "ppiFeatures") {
         const href = featuresHrefFromIds(
           await resolveSelectionIds({
@@ -329,11 +255,12 @@ export function CollectionSelectionActions({
           }),
         );
         if (!href || href.length > selectionListMaxUrlLength) {
-          throw new Error(
+          onError(
             "This selection contains too many feature IDs to open safely. Narrow the selection or create a Feature Group.",
           );
+        } else {
+          router.push(href);
         }
-        router.push(href);
       } else if (actionId === "services") {
         setSelectionIds(
           await resolveSelectionIds({
@@ -359,11 +286,10 @@ export function CollectionSelectionActions({
       }
     } catch (error) {
       onError(error instanceof Error ? error.message : String(error));
-    } finally {
-      if (pendingActionRef.current === actionId) {
-        pendingActionRef.current = null;
-        setLoadingActionIds([]);
-      }
+    }
+    if (pendingActionRef.current === actionId) {
+      pendingActionRef.current = null;
+      setLoadingActionIds([]);
     }
   };
 

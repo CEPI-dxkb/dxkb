@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
-import {
-  OverviewCard,
-  OverviewField,
-  isOverviewValueAvailable,
-} from "./overview-card";
+import { OverviewCard, OverviewField } from "./overview-card";
+import { isOverviewValueAvailable } from "./overview-value-policy";
 
 export interface OverviewSectionField {
   /**

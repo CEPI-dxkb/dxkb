@@ -16,6 +16,15 @@ import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { visibleSearchActions } from "@/components/search/search-action-policy";
 import { maxSelectedRows } from "@/lib/data-api/validation";
+import {
+  copyAndServicesSelectionActionIds,
+  featureSelectionActionIds,
+  genomeSelectionActionIds,
+  interactionSelectionActionIds,
+  sequenceSelectionActionIds,
+  servicesOnlySelectionActionIds,
+  strainSelectionActionIds,
+} from "../collection-selection-action-ids";
 import { ResourceCollection } from "../resource-collection";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
@@ -996,7 +1005,7 @@ const actionMatrixFixtures: {
       { id: "strain-1", genome_ids: ["83332.12"] },
       { id: "strain-2", genome_ids: ["83332.13"] },
     ],
-    enabledActions: ["copyRows", "services", "genomes", "group"],
+    enabledActions: [...strainSelectionActionIds],
   },
   {
     resource: "genome",
@@ -1004,7 +1013,7 @@ const actionMatrixFixtures: {
     label: "Genomes",
     idField: "genome_id",
     rows: [{ genome_id: "83332.12" }, { genome_id: "83332.13" }],
-    enabledActions: ["copyRows", "services", "group"],
+    enabledActions: [...genomeSelectionActionIds],
   },
   {
     resource: "genome_feature",
@@ -1012,7 +1021,7 @@ const actionMatrixFixtures: {
     label: "Features",
     idField: "feature_id",
     rows: [{ feature_id: "PATRIC.1" }, { feature_id: "PATRIC.2" }],
-    enabledActions: ["copyRows", "services", "group"],
+    enabledActions: [...featureSelectionActionIds],
   },
   {
     resource: "genome_sequence",
@@ -1023,7 +1032,7 @@ const actionMatrixFixtures: {
       { sequence_id: "83332.12.con.0001", genome_id: "83332.12" },
       { sequence_id: "83332.12.con.0002", genome_id: "83332.12" },
     ],
-    enabledActions: ["copyRows", "services", "group", "features"],
+    enabledActions: [...sequenceSelectionActionIds, "features"],
   },
   {
     resource: "protein_feature",
@@ -1034,7 +1043,7 @@ const actionMatrixFixtures: {
       { id: "pf-1", genome_id: "83332.12" },
       { id: "pf-2", genome_id: "83332.13" },
     ],
-    enabledActions: ["copyRows", "services"],
+    enabledActions: [...copyAndServicesSelectionActionIds],
   },
   {
     resource: "protein_structure",
@@ -1045,7 +1054,7 @@ const actionMatrixFixtures: {
       { pdb_id: "1ABC", genome_id: "83332.12", feature_id: "PATRIC.1" },
       { pdb_id: "2ABC", genome_id: "83332.13", feature_id: "PATRIC.2" },
     ],
-    enabledActions: ["copyRows", "services"],
+    enabledActions: [...copyAndServicesSelectionActionIds],
     // Present with no reason: the structure's members are all reachable, but the
     // policy still reports on all three entries it owns.
     disabledActions: {
@@ -1060,7 +1069,7 @@ const actionMatrixFixtures: {
     label: "Sequence Features",
     idField: "id",
     rows: [{ id: "sfvt-1" }, { id: "sfvt-2" }],
-    enabledActions: ["copyRows", "services"],
+    enabledActions: [...copyAndServicesSelectionActionIds],
   },
   {
     resource: "epitope",
@@ -1068,7 +1077,7 @@ const actionMatrixFixtures: {
     label: "Epitopes",
     idField: "epitope_id",
     rows: [{ epitope_id: "EPI-1" }, { epitope_id: "EPI-2" }],
-    enabledActions: ["copyRows", "services"],
+    enabledActions: [...copyAndServicesSelectionActionIds],
   },
   {
     resource: "serology",
@@ -1076,7 +1085,7 @@ const actionMatrixFixtures: {
     label: "Serology",
     idField: "id",
     rows: [{ id: "sero-1" }, { id: "sero-2" }],
-    enabledActions: ["copyRows", "services"],
+    enabledActions: [...copyAndServicesSelectionActionIds],
   },
   {
     resource: "surveillance",
@@ -1084,7 +1093,7 @@ const actionMatrixFixtures: {
     label: "Surveillance",
     idField: "id",
     rows: [{ id: "surv-1" }, { id: "surv-2" }],
-    enabledActions: ["copyRows", "services"],
+    enabledActions: [...copyAndServicesSelectionActionIds],
   },
   {
     resource: "ppi",
@@ -1095,7 +1104,7 @@ const actionMatrixFixtures: {
       { id: "ppi-1", feature_id_a: "A1", feature_id_b: "B1" },
       { id: "ppi-2", feature_id_a: "A2", feature_id_b: "B2" },
     ],
-    enabledActions: ["copyRows", "services", "ppiFeatures", "group"],
+    enabledActions: [...interactionSelectionActionIds],
   },
   {
     resource: "experiment",
@@ -1103,7 +1112,7 @@ const actionMatrixFixtures: {
     label: "Experiments",
     idField: "exp_id",
     rows: [{ exp_id: "00042" }, { exp_id: "00051" }],
-    enabledActions: ["services"],
+    enabledActions: [...servicesOnlySelectionActionIds],
   },
   {
     resource: "bioset",

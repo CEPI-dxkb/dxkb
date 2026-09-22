@@ -54,10 +54,8 @@ vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
     open ? <div data-testid="selection-group">{ids.join(",")}</div> : null,
 }));
 
-import {
-  CollectionSelectionActions,
-  strainSelectionActionIds,
-} from "../collection-selection-actions";
+import { CollectionSelectionActions } from "../collection-selection-actions";
+import { strainSelectionActionIds } from "../collection-selection-action-ids";
 
 /** Strain is the interesting shape: one row's `genome_ids` fans out to many IDs. */
 function renderStrainActions(
@@ -185,5 +183,30 @@ describe("CollectionSelectionActions", () => {
         "/genome?rql=in(genome_id%2C(11320.1%2C11320.2))",
       );
     });
+  });
+
+  it("preserves the list URL validation error and releases the pending action", async () => {
+    const user = userEvent.setup();
+    const onError = vi.fn();
+    const longIds = Array.from(
+      { length: 100 },
+      (_, index) => `${String(index)}.${"x".repeat(90)}`,
+    );
+    renderStrainActions({
+      resolveActionRows: vi.fn(() =>
+        Promise.resolve([{ genome_ids: longIds }]),
+      ),
+      onError,
+    });
+
+    await user.click(screen.getByRole("button", { name: /^ggenomes$/i }));
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith(
+        "This selection contains too many genome IDs to open safely. Narrow the selection or create a Genome Group.",
+      );
+    });
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /^services$/i })).toBeEnabled();
   });
 });

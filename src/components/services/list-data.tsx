@@ -9,21 +9,15 @@ import { getIdField } from "@/constants/resources";
 import { detailPanelQueryKey } from "@/components/genome/genome-detail-panel-utils";
 import { FilterBar } from "@/components/filterbar/filter-bar";
 import { combineRql } from "@/components/filterbar/filter-utils";
-import {
-  DataRepository,
-  collectionQueryOptions,
-  maxExportRows,
-} from "@/lib/data-api";
+import { DataRepository, collectionQueryOptions } from "@/lib/data-api";
 import type { CollectionRequest, DataResource, DataSort } from "@/lib/data-api";
-import { maxSelectedRows } from "@/lib/data-api/validation";
-import { downloadResourceExport } from "@/components/views/resource-export";
 import {
   deriveTableFields,
-  downloadLoadedResourceRows,
   findPageRow,
   isSameResourceQuery,
   projectedFields,
 } from "./list-data-utils";
+import { useListDataExport } from "./use-list-data-export";
 
 // The sanctioned browser-side Data API entrypoint (`/api/data/<resource>`) for
 // every read this list makes. Stateless wrapper around fetch, so a single
@@ -303,140 +297,17 @@ function useListData({
     setPageIndex(newPage);
   };
 
-  /**
-   * Columns to project for an export. `__select__` is the checkbox column
-   * rather than a data field, so it is stripped; the table fields stand in
-   * when nothing else is visible, because the gateway's export operation
-   * requires at least one field (`fields: fieldListSchema.min(1)`).
-   */
-  function exportProjection(visibleColumns: string[] | null): string[] {
-    const tableFields = fields.map((field) => field.id);
-    const requested = (visibleColumns ?? tableFields).filter(
-      (id) => id !== "__select__",
-    );
-    return requested.length ? requested : tableFields;
-  }
-
-  async function handleDownloadAll(
-    format: "csv" | "txt",
-    visibleColumns: string[] | null,
-  ): Promise<void> {
-    const hasLoadedKeyword = keywordMode === "loaded" && Boolean(deferredLoadedKeyword);
-    const exportTotal = hasLoadedKeyword ? displayedRows.length : totalItems;
-    if (!exportTotal) {
-      console.warn("No results available for download");
-      return;
-    }
-
-    // `DataRepository.exportAll` hard-requests `limit: maxExportRows, offset: 0`
-    // with no paging, so without this guard a larger result set would ship as a
-    // silently short file. Refuse and name the real limit instead. (The path
-    // this replaced fetched upstream directly and never compared the returned
-    // row count against the total, so it could not tell a complete export from
-    // a truncated one either way — see `use-interactions.ts` for the same
-    // defect written down.)
-    if (!hasLoadedKeyword && exportTotal > maxExportRows) {
-      alert(
-        `This export matches ${exportTotal.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,
-      );
-      return;
-    }
-
-    try {
-      if (hasLoadedKeyword) {
-        downloadLoadedResourceRows({
-          resource,
-          rows: displayedRows,
-          format,
-          visibleColumns,
-          fields,
-        });
-        return;
-      }
-      const result = await dataRepository.exportAll(resource, {
-        rql: combinedQuery || undefined,
-        fields: exportProjection(visibleColumns),
-        sort,
-      });
-      downloadLoadedResourceRows({
-        resource,
-        rows: result.rows,
-        format,
-        visibleColumns,
-        fields,
-      });
-    } catch (error) {
-      console.error("Download all failed:", error);
-      alert(
-        formatUserFacingErrorMessage(
-          error,
-          "Failed to download all results. See console for details.",
-        ),
-      );
-    }
-  }
-
-  // Selected-row export goes through the Data API repository (`/api/data/<resource>`),
-  // never a direct fetch to the backend. Rows come back in whatever order the
-  // upstream service returns them, so they're re-sorted to match `ids` — the order
-  // the caller (and the user's selection) presented them in — before serializing.
-  //
-  // Order-preservation caveat (applied equally to the DataTable-internal
-  // `selectedItemsOrder` Map this replaced): `ids` ultimately comes from
-  // `Object.keys(rowSelection)` in handleRowSelectionChange above. Plain JS objects
-  // enumerate keys that look like canonical array indices (e.g. "0", "5") in
-  // ascending numeric order *before* any insertion-ordered string keys, regardless
-  // of click order. This is a pre-existing, inherent quirk of object key enumeration,
-  // not something introduced or fixed here.
-  async function handleDownloadSelected(
-    format: "csv" | "txt",
-    ids: string[],
-    visibleColumns: string[] | null,
-  ): Promise<void> {
-    if (ids.length === 0) return;
-
-    try {
-      const selectedFields = exportProjection(visibleColumns);
-      const requestFields = selectedFields.includes(idField)
-        ? selectedFields
-        : [...selectedFields, idField];
-      const results = await Promise.all(
-        Array.from(
-          { length: Math.ceil(ids.length / maxSelectedRows) },
-          (_, index) =>
-            dataRepository.selected(resource, {
-              ids: ids.slice(
-                index * maxSelectedRows,
-                (index + 1) * maxSelectedRows,
-              ),
-              fields: requestFields,
-            }),
-        ),
-      );
-      const orderById = new Map(ids.map((id, index) => [id, index]));
-      const orderedRows = results.flatMap((result) => result.rows).sort(
-        (a, b) =>
-          (orderById.get(String(a[idField])) ?? Number.MAX_VALUE) -
-          (orderById.get(String(b[idField])) ?? Number.MAX_VALUE),
-      );
-      downloadResourceExport(
-        resource,
-        orderedRows,
-        fields,
-        selectedFields,
-        format,
-        "selected",
-      );
-    } catch (error) {
-      console.error("Download selected failed:", error);
-      alert(
-        formatUserFacingErrorMessage(
-          error,
-          "Failed to download selected results. See console for details.",
-        ),
-      );
-    }
-  }
+  const { handleDownloadAll, handleDownloadSelected } = useListDataExport({
+    resource,
+    fields,
+    idField,
+    combinedQuery,
+    sort,
+    totalItems,
+    displayedRows,
+    hasLoadedKeyword:
+      keywordMode === "loaded" && Boolean(deferredLoadedKeyword),
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">

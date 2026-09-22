@@ -267,6 +267,15 @@ export interface ViralGenomeValidationErrors {
   missing_metadata_error?: string;
 }
 
+/**
+ * Maximum genome ids sent to `/api/services/genome/validate-viral` per request.
+ * The route turns the whole list into one `in(genome_id,(...))` clause on a GET
+ * query string, so an unbatched call for a 5,000-genome group builds a ~50 KB
+ * URL that the upstream BV-BRC data API rejects. Batching mirrors
+ * `fetchSelectedRows` / `maxSelectedRows` in the data-API layer.
+ */
+export const maxViralValidationIdsPerRequest = 200;
+
 export async function validateViralGenomes(
   genomeIds: string[],
   options: { signal?: AbortSignal; maxGenomeLength?: number } = {},
@@ -284,14 +293,26 @@ export async function validateViralGenomes(
   const uniqueIds = Array.from(new Set(genomeIds));
 
   try {
-    const data = await apiCall<{ results: ViralGenomeValidationResult[] }>(
-      "/api/services/genome/validate-viral",
-      { genome_ids: uniqueIds },
-      { signal },
+    const batchCount = Math.ceil(
+      uniqueIds.length / maxViralValidationIdsPerRequest,
     );
-    const results: ViralGenomeValidationResult[] = Array.isArray(data.results)
-      ? data.results
-      : [];
+    const batches = await Promise.all(
+      Array.from({ length: batchCount }, (_, index) =>
+        apiCall<{ results: ViralGenomeValidationResult[] }>(
+          "/api/services/genome/validate-viral",
+          {
+            genome_ids: uniqueIds.slice(
+              index * maxViralValidationIdsPerRequest,
+              (index + 1) * maxViralValidationIdsPerRequest,
+            ),
+          },
+          { signal },
+        ),
+      ),
+    );
+    const results: ViralGenomeValidationResult[] = batches.flatMap((batch) =>
+      Array.isArray(batch.results) ? batch.results : [],
+    );
 
     const errors: ViralGenomeValidationErrors = {};
     let allValid = true;

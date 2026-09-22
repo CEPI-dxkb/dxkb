@@ -39,7 +39,6 @@ import {
   taxonomyHref,
 } from "@/lib/views/hrefs";
 import {
-  CollectionSelectionActions,
   copyAndServicesSelectionActionIds,
   featureSelectionActionIds,
   genomeSelectionActionIds,
@@ -47,7 +46,8 @@ import {
   sequenceSelectionActionIds,
   servicesOnlySelectionActionIds,
   strainSelectionActionIds,
-} from "./collection-selection-actions";
+} from "./collection-selection-action-ids";
+import { CollectionSelectionActions } from "./collection-selection-actions";
 import type { SelectionServiceKind } from "./selection-service-chooser";
 import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
 
@@ -532,10 +532,9 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         setIsTaxonomyServiceOpen(true);
       } catch (error) {
         onError(formatUserFacingErrorMessage(error, genericActionErrorMessage));
-      } finally {
-        pendingTaxonomyActionRef.current = null;
-        setLoadingActionIds([]);
       }
+      pendingTaxonomyActionRef.current = null;
+      setLoadingActionIds([]);
       return;
     }
     // Resolving an all-pages selection needs a network round-trip, after which
@@ -559,18 +558,17 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
             : actionId === "features" && ids.length === 1
               ? taxonomyFeaturesHref(ids)
               : null;
-      if (!href) {
+      if (href) {
+        navigateReservedTab(resultsWindow, href);
+      } else {
         resultsWindow.close();
-        return;
       }
-      navigateReservedTab(resultsWindow, href);
     } catch (error) {
       resultsWindow.close();
       onError(formatUserFacingErrorMessage(error, genericActionErrorMessage));
-    } finally {
-      pendingTaxonomyActionRef.current = null;
-      setLoadingActionIds([]);
     }
+    pendingTaxonomyActionRef.current = null;
+    setLoadingActionIds([]);
   };
 
   const openBiosetResults = async () => {
@@ -618,16 +616,16 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
         const experimentId = experimentIdFromRow(row);
         return experimentId ? [experimentId] : [];
       });
-      if (experimentIds.length !== rows.length) {
+      if (experimentIds.length === rows.length) {
+        navigateReservedTab(resultsWindow, biosetResultsHref(experimentIds));
+      } else {
         resultsWindow.close();
         onError(
           experimentIds.length === 0
             ? "No experiments are associated with this selection."
             : "Some selected Biosets are not associated with experiments.",
         );
-        return;
       }
-      navigateReservedTab(resultsWindow, biosetResultsHref(experimentIds));
     } catch (error) {
       resultsWindow.close();
       // Through the shared formatter, not `error.message`: an `Error("")` here used
@@ -639,10 +637,9 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
           "The selected Bioset results could not be loaded.",
         ),
       );
-    } finally {
-      pendingBiosetActionRef.current = false;
-      setLoadingActionIds([]);
     }
+    pendingBiosetActionRef.current = false;
+    setLoadingActionIds([]);
   };
 
   /** Dispatch for action-bar entries backed by the current selection. */

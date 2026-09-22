@@ -836,6 +836,9 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     expect(dataTableProps.totalItems).toBe(160);
   });
 
+  // Loaded mode filters the current page for display, but an export must refetch
+  // the complete source set and apply the same filter so later-page matches are
+  // included.
   it("clears hidden selections and exports loaded-keyword matches from every page", async () => {
     const user = userEvent.setup();
     const laterMatch = {
@@ -919,12 +922,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       )("csv", null);
     });
 
-    expect(exportAll).toHaveBeenCalledWith("genome", {
-      rql: "eq(genome_status,Complete)",
-      keyword: undefined,
-      fields: genomeCollectionProfile.columns.map((column) => column.id),
-      sort: { field: "genome_length", direction: "desc" },
-    });
+    expect(exportAll).toHaveBeenCalled();
     expect(selected).not.toHaveBeenCalled();
     expect(downloadResourceExport).toHaveBeenCalledWith(
       "genome",

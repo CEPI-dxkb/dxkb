@@ -292,6 +292,56 @@ describe("ResourceCollection Taxonomy actions", () => {
     expect(exportAll).toHaveBeenCalledTimes(2);
   });
 
+  it("closes a reserved tab with no valid destination and releases the action", async () => {
+    const user = userEvent.setup();
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: "234",
+      detail: { taxon_id: "234", taxon_name: "Brucella" },
+      rows: [{ taxon_id: "234", taxon_name: "Brucella" }],
+      selection: {},
+      selectedIds: [],
+      isAllPagesSelected: true,
+      total: 2,
+      sorting: [],
+    });
+    const close = vi.fn();
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => ({ opener: window, close })),
+    );
+    const exportAll = vi.fn(() =>
+      Promise.resolve({ rows: [{ taxon_id: "234" }, { taxon_id: "235" }] }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={taxonomyCollectionProfile}
+        repository={
+          {
+            selected: vi.fn(() => Promise.resolve({ rows: [] })),
+            exportAll,
+          } as unknown as DataRepository
+        }
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    act(() => {
+      (actionBarProps.onAction as (actionId: string) => void)("features");
+    });
+    await waitFor(() => {
+      expect(close).toHaveBeenCalledOnce();
+    });
+
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(exportAll).toHaveBeenCalledTimes(2);
+    expect(await screen.findByTestId("taxonomy-services")).toHaveTextContent(
+      "234,235",
+    );
+  });
+
   it("closes the reserved tab and keeps the original error when ID resolution fails", async () => {
     const user = userEvent.setup();
     const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };

@@ -44,9 +44,7 @@ describe("ProteinStructureMember", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "2DEF",
-    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("2DEF");
     expect(screen.getByTestId("viewer")).toHaveTextContent("2DEF.cif");
   });
 
@@ -70,9 +68,7 @@ describe("ProteinStructureMember", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "1ABC",
-    );
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("1ABC");
     expect(screen.getByTestId("viewer")).toHaveTextContent("1ABC.cif");
   });
 
@@ -85,25 +81,31 @@ describe("ProteinStructureMember", () => {
             metadata: {
               pdb_id: "1ABC",
               title: "Example structure",
-               organism_name: ["Escherichia coli"],
-               taxon_id: [562],
-               genome_id: "83333.1",
-               patric_id: "fig|83333.1.peg.1",
-               product: ["Example protein"],
-               gene: ["abc"],
-               method: ["X-RAY DIFFRACTION"],
-               resolution: 2.1,
-               uniprotkb_accession: ["P12345"],
-               pmid: [123456],
+              organism_name: ["Escherichia coli"],
+              taxon_id: [562],
+              genome_id: "83333.1",
+              patric_id: "fig|83333.1.peg.1",
+              product: ["Example protein"],
+              gene: ["abc"],
+              method: ["X-RAY DIFFRACTION"],
+              resolution: 2.1,
+              uniprotkb_accession: ["P12345"],
+              pmid: [123456],
               file_path: "structures/1abc.pdb",
+              release_date: "2025-01-02",
+              date_inserted: "2025-01-03",
             },
           },
         ]}
       />,
     );
-    expect(
-      screen.getByRole("region", { name: "Structure metadata" }),
-    ).toHaveTextContent("Example protein");
+    const metadata = screen.getByRole("region", {
+      name: "Structure metadata",
+    });
+    expect(metadata).toHaveTextContent("Example protein");
+    expect(metadata).toHaveTextContent("BV-BRC file: structures/1abc.pdb");
+    expect(metadata).toHaveTextContent("Released 2025-01-02");
+    expect(metadata).toHaveTextContent("Added 2025-01-03");
     expect(screen.getByRole("link", { name: "Taxon 562" })).toHaveAttribute(
       "href",
       "/taxonomy/562",

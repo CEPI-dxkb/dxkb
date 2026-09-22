@@ -122,10 +122,21 @@ export function isSameResourceQuery(
   return previousQueryKey?.[1] === resource;
 }
 
+/**
+ * Download output keeps the legacy "; " separator for array-valued columns,
+ * matching `views/resource-export.ts`. Both download buttons on a list table
+ * reach a different serializer (all-rows lands here, selected-rows lands in
+ * `resource-export.ts`), so an array column such as `taxon_lineage_names` must
+ * encode identically in both or the same data exports two ways.
+ */
+const defaultArraySeparator = "; ";
+
 function exportValue(value: unknown, format: "csv" | "txt"): string {
   if (value == null) return "";
   let serialized: string;
-  if (typeof value === "object") {
+  if (Array.isArray(value)) {
+    serialized = value.map(String).join(defaultArraySeparator);
+  } else if (typeof value === "object") {
     serialized = JSON.stringify(value);
   } else if (typeof value === "symbol") {
     serialized = value.description ?? value.toString();

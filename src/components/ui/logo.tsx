@@ -34,7 +34,11 @@ export function Logo({
 
   if (!mounted) {
     return (
-      <Skeleton className="h-10 w-36" aria-label="Logo loading" />
+      <Skeleton
+        className="h-10 w-36"
+        role="status"
+        aria-label="Logo loading"
+      />
     );
   }
 

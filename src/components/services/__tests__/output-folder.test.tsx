@@ -174,6 +174,54 @@ describe("OutputFolder name validation", () => {
     );
   });
 
+  it("cancels a stale lookup when the output name changes", async () => {
+    let resolveFirstCheck: ((exists: boolean) => void) | undefined;
+    checkWorkspaceObjectExistsMock
+      .mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveFirstCheck = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(false);
+    const onValidationChange = vi.fn();
+    const { rerender } = render(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="first"
+        outputFolderPath="/user/home"
+        onValidationChange={onValidationChange}
+      />,
+    );
+
+    await finishDebounce();
+    const firstSignal = checkWorkspaceObjectExistsMock.mock.calls[0][1]?.signal;
+
+    rerender(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="second"
+        outputFolderPath="/user/home"
+        onValidationChange={onValidationChange}
+      />,
+    );
+
+    expect(firstSignal?.aborted).toBe(true);
+    act(() => {
+      resolveFirstCheck?.(true);
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await finishDebounce();
+    expect(checkWorkspaceObjectExistsMock).toHaveBeenLastCalledWith(
+      "/user/home/second",
+      expect.any(Object),
+    );
+    expect(onValidationChange).toHaveBeenLastCalledWith(true);
+  });
+
   it("keeps lookup failures invalid and allows a later retry", async () => {
     checkWorkspaceObjectExistsMock
       .mockRejectedValueOnce(new Error("network unavailable"))

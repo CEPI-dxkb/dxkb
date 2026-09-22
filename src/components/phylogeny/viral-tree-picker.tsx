@@ -2,7 +2,7 @@ import { CircleOff, Download, Filter } from "lucide-react";
 import { Fragment, useEffect, useRef, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
@@ -445,21 +445,18 @@ function MetadataButton({ url, name }: { url: string | null; name: string }) {
     );
   }
   return (
-    <Button
-      variant="ghost"
-      size="icon-xs"
-      className="text-foreground/75 transition-colors hover:text-foreground"
-      nativeButton={false}
-      render={
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Download metadata for ${name}`}
-        />
-      }
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Download metadata for ${name}`}
+      className={buttonVariants({
+        variant: "ghost",
+        size: "icon-xs",
+        className: "text-foreground/75 transition-colors hover:text-foreground",
+      })}
     >
       <Download />
-    </Button>
+    </a>
   );
 }

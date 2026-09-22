@@ -1,32 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, renderHook, screen, waitFor } from "@testing-library/react";
+import { render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { ProfilePatch } from "@/lib/auth/types";
 
 import * as authClient from "@/lib/auth/client";
 import { AuthBoundary, useAuth, useAuthActions } from "@/lib/auth/provider";
 
-const { navigation, refreshMock, replaceMock } = vi.hoisted(() => ({
-  navigation: {
-    pathname: "/",
-    searchParams: new URLSearchParams(),
-    suspendSearchParams: false,
-  },
+const { refreshMock } = vi.hoisted(() => ({
   refreshMock: vi.fn(),
-  replaceMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => navigation.pathname,
-  useSearchParams: () => {
-    if (navigation.suspendSearchParams) {
-      // React Suspense requires throwing a pending thenable.
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
-      throw new Promise(() => undefined);
-    }
-    return navigation.searchParams;
-  },
-  useRouter: () => ({ refresh: refreshMock, replace: replaceMock }),
+  useRouter: () => ({ refresh: refreshMock }),
 }));
 
 vi.mock("@/lib/auth/client", async (importOriginal) => {
@@ -50,12 +35,6 @@ const signupInput = {
   password: "password",
   password_repeat: "password",
 };
-
-beforeEach(() => {
-  navigation.pathname = "/";
-  navigation.searchParams = new URLSearchParams();
-  navigation.suspendSearchParams = false;
-});
 
 function Wrapper({
   children,
@@ -175,54 +154,18 @@ describe("AuthBoundary", () => {
     expect(refreshMock).toHaveBeenCalledOnce();
   });
 
-  it("redirects a guest from a protected path with the full return URL", async () => {
-    navigation.pathname = "/workspace/alice";
-    navigation.searchParams = new URLSearchParams("folder=My Data");
-    render(
-      <AuthBoundary user={null}>
-        <span>protected content</span>
-      </AuthBoundary>,
-    );
-
-    expect(screen.queryByText("protected content")).not.toBeInTheDocument();
-    await waitFor(() => {
-      expect(replaceMock).toHaveBeenCalledWith(
-        "/sign-in?redirect=%2Fworkspace%2Falice%3Ffolder%3DMy%2BData",
-      );
-    });
-  });
-
-  it("does not redirect guests from public paths or authenticated users", async () => {
-    const { rerender } = render(
-      <AuthBoundary user={null}>
-        <span>public content</span>
-      </AuthBoundary>,
-    );
-
-    await waitFor(() => {
-      expect(replaceMock).not.toHaveBeenCalled();
-    });
-    navigation.pathname = "/settings";
-    rerender(
-      <AuthBoundary user={user}>
-        <span>protected content</span>
-      </AuthBoundary>,
-    );
-    await waitFor(() => {
-      expect(replaceMock).not.toHaveBeenCalled();
-    });
-  });
-
-  it("hides protected children while the guard suspends", () => {
-    navigation.pathname = "/settings";
-    navigation.suspendSearchParams = true;
+  it("provides a guest identity without owning route policy", () => {
+    function Consumer() {
+      const auth = useAuth();
+      return <span>{auth.isAuthenticated ? "member" : "guest"}</span>;
+    }
 
     render(
       <AuthBoundary user={null}>
-        <span>settings content</span>
+        <Consumer />
       </AuthBoundary>,
     );
 
-    expect(screen.queryByText("settings content")).not.toBeInTheDocument();
+    expect(screen.getByText("guest")).toBeInTheDocument();
   });
 });

@@ -9,10 +9,10 @@ import type {
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { noop } from "@/lib/utils";
 import {
-  buildEncodedSegmentPath,
-  encodeWorkspaceSegment,
   parsePathSegments,
-  sanitizePathSegment,
+  workspaceItemDestination,
+  workspaceParentDestination,
+  workspaceRootDestination,
 } from "@/lib/services/workspace/path-utils";
 import { normalizePath } from "@/lib/workspace/table-selection";
 import { isFolderType } from "@/lib/services/workspace/utils";
@@ -165,65 +165,27 @@ export const WorkspaceDataTable = forwardRef<
     focus: () => dataTableRef.current?.focus(),
   }));
 
-  const pathSegments = path
-    ? path.split("/").map(sanitizePathSegment).filter(Boolean)
-    : [];
+  const pathSegments = parsePathSegments(path);
   const selectedPathSet = new Set(selectedPaths.map(normalizePath));
-  const safeUsername = sanitizePathSegment(username);
-  const homeBase = safeUsername
-    ? `/workspace/${encodeWorkspaceSegment(safeUsername)}/home`
-    : "/workspace/home";
-  const sharedBase = safeUsername
-    ? `/workspace/${encodeWorkspaceSegment(safeUsername)}`
-    : "/workspace/shared";
-  const sharedRootHref =
-    sharedRootUsername != null
-      ? `/workspace/${encodeWorkspaceSegment(sanitizePathSegment(sharedRootUsername))}`
-      : sharedBase;
+  const navigation = {
+    mode: viewMode,
+    path,
+    username,
+    sharedRootUsername,
+  };
 
   const handleItemClick = (item: WorkspaceItem) => {
     if (!isFolderType(item.type)) return;
-    if (viewMode === "public") {
-      const encoded = buildEncodedSegmentPath(parsePathSegments(item.path));
-      router.push(`/workspace/public/${encoded}`);
-    } else if (viewMode === "shared") {
-      const encoded = buildEncodedSegmentPath(parsePathSegments(item.path));
-      router.push(`/workspace/${encoded}`);
-    } else {
-      const segments = path
-        ? path.split("/").map(sanitizePathSegment).filter(Boolean)
-        : [];
-      segments.push(sanitizePathSegment(item.name));
-      router.push(`${homeBase}/${buildEncodedSegmentPath(segments)}`);
-    }
+    router.push(workspaceItemDestination(navigation, item));
   };
 
   const handleParentClick = () => {
-    if (viewMode === "public") {
-      if (pathSegments.length <= 1) {
-        router.push("/workspace/public");
-      } else {
-        const encoded = buildEncodedSegmentPath(pathSegments.slice(0, -1));
-        router.push(`/workspace/public/${encoded}`);
-      }
-    } else if (viewMode === "shared") {
-      if (pathSegments.length <= 1) {
-        router.push(sharedRootHref);
-      } else {
-        const encoded = buildEncodedSegmentPath(pathSegments.slice(0, -1));
-        if (encoded) router.push(`/workspace/${encoded}`);
-      }
-    } else {
-      const segments = path.split("/").map(sanitizePathSegment).filter(Boolean);
-      segments.pop();
-      const parentPath = buildEncodedSegmentPath(segments);
-      router.push(`${homeBase}${parentPath ? `/${parentPath}` : ""}`);
-    }
+    router.push(workspaceParentDestination(navigation));
   };
 
   const showLeadingRow = viewMode === "home" && isAtRoot;
   const handleLeadingClick = () => {
-    router.push(sharedBase);
+    router.push(workspaceRootDestination(username));
   };
 
   const showParentRow =

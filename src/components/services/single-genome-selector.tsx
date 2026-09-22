@@ -2,11 +2,12 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { createPortal } from "react-dom";
-import { Search, Loader2, ShieldUser, ChevronDown } from "lucide-react";
+import { Search, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { AnchoredSuggestionPortal } from "@/components/services/anchored-suggestion-portal";
+import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
 import { cn } from "@/lib/utils";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
 import { toast } from "sonner";
@@ -47,12 +48,6 @@ function useSingleGenomeSelector({
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const [isManualTrigger, setIsManualTrigger] = useState(false);
   const selectedGenomeIdRef = useRef<string | null>(null);
-  const [dropdownRect, setDropdownRect] = useState<{
-    top: number;
-    left: number;
-    width: number;
-    maxHeight: number;
-  } | null>(null);
 
   const {
     query,
@@ -150,49 +145,6 @@ function useSingleGenomeSelector({
     syncValue(value);
   }, [value]);
 
-  // Compute portal position (avoids Card overflow-hidden clipping)
-  const updateDropdownLayout = useEffectEvent(() => {
-    if (!showDropdown || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const preferredHeight = 256;
-    const minHeight = 160;
-    const gap = 4;
-    let top: number;
-    let maxHeight: number;
-    if (spaceBelow >= preferredHeight) {
-      top = rect.bottom + gap;
-      maxHeight = preferredHeight;
-    } else if (spaceBelow >= minHeight) {
-      top = rect.bottom + gap;
-      maxHeight = Math.max(spaceBelow - gap, minHeight);
-    } else {
-      const spaceAbove = rect.top;
-      maxHeight = Math.max(spaceAbove - gap, minHeight);
-      top = rect.top - maxHeight - gap;
-    }
-    setDropdownRect({ top, left: rect.left, width: rect.width, maxHeight });
-  });
-
-  useEffect(() => {
-    if (showDropdown && containerRef.current) {
-      updateDropdownLayout();
-    } else {
-      setDropdownRect(null);
-    }
-  }, [showDropdown]);
-
-  useEffect(() => {
-    if (!showDropdown) return;
-    window.addEventListener("scroll", updateDropdownLayout, true);
-    window.addEventListener("resize", updateDropdownLayout);
-    return () => {
-      window.removeEventListener("scroll", updateDropdownLayout, true);
-      window.removeEventListener("resize", updateDropdownLayout);
-    };
-  }, [showDropdown]);
-
   const handleSelect = (genome: GenomeSummary) => {
     selectedGenomeIdRef.current = genome.genome_id;
     onChange(genome.genome_id);
@@ -200,7 +152,6 @@ function useSingleGenomeSelector({
     setSelectedGenome(genome);
     updateSuggestions([]);
     setShowDropdown(false);
-    setDropdownRect(null);
     setIsManualTrigger(false);
   };
 
@@ -211,7 +162,6 @@ function useSingleGenomeSelector({
       setIsManualTrigger(true);
       triggerSearch("");
     } else {
-      setDropdownRect(null);
       setIsManualTrigger(false);
     }
   };
@@ -282,7 +232,7 @@ function useSingleGenomeSelector({
     <div className={cn("space-y-2", className)}>
       {title && <Label className="service-card-label">{title}</Label>}
       <div ref={containerRef} className="relative">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
         <Input
           id={id}
           ref={inputRef}
@@ -312,88 +262,47 @@ function useSingleGenomeSelector({
           ref={buttonRef}
           type="button"
           onClick={handleManualDropdownToggle}
-          className="absolute top-1/2 right-3 size-4 -translate-y-1/2 bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80"
+          className="bg-primary/15 text-primary hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80 absolute top-1/2 right-3 size-4 -translate-y-1/2 transition-colors"
           aria-label="Toggle dropdown"
         >
           <ChevronDown
             className={`size-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}
           />
         </Button>
-        {showDropdown &&
-          (suggestions.length > 0 ||
-            isLoading ||
-            error ||
-            showEmptyState ||
-            isManualTrigger) &&
-          dropdownRect &&
-          typeof document !== "undefined" &&
-          createPortal(
-            <div
-              ref={dropdownRef}
-              className="fixed z-40 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40"
-              style={{
-                top: dropdownRect.top,
-                left: dropdownRect.left,
-                width: dropdownRect.width,
-                maxHeight: dropdownRect.maxHeight,
-              }}
-            >
-              {isLoading ? (
-                <div className="flex items-center justify-center p-4">
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">
-                    Searching...
-                  </span>
-                </div>
-              ) : error ? (
-                <div className="p-4 text-sm text-destructive">{error}</div>
-              ) : suggestions.length > 0 ? (
-                suggestions.map((genome, index) => {
-                  const isHighlighted = highlightedIndex === index;
-                  return (
-                    <button
-                      key={genome.genome_id}
-                      ref={(el) => {
-                        itemRefs.current[index] = el;
-                      }}
-                      type="button"
-                      className={cn(
-                        "flex w-full cursor-pointer flex-col items-start gap-1 rounded-md border-0 bg-transparent px-4 py-2 text-left text-sm hover:bg-accent",
-                        isHighlighted && "bg-accent",
-                      )}
-                      onClick={() => {
-                        handleSelect(genome);
-                      }}
-                      onMouseEnter={() => {
-                        setHighlightedIndex(index);
-                      }}
-                    >
-                      <span className="flex items-center gap-1 truncate text-sm font-medium">
-                        {genome.public === false && (
-                          <ShieldUser className="size-3.5 shrink-0 text-foreground/90" />
-                        )}
-                        <span className="truncate">{genome.genome_name}</span>
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {genome.genome_id}
-                        {genome.strain ? ` • ${genome.strain}` : ""}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : showEmptyState ? (
-                <p className="py-4 text-center text-sm text-muted-foreground">
-                  {query.trim()
-                    ? `No genomes found for "${query.trim()}"`
-                    : "No genomes found"}
-                </p>
-              ) : null}
-            </div>,
-            document.body,
-          )}
+        <AnchoredSuggestionPortal
+          anchorRef={containerRef}
+          dropdownRef={dropdownRef}
+          open={
+            showDropdown &&
+            (suggestions.length > 0 ||
+              isLoading ||
+              !!error ||
+              showEmptyState ||
+              isManualTrigger)
+          }
+        >
+          <GenomeSuggestionList
+            suggestions={suggestions}
+            isLoading={isLoading}
+            error={error}
+            emptyMessage={
+              showEmptyState
+                ? query.trim()
+                  ? `No genomes found for "${query.trim()}"`
+                  : "No genomes found"
+                : null
+            }
+            highlightedIndex={highlightedIndex}
+            itemRefs={itemRefs}
+            onSelect={handleSelect}
+            onHighlight={setHighlightedIndex}
+            showPrivateIndicator
+            itemClassName="rounded-md border-0 bg-transparent text-sm"
+          />
+        </AnchoredSuggestionPortal>
       </div>
       {helperText && (
-        <p className="text-xs text-muted-foreground">{helperText}</p>
+        <p className="text-muted-foreground text-xs">{helperText}</p>
       )}
     </div>
   );

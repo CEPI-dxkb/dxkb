@@ -5,7 +5,39 @@
  */
 
 import type { ListPermissionsResult, WorkspaceItem } from "./domain";
+import type { WorkspaceViewMode } from "@/types/workspace-browser";
 import { safeDecode } from "@/lib/url";
+
+export type WorkspaceBreadcrumbViewMode = WorkspaceViewMode | "root";
+
+export interface WorkspaceBreadcrumbDescriptor {
+  label: string;
+  href?: string;
+  icon?: "home" | "public";
+  muted?: boolean;
+}
+
+interface WorkspaceNavigationInput {
+  mode: WorkspaceViewMode;
+  path: string;
+  username: string;
+  sharedRootUsername?: string;
+  /**
+   * Overrides `path` when building home-mode child destinations. Job-result
+   * views pass the dot-prefixed relative path (see `getDotPathRelative`) so
+   * children resolve under `.{jobName}` rather than the display path.
+   * Ignored in shared/public modes, which derive the URL from `item.path`.
+   */
+  basePath?: string;
+}
+
+interface WorkspaceBreadcrumbInput {
+  mode: WorkspaceBreadcrumbViewMode;
+  path: string;
+  username: string;
+  currentUsername?: string;
+  workspaceRootUsername?: string;
+}
 
 export interface WorkspacePathsInput {
   mode: "home" | "shared" | "public";
@@ -42,9 +74,7 @@ export function computeWorkspacePaths({
     ? `/${myWorkspaceRoot}`
     : `/${username}`;
   const currentDirectoryPath =
-    mode === "home"
-      ? `${currentUserWorkspaceRoot}/home${fullPath}`
-      : fullPath;
+    mode === "home" ? `${currentUserWorkspaceRoot}/home${fullPath}` : fullPath;
   return { currentDirectoryPath, currentUserWorkspaceRoot, fullPath };
 }
 
@@ -78,9 +108,8 @@ export function canWriteToCurrentDir({
     decodedFullPath.startsWith(`/${currentUser}/`);
   if (isOwnedPath) return true;
   if (!currentDirPermissions) return false;
-  const perms = (
-    currentDirPermissions[decodedFullPath] ?? currentDirPermissions[fullPath]
-  ) as [string, string][] | undefined;
+  const perms = (currentDirPermissions[decodedFullPath] ??
+    currentDirPermissions[fullPath]) as [string, string][] | undefined;
   if (!perms) return false;
   const writePerms = new Set(["w", "a", "o"]);
   return perms.some(
@@ -131,10 +160,7 @@ const controlCharRegex = new RegExp(
 /** Remove control characters and null bytes from a path segment. */
 export function sanitizePathSegment(segment: string): string {
   if (typeof segment !== "string") return "";
-  return segment
-    .trim()
-    .replace(/\0/g, "")
-    .replace(controlCharRegex, "");
+  return segment.trim().replace(/\0/g, "").replace(controlCharRegex, "");
 }
 
 /**
@@ -161,8 +187,173 @@ export function buildEncodedSegmentPath(segments: string[]): string {
   return segments.map(encodeWorkspaceSegment).join("/");
 }
 
+function workspaceNavigationBases(username: string) {
+  const safeUsername = sanitizePathSegment(username);
+  const encodedUsername = encodeWorkspaceSegment(safeUsername);
+  return {
+    home: safeUsername
+      ? `/workspace/${encodedUsername}/home`
+      : "/workspace/home",
+    shared: safeUsername
+      ? `/workspace/${encodedUsername}`
+      : "/workspace/shared",
+  };
+}
+
+export function workspaceItemDestination(
+  input: WorkspaceNavigationInput,
+  item: Pick<WorkspaceItem, "name" | "path">,
+): string {
+  const bases = workspaceNavigationBases(input.username);
+  if (input.mode === "public") {
+    return `/workspace/public/${buildEncodedSegmentPath(parsePathSegments(item.path))}`;
+  }
+  if (input.mode === "shared") {
+    return `/workspace/${buildEncodedSegmentPath(parsePathSegments(item.path))}`;
+  }
+  const segments = parsePathSegments(input.basePath ?? input.path);
+  segments.push(sanitizePathSegment(item.name));
+  return `${bases.home}/${buildEncodedSegmentPath(segments)}`;
+}
+
+export function workspaceParentDestination(
+  input: WorkspaceNavigationInput,
+): string {
+  const bases = workspaceNavigationBases(input.username);
+  const segments = parsePathSegments(input.path);
+  if (input.mode === "public") {
+    return segments.length <= 1
+      ? "/workspace/public"
+      : `/workspace/public/${buildEncodedSegmentPath(segments.slice(0, -1))}`;
+  }
+  if (input.mode === "shared") {
+    if (segments.length <= 1) {
+      return input.sharedRootUsername != null
+        ? `/workspace/${encodeWorkspaceSegment(
+            sanitizePathSegment(input.sharedRootUsername),
+          )}`
+        : bases.shared;
+    }
+    return `/workspace/${buildEncodedSegmentPath(segments.slice(0, -1))}`;
+  }
+  const parentPath = buildEncodedSegmentPath(segments.slice(0, -1));
+  return `${bases.home}${parentPath ? `/${parentPath}` : ""}`;
+}
+
+export function workspaceRootDestination(username: string): string {
+  return workspaceNavigationBases(username).shared;
+}
+
+function formatBreadcrumbLabel(
+  segment: string,
+  currentUsername?: string,
+): string {
+  const safe = sanitizePathSegment(safeDecode(segment));
+  if (!currentUsername || safe === currentUsername) return safe;
+  return safe.startsWith(`${currentUsername}@`) ? currentUsername : safe;
+}
+
+/**
+ * Map path segments to breadcrumb descriptors. Every mode shares the same
+ * label/muted policy (the last segment is the current location: unlinked and
+ * unmuted); only the href differs, so each caller supplies its own builder.
+ */
+function segmentCrumbs(
+  segments: string[],
+  currentUsername: string | undefined,
+  hrefFor: (index: number) => string,
+): WorkspaceBreadcrumbDescriptor[] {
+  return segments.map((segment, index) => {
+    const isLast = index === segments.length - 1;
+    return {
+      label: formatBreadcrumbLabel(segment, currentUsername),
+      href: isLast ? undefined : hrefFor(index),
+      muted: !isLast,
+    };
+  });
+}
+
+export function buildWorkspaceBreadcrumbs({
+  mode,
+  path,
+  username,
+  currentUsername,
+  workspaceRootUsername,
+}: WorkspaceBreadcrumbInput): WorkspaceBreadcrumbDescriptor[] {
+  const segments = parsePathSegments(path);
+  const safeUsername = sanitizePathSegment(username);
+  const encodedUsername = encodeWorkspaceSegment(safeUsername);
+  const usernameRootHref = username
+    ? `/workspace/${encodedUsername}`
+    : "/workspace";
+
+  if (mode === "root") {
+    return [
+      {
+        label: formatBreadcrumbLabel(safeUsername, currentUsername),
+        href: usernameRootHref,
+      },
+    ];
+  }
+
+  if (mode === "public") {
+    return [
+      {
+        label: "Public Workspaces",
+        href: segments.length === 0 ? undefined : "/workspace/public",
+        icon: "public",
+        muted: segments.length > 0,
+      },
+      ...segmentCrumbs(
+        segments,
+        currentUsername,
+        (index) =>
+          `/workspace/public/${buildEncodedSegmentPath(
+            segments.slice(0, index + 1),
+          )}`,
+      ),
+    ];
+  }
+
+  if (mode === "shared") {
+    const myRoot = workspaceRootUsername || currentUsername;
+    return segmentCrumbs(segments, currentUsername, (index) =>
+      // The first shared segment is another user's root; link it to *our* root
+      // so the crumb walks back into the current user's workspace.
+      index === 0 && myRoot
+        ? `/workspace/${encodeWorkspaceSegment(myRoot)}`
+        : `/workspace/${buildEncodedSegmentPath(segments.slice(0, index + 1))}`,
+    );
+  }
+
+  const homeBase = username
+    ? `/workspace/${encodedUsername}/home`
+    : "/workspace/home";
+  return [
+    {
+      label: formatBreadcrumbLabel(safeUsername, currentUsername),
+      href: usernameRootHref,
+      icon: "home",
+      muted: segments.length > 0,
+    },
+    {
+      label: "home",
+      href: segments.length === 0 ? undefined : homeBase,
+      muted: segments.length > 0,
+    },
+    ...segmentCrumbs(
+      segments,
+      currentUsername,
+      (index) =>
+        `${homeBase}/${buildEncodedSegmentPath(segments.slice(0, index + 1))}`,
+    ),
+  ];
+}
+
 /** Full username with @domain for workspace URLs (session stores short form in user.username). */
-export function workspaceUsername(user: { username?: string; realm?: string } | null): string {
+export function workspaceUsername(
+  user: { username?: string; realm?: string } | null,
+): string {
   if (!user?.username) return "";
   return user.realm ? `${user.username}@${user.realm}` : user.username;
 }

@@ -3,8 +3,21 @@ import { describe, expect, it } from "vitest";
 import { summarizeScanRecords } from "../../a11y/teardown";
 import type { ScanRecord } from "../../a11y/report";
 
-function record(project: string, route: string, theme = "light"): ScanRecord {
-  return { project, route, theme, blocking: [], suppressed: [], warnings: [] };
+function record(
+  project: string,
+  route: string,
+  theme = "light",
+  retry = 0,
+): ScanRecord {
+  return {
+    project,
+    route,
+    theme,
+    retry,
+    blocking: [],
+    suppressed: [],
+    warnings: [],
+  };
 }
 
 describe("accessibility scan summaries", () => {
@@ -24,14 +37,22 @@ describe("accessibility scan summaries", () => {
     ]);
   });
 
-  it("deduplicates retries but rejects conflicts within one project", () => {
-    const scan = record("webkit", "route");
-    expect(summarizeScanRecords([scan, scan])).toEqual([scan]);
+  it("keeps the latest retry and rejects conflicts within one attempt", () => {
+    const firstAttempt = record("webkit", "route");
+    const retry = {
+      ...firstAttempt,
+      retry: 1,
+      warnings: [{ id: "different" }] as ScanRecord["warnings"],
+    };
+
+    expect(summarizeScanRecords([retry, firstAttempt, retry])).toEqual([retry]);
     expect(() =>
       summarizeScanRecords([
-        scan,
-        { ...scan, theme: "light", blocking: [] },
-        { ...scan, warnings: [{ id: "different" }] as ScanRecord["warnings"] },
+        firstAttempt,
+        {
+          ...firstAttempt,
+          warnings: [{ id: "different" }] as ScanRecord["warnings"],
+        },
       ]),
     ).toThrow("webkit::route::light");
   });

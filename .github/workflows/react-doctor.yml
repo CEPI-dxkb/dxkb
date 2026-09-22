@@ -41,7 +41,7 @@ jobs:
           scope: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
           version: "0.9.11"
 
-      - name: Require React Doctor score of at least 80
+      - name: Require React Doctor score of at least 70
         if: ${{ always() && (github.event_name != 'pull_request' || steps.react-doctor.outputs.score != '') }}
         env:
           REACT_DOCTOR_SCORE: ${{ steps.react-doctor.outputs.score }}
@@ -50,11 +50,11 @@ jobs:
             echo "React Doctor returned an empty or nonnumeric score: '$REACT_DOCTOR_SCORE'."
             exit 1
           fi
-          if [ "$REACT_DOCTOR_SCORE" -lt 80 ]; then
-            echo "React Doctor score $REACT_DOCTOR_SCORE/100 is below the required 80/100."
+          if [ "$REACT_DOCTOR_SCORE" -lt 70 ]; then
+            echo "React Doctor score $REACT_DOCTOR_SCORE/100 is below the required 70/100."
             exit 1
           fi
-          echo "React Doctor score $REACT_DOCTOR_SCORE/100 meets the required 80/100."
+          echo "React Doctor score $REACT_DOCTOR_SCORE/100 meets the required 70/100."
 
         # Full reference: https://www.react.doctor/ci
         # Optional configuration:

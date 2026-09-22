@@ -1,17 +1,15 @@
 "use client";
 
-import { ChevronRight, HelpCircle } from "lucide-react";
 import type { MetagenomicBinningController } from "./use-metagenomic-binning-controller";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import SelectedItemsTable from "@/components/services/selected-items-table";
+import { ReadLibraryInputSection } from "@/components/services/read-library-input-section";
+import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -22,14 +20,7 @@ import {
   FieldItem,
   FieldLabel,
 } from "@/components/ui/tanstack-form";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { MetagenomicBinningFormData } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-schema";
-import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 import {
   metagenomicBinningInputFile,
   metagenomicBinningStartWith,
@@ -110,68 +101,16 @@ export function BinningReadInputCards({
             </RequiredFormCardTitle>
           </CardHeader>
           <CardContent className="service-card-content space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="service-card-label">
-                  Paired Read Library
-                </Label>
-                <div className="mx-4 h-px flex-1 bg-border" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label="Add paired read library"
-                  onClick={controller.handlePairedLibraryAdd}
-                  disabled={!state.pairedRead1 || !state.pairedRead2}
-                >
-                  <ChevronRight size={16} />
-                </Button>
-              </div>
-              <div className="space-y-3">
-                <WorkspaceObjectSelector
-                  preset="reads"
-                  placeholder="Select READ FILE 1..."
-                  value={state.pairedRead1 ?? ""}
-                  onObjectSelect={(object: WorkspaceObject) =>
-                    { setState("pairedRead1")(object.path); }
-                  }
-                />
-                <WorkspaceObjectSelector
-                  preset="reads"
-                  placeholder="Select READ FILE 2..."
-                  value={state.pairedRead2 ?? ""}
-                  onObjectSelect={(object: WorkspaceObject) =>
-                    { setState("pairedRead2")(object.path); }
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="service-card-label">
-                  Single Read Library
-                </Label>
-                <div className="mx-4 h-px flex-1 bg-border" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label="Add single read library"
-                  onClick={controller.handleSingleLibraryAdd}
-                  disabled={!state.singleRead}
-                >
-                  <ChevronRight size={16} />
-                </Button>
-              </div>
-              <WorkspaceObjectSelector
-                preset="reads"
-                placeholder="Select READ FILE..."
-                value={state.singleRead ?? ""}
-                onObjectSelect={(object: WorkspaceObject) =>
-                  { setState("singleRead")(object.path); }
-                }
-              />
-            </div>
+            <ReadLibraryInputSection
+              pairedRead1={state.pairedRead1}
+              pairedRead2={state.pairedRead2}
+              singleRead={state.singleRead}
+              onPairedRead1Change={setState("pairedRead1")}
+              onPairedRead2Change={setState("pairedRead2")}
+              onSingleReadChange={setState("singleRead")}
+              onAddPairedLibrary={controller.handlePairedLibraryAdd}
+              onAddSingleLibrary={controller.handleSingleLibraryAdd}
+            />
             <SraRunAccessionWithValidation
               key={state.sraResetKey}
               title="SRA Run Accession"
@@ -187,36 +126,10 @@ export function BinningReadInputCards({
         </Card>
       </div>
       <div className="md:col-span-5">
-        <Card className="h-full">
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
-              Selected Libraries
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger aria-label="Help: place read files using arrow buttons">
-                    <HelpCircle className="service-card-tooltip-icon" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Place read files here using the arrow buttons</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Place read files here using the arrow buttons.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="service-card-content">
-            <SelectedItemsTable
-              items={selectedLibraries.map((library) => ({
-                id: library.id,
-                name: library.name,
-                type: getLibraryTypeLabel(library.type),
-              }))}
-              onRemove={controller.removeLibrary}
-            />
-          </CardContent>
-        </Card>
+        <SelectedLibrariesCard
+          items={selectedLibraries}
+          onRemove={controller.removeLibrary}
+        />
       </div>
     </>
   );

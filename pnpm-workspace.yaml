@@ -39,14 +39,3 @@ patchedDependencies:
   auspice@2.73.2: patches/auspice@2.73.2.patch
   molstar: patches/molstar.patch
   phyloxml@1.0.0: patches/phyloxml@1.0.0.patch
-minimumReleaseAgeExclude:
-  - '@next/env@16.3.3'
-  - '@next/swc-darwin-arm64@16.3.3'
-  - '@next/swc-darwin-x64@16.3.3'
-  - '@next/swc-linux-arm64-gnu@16.3.3'
-  - '@next/swc-linux-arm64-musl@16.3.3'
-  - '@next/swc-linux-x64-gnu@16.3.3'
-  - '@next/swc-linux-x64-musl@16.3.3'
-  - '@next/swc-win32-arm64-msvc@16.3.3'
-  - '@next/swc-win32-x64-msvc@16.3.3'
-  - next@16.3.3

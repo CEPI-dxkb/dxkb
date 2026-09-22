@@ -121,18 +121,17 @@ function SelectionToGroupForm({
       } else {
         await onAppend(existingGroupPath);
       }
-      if (session !== sessionRef.current) return;
-      onOpenChange(false);
+      if (session === sessionRef.current) onOpenChange(false);
     } catch (submitError) {
-      if (session !== sessionRef.current) return;
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : `Unable to update the ${groupKind} group.`,
-      );
-    } finally {
-      if (session === sessionRef.current) setIsSubmitting(false);
+      if (session === sessionRef.current) {
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : `Unable to update the ${groupKind} group.`,
+        );
+      }
     }
+    if (session === sessionRef.current) setIsSubmitting(false);
   };
 
   const selectionLabel = ids.length === 1 ? copy.singular : copy.plural;

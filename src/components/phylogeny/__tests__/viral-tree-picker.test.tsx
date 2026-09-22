@@ -478,7 +478,7 @@ describe("ViralTreePicker", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Download metadata for XML HA (HA)" }),
+      screen.getByRole("link", { name: "Download metadata for XML HA (HA)" }),
     );
     expect(onOpen).not.toHaveBeenCalled();
   });

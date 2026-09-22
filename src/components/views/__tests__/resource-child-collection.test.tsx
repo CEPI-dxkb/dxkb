@@ -544,19 +544,25 @@ describe("ResourceChildCollection scope changes", () => {
     ).toContain("eq(genome_id,83332.12)");
   });
 
-  it("filters a download-all export by the active loaded keyword", async () => {
-    // Plan item 14: this now runs through ResourceCollection's own exportRows
-    // (the child's onExport override and its saveRows serializer are gone), so
-    // the render is real rather than driven through the light stub.
+  it("exports loaded-keyword matches from every page", async () => {
+    useResourceCollection.mockReturnValue(
+      realCollectionResult({
+        rows: [
+          { pdb_id: "1ABC", title: "Influenza A polymerase" },
+          { pdb_id: "2DEF", title: "Unrelated structure" },
+        ],
+        total: 2,
+      }),
+    );
     exportAll.mockResolvedValueOnce({
       rows: [
         { pdb_id: "1ABC", title: "Influenza A polymerase" },
         { pdb_id: "2DEF", title: "Unrelated structure" },
+        { pdb_id: "3GHI", title: "Later influenza structure" },
       ],
     });
-    useResourceCollection.mockReturnValue(realCollectionResult());
     useRealResourceCollection.current = true;
-    const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
+    const download = spyOnDownload();
 
     render(
       <ResourceChildCollection
@@ -574,21 +580,11 @@ describe("ResourceChildCollection scope changes", () => {
       screen.getByRole("button", { name: "Real export all" }),
     );
 
-    // Every profile column is requested so the keyword can be matched against
-    // fields the export itself does not include.
-    await waitFor(() => {
-      expect(exportAll).toHaveBeenCalledWith(
-        "protein_structure",
-        expect.objectContaining({ rql: "eq(genome_id,83332.12)" }),
-      );
-    });
-    const request = exportAll.mock.lastCall?.[1] as
-      { fields: string[] } | undefined;
-    expect(request?.fields).toContain("pdb_id");
-    expect(request?.fields).toContain("title");
-    expect(request?.fields.length).toBeGreaterThan(1);
-    expect(click).toHaveBeenCalled();
-    click.mockRestore();
+    const content = await download.text();
+    expect(content).toContain("Influenza A polymerase");
+    expect(content).toContain("Later influenza structure");
+    expect(content).not.toContain("Unrelated structure");
+    expect(exportAll).toHaveBeenCalled();
   });
 
   it("leaves a selected-ID export unfiltered", async () => {

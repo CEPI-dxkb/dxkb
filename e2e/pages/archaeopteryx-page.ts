@@ -7,6 +7,8 @@ import { expect, type Download, type Locator, type Page } from "@playwright/test
  */
 export class ArchaeopteryxPage {
   readonly page: Page;
+  /** The bounded box the viewer is drawn in, loading overlay included. */
+  readonly frame: Locator;
   readonly host: Locator;
   readonly svg: Locator;
   readonly panel: Locator;
@@ -17,6 +19,7 @@ export class ArchaeopteryxPage {
 
   constructor(page: Page) {
     this.page = page;
+    this.frame = page.locator(".archaeopteryx-dxkb");
     this.host = page.getByRole("group", {
       name: /^Interactive phylogenetic tree for /,
     });
@@ -27,7 +30,7 @@ export class ArchaeopteryxPage {
       has: page.locator("legend", { hasText: "Display Data" }),
     });
     this.sidePanel = page.locator('[data-testid$="detail-side"]');
-    this.loadingOverlay = page.locator(".archaeopteryx-dxkb > .absolute.inset-0");
+    this.loadingOverlay = this.frame.locator(":scope > .absolute.inset-0");
   }
 
   async goto(taxonId: string): Promise<void> {

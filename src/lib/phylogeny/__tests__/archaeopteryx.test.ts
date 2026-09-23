@@ -8,6 +8,7 @@ import {
   loadArchaeopteryx,
   mountArchaeopteryx,
   seedViewerTheme,
+  setViewerControlsCollapsed,
   syncViewerTheme,
 } from "../archaeopteryx";
 
@@ -393,6 +394,22 @@ describe("mountArchaeopteryx with the real viewer", () => {
     expect(host.querySelector(".aptx-panel")).toHaveClass("aptx-light");
     expect(host.querySelector(":scope > svg")).toBe(svg);
     expect(background?.getAttribute("style")).not.toBe(darkFill);
+  });
+
+  it("folds and opens the control panel in place, reporting whether it changed", async () => {
+    await mount();
+    const panel = host.querySelector(".aptx-panel");
+    const toggle = host.querySelector(".aptx-hide-btn");
+
+    expect(setViewerControlsCollapsed(host, true)).toBe(true);
+    expect(panel).toHaveClass("aptx-hidden");
+    expect(toggle).toHaveTextContent("+");
+    expect(setViewerControlsCollapsed(host, true)).toBe(false);
+
+    expect(setViewerControlsCollapsed(host, false)).toBe(true);
+    expect(panel).not.toHaveClass("aptx-hidden");
+    expect(toggle).toHaveTextContent("–");
+    expect(setViewerControlsCollapsed(host, false)).toBe(false);
   });
 
   it("removes its DOM and every document listener it added when destroyed", async () => {

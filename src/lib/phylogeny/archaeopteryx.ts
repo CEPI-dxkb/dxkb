@@ -219,3 +219,21 @@ export function syncViewerTheme(container: Element, theme: ViewerTheme) {
     toggle.click();
   }
 }
+
+/**
+ * Folds a running viewer's control panel to its header bar, or opens it.
+ * Archaeopteryx only takes this at launch, so it clicks the panel's own
+ * hide/show button, leaving the panel as if the user had pressed it. Returns
+ * whether the panel changed.
+ */
+export function setViewerControlsCollapsed(
+  container: Element,
+  collapsed: boolean,
+): boolean {
+  const panel = container.querySelector(".aptx-panel");
+  const toggle = container.querySelector<HTMLButtonElement>(".aptx-hide-btn");
+  if (!panel || !toggle) return false;
+  if (panel.classList.contains("aptx-hidden") === collapsed) return false;
+  toggle.click();
+  return true;
+}

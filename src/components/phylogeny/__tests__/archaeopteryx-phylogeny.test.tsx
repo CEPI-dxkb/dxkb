@@ -19,18 +19,25 @@ class ResizeObserverStub {
   observe = vi.fn();
   disconnect = vi.fn();
 
-  constructor() {
+  constructor(readonly callback: () => void) {
     ResizeObserverStub.instances.push(this);
   }
 }
 
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
-let narrowScreen = false;
-vi.stubGlobal(
-  "matchMedia",
-  vi.fn((query: string) => ({ matches: narrowScreen, media: query })),
+// jsdom lays out nothing, so every element reports this width.
+let hostWidth = 1024;
+vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(
+  () => hostWidth,
 );
+
+/** Resizes the host the way the side panel or a window resize would. */
+async function resizeHost(width: number) {
+  hostWidth = width;
+  for (const observer of ResizeObserverStub.instances) observer.callback();
+  await new Promise(requestAnimationFrame);
+}
 
 interface FakeViewerOptions {
   ready?: Promise<void>;
@@ -74,7 +81,14 @@ function createFakeArchaeopteryx({
               dark ? "aptx-light" : "aptx-dark",
             );
           });
-          panel.append(toggle);
+          // Like the real header button, it folds the panel to its header.
+          const hide = document.createElement("button");
+          hide.className = "aptx-hide-btn";
+          hide.addEventListener("click", () => {
+            panel.classList.toggle("aptx-hidden");
+          });
+          if (config.collapseControlPanel) panel.classList.add("aptx-hidden");
+          panel.append(toggle, hide);
           container.append(panel);
         };
         if (!drawWhen) draw();
@@ -96,7 +110,7 @@ describe("ArchaeopteryxPhylogeny", () => {
   beforeEach(() => {
     document.documentElement.dataset.theme = "dxkb-light";
     localStorage.removeItem("aptx-panel-theme");
-    narrowScreen = false;
+    hostWidth = 1024;
     ResizeObserverStub.instances = [];
   });
 
@@ -126,8 +140,8 @@ describe("ArchaeopteryxPhylogeny", () => {
     expect(ResizeObserverStub.instances[0]?.observe).toHaveBeenCalledWith(host);
   });
 
-  it("lets a selectable tree pick leaves and collapses the panel on narrow screens", async () => {
-    narrowScreen = true;
+  it("lets a selectable tree pick leaves and collapses the panel in a narrow host", async () => {
+    hostWidth = 480;
     const { renderer, configs } = createFakeArchaeopteryx();
 
     render(
@@ -146,6 +160,59 @@ describe("ArchaeopteryxPhylogeny", () => {
       enableManualNodeSelection: true,
     });
     expect(configs[0]).not.toHaveProperty("initialVisualization");
+  });
+
+  it("folds the controls when the host narrows and restores them when it widens", async () => {
+    createFakeArchaeopteryx();
+    const windowResized = vi.fn();
+    window.addEventListener("resize", windowResized);
+
+    const { container } = render(
+      <ArchaeopteryxPhylogeny xml="<phyloxml />" title="Test tree" />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector(".aptx-panel")).not.toBeNull();
+    });
+    const panel = container.querySelector(".aptx-panel");
+    expect(panel).not.toHaveClass("aptx-hidden");
+
+    await resizeHost(480);
+    expect(panel).toHaveClass("aptx-hidden");
+    expect(windowResized).toHaveBeenCalledOnce();
+
+    await resizeHost(1024);
+    expect(panel).not.toHaveClass("aptx-hidden");
+    window.removeEventListener("resize", windowResized);
+  });
+
+  it("leaves the controls as the user set them until the next crossing", async () => {
+    hostWidth = 480;
+    createFakeArchaeopteryx();
+
+    const { container } = render(
+      <ArchaeopteryxPhylogeny xml="<phyloxml />" title="Test tree" />,
+    );
+    await waitFor(() => {
+      expect(container.querySelector(".aptx-panel")).toHaveClass(
+        "aptx-hidden",
+      );
+    });
+    const panel = container.querySelector(".aptx-panel");
+    const hide = container.querySelector<HTMLButtonElement>(".aptx-hide-btn");
+
+    // Opened by hand in a narrow host, it stays open as the host narrows
+    // further and once it widens.
+    hide?.click();
+    await resizeHost(400);
+    expect(panel).not.toHaveClass("aptx-hidden");
+    await resizeHost(1024);
+    expect(panel).not.toHaveClass("aptx-hidden");
+
+    // Folded by hand, it is not reopened by a round trip through narrow.
+    hide?.click();
+    await resizeHost(480);
+    await resizeHost(1024);
+    expect(panel).toHaveClass("aptx-hidden");
   });
 
   it("reports the selected leaf and clears the selection for internal nodes", async () => {

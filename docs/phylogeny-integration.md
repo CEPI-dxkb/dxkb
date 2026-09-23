@@ -16,6 +16,7 @@ Auspice calls the local Charon-compatible routes under `/api/charon`, which fetc
 - `collectNodeLabels` offers a label checkbox for each node property. Archaeopteryx concatenates those labels and keys into the control panel's HTML without escaping, so only property keys matching `[A-Za-z0-9_-]+` are offered. Upstream escapes tooltip, dialog and menu text itself.
 - The viewer keeps one instance per page in module state, and every handle's `destroy()` tears down whichever viewer is current. `mountArchaeopteryx` makes a replaced handle's `destroy()` a no-op.
 - Theme: 3.x has no background or label color options. `seedViewerTheme` writes the site's light/dark choice to `localStorage["aptx-panel-theme"]` before launch; `syncViewerTheme` clicks the viewer's own theme switch (hidden in `src/styles/archaeopteryx-theme.css`) when `data-theme` changes, which keeps zoom, selection and searches. The same stylesheet maps the viewer's `--p-*` custom properties and the canvas background to DXKB tokens.
+- Control panel: `ArchaeopteryxPhylogeny` launches it collapsed to its header bar when the tree host is 640px wide or less. It measures the host, not the viewport, because the leaf-details side panel can take up to 60% of a wide screen. When a resize takes the host across that width, `setViewerControlsCollapsed` clicks the viewer's own hide/show button. Narrowing folds the panel. Widening reopens it only if narrowing folded it, so a panel the user opened or closed in between stays as they left it.
 - No local patch is applied. The retired `archaeopteryx@2.3.2` patch escaped tooltip, dialog, option and checkbox HTML; namespaced and removed its page listeners; added `destroy()` and `setTheme()`; and awaited canvg for PNG export. 3.x does all of that itself except the checkbox escaping and the theme API, which `collectNodeLabels` and the theme helpers above replace. phyloxml 1.1.0 likewise ships the `require('sax')` fix the retired `phyloxml@1.0.0` patch carried.
 
 ## Deployment
@@ -36,7 +37,7 @@ Keep the visible "Powered by Nextstrain" attribution and the configured CARTO/Op
 
 ## References
 
-- `src/lib/phylogeny/archaeopteryx.ts`: Archaeopteryx loader, launch config and theme sync
+- `src/lib/phylogeny/archaeopteryx.ts`: Archaeopteryx loader, launch config, theme sync and control-panel collapse
 - `src/lib/phylogeny/dataset-inventory.ts`: shared renderability policy
 - `src/lib/phylogeny/dataset-store.ts`: runtime inventory cache and exact reads
 - `scripts/check-nextstrain-datasets.ts`: deployment reconciliation

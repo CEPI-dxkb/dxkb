@@ -180,6 +180,25 @@ test.describe("Archaeopteryx phylogeny viewer", () => {
     await expectFitted();
   });
 
+  test("draws the whole tree inside a frame shorter than the old 640px minimum", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 600 });
+    const tree = await openPhylogeny(page);
+
+    const frame = await box(tree.frame);
+    expect(frame.height).toBeLessThan(640);
+    const frameBottom = frame.y + frame.height;
+    const host = await box(tree.host);
+    const svg = await box(tree.svg);
+    expect(host.y + host.height).toBeLessThanOrEqual(frameBottom + 1);
+    expect(Math.abs(svg.height - frame.height)).toBeLessThanOrEqual(1);
+    for (const leaf of ["Leaf A", "Leaf B"]) {
+      const node = await box(tree.node(leaf));
+      expect(node.y + node.height).toBeLessThanOrEqual(frameBottom);
+    }
+  });
+
   test("downloads the tree as PNG, PDF and SVG", async ({ page }) => {
     const tree = await openPhylogeny(page);
 

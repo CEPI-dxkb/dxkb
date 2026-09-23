@@ -8,15 +8,17 @@ import {
   loadArchaeopteryx,
   mountArchaeopteryx,
   seedViewerTheme,
+  setViewerControlsCollapsed,
   syncViewerTheme,
   type ArchaeopteryxNode,
 } from "@/lib/phylogeny/archaeopteryx";
 
 import { ArchaeopteryxLoading } from "./archaeopteryx-loading";
 
-// Below this width the floating control panel would cover most of the tree, so
-// it opens collapsed to its header bar.
-const collapsedControlsQuery = "(max-width: 640px)";
+// In a host this narrow the floating control panel would cover most of the
+// tree, so it is kept collapsed to its header bar. The host, not the viewport,
+// is measured: the side panel can take most of a wide screen.
+const collapsedControlsWidth = 640;
 
 function subscribeSelectionChange(listener: () => void): () => void {
   document.addEventListener("selected_nodes_changed_event", listener);
@@ -56,11 +58,29 @@ export function ArchaeopteryxPhylogeny({
     let getSelectedNodes: () => ArchaeopteryxNode[] = () => [];
     let resizeFrame: number | null = null;
     let removeSelectionListener: () => void = () => undefined;
+    const isNarrowHost = () => host.clientWidth <= collapsedControlsWidth;
+    let narrowHost = false;
+    let controlsCollapsedForWidth = false;
+    // Only crossing the threshold moves the controls, and widening reopens
+    // them only if narrowing folded them, so a choice the user makes in
+    // between stands.
+    const fitControlsToHost = () => {
+      const narrow = isNarrowHost();
+      if (narrow === narrowHost) return;
+      narrowHost = narrow;
+      if (narrow) {
+        controlsCollapsedForWidth = setViewerControlsCollapsed(host, true);
+      } else if (controlsCollapsedForWidth) {
+        controlsCollapsedForWidth = false;
+        setViewerControlsCollapsed(host, false);
+      }
+    };
     // Archaeopteryx follows window resizes only; the host also resizes when
     // the side panel opens or its separator is dragged.
     const resizeObserver = new ResizeObserver(() => {
       if (resizeFrame !== null) cancelAnimationFrame(resizeFrame);
       resizeFrame = requestAnimationFrame(() => {
+        fitControlsToHost();
         window.dispatchEvent(new Event("resize"));
       });
     });
@@ -82,9 +102,11 @@ export function ArchaeopteryxPhylogeny({
       if (isCancelled()) return;
 
       const tree = archaeopteryx.parsePhyloXML(xml);
+      narrowHost = isNarrowHost();
+      controlsCollapsedForWidth = narrowHost;
       const config = createViewerConfig(tree, {
         selectable,
-        collapseControlPanel: window.matchMedia(collapsedControlsQuery).matches,
+        collapseControlPanel: narrowHost,
       });
       seedViewerTheme(documentViewerTheme());
       const viewer = mountArchaeopteryx(archaeopteryx, host, tree, config);
@@ -164,9 +186,12 @@ export function ArchaeopteryxPhylogeny({
           <ArchaeopteryxLoading />
         </div>
       )}
+      {/* No minimum height: Archaeopteryx sizes its canvas to this box, and
+          the page region around it never scrolls, so any extra height is cut
+          off. A short frame gets a short canvas the viewer pans and zooms. */}
       <div
         ref={hostRef}
-        className="size-full min-h-160 min-w-0"
+        className="size-full min-w-0"
         role="group"
         aria-label={`Interactive phylogenetic tree for ${title}`}
       />

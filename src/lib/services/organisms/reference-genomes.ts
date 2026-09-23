@@ -1,9 +1,9 @@
 import type { OrganismFetchOptions } from "./types";
 import {
+  fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
-  organismBvBrcRevalidateSeconds,
-  organismFetchCacheInit,
   responseErrorMessage,
+  throwOrganismFetchError,
 } from "./utils";
 
 export interface ReferenceGenome {
@@ -26,17 +26,18 @@ export async function fetchReferenceGenomes(
     `json(nl,map)`,
   ].join("&");
 
-  const response = await fetch(`${baseUrl}/genome/?${query}`, {
+  const response = await fetchOrganism(`${baseUrl}/genome/?${query}`, "reference-genomes", {
     headers: { Accept: "application/json" },
     signal: options.signal,
-    ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
   });
 
   if (!response.ok) {
     throw new Error(await responseErrorMessage(response));
   }
 
-  const payload = (await response.json()) as unknown;
+  const payload = (await response.json().catch((error: unknown) =>
+    throwOrganismFetchError(error, "reference-genomes"),
+  )) as unknown;
 
   if (!Array.isArray(payload)) {
     throw new Error("reference-genomes: unexpected response shape: expected array");

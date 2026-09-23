@@ -1,9 +1,8 @@
 import type { OrganismFetchOptions, OrganismGenusFacet } from "./types";
 import {
   buildGenomeFacetUrl,
+  fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
-  organismFetchCacheInit,
-  organismBvBrcRevalidateSeconds,
   parseSolrFacetList,
   readJsonObject,
   responseErrorMessage,
@@ -15,11 +14,10 @@ export async function fetchOrganismGenera(
   options: OrganismFetchOptions = {},
 ): Promise<OrganismGenusFacet[]> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const response = await fetch(buildGenomeFacetUrl(baseUrl, taxonId, "genus", limit), {
+  const response = await fetchOrganism(buildGenomeFacetUrl(baseUrl, taxonId, "genus", limit), "genome genus facet", {
     method: "GET",
     headers: { Accept: "application/solr+json" },
     signal: options.signal,
-    ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
   });
 
   if (!response.ok) {

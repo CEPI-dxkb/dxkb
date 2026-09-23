@@ -1,9 +1,8 @@
 import type { OrganismFetchOptions, OrganismTaxonomy } from "./types";
 import {
+  fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
   numberOrNull,
-  organismFetchCacheInit,
-  organismBvBrcRevalidateSeconds,
   readJsonObject,
   requiredNumber,
   requiredString,
@@ -44,11 +43,10 @@ export async function fetchOrganismTaxonomy(
   options: OrganismFetchOptions = {},
 ): Promise<OrganismTaxonomy> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const response = await fetch(`${baseUrl}/taxonomy/${String(taxonId)}`, {
+  const response = await fetchOrganism(`${baseUrl}/taxonomy/${String(taxonId)}`, `taxonomy/${String(taxonId)}`, {
     method: "GET",
     headers: { Accept: "application/json" },
     signal: options.signal,
-    ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
   });
 
   if (response.status === 404) {

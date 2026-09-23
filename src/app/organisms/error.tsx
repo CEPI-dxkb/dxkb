@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 
-export default function OrganismsError({ error, reset }: OrganismsErrorProps) {
+export default function OrganismsError({ error, retry }: OrganismsErrorProps) {
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -16,7 +16,7 @@ export default function OrganismsError({ error, reset }: OrganismsErrorProps) {
       <p className="max-w-xl text-muted-foreground">
         We could not load the taxonomy data needed for this page. Please try again.
       </p>
-      <Button type="button" onClick={reset}>Try again</Button>
+      <Button type="button" onClick={retry}>Try again</Button>
     </section>
   );
 }
@@ -24,4 +24,7 @@ export default function OrganismsError({ error, reset }: OrganismsErrorProps) {
 interface OrganismsErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
+  // Refreshes the route and then resets. reset() alone re-renders the same
+  // failed server payload, so the button could never recover.
+  retry: () => void;
 }

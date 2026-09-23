@@ -1,9 +1,8 @@
 import type { OrganismFetchOptions, OrganismSummary } from "./types";
 import {
+  fetchOrganism,
   getBvBrcWebsiteApiBaseUrl,
   numberOrNull,
-  organismFetchCacheInit,
-  organismBvBrcRevalidateSeconds,
   readJsonObject,
   responseErrorMessage,
 } from "./utils";
@@ -13,11 +12,10 @@ export async function fetchOrganismSummary(
   options: OrganismFetchOptions = {},
 ): Promise<OrganismSummary> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
-  const response = await fetch(`${baseUrl}/data/summary_by_taxon/${String(taxonId)}`, {
+  const response = await fetchOrganism(`${baseUrl}/data/summary_by_taxon/${String(taxonId)}`, "summary_by_taxon", {
     method: "GET",
     headers: { Accept: "application/json" },
     signal: options.signal,
-    ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
   });
 
   if (!response.ok) {

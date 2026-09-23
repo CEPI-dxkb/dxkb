@@ -4,6 +4,14 @@ export const numberFormatter = new Intl.NumberFormat("en-US");
 
 export const organismBvBrcRevalidateSeconds = 86400;
 
+// These calls sit on the server render path, so an upstream that never
+// answers would hang the page instead of reaching its error surface. The
+// budget only needs to stop true hangs: BV-BRC's own gateway answers 500 after
+// ~20 s, and slow-but-good responses of 5–15 s occur. A timed-out response is
+// never cached, so a budget below that range would keep a slow endpoint
+// failing for every visitor instead of letting one slow success fill the cache.
+export const organismFetchTimeoutMs = 30_000;
+
 export function organismFetchCacheInit(
   revalidateSeconds: number,
 ): { cache: "no-store" } | { next: { revalidate: number } } {
@@ -22,21 +30,62 @@ export async function responseErrorMessage(response: Response): Promise<string> 
   return body.trim() || `${String(response.status)} ${response.statusText}`.trim();
 }
 
+// Matched by name rather than instanceof: the DOMException an abort produces
+// can come from another realm (jsdom in tests), where instanceof Error fails.
+function errorName(error: unknown): unknown {
+  return typeof error === "object" && error !== null && "name" in error ? error.name : undefined;
+}
+
+/**
+ * Rethrows a failed organism request. A timeout is reworded to name the
+ * endpoint and the budget (the platform message is only "The operation was
+ * aborted due to timeout"); anything else is rethrown untouched.
+ */
+export function throwOrganismFetchError(error: unknown, source: string): never {
+  if (errorName(error) === "TimeoutError") {
+    throw new Error(
+      `${source}: upstream did not respond within ${String(organismFetchTimeoutMs)}ms`,
+    );
+  }
+  throw error;
+}
+
+/**
+ * fetch() for BV-BRC organism endpoints. Applies the shared cache policy and
+ * bounds the request with organismFetchTimeoutMs, composed with any caller
+ * signal so caller cancellation keeps working.
+ */
+export async function fetchOrganism(
+  url: string,
+  source: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const timeout = AbortSignal.timeout(organismFetchTimeoutMs);
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
+      ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
+    });
+  } catch (error) {
+    throwOrganismFetchError(error, source);
+  }
+}
+
 /**
  * Standard SOLR/BV-BRC fetch wrapper. Centralizes Accept header, cache init,
- * error message extraction, and JSON-object validation so callers can stay
- * focused on URL construction and payload parsing.
+ * timeout, error message extraction, and JSON-object validation so callers
+ * can stay focused on URL construction and payload parsing.
  */
 export async function fetchOrganismSolrJson(
   url: string,
   source: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(url, {
+  const response = await fetchOrganism(url, source, {
     method: "GET",
     headers: { Accept: "application/solr+json" },
     signal,
-    ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
   });
   if (!response.ok) {
     throw new Error(`${source}: ${await responseErrorMessage(response)}`);
@@ -54,7 +103,7 @@ export async function fetchOrganismSolrJsonPost(
   source: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  const response = await fetch(url, {
+  const response = await fetchOrganism(url, source, {
     method: "POST",
     headers: {
       Accept: "application/solr+json",
@@ -62,7 +111,6 @@ export async function fetchOrganismSolrJsonPost(
     },
     body,
     signal,
-    ...organismFetchCacheInit(organismBvBrcRevalidateSeconds),
   });
   if (!response.ok) {
     throw new Error(`${source}: ${await responseErrorMessage(response)}`);
@@ -72,6 +120,12 @@ export async function fetchOrganismSolrJsonPost(
 
 export async function readJsonObject(response: Response, source: string): Promise<Record<string, unknown>> {
   const payload = (await response.json().catch((error: unknown) => {
+    // An abort while the body streams is a timeout or cancellation, not a
+    // malformed payload.
+    const name = errorName(error);
+    if (name === "TimeoutError" || name === "AbortError") {
+      throwOrganismFetchError(error, source);
+    }
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`${source}: malformed JSON response: ${message}`);
   })) as unknown;

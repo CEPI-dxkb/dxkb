@@ -1,12 +1,3 @@
-import "jquery-ui/themes/base/core.css";
-import "jquery-ui/themes/base/button.css";
-import "jquery-ui/themes/base/checkboxradio.css";
-import "jquery-ui/themes/base/controlgroup.css";
-import "jquery-ui/themes/base/dialog.css";
-import "jquery-ui/themes/base/draggable.css";
-import "jquery-ui/themes/base/resizable.css";
-import "jquery-ui/themes/base/slider.css";
-import "jquery-ui/themes/base/theme.css";
 import "@/styles/archaeopteryx-theme.css";
 
 import { BacterialPhylogenyPanel } from "@/components/phylogeny/bacterial-phylogeny-panel";

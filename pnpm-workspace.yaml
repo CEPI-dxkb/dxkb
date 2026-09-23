@@ -1,6 +1,8 @@
 packages:
   - .
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - archaeopteryx@3.12.0
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - "@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1"
@@ -8,12 +10,6 @@ trustPolicyExclude:
   - "semver@6.3.1"
   - "undici-types@6.21.0"
 overrides:
-  jquery: 3.7.1
-  jquery-ui: 1.13.3
-  archaeopteryx@2.3.2>Blob.js: "-"
-  archaeopteryx@2.3.2>canvas-toBlob.js: "-"
-  archaeopteryx@2.3.2>file-saver: 2.0.5
-  archaeopteryx@2.3.2>canvg: 3.0.11
   webpack-bundle-analyzer@3.9.0>ejs: 3.1.10
   request@2.88.2>form-data: 2.5.6
   compression-webpack-plugin@3.1.0>serialize-javascript: 7.1.0
@@ -21,7 +17,6 @@ overrides:
   auspice@2.73.2>dompurify: 3.4.13
   auspice@2.73.2>webpack-dev-middleware: 5.3.4
   react-tooltip@4.5.1>uuid: 11.1.1
-  phyloxml@1.0.0>sax: 1.6.1
 allowBuilds:
   "@parcel/watcher": true
   "@prisma/engines": true
@@ -35,7 +30,5 @@ allowBuilds:
   styled-components: false
   unrs-resolver: true
 patchedDependencies:
-  archaeopteryx@2.3.2: patches/archaeopteryx@2.3.2.patch
   auspice@2.73.2: patches/auspice@2.73.2.patch
   molstar: patches/molstar.patch
-  phyloxml@1.0.0: patches/phyloxml@1.0.0.patch

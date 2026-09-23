@@ -17,3 +17,4 @@ export { DomainsAndMotifsPage } from "./domains-and-motifs-page";
 export { ProteinStructurePage } from "./protein-structure-page";
 export { TaxonomyCollectionPage } from "./taxonomy-collection-page";
 export { LegacySearchPage } from "./legacy-search-page";
+export { ArchaeopteryxPage } from "./archaeopteryx-page";

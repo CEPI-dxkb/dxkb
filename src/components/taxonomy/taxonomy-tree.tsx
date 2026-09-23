@@ -99,6 +99,19 @@ function resolveUpdater<T>(updater: Updater<T>, current: T): T {
     : updater;
 }
 
+/**
+ * A new array of the roots, for the table's `data`. TanStack Table rebuilds
+ * its rows only when `data` changes identity, so the other values the rows
+ * depend on are passed too: a memo over this call then yields a new array
+ * whenever one of them changes. Nothing reads them.
+ */
+function tableDataFor(
+  roots: readonly TaxonRecord[],
+  ..._rowInputs: unknown[]
+): TaxonRecord[] {
+  return [...roots];
+}
+
 function usePersistedExpansion(
   expandedIds: number[],
   rootIds: number[],
@@ -254,8 +267,11 @@ function TaxonomyTreeInstance({
     commitSelection(toggleSelected(selection.selected, row.id));
   }
 
+  // getSubRows and getRowCanExpand read loaded children and child counts from
+  // outside `data`, and the compiled row views skip a row whose object is
+  // unchanged, so either changing has to rebuild the rows.
   const tableData = useMemo(
-    () => [...rootRecords],
+    () => tableDataFor(rootRecords, queryState.version, knownChildCounts),
     [rootRecords, queryState.version, knownChildCounts],
   );
 

@@ -67,7 +67,7 @@ empty one.
 | `gate.ts` | Block/warn classifier — single source of truth for severity rules |
 | `baseline.ts` + `baseline.generated.ts` | Per-route baseline suppression (ticketed, maxNodes) |
 | `axe-scan.ts` | AxeBuilder factory: tag set, vendor exclusions, formatters |
-| `settle.ts` | `awaitSettled()` — networkidle + fonts.ready + zero-skeleton |
+| `settle.ts` | `awaitSettled()` — networkidle + fonts.ready + zero-skeleton + resizable panel layout committed |
 | `theme.ts` | `forEachTheme()` — light/dark in-test loop |
 | `routes.ts` | Route entry types + the route table, plus the `coveredPageFiles` and `scanTargets` views derived from it |
 | `scan-keys.ts` | The set of valid baseline/`reflowSkip` keys + the stale-key guard `coverage.meta.spec.ts` runs |
@@ -120,7 +120,9 @@ exported from that same table.
 - **`redirectOnly: true`** for a path that always redirects: counted for accounting,
   never scanned. Its redirect target needs its own entry.
 - **`settle`** owns *generic* readiness — load state, `document.fonts.ready`,
-  skeleton detach. `awaitSettled()` already awaits `loadState ?? "networkidle"`
+  skeleton detach, and (by default, via `awaitPanelLayout`) every resizable panel
+  group having committed its client-side layout, without which a resize handle is
+  scanned with no `aria-valuenow`. `awaitSettled()` already awaits `loadState ?? "networkidle"`
   before any hook runs, so never put `waitForLoadState("networkidle")` in a hook.
   Use `loadState: "domcontentloaded"` on pages whose rolling RSC prefetch means
   networkidle is never reached. `skeletonSelector` is available for the case where

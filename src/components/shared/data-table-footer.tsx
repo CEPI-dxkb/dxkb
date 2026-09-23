@@ -70,7 +70,7 @@ export function DataTableFooter({
   const uniquePages = getVisiblePages(pageIndex, table.getPageCount());
 
   return (
-    <div className="border-border bg-muted z-10 w-full border-t py-1 shadow-sm">
+    <div className="z-10 w-full border-t border-border bg-muted py-1 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-y-1 px-2">
         <div className="shrink-0 text-xs">
           <div className="flex flex-col">
@@ -96,7 +96,7 @@ export function DataTableFooter({
             }}
             disabled={!table.getCanPreviousPage()}
             aria-label="Previous page"
-            className="border-border border px-2 py-0.5 disabled:opacity-50"
+            className="border border-border px-2 py-0.5 disabled:opacity-50"
           >
             {"Prev"}
           </Button>
@@ -112,7 +112,7 @@ export function DataTableFooter({
                     table.setPageIndex(page);
                   }}
                   className={clsx(
-                    "bg-background text-foreground border px-2 py-0.5",
+                    "border bg-background px-2 py-0.5 text-foreground",
                     pageIndex === page
                       ? "bg-primary/15 font-bold"
                       : "bg-background",
@@ -130,7 +130,7 @@ export function DataTableFooter({
             }}
             disabled={!table.getCanNextPage()}
             aria-label="Next page"
-            className="border-border border px-2 py-0.5 disabled:opacity-50"
+            className="border border-border px-2 py-0.5 disabled:opacity-50"
           >
             {"Next"}
           </Button>

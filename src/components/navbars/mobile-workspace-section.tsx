@@ -91,8 +91,8 @@ export function MobileWorkspaceSection({
       )}
 
       {!isAuthenticated && (
-        <div className="border-secondary/20 from-secondary/5 to-accent/5 mt-4 rounded-xl border bg-linear-to-br p-4">
-          <p className="text-foreground/80 mb-3 text-sm font-medium">
+        <div className="mt-4 rounded-xl border border-secondary/20 bg-linear-to-br from-secondary/5 to-accent/5 p-4">
+          <p className="mb-3 text-sm font-medium text-foreground/80">
             Sign in to access your full workspace.
           </p>
           <Link

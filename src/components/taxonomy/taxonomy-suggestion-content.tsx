@@ -23,21 +23,21 @@ export function TaxonomySuggestionContent({
   onSelect,
 }: TaxonomySuggestionContentProps) {
   if (error) {
-    return <div className="text-destructive p-4 text-sm">Error: {error}</div>;
+    return <div className="p-4 text-sm text-destructive">Error: {error}</div>;
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-4">
         <Loader2Icon className="mr-2 size-4 animate-spin" />
-        <span className="text-muted-foreground text-sm">Searching...</span>
+        <span className="text-sm text-muted-foreground">Searching...</span>
       </div>
     );
   }
 
   if (results.length === 0) {
     return (
-      <p className="text-muted-foreground py-4 text-center text-sm">
+      <p className="py-4 text-center text-sm text-muted-foreground">
         {emptyMessage}
       </p>
     );
@@ -47,7 +47,7 @@ export function TaxonomySuggestionContent({
     <button
       type="button"
       key={item.taxon_id}
-      className="hover:bg-accent flex w-full cursor-pointer items-center justify-between p-2 text-left"
+      className="flex w-full cursor-pointer items-center justify-between p-2 text-left hover:bg-accent"
       onClick={() => {
         onSelect(item);
       }}
@@ -57,7 +57,7 @@ export function TaxonomySuggestionContent({
           {renderPrimary(item)}
         </span>
         {renderSecondary && (
-          <span className="text-muted-foreground block truncate text-xs">
+          <span className="block truncate text-xs text-muted-foreground">
             {renderSecondary(item)}
           </span>
         )}

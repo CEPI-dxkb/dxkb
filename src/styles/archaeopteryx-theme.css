@@ -1,362 +1,64 @@
-.archaeopteryx-dxkb {
-  color: var(--foreground);
+/*
+ * Archaeopteryx 3 injects its own panel, menu, dialog and tooltip styles from
+ * CSS custom properties, one light and one dark set, chosen by an aptx-light /
+ * aptx-dark class that syncViewerTheme keeps in step with data-theme. These
+ * rules map those properties to the DXKB theme tokens. The :is(.aptx-light,
+ * .aptx-dark) qualifier lifts them above the injected rules, which are added
+ * to the document after this stylesheet.
+ */
+:root
+  :is(
+    .aptx-panel,
+    .aptx-node-menu,
+    .aptx-suggest,
+    .aptx-dialog,
+    .aptx-busy,
+    .aptx-msa-nav,
+    .aptx-tip
+  ):is(.aptx-light, .aptx-dark) {
+  --p-bg: color-mix(in oklab, var(--popover) 90%, transparent);
+  --p-ink: var(--popover-foreground);
+  --p-muted: var(--muted-foreground);
+  --p-faint: color-mix(in oklab, var(--muted-foreground) 70%, var(--popover));
+  --p-line: var(--border);
+  --p-line-strong: color-mix(in oklab, var(--foreground) 16%, transparent);
+  --p-surface: var(--popover);
+  --p-surface2: color-mix(in oklab, var(--muted) 55%, var(--popover));
+  --p-accent: var(--primary);
+  --p-accent-ink: var(--primary);
+  --p-accent-weak: color-mix(in oklab, var(--primary) 14%, transparent);
   font-family: var(--font-geist-sans), sans-serif;
 }
 
-.archaeopteryx-dxkb > [role="img"] > svg {
-  height: 100%;
+:root
+  :is(.aptx-dialog, .aptx-node-menu, .aptx-suggest):is(
+    .aptx-light,
+    .aptx-dark
+  ) {
+  --p-bg: var(--popover);
 }
 
-/* Node-label fill is controlled by Archaeopteryx so label-color visualizations work. */
-.archaeopteryx-dxkb > [role="img"] > svg :is(text.bllabel, text.conflabel) {
-  fill: var(--foreground);
+/* DXKB's primary is too dark to read as text on the dark palette. */
+:root
+  :is(
+    .aptx-panel,
+    .aptx-node-menu,
+    .aptx-suggest,
+    .aptx-dialog,
+    .aptx-busy,
+    .aptx-msa-nav,
+    .aptx-tip
+  ).aptx-dark {
+  --p-accent-ink: color-mix(in oklab, var(--primary) 50%, var(--foreground));
+  --p-accent-weak: color-mix(in oklab, var(--primary) 32%, transparent);
 }
 
-.archaeopteryx-dxkb
-  > [role="img"]
-  > svg
-  :is(text.legend, text.legendLabel, text.legendDescription) {
-  fill: var(--foreground);
+/* The canvas background is painted inline; the export keeps its own white. */
+.archaeopteryx-dxkb :is(rect.basebackground, rect.aptx-overview-bg) {
+  fill: color-mix(in oklab, var(--input) 30%, var(--card)) !important;
 }
 
-.archaeopteryx-dxkb > [id$="-controls-primary"],
-.archaeopteryx-dxkb > [id$="-controls-secondary"] {
-  z-index: 2;
-  max-height: calc(100% - 1.25rem);
-  overflow: auto;
-  padding: 0.75rem !important;
-  border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  background: color-mix(in oklab, var(--background) 94%, transparent);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
-  opacity: 1 !important;
-}
-
-.archaeopteryx-dxkb > [id$="-controls-primary"] {
-  left: 10px !important;
-  min-width: 10rem;
-}
-
-.archaeopteryx-dxkb > [id$="-controls-secondary"] {
-  right: 0.75rem;
-  left: auto !important;
-  min-width: 12rem;
-}
-
-/* Below this width the primary+secondary min-widths would eat the whole host, hiding
-   the tree; stack them under the canvas instead of floating them over it. Breakpoint
-   is mirrored in archaeopteryx-phylogeny.tsx (stackedControlsQuery). */
-@media (max-width: 640px) {
-  .archaeopteryx-dxkb > [role="img"] {
-    width: 100% !important;
-  }
-
-  .archaeopteryx-dxkb > [id$="-controls-primary"],
-  .archaeopteryx-dxkb > [id$="-controls-secondary"] {
-    position: static !important;
-    width: 100%;
-    min-width: 0;
-    max-height: none !important;
-    margin-top: 0.5rem;
-  }
-}
-
-.archaeopteryx-dxkb .ui-widget,
-.archaeopteryx-dxkb .ui-widget input,
-.archaeopteryx-dxkb .ui-widget select,
-.archaeopteryx-dxkb .ui-widget button {
-  font-family: var(--font-geist-sans), sans-serif;
-}
-
-.archaeopteryx-dxkb fieldset {
-  margin: 0 0 0.5rem;
-  padding: 0;
-  border: none;
-}
-
-.archaeopteryx-dxkb legend {
-  padding: 0;
-  color: var(--muted-foreground);
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.archaeopteryx-dxkb .ui-button,
-.archaeopteryx-dxkb .ui-state-default,
-.archaeopteryx-dxkb .ui-widget-content .ui-state-default {
-  border-color: var(--border);
-  background: var(--background);
-  color: var(--foreground);
-}
-
-.archaeopteryx-dxkb .ui-button:hover,
-.archaeopteryx-dxkb .ui-state-hover,
-.archaeopteryx-dxkb .ui-state-active {
-  border-color: var(--ring);
-  background: var(--accent);
-  color: var(--accent-foreground);
-}
-
-.archaeopteryx-dxkb .ui-state-focus {
-  border-color: var(--ring);
-}
-
-.archaeopteryx-dxkb .ui-button[disabled],
-.archaeopteryx-dxkb .ui-state-disabled {
-  opacity: 1;
-  color: var(--muted-foreground) !important;
-  background: var(--muted) !important;
-}
-
-.archaeopteryx-dxkb .ui-corner-all {
-  border-radius: var(--radius-sm);
-}
-
-.archaeopteryx-dxkb .ui-corner-left,
-.archaeopteryx-dxkb .ui-corner-tl {
-  border-top-left-radius: var(--radius-sm);
-}
-
-.archaeopteryx-dxkb .ui-corner-left,
-.archaeopteryx-dxkb .ui-corner-bl {
-  border-bottom-left-radius: var(--radius-sm);
-}
-
-.archaeopteryx-dxkb .ui-corner-right,
-.archaeopteryx-dxkb .ui-corner-tr {
-  border-top-right-radius: var(--radius-sm);
-}
-
-.archaeopteryx-dxkb .ui-corner-right,
-.archaeopteryx-dxkb .ui-corner-br {
-  border-bottom-right-radius: var(--radius-sm);
-}
-
-.archaeopteryx-dxkb .ui-controlgroup .ui-controlgroup-item {
-  border-color: var(--border);
-}
-
-.archaeopteryx-dxkb select {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--background);
-  color: var(--foreground);
-}
-
-.archaeopteryx-dxkb input[type="text"] {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--background);
-  color: var(--foreground);
-}
-
-.archaeopteryx-dxkb input[type="button"],
-.archaeopteryx-dxkb input[type="text"],
-.archaeopteryx-dxkb select {
-  height: 1.55rem !important;
-  box-sizing: border-box;
-}
-
-.archaeopteryx-dxkb fieldset:has(#nn_cb) > div {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px;
-}
-
-.archaeopteryx-dxkb fieldset:has(#nn_cb) br {
+/* The site header owns light/dark; the viewer's own switch would drift from it. */
+.archaeopteryx-dxkb .aptx-panel .aptx-theme-btn {
   display: none;
-}
-
-.archaeopteryx-dxkb fieldset:has(#nn_cb) .ui-checkboxradio-label {
-  width: auto !important;
-  min-width: 0;
-  overflow: hidden;
-  text-align: center !important;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.archaeopteryx-dxkb
-  fieldset:has(#nn_cb)
-  .ui-checkboxradio-label:not(.ui-state-active) {
-  background: var(--background);
-  color: var(--foreground);
-}
-
-.archaeopteryx-dxkb fieldset:has(#zoomout_y) input[type="button"] {
-  padding: 0 0.5rem;
-  line-height: 1.55rem;
-  vertical-align: middle;
-}
-
-.archaeopteryx-dxkb #zoomout_y,
-.archaeopteryx-dxkb #zoomin_y {
-  width: 100% !important;
-  margin: 1px 0 !important;
-}
-
-.archaeopteryx-dxkb #zoomout_x,
-.archaeopteryx-dxkb #zoomtofit,
-.archaeopteryx-dxkb #zoomtoexpandy,
-.archaeopteryx-dxkb #zoomin_x {
-  width: calc((100% - 6px) / 4) !important;
-  margin: 1px 2px 1px 0 !important;
-}
-
-.archaeopteryx-dxkb #zoomin_x {
-  margin-right: 0 !important;
-}
-
-.archaeopteryx-dxkb fieldset:has(#ord_b) > div {
-  display: flex;
-  width: 100%;
-}
-
-.archaeopteryx-dxkb fieldset:has(#ord_b) input[type="button"] {
-  flex: 1;
-  width: auto !important;
-  border-radius: 0;
-}
-
-.archaeopteryx-dxkb fieldset:has(#ord_b) input[type="button"]:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.archaeopteryx-dxkb fieldset:has(#ord_b) input[type="button"]:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.archaeopteryx-dxkb fieldset:has(#sf0) input[type="text"] {
-  width: calc(100% - 2rem - 2px) !important;
-  margin: 1px 2px 1px 0;
-  box-sizing: border-box;
-  vertical-align: middle;
-}
-
-.archaeopteryx-dxkb #reset_s_a,
-.archaeopteryx-dxkb #reset_s_b {
-  width: 2rem !important;
-  vertical-align: middle;
-}
-
-.archaeopteryx-dxkb .search_opts_g {
-  margin-top: 1px;
-}
-
-.archaeopteryx-dxkb fieldset:has(#depth_col_label) {
-  display: grid;
-  grid-template-columns: 2rem minmax(0, 1fr) 2rem;
-}
-
-.archaeopteryx-dxkb fieldset:has(#depth_col_label) legend {
-  grid-column: 1 / -1;
-}
-
-.archaeopteryx-dxkb #depth_col_label {
-  width: 100% !important;
-  min-width: 0;
-  color: var(--muted-foreground) !important;
-  -webkit-text-fill-color: var(--muted-foreground);
-  opacity: 1;
-}
-
-.archaeopteryx-dxkb #decr_dcl,
-.archaeopteryx-dxkb #incr_dcl {
-  width: 2rem !important;
-}
-
-.archaeopteryx-dxkb fieldset:has(#legends_show) {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 2px;
-}
-
-.archaeopteryx-dxkb fieldset:has(#legends_show) legend {
-  grid-column: 1 / -1;
-}
-
-.archaeopteryx-dxkb fieldset:has(#legends_show) br {
-  display: none;
-}
-
-.archaeopteryx-dxkb fieldset:has(#legends_show) input {
-  width: 100% !important;
-}
-
-.archaeopteryx-dxkb #legends_show {
-  grid-column: 1 / 4;
-}
-
-.archaeopteryx-dxkb #legends_horizvert {
-  grid-column: 4 / 7;
-}
-
-.archaeopteryx-dxkb #legends_mup,
-.archaeopteryx-dxkb #legends_mdown {
-  grid-column: 1 / -1;
-}
-
-.archaeopteryx-dxkb #legends_mleft {
-  grid-column: 1 / 3;
-}
-
-.archaeopteryx-dxkb #legends_rest {
-  grid-column: 3 / 5;
-}
-
-.archaeopteryx-dxkb #legends_mright {
-  grid-column: 5 / 7;
-}
-
-.archaeopteryx-dxkb fieldset:has(#legends_show) .ui-button[disabled],
-.archaeopteryx-dxkb fieldset:has(#legends_show) .ui-state-disabled {
-  border-color: var(--border);
-  background: var(--background) !important;
-  color: var(--foreground) !important;
-}
-
-.archaeopteryx-dxkb fieldset:has(#dl_b) {
-  display: flex;
-}
-
-.archaeopteryx-dxkb #dl_b {
-  width: 50% !important;
-  margin: 0 !important;
-}
-
-.archaeopteryx-dxkb #exp_f_sel {
-  width: 50%;
-  padding-inline: 0.5rem 1.5rem;
-}
-
-.archaeopteryx-dxkb #exp_f_sel option {
-  padding-inline: 0.5rem;
-}
-
-.archaeopteryx-dxkb .ui-slider {
-  margin: 0.25rem 0 0.65rem;
-  border-color: var(--border);
-  background: var(--muted);
-}
-
-.archaeopteryx-dxkb .ui-slider-range {
-  background: var(--primary);
-}
-
-.archaeopteryx-dxkb .ui-slider-handle {
-  border-color: var(--primary) !important;
-  background: var(--primary) !important;
-}
-
-/* Archaeopteryx appends this tooltip to document.body, outside the scoped host. */
-.node_mouseover_tooltip {
-  z-index: 100;
-  background: var(--popover) !important;
-  border-color: var(--border) !important;
-  border-radius: var(--radius-sm) !important;
-  color: var(--popover-foreground) !important;
-  font-family: var(--font-geist-sans), sans-serif;
 }

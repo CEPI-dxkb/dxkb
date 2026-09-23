@@ -58,7 +58,7 @@ export function WorkspaceMiniBrowserTable({
       role="region"
       tabIndex={0}
       aria-label="Workspace destination browser"
-      className="scrollbar-themed focus-visible:ring-ring flex h-full min-h-0 min-w-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2"
+      className="scrollbar-themed flex h-full min-h-0 min-w-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onKeyDown={onKeyDown}
       onPointerDownCapture={() => containerRef.current?.focus()}
     >
@@ -76,15 +76,15 @@ export function WorkspaceMiniBrowserTable({
             <TableRow
               data-row-key="parent"
               className={cn(
-                "hover:bg-muted/50 cursor-pointer",
+                "cursor-pointer hover:bg-muted/50",
                 focusedRow === "parent" && "bg-muted",
               )}
               onClick={onParentClick}
             >
               <TableCell className="pl-3" colSpan={4}>
                 <div className="flex items-center gap-2">
-                  <FolderUp className="text-muted-foreground size-4 shrink-0" />
-                  <span className="text-muted-foreground text-sm">
+                  <FolderUp className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
                     {parentRowLabel}
                   </span>
                 </div>
@@ -113,7 +113,7 @@ export function WorkspaceMiniBrowserTable({
             ))
           ) : error ? (
             <TableRow>
-              <TableCell className="text-destructive pl-3" colSpan={4}>
+              <TableCell className="pl-3 text-destructive" colSpan={4}>
                 Failed to load folder contents.
               </TableCell>
             </TableRow>
@@ -127,7 +127,7 @@ export function WorkspaceMiniBrowserTable({
                   key={item.id}
                   data-row-key={normalizePath(item.path)}
                   className={cn(
-                    "hover:bg-muted/50 cursor-pointer",
+                    "cursor-pointer hover:bg-muted/50",
                     isFolderType(item.type) &&
                       isSelected &&
                       focusedRow !== "parent" &&

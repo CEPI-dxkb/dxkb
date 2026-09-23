@@ -209,7 +209,7 @@ function SelectionToGroupForm({
               {groupName.length > 0 && groupNameError ? (
                 <p
                   id="selection-group-name-error"
-                  className="text-destructive text-xs"
+                  className="text-xs text-destructive"
                 >
                   {groupNameError}
                 </p>

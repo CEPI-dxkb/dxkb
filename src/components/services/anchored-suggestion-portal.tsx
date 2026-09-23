@@ -85,7 +85,7 @@ export function AnchoredSuggestionPortal({
   return createPortal(
     <div
       ref={dropdownRef}
-      className="scrollbar-thumb-muted-foreground/20 bg-popover hover:scrollbar-thumb-muted-foreground/40 fixed z-40 scrollbar-thin scrollbar-track-transparent overflow-y-auto rounded-md border shadow-md"
+      className="fixed z-40 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40"
       style={rect}
     >
       {children}

@@ -148,7 +148,7 @@ export function TaxIDSelector({
     <div className={cn("relative w-full", className)}>
       <div ref={inputRef} className="relative">
         {!disabled && (
-          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         )}
         <Input
           placeholder={
@@ -185,7 +185,7 @@ export function TaxIDSelector({
             type="button"
             aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
             onClick={handleManualDropdownToggle}
-            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-3 size-4 -translate-y-1/2 transition-colors"
+            className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
           >
             <ChevronDownIcon
               className={`size-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}
@@ -195,7 +195,7 @@ export function TaxIDSelector({
 
         {/* Live Search Dropdown - only show when not disabled */}
         {!disabled && showDropdown && (
-          <div className="scrollbar-thumb-muted-foreground/20 bg-popover hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50 absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-track-transparent overflow-y-auto rounded-md border shadow-md">
+          <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50">
             <TaxonomySuggestionContent
               results={displayResults}
               loading={loading}
@@ -220,7 +220,7 @@ export function TaxIDSelector({
       </div>
 
       {touched && required && !isValid && (
-        <p className="text-destructive mt-1 text-sm">
+        <p className="mt-1 text-sm text-destructive">
           NCBI Tax ID is required.
         </p>
       )}

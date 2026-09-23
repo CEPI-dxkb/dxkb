@@ -232,7 +232,7 @@ function useSingleGenomeSelector({
     <div className={cn("space-y-2", className)}>
       {title && <Label className="service-card-label">{title}</Label>}
       <div ref={containerRef} className="relative">
-        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id={id}
           ref={inputRef}
@@ -262,7 +262,7 @@ function useSingleGenomeSelector({
           ref={buttonRef}
           type="button"
           onClick={handleManualDropdownToggle}
-          className="bg-primary/15 text-primary hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80 absolute top-1/2 right-3 size-4 -translate-y-1/2 transition-colors"
+          className="absolute top-1/2 right-3 size-4 -translate-y-1/2 bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80"
           aria-label="Toggle dropdown"
         >
           <ChevronDown
@@ -302,7 +302,7 @@ function useSingleGenomeSelector({
         </AnchoredSuggestionPortal>
       </div>
       {helperText && (
-        <p className="text-muted-foreground text-xs">{helperText}</p>
+        <p className="text-xs text-muted-foreground">{helperText}</p>
       )}
     </div>
   );

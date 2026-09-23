@@ -1082,7 +1082,7 @@ function DataTableBody({
                       : undefined
                   }
                   className={clsx(
-                    "border-border flex items-center truncate border",
+                    "flex items-center truncate border border-border",
                     cell.column.id === "__select__"
                       ? clsx(
                           "justify-center p-0",

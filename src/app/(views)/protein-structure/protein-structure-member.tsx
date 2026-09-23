@@ -62,25 +62,25 @@ function StructureMetadata({ metadata }: { metadata: StructureMetadataValue }) {
 
   return (
     <section
-      className="bg-card grid gap-4 rounded-lg border p-4 md:grid-cols-3"
+      className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-3"
       aria-label="Structure metadata"
     >
       <div>
         <h2 className="text-sm font-semibold">Identity</h2>
         <dl className="mt-2 space-y-1 text-sm">
           <div>
-            <dt className="text-muted-foreground inline">PDB ID: </dt>
+            <dt className="inline text-muted-foreground">PDB ID: </dt>
             <dd className="inline">{metadata.pdb_id}</dd>
           </div>
           {metadata.product && (
             <div>
-              <dt className="text-muted-foreground inline">Product: </dt>
+              <dt className="inline text-muted-foreground">Product: </dt>
               <dd className="inline">{values(metadata.product).join(", ")}</dd>
             </div>
           )}
           {metadata.gene && (
             <div>
-              <dt className="text-muted-foreground inline">Gene: </dt>
+              <dt className="inline text-muted-foreground">Gene: </dt>
               <dd className="inline">{values(metadata.gene).join(", ")}</dd>
             </div>
           )}
@@ -127,13 +127,13 @@ function StructureMetadata({ metadata }: { metadata: StructureMetadataValue }) {
         <dl className="mt-2 space-y-1 text-sm">
           {metadata.method && (
             <div>
-              <dt className="text-muted-foreground inline">Method: </dt>
+              <dt className="inline text-muted-foreground">Method: </dt>
               <dd className="inline">{values(metadata.method).join(", ")}</dd>
             </div>
           )}
           {metadata.resolution != null && (
             <div>
-              <dt className="text-muted-foreground inline">Resolution: </dt>
+              <dt className="inline text-muted-foreground">Resolution: </dt>
               <dd className="inline">{metadata.resolution} A</dd>
             </div>
           )}
@@ -224,7 +224,7 @@ export function ProteinStructureMember({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 px-3 pb-3">
-      <header className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3">
+      <header className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-card px-4 py-3">
         <div>
           <p className="text-xs font-bold tracking-widest uppercase">
             Protein Structure View
@@ -233,7 +233,7 @@ export function ProteinStructureMember({
             {workspacePath ? primarySource?.label : selected}
           </h1>
           {lookup?.metadata?.title && (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               {lookup.metadata.title}
             </p>
           )}
@@ -274,7 +274,7 @@ export function ProteinStructureMember({
         </Alert>
       )}
       {metadata && <StructureMetadata metadata={metadata} />}
-      <div className="bg-background relative flex min-h-96 flex-1 overflow-hidden rounded-lg border">
+      <div className="relative flex min-h-96 flex-1 overflow-hidden rounded-lg border bg-background">
         {primarySource ? (
           <StructureSourceViewer
             key={selected}

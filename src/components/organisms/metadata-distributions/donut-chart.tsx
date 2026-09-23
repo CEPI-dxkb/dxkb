@@ -388,7 +388,7 @@ function DonutChartTabs({
     "transition-[max-width,opacity] duration-300 ease-in-out";
 
   return (
-    <div className="bg-muted/50 ml-auto flex min-w-0 items-center gap-0.5 rounded-md p-0.5">
+    <div className="ml-auto flex min-w-0 items-center gap-0.5 rounded-md bg-muted/50 p-0.5">
       <div
         className={cn(
           "shrink-0 overflow-hidden",
@@ -883,7 +883,7 @@ function useDonutChart({
       {tooltipData && (
         <div
           role="status"
-          className="border-foreground/80 bg-popover text-popover-foreground pointer-events-none fixed z-50 rounded-md border px-2 py-1 text-xs shadow-md"
+          className="pointer-events-none fixed z-50 rounded-md border border-foreground/80 bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
           style={
             activationSource === "legend"
               ? // Center exactly on the anchor via transform (avoids width-
@@ -911,7 +911,7 @@ function useDonutChart({
           {activationSource === "legend" && (
             <span
               aria-hidden="true"
-              className="border-foreground/80 bg-popover absolute size-3 border"
+              className="absolute size-3 border border-foreground/80 bg-popover"
               style={{
                 bottom: -7,
                 left: `calc(50% + ${String(legendCaretOffsetPx)}px)`,
@@ -924,7 +924,7 @@ function useDonutChart({
             />
           )}
           {tooltipData.label}: {numberFormatter.format(tooltipData.value)}
-          <span className="text-muted-foreground ml-1">
+          <span className="ml-1 text-muted-foreground">
             ({tooltipData.pct}%)
           </span>
         </div>

@@ -12,8 +12,12 @@ export interface SettleOptions {
   /** Selector that must detach before scanning (zero-skeleton contract). */
   skeletonSelector?: string;
   /**
-   * Wait for the resizable shell to commit its layout before the page counts
-   * as settled. See {@link awaitPanelLayoutCommitted}.
+   * Wait for every resizable panel group to commit its layout before the page
+   * counts as settled. See {@link awaitPanelLayoutCommitted}. Defaults to true:
+   * every page that renders a resize handle has the gap, and the wait is a
+   * no-op on pages that render none. It was opt-in once, and each workspace or
+   * jobs route that had not opted in flaked on `aria-required-attr` under a
+   * slow CI runner. Pass false only to observe a layout mid-commit on purpose.
    */
   awaitPanelLayout?: boolean;
 }
@@ -155,7 +159,7 @@ export async function awaitSettled(page: Page, options: SettleOptions = {}): Pro
   if (options.skeletonSelector) {
     await page.waitForSelector(options.skeletonSelector, { state: "detached", timeout: 10_000 });
   }
-  if (options.awaitPanelLayout) {
+  if (options.awaitPanelLayout ?? true) {
     await awaitPanelLayoutCommitted(page);
   }
   if (options.extraMs) {

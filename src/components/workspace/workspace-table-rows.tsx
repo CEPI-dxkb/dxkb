@@ -3,12 +3,12 @@
 import React from "react";
 import { FlexRender, type Row } from "@tanstack/react-table";
 import { FolderUp, Users } from "lucide-react";
-import clsx from "clsx";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { columnClassMap } from "./workspace-table-columns";
 import type { FileTableFeatures } from "@/components/shared/file-table";
+import { clsx } from "cn";
 
 interface SpecialRowProps {
   useSelectionMode: boolean;

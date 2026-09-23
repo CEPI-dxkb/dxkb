@@ -2,6 +2,7 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import { plugin as shadcn } from "@shadcn/lint";
 import tailwind from "eslint-plugin-tailwindcss";
 import tseslint from "typescript-eslint";
 import { dirname, resolve } from "path";
@@ -43,6 +44,16 @@ export default defineConfig(
       // Too noisy — many legitimate arbitrary values have no preset equivalent (e.g. min(), vh+rem combos, percentages)
       // "tailwindcss/no-arbitrary-value": "on",
     },
+  },
+  {
+    // @shadcn/lint design-system rules. Registered only — no `shadcn/*` rules
+    // are enabled yet. Deliberately not scoped with `files`, so a later block
+    // can enable a rule for any file set without "could not find plugin".
+    // Components and theme are discovered from components.json (ui alias
+    // `@/components/ui`, theme `src/app/globals.css`), so no
+    // `settings.shadcn` is needed. Rules and options:
+    // https://github.com/shadcn-ui/lint#rules
+    plugins: { shadcn },
   },
   {
     files: ["**/*.{ts,tsx}"],

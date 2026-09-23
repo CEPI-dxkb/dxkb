@@ -43,7 +43,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
-import clsx from "clsx";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -54,6 +53,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clsx } from "cn";
 
 // ---------------------------------------------------------------------------
 // Types

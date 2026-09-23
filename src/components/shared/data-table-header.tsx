@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import clsx from "clsx";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DataTableInstance, DataTableProps } from "./data-table";
+import { clsx } from "cn";
 
 interface DataTableHeaderProps {
   table: DataTableInstance;

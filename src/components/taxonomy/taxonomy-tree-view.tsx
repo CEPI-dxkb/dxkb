@@ -8,7 +8,6 @@ import {
   type Table as TableModel,
 } from "@tanstack/react-table";
 import { X } from "lucide-react";
-import clsx from "clsx";
 import {
   Table,
   TableBody,
@@ -22,6 +21,7 @@ import {
   isPlaceholder,
   type TaxonomyTableFeatures,
 } from "./taxonomy-tree-columns";
+import { clsx } from "cn";
 
 export const taxonomyRowHeight = 24;
 

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FlexRender, type Row } from "@tanstack/react-table";
-import clsx from "clsx";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, TriangleAlert } from "lucide-react";
@@ -43,6 +42,7 @@ import {
   defaultJobsColumnOrder,
   activeJobStatuses,
 } from "@/lib/jobs/constants";
+import { clsx } from "cn";
 
 interface JobDataRowProps {
   row: Row<FileTableFeatures, JobListItem>;

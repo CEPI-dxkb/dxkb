@@ -1,6 +1,6 @@
-import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import type { DataTableInstance } from "./data-table";
+import { clsx } from "cn";
 
 function getPageRange(
   pageIndex: number,

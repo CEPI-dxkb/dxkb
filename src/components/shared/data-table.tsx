@@ -38,12 +38,11 @@ import {
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 
 import { Table, TableRow, TableBody, TableCell } from "@/components/ui/table";
-
-import clsx from "clsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTableControls } from "./data-table-controls";
 import { DataTableFooter } from "./data-table-footer";
 import { DataTableHeader } from "./data-table-header";
+import { clsx } from "cn";
 
 export function DataTable(props: DataTableProps) {
   "use no memo";

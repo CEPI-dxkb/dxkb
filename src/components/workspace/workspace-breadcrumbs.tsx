@@ -55,13 +55,13 @@ export function WorkspaceBreadcrumbs({
             className="flex items-center gap-1"
           >
             {index > 0 && (
-              <ChevronRight className="text-muted-foreground size-3.5" />
+              <ChevronRight className="size-3.5 text-muted-foreground" />
             )}
             {breadcrumb.href ? (
               <Link
                 href={breadcrumb.href}
                 className={cn(
-                  "hover:text-foreground flex items-center gap-1 font-medium transition-colors",
+                  "flex items-center gap-1 font-medium transition-colors hover:text-foreground",
                   breadcrumb.muted
                     ? "text-muted-foreground"
                     : "text-foreground",
@@ -70,7 +70,7 @@ export function WorkspaceBreadcrumbs({
                 {content}
               </Link>
             ) : (
-              <span className="text-foreground flex items-center gap-1 font-medium">
+              <span className="flex items-center gap-1 font-medium text-foreground">
                 {content}
               </span>
             )}
@@ -78,7 +78,7 @@ export function WorkspaceBreadcrumbs({
         );
       })}
       {itemCount !== undefined && (
-        <span className="text-muted-foreground ml-2 text-xs">
+        <span className="ml-2 text-xs text-muted-foreground">
           ({itemCount} {itemCount === 1 ? "item" : "items"})
         </span>
       )}

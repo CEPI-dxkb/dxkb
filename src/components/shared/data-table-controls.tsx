@@ -66,7 +66,7 @@ export function DataTableControls({
       <div className="relative inline-block text-left" ref={columnMenuRef}>
         {" "}
         <Button
-          className="border-border bg-background text-foreground hover:bg-muted mr-2 flex w-full justify-end rounded border px-2 py-1 text-xs font-medium"
+          className="mr-2 flex w-full justify-end rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
           onClick={() => {
             setShowColumnMenu((previous) => !previous);
           }}
@@ -74,13 +74,13 @@ export function DataTableControls({
           Columns ▾
         </Button>
         {showColumnMenu && (
-          <div className="ring-opacity-5 bg-background ring-border absolute left-0 z-50 mt-1 w-40 rounded-md shadow-lg ring-1">
+          <div className="ring-opacity-5 absolute left-0 z-50 mt-1 w-40 rounded-md bg-background shadow-lg ring-1 ring-border">
             <div className="max-h-64 overflow-auto py-1 text-xs">
               {table.getAllColumns().map((column) =>
                 column.id === "__select__" ? null : (
                   <label
                     key={column.id}
-                    className="text-foreground hover:bg-muted flex cursor-pointer items-center space-x-2 px-2 py-1"
+                    className="flex cursor-pointer items-center space-x-2 px-2 py-1 text-foreground hover:bg-muted"
                   >
                     <input
                       type="checkbox"
@@ -105,7 +105,7 @@ export function DataTableControls({
             buttonKey="csv-all"
             downloadingButton={downloadingButton}
             onClick={() => handleDownload("csv")}
-            className="border-border bg-background text-foreground hover:bg-muted mx-2 rounded border px-2 py-1 text-xs font-medium"
+            className="mx-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
           />
           <DownloadButton
             label="Download (TXT)"
@@ -132,7 +132,7 @@ export function DataTableControls({
               </>
             )}
 
-          <label className="text-foreground ml-4 flex items-center text-xs">
+          <label className="ml-4 flex items-center text-xs text-foreground">
             <input
               type="checkbox"
               checked={onlyVisibleColumns}

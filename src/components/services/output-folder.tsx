@@ -130,7 +130,7 @@ const OutputFolder = ({
         </div>
         {variant === "name" &&
           (validation.status === "taken" || validation.status === "error") && (
-            <p className="text-destructive text-sm" role="alert">
+            <p className="text-sm text-destructive" role="alert">
               {validation.status === "error"
                 ? validationErrorMessage
                 : nameTakenMessage}

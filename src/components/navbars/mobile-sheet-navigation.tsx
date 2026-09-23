@@ -42,19 +42,19 @@ function SectionTrigger({
   children: React.ReactNode;
 }) {
   return (
-    <CollapsibleTrigger className="group hover:bg-muted/40 data-open:bg-secondary/5 flex w-full items-center gap-3 px-4 py-3.5 transition-colors">
-      <div className="bg-secondary/10 text-secondary group-hover:bg-secondary/20 group-data-open:bg-secondary/20 flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors">
+    <CollapsibleTrigger className="group flex w-full items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 data-open:bg-secondary/5">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary/10 text-secondary transition-colors group-hover:bg-secondary/20 group-data-open:bg-secondary/20">
         <Icon className="size-4" />
       </div>
-      <span className="text-foreground flex-1 text-left text-sm font-semibold">
+      <span className="flex-1 text-left text-sm font-semibold text-foreground">
         {children}
       </span>
       {count != null && (
-        <span className="bg-primary rounded-full px-2.5 py-0.5 text-xs font-bold text-white">
+        <span className="rounded-full bg-primary px-2.5 py-0.5 text-xs font-bold text-white">
           {count}
         </span>
       )}
-      <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform duration-200 group-data-open:rotate-180" />
+      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-open:rotate-180" />
     </CollapsibleTrigger>
   );
 }
@@ -77,7 +77,7 @@ export function MobileSheetNavigation({
 
   return (
     <>
-      <div className="bg-primary relative p-4 pb-5">
+      <div className="relative bg-primary p-4 pb-5">
         <div className="flex items-start gap-1">
           <Logo
             variant="logo-white"
@@ -90,7 +90,7 @@ export function MobileSheetNavigation({
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </span>
         </div>
-        <div className="from-primary absolute inset-x-0 bottom-0 h-3 bg-linear-to-b to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-3 bg-linear-to-b from-primary to-transparent" />
       </div>
 
       <nav className="flex flex-col pb-6">
@@ -109,7 +109,7 @@ export function MobileSheetNavigation({
           </CollapsibleContent>
         </Collapsible>
 
-        <div className="bg-border mx-4 h-px" />
+        <div className="mx-4 h-px bg-border" />
 
         <Collapsible>
           <SectionTrigger icon={FlaskConical} count={totalServiceItems}>
@@ -148,7 +148,7 @@ export function MobileSheetNavigation({
           </CollapsibleContent>
         </Collapsible>
 
-        <div className="bg-border mx-4 h-px" />
+        <div className="mx-4 h-px bg-border" />
 
         <Collapsible>
           <SectionTrigger icon={FolderOpen} count={totalWorkspaceItems}>
@@ -164,7 +164,7 @@ export function MobileSheetNavigation({
           </CollapsibleContent>
         </Collapsible>
 
-        <div className="bg-border mx-4 h-px" />
+        <div className="mx-4 h-px bg-border" />
 
         <Collapsible>
           <SectionTrigger icon={BookOpen} count={resourcesItems.length}>

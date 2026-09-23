@@ -255,7 +255,7 @@ export function ResourceCollection<Row extends DataTableRow>({
 
   const detailContent = (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="bg-background text-foreground min-h-0 flex-1 overflow-y-auto shadow-md">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-background text-foreground shadow-md">
         {collection.detailError ? (
           <Alert variant="destructive" className="m-4">
             <AlertTitle>Could not load record details</AlertTitle>

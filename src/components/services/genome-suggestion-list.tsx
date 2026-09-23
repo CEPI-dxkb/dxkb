@@ -35,18 +35,18 @@ export function GenomeSuggestionList({
     return (
       <div className="flex items-center justify-center p-4">
         <Loader2 className="mr-2 size-4 animate-spin" />
-        <span className="text-muted-foreground text-sm">Searching...</span>
+        <span className="text-sm text-muted-foreground">Searching...</span>
       </div>
     );
   }
 
   if (error) {
-    return <div className="text-destructive p-4 text-sm">{error}</div>;
+    return <div className="p-4 text-sm text-destructive">{error}</div>;
   }
 
   if (suggestions.length === 0) {
     return emptyMessage ? (
-      <p className="text-muted-foreground py-4 text-center text-sm">
+      <p className="py-4 text-center text-sm text-muted-foreground">
         {emptyMessage}
       </p>
     ) : null;
@@ -62,7 +62,7 @@ export function GenomeSuggestionList({
         }}
         type="button"
         className={cn(
-          "hover:bg-accent flex w-full flex-col items-start gap-1 px-4 py-2 text-left",
+          "flex w-full flex-col items-start gap-1 px-4 py-2 text-left hover:bg-accent",
           // Caller overrides come before the state classes so a caller-supplied
           // background (e.g. `bg-transparent`) cannot strip the keyboard
           // highlight via tailwind-merge's last-wins resolution.
@@ -80,11 +80,11 @@ export function GenomeSuggestionList({
       >
         <span className="flex items-center gap-1 truncate text-sm font-medium">
           {showPrivateIndicator && genome.public === false && (
-            <ShieldUser className="text-foreground/90 size-3.5 shrink-0" />
+            <ShieldUser className="size-3.5 shrink-0 text-foreground/90" />
           )}
           <span className="truncate">{genome.genome_name}</span>
         </span>
-        <span className="text-muted-foreground text-xs">
+        <span className="text-xs text-muted-foreground">
           {genome.genome_id}
           {genome.strain ? ` • ${genome.strain}` : ""}
         </span>

@@ -78,7 +78,7 @@ export function OverviewSection({ title, fields }: OverviewSectionProps) {
           ))}
         </dl>
       ) : (
-        <p className="text-muted-foreground text-sm">No data available.</p>
+        <p className="text-sm text-muted-foreground">No data available.</p>
       )}
     </OverviewCard>
   );

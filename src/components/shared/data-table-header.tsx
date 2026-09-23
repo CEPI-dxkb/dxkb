@@ -60,7 +60,7 @@ export function DataTableHeader({
       {table.getHeaderGroups().map((headerGroup) => (
         <TableRow
           key={headerGroup.id}
-          className="border-border bg-muted flex border-y"
+          className="flex border-y border-border bg-muted"
         >
           {headerGroup.headers.map((header) => {
             const column = header.column;
@@ -122,7 +122,7 @@ export function DataTableHeader({
                         : "none"
                 }
                 className={clsx(
-                  "group border-foreground/20 bg-muted text-foreground relative border-r",
+                  "group relative border-r border-foreground/20 bg-muted text-foreground",
                   column.id === "__select__"
                     ? "flex h-auto! items-center justify-center p-0"
                     : "h-auto! min-h-7! cursor-pointer px-2 py-0 align-middle text-xs leading-tight font-bold whitespace-normal",

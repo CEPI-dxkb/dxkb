@@ -77,7 +77,6 @@ export default function GenomeAnnotationPage() {
               onClick={() => {
                 form.reset(defaultGenomeAnnotationFormValues);
               }}
-              className="service-form-controls-button"
             >
               Reset
             </Button>

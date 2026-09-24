@@ -172,7 +172,7 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
           <Badge
             variant="outline"
             className={clsx(
-              "h-4 px-1.5 py-0 text-[10px] leading-none font-normal",
+              "h-4 px-1.5 py-0 text-3xs leading-none font-normal",
               rankConfig[rank] ?? rankBadgeDefault,
             )}
           >

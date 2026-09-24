@@ -131,7 +131,7 @@ export function NavbarThemeSwitcher() {
         </div>
 
         <div className="border-t px-3 py-1">
-          <p className="text-[11px] text-muted-foreground/60">
+          <p className="text-2xs text-muted-foreground/60">
             {themeLabel[currentBase] ?? currentBase} · {currentMode}
           </p>
         </div>

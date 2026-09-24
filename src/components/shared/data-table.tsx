@@ -240,7 +240,7 @@ function SelectionHeader({
         title={selectionLabel}
       />
       {meta.isAllPagesSelected && (
-        <div className="absolute -bottom-5 left-1/2 z-50 -translate-x-1/2 transform text-[10px] whitespace-nowrap text-blue-600">
+        <div className="absolute -bottom-5 left-1/2 z-50 -translate-x-1/2 transform text-3xs whitespace-nowrap text-blue-600">
           All {meta.totalItems} selected
         </div>
       )}

@@ -104,7 +104,7 @@ export function LandingShellClient({
           <div className="mb-0.5 flex items-center justify-between rounded-lg border bg-card px-5 py-3 shadow-sm">
             {headerContent ?? (
               <div>
-                <p className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+                <p className="text-3xs font-bold tracking-widest text-muted-foreground uppercase">
                   Organisms
                 </p>
                 <h1 className="text-2xl font-bold tracking-tight">

@@ -75,7 +75,7 @@ function OutputSection({
           ) : error ? (
             <p className="text-xs text-destructive">Failed to load output</p>
           ) : data ? (
-            <pre className="scrollbar-themed max-h-128 overflow-auto font-mono text-[10px] leading-relaxed whitespace-pre">
+            <pre className="scrollbar-themed max-h-128 overflow-auto font-mono text-3xs leading-relaxed whitespace-pre">
               {data}
             </pre>
           ) : (
@@ -100,7 +100,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const colors = colorMap[status] ?? "bg-muted text-muted-foreground";
   return (
-    <span className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium capitalize ${colors}`}>
+    <span className={`inline-block rounded px-1.5 py-0.5 text-2xs font-medium capitalize ${colors}`}>
       {status}
     </span>
   );

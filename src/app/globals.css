@@ -31,6 +31,16 @@
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is([data-theme$="-dark"] *));
 
+/* From shadcn's tailwind.css, which src/components/ui/command.tsx expects. */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -84,6 +94,11 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Sub-xs sizes. Font-size only (no paired line-height), so they render
+     exactly like the text-[11px] / text-[10px] classes they replace. */
+  --text-2xs: 0.6875rem;
+  --text-3xs: 0.625rem;
 }
 
 [data-theme="dxkb-light"] {

@@ -53,6 +53,7 @@ export function InteractionsGraphSkeleton({
             {rows.map(({ id, width }) => (
               <div key={id} className="flex items-center gap-2 p-1">
                 <Skeleton className="size-2.5 shrink-0 rounded-full" />
+                {/* eslint-disable-next-line shadcn/require-static-classes -- widths come from the static rows constant at the top of this file */}
                 <Skeleton className={`h-3 ${width}`} />
               </div>
             ))}

@@ -49,6 +49,14 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 
 - Do NOT swap real errors for generic ones — the original message must still be displayed. Condense if too long, but preserve the meaning.
 
+### Design-system lint (`@shadcn/lint`)
+
+- `eslint.config.mjs` enables all six `shadcn/*` rules as errors (off for `no-restyle`, `no-arbitrary-values`, and `require-static-classes` inside `src/components/ui/**`, which owns component appearance). Violations that predate the rules are recorded in `eslint-suppressions.json`, which ESLint applies automatically, so only new violations fail `pnpm lint`.
+- Fix a new finding in code, using the variant, theme token, or scale value the error suggests. Do not add entries to `eslint-suppressions.json` or `eslint-disable` comments to get past one.
+- After fixing a recorded violation, run `pnpm lint --prune-suppressions` — lint fails while stale entries remain. Entries are keyed by file path, so moving or renaming a file with recorded violations orphans them: fix the violations, or update the key.
+- Sub-`xs` text sizes are theme tokens: `text-2xs` (11px) and `text-3xs` (10px). Documented one-off exceptions live in the rule `allow` lists in `eslint.config.mjs`; add to them only for classes the app genuinely needs and cannot express with a token.
+- The only sanctioned `eslint-disable-next-line shadcn/require-static-classes` comments are on `className` passthroughs whose value is authored as a static string elsewhere (e.g. TanStack column meta) — always with a `-- reason` naming that source. Selectable table rows use `<TableRow selectionIndicator data-state={selected ? "selected" : undefined}>` instead of restyling the row. `src/components/ui/table.tsx`, `navigation-menu.tsx`, `sonner.tsx`, `calendar.tsx`, `carousel.tsx`, and `dropdown-menu.tsx` carry local edits that `shadcn add --overwrite` would revert — check the diff when regenerating them.
+
 ### Formatting
 
 - Prettier has exactly one configuration source: the `prettier` key in `package.json`, which sets `printWidth: 80` and loads `prettier-plugin-tailwindcss`. A `.prettierrc` used to sit alongside it asking for 160, but Prettier resolves `package.json` first, so it was inert in its entirety and has been removed — do not reintroduce a second source. 80 is the lower-debt of the two widths, not a width the tree already matches.

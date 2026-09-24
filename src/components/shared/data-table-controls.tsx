@@ -74,7 +74,7 @@ export function DataTableControls({
           Columns ▾
         </Button>
         {showColumnMenu && (
-          <div className="ring-opacity-5 absolute left-0 z-50 mt-1 w-40 rounded-md bg-background shadow-lg ring-1 ring-border">
+          <div className="absolute left-0 z-50 mt-1 w-40 rounded-md bg-background shadow-lg ring-1 ring-border">
             <div className="max-h-64 overflow-auto py-1 text-xs">
               {table.getAllColumns().map((column) =>
                 column.id === "__select__" ? null : (

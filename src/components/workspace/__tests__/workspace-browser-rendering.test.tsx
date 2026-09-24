@@ -167,6 +167,10 @@ describe("WorkspaceBrowser rendering", () => {
         "true",
       );
     });
+    expect(screen.getByRole("row", { name: /alpha\.txt/i })).toHaveAttribute(
+      "data-state",
+      "selected",
+    );
     expect(screen.getByRole("row", { name: /alpha\.txt/i })).toBe(alphaRow);
 
     fireEvent.change(screen.getByPlaceholderText(/search files/i), {
@@ -185,6 +189,7 @@ describe("WorkspaceBrowser rendering", () => {
       { timeout: 5_000 },
     );
     expect(restoredRow).toHaveAttribute("aria-selected", "true");
+    expect(restoredRow).toHaveAttribute("data-state", "selected");
 
     fireEvent.click(screen.getByRole("button", { name: /^refresh$/i }));
     await waitFor(() => {
@@ -192,13 +197,13 @@ describe("WorkspaceBrowser rendering", () => {
         repository.calls.filter((call) => call.method === "listDirectory"),
       ).toHaveLength(2);
     });
-    expect(
-      await screen.findByRole(
-        "row",
-        { name: /alpha\.txt/i },
-        { timeout: 5_000 },
-      ),
-    ).toHaveAttribute("aria-selected", "true");
+    const refreshedRow = await screen.findByRole(
+      "row",
+      { name: /alpha\.txt/i },
+      { timeout: 5_000 },
+    );
+    expect(refreshedRow).toHaveAttribute("aria-selected", "true");
+    expect(refreshedRow).toHaveAttribute("data-state", "selected");
 
     for (let index = 0; index < 5; index += 1) {
       rerender(<WorkspaceBrowser {...props} />);

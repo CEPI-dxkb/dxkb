@@ -34,20 +34,16 @@ function SpecialRow({
 
   return (
     <TableRow
-      className={
-        (useSelectionMode
-          ? "border-l-2 " +
-            (isFocused ? "border-l-primary" : "border-l-transparent") +
-            " cursor-pointer pl-6 "
-          : "cursor-pointer pl-6 ") +
-        (isFocused ? " bg-muted" : "")
-      }
+      className="cursor-pointer"
+      selectionIndicator={useSelectionMode}
+      data-state={isFocused ? "selected" : undefined}
       onClick={onClick}
       aria-selected={useSelectionMode && isFocused ? true : undefined}
     >
       {cells.map((cell) => {
         const className = clsx(
           cell.id === "name" ? "pl-6" : "pl-2",
+          // eslint-disable-next-line shadcn/require-static-classes -- column classes come from columnClassMap in workspace-table-columns.tsx, authored as static strings
           cell.metaClassName,
         );
         return (
@@ -136,22 +132,16 @@ export function DataRow({
   return (
     <TableRow
       key={row.id}
-      className={
-        (useSelectionMode
-          ? "border-l-2 " +
-            (isSelected ? "border-l-primary" : "border-l-transparent")
-          : "") +
-        (useSelectionMode || isNavigable
-          ? " cursor-pointer pl-6"
-          : " pl-6") +
-        (isSelected ? " bg-muted" : "")
-      }
+      className={clsx((useSelectionMode || isNavigable) && "cursor-pointer")}
+      selectionIndicator={useSelectionMode}
+      data-state={isSelected ? "selected" : undefined}
       onMouseDown={handleRowMouseDown}
       onClick={handleRowClick}
       onDoubleClick={handleRowDoubleClick}
       aria-selected={useSelectionMode ? isSelected : undefined}
     >
       {row.getVisibleCells().map((cell) => {
+        // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
         const metaCls = cell.column.columnDef.meta?.className;
         const className = clsx(
           cell.column.id === "name" ? "pl-6" : "pl-2",
@@ -182,7 +172,7 @@ interface EmptyRowProps {
 
 export function EmptyRow({ colSpan }: EmptyRowProps) {
   return (
-    <TableRow className="pl-6">
+    <TableRow>
       <TableCell
         colSpan={colSpan}
         className="py-12 pl-6 text-center text-muted-foreground"

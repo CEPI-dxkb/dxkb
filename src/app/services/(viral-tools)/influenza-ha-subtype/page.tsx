@@ -241,7 +241,6 @@ export default function HASubtypeNumberingPage() {
                                 : current.filter((id) => id !== scheme.id);
                               field.handleChange(next);
                             }}
-                            className="service-card-checkbox"
                           />
                           <Label
                             htmlFor={`scheme-${scheme.id}`}

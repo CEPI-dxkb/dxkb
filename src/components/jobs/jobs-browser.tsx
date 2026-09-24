@@ -77,6 +77,7 @@ function JobDataRow({
       aria-selected={isSelected}
     >
       {row.getVisibleCells().map((cell, cellIndex) => {
+        // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
         const metaCls = cell.column.columnDef.meta?.className;
         const className = clsx(
           cellIndex === 0 ? "pl-6" : "pl-2",

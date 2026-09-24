@@ -38,7 +38,7 @@ export function GeneraCard({ name, href, count, viewLabel = "genomes" }: GeneraC
             {displayName}
           </h3>
           {count !== undefined && (
-            <p className="text-[11px] leading-tight text-muted-foreground">
+            <p className="text-2xs leading-tight text-muted-foreground">
               {numberFormatter.format(count)} genomes
             </p>
           )}

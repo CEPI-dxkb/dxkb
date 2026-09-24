@@ -9,7 +9,7 @@ export function DetailHeader({
     <div className="shrink-0 border-b px-3 py-2">
       <h3 className="truncate text-sm font-semibold">{title}</h3>
       {subtitle && (
-        <p className="font-mono text-[11px] text-muted-foreground">
+        <p className="font-mono text-2xs text-muted-foreground">
           {subtitle}
         </p>
       )}

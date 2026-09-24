@@ -105,7 +105,7 @@ const Footer = () => {
             <span className="mt-1 text-sm text-white/80">
               <ThemeContent type="funding-statement" as="span" />
             </span>
-            <div className="gap-auto mt-4 flex lg:gap-4">
+            <div className="mt-4 flex lg:gap-4">
               <Link
                 href="https://twitter.com"
                 target="_blank"

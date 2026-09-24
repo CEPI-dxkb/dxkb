@@ -365,11 +365,11 @@ function StrainRule({
     <div
       className={`flex items-center gap-3 px-5 pb-2 ${first ? "pt-4" : "pt-8"}`}
     >
-      <span className="text-[0.68rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+      <span className="text-2xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
         {title}
       </span>
       <span className="h-px flex-1 bg-border" />
-      <span className="font-mono text-[0.68rem] text-muted-foreground/70">
+      <span className="font-mono text-2xs text-muted-foreground/70">
         {count} trees
       </span>
     </div>
@@ -412,7 +412,7 @@ function PeerButton({
   if (!choice || placeholder) {
     return (
       <span
-        className="grid h-7 flex-1 cursor-not-allowed place-items-center rounded-md border border-dashed border-border/60 text-[0.7rem] text-muted-foreground/45 lg:w-30 lg:flex-initial"
+        className="grid h-7 flex-1 cursor-not-allowed place-items-center rounded-md border border-dashed border-border/60 text-2xs text-muted-foreground/45 lg:w-30 lg:flex-initial"
         title={
           placeholder?.title ??
           `No ${viewerLabel[viewer]} tree for this segment`
@@ -431,7 +431,7 @@ function PeerButton({
         onOpen(choice);
       }}
       aria-label={`Open ${choice.ref.name} in ${viewerLabel[viewer]}`}
-      className="h-7 flex-1 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:border-[color-mix(in_oklch,var(--seg)_55%,transparent)] hover:bg-[color-mix(in_oklch,var(--seg)_14%,transparent)] focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none lg:w-30 lg:flex-initial"
+      className="h-7 flex-1 rounded-md border border-border bg-background text-xs font-medium transition-colors hover:border-(--seg)/55 hover:bg-(--seg)/14 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none lg:w-30 lg:flex-initial"
     >
       {viewerLabel[viewer]}
     </button>

@@ -185,6 +185,7 @@ function DraggableTableHeader<T extends RowData>({
   const className = clsx(
     isFirst ? "pl-6" : "pl-2",
     "relative bg-background",
+    // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
     meta?.className ?? "",
   );
 

@@ -101,7 +101,7 @@ export function JobsActionBar({
               ) : (
                 <Icon className="size-4 shrink-0" />
               )}
-              <span className="text-center text-[11px] leading-none font-medium text-wrap">
+              <span className="text-center text-2xs leading-none font-medium text-wrap">
                 {action.label}
               </span>
             </Button>

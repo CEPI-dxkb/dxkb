@@ -53,7 +53,7 @@ const SelectedItemsTable = ({
     if (shape === "triangle") {
       return (
         <div
-          className="inline-block size-0 border-[5px] border-transparent"
+          className="inline-block size-0 border-5 border-transparent"
           style={{
             borderBottomWidth: "8px",
             borderBottomColor: color.replace("bg-", ""),

@@ -102,7 +102,7 @@ export function SearchActionBar({
                 <Icon className="size-4 shrink-0" />
               ) : null}
               <span
-                className={`wrap-break-words text-center leading-tight font-medium whitespace-normal ${action.labelClassName ?? "text-[9px]"}`}
+                className={`text-center leading-tight font-medium wrap-break-word whitespace-normal ${action.labelClassName ?? "text-[9px]"}`}
               >
                 {action.label.split("\n").map((line) => (
                   <span key={line} className="block">

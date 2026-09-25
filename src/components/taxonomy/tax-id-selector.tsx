@@ -10,6 +10,7 @@ import { TaxonomySuggestionContent } from "@/components/taxonomy/taxonomy-sugges
 import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
 
 interface TaxIDSelectorProps extends TaxonomySelectorProps {
+  id?: string;
   apiServiceUrl?: string;
   queryFilter?: string;
 }
@@ -45,6 +46,7 @@ async function searchTaxonById(
 }
 
 export function TaxIDSelector({
+  id,
   value,
   onChange,
   placeholder = "NCBI Taxonomy ID",
@@ -151,6 +153,7 @@ export function TaxIDSelector({
           <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         )}
         <Input
+          id={id}
           placeholder={
             disabled && !value ? "Select a taxon name first" : placeholder
           }

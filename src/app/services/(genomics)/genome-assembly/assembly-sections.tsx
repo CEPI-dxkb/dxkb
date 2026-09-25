@@ -417,6 +417,7 @@ function AdvancedOptions({
                       {label}
                     </ServiceFieldSubLabel>
                     <Switch
+                      id={field.name}
                       checked={field.state.value}
                       onCheckedChange={field.handleChange}
                     />
@@ -435,6 +436,7 @@ function AdvancedOptions({
                     {label}
                   </ServiceFieldSubLabel>
                   <NumberInput
+                    id={field.name}
                     value={field.state.value}
                     onValueChange={field.handleChange}
                     min={min}

@@ -135,10 +135,15 @@ export function ReadMappingParametersCard({
             <form.Field name="gene_set_type">
               {(field) => (
                 <FieldItem>
-                  <ServiceFieldLabel field={field}>
+                  <ServiceFieldLabel
+                    field={field}
+                    id={`${field.name}-label`}
+                    htmlFor={undefined}
+                  >
                     Gene Set Type
                   </ServiceFieldLabel>
                   <ServiceRadioGroup
+                    aria-labelledby={`${field.name}-label`}
                     value={field.state.value}
                     onValueChange={(value) => {
                       if (value != null)
@@ -191,6 +196,7 @@ export function ReadMappingParametersCard({
                       }}
                     >
                       <ServiceSelectTrigger
+                        id={field.name}
                         aria-label="Predefined Gene Set Name"
                       >
                         <SelectValue placeholder="Select Gene Set" />
@@ -218,6 +224,7 @@ export function ReadMappingParametersCard({
                       Gene Set FASTA
                     </ServiceFieldLabel>
                     <WorkspaceObjectSelector
+                      id={field.name}
                       preset="geneSetFasta"
                       placeholder="Select Gene Set FASTA File..."
                       onSelectedObjectChange={(
@@ -240,6 +247,7 @@ export function ReadMappingParametersCard({
                       Gene Set Feature Group
                     </ServiceFieldLabel>
                     <WorkspaceObjectSelector
+                      id={field.name}
                       preset="featureGroup"
                       placeholder="Select Gene Set Feature Group..."
                       onSelectedObjectChange={(

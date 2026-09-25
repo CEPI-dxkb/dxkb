@@ -54,7 +54,7 @@ export function AdvancedOptionsSection({
                   if (value != null) field.handleChange(parseInt(value, 10));
                 }}
               >
-                <ServiceSelectTrigger>
+                <ServiceSelectTrigger id={field.name}>
                   <SelectValue placeholder="Select max hits" />
                 </ServiceSelectTrigger>
                 <SelectContent>
@@ -87,7 +87,7 @@ export function AdvancedOptionsSection({
                   if (value != null) field.handleChange(parseFloat(value));
                 }}
               >
-                <ServiceSelectTrigger>
+                <ServiceSelectTrigger id={field.name}>
                   <SelectValue placeholder="Select P-value" />
                 </ServiceSelectTrigger>
                 <SelectContent>
@@ -120,7 +120,7 @@ export function AdvancedOptionsSection({
                   if (value != null) field.handleChange(parseFloat(value));
                 }}
               >
-                <ServiceSelectTrigger>
+                <ServiceSelectTrigger id={field.name}>
                   <SelectValue placeholder="Select distance" />
                 </ServiceSelectTrigger>
                 <SelectContent>

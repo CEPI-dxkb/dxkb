@@ -60,10 +60,15 @@ export function BinningParametersCard({
                   <form.Field name="assembler">
                     {(field) => (
                       <FieldItem>
-                        <ServiceFieldLabel field={field}>
+                        <ServiceFieldLabel
+                          field={field}
+                          id={`${field.name}-label`}
+                          htmlFor={undefined}
+                        >
                           Assembly Strategy
                         </ServiceFieldLabel>
                         <ServiceRadioGroup
+                          aria-labelledby={`${field.name}-label`}
                           value={field.state.value}
                           onValueChange={(value) => {
                             if (value != null)
@@ -108,10 +113,15 @@ export function BinningParametersCard({
                 <form.Field name="organism">
                   {(field) => (
                     <FieldItem>
-                      <ServiceFieldLabel field={field}>
+                      <ServiceFieldLabel
+                        field={field}
+                        id={`${field.name}-label`}
+                        htmlFor={undefined}
+                      >
                         Organisms of Interest
                       </ServiceFieldLabel>
                       <ServiceRadioGroup
+                        aria-labelledby={`${field.name}-label`}
                         value={field.state.value}
                         onValueChange={(value) => {
                           if (value != null)
@@ -182,6 +192,7 @@ export function BinningParametersCard({
                       Genome Group Name
                     </ServiceFieldLabel>
                     <ServiceInput
+                      id={field.name}
                       name={field.name}
                       value={field.state.value ?? ""}
                       onChange={(event) => {
@@ -215,6 +226,7 @@ export function BinningParametersCard({
                             Minimum Contig Length
                           </ServiceFieldSubLabel>
                           <NumberInput
+                            id={field.name}
                             name={field.name}
                             value={field.state.value}
                             min={minContigLengthMin}
@@ -237,6 +249,7 @@ export function BinningParametersCard({
                             Minimum Contig Coverage
                           </ServiceFieldSubLabel>
                           <NumberInput
+                            id={field.name}
                             name={field.name}
                             value={field.state.value}
                             min={minContigCoverageMin}

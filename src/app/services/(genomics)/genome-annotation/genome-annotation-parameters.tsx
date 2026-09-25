@@ -171,6 +171,7 @@ export function GenomeAnnotationParameters({
                 <FieldItem className="sm:w-3/12">
                   <FieldLabel field={field}>Taxonomy ID</FieldLabel>
                   <TaxIDSelector
+                    id={field.name}
                     value={
                       field.state.value
                         ? {

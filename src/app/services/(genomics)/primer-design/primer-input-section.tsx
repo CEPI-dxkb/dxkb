@@ -154,6 +154,7 @@ export function PrimerInputSection({
                     FASTA File
                   </ServiceFieldLabel>
                   <WorkspaceObjectSelector
+                    id={field.name}
                     preset="featureDnaFasta"
                     placeholder="Select FASTA file from workspace"
                     value={field.state.value}
@@ -176,6 +177,7 @@ export function PrimerInputSection({
                 Pick Internal Oligo
               </ServiceFieldSubLabel>
               <Switch
+                id={field.name}
                 checked={Boolean(field.state.value)}
                 onCheckedChange={field.handleChange}
               />

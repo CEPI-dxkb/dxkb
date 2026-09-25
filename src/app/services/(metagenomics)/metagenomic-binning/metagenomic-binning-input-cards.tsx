@@ -152,6 +152,7 @@ export function BinningContigsCard({ controller }: { controller: Controller }) {
               <FieldItem>
                 <ServiceFieldLabel field={field}>Contigs</ServiceFieldLabel>
                 <WorkspaceObjectSelector
+                  id={field.name}
                   preset="contigs"
                   placeholder="Select or Upload Contigs..."
                   onSelectedObjectChange={(object: WorkspaceObject | null) => {

@@ -50,6 +50,7 @@ interface Option<TValue extends string> {
 }
 
 function OptionSelect<TValue extends string>({
+  id,
   items,
   value,
   onChange,
@@ -57,6 +58,7 @@ function OptionSelect<TValue extends string>({
   placeholder,
   disabled,
 }: {
+  id: string;
   items: readonly Option<TValue>[];
   value: TValue;
   onChange: (value: TValue) => void;
@@ -73,7 +75,7 @@ function OptionSelect<TValue extends string>({
       }}
       disabled={disabled}
     >
-      <ServiceSelectTrigger aria-label={label}>
+      <ServiceSelectTrigger id={id} aria-label={label}>
         <SelectValue placeholder={placeholder} />
       </ServiceSelectTrigger>
       <SelectContent>
@@ -93,13 +95,16 @@ function BooleanRadio({
   value,
   onChange,
   id,
+  labelId,
 }: {
   value: boolean;
   onChange: (value: boolean) => void;
   id: string;
+  labelId: string;
 }) {
   return (
     <ServiceRadioGroup
+      aria-labelledby={labelId}
       value={value ? "yes" : "no"}
       onValueChange={(next) => {
         if (next != null) onChange(next === "yes");
@@ -152,7 +157,11 @@ export function ClassificationParametersCard({
             <form.Field name="sequence_type">
               {(field) => (
                 <FieldItem>
-                  <ServiceFieldLabel field={field}>
+                  <ServiceFieldLabel
+                    field={field}
+                    id={`${field.name}-label`}
+                    htmlFor={undefined}
+                  >
                     Sequencing Type
                     <TooltipProvider>
                       <Tooltip>
@@ -169,6 +178,7 @@ export function ClassificationParametersCard({
                     </TooltipProvider>
                   </ServiceFieldLabel>
                   <ServiceRadioGroup
+                    aria-labelledby={`${field.name}-label`}
                     value={field.state.value}
                     onValueChange={(value) => {
                       if (value != null) {
@@ -207,6 +217,7 @@ export function ClassificationParametersCard({
                       />
                     </ServiceFieldLabel>
                     <OptionSelect
+                      id={field.name}
                       items={analysisTypeOptions}
                       value={field.state.value}
                       onChange={(value) => {
@@ -231,6 +242,7 @@ export function ClassificationParametersCard({
                       />
                     </ServiceFieldLabel>
                     <OptionSelect
+                      id={field.name}
                       items={databaseOptions}
                       value={field.state.value}
                       onChange={(value) => {
@@ -257,6 +269,7 @@ export function ClassificationParametersCard({
                       />
                     </ServiceFieldLabel>
                     <OptionSelect
+                      id={field.name}
                       items={hostGenomeOptions}
                       value={field.state.value}
                       onChange={(value) => {
@@ -284,6 +297,7 @@ export function ClassificationParametersCard({
                       />
                     </ServiceFieldLabel>
                     <OptionSelect
+                      id={field.name}
                       items={confidenceIntervalOptions}
                       value={field.state.value}
                       onChange={(value) => {
@@ -299,11 +313,16 @@ export function ClassificationParametersCard({
               <form.Field name="save_classified_sequences">
                 {(field) => (
                   <FieldItem>
-                    <ServiceFieldLabel field={field}>
+                    <ServiceFieldLabel
+                      field={field}
+                      id={`${field.name}-label`}
+                      htmlFor={undefined}
+                    >
                       Save Classified Sequences
                     </ServiceFieldLabel>
                     <BooleanRadio
                       id="classified"
+                      labelId={`${field.name}-label`}
                       value={field.state.value}
                       onChange={(value) => {
                         field.handleChange(value);
@@ -316,11 +335,16 @@ export function ClassificationParametersCard({
               <form.Field name="save_unclassified_sequences">
                 {(field) => (
                   <FieldItem>
-                    <ServiceFieldLabel field={field}>
+                    <ServiceFieldLabel
+                      field={field}
+                      id={`${field.name}-label`}
+                      htmlFor={undefined}
+                    >
                       Save Unclassified Sequences
                     </ServiceFieldLabel>
                     <BooleanRadio
                       id="unclassified"
+                      labelId={`${field.name}-label`}
                       value={field.state.value}
                       onChange={(value) => {
                         field.handleChange(value);

@@ -2,11 +2,6 @@
 
 import { ArrowRight, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,7 +9,6 @@ import {
   SelectGroup,
   SelectItem,
   SelectLabel,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
@@ -25,6 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import type { GeneProteinTreeController } from "./use-gene-protein-tree";
 
 export function GeneProteinTreeMetadata({
@@ -43,18 +43,18 @@ export function GeneProteinTreeMetadata({
     selectedMetadataFields,
   } = controller;
   return (
-    <Collapsible
+    <ServiceCollapsible
       open={showAdvanced}
       onOpenChange={setShowAdvanced}
-      className="service-collapsible-container col-span-2"
+      className="col-span-2"
     >
-      <CollapsibleTrigger className="service-collapsible-trigger">
+      <ServiceCollapsibleTrigger>
         Metadata Options
         <ChevronDown
           className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
         />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="service-collapsible-content">
+      </ServiceCollapsibleTrigger>
+      <ServiceCollapsibleContent>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-4">
             <div>
@@ -70,12 +70,9 @@ export function GeneProteinTreeMetadata({
                     if (value != null) handleMetadataSelection(value);
                   }}
                 >
-                  <SelectTrigger
-                    className="service-card-select-trigger"
-                    aria-label="Metadata table field"
-                  >
+                  <ServiceSelectTrigger aria-label="Metadata table field">
                     <SelectValue placeholder="Select field" />
-                  </SelectTrigger>
+                  </ServiceSelectTrigger>
                   <SelectContent className="max-h-150">
                     <SelectGroup>
                       {availableMetadataOptions.map((field) =>
@@ -140,7 +137,7 @@ export function GeneProteinTreeMetadata({
             </Table>
           </div>
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </ServiceCollapsibleContent>
+    </ServiceCollapsible>
   );
 }

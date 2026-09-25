@@ -1,17 +1,21 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { sarsCov2WastewaterAnalysisParameters } from "@/lib/services/info/sars-cov2-wastewater-analysis";
 import { recipeOptions } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-form-schema";
 import type { WastewaterForm } from "./page";
@@ -27,18 +31,18 @@ export function WastewaterParameters({
 }) {
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Parameters
           <DialogInfoPopup
             title={sarsCov2WastewaterAnalysisParameters.title}
             sections={sarsCov2WastewaterAnalysisParameters.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-4">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-4">
         <div className="space-y-2">
-          <Label className="service-card-label">Strategy</Label>
+          <ServiceLabel>Strategy</ServiceLabel>
           <form.Field name="recipe">
             {(field) => (
               <FieldItem>
@@ -49,12 +53,9 @@ export function WastewaterParameters({
                     if (value != null) field.handleChange(value);
                   }}
                 >
-                  <SelectTrigger
-                    className="service-card-select-trigger"
-                    aria-label="Strategy"
-                  >
+                  <ServiceSelectTrigger aria-label="Strategy">
                     <SelectValue placeholder="Select strategy" />
-                  </SelectTrigger>
+                  </ServiceSelectTrigger>
                   <SelectContent>
                     <SelectGroup>
                       {recipeOptions.map((recipe) => (
@@ -97,7 +98,7 @@ export function WastewaterParameters({
             )}
           </form.Field>
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

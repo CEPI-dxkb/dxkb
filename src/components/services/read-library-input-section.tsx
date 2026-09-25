@@ -2,8 +2,8 @@
 
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 
 interface ReadLibraryInputSectionProps {
@@ -31,7 +31,7 @@ export function ReadLibraryInputSection({
     <>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="service-card-label">Paired Read Library</Label>
+          <ServiceLabel>Paired Read Library</ServiceLabel>
           <div className="mx-4 h-px flex-1 bg-border" />
           <Button
             type="button"
@@ -65,7 +65,7 @@ export function ReadLibraryInputSection({
       </div>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="service-card-label">Single Read Library</Label>
+          <ServiceLabel>Single Read Library</ServiceLabel>
           <div className="mx-4 h-px flex-1 bg-border" />
           <Button
             type="button"

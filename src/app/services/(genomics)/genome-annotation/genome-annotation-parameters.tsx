@@ -1,14 +1,12 @@
 import { useSelector } from "@tanstack/react-store";
 import { HelpCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
@@ -27,6 +25,13 @@ import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { genomeAnnotationParameters } from "@/lib/services/info/genome-annotation";
 import {
   genomeAnnotationRecipes,
@@ -56,17 +61,17 @@ export function GenomeAnnotationParameters({
 
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <ServiceCardTitle>
           Parameters
           <DialogInfoPopup
             title={genomeAnnotationParameters.title}
             description={genomeAnnotationParameters.description}
             sections={genomeAnnotationParameters.sections}
           />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+        </ServiceCardTitle>
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div className="space-y-6">
           <form.Field name="contigs">
             {(field) => (
@@ -97,12 +102,9 @@ export function GenomeAnnotationParameters({
                     );
                   }}
                 >
-                  <SelectTrigger
-                    className="service-card-select-trigger"
-                    aria-label="Annotation Recipe"
-                  >
+                  <ServiceSelectTrigger aria-label="Annotation Recipe">
                     <SelectValue placeholder="--- Select Recipe ---" />
-                  </SelectTrigger>
+                  </ServiceSelectTrigger>
                   <SelectContent>
                     <SelectGroup>
                       {genomeAnnotationRecipes.map((recipe) => (
@@ -193,9 +195,8 @@ export function GenomeAnnotationParameters({
             {(field) => (
               <FieldItem>
                 <RequiredLabel>My Label</RequiredLabel>
-                <Input
+                <ServiceInput
                   placeholder="My identifier123"
-                  className="service-card-input"
                   value={field.state.value}
                   onChange={(event) => {
                     field.handleChange(event.target.value);
@@ -237,7 +238,7 @@ export function GenomeAnnotationParameters({
             )}
           </form.Field>
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

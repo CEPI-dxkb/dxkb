@@ -1,12 +1,6 @@
 import { ChevronDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Label } from "@/components/ui/label";
 import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormLabelInfo } from "@/components/forms/required-form-components";
 import {
@@ -20,6 +14,18 @@ import {
 } from "@/lib/forms/(genomics)/blast/blast-form-utils";
 import type { BlastFormData } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import { ServiceFieldItem } from "@/components/services/form-ui/service-field";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import type { BlastForm } from "./page";
 import { DatabaseSelector } from "./database-selector";
 import { OptionSelect } from "./option-select";
@@ -51,10 +57,10 @@ export function BlastParameters({
 }: ParametersProps) {
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">Parameters</CardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      <ServiceCardHeader>
+        <ServiceCardTitle>Parameters</ServiceCardTitle>
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div className="service-card-row">
           <form.Field name="db_precomputed_database">
             {(field) => (
@@ -104,19 +110,19 @@ export function BlastParameters({
         <div className="service-card-row">
           <form.Field name="output_path">
             {(field) => (
-              <FieldItem className="service-card-row-item">
+              <ServiceFieldItem>
                 <OutputFolder
                   required
                   value={field.state.value}
                   onChange={field.handleChange}
                 />
                 <FieldErrors field={field} />
-              </FieldItem>
+              </ServiceFieldItem>
             )}
           </form.Field>
           <form.Field name="output_file">
             {(field) => (
-              <FieldItem className="service-card-row-item">
+              <ServiceFieldItem>
                 <OutputFolder
                   variant="name"
                   required
@@ -126,27 +132,23 @@ export function BlastParameters({
                   onValidationChange={onOutputValidationChange}
                 />
                 <FieldErrors field={field} />
-              </FieldItem>
+              </ServiceFieldItem>
             )}
           </form.Field>
         </div>
-        <Collapsible
-          open={showAdvanced}
-          onOpenChange={setShowAdvanced}
-          className="service-collapsible-container"
-        >
-          <CollapsibleTrigger className="service-collapsible-trigger">
+        <ServiceCollapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <ServiceCollapsibleTrigger>
             Advanced Options
             <ChevronDown
               className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="service-collapsible-content">
+          </ServiceCollapsibleTrigger>
+          <ServiceCollapsibleContent>
             <div className="service-card-content-grid">
               <form.Field name="blast_max_hits">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">Max Hits</Label>
+                    <ServiceLabel>Max Hits</ServiceLabel>
                     <OptionSelect
                       label="Max Hits"
                       value={field.state.value}
@@ -160,9 +162,9 @@ export function BlastParameters({
               <form.Field name="blast_evalue_cutoff">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">
+                    <ServiceLabel>
                       E-Value Threshold
-                    </Label>
+                    </ServiceLabel>
                     <OptionSelect
                       label="E-Value Threshold"
                       value={field.state.value}
@@ -174,9 +176,9 @@ export function BlastParameters({
                 )}
               </form.Field>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
+          </ServiceCollapsibleContent>
+        </ServiceCollapsible>
+      </ServiceCardContent>
     </Card>
   );
 }

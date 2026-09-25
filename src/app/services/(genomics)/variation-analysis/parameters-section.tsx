@@ -1,12 +1,10 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Select,
-  SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
@@ -14,6 +12,15 @@ import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceSelectContent,
+  ServiceSelectTrigger,
+} from "@/components/services/form-ui/service-select";
 import {
   variationAnalysisCallers,
   variationAnalysisMappers,
@@ -29,17 +36,17 @@ export function ParametersSection({
   const { form, outputPath, setIsOutputNameValid } = controller;
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <ServiceCardTitle>
           Parameters
           <DialogInfoPopup
             title={variationAnalysisParameters.title}
             description={variationAnalysisParameters.description}
             sections={variationAnalysisParameters.sections}
           />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+        </ServiceCardTitle>
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div className="space-y-6">
           <form.Field name="reference_genome_id">
             {(field) => (
@@ -65,13 +72,10 @@ export function ParametersSection({
                     if (value != null) field.handleChange(value);
                   }}
                 >
-                  <SelectTrigger
-                    className="service-card-select-trigger"
-                    aria-label="Aligner"
-                  >
+                  <ServiceSelectTrigger aria-label="Aligner">
                     <SelectValue placeholder="Select aligner" />
-                  </SelectTrigger>
-                  <SelectContent className="service-card-select-content">
+                  </ServiceSelectTrigger>
+                  <ServiceSelectContent>
                     <SelectGroup>
                       {variationAnalysisMappers.map((mapper) => (
                         <SelectItem key={mapper.value} value={mapper.value}>
@@ -79,7 +83,7 @@ export function ParametersSection({
                         </SelectItem>
                       ))}
                     </SelectGroup>
-                  </SelectContent>
+                  </ServiceSelectContent>
                 </Select>
                 <FieldErrors field={field} />
               </FieldItem>
@@ -96,13 +100,10 @@ export function ParametersSection({
                     if (value != null) field.handleChange(value);
                   }}
                 >
-                  <SelectTrigger
-                    className="service-card-select-trigger"
-                    aria-label="SNP Caller"
-                  >
+                  <ServiceSelectTrigger aria-label="SNP Caller">
                     <SelectValue placeholder="Select SNP caller" />
-                  </SelectTrigger>
-                  <SelectContent className="service-card-select-content">
+                  </ServiceSelectTrigger>
+                  <ServiceSelectContent>
                     <SelectGroup>
                       {variationAnalysisCallers.map((caller) => (
                         <SelectItem key={caller.value} value={caller.value}>
@@ -110,7 +111,7 @@ export function ParametersSection({
                         </SelectItem>
                       ))}
                     </SelectGroup>
-                  </SelectContent>
+                  </ServiceSelectContent>
                 </Select>
                 <FieldErrors field={field} />
               </FieldItem>
@@ -144,7 +145,7 @@ export function ParametersSection({
             )}
           </form.Field>
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

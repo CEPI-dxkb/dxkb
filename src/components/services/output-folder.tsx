@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/tooltip";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 
 import { HelpCircle } from "lucide-react";
 
@@ -82,7 +82,7 @@ const OutputFolder = ({
     <div className="space-y-0">
       {title && (
         <div className="flex flex-row items-center gap-2">
-          <Label className="service-card-label">{resolvedTitle}</Label>
+          <ServiceLabel>{resolvedTitle}</ServiceLabel>
           {tooltipContent && (
             <TooltipProvider>
               <Tooltip>
@@ -116,8 +116,7 @@ const OutputFolder = ({
           )}
           {variant === "name" && (
             <div className="flex flex-1 items-center gap-2">
-              <Input
-                className="service-card-input"
+              <ServiceInput
                 placeholder={resolvedPlaceholder}
                 value={value}
                 onChange={(e) => onChange?.(e.target.value)}

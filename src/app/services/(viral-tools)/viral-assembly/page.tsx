@@ -2,7 +2,7 @@
 
 import { useViralAssemblyPage } from "./use-viral-assembly-page";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,10 +10,9 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
@@ -23,6 +22,13 @@ import { RequiredFormCardTitle } from "@/components/forms/required-form-componen
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 
 import {
   viralAssemblyInfo,
@@ -83,8 +89,8 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
         {/* Input File */}
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Input File
                 <DialogInfoPopup
                   title={viralAssemblyInputFile.title}
@@ -92,12 +98,12 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                   sections={viralAssemblyInputFile.sections}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
-            <CardContent className="service-card-content space-y-6">
+            </ServiceCardHeader>
+            <ServiceCardContent className="space-y-6">
               <form.Field name="input_type">
                 {(field) => (
                   <FieldItem>
-                    <RadioGroup
+                    <ServiceRadioGroup
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value != null)
@@ -105,7 +111,6 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                             value as ViralAssemblyFormData["input_type"],
                           );
                       }}
-                      className="service-radio-group-horizontal"
                     >
                       <div className="service-radio-group-item flex items-center gap-2">
                         <RadioGroupItem value="paired" id="input-paired" />
@@ -123,7 +128,7 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                         <RadioGroupItem value="srr_accession" id="input-sra" />
                         <Label htmlFor="input-sra">SRA Run Accession</Label>
                       </div>
-                    </RadioGroup>
+                    </ServiceRadioGroup>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
@@ -189,28 +194,26 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                   </FieldItem>
                 )}
               </form.Field>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 
         {/* Parameters */}
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Parameters
                 <DialogInfoPopup
                   title={viralAssemblyParameters.title}
                   sections={viralAssemblyParameters.sections}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
-            <CardContent className="service-card-content space-y-4">
+            </ServiceCardHeader>
+            <ServiceCardContent className="space-y-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
                 <div className="flex-1 space-y-2">
-                  <Label className="service-card-label">
-                    Assembly Strategy
-                  </Label>
+                  <ServiceLabel>Assembly Strategy</ServiceLabel>
                   <form.Field name="strategy">
                     {(field) => (
                       <FieldItem>
@@ -221,12 +224,9 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                             if (value != null) field.handleChange(value);
                           }}
                         >
-                          <SelectTrigger
-                            className="service-card-select-trigger"
-                            aria-label="Assembly Strategy"
-                          >
+                          <ServiceSelectTrigger aria-label="Assembly Strategy">
                             <SelectValue placeholder="Select strategy" />
-                          </SelectTrigger>
+                          </ServiceSelectTrigger>
                           <SelectContent>
                             <SelectGroup>
                               {strategyOptions.map((opt) => (
@@ -243,9 +243,7 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                   </form.Field>
                 </div>
                 <div className="flex-1 space-y-2">
-                  <Label className="service-card-label">
-                    Reference Database
-                  </Label>
+                  <ServiceLabel>Reference Database</ServiceLabel>
                   <form.Field name="module">
                     {(field) => (
                       <FieldItem>
@@ -256,12 +254,9 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                             if (value != null) field.handleChange(value);
                           }}
                         >
-                          <SelectTrigger
-                            className="service-card-select-trigger"
-                            aria-label="Reference Database"
-                          >
+                          <ServiceSelectTrigger aria-label="Reference Database">
                             <SelectValue placeholder="Select" />
-                          </SelectTrigger>
+                          </ServiceSelectTrigger>
                           <SelectContent>
                             <SelectGroup>
                               {moduleOptions.map((opt) => (
@@ -309,7 +304,7 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                   </FieldItem>
                 )}
               </form.Field>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 

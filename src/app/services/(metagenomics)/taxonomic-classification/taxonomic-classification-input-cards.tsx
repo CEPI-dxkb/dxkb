@@ -8,10 +8,17 @@ import { SelectedLibrariesCard } from "@/components/services/selected-libraries-
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import { FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import {
+  ServiceLabel,
+  ServiceSubLabel,
+} from "@/components/services/form-ui/service-label";
 import { extractSampleIdFromPath } from "@/lib/forms/service-library-rules";
 import { taxonomyClassificationInput } from "@/lib/services/info/taxonomic-classification";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
@@ -27,19 +34,19 @@ export function ClassificationInputCard({
   return (
     <div className="md:col-span-7">
       <Card className="h-full">
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Input File
             <DialogInfoPopup
               title={taxonomyClassificationInput.title}
               description={taxonomyClassificationInput.description}
             />
           </RequiredFormCardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content space-y-6">
+        </ServiceCardHeader>
+        <ServiceCardContent className="space-y-6">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="service-card-label">Paired Read Library</Label>
+              <ServiceLabel>Paired Read Library</ServiceLabel>
               <div className="mx-4 h-px flex-1 bg-border" />
               <Button
                 type="button"
@@ -78,26 +85,23 @@ export function ClassificationInputCard({
               />
             </div>
             <div>
-              <Label
-                htmlFor="paired-sample-id"
-                className="service-card-sublabel"
-              >
+              <ServiceSubLabel htmlFor="paired-sample-id">
                 Sample Identifier
-              </Label>
-              <Input
+              </ServiceSubLabel>
+              <ServiceInput
                 id="paired-sample-id"
                 value={state.pairedSampleId}
                 onChange={(event) => {
                   controller.handleSampleIdChange("paired", event.target.value);
                 }}
                 placeholder="Sample ID"
-                className="service-card-input mt-1.5 font-mono text-sm"
+                className="mt-1.5 font-mono text-sm"
               />
             </div>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label className="service-card-label">Single Read Library</Label>
+              <ServiceLabel>Single Read Library</ServiceLabel>
               <div className="mx-4 h-px flex-1 bg-border" />
               <Button
                 type="button"
@@ -122,20 +126,17 @@ export function ClassificationInputCard({
               }}
             />
             <div>
-              <Label
-                htmlFor="single-sample-id"
-                className="service-card-sublabel"
-              >
+              <ServiceSubLabel htmlFor="single-sample-id">
                 Sample Identifier
-              </Label>
-              <Input
+              </ServiceSubLabel>
+              <ServiceInput
                 id="single-sample-id"
                 value={state.singleSampleId}
                 onChange={(event) => {
                   controller.handleSampleIdChange("single", event.target.value);
                 }}
                 placeholder="Sample ID"
-                className="service-card-input mt-1.5 font-mono text-sm"
+                className="mt-1.5 font-mono text-sm"
               />
             </div>
           </div>
@@ -148,23 +149,23 @@ export function ClassificationInputCard({
             allowDuplicates={false}
           />
           <div>
-            <Label htmlFor="srr-sample-id" className="service-card-sublabel">
+            <ServiceSubLabel htmlFor="srr-sample-id">
               Sample Identifier
-            </Label>
-            <Input
+            </ServiceSubLabel>
+            <ServiceInput
               id="srr-sample-id"
               value={state.srrSampleId}
               onChange={(event) => {
                 controller.handleSampleIdChange("srr", event.target.value);
               }}
               placeholder="Sample ID"
-              className="service-card-input mt-1.5 font-mono text-sm"
+              className="mt-1.5 font-mono text-sm"
             />
           </div>
           <form.Field name="paired_end_libs">
             {(field) => <FieldErrors field={field} />}
           </form.Field>
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );

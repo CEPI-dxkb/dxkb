@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight, ClipboardCopy } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
 import {
   formatElapsedSeconds,
   formatUnixTimestamp,
@@ -57,20 +57,20 @@ export function JobMetadataCard({ resolvedJobMeta, className }: JobMetadataCardP
         </div>
       </dl>
 
-      <Collapsible
+      <ServiceCollapsible
         open={parametersOpen}
         onOpenChange={setParametersOpen}
-        className="service-collapsible-container p-1!"
+        className="p-1!"
       >
-        <CollapsibleTrigger className="service-collapsible-trigger text-sm">
+        <ServiceCollapsibleTrigger className="text-sm">
           {parametersOpen ? (
             <ChevronDown className="size-4" />
           ) : (
             <ChevronRight className="size-4" />
           )}
           Job Parameters
-        </CollapsibleTrigger>
-        <CollapsibleContent className="service-collapsible-content">
+        </ServiceCollapsibleTrigger>
+        <ServiceCollapsibleContent>
           <div className="relative mt-2">
             <Button
               type="button"
@@ -91,8 +91,8 @@ export function JobMetadataCard({ resolvedJobMeta, className }: JobMetadataCardP
               {JSON.stringify(parameters, null, 2)}
             </pre>
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        </ServiceCollapsibleContent>
+      </ServiceCollapsible>
     </div>
   );
 }

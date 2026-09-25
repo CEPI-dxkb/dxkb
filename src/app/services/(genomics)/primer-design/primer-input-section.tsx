@@ -1,19 +1,25 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import {
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceFieldLabel,
+  ServiceFieldSubLabel,
+} from "@/components/services/form-ui/service-field";
+import {
+  ServiceInput,
+  ServiceTextarea,
+} from "@/components/services/form-ui/service-input";
+import { ServiceSubLabel } from "@/components/services/form-ui/service-label";
 import { markerLabels } from "@/lib/forms/(genomics)/primer-design/primer-design-form-utils";
 import { primerDesignInputSequence } from "@/lib/services/info/primer-design";
 import type { PrimerDesignController } from "./use-primer-design-form";
@@ -40,16 +46,16 @@ export function PrimerInputSection({
 
   return (
     <Card className="gap-0">
-      <CardHeader className="service-card-header pb-1">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader className="pb-1">
+        <ServiceCardTitle>
           Input Sequence
           <DialogInfoPopup
             title={primerDesignInputSequence.title}
             description={primerDesignInputSequence.description}
             sections={primerDesignInputSequence.sections}
           />
-        </CardTitle>
-      </CardHeader>
+        </ServiceCardTitle>
+      </ServiceCardHeader>
       <CardContent className="space-y-3 pt-1">
         <Tabs
           value={inputType}
@@ -64,10 +70,10 @@ export function PrimerInputSection({
             <form.Field name="SEQUENCE_ID">
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel field={field}>
                     Sequence Identifier
-                  </FieldLabel>
-                  <Input
+                  </ServiceFieldLabel>
+                  <ServiceInput
                     name={field.name}
                     id={field.name}
                     value={field.state.value || ""}
@@ -77,7 +83,6 @@ export function PrimerInputSection({
                       setSequenceTextId(event.target.value);
                     }}
                     placeholder="Identifier for input sequence"
-                    className="service-card-input"
                   />
                   <FieldErrors field={field} />
                 </FieldItem>
@@ -86,10 +91,10 @@ export function PrimerInputSection({
             <form.Field name="sequence_input">
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel field={field}>
                     Paste Sequence
-                  </FieldLabel>
-                  <Textarea
+                  </ServiceFieldLabel>
+                  <ServiceTextarea
                     name={field.name}
                     id={field.name}
                     value={field.state.value}
@@ -100,7 +105,6 @@ export function PrimerInputSection({
                     onKeyUp={handleSequenceSelect}
                     onMouseUp={handleSequenceSelect}
                     placeholder="Enter nucleotide sequence"
-                    className="service-card-textarea"
                   />
                   {sequenceValidation && !sequenceValidation.isValid ? (
                     <p className="text-sm text-destructive">
@@ -116,9 +120,7 @@ export function PrimerInputSection({
               )}
             </form.Field>
             <div className="space-y-2">
-              <Label className="service-card-sublabel">
-                Mark Selected Region
-              </Label>
+              <ServiceSubLabel>Mark Selected Region</ServiceSubLabel>
               <div className="flex flex-wrap gap-2">
                 {(
                   Object.keys(markerLabels) as (keyof typeof markerLabels)[]
@@ -148,9 +150,9 @@ export function PrimerInputSection({
             <form.Field name="sequence_input">
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel field={field}>
                     FASTA File
-                  </FieldLabel>
+                  </ServiceFieldLabel>
                   <WorkspaceObjectSelector
                     preset="featureDnaFasta"
                     placeholder="Select FASTA file from workspace"
@@ -170,9 +172,9 @@ export function PrimerInputSection({
         <form.Field name="PRIMER_PICK_INTERNAL_OLIGO">
           {(field) => (
             <FieldItem className="flex flex-row items-center gap-2">
-              <FieldLabel field={field} className="service-card-sublabel">
+              <ServiceFieldSubLabel field={field}>
                 Pick Internal Oligo
-              </FieldLabel>
+              </ServiceFieldSubLabel>
               <Switch
                 checked={Boolean(field.state.value)}
                 onCheckedChange={field.handleChange}

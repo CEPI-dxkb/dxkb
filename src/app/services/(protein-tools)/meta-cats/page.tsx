@@ -7,20 +7,17 @@ import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -46,6 +43,17 @@ import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import SelectedItemsTable from "@/components/services/selected-items-table";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceInput,
+  ServiceNumberInput,
+} from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   metaCatsFormSchema,
   defaultMetaCatsFormValues,
@@ -416,8 +424,8 @@ function useMetaCATSPage() {
       >
         {/* Parameters Card */}
         <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
+          <ServiceCardHeader>
+            <RequiredFormCardTitle>
               Parameters
               <DialogInfoPopup
                 title={metaCATSParameters.title}
@@ -425,15 +433,15 @@ function useMetaCATSPage() {
                 sections={metaCATSParameters.sections}
               />
             </RequiredFormCardTitle>
-          </CardHeader>
+          </ServiceCardHeader>
 
-          <CardContent className="service-card-content">
+          <ServiceCardContent>
             <div className="space-y-4">
               <form.Field name="p_value">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">P-Value</Label>
-                    <NumberInput
+                    <ServiceLabel>P-Value</ServiceLabel>
+                    <ServiceNumberInput
                       name={field.name}
                       aria-label="P-Value"
                       value={field.state.value}
@@ -444,7 +452,7 @@ function useMetaCATSPage() {
                       onValueChange={(value) => {
                         if (value !== undefined) field.handleChange(value);
                       }}
-                      className="service-card-input relative max-w-32 [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="relative max-w-32 [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <FieldErrors field={field} />
                   </FieldItem>
@@ -473,13 +481,13 @@ function useMetaCATSPage() {
                 )}
               </form.Field>
             </div>
-          </CardContent>
+          </ServiceCardContent>
         </Card>
 
         {/* Input Card */}
         <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
+          <ServiceCardHeader>
+            <RequiredFormCardTitle>
               Input
               <DialogInfoPopup
                 title={metaCATSInput.title}
@@ -487,7 +495,7 @@ function useMetaCATSPage() {
                 sections={metaCATSInput.sections}
               />
             </RequiredFormCardTitle>
-          </CardHeader>
+          </ServiceCardHeader>
 
           <CardContent className="space-y-6 pt-1">
             <div className="flex flex-col gap-6">
@@ -495,7 +503,7 @@ function useMetaCATSPage() {
               <form.Field name="input_type">
                 {(field) => (
                   <FieldItem>
-                    <RadioGroup
+                    <ServiceRadioGroup
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value != null)
@@ -503,7 +511,6 @@ function useMetaCATSPage() {
                             value as MetaCatsFormData["input_type"],
                           );
                       }}
-                      className="service-radio-group-horizontal"
                     >
                       <div className="flex items-center gap-3">
                         <RadioGroupItem value="auto" id="auto" />
@@ -517,7 +524,7 @@ function useMetaCATSPage() {
                         <RadioGroupItem value="files" id="files" />
                         <Label htmlFor="files">Alignment File</Label>
                       </div>
-                    </RadioGroup>
+                    </ServiceRadioGroup>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
@@ -533,7 +540,7 @@ function useMetaCATSPage() {
                     <form.Field name="metadata_group">
                       {(field) => (
                         <FieldItem className="min-w-48">
-                          <Label className="service-card-label">Metadata</Label>
+                          <ServiceLabel>Metadata</ServiceLabel>
                           <Select
                             items={metadataOptions.map((o) => ({
                               value: o.value,
@@ -551,12 +558,9 @@ function useMetaCATSPage() {
                               }
                             }}
                           >
-                            <SelectTrigger
-                              className="service-card-select-trigger"
-                              aria-label="Select metadata"
-                            >
+                            <ServiceSelectTrigger aria-label="Select metadata">
                               <SelectValue placeholder="Select metadata" />
-                            </SelectTrigger>
+                            </ServiceSelectTrigger>
                             <SelectContent
                               alignItemWithTrigger={true}
                               side="bottom"
@@ -582,16 +586,13 @@ function useMetaCATSPage() {
                     {/* Year Ranges (only for collection_year) */}
                     {showYearRanges && (
                       <div className="min-w-64 flex-1">
-                        <Label className="service-card-label">
-                          Year Ranges
-                        </Label>
-                        <Input
+                        <ServiceLabel>Year Ranges</ServiceLabel>
+                        <ServiceInput
                           value={yearRangesInput}
                           onChange={(e) => {
                             handleYearRangesChange(e.target.value);
                           }}
                           placeholder="1998,1999-2005,2006"
-                          className="service-card-input"
                         />
                         {yearRangesValidation && (
                           <p
@@ -610,9 +611,7 @@ function useMetaCATSPage() {
 
                   {/* Feature Group Selector */}
                   <div className="space-y-2">
-                    <Label className="service-card-label">
-                      Select Feature Group
-                    </Label>
+                    <ServiceLabel>Select Feature Group</ServiceLabel>
                     <div className="flex gap-2">
                       <WorkspaceObjectSelector
                         preset="featureGroup"
@@ -649,13 +648,12 @@ function useMetaCATSPage() {
                   <form.Field name="auto_alphabet">
                     {(field) => (
                       <FieldItem>
-                        <RadioGroup
+                        <ServiceRadioGroup
                           value={field.state.value}
                           onValueChange={(value) => {
                             if (value != null)
                               field.handleChange(value as "na" | "aa");
                           }}
-                          className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
                             <RadioGroupItem value="na" id="auto_dna" />
@@ -665,7 +663,7 @@ function useMetaCATSPage() {
                             <RadioGroupItem value="aa" id="auto_protein" />
                             <Label htmlFor="auto_protein">Protein</Label>
                           </div>
-                        </RadioGroup>
+                        </ServiceRadioGroup>
                         <FieldErrors field={field} />
                       </FieldItem>
                     )}
@@ -673,7 +671,7 @@ function useMetaCATSPage() {
 
                   {/* Group Names ComboBox and Change Group Button */}
                   <div className="space-y-2">
-                    <Label className="service-card-label">Group Names</Label>
+                    <ServiceLabel>Group Names</ServiceLabel>
                     <div className="flex gap-2">
                       <Select
                         items={groupNames.map((name) => ({
@@ -685,12 +683,12 @@ function useMetaCATSPage() {
                           setSelectedGroupName(value ?? "");
                         }}
                       >
-                        <SelectTrigger
-                          className="service-card-select-trigger flex-1"
+                        <ServiceSelectTrigger
+                          className="flex-1"
                           aria-label="Select group name"
                         >
                           <SelectValue placeholder="Select or enter group name" />
-                        </SelectTrigger>
+                        </ServiceSelectTrigger>
                         <SelectContent>
                           <SelectGroup>
                             {groupNames.map((name) => (
@@ -716,7 +714,7 @@ function useMetaCATSPage() {
                   {/* Groups Grid */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label className="service-card-label">Groups Grid</Label>
+                      <ServiceLabel>Groups Grid</ServiceLabel>
                       <span
                         className={`text-sm ${
                           uniqueGroupCount >= minGroups &&
@@ -825,9 +823,7 @@ function useMetaCATSPage() {
               <MetaCatsInputSection active={inputType === "groups"}>
                   {/* Feature Group Selector */}
                   <div className="space-y-2">
-                    <Label className="service-card-label">
-                      Select Feature Group
-                    </Label>
+                    <ServiceLabel>Select Feature Group</ServiceLabel>
                     <div className="flex gap-2">
                       <div className="flex-1">
                         <WorkspaceObjectSelector
@@ -858,13 +854,12 @@ function useMetaCATSPage() {
                   <form.Field name="group_alphabet">
                     {(field) => (
                       <FieldItem>
-                        <RadioGroup
+                        <ServiceRadioGroup
                           value={field.state.value}
                           onValueChange={(value) => {
                             if (value != null)
                               field.handleChange(value as "na" | "aa");
                           }}
-                          className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
                             <RadioGroupItem value="na" id="group_dna" />
@@ -874,7 +869,7 @@ function useMetaCATSPage() {
                             <RadioGroupItem value="aa" id="group_protein" />
                             <Label htmlFor="group_protein">Protein</Label>
                           </div>
-                        </RadioGroup>
+                        </ServiceRadioGroup>
                         <FieldErrors field={field} />
                       </FieldItem>
                     )}
@@ -882,10 +877,10 @@ function useMetaCATSPage() {
 
                   {/* Selected Feature Groups Table */}
                   <div className="space-y-2">
-                    <Label className="service-card-label">
+                    <ServiceLabel>
                       Selected Feature Groups ({featureGroups.length}/
                       {maxGroups})
-                    </Label>
+                    </ServiceLabel>
                     <SelectedItemsTable
                       title=""
                       items={featureGroups.map((path) => ({
@@ -920,9 +915,7 @@ function useMetaCATSPage() {
                   <form.Field name="alignment_file">
                     {(field) => (
                       <FieldItem>
-                        <Label className="service-card-label">
-                          Alignment File
-                        </Label>
+                        <ServiceLabel>Alignment File</ServiceLabel>
                         <WorkspaceObjectSelector
                           preset="alignedFasta"
                           placeholder="Select alignment file"
@@ -951,7 +944,7 @@ function useMetaCATSPage() {
                   <form.Field name="group_file">
                     {(field) => (
                       <FieldItem>
-                        <Label className="service-card-label">Group File</Label>
+                        <ServiceLabel>Group File</ServiceLabel>
                         <WorkspaceObjectSelector
                           preset="tsv"
                           placeholder="Select group file (TSV)"

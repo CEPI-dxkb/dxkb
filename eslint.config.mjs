@@ -72,7 +72,19 @@ export default defineConfig(
     // run `pnpm lint --prune-suppressions` (lint fails on stale entries).
     plugins: { shadcn },
     rules: {
-      "shadcn/no-restyle": ["error", { allow: ["layout"] }],
+      "shadcn/no-restyle": [
+        "error",
+        {
+          allow: ["layout"],
+          contracts: [
+            // Padding is set per table and per card section.
+            { pattern: "^Table(Cell|Head)$", allow: ["layout", "spacing"] },
+            { pattern: "^Card(Header|Content)$", allow: ["layout", "spacing"] },
+            // A skeleton's size and shape mirror the content it stands in for.
+            { pattern: "^Skeleton$", allow: ["layout", "shape", "spacing"] },
+          ],
+        },
+      ],
       "shadcn/no-raw-colors": "error",
       "shadcn/no-arbitrary-values": ["error", { allow: arbitraryValueAllow }],
       "shadcn/no-inline-styles": "error",
@@ -96,7 +108,10 @@ export default defineConfig(
   {
     // Components own their appearance and may need structural values such as
     // `ring-[3px]`. no-raw-colors and no-inline-styles stay on here.
-    files: ["src/components/ui/**"],
+    // services/form-ui holds the service form wrappers, which own the global
+    // `service-*` classes they apply to the parts they wrap. Classes callers
+    // pass to a wrapper are still checked against the wrapped part.
+    files: ["src/components/ui/**", "src/components/services/form-ui/**"],
     rules: {
       "shadcn/no-restyle": "off",
       "shadcn/no-arbitrary-values": "off",

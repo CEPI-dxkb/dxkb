@@ -2,14 +2,9 @@
 
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -23,6 +18,12 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { phylogeneticTreeInput } from "@/lib/services/info/phylogenetic-tree";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type {
@@ -58,21 +59,21 @@ export function GeneProteinTreeInput({
   } = controller;
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Input
           <DialogInfoPopup {...phylogeneticTreeInput} />
         </RequiredFormCardTitle>
         <CardDescription>
           Choose fasta file or features for tree.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div className="space-y-4">
           <form.Field name="alphabet">
             {(field) => (
               <FieldItem>
-                <RadioGroup
+                <ServiceRadioGroup
                   value={field.state.value}
                   onValueChange={(value) => {
                     if (value != null) {
@@ -81,7 +82,6 @@ export function GeneProteinTreeInput({
                       );
                     }
                   }}
-                  className="service-radio-group-horizontal"
                 >
                   {(["DNA", "Protein"] as const).map((value) => (
                     <div key={value} className="flex items-center gap-3">
@@ -89,7 +89,7 @@ export function GeneProteinTreeInput({
                       <Label htmlFor={value}>{value}</Label>
                     </div>
                   ))}
-                </RadioGroup>
+                </ServiceRadioGroup>
                 <FieldErrors field={field} />
               </FieldItem>
             )}
@@ -133,7 +133,7 @@ export function GeneProteinTreeInput({
             onRemove={removeSequence}
           />
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -157,7 +157,7 @@ function SequenceSelector({
 }) {
   return (
     <div className="space-y-2">
-      <Label className="service-card-label">{label}</Label>
+      <ServiceLabel>{label}</ServiceLabel>
       <div className="flex gap-2">
         <WorkspaceObjectSelector
           preset={preset}

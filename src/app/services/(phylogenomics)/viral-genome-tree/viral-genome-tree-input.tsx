@@ -2,19 +2,18 @@
 
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card, CardDescription } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { phylogeneticTreeInput } from "@/lib/services/info/phylogenetic-tree";
 import type { ViralGenomeTreeController } from "./use-viral-genome-tree";
 
@@ -40,8 +39,8 @@ export function ViralGenomeTreeInput({
 
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Input
           <DialogInfoPopup
             title={phylogeneticTreeInput.title}
@@ -52,8 +51,8 @@ export function ViralGenomeTreeInput({
         <CardDescription>
           Choose genome group or FASTA files for tree.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div className="space-y-4">
           <SequenceSelector
             label="Genome Group"
@@ -105,7 +104,7 @@ export function ViralGenomeTreeInput({
             )}
           </form.Field>
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -131,7 +130,7 @@ function SequenceSelector({
 }) {
   return (
     <div className="space-y-2">
-      <Label className="service-card-label">{label}</Label>
+      <ServiceLabel>{label}</ServiceLabel>
       <div className="flex gap-2">
         <WorkspaceObjectSelector
           preset={preset}

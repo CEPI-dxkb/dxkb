@@ -1,19 +1,19 @@
 "use client";
 
 import { HelpCircle } from "lucide-react";
-import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  ServiceFieldLabel,
+  ServiceFieldSubLabel,
+} from "@/components/services/form-ui/service-field";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import type { PrimerDesignController } from "./use-primer-design-form";
 
 const sizeFields = [
@@ -81,16 +81,16 @@ export function PrimerOptionsSection({
         {(field) => (
           <FieldItem>
             <div className="flex items-center gap-2">
-              <FieldLabel field={field} className="service-card-label">
+              <ServiceFieldLabel field={field}>
                 Product Size Range (bp)
-              </FieldLabel>
+              </ServiceFieldLabel>
               <Help>
                 Minimum, optimum, and maximum lengths (in bases) of the PCR
                 product. Primer3 attempts to pick primers close to the optimum
                 length.
               </Help>
             </div>
-            <Input
+            <ServiceInput
               id={field.name}
               value={(field.state.value ?? []).join(" ")}
               onChange={(event) => {
@@ -98,7 +98,6 @@ export function PrimerOptionsSection({
                 field.handleChange(value ? value.split(/\s+/) : []);
               }}
               placeholder="50-500"
-              className="service-card-input"
             />
             <FieldErrors field={field} />
           </FieldItem>
@@ -106,7 +105,7 @@ export function PrimerOptionsSection({
       </form.Field>
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Label className="service-card-label">Primer Size (bp)</Label>
+          <ServiceLabel>Primer Size (bp)</ServiceLabel>
           <Help>
             Specify minimum, optimum, and maximum primer lengths. Primer3 will
             not pick primers shorter than the minimum or longer than the
@@ -118,16 +117,15 @@ export function PrimerOptionsSection({
             <form.Field key={name} name={name}>
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-sublabel">
+                  <ServiceFieldSubLabel field={field}>
                     {label}
-                  </FieldLabel>
-                  <Input
+                  </ServiceFieldSubLabel>
+                  <ServiceInput
                     id={field.name}
                     value={field.state.value || ""}
                     onChange={(event) => {
                       field.handleChange(event.target.value || undefined);
                     }}
-                    className="service-card-input"
                   />
                   <FieldErrors field={field} />
                 </FieldItem>
@@ -142,21 +140,20 @@ export function PrimerOptionsSection({
             {(field) => (
               <FieldItem>
                 <div className="flex items-center gap-2">
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel field={field}>
                     {label}
-                  </FieldLabel>
+                  </ServiceFieldLabel>
                   <Help>{tooltip}</Help>
                 </div>
                 <div className="flex items-center gap-2">
                   <span>{prefix}</span>
-                  <Input
+                  <ServiceInput
                     id={field.name}
                     value={(field.state.value ?? []).join(" ")}
                     onChange={(event) => {
                       const value = event.target.value;
                       field.handleChange(value ? value.split(/\s+/) : []);
                     }}
-                    className="service-card-input"
                   />
                   <span>{suffix}</span>
                 </div>

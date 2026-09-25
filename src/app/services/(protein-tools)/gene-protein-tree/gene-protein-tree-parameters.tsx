@@ -1,23 +1,26 @@
 "use client";
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
-  RequiredFormCardTitle,
-  RequiredFormLabel,
-} from "@/components/forms/required-form-components";
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   phylogeneticTreeAlignmentParameters,
   phylogeneticTreeTreeParameters,
@@ -38,13 +41,13 @@ export function GeneProteinTreeParameters({
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Alignment Parameters
             <DialogInfoPopup {...phylogeneticTreeAlignmentParameters} />
           </RequiredFormCardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content">
+        </ServiceCardHeader>
+        <ServiceCardContent>
           <div className="space-y-4">
             <ThresholdField
               form={form}
@@ -59,21 +62,21 @@ export function GeneProteinTreeParameters({
               ariaLabel="Remove gappy sequences threshold"
             />
           </div>
-        </CardContent>
+        </ServiceCardContent>
       </Card>
       <Card>
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Tree Parameters
             <DialogInfoPopup {...phylogeneticTreeTreeParameters} />
           </RequiredFormCardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content">
+        </ServiceCardHeader>
+        <ServiceCardContent>
           <div className="space-y-4">
             <form.Field name="recipe">
               {(field) => (
                 <FieldItem>
-                  <RadioGroup
+                  <ServiceRadioGroup
                     value={field.state.value}
                     onValueChange={(value) => {
                       if (value != null) {
@@ -82,7 +85,6 @@ export function GeneProteinTreeParameters({
                         );
                       }
                     }}
-                    className="service-radio-group-horizontal"
                   >
                     {(["RAxML", "PhyML", "FastTree"] as const).map((recipe) => (
                       <div key={recipe} className="flex items-center gap-3">
@@ -93,7 +95,7 @@ export function GeneProteinTreeParameters({
                         <Label htmlFor={recipe.toLowerCase()}>{recipe}</Label>
                       </div>
                     ))}
-                  </RadioGroup>
+                  </ServiceRadioGroup>
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
@@ -101,22 +103,19 @@ export function GeneProteinTreeParameters({
             <form.Field name="substitution_model">
               {(field) => (
                 <FieldItem>
-                  <RequiredFormLabel className="service-card-label">
-                    Model
-                  </RequiredFormLabel>
+                  <ServiceRequiredLabel>Model</ServiceRequiredLabel>
                   <Select
                     value={field.state.value}
                     onValueChange={(value) => {
                       if (value != null) field.handleChange(value);
                     }}
                   >
-                    <SelectTrigger
+                    <ServiceSelectTrigger
                       id="model"
-                      className="service-card-select-trigger"
                       aria-label="Substitution model"
                     >
                       <SelectValue placeholder="Select" />
-                    </SelectTrigger>
+                    </ServiceSelectTrigger>
                     <SelectContent>
                       <SelectGroup>
                         {substitutionModelOptions.map(
@@ -163,7 +162,7 @@ export function GeneProteinTreeParameters({
               </form.Field>
             </div>
           </div>
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );
@@ -184,21 +183,18 @@ function ThresholdField({
     <form.Field name={name}>
       {(field) => (
         <FieldItem>
-          <RequiredFormLabel className="service-card-label">
+          <ServiceRequiredLabel>
             {label}
-          </RequiredFormLabel>
+          </ServiceRequiredLabel>
           <Select
             value={field.state.value}
             onValueChange={(value) => {
               if (value != null) field.handleChange(value);
             }}
           >
-            <SelectTrigger
-              className="service-card-select-trigger"
-              aria-label={ariaLabel}
-            >
+            <ServiceSelectTrigger aria-label={ariaLabel}>
               <SelectValue placeholder="Select" />
-            </SelectTrigger>
+            </ServiceSelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {thresholdOptions.map((value) => (

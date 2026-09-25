@@ -1,8 +1,13 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import OutputFolder from "@/components/services/output-folder";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
 import type { PrimerDesignController } from "./use-primer-design-form";
 
 export function PrimerOutputSection({
@@ -13,10 +18,10 @@ export function PrimerOutputSection({
   const { form, outputPath, setIsOutputNameValid } = controller;
   return (
     <Card className="gap-0">
-      <CardHeader className="service-card-header pb-1">
-        <CardTitle className="service-card-title">Output</CardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-3 pt-1">
+      <ServiceCardHeader className="pb-1">
+        <ServiceCardTitle>Output</ServiceCardTitle>
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-3 pt-1">
         <form.Field name="output_path">
           {(field) => (
             <FieldItem>
@@ -44,7 +49,7 @@ export function PrimerOutputSection({
             </FieldItem>
           )}
         </form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

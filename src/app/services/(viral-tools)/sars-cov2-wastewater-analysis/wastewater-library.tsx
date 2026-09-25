@@ -1,19 +1,11 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronRight } from "lucide-react";
@@ -21,6 +13,13 @@ import SraRunAccessionWithValidation from "@/components/services/sra-run-accessi
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { sarsCov2WastewaterAnalysisInputLib } from "@/lib/services/info/sars-cov2-wastewater-analysis";
 import { primerOptions } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-form-schema";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
@@ -55,8 +54,8 @@ export function WastewaterLibrary({
 }) {
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Input Library Selection
           <DialogInfoPopup
             title={sarsCov2WastewaterAnalysisInputLib.title}
@@ -67,8 +66,8 @@ export function WastewaterLibrary({
         <CardDescription className="text-xs">
           Send to selected libraries using the arrow buttons.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-6">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-6">
         <ReadInput
           label="Paired Read Library"
           disabled={!page.pairedRead1 || !page.pairedRead2}
@@ -118,7 +117,7 @@ export function WastewaterLibrary({
         />
         <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
           <div className="flex-1 space-y-2">
-            <Label className="service-card-label">Primers</Label>
+            <ServiceLabel>Primers</ServiceLabel>
             <page.form.Field name="primers">
               {(field) => (
                 <FieldItem>
@@ -129,12 +128,9 @@ export function WastewaterLibrary({
                       if (value != null) field.handleChange(value);
                     }}
                   >
-                    <SelectTrigger
-                      className="service-card-select-trigger"
-                      aria-label="Primers"
-                    >
+                    <ServiceSelectTrigger aria-label="Primers">
                       <SelectValue placeholder="Select primers" />
-                    </SelectTrigger>
+                    </ServiceSelectTrigger>
                     <SelectContent>
                       <SelectGroup>
                         {primerOptions.map((primer) => (
@@ -151,7 +147,7 @@ export function WastewaterLibrary({
             </page.form.Field>
           </div>
           <div className="w-full space-y-2 sm:w-32">
-            <Label className="service-card-label">Version</Label>
+            <ServiceLabel>Version</ServiceLabel>
             <page.form.Field name="primer_version">
               {(field) => (
                 <FieldItem>
@@ -162,12 +158,9 @@ export function WastewaterLibrary({
                       if (value != null) field.handleChange(value);
                     }}
                   >
-                    <SelectTrigger
-                      className="service-card-select-trigger"
-                      aria-label="Version"
-                    >
+                    <ServiceSelectTrigger aria-label="Version">
                       <SelectValue placeholder="Version" />
-                    </SelectTrigger>
+                    </ServiceSelectTrigger>
                     <SelectContent>
                       <SelectGroup>
                         {page.primerVersionOpts.map((version) => (
@@ -185,9 +178,8 @@ export function WastewaterLibrary({
           </div>
         </div>
         <div className="space-y-2">
-          <Label className="service-card-label">Sample Identifier</Label>
-          <Input
-            className="service-card-input"
+          <ServiceLabel>Sample Identifier</ServiceLabel>
+          <ServiceInput
             placeholder="SAMPLE ID"
             value={page.currentSampleId}
             onChange={(event) => {
@@ -196,9 +188,8 @@ export function WastewaterLibrary({
           />
         </div>
         <div className="space-y-2">
-          <Label className="service-card-label">Sample Date (optional)</Label>
-          <Input
-            className="service-card-input"
+          <ServiceLabel>Sample Date (optional)</ServiceLabel>
+          <ServiceInput
             placeholder="MM/DD/YYYY"
             value={page.currentSampleDate}
             onChange={(event) => {
@@ -213,7 +204,7 @@ export function WastewaterLibrary({
             </FieldItem>
           )}
         </page.form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -231,7 +222,7 @@ function ReadInput({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="service-card-label">{label}</Label>
+        <ServiceLabel>{label}</ServiceLabel>
         <div className="mx-4 h-px flex-1 bg-border" />
         <Button
           type="button"

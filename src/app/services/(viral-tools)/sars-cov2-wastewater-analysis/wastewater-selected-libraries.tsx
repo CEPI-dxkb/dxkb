@@ -1,10 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -13,6 +7,11 @@ import {
 } from "@/components/ui/tooltip";
 import { HelpCircle } from "lucide-react";
 import SelectedItemsTable from "@/components/services/selected-items-table";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 import type { Library } from "@/types/services";
 
@@ -25,8 +24,8 @@ export function WastewaterSelectedLibraries({
 }) {
   return (
     <Card className="h-full">
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <ServiceCardTitle>
           Selected Libraries
           <TooltipProvider>
             <Tooltip>
@@ -38,12 +37,12 @@ export function WastewaterSelectedLibraries({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </CardTitle>
+        </ServiceCardTitle>
         <CardDescription className="text-xs">
           Place read files here using the arrow buttons.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <SelectedItemsTable
           items={libraries.map((library) => ({
             id: library.id,
@@ -53,7 +52,7 @@ export function WastewaterSelectedLibraries({
           onRemove={onRemove}
           className="max-h-80 overflow-y-auto"
         />
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

@@ -1,17 +1,17 @@
 {
   "src/app/(auth)/forgot-password/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 12
+      "count": 9
     }
   },
   "src/app/(auth)/sign-in/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 13
+      "count": 11
     }
   },
   "src/app/(auth)/sign-up/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 6
+      "count": 4
     }
   },
   "src/app/(auth)/sign-up/sign-up-fields.tsx": {
@@ -21,12 +21,12 @@
   },
   "src/app/(footer)/citations/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 9
+      "count": 6
     }
   },
   "src/app/(footer)/contact/components/contact-form.tsx": {
     "shadcn/no-restyle": {
-      "count": 15
+      "count": 13
     }
   },
   "src/app/(footer)/faq/page.tsx": {
@@ -39,14 +39,9 @@
       "count": 4
     }
   },
-  "src/app/(footer)/help/components/help-topics.tsx": {
-    "shadcn/no-restyle": {
-      "count": 3
-    }
-  },
   "src/app/(footer)/publications/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 2
     }
   },
   "src/app/(footer)/updates/page.tsx": {
@@ -59,42 +54,17 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 17
-    }
-  },
-  "src/app/organisms/loading.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
-  "src/app/services/(genomics)/blast/blast-parameters.tsx": {
-    "shadcn/no-restyle": {
-      "count": 10
+      "count": 16
     }
   },
   "src/app/services/(genomics)/blast/blast-sections.tsx": {
-    "shadcn/no-restyle": {
-      "count": 4
-    }
-  },
-  "src/app/services/(genomics)/blast/database-selector.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
-    }
-  },
-  "src/app/services/(genomics)/blast/input-source-card.tsx": {
-    "shadcn/no-restyle": {
-      "count": 4
-    }
-  },
-  "src/app/services/(genomics)/blast/option-select.tsx": {
     "shadcn/no-restyle": {
       "count": 1
     }
   },
   "src/app/services/(genomics)/genome-alignment/genome-alignment-sections.tsx": {
     "shadcn/no-restyle": {
-      "count": 16
+      "count": 1
     }
   },
   "src/app/services/(genomics)/genome-annotation/genome-annotation-parameters.tsx": {
@@ -102,17 +72,7 @@
       "count": 2
     },
     "shadcn/no-restyle": {
-      "count": 7
-    }
-  },
-  "src/app/services/(genomics)/genome-assembly/assembly-sections.tsx": {
-    "shadcn/no-restyle": {
-      "count": 20
-    }
-  },
-  "src/app/services/(genomics)/primer-design/primer-advanced-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 11
+      "count": 2
     }
   },
   "src/app/services/(genomics)/primer-design/primer-input-section.tsx": {
@@ -120,180 +80,90 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 15
-    }
-  },
-  "src/app/services/(genomics)/primer-design/primer-options-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 7
+      "count": 3
     }
   },
   "src/app/services/(genomics)/primer-design/primer-output-section.tsx": {
     "shadcn/no-restyle": {
-      "count": 7
+      "count": 1
     }
   },
   "src/app/services/(genomics)/similar-genome-finder/advanced-options-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 22
-    }
-  },
-  "src/app/services/(genomics)/similar-genome-finder/genome-input-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 9
-    }
-  },
-  "src/app/services/(genomics)/similar-genome-finder/results-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 3
-    }
-  },
-  "src/app/services/(genomics)/variation-analysis/library-input-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 6
-    }
-  },
-  "src/app/services/(genomics)/variation-analysis/parameters-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 7
-    }
-  },
-  "src/app/services/(genomics)/variation-analysis/selected-libraries-section.tsx": {
-    "shadcn/no-restyle": {
-      "count": 3
-    }
-  },
-  "src/app/services/(metagenomics)/metagenomic-binning/metagenomic-binning-input-cards.tsx": {
     "shadcn/no-restyle": {
       "count": 13
     }
   },
   "src/app/services/(metagenomics)/metagenomic-binning/metagenomic-binning-parameters-card.tsx": {
     "shadcn/no-restyle": {
-      "count": 25
+      "count": 11
     }
   },
   "src/app/services/(metagenomics)/metagenomic-read-mapping/metagenomic-read-mapping-cards.tsx": {
     "shadcn/no-restyle": {
-      "count": 15
+      "count": 3
     }
   },
   "src/app/services/(metagenomics)/taxonomic-classification/taxonomic-classification-input-cards.tsx": {
     "shadcn/no-restyle": {
-      "count": 18
+      "count": 6
     }
   },
   "src/app/services/(metagenomics)/taxonomic-classification/taxonomic-classification-parameters-card.tsx": {
-    "shadcn/no-restyle": {
-      "count": 16
-    }
-  },
-  "src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-input.tsx": {
     "shadcn/no-restyle": {
       "count": 4
     }
   },
   "src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-metadata.tsx": {
     "shadcn/no-restyle": {
-      "count": 14
-    }
-  },
-  "src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-parameters.tsx": {
-    "shadcn/no-restyle": {
-      "count": 11
+      "count": 6
     }
   },
   "src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-input.tsx": {
     "shadcn/no-restyle": {
-      "count": 6
+      "count": 1
     }
   },
   "src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-metadata.tsx": {
     "shadcn/no-restyle": {
-      "count": 14
-    }
-  },
-  "src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-parameters.tsx": {
-    "shadcn/no-restyle": {
-      "count": 11
+      "count": 6
     }
   },
   "src/app/services/(protein-tools)/meta-cats/page.tsx": {
-    "shadcn/no-restyle": {
-      "count": 34
-    }
-  },
-  "src/app/services/(protein-tools)/msa-snp-analysis/msa-snp-analysis-cards.tsx": {
     "shadcn/no-restyle": {
       "count": 9
     }
   },
   "src/app/services/(protein-tools)/msa-snp-analysis/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 27
+      "count": 8
     }
   },
   "src/app/services/(protein-tools)/proteome-comparison/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 31
-    }
-  },
-  "src/app/services/(utilities)/fastq-utilities/fastq-parameters.tsx": {
-    "shadcn/no-restyle": {
-      "count": 8
-    }
-  },
-  "src/app/services/(utilities)/fastq-utilities/page.tsx": {
-    "shadcn/no-restyle": {
-      "count": 8
+      "count": 6
     }
   },
   "src/app/services/(viral-tools)/influenza-ha-subtype/page.tsx": {
     "shadcn/no-restyle": {
-      "count": 14
-    }
-  },
-  "src/app/services/(viral-tools)/sars-cov2-genome-analysis/page.tsx": {
-    "shadcn/no-restyle": {
-      "count": 8
-    }
-  },
-  "src/app/services/(viral-tools)/sars-cov2-genome-analysis/sars-genome-parameters.tsx": {
-    "shadcn/no-restyle": {
-      "count": 10
+      "count": 3
     }
   },
   "src/app/services/(viral-tools)/sars-cov2-genome-analysis/sars-genome-sections.tsx": {
     "shadcn/no-restyle": {
-      "count": 12
+      "count": 1
     }
   },
   "src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/wastewater-library.tsx": {
     "shadcn/no-restyle": {
-      "count": 14
-    }
-  },
-  "src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/wastewater-parameters.tsx": {
-    "shadcn/no-restyle": {
-      "count": 6
+      "count": 1
     }
   },
   "src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/wastewater-selected-libraries.tsx": {
     "shadcn/no-restyle": {
-      "count": 4
+      "count": 1
     }
   },
   "src/app/services/(viral-tools)/subspecies-classification/page.tsx": {
-    "shadcn/no-restyle": {
-      "count": 12
-    }
-  },
-  "src/app/services/(viral-tools)/viral-assembly/page.tsx": {
-    "shadcn/no-restyle": {
-      "count": 13
-    }
-  },
-  "src/app/settings/page.tsx": {
     "shadcn/no-restyle": {
       "count": 2
     }
@@ -323,7 +193,7 @@
       "count": 3
     },
     "shadcn/no-restyle": {
-      "count": 3
+      "count": 2
     }
   },
   "src/components/heros/help-hero.tsx": {
@@ -346,7 +216,7 @@
   },
   "src/components/interactions/interactions-graph-skeleton.tsx": {
     "shadcn/no-restyle": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/interactions/sigma/sigma-canvas.tsx": {
@@ -377,7 +247,7 @@
       "count": 3
     },
     "shadcn/no-restyle": {
-      "count": 9
+      "count": 5
     }
   },
   "src/components/jobs/jobs-date-filter.tsx": {
@@ -457,11 +327,6 @@
       "count": 1
     }
   },
-  "src/components/organisms/data-summary/data-summary-skeleton.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
-    }
-  },
   "src/components/organisms/data-summary/data-summary.tsx": {
     "shadcn/no-restyle": {
       "count": 5
@@ -470,11 +335,6 @@
   "src/components/organisms/genera-grid/genera-card.tsx": {
     "shadcn/no-restyle": {
       "count": 4
-    }
-  },
-  "src/components/organisms/genera-grid/genera-grid-skeleton.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
     }
   },
   "src/components/organisms/genera-grid/genera-grid.tsx": {
@@ -505,12 +365,12 @@
   },
   "src/components/organisms/geo-distribution/geo-distribution-client.tsx": {
     "shadcn/no-restyle": {
-      "count": 4
+      "count": 2
     }
   },
   "src/components/organisms/geo-distribution/geo-distribution-skeleton.tsx": {
     "shadcn/no-restyle": {
-      "count": 6
+      "count": 1
     }
   },
   "src/components/organisms/geo-distribution/map-controls.tsx": {
@@ -573,11 +433,6 @@
       "count": 1
     }
   },
-  "src/components/organisms/metadata-distributions/metadata-distributions-skeleton.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
-    }
-  },
   "src/components/organisms/reference-genomes/reference-genomes-client.tsx": {
     "shadcn/no-inline-styles": {
       "count": 3
@@ -586,12 +441,12 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 32
+      "count": 18
     }
   },
   "src/components/organisms/reference-genomes/reference-genomes-skeleton.tsx": {
     "shadcn/no-restyle": {
-      "count": 5
+      "count": 1
     }
   },
   "src/components/organisms/shared/placeholder-view.tsx": {
@@ -602,11 +457,6 @@
   "src/components/organisms/shared/section-error.tsx": {
     "shadcn/no-restyle": {
       "count": 5
-    }
-  },
-  "src/components/organisms/taxonomy-summary/taxonomy-summary-skeleton.tsx": {
-    "shadcn/no-restyle": {
-      "count": 1
     }
   },
   "src/components/organisms/taxonomy-summary/taxonomy-summary.tsx": {
@@ -655,7 +505,7 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 26
+      "count": 15
     }
   },
   "src/components/services/anchored-suggestion-portal.tsx": {
@@ -678,12 +528,12 @@
       "count": 5
     },
     "shadcn/no-restyle": {
-      "count": 7
+      "count": 6
     }
   },
   "src/components/services/genome-name-selector.tsx": {
     "shadcn/no-restyle": {
-      "count": 2
+      "count": 1
     }
   },
   "src/components/services/job-params-dialog.tsx": {
@@ -696,11 +546,6 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 4
-    }
-  },
-  "src/components/services/read-library-input-section.tsx": {
-    "shadcn/no-restyle": {
       "count": 2
     }
   },
@@ -710,14 +555,11 @@
     },
     "shadcn/no-raw-colors": {
       "count": 2
-    },
-    "shadcn/no-restyle": {
-      "count": 1
     }
   },
   "src/components/services/selected-libraries-card.tsx": {
     "shadcn/no-restyle": {
-      "count": 4
+      "count": 1
     }
   },
   "src/components/services/service-header.tsx": {
@@ -727,12 +569,7 @@
   },
   "src/components/services/single-genome-selector.tsx": {
     "shadcn/no-restyle": {
-      "count": 11
-    }
-  },
-  "src/components/services/sra-run-accession-with-validation.tsx": {
-    "shadcn/no-restyle": {
-      "count": 2
+      "count": 9
     }
   },
   "src/components/settings/password-input.tsx": {
@@ -764,7 +601,7 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 16
+      "count": 13
     }
   },
   "src/components/shared/data-table.tsx": {
@@ -775,7 +612,7 @@
       "count": 12
     },
     "shadcn/no-restyle": {
-      "count": 22
+      "count": 15
     }
   },
   "src/components/shared/file-table.tsx": {
@@ -783,7 +620,7 @@
       "count": 14
     },
     "shadcn/no-restyle": {
-      "count": 12
+      "count": 7
     }
   },
   "src/components/statistics/db-statistics-skeleton.tsx": {
@@ -820,7 +657,7 @@
       "count": 20
     },
     "shadcn/no-restyle": {
-      "count": 20
+      "count": 16
     }
   },
   "src/components/timeline/timeline.tsx": {
@@ -878,7 +715,7 @@
   },
   "src/components/workspace/job-metadata-card.tsx": {
     "shadcn/no-restyle": {
-      "count": 11
+      "count": 8
     }
   },
   "src/components/workspace/selection-to-group-dialog.tsx": {
@@ -903,7 +740,7 @@
   },
   "src/components/workspace/workspace-mini-browser-table.tsx": {
     "shadcn/no-restyle": {
-      "count": 22
+      "count": 8
     }
   },
   "src/components/workspace/workspace-object-selector-view.tsx": {
@@ -911,7 +748,7 @@
       "count": 4
     },
     "shadcn/no-restyle": {
-      "count": 9
+      "count": 8
     }
   },
   "src/components/workspace/workspace-shell.tsx": {
@@ -927,7 +764,7 @@
       "count": 1
     },
     "shadcn/no-restyle": {
-      "count": 7
+      "count": 1
     }
   },
   "src/components/workspace/workspace-toolbar.tsx": {

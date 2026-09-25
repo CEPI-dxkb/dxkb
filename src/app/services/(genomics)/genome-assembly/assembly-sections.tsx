@@ -1,30 +1,13 @@
 import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
-import { Label } from "@/components/ui/label";
+import { Card, CardDescription } from "@/components/ui/card";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -43,6 +26,22 @@ import {
   RequiredFormCardTitle,
   RequiredFormLabel,
 } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import {
+  ServiceFieldLabel,
+  ServiceFieldSubLabel,
+} from "@/components/services/form-ui/service-field";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   genomeAssemblyParameters,
   readInputFileInfo,
@@ -74,8 +73,8 @@ export function AssemblyInputs({
 }: InputProps) {
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Input Files
           <DialogInfoPopup
             title={readInputFileInfo.title}
@@ -83,8 +82,8 @@ export function AssemblyInputs({
             sections={readInputFileInfo.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-6">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-6">
         <ReadInput
           title="Paired Read Library"
           disabled={!state.pairedRead1 || !state.pairedRead2}
@@ -138,7 +137,7 @@ export function AssemblyInputs({
           setSelectedLibraries={setLibraries}
           allowDuplicates={false}
         />
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -156,7 +155,7 @@ function ReadInput({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label className="service-card-label">{title}</Label>
+        <ServiceLabel>{title}</ServiceLabel>
         <div className="mx-4 h-px flex-1 bg-border" />
         <Button
           type="button"
@@ -186,8 +185,8 @@ export function SelectedLibraries({
   return (
     <div className={mobile ? "md:hidden" : "hidden md:col-span-5 md:block"}>
       <Card className="h-full">
-        <CardHeader className="service-card-header">
-          <CardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <ServiceCardTitle>
             Selected Libraries
             <TooltipProvider>
               <Tooltip>
@@ -201,12 +200,12 @@ export function SelectedLibraries({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </CardTitle>
+          </ServiceCardTitle>
           <CardDescription>
             Place read files here using the arrow buttons.
           </CardDescription>
-        </CardHeader>
-        <CardContent className="service-card-content">
+        </ServiceCardHeader>
+        <ServiceCardContent>
           <SelectedItemsTable
             items={libraries.map((library) => ({
               id: library.id,
@@ -216,7 +215,7 @@ export function SelectedLibraries({
             onRemove={onRemove}
             className="max-h-84 overflow-y-auto"
           />
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );
@@ -238,17 +237,17 @@ export function AssemblyParameters({
 }: ParametersProps) {
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <ServiceCardTitle>
           Parameters
           <DialogInfoPopup
             title={genomeAssemblyParameters.title}
             description={genomeAssemblyParameters.description}
             sections={genomeAssemblyParameters.sections}
           />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+        </ServiceCardTitle>
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div className="space-y-6">
           <form.Field name="recipe">
             {(field) => (
@@ -261,12 +260,9 @@ export function AssemblyParameters({
                     field.handleChange(value as string);
                   }}
                 >
-                  <SelectTrigger
-                    aria-label="Assembly strategy"
-                    className="service-card-select-trigger"
-                  >
+                  <ServiceSelectTrigger aria-label="Assembly strategy">
                     <SelectValue placeholder="Select strategy" />
-                  </SelectTrigger>
+                  </ServiceSelectTrigger>
                   <SelectContent>
                     {genomeAssemblyRecipes.map((item) => (
                       <SelectItem key={item.value} value={item.value}>
@@ -312,9 +308,9 @@ export function AssemblyParameters({
             <form.Field name="genome_size">
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel field={field}>
                     Estimated Genome Size
-                  </FieldLabel>
+                  </ServiceFieldLabel>
                   <div className="flex items-center gap-2">
                     <input
                       id={field.name}
@@ -346,12 +342,12 @@ export function AssemblyParameters({
                         }
                       }}
                     >
-                      <SelectTrigger
+                      <ServiceSelectTrigger
                         aria-label="Genome size unit"
-                        className="service-card-select-trigger w-20"
+                        className="w-20"
                       >
                         <SelectValue />
-                      </SelectTrigger>
+                      </ServiceSelectTrigger>
                       <SelectContent>
                         <SelectGroup>
                           {genomeSizeUnitOptions.map((item) => (
@@ -376,7 +372,7 @@ export function AssemblyParameters({
             }}
           />
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -402,28 +398,24 @@ function AdvancedOptions({
     ["min_contig_cov", "Min. contig coverage", 0, 100000, 5],
   ] as const;
   return (
-    <Collapsible
-      open={open}
-      onOpenChange={setOpen}
-      className="service-collapsible-container"
-    >
-      <CollapsibleTrigger className="service-collapsible-trigger">
+    <ServiceCollapsible open={open} onOpenChange={setOpen}>
+      <ServiceCollapsibleTrigger>
         Advanced Options
         <ChevronDown
           className={`size-4 transition-transform ${open ? "rotate-180 transform" : ""}`}
         />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="service-collapsible-content">
+      </ServiceCollapsibleTrigger>
+      <ServiceCollapsibleContent>
         <div className="space-y-4">
-          <Label className="service-card-label">Read Processing</Label>
+          <ServiceLabel>Read Processing</ServiceLabel>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {switches.map(([name, label]) => (
               <form.Field key={name} name={name}>
                 {(field) => (
                   <FieldItem className="flex flex-col items-start justify-between">
-                    <FieldLabel field={field} className="service-card-sublabel">
+                    <ServiceFieldSubLabel field={field}>
                       {label}
-                    </FieldLabel>
+                    </ServiceFieldSubLabel>
                     <Switch
                       checked={field.state.value}
                       onCheckedChange={field.handleChange}
@@ -439,9 +431,9 @@ function AdvancedOptions({
             <form.Field key={name} name={name}>
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-sublabel">
+                  <ServiceFieldSubLabel field={field}>
                     {label}
-                  </FieldLabel>
+                  </ServiceFieldSubLabel>
                   <NumberInput
                     value={field.state.value}
                     onValueChange={field.handleChange}
@@ -455,7 +447,7 @@ function AdvancedOptions({
             </form.Field>
           ))}
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </ServiceCollapsibleContent>
+    </ServiceCollapsible>
   );
 }

@@ -2,12 +2,16 @@
 
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { readInputFileInfo } from "@/lib/services/info/variation-analysis";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { VariationAnalysisController } from "./use-variation-analysis-form";
@@ -32,8 +36,8 @@ export function LibraryInputSection({
   } = controller;
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Input File
           <DialogInfoPopup
             title={readInputFileInfo.title}
@@ -41,11 +45,11 @@ export function LibraryInputSection({
             sections={readInputFileInfo.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-6">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-6">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="service-card-label">Paired Read Library</Label>
+            <ServiceLabel>Paired Read Library</ServiceLabel>
             <div className="mx-4 h-px flex-1 bg-border" />
             <Button
               type="button"
@@ -77,7 +81,7 @@ export function LibraryInputSection({
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="service-card-label">Single Read Library</Label>
+            <ServiceLabel>Single Read Library</ServiceLabel>
             <div className="mx-4 h-px flex-1 bg-border" />
             <Button
               type="button"
@@ -106,7 +110,7 @@ export function LibraryInputSection({
           setSelectedLibraries={setLibraries}
           allowDuplicates={false}
         />
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

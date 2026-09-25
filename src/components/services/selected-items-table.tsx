@@ -1,6 +1,6 @@
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 
 import { HelpCircle } from "lucide-react";
 
@@ -70,7 +70,7 @@ const SelectedItemsTable = ({
       {(title || description || tooltipContent) && (
         <div className="mb-0">
           <div className="flex flex-row items-center gap-2">
-            {title && <Label className="service-card-label">{title}</Label>}
+            {title && <ServiceLabel>{title}</ServiceLabel>}
             {tooltipContent && (
               <TooltipProvider>
                 <Tooltip>

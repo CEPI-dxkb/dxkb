@@ -1,6 +1,5 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { RadioGroup } from "@/components/ui/radio-group";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
@@ -9,6 +8,11 @@ import { blastServiceInputSource } from "@/lib/services/info/blast";
 import type { BlastFormData } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import type { FastaValidationResult } from "@/lib/fasta-validation";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import type { BlastForm } from "./page";
 import { Choice } from "./choice";
 
@@ -34,8 +38,8 @@ export function InputSourceCard({
 }: InputProps) {
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Input Source
           <DialogInfoPopup
             title={blastServiceInputSource.title}
@@ -43,13 +47,13 @@ export function InputSourceCard({
             sections={blastServiceInputSource.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <form.Field name="input_source">
           {(field) => (
             <div className="space-y-6">
               <FieldItem>
-                <RadioGroup
+                <ServiceRadioGroup
                   value={field.state.value}
                   onValueChange={(value) => {
                     if (value === null) return;
@@ -57,7 +61,6 @@ export function InputSourceCard({
                     field.handleChange(source);
                     onSourceChange(source);
                   }}
-                  className="service-radio-group-horizontal"
                 >
                   <Choice
                     value="fasta_data"
@@ -74,7 +77,7 @@ export function InputSourceCard({
                     id="featureGroup"
                     label="Select feature group"
                   />
-                </RadioGroup>
+                </ServiceRadioGroup>
                 <FieldErrors field={field} />
               </FieldItem>
               {source === "fasta_data" && (
@@ -131,7 +134,7 @@ export function InputSourceCard({
             </div>
           )}
         </form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

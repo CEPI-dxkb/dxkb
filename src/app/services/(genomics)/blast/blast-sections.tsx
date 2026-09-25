@@ -1,9 +1,13 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
 import { blastServiceSearchProgram } from "@/lib/services/info/blast";
 import { getCompatibleBlastDatabaseType } from "@/lib/forms/(genomics)/blast/blast-form-utils";
 import type { BlastFormData } from "@/lib/forms/(genomics)/blast/blast-form-schema";
@@ -21,8 +25,8 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
   ] as const;
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Search Program
           <DialogInfoPopup
             title={blastServiceSearchProgram.title}
@@ -30,8 +34,8 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
             sections={blastServiceSearchProgram.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <form.Field name="blast_program">
           {(field) => (
             <FieldItem>
@@ -64,7 +68,7 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
             </FieldItem>
           )}
         </form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

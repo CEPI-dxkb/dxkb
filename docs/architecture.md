@@ -170,6 +170,7 @@ The link boundary itself is **not** in that file. It lives in two siblings, so t
 - Forms use TanStack Form (`@tanstack/react-form`) + zod validation
 - Submission: `useServiceFormSubmission` hook → `submitServiceJob()` → `AppService.start_app2`
 - `ServiceDebuggingProvider` wraps service layouts; enables a debug mode that shows params instead of submitting
+- Form parts come from the wrappers in `src/components/services/form-ui/` (`ServiceCardHeader`/`Title`/`Content`, `ServiceLabel`, `ServiceSubLabel`, `ServiceFieldLabel`, `ServiceFieldSubLabel`, `ServiceFieldItem`, `ServiceSelectTrigger`/`Content`, `ServiceInput`, `ServiceNumberInput`, `ServiceTextarea`, `ServiceRadioGroup`, `ServiceCollapsible`/`Trigger`/`Content`, `ServiceRequiredLabel`). Each applies one global `service-*` class from `src/app/globals.css` to the `ui/` part it wraps; do not put those classes on `ui/` components directly. `RequiredFormCardTitle` (`src/components/forms/required-form-components.tsx`) renders `ServiceCardTitle`, so it needs no class. `CardFieldLabel`/`CardFieldInput` carry the legacy `card-sublabel`/`card-input` classes the home page search uses, which differ from the `service-*` ones.
 
 ## Rerun pre-fill pattern
 

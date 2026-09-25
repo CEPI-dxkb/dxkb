@@ -8,8 +8,8 @@ import React, {
   useLayoutEffect,
 } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Library } from "@/types/services";
 import { toast } from "sonner";
 import {
@@ -83,7 +83,7 @@ function SraInputView({
       {showHeader && (
         <div className="flex items-center justify-between">
           {showLabel &&
-            (label ?? <Label className="service-card-label">{title}</Label>)}
+            (label ?? <ServiceLabel>{title}</ServiceLabel>)}
           <div className="mx-4 h-px flex-1 bg-border" />
           {showAddButton &&
             (addButton ?? (
@@ -104,8 +104,7 @@ function SraInputView({
         </div>
       )}
       <div className="space-y-2">
-        <Input
-          className="service-card-input"
+        <ServiceInput
           placeholder={placeholder}
           value={accession}
           onChange={onChange}

@@ -1,19 +1,11 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
@@ -28,6 +20,16 @@ import SelectedItemsTable from "@/components/services/selected-items-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceLabel,
+  ServiceSubLabel,
+} from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { readInputFileInfo } from "@/lib/services/info/sars-cov2-genome-analysis";
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 import {
@@ -64,8 +66,8 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
     <>
       <div className="md:col-span-6">
         <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
+          <ServiceCardHeader>
+            <RequiredFormCardTitle>
               Input Library
               <DialogInfoPopup
                 title={readInputFileInfo.title}
@@ -73,13 +75,11 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
                 sections={readInputFileInfo.sections}
               />
             </RequiredFormCardTitle>
-          </CardHeader>
-          <CardContent className="service-card-content space-y-6">
+          </ServiceCardHeader>
+          <ServiceCardContent className="space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="service-card-label">
-                  Paired Read Library
-                </Label>
+                <ServiceLabel>Paired Read Library</ServiceLabel>
                 <div className="mx-4 h-px flex-1 bg-border" />
                 <Button
                   type="button"
@@ -118,9 +118,7 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
               />
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">
-                    Single Read Library
-                  </Label>
+                  <ServiceLabel>Single Read Library</ServiceLabel>
                   <div className="mx-4 h-px flex-1 bg-border" />
                   <Button
                     type="button"
@@ -164,13 +162,13 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
                 </FieldItem>
               )}
             </page.form.Field>
-          </CardContent>
+          </ServiceCardContent>
         </Card>
       </div>
       <div className="md:col-span-6">
         <Card className="h-full">
-          <CardHeader className="service-card-header">
-            <CardTitle className="service-card-title">
+          <ServiceCardHeader>
+            <ServiceCardTitle>
               Selected Libraries
               <TooltipProvider>
                 <Tooltip>
@@ -182,12 +180,12 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </CardTitle>
+            </ServiceCardTitle>
             <CardDescription className="text-xs">
               Place read files here using the arrow buttons.
             </CardDescription>
-          </CardHeader>
-          <CardContent className="service-card-content">
+          </ServiceCardHeader>
+          <ServiceCardContent>
             <SelectedItemsTable
               items={page.selectedLibraries.map((library) => ({
                 id: library.id,
@@ -197,7 +195,7 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
               onRemove={page.removeLibrary}
               className="max-h-80 overflow-y-auto"
             />
-          </CardContent>
+          </ServiceCardContent>
         </Card>
       </div>
     </>
@@ -217,7 +215,7 @@ function PlatformSelect({
 }) {
   return (
     <div className="space-y-2">
-      <Label className="service-card-sublabel">{label}</Label>
+      <ServiceSubLabel>{label}</ServiceSubLabel>
       <Select
         items={options}
         value={value}
@@ -225,12 +223,9 @@ function PlatformSelect({
           if (next != null) onChange(next as SarsCov2Platform);
         }}
       >
-        <SelectTrigger
-          className="service-card-select-trigger"
-          aria-label={label}
-        >
+        <ServiceSelectTrigger aria-label={label}>
           <SelectValue placeholder="Select a platform..." />
-        </SelectTrigger>
+        </ServiceSelectTrigger>
         <SelectContent>
           <SelectGroup>
             {options.map((option) => (

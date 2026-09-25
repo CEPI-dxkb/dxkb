@@ -1,5 +1,7 @@
-import { CardTitle } from "@/components/ui/card";
+import { ServiceCardTitle } from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 
+/** A service form card title with a required-field marker. */
 export function RequiredFormCardTitle({
   className,
   children,
@@ -8,10 +10,10 @@ export function RequiredFormCardTitle({
   children: React.ReactNode;
 }) {
   return (
-    <CardTitle className={`gap-1 ${className ?? ""}`}>
+    <ServiceCardTitle className={`gap-1 ${className ?? ""}`}>
       {children}
       <span className="text-red-500">*</span>
-    </CardTitle>
+    </ServiceCardTitle>
   );
 }
 
@@ -32,9 +34,9 @@ export function RequiredFormLabelInfo({
 }: RequiredFormLabelInfoProps) {
   return (
     <div className="flex flex-row items-center gap-1">
-      <Label className={`service-card-label mb-0! ${className ?? ""}`}>
+      <ServiceLabel className={`mb-0! ${className ?? ""}`}>
         {label}
-      </Label>
+      </ServiceLabel>
       <DialogInfoPopup
         title={infoPopup.title}
         description={infoPopup.description}

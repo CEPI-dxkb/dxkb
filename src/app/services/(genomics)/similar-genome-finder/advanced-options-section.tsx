@@ -8,15 +8,13 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   distanceOptions,
   maxHitsOptions,
@@ -34,7 +32,7 @@ export function AdvancedOptionsSection({
   return (
     <div className="flex w-full flex-col justify-between space-y-4">
       <div className="flex items-center">
-        <Label className="service-card-label">Parameters</Label>
+        <ServiceLabel>Parameters</ServiceLabel>
         <DialogInfoPopup
           title={similarGenomeFinderAdvancedParameters.title}
           description={similarGenomeFinderAdvancedParameters.description}
@@ -46,9 +44,9 @@ export function AdvancedOptionsSection({
         <form.Field name="max_hits">
           {(field) => (
             <FieldItem>
-              <FieldLabel field={field} className="service-card-sublabel">
+              <ServiceFieldSubLabel field={field}>
                 Max Hits
-              </FieldLabel>
+              </ServiceFieldSubLabel>
               <Select
                 items={maxHitsOptions}
                 value={field.state.value.toString()}
@@ -56,9 +54,9 @@ export function AdvancedOptionsSection({
                   if (value != null) field.handleChange(parseInt(value, 10));
                 }}
               >
-                <SelectTrigger className="service-card-select-trigger">
+                <ServiceSelectTrigger>
                   <SelectValue placeholder="Select max hits" />
-                </SelectTrigger>
+                </ServiceSelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     {maxHitsOptions.map((option) => (
@@ -79,9 +77,9 @@ export function AdvancedOptionsSection({
         <form.Field name="max_pvalue">
           {(field) => (
             <FieldItem>
-              <FieldLabel field={field} className="service-card-sublabel">
+              <ServiceFieldSubLabel field={field}>
                 P-Value Threshold
-              </FieldLabel>
+              </ServiceFieldSubLabel>
               <Select
                 items={pValueOptions}
                 value={field.state.value.toString()}
@@ -89,9 +87,9 @@ export function AdvancedOptionsSection({
                   if (value != null) field.handleChange(parseFloat(value));
                 }}
               >
-                <SelectTrigger className="service-card-select-trigger">
+                <ServiceSelectTrigger>
                   <SelectValue placeholder="Select P-value" />
-                </SelectTrigger>
+                </ServiceSelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     {pValueOptions.map((option) => (
@@ -112,9 +110,9 @@ export function AdvancedOptionsSection({
         <form.Field name="max_distance">
           {(field) => (
             <FieldItem>
-              <FieldLabel field={field} className="service-card-sublabel">
+              <ServiceFieldSubLabel field={field}>
                 Distance
-              </FieldLabel>
+              </ServiceFieldSubLabel>
               <Select
                 items={distanceOptions}
                 value={field.state.value.toString()}
@@ -122,9 +120,9 @@ export function AdvancedOptionsSection({
                   if (value != null) field.handleChange(parseFloat(value));
                 }}
               >
-                <SelectTrigger className="service-card-select-trigger">
+                <ServiceSelectTrigger>
                   <SelectValue placeholder="Select distance" />
-                </SelectTrigger>
+                </ServiceSelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     {distanceOptions.map((option) => (
@@ -145,7 +143,7 @@ export function AdvancedOptionsSection({
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label className="service-card-label">Organism Type</Label>
+          <ServiceLabel>Organism Type</ServiceLabel>
           <form.Field name="include_bacterial">
             {(field) => (
               <FieldItem className="flex flex-row items-center space-y-0 space-x-2">
@@ -183,7 +181,7 @@ export function AdvancedOptionsSection({
           </form.Field>
         </div>
         <div className="flex flex-col gap-2">
-          <Label className="service-card-label">Scope</Label>
+          <ServiceLabel>Scope</ServiceLabel>
           <form.Field name="scope">
             {(field) => (
               <FieldItem>

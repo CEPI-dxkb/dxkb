@@ -1,21 +1,22 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
+import { Card } from "@/components/ui/card";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
 import { similarGenomeFinderSelectGenome } from "@/lib/services/info/similar-genome-finder";
 import type { SimilarGenomeFinderController } from "./use-similar-genome-finder-form";
 
@@ -29,8 +30,8 @@ export function GenomeInputSection({
   const { form, showAdvanced, setShowAdvanced } = controller;
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Select a Genome
           <DialogInfoPopup
             title={similarGenomeFinderSelectGenome.title}
@@ -38,14 +39,14 @@ export function GenomeInputSection({
             sections={similarGenomeFinderSelectGenome.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-6">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-6">
         <form.Field name="selectedGenomeId">
           {(field) => (
             <FieldItem>
-              <FieldLabel field={field} className="service-card-label">
+              <ServiceFieldLabel field={field}>
                 Search by Genome Name or Genome ID
-              </FieldLabel>
+              </ServiceFieldLabel>
               <SingleGenomeSelector
                 id={field.name}
                 placeholder="e.g. Mycobacterium tuberculosis H37Rv"
@@ -62,9 +63,9 @@ export function GenomeInputSection({
         <form.Field name="fasta_file">
           {(field) => (
             <FieldItem>
-              <FieldLabel field={field} className="service-card-label">
+              <ServiceFieldLabel field={field}>
                 Or Upload FASTA/FASTQ
-              </FieldLabel>
+              </ServiceFieldLabel>
               <WorkspaceObjectSelector
                 id={field.name}
                 preset="contigsOrReads"
@@ -79,22 +80,18 @@ export function GenomeInputSection({
             </FieldItem>
           )}
         </form.Field>
-        <Collapsible
-          open={showAdvanced}
-          onOpenChange={setShowAdvanced}
-          className="service-collapsible-container"
-        >
-          <CollapsibleTrigger className="service-collapsible-trigger">
+        <ServiceCollapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <ServiceCollapsibleTrigger>
             Advanced Options
             <ChevronDown
               className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="service-collapsible-content">
+          </ServiceCollapsibleTrigger>
+          <ServiceCollapsibleContent>
             {children}
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
+          </ServiceCollapsibleContent>
+        </ServiceCollapsible>
+      </ServiceCardContent>
     </Card>
   );
 }

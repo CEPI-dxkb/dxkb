@@ -44,7 +44,7 @@ export async function TaxonomySummary({
           className="min-w-0 gap-0 rounded-md px-2.5 py-1.5 shadow-none"
           title={metric.description}
         >
-          <p className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+          <p className="text-2xs font-bold tracking-wider text-muted-foreground uppercase">
             {metric.label}
           </p>
           <p

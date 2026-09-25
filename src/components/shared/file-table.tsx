@@ -43,7 +43,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
-import clsx from "clsx";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -54,6 +53,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clsx } from "cn";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,6 +185,7 @@ function DraggableTableHeader<T extends RowData>({
   const className = clsx(
     isFirst ? "pl-6" : "pl-2",
     "relative bg-background",
+    // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
     meta?.className ?? "",
   );
 

@@ -70,7 +70,7 @@ export function LandingMobileNav<Key extends string>({
                 aria-hidden="true"
                 className="size-4 text-background/60"
               />
-              <span className="text-[10px] font-bold tracking-widest text-background/50 uppercase">
+              <span className="text-3xs font-bold tracking-widest text-background/50 uppercase">
                 Views
               </span>
               <span className="font-semibold">{active.label}</span>
@@ -118,7 +118,7 @@ export function LandingMobileNav<Key extends string>({
                 >
                   {item.icon}
                 </span>
-                <span className="text-[10px] leading-tight font-medium">
+                <span className="text-3xs leading-tight font-medium">
                   {item.label}
                 </span>
               </button>

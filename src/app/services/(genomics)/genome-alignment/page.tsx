@@ -144,7 +144,6 @@ export default function GenomeAlignmentServicePage() {
             type="button"
             variant="outline"
             onClick={reset}
-            className="service-form-controls-button"
             disabled={runtime.isSubmitting}
           >
             Reset

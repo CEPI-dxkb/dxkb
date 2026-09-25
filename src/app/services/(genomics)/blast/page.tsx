@@ -217,7 +217,6 @@ export default function BlastServicePage() {
                 form.reset(defaultBlastFormValues);
                 setShowAdvanced(false);
               }}
-              className="service-form-controls-button"
             >
               Reset
             </Button>

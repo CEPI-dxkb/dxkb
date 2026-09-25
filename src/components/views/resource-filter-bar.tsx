@@ -164,7 +164,7 @@ export function ResourceFilterBar({
         </div>
       </div>
       {showFacets && definitions.length > 0 && (
-        <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-[11px]">
+        <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-2xs">
           {definitions
             .filter((definition) => visibleFacets.has(definition.field))
             .map((definition) => (

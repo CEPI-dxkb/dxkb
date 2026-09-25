@@ -15,8 +15,6 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { ChevronRight, Loader2, Network } from "lucide-react";
-import clsx from "clsx";
-
 import { Badge } from "@/components/ui/badge";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
@@ -25,6 +23,7 @@ import {
   rankConfig,
   type TaxonRecord,
 } from "./taxon-tree-types";
+import { clsx } from "cn";
 
 const indentPx = 16;
 
@@ -173,7 +172,7 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
           <Badge
             variant="outline"
             className={clsx(
-              "h-4 px-1.5 py-0 text-[10px] leading-none font-normal",
+              "h-4 px-1.5 py-0 text-3xs leading-none font-normal",
               rankConfig[rank] ?? rankBadgeDefault,
             )}
           >

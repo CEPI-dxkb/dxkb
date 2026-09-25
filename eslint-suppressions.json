@@ -1,0 +1,938 @@
+{
+  "src/app/(auth)/forgot-password/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 12
+    }
+  },
+  "src/app/(auth)/sign-in/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 13
+    }
+  },
+  "src/app/(auth)/sign-up/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/app/(auth)/sign-up/sign-up-fields.tsx": {
+    "shadcn/no-restyle": {
+      "count": 16
+    }
+  },
+  "src/app/(footer)/citations/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/app/(footer)/contact/components/contact-form.tsx": {
+    "shadcn/no-restyle": {
+      "count": 15
+    }
+  },
+  "src/app/(footer)/faq/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/app/(footer)/help/components/contact-us.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/app/(footer)/help/components/help-topics.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/app/(footer)/publications/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/app/(footer)/updates/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/app/all-term-search-results.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 17
+    }
+  },
+  "src/app/organisms/loading.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/app/services/(genomics)/blast/blast-parameters.tsx": {
+    "shadcn/no-restyle": {
+      "count": 10
+    }
+  },
+  "src/app/services/(genomics)/blast/blast-sections.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/app/services/(genomics)/blast/database-selector.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/app/services/(genomics)/blast/input-source-card.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/app/services/(genomics)/blast/option-select.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/app/services/(genomics)/genome-alignment/genome-alignment-sections.tsx": {
+    "shadcn/no-restyle": {
+      "count": 16
+    }
+  },
+  "src/app/services/(genomics)/genome-annotation/genome-annotation-parameters.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 2
+    },
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/app/services/(genomics)/genome-assembly/assembly-sections.tsx": {
+    "shadcn/no-restyle": {
+      "count": 20
+    }
+  },
+  "src/app/services/(genomics)/primer-design/primer-advanced-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 11
+    }
+  },
+  "src/app/services/(genomics)/primer-design/primer-input-section.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 15
+    }
+  },
+  "src/app/services/(genomics)/primer-design/primer-options-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/app/services/(genomics)/primer-design/primer-output-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/app/services/(genomics)/similar-genome-finder/advanced-options-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 22
+    }
+  },
+  "src/app/services/(genomics)/similar-genome-finder/genome-input-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/app/services/(genomics)/similar-genome-finder/results-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/app/services/(genomics)/variation-analysis/library-input-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/app/services/(genomics)/variation-analysis/parameters-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/app/services/(genomics)/variation-analysis/selected-libraries-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/app/services/(metagenomics)/metagenomic-binning/metagenomic-binning-input-cards.tsx": {
+    "shadcn/no-restyle": {
+      "count": 13
+    }
+  },
+  "src/app/services/(metagenomics)/metagenomic-binning/metagenomic-binning-parameters-card.tsx": {
+    "shadcn/no-restyle": {
+      "count": 25
+    }
+  },
+  "src/app/services/(metagenomics)/metagenomic-read-mapping/metagenomic-read-mapping-cards.tsx": {
+    "shadcn/no-restyle": {
+      "count": 15
+    }
+  },
+  "src/app/services/(metagenomics)/taxonomic-classification/taxonomic-classification-input-cards.tsx": {
+    "shadcn/no-restyle": {
+      "count": 18
+    }
+  },
+  "src/app/services/(metagenomics)/taxonomic-classification/taxonomic-classification-parameters-card.tsx": {
+    "shadcn/no-restyle": {
+      "count": 16
+    }
+  },
+  "src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-input.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-metadata.tsx": {
+    "shadcn/no-restyle": {
+      "count": 14
+    }
+  },
+  "src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-parameters.tsx": {
+    "shadcn/no-restyle": {
+      "count": 11
+    }
+  },
+  "src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-input.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-metadata.tsx": {
+    "shadcn/no-restyle": {
+      "count": 14
+    }
+  },
+  "src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-parameters.tsx": {
+    "shadcn/no-restyle": {
+      "count": 11
+    }
+  },
+  "src/app/services/(protein-tools)/meta-cats/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 34
+    }
+  },
+  "src/app/services/(protein-tools)/msa-snp-analysis/msa-snp-analysis-cards.tsx": {
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/app/services/(protein-tools)/msa-snp-analysis/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 27
+    }
+  },
+  "src/app/services/(protein-tools)/proteome-comparison/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 31
+    }
+  },
+  "src/app/services/(utilities)/fastq-utilities/fastq-parameters.tsx": {
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/app/services/(utilities)/fastq-utilities/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/app/services/(viral-tools)/influenza-ha-subtype/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 14
+    }
+  },
+  "src/app/services/(viral-tools)/sars-cov2-genome-analysis/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/app/services/(viral-tools)/sars-cov2-genome-analysis/sars-genome-parameters.tsx": {
+    "shadcn/no-restyle": {
+      "count": 10
+    }
+  },
+  "src/app/services/(viral-tools)/sars-cov2-genome-analysis/sars-genome-sections.tsx": {
+    "shadcn/no-restyle": {
+      "count": 12
+    }
+  },
+  "src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/wastewater-library.tsx": {
+    "shadcn/no-restyle": {
+      "count": 14
+    }
+  },
+  "src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/wastewater-parameters.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/app/services/(viral-tools)/sars-cov2-wastewater-analysis/wastewater-selected-libraries.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/app/services/(viral-tools)/subspecies-classification/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 12
+    }
+  },
+  "src/app/services/(viral-tools)/viral-assembly/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 13
+    }
+  },
+  "src/app/settings/page.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/auth/su-banner.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/auth/su-login-dialog.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 10
+    }
+  },
+  "src/components/filterbar/filter-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 17
+    }
+  },
+  "src/components/filterbar/keyword-search.tsx": {
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/components/forms/required-form-components.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 3
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/heros/help-hero.tsx": {
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/components/interactions/graph-action-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/interactions/graph-node-list.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/interactions/interactions-graph-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/interactions/sigma/sigma-canvas.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 5
+    }
+  },
+  "src/components/interactions/sigma/zoom-control.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/components/jobs/job-status-pill.tsx": {
+    "shadcn/no-restyle": {
+      "count": 13
+    }
+  },
+  "src/components/jobs/jobs-action-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/jobs/jobs-browser.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 3
+    },
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/components/jobs/jobs-date-filter.tsx": {
+    "shadcn/no-restyle": {
+      "count": 16
+    }
+  },
+  "src/components/jobs/jobs-detail-panel.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/components/jobs/jobs-pagination.tsx": {
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/components/jobs/jobs-shell.tsx": {
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/components/jobs/jobs-toolbar.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 4
+    },
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/navbars/desktop-navbar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/navbars/mobile-navbar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 8
+    }
+  },
+  "src/components/navbars/mobile-sheet-navigation.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/navbars/mobile-subsection-trigger.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/navbars/mobile-workspace-section.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 2
+    }
+  },
+  "src/components/navbars/theme-switcher-navbar.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/navbars/user-avatar-dropdown.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 14
+    }
+  },
+  "src/components/navbars/workspace-dropdown-content.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/data-summary/data-summary-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/data-summary/data-summary.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/organisms/genera-grid/genera-card.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/organisms/genera-grid/genera-grid-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/genera-grid/genera-grid.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/geo-distribution/choropleth-path.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-raw-colors": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/geo-distribution/choropleth-svg.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 4
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/organisms/geo-distribution/color-legend.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 2
+    }
+  },
+  "src/components/organisms/geo-distribution/geo-distribution-client.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/organisms/geo-distribution/geo-distribution-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/organisms/geo-distribution/map-controls.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/organisms/landing-shell/landing-mobile-nav.tsx": {
+    "shadcn/no-restyle": {
+      "count": 19
+    }
+  },
+  "src/components/organisms/landing-shell/landing-nav.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/organisms/metadata-distributions/_shared/chart-legend-pill.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 3
+    }
+  },
+  "src/components/organisms/metadata-distributions/amr-bar-stack-chart.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 8
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/organisms/metadata-distributions/area-chart.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/organisms/metadata-distributions/bar-chart.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/metadata-distributions/bar-stack-chart.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 4
+    },
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/organisms/metadata-distributions/donut-chart.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 18
+    },
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/metadata-distributions/metadata-distributions-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/reference-genomes/reference-genomes-client.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 3
+    },
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 32
+    }
+  },
+  "src/components/organisms/reference-genomes/reference-genomes-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/organisms/shared/placeholder-view.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/shared/section-error.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/organisms/taxonomy-summary/taxonomy-summary-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/organisms/taxonomy-summary/taxonomy-summary.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/phylogeny/viral-tree-picker.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 3
+    },
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/components/quick-links/quick-viral.tsx": {
+    "shadcn/no-restyle": {
+      "count": 13
+    }
+  },
+  "src/components/research/research-updates.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 6
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/search/results-overview.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/search/search-action-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/search/search-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 20
+    }
+  },
+  "src/components/search/welcome-search.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 26
+    }
+  },
+  "src/components/services/anchored-suggestion-portal.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    }
+  },
+  "src/components/services/debugging-panel.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/services/dialog-info-popup.tsx": {
+    "shadcn/no-restyle": {
+      "count": 11
+    }
+  },
+  "src/components/services/fasta-textarea.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 5
+    },
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/components/services/genome-name-selector.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/services/job-params-dialog.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/services/output-folder.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/services/read-library-input-section.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/services/selected-items-table.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 2
+    },
+    "shadcn/no-raw-colors": {
+      "count": 2
+    },
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/services/selected-libraries-card.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/services/service-header.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/services/single-genome-selector.tsx": {
+    "shadcn/no-restyle": {
+      "count": 11
+    }
+  },
+  "src/components/services/sra-run-accession-with-validation.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/settings/password-input.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/shared/data-table-controls.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 30
+    }
+  },
+  "src/components/shared/data-table-footer.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 18
+    }
+  },
+  "src/components/shared/data-table-header.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 11
+    },
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 16
+    }
+  },
+  "src/components/shared/data-table.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 21
+    },
+    "shadcn/no-raw-colors": {
+      "count": 12
+    },
+    "shadcn/no-restyle": {
+      "count": 22
+    }
+  },
+  "src/components/shared/file-table.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 14
+    },
+    "shadcn/no-restyle": {
+      "count": 12
+    }
+  },
+  "src/components/statistics/db-statistics-skeleton.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/taxonomy/tax-id-selector.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/taxonomy/taxon-name-selector.tsx": {
+    "shadcn/no-restyle": {
+      "count": 5
+    }
+  },
+  "src/components/taxonomy/taxonomy-tree-columns.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 2
+    },
+    "shadcn/no-raw-colors": {
+      "count": 3
+    },
+    "shadcn/no-restyle": {
+      "count": 5
+    },
+    "shadcn/require-static-classes": {
+      "count": 2
+    }
+  },
+  "src/components/taxonomy/taxonomy-tree-view.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 20
+    },
+    "shadcn/no-restyle": {
+      "count": 20
+    }
+  },
+  "src/components/timeline/timeline.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/ui/tailwind-indicator.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    }
+  },
+  "src/components/views/resource-filter-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 17
+    }
+  },
+  "src/components/views/resource-workspace.tsx": {
+    "shadcn/no-restyle": {
+      "count": 3
+    }
+  },
+  "src/components/workspace/copy-to-dialog.tsx": {
+    "shadcn/no-restyle": {
+      "count": 12
+    }
+  },
+  "src/components/workspace/delete-confirm-dialog.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/workspace/file-viewer/viewers/codemirror-viewer.tsx": {
+    "shadcn/no-restyle": {
+      "count": 6
+    }
+  },
+  "src/components/workspace/file-viewer/viewers/csv-viewer.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 6
+    }
+  },
+  "src/components/workspace/file-viewer/viewers/loading-progress.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 1
+    }
+  },
+  "src/components/workspace/file-viewer/viewers/molstar-status-overlay.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  },
+  "src/components/workspace/job-metadata-card.tsx": {
+    "shadcn/no-restyle": {
+      "count": 11
+    }
+  },
+  "src/components/workspace/selection-to-group-dialog.tsx": {
+    "shadcn/no-restyle": {
+      "count": 4
+    }
+  },
+  "src/components/workspace/workspace-action-bar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/workspace/workspace-item-details.tsx": {
+    "shadcn/no-restyle": {
+      "count": 2
+    }
+  },
+  "src/components/workspace/workspace-item-icon.tsx": {
+    "shadcn/no-raw-colors": {
+      "count": 1
+    }
+  },
+  "src/components/workspace/workspace-mini-browser-table.tsx": {
+    "shadcn/no-restyle": {
+      "count": 22
+    }
+  },
+  "src/components/workspace/workspace-object-selector-view.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 4
+    },
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/components/workspace/workspace-shell.tsx": {
+    "shadcn/no-restyle": {
+      "count": 9
+    }
+  },
+  "src/components/workspace/workspace-table-rows.tsx": {
+    "shadcn/no-inline-styles": {
+      "count": 6
+    },
+    "shadcn/no-raw-colors": {
+      "count": 1
+    },
+    "shadcn/no-restyle": {
+      "count": 7
+    }
+  },
+  "src/components/workspace/workspace-toolbar.tsx": {
+    "shadcn/no-restyle": {
+      "count": 1
+    }
+  }
+}

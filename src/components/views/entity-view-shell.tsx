@@ -62,7 +62,7 @@ export function EntityViewShell<Key extends string>({
 
   const header = (
     <div className="min-w-0">
-      <p className="text-[12px] font-bold tracking-widest text-foreground uppercase">
+      <p className="text-xs/normal font-bold tracking-widest text-foreground uppercase">
         {viewLabel}
       </p>
       {breadcrumbs ?? (

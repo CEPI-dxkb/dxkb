@@ -2,12 +2,27 @@ import eslint from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
+import { plugin as shadcn } from "@shadcn/lint";
 import tailwind from "eslint-plugin-tailwindcss";
 import tseslint from "typescript-eslint";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Arbitrary Tailwind values with no scale equivalent, allowed repo-wide.
+const arbitraryValueAllow = [
+  "layout",
+  // Transition property lists have no scale equivalent.
+  "transition-[width]",
+  "transition-[max-width,opacity]",
+  "transition-[grid-template-rows]",
+  // Single-use sizes kept for exact parity. Promote to a token in
+  // globals.css if a second use appears.
+  "text-[9px]",
+  "text-[13px]",
+  "tracking-[0.18em]",
+];
 
 export default defineConfig(
   {
@@ -42,6 +57,71 @@ export default defineConfig(
       "tailwindcss/no-custom-classname": "off",
       // Too noisy — many legitimate arbitrary values have no preset equivalent (e.g. min(), vh+rem combos, percentages)
       // "tailwindcss/no-arbitrary-value": "on",
+    },
+  },
+  {
+    // @shadcn/lint design-system rules, configured as in the upstream adoption
+    // guide (https://github.com/shadcn-ui/lint/blob/main/docs/adoption.md).
+    // Components and theme are discovered from components.json (ui alias
+    // `@/components/ui`, theme `src/app/globals.css`), so no
+    // `settings.shadcn` is needed.
+    //
+    // Every rule is an error, but violations that predate the rules are
+    // recorded in eslint-suppressions.json, which ESLint applies
+    // automatically. New code must pass; after fixing a recorded violation,
+    // run `pnpm lint --prune-suppressions` (lint fails on stale entries).
+    plugins: { shadcn },
+    rules: {
+      "shadcn/no-restyle": ["error", { allow: ["layout"] }],
+      "shadcn/no-raw-colors": "error",
+      "shadcn/no-arbitrary-values": ["error", { allow: arbitraryValueAllow }],
+      "shadcn/no-inline-styles": "error",
+      "shadcn/require-static-classes": "error",
+      "shadcn/no-unknown-classes": [
+        "error",
+        {
+          allow: [
+            // Styled by src/styles/archaeopteryx-theme.css, which
+            // organisms/taxon-views/phylogeny.tsx imports outside the theme's
+            // import graph.
+            "archaeopteryx-dxkb",
+            // Selector hook for the e2e page objects (e2e/pages/*-page.ts);
+            // carries no styles.
+            "welcome-search-card",
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Components own their appearance and may need structural values such as
+    // `ring-[3px]`. no-raw-colors and no-inline-styles stay on here.
+    files: ["src/components/ui/**"],
+    rules: {
+      "shadcn/no-restyle": "off",
+      "shadcn/no-arbitrary-values": "off",
+      "shadcn/require-static-classes": "off",
+    },
+  },
+  {
+    // The non-pill label in this file keeps `text-[12px]` rather than
+    // `text-xs` because it inherits its parent's unitless line-height ratio
+    // (17.14px here), which `text-xs` would replace with a fixed 16px.
+    files: [
+      "src/components/organisms/metadata-distributions/_shared/chart-legend-pill.tsx",
+    ],
+    rules: {
+      "shadcn/no-arbitrary-values": [
+        "error",
+        { allow: [...arbitraryValueAllow, "text-[12px]"] },
+      ],
+    },
+  },
+  {
+    // Tests pass placeholder class names (e.g. `cn("foo", "bar")`) on purpose.
+    files: ["**/__tests__/**", "**/*.test.{ts,tsx}"],
+    rules: {
+      "shadcn/no-unknown-classes": "off",
     },
   },
   {

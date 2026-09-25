@@ -228,7 +228,7 @@ export function WorkspaceActionBar({
               ) : (
                 <Icon className="size-4 shrink-0" />
               )}
-              <span className="text-[11px] leading-tight font-medium">
+              <span className="text-2xs leading-tight font-medium">
                 {action.label}
               </span>
             </Button>

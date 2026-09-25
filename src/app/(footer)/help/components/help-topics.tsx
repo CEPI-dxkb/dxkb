@@ -32,19 +32,19 @@ const HelpTopics = () => {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm">
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Creating an account</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Navigating the database</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Basic search techniques</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Understanding data formats</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">View all getting started guides →</Link>
                   </li>
                 </ul>
@@ -74,19 +74,19 @@ const HelpTopics = () => {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm">
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Advanced search parameters</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Sequence alignment tools</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Phylogenetic analysis</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Batch processing data</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">View all advanced guides →</Link>
                   </li>
                 </ul>
@@ -118,19 +118,19 @@ const HelpTopics = () => {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm">
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Managing your profile</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">API access keys</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Two-factor authentication</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">Data privacy settings</Link>
                   </li>
-                  <li className="text-link hover:underline">
+                  <li className="text-primary hover:underline">
                     <Link href="#">View all account guides →</Link>
                   </li>
                 </ul>

@@ -274,7 +274,6 @@ export default function GenomeAssemblyPage() {
               type="button"
               variant="outline"
               onClick={reset}
-              className="service-form-controls-button"
             >
               Reset
             </Button>

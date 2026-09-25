@@ -54,10 +54,7 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
                 {options.map(([value, label]) => (
                   <div key={value} className="flex items-center gap-3">
                     <RadioGroupItem value={value} id={value} />
-                    <Label
-                      htmlFor={value}
-                      className="service-radio-group-label"
-                    >
+                    <Label htmlFor={value}>
                       {label}
                     </Label>
                   </div>

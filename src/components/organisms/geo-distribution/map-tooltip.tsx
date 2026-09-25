@@ -37,7 +37,7 @@ export function MapTooltip({ data }: MapTooltipProps) {
       </div>
       {genera.length > 0 && (
         <div className="mt-2 border-t border-border/40 pt-2">
-          <div className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+          <div className="mb-1 text-3xs font-semibold tracking-wide text-muted-foreground uppercase">
             Top Genera
           </div>
           {genera.map(([name, value]) => (
@@ -52,7 +52,7 @@ export function MapTooltip({ data }: MapTooltipProps) {
       )}
       {hosts.length > 0 && (
         <div className="mt-2 border-t border-border/40 pt-2">
-          <div className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+          <div className="mb-1 text-3xs font-semibold tracking-wide text-muted-foreground uppercase">
             Top Hosts
           </div>
           {hosts.map(([name, value]) => (

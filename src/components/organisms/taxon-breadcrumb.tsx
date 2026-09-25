@@ -27,7 +27,7 @@ export function TaxonBreadcrumb({ taxon, displayName }: TaxonBreadcrumbProps) {
   if (!taxon) {
     return (
       <div>
-        <p className="text-[12px] font-bold tracking-widest text-foreground uppercase">
+        <p className="text-xs/normal font-bold tracking-widest text-foreground uppercase">
           Taxon View
         </p>
         <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
@@ -42,7 +42,7 @@ export function TaxonBreadcrumb({ taxon, displayName }: TaxonBreadcrumbProps) {
 
   return (
     <div>
-      <p className="text-[12px] font-bold tracking-widest text-foreground uppercase">
+      <p className="text-xs/normal font-bold tracking-widest text-foreground uppercase">
         Taxon View
       </p>
       <div className="flex flex-wrap items-baseline gap-x-1 text-sm">

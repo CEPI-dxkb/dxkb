@@ -46,7 +46,6 @@ export default function VariationAnalysisPage() {
               type="button"
               variant="outline"
               onClick={handleReset}
-              className="service-form-controls-button"
             >
               Reset
             </Button>

@@ -137,7 +137,7 @@ export function WorkspaceItemDetails({
           </div>
           <div>
             <dt className="text-muted-foreground">Path</dt>
-            <dd className="font-mono text-[11px] break-all">{item.path}</dd>
+            <dd className="font-mono text-2xs break-all">{item.path}</dd>
           </div>
           {children}
         </dl>

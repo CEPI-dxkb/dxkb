@@ -55,11 +55,19 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
   )
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+function TableRow({
+  className,
+  selectionIndicator = false,
+  ...props
+}: React.ComponentProps<"tr"> & {
+  /** When true, reserves a 2px left border that turns primary (with the `bg-muted` fill) when the row also has `data-state="selected"`. */
+  selectionIndicator?: boolean;
+}) {
   return (
     <tr
       data-slot="table-row"
-      className={cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", className)}
+      data-selection-indicator={selectionIndicator || undefined}
+      className={cn("border-b transition-colors hover:bg-muted/50 data-selection-indicator:border-l-2 data-selection-indicator:border-l-transparent data-[state=selected]:bg-muted data-selection-indicator:data-[state=selected]:border-l-primary", className)}
       {...props}
     />
   )

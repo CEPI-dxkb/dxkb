@@ -224,7 +224,7 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
                       <div className="flex items-center justify-center">
                         <Badge
                           variant={badgeVariantForType[g.reference_genome] ?? "outline"}
-                          className="text-[11px]"
+                          className="text-2xs"
                         >
                           {g.reference_genome}
                         </Badge>

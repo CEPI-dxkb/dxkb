@@ -74,7 +74,7 @@ const ContactForm = () => {
                       <h3 className="mb-1 font-medium">Email</h3>
                       <a
                         href="mailto:help@dxkb.org"
-                        className="text-link hover:underline"
+                        className="text-primary hover:underline"
                       >
                         help@dxkb.org
                       </a>

@@ -86,7 +86,7 @@ export function MobileSheetNavigation({
             className="h-8 w-auto"
             priority
           />
-          <span className="mt-0.5 text-[10px] font-semibold text-white/70">
+          <span className="mt-0.5 text-3xs font-semibold text-white/70">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </span>
         </div>

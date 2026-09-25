@@ -38,12 +38,11 @@ import {
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
 
 import { Table, TableRow, TableBody, TableCell } from "@/components/ui/table";
-
-import clsx from "clsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataTableControls } from "./data-table-controls";
 import { DataTableFooter } from "./data-table-footer";
 import { DataTableHeader } from "./data-table-header";
+import { clsx } from "cn";
 
 export function DataTable(props: DataTableProps) {
   "use no memo";
@@ -241,7 +240,7 @@ function SelectionHeader({
         title={selectionLabel}
       />
       {meta.isAllPagesSelected && (
-        <div className="absolute -bottom-5 left-1/2 z-50 -translate-x-1/2 transform text-[10px] whitespace-nowrap text-blue-600">
+        <div className="absolute -bottom-5 left-1/2 z-50 -translate-x-1/2 transform text-3xs whitespace-nowrap text-blue-600">
           All {meta.totalItems} selected
         </div>
       )}

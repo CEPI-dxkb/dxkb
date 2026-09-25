@@ -1,13 +1,10 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
@@ -22,6 +19,13 @@ import OutputFolder from "@/components/services/output-folder";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { TaxonNameSelector } from "@/components/taxonomy/taxon-name-selector";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { sarsCov2GenomeAnalysisParameters } from "@/lib/services/info/sars-cov2-genome-analysis";
 import { computeOutputName } from "@/lib/forms/(viral-tools)/sars-cov2-genome-analysis/sars-cov2-genome-analysis-form-utils";
 import {
@@ -49,16 +53,16 @@ export function SarsGenomeParameters({
 }: Props) {
   return (
     <Card className="h-full">
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Parameters
           <DialogInfoPopup
             title={sarsCov2GenomeAnalysisParameters.title}
             sections={sarsCov2GenomeAnalysisParameters.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-4">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-4">
         {inputType === "reads" && (
           <>
             <OptionField
@@ -91,7 +95,7 @@ export function SarsGenomeParameters({
         )}
         <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
           <div className="flex-1 space-y-2">
-            <Label className="service-card-label">
+            <ServiceLabel>
               Taxonomy Name
               <TooltipProvider>
                 <Tooltip>
@@ -103,7 +107,7 @@ export function SarsGenomeParameters({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            </Label>
+            </ServiceLabel>
             <form.Field name="scientific_name">
               {(field) => (
                 <FieldItem>
@@ -148,7 +152,7 @@ export function SarsGenomeParameters({
             </form.Field>
           </div>
           <div className="w-full space-y-2 sm:w-40">
-            <Label className="service-card-label">Taxonomy ID</Label>
+            <ServiceLabel>Taxonomy ID</ServiceLabel>
             <form.Field name="taxonomy_id">
               {(field) => (
                 <FieldItem>
@@ -186,10 +190,9 @@ export function SarsGenomeParameters({
         <form.Field name="my_label">
           {(field) => (
             <FieldItem>
-              <Label className="service-card-label">My Label</Label>
-              <Input
+              <ServiceLabel>My Label</ServiceLabel>
+              <ServiceInput
                 placeholder="My identifier123"
-                className="service-card-input"
                 value={field.state.value}
                 onChange={(event) => {
                   field.handleChange(event.target.value);
@@ -230,7 +233,7 @@ export function SarsGenomeParameters({
             </FieldItem>
           )}
         </form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -248,7 +251,7 @@ function OptionField({
 }) {
   return (
     <div className="space-y-2">
-      <Label className="service-card-label">{label}</Label>
+      <ServiceLabel>{label}</ServiceLabel>
       <form.Field name={name}>
         {(field) => (
           <FieldItem>
@@ -259,12 +262,9 @@ function OptionField({
                 if (value != null) field.handleChange(value);
               }}
             >
-              <SelectTrigger
-                className="service-card-select-trigger"
-                aria-label={label}
-              >
+              <ServiceSelectTrigger aria-label={label}>
                 <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-              </SelectTrigger>
+              </ServiceSelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   {options.map((option) => (

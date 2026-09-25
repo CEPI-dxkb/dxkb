@@ -8,22 +8,24 @@ import { ReadLibraryInputSection } from "@/components/services/read-library-inpu
 import { SelectedLibrariesCard as SharedSelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   predefinedGeneSetOptions,
   type MetagenomicReadMappingFormData,
@@ -55,8 +57,8 @@ export function ReadInputCard({ controller }: { controller: Controller }) {
   return (
     <div className="md:col-span-7">
       <Card className="h-full">
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Input File
             <DialogInfoPopup
               title={readInputFileInfo.title}
@@ -64,8 +66,8 @@ export function ReadInputCard({ controller }: { controller: Controller }) {
               sections={readInputFileInfo.sections}
             />
           </RequiredFormCardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content space-y-6">
+        </ServiceCardHeader>
+        <ServiceCardContent className="space-y-6">
           <ReadLibraryInputSection
             pairedRead1={pairedRead1}
             pairedRead2={pairedRead2}
@@ -87,7 +89,7 @@ export function ReadInputCard({ controller }: { controller: Controller }) {
           <form.Field name="paired_end_libs">
             {(field) => <FieldErrors field={field} />}
           </form.Field>
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );
@@ -118,8 +120,8 @@ export function ReadMappingParametersCard({
   return (
     <div className="md:col-span-12">
       <Card>
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Parameters
             <DialogInfoPopup
               title={metagenomicReadMappingParameters.title}
@@ -127,16 +129,21 @@ export function ReadMappingParametersCard({
               sections={metagenomicReadMappingParameters.sections}
             />
           </RequiredFormCardTitle>
-        </CardHeader>
+        </ServiceCardHeader>
         <CardContent>
           <div className="space-y-6">
             <form.Field name="gene_set_type">
               {(field) => (
                 <FieldItem>
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel
+                    field={field}
+                    id={`${field.name}-label`}
+                    htmlFor={undefined}
+                  >
                     Gene Set Type
-                  </FieldLabel>
-                  <RadioGroup
+                  </ServiceFieldLabel>
+                  <ServiceRadioGroup
+                    aria-labelledby={`${field.name}-label`}
                     value={field.state.value}
                     onValueChange={(value) => {
                       if (value != null)
@@ -144,7 +151,6 @@ export function ReadMappingParametersCard({
                           value as MetagenomicReadMappingFormData["gene_set_type"],
                         );
                     }}
-                    className="service-radio-group-horizontal"
                   >
                     <div className="flex items-center gap-3">
                       <RadioGroupItem
@@ -170,7 +176,7 @@ export function ReadMappingParametersCard({
                         Feature Group
                       </Label>
                     </div>
-                  </RadioGroup>
+                  </ServiceRadioGroup>
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
@@ -179,9 +185,9 @@ export function ReadMappingParametersCard({
               <form.Field name="gene_set_name">
                 {(field) => (
                   <FieldItem>
-                    <FieldLabel field={field} className="service-card-label">
+                    <ServiceFieldLabel field={field}>
                       Predefined Gene Set Name
-                    </FieldLabel>
+                    </ServiceFieldLabel>
                     <Select
                       items={predefinedGeneSetOptions}
                       value={field.state.value}
@@ -189,12 +195,12 @@ export function ReadMappingParametersCard({
                         if (value != null) field.handleChange(value);
                       }}
                     >
-                      <SelectTrigger
-                        className="service-card-select-trigger"
+                      <ServiceSelectTrigger
+                        id={field.name}
                         aria-label="Predefined Gene Set Name"
                       >
                         <SelectValue placeholder="Select Gene Set" />
-                      </SelectTrigger>
+                      </ServiceSelectTrigger>
                       <SelectContent>
                         <SelectGroup>
                           {predefinedGeneSetOptions.map((option) => (
@@ -214,10 +220,11 @@ export function ReadMappingParametersCard({
               <form.Field name="gene_set_fasta">
                 {(field) => (
                   <FieldItem>
-                    <FieldLabel field={field} className="service-card-label">
+                    <ServiceFieldLabel field={field}>
                       Gene Set FASTA
-                    </FieldLabel>
+                    </ServiceFieldLabel>
                     <WorkspaceObjectSelector
+                      id={field.name}
                       preset="geneSetFasta"
                       placeholder="Select Gene Set FASTA File..."
                       onSelectedObjectChange={(
@@ -236,10 +243,11 @@ export function ReadMappingParametersCard({
               <form.Field name="gene_set_feature_group">
                 {(field) => (
                   <FieldItem>
-                    <FieldLabel field={field} className="service-card-label">
+                    <ServiceFieldLabel field={field}>
                       Gene Set Feature Group
-                    </FieldLabel>
+                    </ServiceFieldLabel>
                     <WorkspaceObjectSelector
+                      id={field.name}
                       preset="featureGroup"
                       placeholder="Select Gene Set Feature Group..."
                       onSelectedObjectChange={(

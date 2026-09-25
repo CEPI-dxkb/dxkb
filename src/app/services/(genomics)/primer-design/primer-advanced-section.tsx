@@ -1,24 +1,24 @@
 "use client";
 
 import { ChevronDown, HelpCircle } from "lucide-react";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import {
+  ServiceFieldLabel,
+  ServiceFieldSubLabel,
+} from "@/components/services/form-ui/service-field";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import type { PrimerDesignController } from "./use-primer-design-form";
 
 type ScalarFieldName =
@@ -88,16 +88,15 @@ function ScalarFields({
         <form.Field key={name} name={name}>
           {(field) => (
             <FieldItem>
-              <FieldLabel field={field} className="service-card-sublabel">
+              <ServiceFieldSubLabel field={field}>
                 {label}
-              </FieldLabel>
-              <Input
+              </ServiceFieldSubLabel>
+              <ServiceInput
                 id={field.name}
                 value={field.state.value || ""}
                 onChange={(event) => {
                   field.handleChange(event.target.value || undefined);
                 }}
-                className="service-card-input"
               />
               <FieldErrors field={field} />
             </FieldItem>
@@ -115,39 +114,34 @@ export function PrimerAdvancedSection({
 }) {
   const { form, showAdvanced, setShowAdvanced } = controller;
   return (
-    <Collapsible
-      open={showAdvanced}
-      onOpenChange={setShowAdvanced}
-      className="service-collapsible-container"
-    >
-      <CollapsibleTrigger className="service-collapsible-trigger">
+    <ServiceCollapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+      <ServiceCollapsibleTrigger>
         Advanced Options
         <ChevronDown
           className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
         />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="service-collapsible-content">
+      </ServiceCollapsibleTrigger>
+      <ServiceCollapsibleContent>
         <div className="space-y-3 px-2 py-3">
           <form.Field name="PRIMER_NUM_RETURN">
             {(field) => (
               <FieldItem>
                 <div className="flex items-center gap-2">
-                  <FieldLabel field={field} className="service-card-label">
+                  <ServiceFieldLabel field={field}>
                     Number to Return
-                  </FieldLabel>
+                  </ServiceFieldLabel>
                   <Help>
                     Maximum number of primer pairs to return. Larger values may
                     increase runtime.
                   </Help>
                 </div>
-                <Input
+                <ServiceInput
                   id={field.name}
                   value={field.state.value || ""}
                   onChange={(event) => {
                     field.handleChange(event.target.value || undefined);
                   }}
                   placeholder="5"
-                  className="service-card-input"
                 />
                 <FieldErrors field={field} />
               </FieldItem>
@@ -155,9 +149,9 @@ export function PrimerAdvancedSection({
           </form.Field>
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Label className="service-card-label">
+              <ServiceLabel>
                 Primer Tm ({"\u00B0"}C)
-              </Label>
+              </ServiceLabel>
               <Help>
                 Define minimum, optimum, and maximum melting temperatures as
                 well as the maximum pairwise difference.
@@ -171,7 +165,7 @@ export function PrimerAdvancedSection({
           </div>
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <Label className="service-card-label">Primer GC%</Label>
+              <ServiceLabel>Primer GC%</ServiceLabel>
               <Help>
                 Specify acceptable GC content range for designed primers.
               </Help>
@@ -187,16 +181,15 @@ export function PrimerAdvancedSection({
               <form.Field key={name} name={name}>
                 {(field) => (
                   <FieldItem>
-                    <FieldLabel field={field} className="service-card-label">
+                    <ServiceFieldLabel field={field}>
                       {label}
-                    </FieldLabel>
-                    <Input
+                    </ServiceFieldLabel>
+                    <ServiceInput
                       id={field.name}
                       value={field.state.value || ""}
                       onChange={(event) => {
                         field.handleChange(event.target.value || undefined);
                       }}
-                      className="service-card-input"
                     />
                     <FieldErrors field={field} />
                   </FieldItem>
@@ -205,7 +198,7 @@ export function PrimerAdvancedSection({
             ))}
           </div>
         </div>
-      </CollapsibleContent>
-    </Collapsible>
+      </ServiceCollapsibleContent>
+    </ServiceCollapsible>
   );
 }

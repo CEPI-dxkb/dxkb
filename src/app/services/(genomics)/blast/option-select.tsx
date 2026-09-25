@@ -3,9 +3,9 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 
 export function OptionSelect<T extends string | number>({
   label,
@@ -26,9 +26,9 @@ export function OptionSelect<T extends string | number>({
         if (next != null) onChange(next);
       }}
     >
-      <SelectTrigger className="service-card-select-trigger" aria-label={label}>
+      <ServiceSelectTrigger aria-label={label}>
         <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-      </SelectTrigger>
+      </ServiceSelectTrigger>
       <SelectContent>
         <SelectGroup>
           {options.map((option) => (

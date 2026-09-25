@@ -1,13 +1,7 @@
 "use client";
 
 import { HelpCircle } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -15,6 +9,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import SelectedItemsTable from "@/components/services/selected-items-table";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
 import type { VariationAnalysisController } from "./use-variation-analysis-form";
 
 export function SelectedLibrariesSection({
@@ -28,8 +27,8 @@ export function SelectedLibrariesSection({
   return (
     <div className={className}>
       <Card className="h-full">
-        <CardHeader className="service-card-header">
-          <CardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <ServiceCardTitle>
             Selected Libraries
             <TooltipProvider>
               <Tooltip>
@@ -41,12 +40,12 @@ export function SelectedLibrariesSection({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </CardTitle>
+          </ServiceCardTitle>
           <CardDescription>
             Place read files here using the arrow buttons.
           </CardDescription>
-        </CardHeader>
-        <CardContent className="service-card-content">
+        </ServiceCardHeader>
+        <ServiceCardContent>
           <SelectedItemsTable
             items={selectedLibraries.map((library) => ({
               id: library.id,
@@ -56,7 +55,7 @@ export function SelectedLibrariesSection({
             onRemove={removeLibrary}
             className="max-h-84 overflow-y-auto"
           />
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );

@@ -1,13 +1,11 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, X } from "lucide-react";
@@ -15,6 +13,12 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   fastqUtilitiesParameters,
   fastqUtilitiesPipeline,
@@ -30,16 +34,16 @@ type Page = ReturnType<typeof useFastqUtilitiesPage>;
 export function FastqOutputCard({ page }: { page: Page }) {
   return (
     <Card className="h-full">
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Parameters
           <DialogInfoPopup
             title={fastqUtilitiesParameters.title}
             sections={fastqUtilitiesParameters.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <page.form.Field name="output_path">
           {(field) => (
             <FieldItem className="w-full">
@@ -65,7 +69,7 @@ export function FastqOutputCard({ page }: { page: Page }) {
             </FieldItem>
           )}
         </page.form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -73,18 +77,18 @@ export function FastqOutputCard({ page }: { page: Page }) {
 export function FastqPipelineCard({ page }: { page: Page }) {
   return (
     <Card className="h-full">
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Pipeline
           <DialogInfoPopup
             title={fastqUtilitiesPipeline.title}
             sections={fastqUtilitiesPipeline.sections}
           />
         </RequiredFormCardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <div>
-          <Label className="service-card-label">Select Action</Label>
+          <ServiceLabel>Select Action</ServiceLabel>
           <div className="flex items-center gap-2">
             <Select
               items={pipelineActionOptions}
@@ -93,12 +97,9 @@ export function FastqPipelineCard({ page }: { page: Page }) {
                 if (value != null) page.setSelectedAction(value);
               }}
             >
-              <SelectTrigger
-                className="service-card-select-trigger"
-                aria-label="Select action"
-              >
+              <ServiceSelectTrigger aria-label="Select action">
                 <SelectValue placeholder="Select Action" />
-              </SelectTrigger>
+              </ServiceSelectTrigger>
               <SelectContent>
                 <SelectGroup>
                   {pipelineActionOptions.map((action) => (
@@ -185,7 +186,7 @@ export function FastqPipelineCard({ page }: { page: Page }) {
             )}
           </page.form.Field>
         </div>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

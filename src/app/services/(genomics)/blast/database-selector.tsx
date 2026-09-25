@@ -5,11 +5,11 @@ import { useSelector } from "@tanstack/react-store";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import type { BlastFormData } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
+import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { TaxonomyItem } from "@/types";
 import type { BlastForm } from "./page";
@@ -101,9 +101,7 @@ export function DatabaseSelector({
     return (
       <div className="service-card-row">
         <div className="service-card-row-item">
-          <RequiredFormLabel className="service-card-label">
-            Select a taxon
-          </RequiredFormLabel>
+          <ServiceRequiredLabel>Select a taxon</ServiceRequiredLabel>
           <TaxonListField form={form} />
         </div>
       </div>
@@ -130,9 +128,9 @@ export function DatabaseSelector({
   return (
     <div className="service-card-row">
       <div className="service-card-row-item">
-        <RequiredFormLabel className="service-card-label">
+        <ServiceRequiredLabel>
           {label}
-        </RequiredFormLabel>
+        </ServiceRequiredLabel>
         <form.Field name={name as keyof BlastFormData}>
           {(field) => (
             <FieldItem>

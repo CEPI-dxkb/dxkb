@@ -51,9 +51,10 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 
 ### Design-system lint (`@shadcn/lint`)
 
-- `eslint.config.mjs` enables all six `shadcn/*` rules as errors (off for `no-restyle`, `no-arbitrary-values`, and `require-static-classes` inside `src/components/ui/**`, which owns component appearance). Violations that predate the rules are recorded in `eslint-suppressions.json`, which ESLint applies automatically, so only new violations fail `pnpm lint`.
+- `eslint.config.mjs` enables all six `shadcn/*` rules as errors (off for `no-restyle`, `no-arbitrary-values`, and `require-static-classes` inside `src/components/ui/**`, which owns component appearance, and inside `src/components/services/form-ui/**`, whose wrappers own the global `service-*` classes). Violations that predate the rules are recorded in `eslint-suppressions.json`, which ESLint applies automatically, so only new violations fail `pnpm lint`.
 - Fix a new finding in code, using the variant, theme token, or scale value the error suggests. Do not add entries to `eslint-suppressions.json` or `eslint-disable` comments to get past one.
 - After fixing a recorded violation, run `pnpm lint --prune-suppressions` — lint fails while stale entries remain. Entries are keyed by file path, so moving or renaming a file with recorded violations orphans them: fix the violations, or update the key.
+- Service form parts use the `src/components/services/form-ui/` wrappers (`<ServiceCardHeader>`, `<ServiceLabel>`, …), never a `service-*` class on a `ui/` component. Classes passed to a wrapper are still checked against the part it wraps, and `no-restyle` contracts apply through it: `TableCell`/`TableHead`/`CardHeader`/`CardContent` may set spacing, `Skeleton` shape and spacing. Widening a contract is a policy call; record the reason in a comment on it.
 - Sub-`xs` text sizes are theme tokens: `text-2xs` (11px) and `text-3xs` (10px). Documented one-off exceptions live in the rule `allow` lists in `eslint.config.mjs`; add to them only for classes the app genuinely needs and cannot express with a token.
 - The only sanctioned `eslint-disable-next-line shadcn/require-static-classes` comments are on `className` passthroughs whose value is authored as a static string elsewhere (e.g. TanStack column meta) — always with a `-- reason` naming that source. Selectable table rows use `<TableRow selectionIndicator data-state={selected ? "selected" : undefined}>` instead of restyling the row. `src/components/ui/table.tsx`, `navigation-menu.tsx`, `sonner.tsx`, `calendar.tsx`, `carousel.tsx`, and `dropdown-menu.tsx` carry local edits that `shadcn add --overwrite` would revert — check the diff when regenerating them.
 
@@ -81,7 +82,7 @@ Enabled via `reactCompiler: true` in `next.config.ts` — components are auto-me
 
 Find the existing example of the same shape and follow it:
 
-- **New service** → copy the closest one under `src/app/services/(<category>)/`: page (TanStack Form + zod) + `*-form-utils.ts` (constants/types/schema) + submission via `useServiceRuntime`/`useServiceFormSubmission` + rerun via `useRerunForm<T>()` and the `build{Paired,Single,Sra}Libraries` helpers in `src/lib/rerun-utility.ts`.
+- **New service** → copy the closest one under `src/app/services/(<category>)/`: page (TanStack Form + zod, parts from `src/components/services/form-ui/`) + `*-form-utils.ts` (constants/types/schema) + submission via `useServiceRuntime`/`useServiceFormSubmission` + rerun via `useRerunForm<T>()` and the `build{Paired,Single,Sra}Libraries` helpers in `src/lib/rerun-utility.ts`.
 - **New data view** → register in `src/lib/views/view-registry.ts` + thin page under `src/app/(views)/`. Don't bypass the registry.
 - **New workspace data access** → add a method to `workspace-repository.ts`, consume via `useWorkspaceRepository()`. Not `WorkspaceApiClient` directly.
 - **New auth endpoint** → add a named operation in `src/lib/auth/server/actions.ts`, a concrete browser call in `src/lib/auth/client.ts` when needed, and a thin route under `src/app/api/auth/` using `{error, code}` (see `docs/auth-api.md`). Do not add a factory, port, or browser session endpoint.

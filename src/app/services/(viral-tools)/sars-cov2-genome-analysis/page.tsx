@@ -5,10 +5,10 @@ import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { useServicePageState } from "../../use-service-page-state";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import { ServiceHeader } from "@/components/services/service-header";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
@@ -20,6 +20,12 @@ import {
   sarsCov2GenomeAnalysisStartWith,
 } from "@/lib/services/info/sars-cov2-genome-analysis";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import {
   defaultPrimerVersion,
   defaultSarsCov2GenomeAnalysisFormValues,
@@ -202,8 +208,8 @@ export default function SarsCov2GenomeAnalysisPage() {
       >
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Start With
                 <DialogInfoPopup
                   title={sarsCov2GenomeAnalysisStartWith.title}
@@ -211,12 +217,12 @@ export default function SarsCov2GenomeAnalysisPage() {
                   sections={sarsCov2GenomeAnalysisStartWith.sections}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
-            <CardContent className="service-card-content">
+            </ServiceCardHeader>
+            <ServiceCardContent>
               <form.Field name="input_type">
                 {(field) => (
                   <FieldItem>
-                    <RadioGroup
+                    <ServiceRadioGroup
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value != null)
@@ -224,7 +230,6 @@ export default function SarsCov2GenomeAnalysisPage() {
                             value as SarsCov2GenomeAnalysisFormData["input_type"],
                           );
                       }}
-                      className="service-radio-group-horizontal"
                     >
                       <div className="service-radio-group-item flex items-center gap-2">
                         <RadioGroupItem value="reads" id="start-reads" />
@@ -234,28 +239,28 @@ export default function SarsCov2GenomeAnalysisPage() {
                         <RadioGroupItem value="contigs" id="start-contigs" />
                         <Label htmlFor="start-contigs">Assembled Contigs</Label>
                       </div>
-                    </RadioGroup>
+                    </ServiceRadioGroup>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
               </form.Field>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
         {inputType === "reads" && <SarsGenomeReadInputs page={page} />}
         {inputType === "contigs" && (
           <div className="md:col-span-12">
             <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
+              <ServiceCardHeader>
+                <RequiredFormCardTitle>
                   Input File
                 </RequiredFormCardTitle>
-              </CardHeader>
-              <CardContent className="service-card-content">
+              </ServiceCardHeader>
+              <ServiceCardContent>
                 <form.Field name="contigs">
                   {(field) => (
                     <FieldItem>
-                      <Label className="service-card-label">Contigs</Label>
+                      <ServiceLabel>Contigs</ServiceLabel>
                       <WorkspaceObjectSelector
                         preset="contigs"
                         placeholder="Select or Upload Contigs to your workspace for Annotation"
@@ -268,7 +273,7 @@ export default function SarsCov2GenomeAnalysisPage() {
                     </FieldItem>
                   )}
                 </form.Field>
-              </CardContent>
+              </ServiceCardContent>
             </Card>
           </div>
         )}

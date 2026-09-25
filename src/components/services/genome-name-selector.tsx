@@ -4,8 +4,8 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { Search, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { cn } from "@/lib/utils";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
 import { toast } from "sonner";
@@ -158,7 +158,7 @@ export function GenomeNameSelector({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {title && <Label className="service-card-label">{title}</Label>}
+      {title && <ServiceLabel>{title}</ServiceLabel>}
       <div className="flex items-start gap-2">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />

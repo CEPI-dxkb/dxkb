@@ -10,7 +10,7 @@ import { createPortal } from "react-dom";
 import { AlertCircle, ChevronDown, Loader2, Search } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +60,7 @@ export function WorkspaceObjectSelectorView({
       <div className="flex flex-row items-center gap-2">
         <div ref={inputRef} className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <ServiceInput
             id={id}
             ref={inputElementRef}
             role="combobox"
@@ -77,7 +77,7 @@ export function WorkspaceObjectSelectorView({
             onChange={onInputChange}
             onFocus={onInputFocus}
             onKeyDown={onInputKeyDown}
-            className="service-card-input w-full px-10"
+            className="w-full px-10"
           />
           <Button
             type="button"

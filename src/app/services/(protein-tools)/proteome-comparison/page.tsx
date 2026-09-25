@@ -6,22 +6,8 @@ import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { NumberInput } from "@/components/ui/number-input";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { ChevronDown, Plus } from "lucide-react";
 import {
   proteomeComparisonInfo,
@@ -39,6 +25,24 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import {
+  ServiceInput,
+  ServiceNumberInput,
+} from "@/components/services/form-ui/service-input";
+import {
+  ServiceLabel,
+  ServiceSubLabel,
+} from "@/components/services/form-ui/service-label";
 import {
   getGenomeIdsFromGroup,
   fetchGenomesByIds,
@@ -354,18 +358,18 @@ function useProteomeComparisonPage() {
           <div className="flex flex-col gap-6">
             {/* Parameters Card */}
             <Card>
-              <CardHeader className="service-card-header">
-                <CardTitle className="service-card-title">
+              <ServiceCardHeader>
+                <ServiceCardTitle>
                   Parameters
                   <DialogInfoPopup
                     title={proteomeComparisonParameters.title}
                     description={proteomeComparisonParameters.description}
                     sections={proteomeComparisonParameters.sections}
                   />
-                </CardTitle>
-              </CardHeader>
+                </ServiceCardTitle>
+              </ServiceCardHeader>
 
-              <CardContent className="service-card-content">
+              <ServiceCardContent>
                 <div className="space-y-4">
                   <div className="flex flex-col space-y-4">
                     <form.Field name="output_path">
@@ -398,27 +402,26 @@ function useProteomeComparisonPage() {
                   </div>
 
                   {/* Advanced Parameters */}
-                  <Collapsible
+                  <ServiceCollapsible
                     open={showAdvancedParams}
                     onOpenChange={setShowAdvancedParams}
-                    className="service-collapsible-container"
                   >
-                    <CollapsibleTrigger className="service-collapsible-trigger text-sm font-medium">
+                    <ServiceCollapsibleTrigger className="text-sm font-medium">
                       Advanced Parameters (Optional)
                       <ChevronDown
                         className={`size-4 transition-transform ${showAdvancedParams ? "rotate-180 transform" : ""}`}
                       />
-                    </CollapsibleTrigger>
+                    </ServiceCollapsibleTrigger>
 
-                    <CollapsibleContent className="service-collapsible-content">
+                    <ServiceCollapsibleContent>
                       <div className="service-card-content-grid">
                         <form.Field name="min_seq_cov">
                           {(field) => (
                             <FieldItem>
-                              <Label className="service-card-sublabel">
+                              <ServiceSubLabel>
                                 Minimum % Coverage
-                              </Label>
-                              <NumberInput
+                              </ServiceSubLabel>
+                              <ServiceNumberInput
                                 name={field.name}
                                 value={field.state.value}
                                 min={10}
@@ -428,7 +431,7 @@ function useProteomeComparisonPage() {
                                   if (value !== undefined)
                                     field.handleChange(value);
                                 }}
-                                className="service-card-input relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>
@@ -438,16 +441,13 @@ function useProteomeComparisonPage() {
                         <form.Field name="max_e_val">
                           {(field) => (
                             <FieldItem>
-                              <Label className="service-card-sublabel">
-                                BLAST E-Value
-                              </Label>
-                              <Input
+                              <ServiceSubLabel>BLAST E-Value</ServiceSubLabel>
+                              <ServiceInput
                                 value={field.state.value}
                                 onChange={(e) => {
                                   field.handleChange(e.target.value);
                                 }}
                                 placeholder="1e-5"
-                                className="service-card-input"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>
@@ -457,10 +457,10 @@ function useProteomeComparisonPage() {
                         <form.Field name="min_ident">
                           {(field) => (
                             <FieldItem>
-                              <Label className="service-card-sublabel">
+                              <ServiceSubLabel>
                                 Minimum % Identity
-                              </Label>
-                              <NumberInput
+                              </ServiceSubLabel>
+                              <ServiceNumberInput
                                 name={field.name}
                                 value={field.state.value}
                                 min={10}
@@ -470,23 +470,23 @@ function useProteomeComparisonPage() {
                                   if (value !== undefined)
                                     field.handleChange(value);
                                 }}
-                                className="service-card-input relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>
                           )}
                         </form.Field>
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                    </ServiceCollapsibleContent>
+                  </ServiceCollapsible>
                 </div>
-              </CardContent>
+              </ServiceCardContent>
             </Card>
 
             {/* Reference Genome Card */}
             <Card>
-              <CardHeader className="service-card-header">
-                <RequiredFormCardTitle className="service-card-title">
+              <ServiceCardHeader>
+                <RequiredFormCardTitle>
                   Reference Genome
                   <DialogInfoPopup
                     title={proteomeComparisonReferenceGenome.title}
@@ -497,17 +497,15 @@ function useProteomeComparisonPage() {
                 <CardDescription>
                   Select 1 reference genome from the following options
                 </CardDescription>
-              </CardHeader>
+              </ServiceCardHeader>
 
-              <CardContent className="service-card-content">
+              <ServiceCardContent>
                 <div className="space-y-4">
                   {/* Reference Genome Selector */}
                   <form.Field name="ref_genome_id">
                     {(field) => (
                       <FieldItem>
-                        <Label className="service-card-label">
-                          Select a Genome
-                        </Label>
+                        <ServiceLabel>Select a Genome</ServiceLabel>
                         <SingleGenomeSelector
                           placeholder="e.g. Mycobacterium tuberculosis H37Rv"
                           value={field.state.value ?? ""}
@@ -528,9 +526,7 @@ function useProteomeComparisonPage() {
                   <form.Field name="ref_fasta_file">
                     {(field) => (
                       <FieldItem>
-                        <Label className="service-card-label">
-                          Or a Protein FASTA File
-                        </Label>
+                        <ServiceLabel>Or a Protein FASTA File</ServiceLabel>
                         <WorkspaceObjectSelector
                           preset="featureProteinFasta"
                           placeholder="Select protein FASTA file (Optional)"
@@ -559,9 +555,7 @@ function useProteomeComparisonPage() {
                   <form.Field name="ref_feature_group">
                     {(field) => (
                       <FieldItem>
-                        <Label className="service-card-label">
-                          Or a Feature Group
-                        </Label>
+                        <ServiceLabel>Or a Feature Group</ServiceLabel>
                         <WorkspaceObjectSelector
                           preset="featureGroup"
                           placeholder="Select feature group (Optional)"
@@ -589,14 +583,14 @@ function useProteomeComparisonPage() {
                     )}
                   </form.Field>
                 </div>
-              </CardContent>
+              </ServiceCardContent>
             </Card>
           </div>
 
           {/* Right Column - Comparison Genomes */}
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Comparison Genomes
                 <DialogInfoPopup
                   title={proteomeComparisonComparisonGenomes.title}
@@ -608,13 +602,13 @@ function useProteomeComparisonPage() {
                 Add up to {maxComparisonGenomes} genomes to compare (use plus
                 buttons to add)
               </CardDescription>
-            </CardHeader>
+            </ServiceCardHeader>
 
-            <CardContent className="service-card-content">
+            <ServiceCardContent>
               <div className="space-y-4">
                 {/* Select Genome */}
                 <div className="space-y-2">
-                  <Label className="service-card-label">Select Genome</Label>
+                  <ServiceLabel>Select Genome</ServiceLabel>
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <SingleGenomeSelector
@@ -650,9 +644,7 @@ function useProteomeComparisonPage() {
 
                 {/* Select Protein FASTA File */}
                 <div className="space-y-2">
-                  <Label className="service-card-label">
-                    And/Or Select Protein FASTA File
-                  </Label>
+                  <ServiceLabel>And/Or Select Protein FASTA File</ServiceLabel>
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
@@ -684,9 +676,7 @@ function useProteomeComparisonPage() {
 
                 {/* Select Feature Group */}
                 <div className="space-y-2">
-                  <Label className="service-card-label">
-                    And/Or Select Feature Group
-                  </Label>
+                  <ServiceLabel>And/Or Select Feature Group</ServiceLabel>
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
@@ -718,9 +708,7 @@ function useProteomeComparisonPage() {
 
                 {/* Select Genome Group */}
                 <div className="space-y-2">
-                  <Label className="service-card-label">
-                    And/Or Select Genome Group
-                  </Label>
+                  <ServiceLabel>And/Or Select Genome Group</ServiceLabel>
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <WorkspaceObjectSelector
@@ -790,7 +778,7 @@ function useProteomeComparisonPage() {
                   </form.Field>
                 </div>
               </div>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 

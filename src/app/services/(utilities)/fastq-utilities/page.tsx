@@ -3,15 +3,13 @@
 import { useFastqUtilitiesPage } from "./use-fastq-utilities-page";
 import { FastqOutputCard, FastqPipelineCard } from "./fastq-parameters";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronRight } from "lucide-react";
@@ -24,6 +22,15 @@ import { RequiredFormCardTitle } from "@/components/forms/required-form-componen
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceLabel,
+  ServiceSubLabel,
+} from "@/components/services/form-ui/service-label";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 
 import {
   fastqUtilitiesInfo,
@@ -83,8 +90,8 @@ export default function FastqUtilitiesPage() {
         {/* Input Library Section */}
         <div className="md:col-span-7">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Input Library
                 <DialogInfoPopup
                   title={readInputFileInfo.title}
@@ -92,15 +99,13 @@ export default function FastqUtilitiesPage() {
                   sections={readInputFileInfo.sections}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
+            </ServiceCardHeader>
 
-            <CardContent className="service-card-content space-y-6">
+            <ServiceCardContent className="space-y-6">
               {/* Paired Read Library */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">
-                    Paired Read Library
-                  </Label>
+                  <ServiceLabel>Paired Read Library</ServiceLabel>
                   <div className="mx-4 h-px flex-1 bg-border" />
                   <Button
                     type="button"
@@ -136,9 +141,7 @@ export default function FastqUtilitiesPage() {
               {/* Single Read Library */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="service-card-label">
-                    Single Read Library
-                  </Label>
+                  <ServiceLabel>Single Read Library</ServiceLabel>
                   <div className="mx-4 h-px flex-1 bg-border" />
                   <Button
                     type="button"
@@ -152,7 +155,7 @@ export default function FastqUtilitiesPage() {
                   </Button>
                 </div>
                 <div>
-                  <Label className="service-card-sublabel">Platform</Label>
+                  <ServiceSubLabel>Platform</ServiceSubLabel>
                   <Select
                     items={platformOptions}
                     value={singlePlatform}
@@ -160,12 +163,9 @@ export default function FastqUtilitiesPage() {
                       if (value != null) setSinglePlatform(value);
                     }}
                   >
-                    <SelectTrigger
-                      className="service-card-select-trigger"
-                      aria-label="Select platform"
-                    >
+                    <ServiceSelectTrigger aria-label="Select platform">
                       <SelectValue placeholder="Select a Platform..." />
-                    </SelectTrigger>
+                    </ServiceSelectTrigger>
                     <SelectContent>
                       <SelectGroup>
                         {platformOptions.map((platform) => (
@@ -207,7 +207,7 @@ export default function FastqUtilitiesPage() {
                   </FieldItem>
                 )}
               </form.Field>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 

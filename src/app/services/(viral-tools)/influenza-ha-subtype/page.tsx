@@ -2,12 +2,11 @@
 
 import { useInfluenzaHaSubtypePage } from "./use-influenza-ha-subtype-page";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
@@ -16,6 +15,13 @@ import { RequiredFormCardTitle } from "@/components/forms/required-form-componen
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import { ServiceTextarea } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 
 import {
   haSubtypeNumberingInput,
@@ -83,8 +89,8 @@ export default function HASubtypeNumberingPage() {
         {/* Input Sequence Card */}
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Input Sequence
                 <DialogInfoPopup
                   title={haSubtypeNumberingInput.title}
@@ -92,13 +98,13 @@ export default function HASubtypeNumberingPage() {
                   sections={haSubtypeNumberingInput.sections}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
+            </ServiceCardHeader>
 
-            <CardContent className="service-card-content space-y-4">
+            <ServiceCardContent className="space-y-4">
               <form.Field name="input_source">
                 {(field) => (
                   <FieldItem>
-                    <RadioGroup
+                    <ServiceRadioGroup
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value != null)
@@ -106,7 +112,6 @@ export default function HASubtypeNumberingPage() {
                             value as InfluenzaHaSubtypeFormData["input_source"],
                           );
                       }}
-                      className="service-radio-group-horizontal"
                     >
                       <div className="service-radio-group-item">
                         <RadioGroupItem
@@ -133,7 +138,7 @@ export default function HASubtypeNumberingPage() {
                           Feature group
                         </Label>
                       </div>
-                    </RadioGroup>
+                    </ServiceRadioGroup>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
@@ -143,9 +148,9 @@ export default function HASubtypeNumberingPage() {
                 <form.Field name="input_fasta_data">
                   {(field) => (
                     <FieldItem>
-                      <Textarea
+                      <ServiceTextarea
                         placeholder="Enter one or more protein sequences in FASTA format."
-                        className="service-card-textarea min-h-44 font-mono text-sm"
+                        className="min-h-44 font-mono text-sm"
                         value={field.state.value}
                         onChange={(e) => {
                           field.handleChange(e.target.value);
@@ -201,30 +206,30 @@ export default function HASubtypeNumberingPage() {
                   )}
                 </form.Field>
               )}
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 
         {/* Parameters Card: Conversion scheme + Output */}
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Parameters
                 <DialogInfoPopup
                   title={haSubtypeNumberingConversionScheme.title}
                   description={haSubtypeNumberingConversionScheme.description}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
+            </ServiceCardHeader>
 
-            <CardContent className="service-card-content space-y-6">
+            <ServiceCardContent className="space-y-6">
               <form.Field name="types">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">
+                    <ServiceLabel>
                       Conversion Sequence Numbering Scheme
-                    </Label>
+                    </ServiceLabel>
                     <div className="grid max-h-55 grid-cols-2 gap-2 overflow-y-auto rounded-md border bg-muted/50 p-4 md:grid-cols-4">
                       {HaReferenceTypes.map((scheme) => (
                         <div
@@ -286,7 +291,7 @@ export default function HASubtypeNumberingPage() {
                   </FieldItem>
                 )}
               </form.Field>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 

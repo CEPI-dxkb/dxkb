@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import { useSubspeciesClassificationPage } from "./use-subspecies-classification-page";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,11 +12,10 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectSeparator,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
@@ -25,6 +24,14 @@ import { RequiredFormCardTitle } from "@/components/forms/required-form-componen
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 
 import {
   subspeciesClassificationInfo,
@@ -107,8 +114,8 @@ export default function SubspeciesClassificationPage() {
         {/* Query Source */}
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <RequiredFormCardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <RequiredFormCardTitle>
                 Query Source
                 <DialogInfoPopup
                   title={subspeciesClassificationQuerySource.title}
@@ -116,12 +123,12 @@ export default function SubspeciesClassificationPage() {
                   sections={subspeciesClassificationQuerySource.sections}
                 />
               </RequiredFormCardTitle>
-            </CardHeader>
-            <CardContent className="service-card-content">
+            </ServiceCardHeader>
+            <ServiceCardContent>
               <form.Field name="input_source">
                 {(field) => (
                   <FieldItem>
-                    <RadioGroup
+                    <ServiceRadioGroup
                       value={field.state.value}
                       onValueChange={(v) => {
                         if (v == null) return;
@@ -139,7 +146,6 @@ export default function SubspeciesClassificationPage() {
                           }));
                         }
                       }}
-                      className="service-radio-group-horizontal"
                     >
                       <div className="service-radio-group-item flex items-center gap-2">
                         <RadioGroupItem
@@ -159,7 +165,7 @@ export default function SubspeciesClassificationPage() {
                           Select FASTA file
                         </Label>
                       </div>
-                    </RadioGroup>
+                    </ServiceRadioGroup>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
@@ -204,28 +210,28 @@ export default function SubspeciesClassificationPage() {
                   )}
                 </form.Field>
               )}
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 
         {/* Species and Output */}
         <div className="md:col-span-12">
           <Card>
-            <CardHeader className="service-card-header">
-              <CardTitle className="service-card-title">
+            <ServiceCardHeader>
+              <ServiceCardTitle>
                 Species
                 <DialogInfoPopup
                   title={subspeciesClassificationSpeciesInfo.title}
                   description={subspeciesClassificationSpeciesInfo.description}
                 />
-              </CardTitle>
-            </CardHeader>
+              </ServiceCardTitle>
+            </ServiceCardHeader>
 
-            <CardContent className="service-card-content space-y-6">
+            <ServiceCardContent className="space-y-6">
               <form.Field name="virus_type">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">Species</Label>
+                    <ServiceLabel>Species</ServiceLabel>
                     <Select
                       items={subspeciesVirusTypeOptions}
                       value={field.state.value}
@@ -233,12 +239,9 @@ export default function SubspeciesClassificationPage() {
                         if (value != null) field.handleChange(value);
                       }}
                     >
-                      <SelectTrigger
-                        className="service-card-select-trigger"
-                        aria-label="Species"
-                      >
+                      <ServiceSelectTrigger aria-label="Species">
                         <SelectValue placeholder="Select species" />
-                      </SelectTrigger>
+                      </ServiceSelectTrigger>
                       <SelectContent className="max-h-[min(20rem,70vh)] overflow-y-auto">
                         <SelectGroup>
                           {subspeciesVirusTypeOptions.map((opt, index) => (
@@ -295,7 +298,7 @@ export default function SubspeciesClassificationPage() {
                   </form.Field>
                 </div>
               </div>
-            </CardContent>
+            </ServiceCardContent>
           </Card>
         </div>
 

@@ -3,20 +3,8 @@ import { useSelector } from "@tanstack/react-store";
 import { Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Card, CardDescription } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +15,17 @@ import OutputFolder from "@/components/services/output-folder";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import {
   genomeAlignmentAdvancedParameterOptions,
   genomeAlignmentSelectGenomes,
@@ -120,8 +119,8 @@ export function GenomeSelection({
 
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <RequiredFormCardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <RequiredFormCardTitle>
           Select Genomes
           <DialogInfoPopup
             title={genomeAlignmentSelectGenomes.title}
@@ -133,8 +132,8 @@ export function GenomeSelection({
           Add at least 2 and up to 20 genomes. The first genome selected becomes
           the reference (anchor) genome in the alignment.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-6">
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-6">
         <GenomeNameSelector
           onSelect={addGenome}
           selectedGenomeIds={genomes.map((item) => item.genome_id)}
@@ -142,9 +141,7 @@ export function GenomeSelection({
           helperText="Use the search to add public or private genomes by name or genome ID."
         />
         <div className="space-y-2">
-          <Label className="service-card-label">
-            And/Or Select Genome Group
-          </Label>
+          <ServiceLabel>And/Or Select Genome Group</ServiceLabel>
           <div className="flex items-start gap-2">
             <div className="flex-1">
               <WorkspaceObjectSelector
@@ -207,7 +204,7 @@ export function GenomeSelection({
             </FieldItem>
           )}
         </form.Field>
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }
@@ -234,17 +231,17 @@ export function AlignmentParameters({
   );
   return (
     <Card>
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <ServiceCardTitle>
           Parameters
           <DialogInfoPopup
             title={genomeAlignmentAdvancedParameterOptions.title}
             description={genomeAlignmentAdvancedParameterOptions.description}
             sections={genomeAlignmentAdvancedParameterOptions.sections}
           />
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="service-card-content space-y-6">
+        </ServiceCardTitle>
+      </ServiceCardHeader>
+      <ServiceCardContent className="space-y-6">
         <form.Field name="output_path">
           {(field) => (
             <FieldItem>
@@ -272,26 +269,22 @@ export function AlignmentParameters({
             </FieldItem>
           )}
         </form.Field>
-        <Collapsible
-          open={showAdvanced}
-          onOpenChange={setShowAdvanced}
-          className="service-collapsible-container"
-        >
-          <CollapsibleTrigger className="service-collapsible-trigger">
+        <ServiceCollapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+          <ServiceCollapsibleTrigger>
             Advanced Options
             <ChevronDown
               className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
             />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="service-collapsible-content space-y-6">
+          </ServiceCollapsibleTrigger>
+          <ServiceCollapsibleContent className="space-y-6">
             <form.Field name="manual_seed_weight">
               {(field) => (
                 <FieldItem>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <Label className="service-card-label">
+                      <ServiceLabel>
                         Manually Set Seed Weight
-                      </Label>
+                      </ServiceLabel>
                       <p className="text-sm text-muted-foreground">
                         Enable to specify the seed weight used by
                         progressiveMauve.
@@ -312,7 +305,7 @@ export function AlignmentParameters({
                 {(field) => (
                   <FieldItem>
                     <div className="flex items-center justify-between">
-                      <Label className="service-card-label">Seed Weight</Label>
+                      <ServiceLabel>Seed Weight</ServiceLabel>
                       <span className="text-sm text-muted-foreground">
                         {field.state.value ?? 15}
                       </span>
@@ -341,7 +334,7 @@ export function AlignmentParameters({
             <form.Field name="weight">
               {(field) => (
                 <FieldItem>
-                  <Label className="service-card-label">Weight</Label>
+                  <ServiceLabel>Weight</ServiceLabel>
                   <NumberInput
                     value={field.state.value}
                     onValueChange={field.handleChange}
@@ -353,9 +346,9 @@ export function AlignmentParameters({
                 </FieldItem>
               )}
             </form.Field>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
+          </ServiceCollapsibleContent>
+        </ServiceCollapsible>
+      </ServiceCardContent>
     </Card>
   );
 }

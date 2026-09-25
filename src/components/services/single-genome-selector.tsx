@@ -3,11 +3,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { Search, ChevronDown } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { AnchoredSuggestionPortal } from "@/components/services/anchored-suggestion-portal";
 import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { cn } from "@/lib/utils";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
 import { toast } from "sonner";
@@ -230,10 +230,10 @@ function useSingleGenomeSelector({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {title && <Label className="service-card-label">{title}</Label>}
+      {title && <ServiceLabel>{title}</ServiceLabel>}
       <div ref={containerRef} className="relative">
         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+        <ServiceInput
           id={id}
           ref={inputRef}
           value={query}
@@ -256,7 +256,7 @@ function useSingleGenomeSelector({
               setShowDropdown(true);
             }
           }}
-          className="service-card-input w-full pr-12 pl-10"
+          className="w-full pr-12 pl-10"
         />
         <Button
           ref={buttonRef}

@@ -1,7 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/shared/data-table";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
 import type { SimilarGenomeFinderController } from "./use-similar-genome-finder-form";
 
 const columns = [
@@ -24,10 +29,10 @@ export function ResultsSection({
   return (
     <div className="mt-8">
       <Card>
-        <CardHeader className="service-card-header">
-          <CardTitle className="service-card-title">Results</CardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content">
+        <ServiceCardHeader>
+          <ServiceCardTitle>Results</ServiceCardTitle>
+        </ServiceCardHeader>
+        <ServiceCardContent>
           <DataTable
             id="similar-genome-finder-results"
             data={results as unknown as Record<string, unknown>[]}
@@ -36,7 +41,7 @@ export function ResultsSection({
             resource="similar-genome-finder-results"
             isLoading={isSubmitting}
           />
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );

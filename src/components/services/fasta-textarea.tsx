@@ -2,8 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { cn } from "@/lib/utils";
 import {
   validateFastaForBlast,
@@ -87,14 +87,13 @@ export function FastaTextarea({
 
   return (
     <div className="space-y-2">
-      <Textarea
+      <ServiceTextarea
         id={id}
         value={value}
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
         className={cn(
-          "service-card-textarea",
           hasError && "border-red-500 focus-visible:ring-red-500",
           validationResult?.valid &&
             "border-green-500 focus-visible:ring-green-500",

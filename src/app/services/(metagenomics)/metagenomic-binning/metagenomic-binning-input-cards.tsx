@@ -7,19 +7,17 @@ import { ReadLibraryInputSection } from "@/components/services/read-library-inpu
 import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import type { MetagenomicBinningFormData } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-schema";
 import {
   metagenomicBinningInputFile,
@@ -37,21 +35,21 @@ export function BinningStartWithCard({
   return (
     <div className="md:col-span-12">
       <Card>
-        <CardHeader className="service-card-header">
-          <CardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <ServiceCardTitle>
             Start With
             <DialogInfoPopup
               title={metagenomicBinningStartWith.title}
               description={metagenomicBinningStartWith.description}
               sections={metagenomicBinningStartWith.sections}
             />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content">
+          </ServiceCardTitle>
+        </ServiceCardHeader>
+        <ServiceCardContent>
           <controller.form.Field name="start_with">
             {(field) => (
               <FieldItem>
-                <RadioGroup
+                <ServiceRadioGroup
                   value={field.state.value}
                   onValueChange={(value) => {
                     if (value != null)
@@ -59,7 +57,6 @@ export function BinningStartWithCard({
                         value as MetagenomicBinningFormData["start_with"],
                       );
                   }}
-                  className="service-radio-group-horizontal"
                 >
                   <div className="flex items-center gap-3">
                     <RadioGroupItem value="reads" id="reads" />
@@ -69,12 +66,12 @@ export function BinningStartWithCard({
                     <RadioGroupItem value="contigs" id="contigs" />
                     <Label htmlFor="contigs">Assembled Contigs</Label>
                   </div>
-                </RadioGroup>
+                </ServiceRadioGroup>
                 <FieldErrors field={field} />
               </FieldItem>
             )}
           </controller.form.Field>
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );
@@ -90,8 +87,8 @@ export function BinningReadInputCards({
     <>
       <div className="md:col-span-7">
         <Card className="h-full">
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
+          <ServiceCardHeader>
+            <RequiredFormCardTitle>
               Input File
               <DialogInfoPopup
                 title={metagenomicBinningInputFile.title}
@@ -99,8 +96,8 @@ export function BinningReadInputCards({
                 sections={metagenomicBinningInputFile.sections}
               />
             </RequiredFormCardTitle>
-          </CardHeader>
-          <CardContent className="service-card-content space-y-6">
+          </ServiceCardHeader>
+          <ServiceCardContent className="space-y-6">
             <ReadLibraryInputSection
               pairedRead1={state.pairedRead1}
               pairedRead2={state.pairedRead2}
@@ -122,7 +119,7 @@ export function BinningReadInputCards({
             <controller.form.Field name="paired_end_libs">
               {(field) => <FieldErrors field={field} />}
             </controller.form.Field>
-          </CardContent>
+          </ServiceCardContent>
         </Card>
       </div>
       <div className="md:col-span-5">
@@ -139,8 +136,8 @@ export function BinningContigsCard({ controller }: { controller: Controller }) {
   return (
     <div className="md:col-span-12">
       <Card>
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Input File
             <DialogInfoPopup
               title={metagenomicBinningInputFile.title}
@@ -148,15 +145,14 @@ export function BinningContigsCard({ controller }: { controller: Controller }) {
               sections={metagenomicBinningInputFile.sections}
             />
           </RequiredFormCardTitle>
-        </CardHeader>
-        <CardContent className="service-card-content space-y-6">
+        </ServiceCardHeader>
+        <ServiceCardContent className="space-y-6">
           <controller.form.Field name="contigs">
             {(field) => (
               <FieldItem>
-                <FieldLabel field={field} className="service-card-label">
-                  Contigs
-                </FieldLabel>
+                <ServiceFieldLabel field={field}>Contigs</ServiceFieldLabel>
                 <WorkspaceObjectSelector
+                  id={field.name}
                   preset="contigs"
                   placeholder="Select or Upload Contigs..."
                   onSelectedObjectChange={(object: WorkspaceObject | null) => {
@@ -168,7 +164,7 @@ export function BinningContigsCard({ controller }: { controller: Controller }) {
               </FieldItem>
             )}
           </controller.form.Field>
-        </CardContent>
+        </ServiceCardContent>
       </Card>
     </div>
   );

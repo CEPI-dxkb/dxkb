@@ -2,15 +2,19 @@
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchBar } from "@/components/search/search-bar";
 import ThemeContent from "@/components/ui/theme-content";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth, useResendVerificationEmail } from "@/lib/auth/provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  CardFieldInput,
+  CardFieldLabel,
+} from "@/components/services/form-ui/card-field";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 
 const WelcomeSearch = () => {
   const { isAuthenticated, isVerified } = useAuth();
@@ -104,35 +108,31 @@ const WelcomeSearch = () => {
                 <TabsContent value="advanced">
                   <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                      <Label className="card-sublabel">Taxonomy</Label>
-                      <Input
+                      <CardFieldLabel>Taxonomy</CardFieldLabel>
+                      <CardFieldInput
                         type="text"
                         placeholder="e.g., Coronaviridae"
-                        className="card-input"
                       />
                     </div>
                     <div>
-                      <Label className="card-sublabel">Host</Label>
-                      <Input
+                      <CardFieldLabel>Host</CardFieldLabel>
+                      <CardFieldInput
                         type="text"
                         placeholder="e.g., Homo sapiens"
-                        className="card-input"
                       />
                     </div>
                     <div>
-                      <Label className="card-sublabel">Genome Type</Label>
-                      <Input
+                      <CardFieldLabel>Genome Type</CardFieldLabel>
+                      <CardFieldInput
                         type="text"
                         placeholder="e.g., ssRNA(+)"
-                        className="card-input"
                       />
                     </div>
                     <div>
-                      <Label className="card-sublabel">Protein Function</Label>
-                      <Input
+                      <CardFieldLabel>Protein Function</CardFieldLabel>
+                      <CardFieldInput
                         type="text"
                         placeholder="e.g., Polymerase"
-                        className="card-input"
                       />
                     </div>
                   </div>
@@ -143,11 +143,8 @@ const WelcomeSearch = () => {
 
                 <TabsContent value="sequence">
                   <div className="mb-4 space-y-4">
-                    <Label className="card-sublabel">Sequence Type</Label>
-                    <RadioGroup
-                      defaultValue="nucleotide"
-                      className="service-radio-group-horizontal"
-                    >
+                    <CardFieldLabel>Sequence Type</CardFieldLabel>
+                    <ServiceRadioGroup defaultValue="nucleotide">
                       <div className="flex items-center gap-3">
                         <RadioGroupItem id="nucleotide" value="nucleotide" />
                         <Label htmlFor="nucleotide">Nucleotide</Label>
@@ -156,10 +153,10 @@ const WelcomeSearch = () => {
                         <RadioGroupItem id="protein" value="protein" />
                         <Label htmlFor="protein">Protein</Label>
                       </div>
-                    </RadioGroup>
+                    </ServiceRadioGroup>
 
                     <div className="gap-4 text-foreground">
-                      <Label className="card-sublabel">Enter Sequence</Label>
+                      <CardFieldLabel>Enter Sequence</CardFieldLabel>
                       <Textarea
                         className="m-2 h-24 w-full rounded-md border font-mono text-sm text-foreground"
                         placeholder="Paste your sequence here (FASTA format supported)"

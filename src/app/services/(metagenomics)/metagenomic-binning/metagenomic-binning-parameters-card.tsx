@@ -5,22 +5,24 @@ import type { MetagenomicBinningController } from "./use-metagenomic-binning-con
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import { ServiceCardHeader } from "@/components/services/form-ui/service-card";
 import {
-  FieldErrors,
-  FieldItem,
-  FieldLabel,
-} from "@/components/ui/tanstack-form";
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import {
+  ServiceFieldLabel,
+  ServiceFieldSubLabel,
+} from "@/components/services/form-ui/service-field";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import {
   minContigCoverageMax,
   minContigCoverageMin,
@@ -40,8 +42,8 @@ export function BinningParametersCard({
   return (
     <div className="md:col-span-12">
       <Card>
-        <CardHeader className="service-card-header">
-          <RequiredFormCardTitle className="service-card-title">
+        <ServiceCardHeader>
+          <RequiredFormCardTitle>
             Parameters
             <DialogInfoPopup
               title={metagenomicBinningParameters.title}
@@ -49,7 +51,7 @@ export function BinningParametersCard({
               sections={metagenomicBinningParameters.sections}
             />
           </RequiredFormCardTitle>
-        </CardHeader>
+        </ServiceCardHeader>
         <CardContent>
           <div className="space-y-6">
             <div className="flex w-full flex-col gap-4 md:flex-row">
@@ -58,13 +60,15 @@ export function BinningParametersCard({
                   <form.Field name="assembler">
                     {(field) => (
                       <FieldItem>
-                        <FieldLabel
+                        <ServiceFieldLabel
                           field={field}
-                          className="service-card-label"
+                          id={`${field.name}-label`}
+                          htmlFor={undefined}
                         >
                           Assembly Strategy
-                        </FieldLabel>
-                        <RadioGroup
+                        </ServiceFieldLabel>
+                        <ServiceRadioGroup
+                          aria-labelledby={`${field.name}-label`}
                           value={field.state.value}
                           onValueChange={(value) => {
                             if (value != null)
@@ -72,7 +76,6 @@ export function BinningParametersCard({
                                 value as MetagenomicBinningFormData["assembler"],
                               );
                           }}
-                          className="service-radio-group-horizontal"
                         >
                           <div className="flex items-center gap-3">
                             <RadioGroupItem
@@ -99,7 +102,7 @@ export function BinningParametersCard({
                               Auto
                             </Label>
                           </div>
-                        </RadioGroup>
+                        </ServiceRadioGroup>
                         <FieldErrors field={field} />
                       </FieldItem>
                     )}
@@ -110,10 +113,15 @@ export function BinningParametersCard({
                 <form.Field name="organism">
                   {(field) => (
                     <FieldItem>
-                      <FieldLabel field={field} className="service-card-label">
+                      <ServiceFieldLabel
+                        field={field}
+                        id={`${field.name}-label`}
+                        htmlFor={undefined}
+                      >
                         Organisms of Interest
-                      </FieldLabel>
-                      <RadioGroup
+                      </ServiceFieldLabel>
+                      <ServiceRadioGroup
+                        aria-labelledby={`${field.name}-label`}
                         value={field.state.value}
                         onValueChange={(value) => {
                           if (value != null)
@@ -121,7 +129,6 @@ export function BinningParametersCard({
                               value as MetagenomicBinningFormData["organism"],
                             );
                         }}
-                        className="service-radio-group-horizontal"
                       >
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value="bacteria" id="bacteria" />
@@ -141,7 +148,7 @@ export function BinningParametersCard({
                             Both
                           </Label>
                         </div>
-                      </RadioGroup>
+                      </ServiceRadioGroup>
                       <FieldErrors field={field} />
                     </FieldItem>
                   )}
@@ -181,10 +188,11 @@ export function BinningParametersCard({
               <form.Field name="genome_group">
                 {(field) => (
                   <FieldItem>
-                    <FieldLabel field={field} className="service-card-label">
+                    <ServiceFieldLabel field={field}>
                       Genome Group Name
-                    </FieldLabel>
-                    <Input
+                    </ServiceFieldLabel>
+                    <ServiceInput
+                      id={field.name}
                       name={field.name}
                       value={field.state.value ?? ""}
                       onChange={(event) => {
@@ -192,37 +200,33 @@ export function BinningParametersCard({
                       }}
                       onBlur={field.handleBlur}
                       placeholder="My Genome Group"
-                      className="service-card-input"
                     />
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
               </form.Field>
             </div>
-            <Collapsible
+            <ServiceCollapsible
               open={state.showAdvanced}
               onOpenChange={setState("showAdvanced")}
-              className="service-collapsible-container"
             >
-              <CollapsibleTrigger className="service-collapsible-trigger text-sm font-medium">
+              <ServiceCollapsibleTrigger className="text-sm font-medium">
                 Advanced Parameters
                 <ChevronDown
                   className={`size-4 transition-transform ${state.showAdvanced ? "rotate-180 transform" : ""}`}
                 />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="service-collapsible-content">
+              </ServiceCollapsibleTrigger>
+              <ServiceCollapsibleContent>
                 <div className="mt-6 space-y-4">
                   <div className="service-card-row">
                     <form.Field name="min_contig_len">
                       {(field) => (
                         <FieldItem className="w-full">
-                          <FieldLabel
-                            field={field}
-                            className="service-card-sublabel"
-                          >
+                          <ServiceFieldSubLabel field={field}>
                             Minimum Contig Length
-                          </FieldLabel>
+                          </ServiceFieldSubLabel>
                           <NumberInput
+                            id={field.name}
                             name={field.name}
                             value={field.state.value}
                             min={minContigLengthMin}
@@ -241,13 +245,11 @@ export function BinningParametersCard({
                     <form.Field name="min_contig_cov">
                       {(field) => (
                         <FieldItem className="w-full">
-                          <FieldLabel
-                            field={field}
-                            className="service-card-sublabel"
-                          >
+                          <ServiceFieldSubLabel field={field}>
                             Minimum Contig Coverage
-                          </FieldLabel>
+                          </ServiceFieldSubLabel>
                           <NumberInput
+                            id={field.name}
                             name={field.name}
                             value={field.state.value}
                             min={minContigCoverageMin}
@@ -274,20 +276,19 @@ export function BinningParametersCard({
                           onCheckedChange={field.handleChange}
                           className="mb-2 bg-background"
                         />
-                        <FieldLabel
+                        <ServiceFieldSubLabel
                           field={field}
                           htmlFor="disable_dangling"
-                          className="service-card-sublabel"
                         >
                           Disable Search For Dangling Contigs (Decreases Memory
                           Use)
-                        </FieldLabel>
+                        </ServiceFieldSubLabel>
                       </FieldItem>
                     )}
                   </form.Field>
                 </div>
-              </CollapsibleContent>
-            </Collapsible>
+              </ServiceCollapsibleContent>
+            </ServiceCollapsible>
           </div>
         </CardContent>
       </Card>

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { ServiceHeader } from "@/components/services/service-header";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,16 +15,9 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown } from "lucide-react";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { ServiceOutputFields } from "@/components/services/service-output-fields";
@@ -38,6 +31,19 @@ import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+} from "@/components/services/form-ui/service-card";
+import {
+  ServiceCollapsible,
+  ServiceCollapsibleContent,
+  ServiceCollapsibleTrigger,
+} from "@/components/services/form-ui/service-collapsible";
+import { ServiceTextarea } from "@/components/services/form-ui/service-input";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
+import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   msaSNPAnalysisInfo,
   msaSNPAnalysisStartWith,
@@ -400,8 +406,8 @@ function useMSAandSNPAnalysisPage() {
       >
         {/* Start with */}
         <Card>
-          <CardHeader className="service-card-header">
-            <RequiredFormCardTitle className="service-card-title">
+          <ServiceCardHeader>
+            <RequiredFormCardTitle>
               Start with:
               <DialogInfoPopup
                 title={msaSNPAnalysisStartWith.title}
@@ -409,13 +415,13 @@ function useMSAandSNPAnalysisPage() {
                 sections={msaSNPAnalysisStartWith.sections}
               />
             </RequiredFormCardTitle>
-          </CardHeader>
+          </ServiceCardHeader>
 
-          <CardContent className="service-card-content">
+          <ServiceCardContent>
             <form.Field name="input_status">
               {(field) => (
                 <FieldItem>
-                  <RadioGroup
+                  <ServiceRadioGroup
                     value={field.state.value}
                     onValueChange={(value) => {
                       if (value == null) return;
@@ -439,7 +445,6 @@ function useMSAandSNPAnalysisPage() {
                         setGenomeIdDropdownOpen(false);
                       }
                     }}
-                    className="service-radio-group-horizontal"
                   >
                     <div className="flex items-center gap-3">
                       <RadioGroupItem value="unaligned" id="unaligned" />
@@ -449,12 +454,12 @@ function useMSAandSNPAnalysisPage() {
                       <RadioGroupItem value="aligned" id="aligned" />
                       <Label htmlFor="aligned">Aligned Sequences</Label>
                     </div>
-                  </RadioGroup>
+                  </ServiceRadioGroup>
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
             </form.Field>
-          </CardContent>
+          </ServiceCardContent>
         </Card>
 
         {/* Select sequences */}
@@ -464,7 +469,7 @@ function useMSAandSNPAnalysisPage() {
                 <form.Field name="input_type">
                   {(field) => (
                     <FieldItem>
-                      <RadioGroup
+                      <ServiceRadioGroup
                         value={field.state.value}
                         onValueChange={(value) => {
                           if (value == null) return;
@@ -484,7 +489,6 @@ function useMSAandSNPAnalysisPage() {
                             setGenomeIdDropdownOpen(false);
                           }
                         }}
-                        className="service-radio-group-horizontal"
                       >
                         <div className="flex items-center gap-3">
                           <RadioGroupItem
@@ -520,7 +524,7 @@ function useMSAandSNPAnalysisPage() {
                           />
                           <Label htmlFor="input_sequence">Input Sequence</Label>
                         </div>
-                      </RadioGroup>
+                      </ServiceRadioGroup>
                       <FieldErrors field={field} />
                     </FieldItem>
                   )}
@@ -564,7 +568,7 @@ function useMSAandSNPAnalysisPage() {
                     <form.Field name="alphabet">
                       {(field) => (
                         <FieldItem>
-                          <RadioGroup
+                          <ServiceRadioGroup
                             value={field.state.value}
                             onValueChange={(value) => {
                               if (value != null)
@@ -572,7 +576,6 @@ function useMSAandSNPAnalysisPage() {
                                   value as MsaSnpAnalysis.MsaSnpAnalysisFormData["alphabet"],
                                 );
                             }}
-                            className="service-radio-group-horizontal"
                           >
                             <div className="flex items-center gap-3">
                               <RadioGroupItem value="dna" id="dna" />
@@ -582,7 +585,7 @@ function useMSAandSNPAnalysisPage() {
                               <RadioGroupItem value="protein" id="protein" />
                               <Label htmlFor="protein">Protein</Label>
                             </div>
-                          </RadioGroup>
+                          </ServiceRadioGroup>
                           <FieldErrors field={field} />
                         </FieldItem>
                       )}
@@ -668,13 +671,12 @@ function useMSAandSNPAnalysisPage() {
                 {/* Input Sequence */}
                 {inputType === "input_sequence" && (
                   <div className="space-y-2">
-                    <Textarea
+                    <ServiceTextarea
                       value={fastaInputText}
                       onChange={(e) => {
                         handleFastaInputChange(e.target.value);
                       }}
                       placeholder="Enter FASTA records of sequences to align"
-                      className="service-card-textarea"
                       rows={10}
                     />
                     {fastaValidationResult && (
@@ -704,9 +706,7 @@ function useMSAandSNPAnalysisPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                <Label className="service-card-label">
-                  Select an aligned FASTA file
-                </Label>
+                <ServiceLabel>Select an aligned FASTA file</ServiceLabel>
                 <WorkspaceObjectSelector
                   preset="alignedFasta"
                   placeholder="Select aligned FASTA file"
@@ -757,7 +757,7 @@ function useMSAandSNPAnalysisPage() {
               <form.Field name="ref_type">
                 {(field) => (
                   <FieldItem>
-                    <RadioGroup
+                    <ServiceRadioGroup
                       value={field.state.value}
                       onValueChange={(value) => {
                         if (value == null) return;
@@ -781,7 +781,6 @@ function useMSAandSNPAnalysisPage() {
                           setGenomeIdDropdownOpen(false);
                         }
                       }}
-                      className="service-radio-group-horizontal"
                     >
                       <div className="flex items-center gap-3">
                         <RadioGroupItem value="none" id="ref_none" />
@@ -819,7 +818,7 @@ function useMSAandSNPAnalysisPage() {
                           </Label>
                         </div>
                       )}
-                    </RadioGroup>
+                    </ServiceRadioGroup>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
@@ -828,7 +827,7 @@ function useMSAandSNPAnalysisPage() {
               {/* Feature ID Reference */}
               {refType === "feature_id" && (
                 <div className="space-y-2">
-                  <Label className="service-card-label">Feature ID</Label>
+                  <ServiceLabel>Feature ID</ServiceLabel>
                   <Select
                     value={selectedFeatureId}
                     onValueChange={(value) => {
@@ -846,10 +845,7 @@ function useMSAandSNPAnalysisPage() {
                     }}
                     disabled={isLoadingFeatures}
                   >
-                    <SelectTrigger
-                      className="service-card-select-trigger"
-                      aria-label="Select feature ID"
-                    >
+                    <ServiceSelectTrigger aria-label="Select feature ID">
                       <SelectValue
                         placeholder={
                           isLoadingFeatures
@@ -859,7 +855,7 @@ function useMSAandSNPAnalysisPage() {
                               : "Select feature ID"
                         }
                       />
-                    </SelectTrigger>
+                    </ServiceSelectTrigger>
                     <SelectContent>
                       {isLoadingFeatures ? (
                         <div className="flex items-center justify-center p-4">
@@ -910,7 +906,7 @@ function useMSAandSNPAnalysisPage() {
               {/* Genome ID Reference */}
               {refType === "genome_id" && (
                 <div className="space-y-2">
-                  <Label className="service-card-label">Genome ID</Label>
+                  <ServiceLabel>Genome ID</ServiceLabel>
                   <Select
                     value={selectedGenomeId}
                     open={genomeIdDropdownOpen}
@@ -934,10 +930,7 @@ function useMSAandSNPAnalysisPage() {
                     }}
                     disabled={isLoadingGenomes}
                   >
-                    <SelectTrigger
-                      className="service-card-select-trigger"
-                      aria-label="Select genome ID"
-                    >
+                    <ServiceSelectTrigger aria-label="Select genome ID">
                       <SelectValue
                         placeholder={
                           isLoadingGenomes
@@ -947,7 +940,7 @@ function useMSAandSNPAnalysisPage() {
                               : "Select genome ID"
                         }
                       />
-                    </SelectTrigger>
+                    </ServiceSelectTrigger>
                     <SelectContent>
                       {isLoadingGenomes ? (
                         <div className="flex items-center justify-center p-4">
@@ -998,13 +991,12 @@ function useMSAandSNPAnalysisPage() {
               {/* Input Reference Sequence */}
               {refType === "string" && (
                 <div className="space-y-2">
-                  <Textarea
+                  <ServiceTextarea
                     value={referenceFastaText}
                     onChange={(e) => {
                       handleReferenceFastaChange(e.target.value);
                     }}
                     placeholder="Enter a FASTA record of a reference sequence to align"
-                    className="service-card-textarea"
                     rows={10}
                   />
                   {referenceFastaValidationResult && (
@@ -1040,7 +1032,7 @@ function useMSAandSNPAnalysisPage() {
               <form.Field name="aligner">
                 {(field) => (
                   <FieldItem>
-                    <Label className="service-card-label">Aligner</Label>
+                    <ServiceLabel>Aligner</ServiceLabel>
                     <Select
                       items={msaSNPAnalysisAligners.map((aligner) => ({
                         value: aligner.value,
@@ -1059,12 +1051,9 @@ function useMSAandSNPAnalysisPage() {
                         }
                       }}
                     >
-                      <SelectTrigger
-                        className="service-card-select-trigger"
-                        aria-label="Select aligner"
-                      >
+                      <ServiceSelectTrigger aria-label="Select aligner">
                         <SelectValue placeholder="Select aligner" />
-                      </SelectTrigger>
+                      </ServiceSelectTrigger>
                       <SelectContent>
                         <SelectGroup>
                           {msaSNPAnalysisAligners.map((aligner) => (
@@ -1085,19 +1074,18 @@ function useMSAandSNPAnalysisPage() {
 
               {/* Strategy Options (only for Mafft and unaligned) */}
               {aligner === "Mafft" && inputStatus === "unaligned" && (
-                <Collapsible
+                <ServiceCollapsible
                   open={showStrategy}
                   onOpenChange={setShowStrategy}
-                  className="service-collapsible-container"
                 >
-                  <CollapsibleTrigger className="service-collapsible-trigger text-sm font-medium">
+                  <ServiceCollapsibleTrigger className="text-sm font-medium">
                     Strategy Options
                     <ChevronDown
                       className={`size-4 transition-transform ${showStrategy ? "rotate-180 transform" : ""}`}
                     />
-                  </CollapsibleTrigger>
+                  </ServiceCollapsibleTrigger>
 
-                  <CollapsibleContent className="service-collapsible-content">
+                  <ServiceCollapsibleContent>
                     <form.Field name="strategy">
                       {(field) => (
                         <FieldItem>
@@ -1133,8 +1121,8 @@ function useMSAandSNPAnalysisPage() {
                         </FieldItem>
                       )}
                     </form.Field>
-                  </CollapsibleContent>
-                </Collapsible>
+                  </ServiceCollapsibleContent>
+                </ServiceCollapsible>
               )}
 
               <form.Field name="output_path">

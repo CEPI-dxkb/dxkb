@@ -1,18 +1,17 @@
 import { HelpCircle } from "lucide-react";
 import SelectedItemsTable from "@/components/services/selected-items-table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  ServiceCardContent,
+  ServiceCardHeader,
+  ServiceCardTitle,
+} from "@/components/services/form-ui/service-card";
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
 
 interface SelectedLibrary {
@@ -34,8 +33,8 @@ export function SelectedLibrariesCard({
 }: SelectedLibrariesCardProps) {
   return (
     <Card className="h-full">
-      <CardHeader className="service-card-header">
-        <CardTitle className="service-card-title">
+      <ServiceCardHeader>
+        <ServiceCardTitle>
           Selected Libraries
           <TooltipProvider>
             <Tooltip>
@@ -47,12 +46,12 @@ export function SelectedLibrariesCard({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-        </CardTitle>
+        </ServiceCardTitle>
         <CardDescription className="text-xs">
           Place read files here using the arrow buttons.
         </CardDescription>
-      </CardHeader>
-      <CardContent className="service-card-content">
+      </ServiceCardHeader>
+      <ServiceCardContent>
         <SelectedItemsTable
           items={items.map((library) => ({
             id: library.id,
@@ -62,7 +61,7 @@ export function SelectedLibrariesCard({
           onRemove={onRemove}
           className={tableClassName}
         />
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

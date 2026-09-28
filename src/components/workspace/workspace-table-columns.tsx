@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   WorkspaceItemIcon,
@@ -51,7 +52,12 @@ export function useWorkspaceColumns(
     }
   };
 
-  const columns: ColumnDef<FileTableFeatures, WorkspaceItem>[] = (() => {
+  // Explicit memo, not left to the React Compiler: this hook calls no other
+  // hook, so the compiler's "infer" mode skips it. FlexRender renders each
+  // `cell` as a component type, so rebuilding the columns remounts every cell
+  // on each render — which detaches the node under the cursor after a row
+  // click and stops the browser from firing `dblclick`.
+  const columns = useMemo<ColumnDef<FileTableFeatures, WorkspaceItem>[]>(() => {
     const favoriteSet = new Set(favoritePaths);
     return [
       {
@@ -171,7 +177,7 @@ export function useWorkspaceColumns(
         enableResizing: true,
       },
     ];
-  })();
+  }, [favoritePaths, memberCountByPath]);
 
   return { columns, handleSort };
 }

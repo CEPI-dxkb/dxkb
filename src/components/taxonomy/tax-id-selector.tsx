@@ -174,21 +174,19 @@ export function TaxIDSelector({
               }, 200);
             }
           }}
-          className={cn(
-            "w-full",
-            !disabled && "px-10",
-            disabled && value && "pl-3",
-            touched && !isValid && "border-destructive",
-          )}
+          variant={touched && !isValid ? "invalid" : "default"}
+          inset={!disabled ? "both" : value ? "aligned" : "none"}
+          className="w-full"
           disabled={disabled}
           readOnly={disabled}
         />
         {!disabled && (
           <Button
             type="button"
+            variant="picker-toggle"
             aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
             onClick={handleManualDropdownToggle}
-            className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+            className="absolute top-1/2 right-3 size-4 -translate-y-1/2"
           >
             <ChevronDownIcon
               className={`size-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}

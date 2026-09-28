@@ -66,31 +66,33 @@ export default function PublicationsPage() {
               <CardHeader>
                 <CardTitle>{year}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6 text-sm leading-relaxed">
-                {publications.map((publication) => (
-                  <div key={publication.doi} className="space-y-1">
-                    <Link
-                      href={publication.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {publication.title}
-                    </Link>
-                    <p className="text-muted-foreground">{publication.authors}</p>
-                    <p>
-                      DOI:{" "}
+              <CardContent>
+                <div className="space-y-6 text-sm leading-relaxed">
+                  {publications.map((publication) => (
+                    <div key={publication.doi} className="space-y-1">
                       <Link
-                        href={`https://doi.org/${publication.doi}`}
+                        href={publication.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary underline"
+                        className="font-semibold text-primary hover:underline"
                       >
-                        {publication.doi}
+                        {publication.title}
                       </Link>
-                    </p>
-                  </div>
-                ))}
+                      <p className="text-muted-foreground">{publication.authors}</p>
+                      <p>
+                        DOI:{" "}
+                        <Link
+                          href={`https://doi.org/${publication.doi}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline"
+                        >
+                          {publication.doi}
+                        </Link>
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           ))}

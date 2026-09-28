@@ -3,6 +3,7 @@
 import {
   useId,
   type ChangeEvent,
+  type CSSProperties,
   type KeyboardEvent,
   type RefObject,
 } from "react";
@@ -77,14 +78,16 @@ export function WorkspaceObjectSelectorView({
             onChange={onInputChange}
             onFocus={onInputFocus}
             onKeyDown={onInputKeyDown}
-            className="w-full px-10"
+            inset="both"
+            className="w-full"
           />
           <Button
             type="button"
+            variant="soft"
             aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
             aria-expanded={showDropdown}
             onClick={onToggleDropdown}
-            className="absolute top-1/2 right-3 size-4 -translate-y-1/2 bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80"
+            className="absolute top-1/2 right-3 size-4 -translate-y-1/2"
           >
             <ChevronDown
               className={`size-4 transition-transform ${showDropdown ? "rotate-180" : ""}`}
@@ -176,15 +179,20 @@ function WorkspaceObjectDropdown({
       id={listboxId}
       ref={dropdownRef}
       role="listbox"
-      className="fixed z-40 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50"
-      style={{
-        ...(openUpward
-          ? { bottom: rect.bottom, top: "auto" }
-          : { top: rect.top }),
-        left: rect.left,
-        width: rect.width,
-        maxHeight,
-      }}
+      className={cn(
+        "fixed left-(--dropdown-left) z-40 max-h-(--dropdown-max-height) w-(--dropdown-width) scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50",
+        openUpward ? "top-auto bottom-(--dropdown-bottom)" : "top-(--dropdown-top)",
+      )}
+      style={
+        {
+          "--dropdown-top": `${String(rect.top)}px`,
+          "--dropdown-bottom":
+            rect.bottom === undefined ? undefined : `${String(rect.bottom)}px`,
+          "--dropdown-left": `${String(rect.left)}px`,
+          "--dropdown-width": `${String(rect.width)}px`,
+          "--dropdown-max-height": `${String(maxHeight)}px`,
+        } as CSSProperties
+      }
     >
       {error ? (
         <div className="p-4">

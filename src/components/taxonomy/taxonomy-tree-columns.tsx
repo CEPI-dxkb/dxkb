@@ -14,18 +14,20 @@ import {
   tableFeatures,
   type ColumnDef,
 } from "@tanstack/react-table";
+import type { CSSProperties } from "react";
 import { ChevronRight, Loader2, Network } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
-import {
-  rankBadgeDefault,
-  rankConfig,
-  type TaxonRecord,
-} from "./taxon-tree-types";
+import type { TaxonRecord } from "./taxon-tree-types";
 import { clsx } from "cn";
 
 const indentPx = 16;
+
+// Tree depth indent for the `pl-(--indent)` class.
+function indent(depth: number): string {
+  return `${String(depth * indentPx)}px`;
+}
 
 export interface PlaceholderRecord extends TaxonRecord {
   __state: "error";
@@ -109,8 +111,8 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
         if (isPlaceholder(record)) {
           return (
             <span
-              style={{ paddingLeft: row.depth * indentPx }}
-              className="text-xs text-red-600"
+              style={{ "--indent": indent(row.depth) } as CSSProperties}
+              className="pl-(--indent) text-xs text-destructive"
             >
               {`Error: ${record.__message ?? "failed to load sub-taxa"}`}
             </span>
@@ -121,8 +123,8 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
         );
         return (
           <span
-            className="flex items-center"
-            style={{ paddingLeft: row.depth * indentPx }}
+            className="flex items-center pl-(--indent)"
+            style={{ "--indent": indent(row.depth) } as CSSProperties}
           >
             {row.getCanExpand() ? (
               <button
@@ -150,7 +152,7 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
             )}
             <Link
               href={`/taxonomy/${String(record.taxon_id)}`}
-              className="truncate text-primary hover:underline dark:text-blue-400"
+              className="truncate text-primary hover:underline dark:text-link"
               onClick={(event) => {
                 event.stopPropagation();
               }}
@@ -168,14 +170,9 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
       cell: ({ row }) => {
         const rank = row.original.taxon_rank;
         if (isPlaceholder(row.original) || !rank) return null;
+        // Rank colors come from the [data-rank] rules in globals.css.
         return (
-          <Badge
-            variant="outline"
-            className={clsx(
-              "h-4 px-1.5 py-0 text-3xs leading-none font-normal",
-              rankConfig[rank] ?? rankBadgeDefault,
-            )}
-          >
+          <Badge variant="outline" size="xs" data-rank={rank}>
             {rank}
           </Badge>
         );
@@ -205,7 +202,7 @@ export const taxonomyColumns: ColumnDef<TaxonomyTableFeatures, TaxonRecord>[] =
             disabled
             aria-label="View phylogenetic tree (coming soon)"
             title="Phylogenetic tree - coming soon"
-            className="flex size-4 cursor-not-allowed items-center justify-center text-emerald-600 opacity-60"
+            className="flex size-4 cursor-not-allowed items-center justify-center text-success opacity-60"
             onClick={(event) => {
               event.stopPropagation();
             }}

@@ -1,5 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 
 import { Search } from "lucide-react";
 
@@ -12,9 +16,13 @@ const HelpHero = () => {
         Search our knowledge base for answers to common questions or browse help topics below.
       </p>
       <div className="relative mx-auto max-w-xl rounded-lg bg-white">
-        <Input type="text" placeholder="Search for help topics..." className="bg-background py-6 pl-10 text-base" />
-        <Search className="absolute top-1/2 left-3 -translate-y-1/2 transform text-primary" size={18} />
-        <Button className="absolute top-1/2 right-1 -translate-y-1/2 transform bg-secondary text-white hover:bg-accent hover:text-white">
+        <InputGroup className="h-12.5">
+          <InputGroupInput type="text" placeholder="Search for help topics..." />
+          <InputGroupAddon align="inline-start">
+            <Search className="size-4.5 text-primary" />
+          </InputGroupAddon>
+        </InputGroup>
+        <Button variant="cta" className="absolute top-1/2 right-1 -translate-y-1/2 transform">
           Search
         </Button>
       </div>

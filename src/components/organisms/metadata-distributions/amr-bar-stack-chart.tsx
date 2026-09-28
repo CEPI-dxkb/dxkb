@@ -154,7 +154,7 @@ function useAmrBarStackChart({
 
   if (errorMessage) {
     return (
-      <Card className="relative flex-1 rounded-lg" size="sm">
+      <Card variant="panel" className="relative flex-1" size="sm">
         <CardContent className="flex flex-1 flex-col">
           <h3 className="m-0 text-sm font-semibold">{title}</h3>
           <div className="flex flex-1 items-center justify-center">
@@ -167,7 +167,7 @@ function useAmrBarStackChart({
 
   if (data.antibiotics.length === 0) {
     return (
-      <Card className="relative flex-1 rounded-lg" size="sm">
+      <Card variant="panel" className="relative flex-1" size="sm">
         <CardContent className="flex flex-1 flex-col">
           <h3 className="m-0 text-sm font-semibold">{title}</h3>
           <EmptyChart title={title} />
@@ -198,7 +198,7 @@ function useAmrBarStackChart({
   const yTicks = scale === "percent" ? [0, 25, 50, 75, 100] : yScale.ticks(4);
 
   return (
-    <Card className="relative flex-1 rounded-lg" size="sm">
+    <Card variant="panel" className="relative flex-1" size="sm">
       <CardContent className="flex flex-1 flex-col">
         <h3 className="m-0 text-sm font-semibold">{title}</h3>
         <div className="mx-auto w-full max-w-230">

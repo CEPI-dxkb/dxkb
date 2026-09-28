@@ -1,19 +1,148 @@
 "use client"
 
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-interface TableProps extends React.ComponentProps<"table"> {
+// Local edits (keep when regenerating with `shadcn add --overwrite`):
+// `disableScrollWrapper`, TableRow `selectionIndicator`, and the `size` /
+// `variant` axes below. Variant classes merge after each part's base in the
+// same `cn` call, so tailwind-merge resolves conflicts as the call-site
+// classes they replace did.
+
+const tableVariants = cva("w-full caption-bottom text-sm", {
+  variants: {
+    size: {
+      default: "",
+      // Dense data grids.
+      xs: "text-xs",
+    },
+    variant: {
+      default: "",
+      // A framed, muted table inside a bordered box. The border sits on the
+      // table itself so it collapses into the cell borders.
+      well: "overflow-hidden rounded-md border bg-muted",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+    variant: "default",
+  },
+})
+
+const tableHeaderVariants = cva("[&_tr]:border-b", {
+  variants: {
+    variant: {
+      default: "",
+      muted: "bg-muted",
+      // Sticky header over scrolling rows. The rows repaint the surface too,
+      // as the header markup this replaced did.
+      "sticky-surface": "bg-background shadow-sm [&_tr]:bg-background",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+})
+
+const tableRowVariants = cva(
+  "border-b transition-colors hover:bg-muted/50 data-selection-indicator:border-l-2 data-selection-indicator:border-l-transparent data-[state=selected]:bg-muted data-selection-indicator:data-[state=selected]:border-l-primary",
+  {
+    variants: {
+      variant: {
+        default: "",
+        // The header row of a muted TableHeader.
+        "muted-header": "border-y bg-muted",
+        // Primary-tinted selection for dense grids; set
+        // `data-state="selected"` on the row. A hovered selected row shows
+        // bg-muted/50 in light themes and keeps its tint in dark themes.
+        tint: "hover:bg-muted data-[state=selected]:bg-primary/15 data-[state=selected]:hover:bg-muted/50 dark:data-[state=selected]:bg-primary/30",
+        // Alternate (odd) rows of a striped table.
+        striped: "bg-muted/20",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+// Cell rules shared by TableHead and TableCell.
+const tableDividerVariants = {
+  // A rule on the trailing edge.
+  divider: "border-r",
+  // A stronger trailing rule.
+  "divider-strong": "border-r border-foreground/20",
+}
+
+const tableHeadVariants = cva(
+  "h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground has-[[role=checkbox]]:pr-0",
+  {
+    variants: {
+      variant: {
+        default: "",
+        ...tableDividerVariants,
+        "divider-strong-muted": "border-r border-foreground/20 bg-muted",
+        // An opaque head cell (sticky or dragged headers).
+        surface: "bg-background",
+      },
+      size: {
+        default: "",
+        xs: "text-xs",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+const tableCellVariants = cva(
+  "p-2 align-middle whitespace-nowrap has-[[role=checkbox]]:pr-0",
+  {
+    variants: {
+      variant: {
+        default: "",
+        ...tableDividerVariants,
+        // A border on every edge (data grids).
+        grid: "border",
+        // The sticky checkbox column of a `grid` table whose rows use the
+        // `tint` variant (and a `group` class): an opaque surface so scrolled
+        // cells do not show through, hover-tracking the row, and an opaque
+        // equivalent of the row's bg-primary/15 when the row has
+        // `data-state="selected"`.
+        "sticky-select":
+          "border bg-background group-hover:bg-muted group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_15%,var(--color-background))]",
+        // Identifiers and sequences.
+        code: "font-mono text-xs",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+interface TableProps
+  extends React.ComponentProps<"table">,
+    VariantProps<typeof tableVariants> {
   /** When true, render only the table (no scroll wrapper). Use when the parent is the scroll container (e.g. for sticky headers). */
   disableScrollWrapper?: boolean;
 }
 
-function Table({ className, disableScrollWrapper, ...props }: TableProps) {
+function Table({
+  className,
+  disableScrollWrapper,
+  size,
+  variant,
+  ...props
+}: TableProps) {
   const tableEl = (
     <table
       data-slot="table"
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(tableVariants({ size, variant }), className)}
       {...props}
     />
   );
@@ -25,11 +154,15 @@ function Table({ className, disableScrollWrapper, ...props }: TableProps) {
   );
 }
 
-function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
+function TableHeader({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"thead"> & VariantProps<typeof tableHeaderVariants>) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      className={cn(tableHeaderVariants({ variant }), className)}
       {...props}
     />
   )
@@ -58,36 +191,47 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
 function TableRow({
   className,
   selectionIndicator = false,
+  variant,
   ...props
-}: React.ComponentProps<"tr"> & {
-  /** When true, reserves a 2px left border that turns primary (with the `bg-muted` fill) when the row also has `data-state="selected"`. */
-  selectionIndicator?: boolean;
-}) {
+}: React.ComponentProps<"tr"> &
+  VariantProps<typeof tableRowVariants> & {
+    /** When true, reserves a 2px left border that turns primary (with the `bg-muted` fill) when the row also has `data-state="selected"`. */
+    selectionIndicator?: boolean;
+  }) {
   return (
     <tr
       data-slot="table-row"
       data-selection-indicator={selectionIndicator || undefined}
-      className={cn("border-b transition-colors hover:bg-muted/50 data-selection-indicator:border-l-2 data-selection-indicator:border-l-transparent data-[state=selected]:bg-muted data-selection-indicator:data-[state=selected]:border-l-primary", className)}
+      className={cn(tableRowVariants({ variant }), className)}
       {...props}
     />
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<"th">) {
+function TableHead({
+  className,
+  variant,
+  size,
+  ...props
+}: React.ComponentProps<"th"> & VariantProps<typeof tableHeadVariants>) {
   return (
     <th
       data-slot="table-head"
-      className={cn("h-10 px-2 text-left align-middle font-medium whitespace-nowrap text-foreground has-[[role=checkbox]]:pr-0", className)}
+      className={cn(tableHeadVariants({ variant, size }), className)}
       {...props}
     />
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<"td">) {
+function TableCell({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"td"> & VariantProps<typeof tableCellVariants>) {
   return (
     <td
       data-slot="table-cell"
-      className={cn("p-2 align-middle whitespace-nowrap has-[[role=checkbox]]:pr-0", className)}
+      className={cn(tableCellVariants({ variant }), className)}
       {...props}
     />
   )

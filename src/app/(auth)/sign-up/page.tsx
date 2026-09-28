@@ -52,7 +52,7 @@ function SignupForm() {
     <div className="flex items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-center text-2xl font-bold">
+          <CardTitle variant="page" className="text-center">
             Create an account
           </CardTitle>
           <CardDescription className="text-center">
@@ -103,7 +103,7 @@ export default function SignupPage() {
         <div className="flex items-center justify-center p-4">
           <Card className="w-full max-w-lg">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-center text-2xl font-bold">
+              <CardTitle variant="page" className="text-center">
                 Create an account
               </CardTitle>
               <CardDescription className="text-center">

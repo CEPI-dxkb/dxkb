@@ -1,5 +1,5 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -22,6 +22,7 @@ import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -181,9 +182,9 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
                 </Tooltip>
               </TooltipProvider>
             </ServiceCardTitle>
-            <CardDescription className="text-xs">
+            <ServiceCardDescription>
               Place read files here using the arrow buttons.
-            </CardDescription>
+            </ServiceCardDescription>
           </ServiceCardHeader>
           <ServiceCardContent>
             <SelectedItemsTable

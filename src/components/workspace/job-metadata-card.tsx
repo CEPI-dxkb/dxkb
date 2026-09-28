@@ -74,8 +74,8 @@ export function JobMetadataCard({ resolvedJobMeta, className }: JobMetadataCardP
           <div className="relative mt-2">
             <Button
               type="button"
-              variant="ghost"
-              className="absolute top-2 right-4 z-10 size-10 rounded-sm border border-border p-3 text-muted-foreground hover:text-foreground"
+              variant="ghost-outline"
+              className="absolute top-2 right-4 z-10 size-10"
               onClick={() => {
                 const text = JSON.stringify(parameters, null, 2);
                 void navigator.clipboard.writeText(text).then(

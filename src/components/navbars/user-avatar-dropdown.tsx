@@ -54,12 +54,12 @@ export function UserAvatarDropdown() {
               }
             >
               {isImpersonating ? (
-                <div className="flex size-8 items-center justify-center rounded-full bg-red-600">
+                <div className="flex size-8 items-center justify-center rounded-full bg-destructive dark:bg-destructive/60">
                   <ShieldUser className="size-5 text-white" />
                 </div>
               ) : (
                 <Avatar className="size-8">
-                  <AvatarFallback className="bg-white/10 text-white">
+                  <AvatarFallback variant="inverse">
                     {user?.username.charAt(0).toUpperCase() ?? "U"}
                   </AvatarFallback>
                 </Avatar>
@@ -72,7 +72,7 @@ export function UserAvatarDropdown() {
               className="w-60"
             >
               <DropdownMenuGroup>
-                <DropdownMenuLabel className="truncate text-sm text-foreground">
+                <DropdownMenuLabel variant="heading">
                   Hello,{" "}
                   <span className="font-semibold">
                     {user?.username ?? "User"}
@@ -152,8 +152,9 @@ export function UserAvatarDropdown() {
 
                 <DropdownMenuSeparator />
                 <SignoutButton
-                  variant="ghost"
-                  className="h-auto w-full justify-start gap-2 rounded-md border-none px-1.5 py-1 text-sm shadow-none hover:bg-secondary/80 focus:bg-secondary/80"
+                  variant="menu-item"
+                  size="menu-item"
+                  className="w-full justify-start"
                 />
               </DropdownMenuGroup>
             </DropdownMenuContent>

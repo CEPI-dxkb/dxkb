@@ -60,7 +60,7 @@ export function MapControls({
             if (option) onSelectState(option.fips, option.name);
           }}
         >
-          <SelectTrigger className="h-7 min-w-40 text-xs" aria-label="View state">
+          <SelectTrigger density="compact" className="h-7 min-w-40" aria-label="View state">
             <SelectValue placeholder="View state…" />
           </SelectTrigger>
           <SelectContent>
@@ -93,7 +93,7 @@ function PillButton({ active, onClick, children }: PillButtonProps) {
       size="xs"
       aria-pressed={active}
       onClick={onClick}
-      className={cn("text-xs transition-colors duration-150", active && "shadow-sm")}
+      className={cn(active && "shadow-sm")}
     >
       {children}
     </Button>

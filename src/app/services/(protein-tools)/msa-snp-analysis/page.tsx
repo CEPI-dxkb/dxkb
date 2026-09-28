@@ -687,7 +687,7 @@ function useMSAandSNPAnalysisPage() {
                             : "destructive"
                         }
                       >
-                        <AlertDescription className="text-sm">
+                        <AlertDescription>
                           {fastaValidationResult.valid
                             ? `✓ Valid FASTA with ${String(fastaValidationResult.numseq)} sequence${fastaValidationResult.numseq !== 1 ? "s" : ""}`
                             : fastaValidationResult.message}
@@ -1007,7 +1007,7 @@ function useMSAandSNPAnalysisPage() {
                           : "destructive"
                       }
                     >
-                      <AlertDescription className="text-sm">
+                      <AlertDescription>
                         {referenceFastaValidationResult.valid
                           ? `✓ Valid FASTA with ${String(referenceFastaValidationResult.numseq)} sequence`
                           : referenceFastaValidationResult.message}
@@ -1097,7 +1097,7 @@ function useMSAandSNPAnalysisPage() {
                                   value as MsaSnpAnalysis.MsaSnpAnalysisFormData["strategy"],
                                 );
                             }}
-                            className="grid w-full gap-2 p-2"
+                            className="m-2 w-auto"
                           >
                             {MsaSnpAnalysis.strategyOptions.map((option) => (
                               <div
@@ -1110,7 +1110,8 @@ function useMSAandSNPAnalysisPage() {
                                 />
                                 <Label
                                   htmlFor={option.value}
-                                  className="text-sm font-normal"
+                                  variant="option"
+                                  leading="normal"
                                 >
                                   {option.label}
                                 </Label>

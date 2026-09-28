@@ -74,7 +74,9 @@ export function DeleteConfirmDialog({
             />
             <Label
               htmlFor="delete-acknowledge"
-              className="cursor-pointer text-sm font-normal"
+              variant="option"
+              leading="normal"
+              className="cursor-pointer"
             >
               I acknowledge this action is NOT reversible
             </Label>

@@ -31,6 +31,7 @@ import {
   type MetagenomicBinningFormData,
 } from "@/lib/forms/(metagenomics)/metagenomic-binning/metagenomic-binning-form-schema";
 import { metagenomicBinningParameters } from "@/lib/services/info/metagenomic-binning";
+import { cn } from "@/lib/utils";
 
 export function BinningParametersCard({
   controller,
@@ -77,28 +78,30 @@ export function BinningParametersCard({
                               );
                           }}
                         >
-                          <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "flex items-center gap-3",
+                              metaspadesDisabled && "text-muted-foreground",
+                            )}
+                          >
                             <RadioGroupItem
                               value="metaspades"
                               id="metaspades"
                               disabled={metaspadesDisabled}
                             />
-                            <Label
-                              htmlFor="metaspades"
-                              className={`text-sm ${metaspadesDisabled ? "text-muted-foreground" : ""}`}
-                            >
+                            <Label htmlFor="metaspades" leading="normal">
                               MetaSPAdes
                             </Label>
                           </div>
                           <div className="flex items-center gap-3">
                             <RadioGroupItem value="megahit" id="megahit" />
-                            <Label htmlFor="megahit" className="text-sm">
+                            <Label htmlFor="megahit" leading="normal">
                               MEGAHIT
                             </Label>
                           </div>
                           <div className="flex items-center gap-3">
                             <RadioGroupItem value="auto" id="auto" />
-                            <Label htmlFor="auto" className="text-sm">
+                            <Label htmlFor="auto" leading="normal">
                               Auto
                             </Label>
                           </div>
@@ -132,19 +135,19 @@ export function BinningParametersCard({
                       >
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value="bacteria" id="bacteria" />
-                          <Label htmlFor="bacteria" className="text-sm">
+                          <Label htmlFor="bacteria" leading="normal">
                             Bacteria/Archaea
                           </Label>
                         </div>
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value="viral" id="viral" />
-                          <Label htmlFor="viral" className="text-sm">
+                          <Label htmlFor="viral" leading="normal">
                             Viruses
                           </Label>
                         </div>
                         <div className="flex items-center gap-3">
                           <RadioGroupItem value="both" id="both" />
-                          <Label htmlFor="both" className="text-sm">
+                          <Label htmlFor="both" leading="normal">
                             Both
                           </Label>
                         </div>
@@ -268,13 +271,13 @@ export function BinningParametersCard({
                   </div>
                   <form.Field name="disable_dangling">
                     {(field) => (
-                      <FieldItem className="flex items-center gap-2">
+                      <FieldItem className="flex items-center">
                         <Checkbox
                           id="disable_dangling"
                           name="disable_dangling"
                           checked={field.state.value}
                           onCheckedChange={field.handleChange}
-                          className="mb-2 bg-background"
+                          className="mb-2"
                         />
                         <ServiceFieldSubLabel
                           field={field}

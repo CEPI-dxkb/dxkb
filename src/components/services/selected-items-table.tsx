@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 
 import { HelpCircle } from "lucide-react";
+import type { CSSProperties } from "react";
 
 interface SelectedItem {
   id: string;
@@ -53,11 +54,12 @@ const SelectedItemsTable = ({
     if (shape === "triangle") {
       return (
         <div
-          className="inline-block size-0 border-5 border-transparent"
-          style={{
-            borderBottomWidth: "8px",
-            borderBottomColor: color.replace("bg-", ""),
-          }}
+          className="inline-block size-0 border-5 border-b-8 border-transparent border-b-(--triangle-color)"
+          style={
+            {
+              "--triangle-color": color.replace("bg-", ""),
+            } as CSSProperties
+          }
         />
       );
     }
@@ -129,7 +131,7 @@ const SelectedItemsTable = ({
                     aria-label="Remove item"
                     onClick={() => { onRemove(item.id); }}
                   >
-                    <span className="text-gray-400 hover:text-gray-600">×</span>
+                    <span className="text-muted-foreground hover:text-foreground">×</span>
                   </Button>
                 </div>
               ))}

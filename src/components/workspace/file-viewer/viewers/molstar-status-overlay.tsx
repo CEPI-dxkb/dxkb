@@ -19,8 +19,8 @@ export function MolstarStatusOverlay({
 }: MolstarStatusOverlayProps) {
   if (status === "loading" || status === "initializing") {
     return (
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm">
-        <Spinner className="size-5 text-muted-foreground" />
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/80 text-muted-foreground backdrop-blur-sm">
+        <Spinner className="size-5" />
         <p className="text-sm text-muted-foreground">
           {status === "loading"
             ? "Loading viewer\u2026"

@@ -53,7 +53,25 @@ function TabsList({
   );
 }
 
-function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
+// Local edit (keep when regenerating with `shadcn add --overwrite`): the
+// TabsTrigger `size` axis (`xs`: extra-small labels), merged after the base.
+const tabsTriggerSizes = cva("", {
+  variants: {
+    size: {
+      default: "",
+      xs: "text-xs",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+});
+
+function TabsTrigger({
+  className,
+  size,
+  ...props
+}: TabsPrimitive.Tab.Props & VariantProps<typeof tabsTriggerSizes>) {
   return (
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
@@ -62,6 +80,7 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         "data-active:bg-secondary data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
         "after:absolute after:bg-secondary-foreground after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        tabsTriggerSizes({ size }),
         className,
       )}
       {...props}

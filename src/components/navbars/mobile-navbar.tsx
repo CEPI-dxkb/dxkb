@@ -66,9 +66,9 @@ const useMobileNavbar = () => {
             <SheetTrigger
               render={(triggerProps) => (
                 <Button
-                  variant="ghost"
+                  variant="ghost-inverse"
                   aria-label="Open navigation menu"
-                  className="group hover:bg-white/15"
+                  className="group"
                   {...triggerProps}
                 >
                   <Menu
@@ -82,7 +82,7 @@ const useMobileNavbar = () => {
 
             <SheetContent
               side="left"
-              className="w-[85vw] max-w-md overflow-y-auto p-0"
+              className="w-[85vw] max-w-md overflow-y-auto"
             >
               <SheetTitle className="sr-only">
                 Mobile Navigation Menu
@@ -113,9 +113,8 @@ const useMobileNavbar = () => {
 
         <div className="flex items-center space-x-2">
           <Button
-            variant="ghost"
+            variant="ghost-inverse"
             size="sm"
-            className="text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
             onClick={openCommandPalette}
             aria-label="Open command palette"
             aria-keyshortcuts="Meta+K Control+K"
@@ -124,9 +123,8 @@ const useMobileNavbar = () => {
           </Button>
           {!isHome && (
             <Button
-              variant="ghost"
+              variant="ghost-inverse"
               size="sm"
-              className="text-primary-foreground hover:bg-white/15 hover:text-primary-foreground"
               onClick={() => {
                 setIsSearchOpen(!isSearchOpen);
               }}

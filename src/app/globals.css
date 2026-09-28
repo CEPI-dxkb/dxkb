@@ -69,6 +69,16 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  /* Status and emphasis colors. First-pass values are Tailwind palette
+     shades (light/dark): success green-600/green-400, warning
+     amber-700/amber-400, info blue-700/blue-400, link blue-600/blue-400,
+     highlight amber-400. Dark uses the 400 shade, as --destructive does, so
+     text on dark tints stays legible. Retheme them per theme with design. */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-link: var(--link);
+  --color-highlight: var(--highlight);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -119,6 +129,11 @@
   --accent: oklch(84.57% 0.167 84.87);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.627 0.194 149.214);
+  --warning: oklch(0.555 0.163 48.998);
+  --info: oklch(0.488 0.243 264.376);
+  --link: oklch(0.546 0.245 262.881);
+  --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(0.922 0 0);
   --input: oklch(0.952 0 0);
   --ring: oklch(0.708 0 0);
@@ -160,6 +175,11 @@
   --accent: oklch(84.57% 0.167 84.87);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.792 0.209 151.711);
+  --warning: oklch(0.828 0.189 84.429);
+  --info: oklch(0.707 0.165 254.624);
+  --link: oklch(0.707 0.165 254.624);
+  --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 10%);
   --ring: oklch(0.556 0 0);
@@ -181,6 +201,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* The interaction graph's canvas surface (sigma-canvas.tsx), tinted like the
+   inputs beside it. A plain custom property, because the value is read at
+   runtime rather than through a utility. */
+[data-theme] {
+  --graph-surface: color-mix(in oklab, var(--input) 30%, var(--card));
 }
 
 @layer base {
@@ -249,14 +276,6 @@
 
 .news-link:hover {
   @apply scale-110 font-bold text-blue-400 underline;
-}
-
-.link {
-  @apply px-0 text-blue-600 transition-all duration-300;
-}
-
-.link:hover {
-  @apply scale-105 cursor-pointer text-blue-400;
 }
 
 .icon-link {
@@ -635,25 +654,6 @@
   @apply bg-popover;
 }
 
-.service-table {
-  @apply bg-muted overflow-hidden rounded-md border;
-}
-.service-table-none {
-  @apply rounded-md border bg-gray-50 p-4 text-center text-gray-500 italic;
-}
-
-.service-table-header {
-  @apply grid grid-cols-[2fr_1fr_auto] bg-gray-100 p-2 text-sm font-medium;
-}
-
-.service-table-body {
-  @apply divide-x divide-y divide-gray-200;
-}
-
-.service-table-row {
-  @apply grid grid-cols-[2fr_1fr_auto] items-center gap-2 divide-x-2 divide-gray-200 p-2 text-sm;
-}
-
 .service-subsection {
   @apply flex flex-col gap-2 p-2;
 }
@@ -714,4 +714,74 @@
   position: sticky;
   left: 0;
   z-index: 10;
+}
+
+/* Theme swatches in the navbar theme switcher: each dot sets data-swatch to
+   its theme base and paints bg-(--swatch). One fixed color per base, the
+   same in every theme and mode. A base without a rule paints no color. */
+[data-swatch="zinc"] {
+  --swatch: #18181b;
+}
+
+[data-swatch="orange"] {
+  --swatch: #c2410c;
+}
+
+[data-swatch="violet"] {
+  --swatch: #6d28d9;
+}
+
+[data-swatch="dxkb"] {
+  --swatch: #ff7248;
+}
+
+[data-swatch="bvbrc"] {
+  --swatch: #008c81;
+}
+
+/* Taxonomy rank badges (the Rank column of the taxonomy tree). This is the one
+   place to theme ranks: the Badge sets data-rank={rank} and these rules color
+   it. They sit outside any @layer so they beat the outline variant's
+   border-border / text-foreground utilities. Ranks without a rule (including
+   "no rank") use the neutral default, which must stay first. */
+[data-slot="badge"][data-rank] {
+  @apply border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-300;
+}
+
+[data-slot="badge"][data-rank="superkingdom"],
+[data-slot="badge"][data-rank="kingdom"] {
+  @apply border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/40 dark:text-purple-300;
+}
+
+[data-slot="badge"][data-rank="phylum"] {
+  @apply border-indigo-200 bg-indigo-100 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300;
+}
+
+[data-slot="badge"][data-rank="class"] {
+  @apply border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-300;
+}
+
+[data-slot="badge"][data-rank="order"] {
+  @apply border-cyan-200 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300;
+}
+
+[data-slot="badge"][data-rank="family"] {
+  @apply border-teal-200 bg-teal-100 text-teal-700 dark:border-teal-700 dark:bg-teal-900/40 dark:text-teal-300;
+}
+
+[data-slot="badge"][data-rank="genus"] {
+  @apply border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300;
+}
+
+[data-slot="badge"][data-rank="species"] {
+  @apply border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-300;
+}
+
+[data-slot="badge"][data-rank="serotype"],
+[data-slot="badge"][data-rank="subtype"] {
+  @apply border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-700 dark:bg-rose-900/40 dark:text-rose-300;
+}
+
+[data-slot="badge"][data-rank="strain"] {
+  @apply border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-900/40 dark:text-orange-300;
 }

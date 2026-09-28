@@ -56,7 +56,7 @@ export function BarChart({
   const step = labelStep(yearData.length);
 
   return (
-    <Card className="relative rounded-lg" size="sm">
+    <Card variant="panel" className="relative" size="sm">
       <CardHeader>
         <h3 className="m-0 text-sm font-semibold">{title}</h3>
       </CardHeader>

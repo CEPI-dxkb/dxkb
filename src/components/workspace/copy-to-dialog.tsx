@@ -91,15 +91,16 @@ export function CopyToDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="scrollbar-themed flex h-full max-h-[90vh] max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-h-[70vh] md:max-w-2xl lg:max-w-4xl">
+      <DialogContent className="flex h-full max-h-[90vh] max-w-lg flex-col overflow-hidden sm:max-w-xl md:max-h-[70vh] md:max-w-2xl lg:max-w-4xl">
         <DialogHeader className="shrink-0">
-          <DialogTitle className="pr-8">{title}</DialogTitle>
+          {/* A margin (not padding) keeps the title clear of the close button. */}
+          <DialogTitle className="mr-8">{title}</DialogTitle>
         </DialogHeader>
-        <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-4 px-4 pt-1">
+        {/* scrollbar-themed sits here, not on DialogContent: its inherited
+            scrollbar-color reaches the same scrolling descendants. */}
+        <div className="scrollbar-themed -mx-4 flex min-h-0 flex-1 flex-col gap-4 px-4 pt-1">
           <div className="flex shrink-0 flex-col gap-2">
-            <Label className="text-xs font-medium text-muted-foreground">
-              Destination
-            </Label>
+            <Label variant="caption">Destination</Label>
             <Input
               title={destinationPath ?? undefined}
               disabled
@@ -108,10 +109,7 @@ export function CopyToDialog({
           </div>
 
           <div className="flex shrink-0 flex-col gap-2">
-            <Label
-              className="text-xs font-medium text-muted-foreground"
-              htmlFor="copy-dialog-filename"
-            >
+            <Label variant="caption" htmlFor="copy-dialog-filename">
               Filename
             </Label>
             <Input
@@ -125,7 +123,7 @@ export function CopyToDialog({
                   ? "Name for the moved file"
                   : "Name for the copied file"
               }
-              className="font-mono text-sm"
+              variant="mono"
             />
           </div>
 
@@ -140,7 +138,7 @@ export function CopyToDialog({
           />
 
           <div className="flex shrink-0 items-center">
-            <Label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Label leading="normal" className="cursor-pointer">
               <Checkbox
                 checked={showAllFiles}
                 onCheckedChange={(checked) => {

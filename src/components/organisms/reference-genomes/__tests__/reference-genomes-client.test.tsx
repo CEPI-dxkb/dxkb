@@ -54,7 +54,8 @@ describe("ReferenceGenomesClient", () => {
     const typeColumn = document.querySelector("col");
 
     expect(separator).toHaveAttribute("aria-valuenow", "144");
-    expect(typeColumn).toHaveStyle({ width: "144px" });
+    expect(typeColumn).toHaveClass("w-(--type-col-width)");
+    expect(typeColumn).toHaveStyle("--type-col-width: 144px");
     expect(separator.parentElement).toHaveClass(
       "border-r",
       "border-foreground/20",
@@ -63,7 +64,7 @@ describe("ReferenceGenomesClient", () => {
     fireEvent.keyDown(separator, { key: "ArrowRight" });
 
     expect(separator).toHaveAttribute("aria-valuenow", "154");
-    expect(typeColumn).toHaveStyle({ width: "154px" });
+    expect(typeColumn).toHaveStyle("--type-col-width: 154px");
   });
 
   it("caps the Type column width at its configured maximum", () => {
@@ -82,7 +83,7 @@ describe("ReferenceGenomesClient", () => {
       fireEvent.keyDown(separator, { key: "ArrowRight" });
     }
     expect(separator).toHaveAttribute("aria-valuenow", "480");
-    expect(typeColumn).toHaveStyle({ width: "480px" });
+    expect(typeColumn).toHaveStyle("--type-col-width: 480px");
     clientWidth.mockRestore();
   });
 

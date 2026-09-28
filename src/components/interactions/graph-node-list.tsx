@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 
 import {
   Command,
@@ -46,7 +46,7 @@ export function GraphNodeList({
       // cmdk defaults to its own fuzzy filter over each item's `value`; we set
       // value to gene + id so both are searchable.
       label="Interaction network nodes"
-      className="h-full bg-transparent"
+      className="h-full"
       disablePointerSelection
     >
       <CommandInput placeholder="Search proteins…" />
@@ -68,18 +68,20 @@ export function GraphNodeList({
               // the app selection, driven equally by canvas clicks and this list,
               // be the single amber highlight, forced to win when a row is both
               // cmdk-focused and app-selected.
-              className="gap-2 hover:bg-secondary/15 data-[app-selected=true]:bg-secondary/25! data-[app-selected=true]:font-medium data-[selected=true]:bg-transparent"
+              variant="app-selection"
             >
               <span
                 aria-hidden
-                className="size-2.5 shrink-0 rounded-full"
-                style={{
-                  backgroundColor: isSelected
-                    ? colors.selected
-                    : node.kind === "host"
-                      ? colors.host
-                      : colors.microbial,
-                }}
+                className="size-2.5 shrink-0 rounded-full bg-(--dot-color)"
+                style={
+                  {
+                    "--dot-color": isSelected
+                      ? colors.selected
+                      : node.kind === "host"
+                        ? colors.host
+                        : colors.microbial,
+                  } as CSSProperties
+                }
               />
               <span className="truncate">{node.gene || node.id}</span>
             </CommandItem>

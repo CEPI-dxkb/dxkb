@@ -402,7 +402,7 @@ function SearchResultsContent({ query }: { query: string }) {
           />
           <div className="py-20 text-center">
             <h2 className="mb-4 text-2xl font-medium">No results found</h2>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Try different search terms or filters
             </p>
           </div>
@@ -426,112 +426,117 @@ function SearchResultsContent({ query }: { query: string }) {
               return (
                 <Card
                   key={dataType}
-                  className="gap-0 rounded-lg border bg-card px-4 py-0 text-card-foreground shadow-sm"
+                  variant="raised"
+                  className="gap-0 px-4 py-0"
                 >
                   <CardHeader className="flex flex-row items-center justify-between border-b p-6">
                     <div className="flex items-center gap-2">
                       {getDataTypeIcon(dataType)}
-                      <CardTitle className="text-xl font-semibold capitalize">
-                        {searchResultsHref ? (
-                          <Link href={searchResultsHref}>
-                            {labelsBySearchType[dataType]}
-                          </Link>
-                        ) : (
-                          labelsBySearchType[dataType]
-                        )}
+                      <CardTitle variant="section">
+                        <span className="capitalize">
+                          {searchResultsHref ? (
+                            <Link href={searchResultsHref}>
+                              {labelsBySearchType[dataType]}
+                            </Link>
+                          ) : (
+                            labelsBySearchType[dataType]
+                          )}
+                        </span>
                       </CardTitle>
                     </div>
-                    <Badge className="h-8 max-w-fit min-w-8 bg-secondary font-semibold text-white">
+                    <Badge variant="count" className="h-8 max-w-fit min-w-8">
                       {numFound}
                     </Badge>
                   </CardHeader>
-                  <CardContent className="divide-y">
-                    {docs.map((docUnknown) => {
-                      const doc = docUnknown as Record<string, unknown>;
-                      const rawDocumentKey =
-                        doc.id ??
-                        (dataType === "protein_structure"
-                          ? doc.pdb_id
-                          : undefined) ??
-                        doc.genome_id ??
-                        doc.patric_id ??
-                        doc.pdb_id ??
-                        doc.epitope_id ??
-                        doc.exp_id ??
-                        doc.sample_identifier ??
-                        doc.taxon_id;
-                      const documentKey =
-                        typeof rawDocumentKey === "string" ||
-                        typeof rawDocumentKey === "number"
-                          ? String(rawDocumentKey)
-                          : JSON.stringify(doc);
-                      const genomeId =
-                        typeof doc.genome_id === "string" ||
-                        typeof doc.genome_id === "number"
-                          ? doc.genome_id
-                          : null;
-                      const featureId = featureIdFromRow(doc);
-                      const epitopeId = epitopeIdFromRow(doc);
-                      const experimentId = experimentIdFromRow(doc);
-                      const surveillanceId = surveillanceIdFromRow(doc);
-                      const serologyId = serologyIdFromRow(doc);
-                      const testType =
-                        typeof doc.test_type === "string"
-                          ? doc.test_type
-                          : undefined;
-                      const pathogenTestTypes = Array.isArray(
-                        doc.pathogen_test_type,
-                      )
-                        ? doc.pathogen_test_type.filter(
-                            (value): value is string =>
-                              typeof value === "string",
-                          )
-                        : typeof doc.pathogen_test_type === "string"
-                          ? [doc.pathogen_test_type]
-                          : [];
-                      const taxonId =
-                        typeof doc.taxon_id === "string" ||
-                        typeof doc.taxon_id === "number"
-                          ? doc.taxon_id
-                          : null;
-                      const content = getFormattedContent(doc, dataType);
-                      const href =
-                        dataType === "taxonomy" && isTaxonId(String(taxonId))
-                          ? taxonomyHref(String(taxonId))
-                          : dataType === "genome" && genomeId != null
-                          ? genomeHref(genomeId)
-                          : dataType === "genome_feature" && featureId
-                            ? featureHref(featureId)
-                            : dataType === "epitope" && epitopeId
-                              ? epitopeHref(epitopeId)
-                              : dataType === "experiment" && experimentId
-                                ? experimentHref(experimentId)
-                              : dataType === "protein_structure" &&
-                                  (typeof doc.pdb_id === "string" ||
-                                    typeof doc.pdb_id === "number")
-                                ? proteinStructureHref(doc.pdb_id)
-                                : dataType === "surveillance" && surveillanceId
-                                  ? surveillanceHref(
-                                      surveillanceId,
-                                      pathogenTestTypes.length === 1
-                                        ? pathogenTestTypes[0]
-                                        : undefined,
-                                    )
-                                  : dataType === "serology" && serologyId
-                                    ? serologyHref(serologyId, testType)
-                                    : null;
-                      return (
-                        <div key={documentKey} className="py-6">
-                          {href ? (
-                            <Link href={href} className="block">
-                              {content}
-                            </Link>
-                          ) : (
-                            content
-                          )}
-                        </div>
-                      );
-                    })}
+                  <CardContent>
+                    <div className="divide-y">
+                      {docs.map((docUnknown) => {
+                        const doc = docUnknown as Record<string, unknown>;
+                        const rawDocumentKey =
+                          doc.id ??
+                          (dataType === "protein_structure"
+                            ? doc.pdb_id
+                            : undefined) ??
+                          doc.genome_id ??
+                          doc.patric_id ??
+                          doc.pdb_id ??
+                          doc.epitope_id ??
+                          doc.exp_id ??
+                          doc.sample_identifier ??
+                          doc.taxon_id;
+                        const documentKey =
+                          typeof rawDocumentKey === "string" ||
+                          typeof rawDocumentKey === "number"
+                            ? String(rawDocumentKey)
+                            : JSON.stringify(doc);
+                        const genomeId =
+                          typeof doc.genome_id === "string" ||
+                          typeof doc.genome_id === "number"
+                            ? doc.genome_id
+                            : null;
+                        const featureId = featureIdFromRow(doc);
+                        const epitopeId = epitopeIdFromRow(doc);
+                        const experimentId = experimentIdFromRow(doc);
+                        const surveillanceId = surveillanceIdFromRow(doc);
+                        const serologyId = serologyIdFromRow(doc);
+                        const testType =
+                          typeof doc.test_type === "string"
+                            ? doc.test_type
+                            : undefined;
+                        const pathogenTestTypes = Array.isArray(
+                          doc.pathogen_test_type,
+                        )
+                          ? doc.pathogen_test_type.filter(
+                              (value): value is string =>
+                                typeof value === "string",
+                            )
+                          : typeof doc.pathogen_test_type === "string"
+                            ? [doc.pathogen_test_type]
+                            : [];
+                        const taxonId =
+                          typeof doc.taxon_id === "string" ||
+                          typeof doc.taxon_id === "number"
+                            ? doc.taxon_id
+                            : null;
+                        const content = getFormattedContent(doc, dataType);
+                        const href =
+                          dataType === "taxonomy" && isTaxonId(String(taxonId))
+                            ? taxonomyHref(String(taxonId))
+                            : dataType === "genome" && genomeId != null
+                            ? genomeHref(genomeId)
+                            : dataType === "genome_feature" && featureId
+                              ? featureHref(featureId)
+                              : dataType === "epitope" && epitopeId
+                                ? epitopeHref(epitopeId)
+                                : dataType === "experiment" && experimentId
+                                  ? experimentHref(experimentId)
+                                : dataType === "protein_structure" &&
+                                    (typeof doc.pdb_id === "string" ||
+                                      typeof doc.pdb_id === "number")
+                                  ? proteinStructureHref(doc.pdb_id)
+                                  : dataType === "surveillance" && surveillanceId
+                                    ? surveillanceHref(
+                                        surveillanceId,
+                                        pathogenTestTypes.length === 1
+                                          ? pathogenTestTypes[0]
+                                          : undefined,
+                                      )
+                                    : dataType === "serology" && serologyId
+                                      ? serologyHref(serologyId, testType)
+                                      : null;
+                        return (
+                          <div key={documentKey} className="py-6">
+                            {href ? (
+                              <Link href={href} className="block">
+                                {content}
+                              </Link>
+                            ) : (
+                              content
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
               );

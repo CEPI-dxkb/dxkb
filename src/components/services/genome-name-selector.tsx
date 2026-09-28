@@ -178,7 +178,8 @@ export function GenomeNameSelector({
             onFocus={() => {
               setShowDropdown(true);
             }}
-            className="w-full px-10"
+            inset="both"
+            className="w-full"
           />
           {showDropdown &&
             (suggestions.length > 0 ||

@@ -5,6 +5,7 @@ import { NumericFormat, NumericFormatProps } from "react-number-format";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export interface NumberInputProps extends Omit<
   NumericFormatProps,
@@ -39,6 +40,7 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
       suffix,
       prefix,
       value: controlledValue,
+      className,
       ...props
     },
     ref,
@@ -202,7 +204,13 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           prefix={prefix}
           customInput={Input}
           placeholder={placeholder}
-          className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          // Merged, not replaced: a caller's className used to overwrite these
+          // (it arrived later through `...props`), dropping the joined right
+          // edge and the hidden spin buttons.
+          className={cn(
+            "relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+            className,
+          )}
           getInputRef={setInputRef}
           {...props}
         />

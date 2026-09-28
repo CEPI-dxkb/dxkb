@@ -7,7 +7,12 @@ import { useSearchParams } from "next/navigation";
 import { useAuthActions } from "@/lib/auth/provider";
 import { safePostAuthDestination } from "@/lib/auth/redirect";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Card,
   CardContent,
@@ -68,7 +73,7 @@ function SigninForm() {
     <div className="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="mb-2 space-y-1">
-          <CardTitle className="text-center text-2xl font-bold">
+          <CardTitle variant="page" className="text-center">
             Sign in to DXKB
           </CardTitle>
           <CardDescription className="text-center">
@@ -94,9 +99,8 @@ function SigninForm() {
               {(field) => (
                 <FieldItem>
                   <RequiredFormLabel>Username or email</RequiredFormLabel>
-                  <div className="relative">
-                    <User className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-                    <Input
+                  <InputGroup>
+                    <InputGroupInput
                       placeholder="Enter your username or email"
                       id={field.name}
                       name={field.name}
@@ -105,9 +109,11 @@ function SigninForm() {
                         field.handleChange(e.target.value);
                       }}
                       onBlur={field.handleBlur}
-                      className="pl-10"
                     />
-                  </div>
+                    <InputGroupAddon align="inline-start">
+                      <User />
+                    </InputGroupAddon>
+                  </InputGroup>
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
@@ -127,9 +133,8 @@ function SigninForm() {
                       </Link>
                     </p>
                   </div>
-                  <div className="relative">
-                    <Lock className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-                    <Input
+                  <InputGroup>
+                    <InputGroupInput
                       id={field.name}
                       name={field.name}
                       type={showPassword ? "text" : "password"}
@@ -139,28 +144,29 @@ function SigninForm() {
                         field.handleChange(e.target.value);
                       }}
                       onBlur={field.handleBlur}
-                      className="px-10"
                       required
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => {
-                        setShowPassword(!showPassword);
-                      }}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                      <span className="sr-only">
-                        {showPassword ? "Hide password" : "Show password"}
-                      </span>
-                    </Button>
-                  </div>
+                    <InputGroupAddon align="inline-start">
+                      <Lock />
+                    </InputGroupAddon>
+                    <InputGroupAddon align="inline-end">
+                      <InputGroupButton
+                        size="icon-xs"
+                        onClick={() => {
+                          setShowPassword(!showPassword);
+                        }}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                        <span className="sr-only">
+                          {showPassword ? "Hide password" : "Show password"}
+                        </span>
+                      </InputGroupButton>
+                    </InputGroupAddon>
+                  </InputGroup>
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
@@ -168,7 +174,7 @@ function SigninForm() {
 
             <Button
               type="submit"
-              className="w-full transition-colors duration-200"
+              className="w-full"
               disabled={form.state.isSubmitting}
             >
               {form.state.isSubmitting ? (
@@ -213,7 +219,7 @@ export default function SigninPage() {
         <div className="flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
           <Card className="w-full max-w-md">
             <CardHeader className="mb-2 space-y-1">
-              <CardTitle className="text-center text-2xl font-bold">
+              <CardTitle variant="page" className="text-center">
                 Sign in to DXKB
               </CardTitle>
               <CardDescription className="text-center">

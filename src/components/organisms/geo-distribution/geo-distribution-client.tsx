@@ -6,7 +6,7 @@ import { useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import * as topojson from "topojson-client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
 
 import {
@@ -198,11 +198,11 @@ export function GeoDistributionClient({
   }
 
   return (
-    <Card className="h-full rounded-lg" size="sm">
+    <Card variant="panel" className="h-full" size="sm">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-3">
-        <CardTitle className="text-lg!" role="heading" aria-level={2}>
+        <h2 className="text-lg leading-snug font-medium">
           Geographic Distribution
-        </CardTitle>
+        </h2>
         <MapControls
           mapState={mapState}
           stateOptions={stateOptions}

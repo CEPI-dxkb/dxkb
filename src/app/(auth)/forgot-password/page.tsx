@@ -6,7 +6,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Card,
   CardContent,
@@ -61,7 +65,7 @@ export default function ForgotPasswordPage() {
       <div className="flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-center text-2xl font-bold">
+            <CardTitle variant="page" className="text-center">
               Check your email
             </CardTitle>
             <CardDescription className="text-center">
@@ -96,7 +100,7 @@ export default function ForgotPasswordPage() {
     <div className="flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-center text-2xl font-bold">
+          <CardTitle variant="page" className="text-center">
             Forgot password?
           </CardTitle>
           <CardDescription className="text-center">
@@ -123,9 +127,8 @@ export default function ForgotPasswordPage() {
               {(field) => (
                 <FieldItem>
                   <RequiredFormLabel>Username or email</RequiredFormLabel>
-                  <div className="relative">
-                    <Mail className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-                    <Input
+                  <InputGroup>
+                    <InputGroupInput
                       placeholder="Enter your username or email"
                       id={field.name}
                       name={field.name}
@@ -134,9 +137,11 @@ export default function ForgotPasswordPage() {
                         field.handleChange(e.target.value);
                       }}
                       onBlur={field.handleBlur}
-                      className="pl-10"
                     />
-                  </div>
+                    <InputGroupAddon align="inline-start">
+                      <Mail />
+                    </InputGroupAddon>
+                  </InputGroup>
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
@@ -144,7 +149,7 @@ export default function ForgotPasswordPage() {
 
             <Button
               type="submit"
-              className="w-full text-muted-foreground transition-colors duration-200 hover:text-foreground"
+              className="w-full"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

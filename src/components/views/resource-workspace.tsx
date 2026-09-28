@@ -144,12 +144,12 @@ export function ResourceWorkspace({
               <div className="border-b p-2 max-md:border-r max-md:border-b-0">
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="rail"
                   onClick={() => {
                     setPanelExpanded((current) => !current);
                   }}
                   title={panelExpanded ? "Hide panel" : "Show panel"}
-                  className="flex h-auto w-full flex-col items-center gap-0 px-1 py-2 max-md:w-16"
+                  className="flex w-full flex-col items-center max-md:w-16"
                 >
                   {panelExpanded ? (
                     <PanelRightClose className="size-4" />

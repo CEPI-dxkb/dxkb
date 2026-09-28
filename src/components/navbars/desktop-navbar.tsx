@@ -62,10 +62,10 @@ const DesktopNavbar = () => {
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </span>
 
-          <NavigationMenu className="hidden w-full items-center justify-between bg-primary font-bold lg:flex">
+          <NavigationMenu className="hidden w-full items-center justify-between lg:flex">
             <NavigationMenuList>
               <NavigationMenuItem id="organisms-nav">
-                <NavigationMenuTrigger className="bg-primary">
+                <NavigationMenuTrigger variant="inverse">
                   Organisms
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
@@ -85,7 +85,7 @@ const DesktopNavbar = () => {
               </NavigationMenuItem>
 
               <NavigationMenuItem id="services-nav">
-                <NavigationMenuTrigger className="bg-primary">
+                <NavigationMenuTrigger variant="inverse">
                   Services
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
@@ -131,7 +131,7 @@ const DesktopNavbar = () => {
               </NavigationMenuItem>
 
               <NavigationMenuItem id="workspace-nav">
-                <NavigationMenuTrigger className="bg-primary">
+                <NavigationMenuTrigger variant="inverse">
                   Workspace
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
@@ -143,7 +143,7 @@ const DesktopNavbar = () => {
               </NavigationMenuItem>
 
               <NavigationMenuItem id="resources-nav">
-                <NavigationMenuTrigger className="bg-primary">
+                <NavigationMenuTrigger variant="inverse">
                   Resources
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>

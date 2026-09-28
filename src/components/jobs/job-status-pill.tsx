@@ -97,9 +97,9 @@ export function JobStatusPill() {
       <PopoverTrigger
         render={
           <Button
-            variant="ghost"
+            variant="inverse-outline"
+            size="pill"
             aria-label="View job status"
-            className="h-8 gap-2 rounded-full border border-white/30 bg-white/10 px-3 text-white hover:bg-white/20 hover:text-white"
           >
             {statusGroups.map(({ key, count, icon: Icon, className }) => (
               <span key={key} className="flex items-center gap-1">
@@ -111,13 +111,14 @@ export function JobStatusPill() {
         }
       />
       <PopoverContent
-        className="w-72 gap-0 p-0"
+        size="flush"
+        className="w-72"
         align="end"
         side="bottom"
         sideOffset={8}
       >
         <div className="flex items-center justify-between border-b px-3 py-2">
-          <PopoverTitle className="text-sm font-medium">My Jobs</PopoverTitle>
+          <PopoverTitle>My Jobs</PopoverTitle>
           <Link
             href="/jobs"
             className="text-xs text-muted-foreground transition-colors hover:text-foreground"

@@ -148,14 +148,7 @@ export function JobsDateFilter({
       <div className="flex items-center gap-1">
         <PopoverTrigger
           render={
-            <Button
-              variant="outline"
-              className={
-                hasActiveFilter
-                  ? "h-8 gap-1.5 rounded-lg border-primary bg-primary/5 text-sm font-normal text-primary"
-                  : "h-8 gap-1.5 rounded-lg border-input text-sm font-normal"
-              }
-            >
+            <Button variant={hasActiveFilter ? "field-active" : "field"}>
               <CalendarIcon className="size-3.5" />
               <span className="max-w-60 truncate">
                 {activeLabel ?? "All dates"}
@@ -167,7 +160,7 @@ export function JobsDateFilter({
         {hasActiveFilter && (
           <Button
             variant="ghost"
-            className="size-8 p-0"
+            size="icon"
             onClick={(e) => {
               e.stopPropagation();
               resetFilter(true);
@@ -177,7 +170,7 @@ export function JobsDateFilter({
           </Button>
         )}
       </div>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent size="flush" className="w-auto" align="start">
         <div className="space-y-3 p-4">
           {/* Header: label + condition dropdown + delete */}
           <div className="flex items-center gap-2">
@@ -189,7 +182,7 @@ export function JobsDateFilter({
                 if (value != null) handleConditionChange(value);
               }}
             >
-              <SelectTrigger className="h-8 w-auto gap-1 text-xs">
+              <SelectTrigger density="compact-tight" className="h-8 w-auto">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

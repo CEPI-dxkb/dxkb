@@ -4,14 +4,18 @@ import { Eye, EyeOff, Lock, Mail, MessageCircle, User } from "lucide-react";
 import { useState } from "react";
 import type { SignupForm } from "./use-signup-form";
 import { RequiredFormLabel } from "@/components/forms/required-form-components";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupTextarea,
+} from "@/components/ui/input-group";
 import {
   FieldErrors,
   FieldItem,
   FieldLabel,
 } from "@/components/ui/tanstack-form";
-import { Textarea } from "@/components/ui/textarea";
 
 interface SignupFieldsProps {
   form: Pick<SignupForm, "Field">;
@@ -31,9 +35,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <RequiredFormLabel>First name</RequiredFormLabel>
-            <div className="relative">
-              <User className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="John"
                 id={field.name}
                 name={field.name}
@@ -42,9 +45,11 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <User />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -54,9 +59,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <FieldLabel field={field}>Middle name</FieldLabel>
-            <div className="relative">
-              <User className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="James"
                 id={field.name}
                 name={field.name}
@@ -65,10 +69,12 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
                 disabled={disabled}
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <User />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -78,9 +84,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <RequiredFormLabel>Last name</RequiredFormLabel>
-            <div className="relative">
-              <User className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="Doe"
                 id={field.name}
                 name={field.name}
@@ -89,10 +94,12 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
                 disabled={disabled}
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <User />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -102,9 +109,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <RequiredFormLabel>Username</RequiredFormLabel>
-            <div className="relative">
-              <Mail className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="john.doe"
                 id={field.name}
                 name={field.name}
@@ -113,9 +119,11 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <Mail />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -125,9 +133,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <RequiredFormLabel>Email</RequiredFormLabel>
-            <div className="relative">
-              <Mail className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="john.doe@example.com"
                 id={field.name}
                 name={field.name}
@@ -136,9 +143,11 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <Mail />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -148,9 +157,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <FieldLabel field={field}>Organization</FieldLabel>
-            <div className="relative">
-              <User className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="John Doe Inc."
                 id={field.name}
                 name={field.name}
@@ -159,9 +167,11 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <User />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -171,9 +181,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <FieldLabel field={field}>Organisms</FieldLabel>
-            <div className="relative">
-              <User className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 placeholder="Enter organisms"
                 id={field.name}
                 name={field.name}
@@ -182,9 +191,11 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="pl-10"
               />
-            </div>
+              <InputGroupAddon align="inline-start">
+                <User />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -194,9 +205,8 @@ export function SignupProfileFields({
         {(field) => (
           <FieldItem>
             <FieldLabel field={field}>Interests</FieldLabel>
-            <div className="relative">
-              <MessageCircle className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Textarea
+            <InputGroup>
+              <InputGroupTextarea
                 placeholder="Enter interests"
                 id={field.name}
                 name={field.name}
@@ -205,9 +215,12 @@ export function SignupProfileFields({
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="max-h-32 pl-10"
+                className="max-h-32"
               />
-            </div>
+              <InputGroupAddon align="inline-start" className="mt-0.75 self-start">
+                <MessageCircle />
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -226,9 +239,8 @@ export function SignupPasswordFields({ form }: SignupFieldsProps) {
         {(field) => (
           <FieldItem>
             <RequiredFormLabel>Password</RequiredFormLabel>
-            <div className="relative">
-              <Lock className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 id={field.name}
                 name={field.name}
                 type={showPassword ? "text" : "password"}
@@ -238,28 +250,29 @@ export function SignupPasswordFields({ form }: SignupFieldsProps) {
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="px-10"
                 required
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => {
-                  setShowPassword((visible) => !visible);
-                }}
-              >
-                {showPassword ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-                <span className="sr-only">
-                  {showPassword ? "Hide password" : "Show password"}
-                </span>
-              </Button>
-            </div>
+              <InputGroupAddon align="inline-start">
+                <Lock />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  onClick={() => {
+                    setShowPassword((visible) => !visible);
+                  }}
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                  <span className="sr-only">
+                    {showPassword ? "Hide password" : "Show password"}
+                  </span>
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}
@@ -269,9 +282,8 @@ export function SignupPasswordFields({ form }: SignupFieldsProps) {
         {(field) => (
           <FieldItem>
             <RequiredFormLabel>Confirm password</RequiredFormLabel>
-            <div className="relative">
-              <Lock className="absolute top-2.5 left-3 size-4 text-muted-foreground" />
-              <Input
+            <InputGroup>
+              <InputGroupInput
                 id={field.name}
                 name={field.name}
                 type={showConfirmPassword ? "text" : "password"}
@@ -281,28 +293,29 @@ export function SignupPasswordFields({ form }: SignupFieldsProps) {
                   field.handleChange(event.target.value);
                 }}
                 onBlur={field.handleBlur}
-                className="px-10"
                 required
               />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => {
-                  setShowConfirmPassword((visible) => !visible);
-                }}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-                <span className="sr-only">
-                  {showConfirmPassword ? "Hide password" : "Show password"}
-                </span>
-              </Button>
-            </div>
+              <InputGroupAddon align="inline-start">
+                <Lock />
+              </InputGroupAddon>
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  onClick={() => {
+                    setShowConfirmPassword((visible) => !visible);
+                  }}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                  <span className="sr-only">
+                    {showConfirmPassword ? "Hide password" : "Show password"}
+                  </span>
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
             <FieldErrors field={field} />
           </FieldItem>
         )}

@@ -17,9 +17,9 @@ export function SuBanner() {
         You are impersonating <strong>{user?.username}</strong>.
       </span>
       <Button
-        variant="outline"
-        size="sm"
-        className="ml-1 h-6 border-accent-foreground/30 bg-transparent px-2 text-xs hover:bg-accent-foreground/10"
+        variant="outline-accent"
+        size="xs"
+        className="ml-1"
         onClick={() => void exitImpersonation()}
       >
         Exit SU

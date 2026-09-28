@@ -18,7 +18,7 @@ export function GeneraCard({ name, href, count, viewLabel = "genomes" }: GeneraC
   const displayName = facetDisplayLabel(name);
 
   return (
-    <Card className="gap-0 rounded-md py-0 shadow-none">
+    <Card variant="tile" className="gap-0 py-0">
       <Link
         href={href}
         aria-label={`View ${displayName} ${viewLabel}`}

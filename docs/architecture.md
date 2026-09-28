@@ -100,7 +100,7 @@ Notes:
 
 - `workspace-shell.tsx` — top-level orchestrator mounted by the workspace route pages
 - `workspace-browser.tsx` — combines file listing, sorting, breadcrumbs, toolbar, dialogs, resizable panels
-- `workspace-file-table.tsx` — TanStack Table-based file listing with virtual scrolling
+- `workspace-file-table.tsx` — the file listing, built on the shared `DataTable` in `src/components/shared/file-table.tsx` (also used by the jobs table). It is not virtualized. `DataTable` uses fixed table layout, so the header row sets every column's width, and a resize re-renders only the header cells. Body rows carry no widths and render their cells through `orderedCells(row, columnOrder)` from `useDataTableBody()`, because the React Compiler caches a row's cells on the `row` object, which a column reorder does not replace.
 - Details panel uses `react-resizable-panels` with state in `WorkspacePanelContext`
 - Favorites stored in `favorites.json` workspace file (see `src/lib/services/workspace/favorites.ts`)
 - **Repository pattern**: workspace data access goes through `WorkspaceRepositorySet` (`src/lib/services/workspace/workspace-repository.ts`), provided via `WorkspaceRepositoryProvider`, consumed with `useWorkspaceRepository()`. Prefer this over calling the client directly. Path helpers in `path-utils.ts`; RQ keys in `workspace-query-keys.ts`.

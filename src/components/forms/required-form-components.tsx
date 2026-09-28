@@ -10,9 +10,9 @@ export function RequiredFormCardTitle({
   children: React.ReactNode;
 }) {
   return (
-    <ServiceCardTitle className={`gap-1 ${className ?? ""}`}>
+    <ServiceCardTitle className={className}>
       {children}
-      <span className="text-red-500">*</span>
+      <span className="text-destructive">*</span>
     </ServiceCardTitle>
   );
 }
@@ -42,7 +42,7 @@ export function RequiredFormLabelInfo({
         description={infoPopup.description}
         sections={infoPopup.sections}
       />
-      <span className="text-red-500">*</span>
+      <span className="text-destructive">*</span>
     </div>
   );
 }
@@ -57,9 +57,9 @@ export function RequiredFormLabel({
   htmlFor?: string;
 }) {
   return (
-    <Label htmlFor={htmlFor} className={`gap-1 ${className ?? ""}`}>
+    <Label htmlFor={htmlFor} variant="required" className={className}>
       {children}
-      <span className="gap-1 text-red-500">*</span>
+      <span className="text-destructive">*</span>
     </Label>
   );
 }

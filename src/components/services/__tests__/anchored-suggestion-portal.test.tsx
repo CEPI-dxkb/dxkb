@@ -38,12 +38,16 @@ function makeAnchor(box: AnchorBox) {
 }
 
 function readRect(ref: RefObject<HTMLDivElement | null>) {
+  // The geometry is passed as CSS custom properties that the dropdown's
+  // classes read (`top-(--dropdown-top)` etc.).
   const style = ref.current?.style;
+  const read = (name: string) =>
+    Number.parseFloat(style?.getPropertyValue(name) ?? "");
   return {
-    top: Number.parseFloat(style?.top ?? ""),
-    left: Number.parseFloat(style?.left ?? ""),
-    width: Number.parseFloat(style?.width ?? ""),
-    maxHeight: Number.parseFloat(style?.maxHeight ?? ""),
+    top: read("--dropdown-top"),
+    left: read("--dropdown-left"),
+    width: read("--dropdown-width"),
+    maxHeight: read("--dropdown-max-height"),
   };
 }
 

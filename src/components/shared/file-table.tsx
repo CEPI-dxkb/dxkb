@@ -107,6 +107,14 @@ export interface TableSkeletonColumn {
   isFirst?: boolean;
 }
 
+/** Each column's width in px, keyed by column id. */
+type FileTableColumnSizes = Record<string, number>;
+
+/**
+ * Body rows carry no widths. The table uses fixed layout, which takes every
+ * column's width from the first row (the header), so a resize re-renders only
+ * the header cells.
+ */
 interface DataTableBodyContextValue<T extends RowData> {
   rows: Row<FileTableFeatures, T>[];
   columnOrder: string[];
@@ -115,6 +123,31 @@ interface DataTableBodyContextValue<T extends RowData> {
 
 const DataTableBodyContext =
   createContext<DataTableBodyContextValue<Record<string, unknown>> | null>(null);
+
+/**
+ * The `--col-size` value for a header cell of the given column width (px),
+ * which its `w-(--col-size)` classes read. An unknown column (no size) leaves
+ * it unset, so the width stays auto.
+ */
+function columnSizeValue(size: number | undefined) {
+  return size === undefined ? undefined : `${String(size)}px`;
+}
+
+/**
+ * A row's visible cells in `columnOrder` (from `useDataTableBody()`). Use this
+ * rather than `row.getVisibleCells()` alone: the React Compiler caches a row's
+ * cells on the `row` object, which a column reorder does not replace, so the
+ * order has to be an input for the row to re-render with it.
+ */
+export function orderedCells<T extends RowData>(
+  row: Row<FileTableFeatures, T>,
+  columnOrder: string[],
+) {
+  const cells = new Map(
+    row.getVisibleCells().map((cell) => [cell.column.id, cell]),
+  );
+  return columnOrder.flatMap((id) => cells.get(id) ?? []);
+}
 
 export function useDataTableBody<T extends RowData>() {
   const context = useContext(DataTableBodyContext);
@@ -149,10 +182,16 @@ function SortIcon({
 
 function DraggableTableHeader<T extends RowData>({
   header,
+  size,
+  isResizing,
   onSort,
   sort,
 }: {
   header: Header<FileTableFeatures, T>;
+  /** The column's width in px (a prop, so the compiled header re-renders with it). */
+  size: number | undefined;
+  /** Whether this column is being resized (a prop, for the same reason). */
+  isResizing: boolean;
   onSort: (field: string) => void;
   sort: DataTableSort;
 }) {
@@ -167,26 +206,24 @@ function DraggableTableHeader<T extends RowData>({
     id: header.column.id,
   });
 
-  const colWidth = `var(--col-${header.column.id}-size)`;
-  const style: CSSProperties = {
-    opacity: isDragging ? 0.8 : 1,
-    position: "relative" as const,
-    transform: CSS.Translate.toString(transform),
+  const style = {
+    "--col-size": columnSizeValue(size),
+    // Undefined (no drag offset) drops the property, so transform is none.
+    "--drag-transform": CSS.Translate.toString(transform),
+    // dnd-kit's own shorthand ("transform 200ms ease"); no utility sets it.
     transition,
-    whiteSpace: "nowrap",
-    width: colWidth,
-    minWidth: colWidth,
-    maxWidth: colWidth,
-    zIndex: isDragging ? 1 : 0,
-  };
+  } as CSSProperties;
 
   const meta = header.column.columnDef.meta;
   const isFirst = header.index === 0;
   const className = clsx(
     isFirst ? "pl-6" : "pl-2",
-    "relative bg-background",
     // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
     meta?.className ?? "",
+    // Last, so these win over the meta classes (as the inline style they
+    // replace did).
+    "relative w-(--col-size) max-w-(--col-size) min-w-(--col-size) transform-(--drag-transform) whitespace-nowrap",
+    isDragging ? "z-1 opacity-80" : "z-0",
   );
 
   const sortField = meta?.sortField;
@@ -208,6 +245,7 @@ function DraggableTableHeader<T extends RowData>({
     <TableHead
       ref={setNodeRef}
       colSpan={header.colSpan}
+      variant="surface"
       className={className}
       style={style}
     >
@@ -238,7 +276,7 @@ function DraggableTableHeader<T extends RowData>({
             aria-label={`Resize ${label} column`}
             aria-valuemin={minSize}
             aria-valuemax={maxSize}
-            aria-valuenow={header.column.getSize()}
+            aria-valuenow={size}
             tabIndex={0}
             onKeyDown={(event) => {
               if (event.key === "ArrowLeft") {
@@ -255,14 +293,10 @@ function DraggableTableHeader<T extends RowData>({
               header.column.resetSize();
             }}
             className={cn(
-              "absolute top-0 right-0 z-10 h-full w-2 cursor-col-resize border-r border-border focus-visible:outline-2 focus-visible:outline-primary",
+              "absolute top-0 right-0 z-10 h-full w-2 translate-x-1/2 cursor-col-resize border-r border-border focus-visible:outline-2 focus-visible:outline-primary",
               "hover:border-primary/50 hover:bg-primary/15",
-              header.column.getIsResizing() &&
-                "h-9 border-primary bg-primary/25",
+              isResizing && "h-9 border-primary bg-primary/25",
             )}
-            style={{
-              transform: "translateX(50%)",
-            }}
           />
         )}
       </div>
@@ -304,11 +338,6 @@ function TableSkeleton({ columns }: { columns?: TableSkeletonColumn[] }) {
                 "overflow-hidden",
                 skeletonRowHeight,
               )}
-              style={{
-                width: `var(--col-${col.id}-size)`,
-                minWidth: `var(--col-${col.id}-size)`,
-                maxWidth: `var(--col-${col.id}-size)`,
-              }}
             >
               <Skeleton className="h-4 w-full" />
             </TableCell>
@@ -369,11 +398,6 @@ function DataTableInner<T extends RowData>(
     enableColumnResizing: true,
   });
 
-  const columnSizeVars: Record<string, string> = {};
-  for (const col of table.getAllFlatColumns()) {
-    columnSizeVars[`--col-${col.id}-size`] = `${String(col.getSize())}px`;
-  }
-
   const handleColumnDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
@@ -391,6 +415,18 @@ function DataTableInner<T extends RowData>(
     useSensor(TouchSensor, {}),
     useSensor(KeyboardSensor, {}),
   );
+
+  // Computed after the hooks above: the React Compiler does not cache a value
+  // whose computation spans a hook call. Cached, it changes when `table` does.
+  const columnSizes: FileTableColumnSizes = Object.fromEntries(
+    table.getAllFlatColumns().map((col) => [col.id, col.getSize()]),
+  );
+
+  // Separate values, so the body context below is cached on them and keeps
+  // its identity through a resize (`table` changes on every state update, but
+  // the row model does not).
+  const rows = table.getRowModel().rows;
+  const colSpan = table.getAllLeafColumns().length;
 
   const skeletonColumns: TableSkeletonColumn[] = columnOrder.map(
     (id, index) => ({
@@ -438,11 +474,16 @@ function DataTableInner<T extends RowData>(
         onDragEnd={handleColumnDragEnd}
         sensors={sensors}
       >
-        <div className="relative min-w-max" style={columnSizeVars}>
-          <Table disableScrollWrapper>
-            <TableHeader className="sticky top-0 z-20 border-b border-border bg-background shadow-sm [&_tr]:bg-background">
+        {/* No min-w-max here: Chrome gives a fixed-layout table with a
+            percentage width a near-infinite max-content width. A fixed table
+            is still as wide as its columns, so a wide table overflows this
+            box and the region scrolls. */}
+        <div className="relative">
+          {/* Fixed layout: the header row sets the column widths. */}
+          <Table disableScrollWrapper className="table-fixed">
+            <TableHeader variant="sticky-surface" className="sticky top-0 z-20">
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="bg-background">
+                <TableRow key={headerGroup.id}>
                   <SortableContext
                     items={columnOrder}
                     strategy={horizontalListSortingStrategy}
@@ -451,6 +492,8 @@ function DataTableInner<T extends RowData>(
                       <DraggableTableHeader
                         key={header.id}
                         header={header}
+                        size={columnSizes[header.column.id]}
+                        isResizing={header.column.getIsResizing()}
                         onSort={onSort}
                         sort={sort}
                       />
@@ -466,9 +509,9 @@ function DataTableInner<T extends RowData>(
                 <DataTableBodyContext.Provider
                   value={
                     {
-                      rows: table.getRowModel().rows,
+                      rows,
                       columnOrder,
-                      colSpan: table.getAllLeafColumns().length,
+                      colSpan,
                     } as unknown as DataTableBodyContextValue<
                       Record<string, unknown>
                     >

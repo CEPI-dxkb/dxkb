@@ -23,7 +23,7 @@ import {
 } from "@tanstack/react-table";
 
 import Link from "next/link";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, type CSSProperties } from "react";
 import { getIdField } from "@/constants/resources";
 import {
   classifyHref,
@@ -121,6 +121,9 @@ const dataTableFeatures = tableFeatures({
 type DataTableFeatures = typeof dataTableFeatures;
 type DataRow = DataTableRow;
 export type DataTableInstance = ReactTable<DataTableFeatures, DataRow>;
+
+/** Resolved pixel width of each column, keyed by column id. */
+export type ColumnWidths = Record<string, number>;
 
 function getTableMeta(table: TanStackTable<DataTableFeatures, DataRow>) {
   const meta = table.options.meta;
@@ -240,7 +243,7 @@ function SelectionHeader({
         title={selectionLabel}
       />
       {meta.isAllPagesSelected && (
-        <div className="absolute -bottom-5 left-1/2 z-50 -translate-x-1/2 transform text-3xs whitespace-nowrap text-blue-600">
+        <div className="absolute -bottom-5 left-1/2 z-50 -translate-x-1/2 transform text-3xs whitespace-nowrap text-info">
           All {meta.totalItems} selected
         </div>
       )}
@@ -707,7 +710,8 @@ function useDataTableContent(
     getRowId: (row) => String(row[idField]),
   });
 
-  // Memoized CSS vars so cells update via CSS during drag without React re-rendering each cell.
+  // Resolved pixel width of every column, passed to the header and body cells
+  // (which re-render with this component: all three carry "use no memo").
   // Columns stretch to fill the container: any width the natural sizes leave unused
   // is distributed proportionally across the resizable columns. When natural sizes
   // already exceed the container (e.g. a column dragged very wide) the surplus is
@@ -715,7 +719,7 @@ function useDataTableContent(
   // The actively-resizing column is excluded from stretch so its drag tracks the
   // cursor 1:1 and can push the total past the container edge.
   const resizingColumnId = table.state.columnResizing.isResizingColumn;
-  const columnSizeVars = (() => {
+  const columnWidths = (() => {
     const leafColumns = table.getVisibleLeafColumns();
     const naturalSizes = leafColumns.map((c) => c.getSize());
     const naturalTotal = naturalSizes.reduce((a, b) => a + b, 0);
@@ -749,12 +753,12 @@ function useDataTableContent(
       }
     }
 
-    const vars: Record<string, string> = {};
+    const widths: ColumnWidths = {};
     for (const header of table.getFlatHeaders()) {
-      vars[`--col-${header.column.id}-size`] =
-        `${String(finalSizes.get(header.column.id) ?? header.column.getSize())}px`;
+      widths[header.column.id] =
+        finalSizes.get(header.column.id) ?? header.column.getSize();
     }
-    return vars;
+    return widths;
   })();
 
   const rows = table.getRowModel().rows;
@@ -796,8 +800,8 @@ function useDataTableContent(
       {/* This is the main container. Full width and content centered. */}
       {/* Banner for selecting all results across pages */}
       {!isAllPagesSelected && table.getIsAllPageRowsSelected() && (
-        <div className="mb-2 flex w-full items-center justify-between border border-blue-200 bg-blue-50 px-4 py-2">
-          <span className="text-blue-700">
+        <div className="mb-2 flex w-full items-center justify-between border border-info/20 bg-info/5 px-4 py-2">
+          <span className="text-info">
             All {data.length} results on this page are selected.
           </span>
           <button
@@ -805,16 +809,16 @@ function useDataTableContent(
               e.stopPropagation();
               onAllPagesSelectionChange?.(true);
             }}
-            className="cursor-pointer font-semibold text-blue-700 underline hover:text-blue-900"
+            className="cursor-pointer font-semibold text-info underline hover:text-foreground"
           >
             Select all {totalItems} results across all pages
           </button>
         </div>
       )}
       {isAllPagesSelected && (
-        <div className="mb-2 w-full border border-blue-300 bg-blue-100 px-4 py-2">
+        <div className="mb-2 w-full border border-info/30 bg-info/10 px-4 py-2">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-blue-800">
+            <span className="font-semibold text-info">
               All {totalItems} results are selected across all pages.
             </span>
             <button
@@ -827,12 +831,12 @@ function useDataTableContent(
                   onRowSelectionChange({});
                 }
               }}
-              className="cursor-pointer text-blue-700 underline hover:text-blue-900"
+              className="cursor-pointer text-info underline hover:text-foreground"
             >
               Clear selection
             </button>
           </div>
-          <div className="mt-1 text-xs text-blue-700">
+          <div className="mt-1 text-xs text-info">
             Note: Checkboxes on other pages may not appear checked for
             performance reasons, but all rows are selected.
           </div>
@@ -850,7 +854,7 @@ function useDataTableContent(
       <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded border border-border">
         <div
           className={clsx(
-            "relative flex-1",
+            "relative max-h-full flex-1",
             // During load, clip the overestimated skeleton rows (no scrollbar);
             // switch to auto once real rows/virtualizer drive the height.
             isLoading ? "overflow-hidden" : "overflow-auto",
@@ -860,24 +864,22 @@ function useDataTableContent(
           role="region"
           aria-label={scrollRegionLabel ?? `${resource} results`}
           tabIndex={0}
-          style={{
-            maxHeight: "100%",
-            position: "relative",
-          }}
         >
-          <div className="relative min-w-max" style={columnSizeVars}>
+          <div className="relative min-w-max">
             <Table
-              className="relative w-full table-auto border-collapse text-xs"
-              style={{ borderSpacing: 0 }}
+              size="xs"
+              className="relative w-full table-auto border-collapse"
               disableScrollWrapper={true}
             >
               <DataTableHeader
                 table={table}
+                columnWidths={columnWidths}
                 onColumnOrderChange={onColumnOrderChange}
               />
 
               <DataTableBody
                 table={table}
+                columnWidths={columnWidths}
                 rows={rows}
                 virtualRows={virtualRows}
                 totalSize={totalSize}
@@ -911,6 +913,7 @@ function useDataTableContent(
 
 interface DataTableBodyProps {
   table: ReactTable<DataTableFeatures, DataRow>;
+  columnWidths: ColumnWidths;
   rows: TanStackRow<DataTableFeatures, DataRow>[];
   virtualRows: VirtualItem[];
   totalSize: number;
@@ -927,6 +930,7 @@ interface DataTableBodyProps {
 
 function DataTableBody({
   table,
+  columnWidths,
   rows,
   virtualRows,
   totalSize,
@@ -943,45 +947,47 @@ function DataTableBody({
   "use no memo";
   return (
     <TableBody
-      style={{
-        position: "relative",
+      style={{ "--body-height": `${String(totalSize)}px` } as CSSProperties}
+      className={clsx(
+        "relative z-10 border-collapse",
         // While loading, fill the container (height:100%) so the absolute skeleton
         // rows have a full-height positioning context. The scroll container is set
         // to overflow:hidden during load (see DataTable), so the intentionally
         // overestimated rows are clipped to reach the footer with no gap/scrollbar.
-        height: isLoading ? "100%" : totalSize,
-      }}
-      className="relative z-10 border-collapse gap-0"
+        isLoading ? "h-full" : "h-(--body-height)",
+      )}
     >
       {isLoading ? (
         Array.from({ length: skeletonRowCount }, (_, rowIdx) => (
           <TableRow
             key={rowIdx}
-            className="absolute flex w-full border-b border-border"
-            style={{ top: rowIdx * 24, height: 24 }}
+            className="absolute top-(--row-top) flex h-6 w-full"
+            style={{ "--row-top": `${String(rowIdx * 24)}px` } as CSSProperties}
           >
             {table.getVisibleLeafColumns().map((col, colIdx) => (
               <TableCell
                 key={col.id}
+                variant="grid"
                 className={clsx(
-                  "flex items-center border border-border",
+                  "flex h-6 w-(--col-size) max-w-(--col-size) min-w-(--col-size) items-center",
                   col.id === "__select__" ? "p-0" : "p-0.5",
                 )}
-                style={{
-                  width: `var(--col-${col.id}-size)`,
-                  minWidth: `var(--col-${col.id}-size)`,
-                  maxWidth: `var(--col-${col.id}-size)`,
-                  height: 24,
-                }}
+                style={
+                  {
+                    "--col-size": `${String(columnWidths[col.id])}px`,
+                  } as CSSProperties
+                }
               >
                 {col.id === "__select__" ? (
                   <Skeleton className="size-3.5 rounded-sm" />
                 ) : (
                   <Skeleton
-                    className="h-3 rounded"
-                    style={{
-                      width: `${String(skeletonWidthPcts[(rowIdx * 7 + colIdx) % skeletonWidthPcts.length])}%`,
-                    }}
+                    className="h-3 w-(--skeleton-width) rounded"
+                    style={
+                      {
+                        "--skeleton-width": `${String(skeletonWidthPcts[(rowIdx * 7 + colIdx) % skeletonWidthPcts.length])}%`,
+                      } as CSSProperties
+                    }
                   />
                 )}
               </TableCell>
@@ -992,13 +998,12 @@ function DataTableBody({
         <TableRow className="flex h-6 w-full items-center">
           <TableCell
             colSpan={table.getVisibleLeafColumns().length}
-            className="w-full p-0.5 text-left text-muted-foreground"
-            style={{ justifyContent: "left" }}
+            className="w-full justify-start p-0.5 text-left"
           >
             {errorMessage ? (
               <span className="text-destructive">{errorMessage}</span>
             ) : (
-              "No results"
+              <span className="text-muted-foreground">No results</span>
             )}
           </TableCell>
         </TableRow>
@@ -1052,16 +1057,14 @@ function DataTableBody({
                   onActiveRowChange?.(String(idVal));
                 }
               }}
-              style={{
-                transform: `translateY(${String(virtualRow.start)}px)`,
-                height: "24px",
-              }}
-              className={clsx(
-                "group absolute inset-x-0 flex cursor-pointer",
-                row.getIsSelected()
-                  ? "bg-primary/15 dark:bg-primary/30"
-                  : "hover:bg-muted",
-              )}
+              style={
+                {
+                  "--row-start": `${String(virtualRow.start)}px`,
+                } as CSSProperties
+              }
+              variant="tint"
+              data-state={row.getIsSelected() ? "selected" : undefined}
+              className="group absolute inset-x-0 flex h-6 translate-y-(--row-start) cursor-pointer"
             >
               {row.getVisibleCells().map((cell) => (
                 <TableCell
@@ -1080,35 +1083,26 @@ function DataTableBody({
                         }
                       : undefined
                   }
+                  // The sticky select cell needs an opaque background (scrolled
+                  // cells would show through a transparent one), keyed on the
+                  // row's data-state; see TableCell `sticky-select`.
+                  variant={
+                    cell.column.id === "__select__" ? "sticky-select" : "grid"
+                  }
                   className={clsx(
-                    "flex items-center truncate border border-border",
+                    // No ellipsis: text-overflow has no effect on a flex
+                    // container, so overflow-hidden is all `truncate` did here
+                    // (the cell is already whitespace-nowrap).
+                    "flex h-6 w-(--col-size) max-w-(--col-size) min-w-(--col-size) items-center overflow-hidden",
                     cell.column.id === "__select__"
-                      ? clsx(
-                          "justify-center p-0",
-                          row.getIsSelected()
-                            ? ""
-                            : "bg-background group-hover:bg-muted",
-                        )
+                      ? "sticky left-0 z-1 justify-center p-0"
                       : "justify-start p-0.5",
                   )}
-                  style={{
-                    width: `var(--col-${cell.column.id}-size)`,
-                    minWidth: `var(--col-${cell.column.id}-size)`,
-                    maxWidth: `var(--col-${cell.column.id}-size)`,
-                    height: "24px",
-                    ...(cell.column.id === "__select__" && {
-                      position: "sticky",
-                      left: 0,
-                      zIndex: 1,
-                      // color-mix produces an opaque equivalent of bg-primary/15 over
-                      // the page background — transparent backgrounds on sticky elements
-                      // let scrolled content bleed through.
-                      ...(row.getIsSelected() && {
-                        backgroundColor:
-                          "color-mix(in srgb, var(--color-primary) 15%, var(--color-background))",
-                      }),
-                    }),
-                  }}
+                  style={
+                    {
+                      "--col-size": `${String(columnWidths[cell.column.id])}px`,
+                    } as CSSProperties
+                  }
                 >
                   <table.FlexRender cell={cell} />
                 </TableCell>

@@ -250,17 +250,16 @@ export function SigmaCanvas({
   return (
     <div className="relative size-full">
       <SigmaContainer
+        className="size-full"
         // react-sigma paints the container div with --sigma-background-color
         // (default #fff) behind its transparent WebGL canvases. Match the
         // "Search proteins" box (bg-input/30 over the bg-card column) so the
-        // canvas reads as the same surface. Plain var(--card) fails in light
-        // themes where --card is pure white — the input/30 composite never is.
+        // canvas reads as the same surface: --graph-surface in globals.css is
+        // that input/30-over-card composite. Plain var(--card) fails in light
+        // themes where --card is pure white — the composite never is.
         style={
           {
-            width: "100%",
-            height: "100%",
-            "--sigma-background-color":
-              "color-mix(in oklab, var(--input) 30%, var(--card))",
+            "--sigma-background-color": "var(--graph-surface)",
           } as CSSProperties
         }
         settings={{

@@ -8,7 +8,7 @@ import { AreaClosed, LinePath } from "@visx/shape";
 import { useTooltip } from "@visx/tooltip";
 import { curveMonotoneX } from "@visx/vendor/d3-shape";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { chartTooltipStyle } from "@/lib/services/organisms/chart-utils";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
@@ -63,9 +63,9 @@ export function AreaChart({
   const step = labelStep(yearData.length);
 
   return (
-    <Card className="relative rounded-lg" size="sm">
+    <Card variant="panel" className="relative" size="sm">
       <CardHeader>
-        <CardTitle className="text-sm! font-semibold!">{title}</CardTitle>
+        <h3 className="text-sm leading-snug font-semibold">{title}</h3>
       </CardHeader>
       <CardContent>
         {errorMessage ? (

@@ -24,6 +24,7 @@ import {
   DataTable,
   type DataTableSort,
   type FileTableFeatures,
+  orderedCells,
   useDataTableBody,
 } from "@/components/shared/file-table";
 import { useTableKeyboardNavigation } from "@/hooks/use-table-keyboard-navigation";
@@ -46,6 +47,9 @@ import { clsx } from "cn";
 
 interface JobDataRowProps {
   row: Row<FileTableFeatures, JobListItem>;
+  // See orderedCells: the compiled row caches its cells on `row`, which a
+  // column reorder does not replace.
+  columnOrder: string[];
   isSelected: boolean;
   onSelect: (job: JobListItem, modifiers?: { ctrlOrMeta: boolean }) => void;
   onDoubleClick: (job: JobListItem) => void;
@@ -53,16 +57,16 @@ interface JobDataRowProps {
 
 function JobDataRow({
   row,
+  columnOrder,
   isSelected,
   onSelect,
   onDoubleClick,
 }: JobDataRowProps) {
   return (
     <TableRow
-      className={clsx(
-        "cursor-pointer border-l-2",
-        isSelected ? "border-l-primary bg-muted" : "border-l-transparent",
-      )}
+      className="cursor-pointer"
+      selectionIndicator
+      data-state={isSelected ? "selected" : undefined}
       onClick={(e) => {
         onSelect(row.original, {
           ctrlOrMeta: e.ctrlKey || e.metaKey,
@@ -76,7 +80,7 @@ function JobDataRow({
       }}
       aria-selected={isSelected}
     >
-      {row.getVisibleCells().map((cell, cellIndex) => {
+      {orderedCells(row, columnOrder).map((cell, cellIndex) => {
         // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
         const metaCls = cell.column.columnDef.meta?.className;
         const className = clsx(
@@ -85,15 +89,7 @@ function JobDataRow({
           metaCls ?? "",
         );
         return (
-          <TableCell
-            key={cell.id}
-            className={className}
-            style={{
-              width: `var(--col-${cell.column.id}-size)`,
-              minWidth: `var(--col-${cell.column.id}-size)`,
-              maxWidth: `var(--col-${cell.column.id}-size)`,
-            }}
-          >
+          <TableCell key={cell.id} className={className}>
             <FlexRender cell={cell} />
           </TableCell>
         );
@@ -117,18 +113,20 @@ function JobsTableBody({
   onSelect: JobDataRowProps["onSelect"];
   onDoubleClick: JobDataRowProps["onDoubleClick"];
 }) {
-  const { rows, colSpan } = useDataTableBody<JobListItem>();
+  const { rows, colSpan, columnOrder } = useDataTableBody<JobListItem>();
 
   if (rows.length === 0) {
     return (
       <TableRow>
         <TableCell
           colSpan={colSpan}
-          className="py-12 pl-6 text-center text-muted-foreground"
+          className="py-12 pl-6 text-center"
         >
-          {searchQuery || statusFilter !== "all" || serviceFilter !== "all"
-            ? "No jobs match your filters"
-            : "No jobs found"}
+          <span className="text-muted-foreground">
+            {searchQuery || statusFilter !== "all" || serviceFilter !== "all"
+              ? "No jobs match your filters"
+              : "No jobs found"}
+          </span>
         </TableCell>
       </TableRow>
     );
@@ -138,6 +136,7 @@ function JobsTableBody({
     <JobDataRow
       key={row.id}
       row={row}
+      columnOrder={columnOrder}
       isSelected={selectedIds.has(row.original.id)}
       onSelect={onSelect}
       onDoubleClick={onDoubleClick}

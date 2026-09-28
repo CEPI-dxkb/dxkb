@@ -21,8 +21,14 @@ import { LogOut, Loader2 } from "lucide-react";
 
 interface SignoutButtonProps {
   variant?:
-    "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
+    | "default"
+    | "destructive"
+    | "outline"
+    | "secondary"
+    | "ghost"
+    | "link"
+    | "menu-item";
+  size?: "default" | "sm" | "lg" | "icon" | "menu-item";
   showIcon?: boolean;
   confirmDialog?: boolean;
   className?: string;

@@ -12,7 +12,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import {
   Select,
   SelectContent,
@@ -76,15 +80,16 @@ export function JobsToolbar({
   return (
     <div className="space-y-3">
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search />
+        </InputGroupAddon>
+        <InputGroupInput
           placeholder="Search by name, ID, or service..."
           value={searchQuery}
           onChange={(e) => { onSearchChange(e.target.value); }}
-          className="pl-10"
         />
-      </div>
+      </InputGroup>
 
       <div className="flex flex-wrap items-center gap-3">
         {/* Service filter */}
@@ -159,10 +164,15 @@ export function JobsToolbar({
           />
           <Label
             htmlFor="include-archived"
-            className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+            variant="option"
+            leading="normal"
+            className="cursor-pointer"
           >
-            <Archive className="size-3.5" />
-            Archived
+            {/* The inner span sets the icon gap (the label's own gap is wider). */}
+            <span className="flex items-center gap-1">
+              <Archive className="size-3.5" />
+              Archived
+            </span>
           </Label>
         </div>
 
@@ -173,7 +183,7 @@ export function JobsToolbar({
         {statusSummary && (
           <>
             <span className="flex items-center gap-1">
-              <Clock className="size-3 text-gray-500" />
+              <Clock className="size-3 text-muted-foreground" />
               queued:{" "}
               <span className="font-medium text-foreground">
                 {statusSummary.queued ?? 0}
@@ -181,7 +191,7 @@ export function JobsToolbar({
             </span>
             <span>&middot;</span>
             <span className="flex items-center gap-1">
-              <Loader2 className="size-3 text-blue-500" />
+              <Loader2 className="size-3 text-info" />
               running:{" "}
               <span className="font-medium text-foreground">
                 {(statusSummary.running ?? 0) +
@@ -190,7 +200,7 @@ export function JobsToolbar({
             </span>
             <span>&middot;</span>
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="size-3 text-emerald-500" />
+              <CheckCircle2 className="size-3 text-success" />
               completed:{" "}
               <span className="font-medium text-foreground">
                 {statusSummary.completed ?? 0}
@@ -198,7 +208,7 @@ export function JobsToolbar({
             </span>
             <span>&middot;</span>
             <span className="flex items-center gap-1">
-              <XCircle className="size-3 text-red-500" />
+              <XCircle className="size-3 text-destructive" />
               failed:{" "}
               <span className="font-medium text-foreground">
                 {statusSummary.failed ?? 0}

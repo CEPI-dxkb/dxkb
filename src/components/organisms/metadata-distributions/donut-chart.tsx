@@ -411,8 +411,7 @@ function DonutChartTabs({
       </div>
       <div
         ref={scrollRef}
-        className="flex min-w-0 flex-1 overflow-x-auto"
-        style={{ scrollbarWidth: "none" }}
+        className="flex min-w-0 flex-1 scrollbar-none overflow-x-auto"
       >
         <div className="flex flex-nowrap items-center gap-0.5">
           {tabs.map((tab, index) => (
@@ -767,7 +766,7 @@ function useDonutChart({
   };
 
   return (
-    <Card className="relative rounded-lg" size="sm">
+    <Card variant="panel" className="relative" size="sm">
       <CardContent className="flex flex-1 flex-col">
         <div className="flex items-start gap-2">
           <h3 className="m-0 max-w-[60%] shrink-0 text-sm font-semibold">
@@ -804,10 +803,9 @@ function useDonutChart({
               role="img"
               aria-label={`${title} distribution`}
               className={cn(
-                "shrink-0",
+                "shrink-0 overflow-visible",
                 layout === "side" ? "h-full w-1/2" : "w-full max-w-40",
               )}
-              style={{ overflow: "visible" }}
             >
               <g
                 transform={`translate(${String(chartCenter)},${String(chartCenter)})`}

@@ -12,7 +12,7 @@ interface PlaceholderViewProps {
 
 export function PlaceholderView({ title, description }: PlaceholderViewProps) {
   return (
-    <Card className="rounded-lg">
+    <Card variant="panel">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>

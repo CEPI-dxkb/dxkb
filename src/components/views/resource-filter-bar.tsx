@@ -111,7 +111,7 @@ export function ResourceFilterBar({
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded border px-2 py-1 text-xs hover:bg-muted"
+                    size="toolbar"
                   >
                     Facets
                   </Button>
@@ -145,7 +145,7 @@ export function ResourceFilterBar({
               setKeywordDraft("");
               onChange({ keyword: undefined, filters: {}, clearRql: true });
             }}
-            className="rounded border px-2 py-1 text-xs whitespace-nowrap"
+            size="toolbar"
           >
             Clear All Filters
           </Button>
@@ -156,7 +156,7 @@ export function ResourceFilterBar({
               onClick={() => {
                 setShowFacets((current) => !current);
               }}
-              className="rounded border px-2 py-1 text-xs whitespace-nowrap hover:bg-muted"
+              size="toolbar"
             >
               {showFacets ? "Hide Filters" : "Show Filters"}
             </Button>

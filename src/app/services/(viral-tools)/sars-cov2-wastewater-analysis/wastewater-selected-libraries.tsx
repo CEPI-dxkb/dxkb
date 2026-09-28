@@ -1,4 +1,4 @@
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -9,6 +9,7 @@ import { HelpCircle } from "lucide-react";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -38,9 +39,9 @@ export function WastewaterSelectedLibraries({
             </Tooltip>
           </TooltipProvider>
         </ServiceCardTitle>
-        <CardDescription className="text-xs">
+        <ServiceCardDescription>
           Place read files here using the arrow buttons.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent>
         <SelectedItemsTable

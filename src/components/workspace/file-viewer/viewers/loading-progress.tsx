@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { formatFileSize } from "@/lib/services/workspace/helpers";
 
 interface LoadingProgressProps {
@@ -18,10 +19,13 @@ export function LoadingProgress({
     <div className="flex items-center gap-3 border-b border-border bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
       <div className="h-1.5 min-w-24 flex-1 overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full bg-primary transition-[width] duration-150"
-          style={{
-            width: percentage !== null ? `${String(percentage)}%` : "100%",
-          }}
+          className="h-full w-(--progress) rounded-full bg-primary transition-[width] duration-150"
+          style={
+            {
+              "--progress":
+                percentage !== null ? `${String(percentage)}%` : "100%",
+            } as CSSProperties
+          }
         />
       </div>
       <span className="shrink-0 tabular-nums">

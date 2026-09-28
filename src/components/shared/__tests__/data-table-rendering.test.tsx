@@ -1187,7 +1187,7 @@ describe("DataTable column drag affordance", () => {
 
     const wrapper = dragWrapperFor(/Strain Name/);
     expect(wrapper).toHaveAttribute("draggable", "true");
-    expect(wrapper.style.cursor).toBe("move");
+    expect(wrapper).toHaveClass("cursor-move");
   });
 
   it("does not make headers draggable when onColumnOrderChange is absent", () => {
@@ -1203,7 +1203,7 @@ describe("DataTable column drag affordance", () => {
 
     const wrapper = dragWrapperFor(/Strain Name/);
     expect(wrapper).toHaveAttribute("draggable", "false");
-    expect(wrapper.style.cursor).toBe("");
+    expect(wrapper).not.toHaveClass("cursor-move");
   });
 
   it("ignores a drop on a non-reorderable table instead of reordering", async () => {

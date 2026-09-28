@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ReferenceGenomesSkeleton() {
   return (
-    <Card className="rounded-lg xl:min-h-0 xl:flex-1" size="sm">
+    <Card variant="panel" className="xl:min-h-0 xl:flex-1" size="sm">
       <CardHeader className="pb-0">
         <Skeleton className="h-5 w-52" />
         <Skeleton className="mt-2 h-8 w-full rounded-lg" />

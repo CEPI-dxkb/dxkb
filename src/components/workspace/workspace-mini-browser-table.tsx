@@ -18,7 +18,6 @@ import {
   formatOwner,
 } from "@/lib/services/workspace/helpers";
 import { isFolderType } from "@/lib/services/workspace/utils";
-import { cn } from "@/lib/utils";
 import { WorkspaceItemIcon } from "./workspace-item-icon";
 
 interface WorkspaceMiniBrowserTableProps {
@@ -75,10 +74,8 @@ export function WorkspaceMiniBrowserTable({
           {showParentRow && (
             <TableRow
               data-row-key="parent"
-              className={cn(
-                "cursor-pointer hover:bg-muted/50",
-                focusedRow === "parent" && "bg-muted",
-              )}
+              className="cursor-pointer"
+              data-state={focusedRow === "parent" ? "selected" : undefined}
               onClick={onParentClick}
             >
               <TableCell className="pl-3" colSpan={4}>
@@ -113,8 +110,10 @@ export function WorkspaceMiniBrowserTable({
             ))
           ) : error ? (
             <TableRow>
-              <TableCell className="pl-3 text-destructive" colSpan={4}>
-                Failed to load folder contents.
+              <TableCell className="pl-3" colSpan={4}>
+                <span className="text-destructive">
+                  Failed to load folder contents.
+                </span>
               </TableCell>
             </TableRow>
           ) : (
@@ -126,13 +125,14 @@ export function WorkspaceMiniBrowserTable({
                 <TableRow
                   key={item.id}
                   data-row-key={normalizePath(item.path)}
-                  className={cn(
-                    "cursor-pointer hover:bg-muted/50",
+                  className="cursor-pointer"
+                  data-state={
                     isFolderType(item.type) &&
-                      isSelected &&
-                      focusedRow !== "parent" &&
-                      "bg-muted",
-                  )}
+                    isSelected &&
+                    focusedRow !== "parent"
+                      ? "selected"
+                      : undefined
+                  }
                   onClick={() => {
                     onFolderClick(item);
                   }}
@@ -146,13 +146,13 @@ export function WorkspaceMiniBrowserTable({
                       <span className="truncate text-sm">{item.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden pl-3 text-sm sm:table-cell">
+                  <TableCell className="hidden pl-3 sm:table-cell">
                     {isFolderType(item.type) ? "—" : formatFileSize(item.size)}
                   </TableCell>
-                  <TableCell className="hidden pl-3 text-sm md:table-cell">
+                  <TableCell className="hidden pl-3 md:table-cell">
                     {formatOwner(item.ownerId ?? "")}
                   </TableCell>
-                  <TableCell className="hidden pl-3 text-sm lg:table-cell">
+                  <TableCell className="hidden pl-3 lg:table-cell">
                     {formatDate(item.createdAt ?? "")}
                   </TableCell>
                 </TableRow>

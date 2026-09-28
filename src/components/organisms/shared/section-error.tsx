@@ -18,11 +18,13 @@ export function SectionError({
   message,
 }: SectionErrorProps) {
   return (
-    <Card className="rounded-lg border-destructive/30 bg-destructive/5">
+    <Card variant="panel-error">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-destructive">
-          <AlertTriangle />
-          {title}
+        <CardTitle>
+          <div className="flex items-center gap-2">
+            <AlertTriangle />
+            {title}
+          </div>
         </CardTitle>
         <CardDescription>Upstream data could not be loaded.</CardDescription>
       </CardHeader>

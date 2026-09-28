@@ -7,7 +7,11 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { columnClassMap } from "./workspace-table-columns";
-import type { FileTableFeatures } from "@/components/shared/file-table";
+import {
+  orderedCells,
+  useDataTableBody,
+  type FileTableFeatures,
+} from "@/components/shared/file-table";
 import { clsx } from "cn";
 
 interface SpecialRowProps {
@@ -47,18 +51,10 @@ function SpecialRow({
           cell.metaClassName,
         );
         return (
-          <TableCell
-            key={cell.id}
-            className={className}
-            style={{
-              width: `var(--col-${cell.id}-size)`,
-              minWidth: `var(--col-${cell.id}-size)`,
-              maxWidth: `var(--col-${cell.id}-size)`,
-            }}
-          >
+          <TableCell key={cell.id} className={className}>
             {cell.id === "name" ? (
               <div className="flex items-center gap-2">
-                <Icon className="size-4 shrink-0 text-amber-500" />
+                <Icon className="size-4 shrink-0 text-highlight" />
                 <span className="font-medium text-muted-foreground italic">
                   {label}
                 </span>
@@ -103,6 +99,7 @@ export function DataRow({
   onItemClick,
   onItemDoubleClick,
 }: DataRowProps) {
+  const { columnOrder } = useDataTableBody<WorkspaceItem>();
   const item = row.original;
   const isNavigable = isFolderType(item.type);
 
@@ -140,7 +137,7 @@ export function DataRow({
       onDoubleClick={handleRowDoubleClick}
       aria-selected={useSelectionMode ? isSelected : undefined}
     >
-      {row.getVisibleCells().map((cell) => {
+      {orderedCells(row, columnOrder).map((cell) => {
         // eslint-disable-next-line shadcn/require-static-classes -- column classes come from TanStack column meta, authored as static strings in the column definitions
         const metaCls = cell.column.columnDef.meta?.className;
         const className = clsx(
@@ -149,15 +146,7 @@ export function DataRow({
           metaCls ?? "",
         );
         return (
-          <TableCell
-            key={cell.id}
-            className={className}
-            style={{
-              width: `var(--col-${cell.column.id}-size)`,
-              minWidth: `var(--col-${cell.column.id}-size)`,
-              maxWidth: `var(--col-${cell.column.id}-size)`,
-            }}
-          >
+          <TableCell key={cell.id} className={className}>
             <FlexRender cell={cell} />
           </TableCell>
         );
@@ -175,9 +164,9 @@ export function EmptyRow({ colSpan }: EmptyRowProps) {
     <TableRow>
       <TableCell
         colSpan={colSpan}
-        className="py-12 pl-6 text-center text-muted-foreground"
+        className="py-12 pl-6 text-center"
       >
-        This folder is empty
+        <span className="text-muted-foreground">This folder is empty</span>
       </TableCell>
     </TableRow>
   );

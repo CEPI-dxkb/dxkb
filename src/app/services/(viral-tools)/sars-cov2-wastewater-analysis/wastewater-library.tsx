@@ -1,5 +1,5 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -15,6 +15,7 @@ import { RequiredFormCardTitle } from "@/components/forms/required-form-componen
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
@@ -63,9 +64,9 @@ export function WastewaterLibrary({
             sections={sarsCov2WastewaterAnalysisInputLib.sections}
           />
         </RequiredFormCardTitle>
-        <CardDescription className="text-xs">
+        <ServiceCardDescription>
           Send to selected libraries using the arrow buttons.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent className="space-y-6">
         <ReadInput

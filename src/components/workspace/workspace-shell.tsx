@@ -51,8 +51,8 @@ export function WorkspaceShell({
       <div className="relative mx-0.5 mb-1 h-8 shrink-0">
         <Button
           variant="ghost"
-          size="sm"
-          className={`absolute inset-0 size-full justify-start gap-1 font-normal ${
+          size="panel-toggle"
+          className={`absolute inset-0 size-full justify-start ${
             panelExpanded ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
           onClick={() => {
@@ -66,8 +66,8 @@ export function WorkspaceShell({
         </Button>
         <Button
           variant="ghost"
-          size="sm"
-          className={`absolute inset-0 size-full justify-start gap-1 font-normal ${
+          size="panel-toggle"
+          className={`absolute inset-0 size-full justify-start ${
             panelExpanded ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
           onClick={() => {

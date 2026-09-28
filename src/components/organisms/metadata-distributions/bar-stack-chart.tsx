@@ -65,7 +65,7 @@ export function BarStackChart({
 
   if (errorMessage || data.years.length === 0) {
     return (
-      <Card className="relative rounded-lg" size="sm">
+      <Card variant="panel" className="relative" size="sm">
         <CardContent className="flex flex-1 flex-col">
           <h3 className="m-0 text-sm font-semibold">{title}</h3>
           {errorMessage ? (
@@ -107,7 +107,7 @@ export function BarStackChart({
   const yTicks = yScale.ticks(4);
 
   return (
-    <Card className="relative rounded-lg" size="sm">
+    <Card variant="panel" className="relative" size="sm">
       <CardContent className="flex flex-1 flex-col">
         <h3 className="m-0 text-sm font-semibold">{title}</h3>
         <div className="min-w-0 overflow-hidden pt-2">

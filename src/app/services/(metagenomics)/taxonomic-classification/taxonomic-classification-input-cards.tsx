@@ -95,7 +95,8 @@ export function ClassificationInputCard({
                   controller.handleSampleIdChange("paired", event.target.value);
                 }}
                 placeholder="Sample ID"
-                className="mt-1.5 font-mono text-sm"
+                variant="mono"
+                className="mt-1.5"
               />
             </div>
           </div>
@@ -136,7 +137,8 @@ export function ClassificationInputCard({
                   controller.handleSampleIdChange("single", event.target.value);
                 }}
                 placeholder="Sample ID"
-                className="mt-1.5 font-mono text-sm"
+                variant="mono"
+                className="mt-1.5"
               />
             </div>
           </div>
@@ -159,7 +161,8 @@ export function ClassificationInputCard({
                 controller.handleSampleIdChange("srr", event.target.value);
               }}
               placeholder="Sample ID"
-              className="mt-1.5 font-mono text-sm"
+              variant="mono"
+              className="mt-1.5"
             />
           </div>
           <form.Field name="paired_end_libs">

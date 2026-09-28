@@ -39,20 +39,13 @@ const nodes: GNode[] = [
   { id: "fig|2.2", gene: "recA", kind: "host" },
 ];
 
-// jsdom's cssstyle normalises inline hex to rgb() (matching real browsers), so
-// compare rendered dot colors in that space.
-function rgb(hex: string): string {
-  const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return `rgb(${String(r)}, ${String(g)}, ${String(b)})`;
-}
-
-function dotOf(row: HTMLElement): HTMLElement {
+// The dot paints `bg-(--dot-color)`, so its rendered color is whatever the row
+// puts in that custom property.
+function dotColorOf(row: HTMLElement): string {
   const dot = row.querySelector("span[aria-hidden]");
   if (!dot) throw new Error("row has no color dot");
-  return dot as HTMLElement;
+  expect(dot).toHaveClass("bg-(--dot-color)");
+  return (dot as HTMLElement).style.getPropertyValue("--dot-color");
 }
 
 describe("GraphNodeList", () => {
@@ -128,9 +121,9 @@ describe("GraphNodeList", () => {
       .closest("[cmdk-item]") as HTMLElement;
 
     // dnaA is selected -> amber, regardless of its microbial kind.
-    expect(dotOf(selectedRow).style.backgroundColor).toBe(rgb(colors.selected));
+    expect(dotColorOf(selectedRow)).toBe(colors.selected);
     // recA is unselected -> its host kind color.
-    expect(dotOf(hostRow).style.backgroundColor).toBe(rgb(colors.host));
+    expect(dotColorOf(hostRow)).toBe(colors.host);
   });
 
   it("highlights every protein in a bulk selection", () => {
@@ -146,7 +139,7 @@ describe("GraphNodeList", () => {
       const row = screen.getByText(label).closest("[cmdk-item]") as HTMLElement;
       expect(row).toHaveAttribute("data-app-selected", "true");
       expect(row).not.toHaveAttribute("aria-current");
-      expect(dotOf(row).style.backgroundColor).toBe(rgb(colors.selected));
+      expect(dotColorOf(row)).toBe(colors.selected);
     }
   });
 
@@ -166,10 +159,8 @@ describe("GraphNodeList", () => {
       .getByText("recA")
       .closest("[cmdk-item]") as HTMLElement;
 
-    expect(dotOf(microbialRow).style.backgroundColor).toBe(
-      rgb(colors.microbial),
-    );
-    expect(dotOf(hostRow).style.backgroundColor).toBe(rgb(colors.host));
+    expect(dotColorOf(microbialRow)).toBe(colors.microbial);
+    expect(dotColorOf(hostRow)).toBe(colors.host);
   });
 
   it("gives every row a hover highlight distinct from the selected row's", () => {

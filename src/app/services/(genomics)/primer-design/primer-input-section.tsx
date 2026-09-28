@@ -66,10 +66,10 @@ export function PrimerInputSection({
             <TabsTrigger value="sequence_text">Paste Sequence</TabsTrigger>
             <TabsTrigger value="workplace_fasta">Workspace FASTA</TabsTrigger>
           </TabsList>
-          <TabsContent value="sequence_text" className="space-y-3">
+          <TabsContent value="sequence_text">
             <form.Field name="SEQUENCE_ID">
               {(field) => (
-                <FieldItem>
+                <FieldItem className="mb-3">
                   <ServiceFieldLabel field={field}>
                     Sequence Identifier
                   </ServiceFieldLabel>
@@ -90,7 +90,7 @@ export function PrimerInputSection({
             </form.Field>
             <form.Field name="sequence_input">
               {(field) => (
-                <FieldItem>
+                <FieldItem className="mb-3">
                   <ServiceFieldLabel field={field}>
                     Paste Sequence
                   </ServiceFieldLabel>
@@ -112,7 +112,7 @@ export function PrimerInputSection({
                     </p>
                   ) : null}
                   {sequenceValidation?.isValid ? (
-                    <p className="text-sm text-green-600">
+                    <p className="text-sm text-success">
                       Sequence looks valid.
                     </p>
                   ) : null}
@@ -172,7 +172,7 @@ export function PrimerInputSection({
         </Tabs>
         <form.Field name="PRIMER_PICK_INTERNAL_OLIGO">
           {(field) => (
-            <FieldItem className="flex flex-row items-center gap-2">
+            <FieldItem className="flex flex-row items-center">
               <ServiceFieldSubLabel field={field}>
                 Pick Internal Oligo
               </ServiceFieldSubLabel>

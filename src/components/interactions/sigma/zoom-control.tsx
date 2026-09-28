@@ -86,11 +86,14 @@ export function ZoomControl() {
       className="absolute right-3 bottom-3 z-10"
       aria-label="Graph zoom"
     >
-      <InputGroup className="grid h-9 w-36 grid-cols-[2rem_1fr_2rem] bg-card p-0.5 shadow-md">
+      <InputGroup
+        variant="floating"
+        className="grid h-9 w-36 grid-cols-[2rem_1fr_2rem]"
+      >
         <InputGroupButton
           aria-label="Zoom out"
           size="icon-sm"
-          className="size-8 justify-self-start rounded-md"
+          className="justify-self-start"
           onClick={() => {
             zoomOut();
           }}
@@ -111,7 +114,8 @@ export function ZoomControl() {
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             style={{ width: `${String(Math.max(inputValue.length, 1))}ch` }}
-            className="h-8 flex-none [appearance:textfield] bg-transparent px-0 text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            variant="numeric"
+            className="h-8 flex-none [appearance:textfield] text-right [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
           <span
             aria-hidden
@@ -123,7 +127,7 @@ export function ZoomControl() {
         <InputGroupButton
           aria-label="Zoom in"
           size="icon-sm"
-          className="size-8 justify-self-end rounded-md"
+          className="justify-self-end"
           onClick={() => {
             zoomIn();
           }}

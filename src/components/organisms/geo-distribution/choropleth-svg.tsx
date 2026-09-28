@@ -13,6 +13,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import type { OrganismGeoDistribution } from "@/lib/services/organisms/types";
+import { cn } from "@/lib/utils";
 
 import type { HoverEnter, HoverLeave, HoverPayload } from "./choropleth-path";
 import type { ColorScale } from "./color-scale";
@@ -196,11 +197,10 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                   ref={zoom.containerRef}
                   role="img"
                   aria-label="Genome distribution map"
-                  style={{
-                    flexShrink: 0,
-                    cursor: zoom.isDragging ? "grabbing" : "grab",
-                    touchAction: "none",
-                  }}
+                  className={cn(
+                    "shrink-0 touch-none",
+                    zoom.isDragging ? "cursor-grabbing" : "cursor-grab",
+                  )}
                   onWheel={(event) => {
                     event.preventDefault();
                     const next = event.deltaY < 0 ? 1.15 : 1 / 1.15;

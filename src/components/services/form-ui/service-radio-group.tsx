@@ -15,3 +15,16 @@ export function ServiceRadioGroup({
     />
   );
 }
+
+/** A radio group laid out as a one-column grid, two columns from md up. */
+export function ServiceRadioGroupGrid({
+  className,
+  ...props
+}: React.ComponentProps<typeof RadioGroup>) {
+  return (
+    <RadioGroup
+      className={cn("service-radio-group-grid", className)}
+      {...props}
+    />
+  );
+}

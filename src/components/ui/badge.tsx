@@ -19,10 +19,23 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // Local edit: statistic chips on an accent tint (quick links).
+        accent: "bg-accent text-foreground [a]:hover:bg-accent/80",
+        // Local edit: a result count on the brand secondary fill.
+        count:
+          "bg-secondary font-semibold text-white [a]:hover:bg-secondary/80",
+      },
+      // Local edit: smaller badges. xs is the taxonomy rank chip; sm keeps
+      // the default box with 11px text.
+      size: {
+        default: "",
+        xs: "h-4 px-1.5 py-0 text-3xs leading-none font-normal",
+        sm: "text-2xs",
       },
     },
     defaultVariants: {
       variant: "default",
+      size: "default",
     },
   },
 );
@@ -30,6 +43,7 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant = "default",
+  size = "default",
   render,
   ...props
 }: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
@@ -37,7 +51,7 @@ function Badge({
     defaultTagName: "span",
     props: mergeProps<"span">(
       {
-        className: cn(badgeVariants({ variant }), className),
+        className: cn(badgeVariants({ variant, size }), className),
       },
       props,
     ),

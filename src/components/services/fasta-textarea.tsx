@@ -4,7 +4,6 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ServiceTextarea } from "@/components/services/form-ui/service-input";
-import { cn } from "@/lib/utils";
 import {
   validateFastaForBlast,
   getFastaErrorMessage,
@@ -93,24 +92,20 @@ export function FastaTextarea({
         onChange={handleChange}
         placeholder={placeholder}
         disabled={disabled}
-        className={cn(
-          hasError && "border-red-500 focus-visible:ring-red-500",
-          validationResult?.valid &&
-            "border-green-500 focus-visible:ring-green-500",
-          className,
-        )}
+        aria-invalid={hasError || undefined}
+        className={className}
       />
 
       {errorMessage && (
-        <Alert variant="destructive" className="py-2">
-          <AlertDescription className="text-sm">
+        <Alert variant="destructive" size="sm">
+          <AlertDescription>
             {errorMessage}
           </AlertDescription>
         </Alert>
       )}
 
       {validationResult?.valid && validationResult.numseq > 0 && (
-        <div className="text-sm text-green-600">
+        <div className="text-sm text-success">
           ✓ Valid FASTA with {validationResult.numseq} sequence
           {validationResult.numseq !== 1 ? "s" : ""}
         </div>

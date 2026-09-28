@@ -71,13 +71,13 @@ export function SuLoginDialog({ open, onOpenChange }: SuLoginDialogProps) {
             Impersonate User
           </h3>
 
-          <div className="flex gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
-            <ShieldAlert className="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="flex gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3">
+            <ShieldAlert className="mt-0.5 size-5 shrink-0 text-warning" />
             <div className="text-sm">
-              <p className="font-bold text-amber-800 italic dark:text-amber-300">
+              <p className="font-bold text-warning italic">
                 WARNING &mdash; With great power comes great responsibility...
               </p>
-              <p className="mt-1 text-amber-700 dark:text-amber-400">
+              <p className="mt-1 text-warning">
                 You can take control of another user&apos;s account to
                 troubleshoot or assist them. Please be careful and respectful of
                 the user&apos;s account that you are controlling.

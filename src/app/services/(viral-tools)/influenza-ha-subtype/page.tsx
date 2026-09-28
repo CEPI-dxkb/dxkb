@@ -150,7 +150,7 @@ export default function HASubtypeNumberingPage() {
                     <FieldItem>
                       <ServiceTextarea
                         placeholder="Enter one or more protein sequences in FASTA format."
-                        className="min-h-44 font-mono text-sm"
+                        className="min-h-44"
                         value={field.state.value}
                         onChange={(e) => {
                           field.handleChange(e.target.value);
@@ -249,7 +249,8 @@ export default function HASubtypeNumberingPage() {
                           />
                           <Label
                             htmlFor={`scheme-${scheme.id}`}
-                            className="cursor-pointer text-sm"
+                            leading="normal"
+                            className="cursor-pointer"
                           >
                             {scheme.label}
                           </Label>

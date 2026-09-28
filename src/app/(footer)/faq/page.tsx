@@ -60,9 +60,13 @@ const FAQ = () => {
           <div key={section} className="section-content">
             <h2 className="section-content-header">{section}</h2>
             <div className="section-content-body">
-              <Accordion multiple className="space-y-4">
+              <Accordion multiple>
                 {questions.map((question) => (
-                  <AccordionItem key={question.question} value={question.question}>
+                  <AccordionItem
+                    key={question.question}
+                    value={question.question}
+                    className="not-last:mb-4"
+                  >
                     <AccordionTrigger>{question.question}</AccordionTrigger>
                     <AccordionContent>{question.answer}</AccordionContent>
                   </AccordionItem>

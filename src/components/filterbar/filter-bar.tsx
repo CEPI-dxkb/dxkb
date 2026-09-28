@@ -152,7 +152,7 @@ export function FilterBar({
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded border px-2 py-1 text-xs hover:bg-muted"
+                    size="toolbar"
                   >
                     Facets
                   </Button>
@@ -184,7 +184,7 @@ export function FilterBar({
             variant="outline"
             onClick={clearAll}
             disabled={selected.length === 0 && keywords.length === 0}
-            className="rounded border px-2 py-1 text-xs whitespace-nowrap"
+            size="toolbar"
           >
             Clear All Filters
           </Button>
@@ -196,7 +196,7 @@ export function FilterBar({
             onClick={() => {
               setShowFacets((prev) => !prev);
             }}
-            className="rounded border px-2 py-1 text-xs whitespace-nowrap hover:bg-muted"
+            size="toolbar"
           >
             {showFacets ? "Hide Filters" : "Show Filters"}
           </Button>

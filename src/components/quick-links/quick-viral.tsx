@@ -29,7 +29,7 @@ const QuickViralLinks = () => {
                     <GenomeIcon className="size-4" />
                     <span>Complete Genomes</span>
                   </div>
-                  <Badge className="bg-accent text-foreground">24,891</Badge>
+                  <Badge variant="accent">24,891</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
@@ -37,7 +37,7 @@ const QuickViralLinks = () => {
                     <PartialSeqIcon className="size-4" />
                     <span>Partial Sequences</span>
                   </div>
-                  <Badge className="bg-accent text-foreground">103,457</Badge>
+                  <Badge variant="accent">103,457</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
@@ -45,7 +45,7 @@ const QuickViralLinks = () => {
                     <SequenceIcon className="size-4" />
                     <span>Reference Sequences</span>
                   </div>
-                  <Badge className="bg-accent text-foreground">1,204</Badge>
+                  <Badge variant="accent">1,204</Badge>
                 </li>
               </ul>
               <Button variant="outline" className="mt-4 w-full">
@@ -67,7 +67,7 @@ const QuickViralLinks = () => {
                     <ProteinIcon className="size-4" />
                     <span>Structural Proteins</span>
                   </div>
-                  <Badge className="bg-accent text-foreground">18,742</Badge>
+                  <Badge variant="accent">18,742</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
@@ -75,14 +75,14 @@ const QuickViralLinks = () => {
                     <EnzymeIcon className="size-4" />
                     <span>Enzymes</span>
                   </div>
-                  <Badge className="bg-accent text-foreground">31,205</Badge>
+                  <Badge variant="accent">31,205</Badge>
                 </li>
                 <li className="flex justify-between">
                   <div className="flex items-center gap-2">
                     <Box className="size-4 justify-start" />
                     <span>3D Structures</span>
                   </div>
-                  <Badge className="bg-accent text-foreground [data-theme='dxkb-dark']:text-black">5,891</Badge>
+                  <Badge variant="accent">5,891</Badge>
                 </li>
               </ul>
               <Button variant="outline" className="mt-4 w-full">

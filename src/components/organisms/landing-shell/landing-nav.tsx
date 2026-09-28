@@ -107,17 +107,16 @@ export function LandingNav<Key extends string>({
                   type="button"
                   tabIndex={-1}
                   variant={isActive ? "secondary" : "ghost"}
+                  // size="nav" sets the semibold weight from aria-current and
+                  // the muted text from aria-disabled.
+                  size="nav"
                   aria-current={isActive ? "page" : undefined}
                   aria-disabled
                   title={item.disabledReason}
                   onClick={() => {
                     /* no-op: button is disabled */
                   }}
-                  className={cn(
-                    "justify-start px-2",
-                    isActive && "font-semibold",
-                    "pointer-events-none cursor-not-allowed text-muted-foreground opacity-50",
-                  )}
+                  className="pointer-events-none cursor-not-allowed justify-start opacity-50"
                 >
                   {buttonContent}
                 </Button>
@@ -141,12 +140,13 @@ export function LandingNav<Key extends string>({
               key={item.key}
               type="button"
               variant={isActive ? "secondary" : "ghost"}
+              size="nav"
               aria-current={isActive ? "page" : undefined}
               title={collapsed ? item.label : undefined}
               onClick={() => {
                 onChange(item.key);
               }}
-              className={cn("justify-start px-2", isActive && "font-semibold")}
+              className="justify-start"
             >
               {buttonContent}
             </Button>

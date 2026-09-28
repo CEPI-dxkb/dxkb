@@ -81,7 +81,8 @@ export function WorkspaceItemDetails({
     >
       <SelectTrigger
         size="sm"
-        className="h-6 min-w-0 gap-1 text-xs"
+        density="compact-tight"
+        className="h-6 min-w-0"
         aria-label="File type"
       >
         <SelectValue placeholder="Unspecified" />

@@ -20,7 +20,7 @@ export async function GeneraGrid({ taxonId, limit = 24 }: GeneraGridProps) {
 
   if (genera.length === 0) {
     return (
-      <Card className="rounded-lg">
+      <Card variant="panel">
         <CardHeader>
           <CardTitle>Top Genera</CardTitle>
           <CardDescription>No genera facets were returned.</CardDescription>

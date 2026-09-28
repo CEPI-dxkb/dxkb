@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import type { DataTableInstance } from "./data-table";
-import { clsx } from "cn";
 
 function getPageRange(
   pageIndex: number,
@@ -78,7 +77,7 @@ export function DataTableFooter({
               Showing {start}-{end} of {totalItems} results
             </span>
             {selectedCount > 0 && (
-              <span className="font-semibold text-blue-600">
+              <span className="font-semibold text-info">
                 {isAllPagesSelected
                   ? `All ${String(totalItems)} results selected`
                   : `${String(selectedCount)} selected`}
@@ -96,7 +95,8 @@ export function DataTableFooter({
             }}
             disabled={!table.getCanPreviousPage()}
             aria-label="Previous page"
-            className="border border-border px-2 py-0.5 disabled:opacity-50"
+            variant="pager-step"
+            size="pager"
           >
             {"Prev"}
           </Button>
@@ -111,12 +111,9 @@ export function DataTableFooter({
                   onClick={() => {
                     table.setPageIndex(page);
                   }}
-                  className={clsx(
-                    "border bg-background px-2 py-0.5 text-foreground",
-                    pageIndex === page
-                      ? "bg-primary/15 font-bold"
-                      : "bg-background",
-                  )}
+                  // The pager variant styles the current page off aria-current.
+                  variant="pager"
+                  size="pager"
                   aria-current={pageIndex === page ? "page" : undefined}
                 >
                   {page + 1}
@@ -130,7 +127,8 @@ export function DataTableFooter({
             }}
             disabled={!table.getCanNextPage()}
             aria-label="Next page"
-            className="border border-border px-2 py-0.5 disabled:opacity-50"
+            variant="pager-step"
+            size="pager"
           >
             {"Next"}
           </Button>

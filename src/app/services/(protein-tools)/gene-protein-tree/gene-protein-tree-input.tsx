@@ -203,11 +203,8 @@ function SequenceItemsTable({
         <TableBody>
           {sequences.length === 0 ? (
             <TableRow>
-              <TableCell
-                colSpan={3}
-                className="text-center text-muted-foreground"
-              >
-                No items selected.
+              <TableCell colSpan={3} className="text-center">
+                <span className="text-muted-foreground">No items selected.</span>
               </TableCell>
             </TableRow>
           ) : (

@@ -157,13 +157,13 @@ export function ReadMappingParametersCard({
                         value="predefined_list"
                         id="predefined_list"
                       />
-                      <Label htmlFor="predefined_list" className="text-sm">
+                      <Label htmlFor="predefined_list" leading="normal">
                         Predefined List
                       </Label>
                     </div>
                     <div className="flex items-center gap-3">
                       <RadioGroupItem value="fasta_file" id="fasta_file" />
-                      <Label htmlFor="fasta_file" className="text-sm">
+                      <Label htmlFor="fasta_file" leading="normal">
                         FASTA File
                       </Label>
                     </div>
@@ -172,7 +172,7 @@ export function ReadMappingParametersCard({
                         value="feature_group"
                         id="feature_group"
                       />
-                      <Label htmlFor="feature_group" className="text-sm">
+                      <Label htmlFor="feature_group" leading="normal">
                         Feature Group
                       </Label>
                     </div>

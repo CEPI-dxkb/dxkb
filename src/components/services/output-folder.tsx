@@ -92,13 +92,13 @@ const OutputFolder = ({
                     <HelpCircle className="service-card-tooltip-icon mb-2" />
                   }
                 />
-                <TooltipContent className="max-w-sm font-normal text-white">
+                <TooltipContent className="max-w-sm">
                   {resolvedTooltipText}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
-          {required && <span className="text-red-500">*</span>}
+          {required && <span className="text-destructive">*</span>}
         </div>
       )}
       <div className="flex flex-col gap-1">

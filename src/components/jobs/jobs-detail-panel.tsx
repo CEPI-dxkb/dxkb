@@ -17,8 +17,8 @@ function CopyButton({ text }: { text: string }) {
   return (
     <Button
       variant="ghost"
-      size="sm"
-      className="relative size-6 p-0"
+      size="icon-xs"
+      className="relative"
       onClick={() => {
         void navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
@@ -34,7 +34,7 @@ function CopyButton({ text }: { text: string }) {
           }`}
         />
         <Check
-          className={`absolute size-3.5 text-green-500 transition-all duration-200 ${
+          className={`absolute size-3.5 text-success transition-all duration-200 ${
             copied ? "scale-100 opacity-100" : "scale-0 opacity-0"
           }`}
         />
@@ -89,14 +89,14 @@ function OutputSection({
 
 function StatusBadge({ status }: { status: string }) {
   const colorMap: Record<string, string> = {
-    completed: "bg-green-100 text-green-800",
-    failed: "bg-red-100 text-red-800",
-    error: "bg-red-100 text-red-800",
-    running: "bg-blue-100 text-blue-800",
-    "in-progress": "bg-blue-100 text-blue-800",
-    queued: "bg-yellow-100 text-yellow-800",
-    pending: "bg-gray-100 text-gray-600",
-    cancelled: "bg-orange-100 text-orange-800",
+    completed: "bg-success/10 text-success",
+    failed: "bg-destructive/10 text-destructive",
+    error: "bg-destructive/10 text-destructive",
+    running: "bg-info/10 text-info",
+    "in-progress": "bg-info/10 text-info",
+    queued: "bg-warning/10 text-warning",
+    pending: "bg-muted text-muted-foreground",
+    cancelled: "bg-muted text-muted-foreground",
   };
   const colors = colorMap[status] ?? "bg-muted text-muted-foreground";
   return (

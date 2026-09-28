@@ -487,7 +487,7 @@ Wrap in `.service-collapsible-container` and add `.service-collapsible-trigger` 
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 ```
 
-`TooltipProvider` is already mounted globally in the root layout — do not add another one. Tooltip content renders with `bg-primary text-background` styling.
+`TooltipProvider` is already mounted globally in the root layout — do not add another one. Tooltip content renders with `bg-primary text-primary-foreground` styling (a local edit: upstream uses `text-background`, which is dark on the primary fill in dark themes).
 
 For service form field tooltips, use `DialogInfoPopup` from `@/components/services/dialog-info-popup` instead of a plain tooltip (it provides a full dialog for longer explanations).
 

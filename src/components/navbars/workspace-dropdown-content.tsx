@@ -75,7 +75,7 @@ export function WorkspaceDropdownContent({
               <div>
                 <SectionHeader>
                   Favorite Folders{" "}
-                  <Star className="size-4 text-amber-400" fill="currentColor" />
+                  <Star className="size-4 text-highlight" fill="currentColor" />
                 </SectionHeader>
                 {favoritesLoading ? (
                   <div className="space-y-1 p-2">

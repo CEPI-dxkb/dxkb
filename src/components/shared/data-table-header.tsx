@@ -1,16 +1,22 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { DataTableInstance, DataTableProps } from "./data-table";
+import type {
+  ColumnWidths,
+  DataTableInstance,
+  DataTableProps,
+} from "./data-table";
 import { clsx } from "cn";
 
 interface DataTableHeaderProps {
   table: DataTableInstance;
+  columnWidths: ColumnWidths;
   onColumnOrderChange?: DataTableProps["onColumnOrderChange"];
 }
 
 export function DataTableHeader({
   table,
+  columnWidths,
   onColumnOrderChange,
 }: DataTableHeaderProps) {
   // Extracted out of useDataTableContent, which carries "use no memo". The
@@ -53,14 +59,12 @@ export function DataTableHeader({
   };
 
   return (
-    <TableHeader
-      className="border-border bg-muted text-foreground"
-      style={{ position: "sticky", top: 0, zIndex: 30 }}
-    >
+    <TableHeader variant="muted" className="sticky top-0 z-30">
       {table.getHeaderGroups().map((headerGroup) => (
         <TableRow
           key={headerGroup.id}
-          className="flex border-y border-border bg-muted"
+          variant="muted-header"
+          className="flex"
         >
           {headerGroup.headers.map((header) => {
             const column = header.column;
@@ -121,22 +125,18 @@ export function DataTableHeader({
                         ? "descending"
                         : "none"
                 }
+                variant="divider-strong-muted"
                 className={clsx(
-                  "group relative border-r border-foreground/20 bg-muted text-foreground",
+                  "group w-(--col-size) max-w-(--col-size) min-w-(--col-size)",
                   column.id === "__select__"
-                    ? "flex h-auto! items-center justify-center p-0"
-                    : "h-auto! min-h-7! cursor-pointer px-2 py-0 align-middle text-xs leading-tight font-bold whitespace-normal",
+                    ? "sticky left-0 z-1 flex h-auto! items-center justify-center p-0"
+                    : "relative h-auto! min-h-7! cursor-pointer px-2 py-0 align-middle whitespace-normal",
                 )}
-                style={{
-                  width: `var(--col-${column.id}-size)`,
-                  minWidth: `var(--col-${column.id}-size)`,
-                  maxWidth: `var(--col-${column.id}-size)`,
-                  ...(column.id === "__select__" && {
-                    position: "sticky",
-                    left: 0,
-                    zIndex: 1,
-                  }),
-                }}
+                style={
+                  {
+                    "--col-size": `${String(columnWidths[column.id])}px`,
+                  } as CSSProperties
+                }
               >
                 {column.id === "__select__" ? (
                   <div className="flex size-full items-center justify-center py-0">
@@ -145,7 +145,13 @@ export function DataTableHeader({
                 ) : (
                   <>
                     <div
-                      className="relative flex size-full items-center py-0 pr-0.5"
+                      // The header typography sits here rather than on the
+                      // TableHead: this wrapper holds all of the cell's text.
+                      className={clsx(
+                        "relative flex size-full items-center py-0 pr-0.5 text-xs leading-tight font-bold",
+                        canReorder && "cursor-move",
+                        draggedColumn === column.id && "opacity-50",
+                      )}
                       draggable={canReorder}
                       {...(canReorder && {
                         onDragStart: (event: React.DragEvent) => {
@@ -163,14 +169,6 @@ export function DataTableHeader({
                           setDraggedColumn(null);
                         },
                       })}
-                      style={{
-                        cursor: canReorder ? "move" : undefined,
-                        opacity: draggedColumn === column.id ? 0.5 : 1,
-                        backgroundColor:
-                          draggedColumn && draggedColumn !== column.id
-                            ? "transparent"
-                            : "",
-                      }}
                     >
                       <button
                         type="button"
@@ -212,14 +210,13 @@ export function DataTableHeader({
                         }}
                         onMouseDown={startResize}
                         onTouchStart={startResize}
-                        className="absolute top-0 right-0 z-30 flex h-full w-2 cursor-col-resize touch-none select-none"
-                        style={{ transform: "translateX(50%)" }}
+                        className="absolute top-0 right-0 z-30 flex h-full w-2 translate-x-1/2 cursor-col-resize touch-none select-none"
                       >
                         <div
                           className={clsx(
                             "mx-auto h-full w-1 transition-opacity",
                             header.column.getIsResizing()
-                              ? "bg-blue-500 opacity-100"
+                              ? "bg-info opacity-100"
                               : "bg-muted-foreground opacity-0 group-hover:opacity-100",
                           )}
                         />

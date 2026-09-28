@@ -12,9 +12,16 @@ const alertVariants = cva(
         destructive:
           "bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 [&>svg]:text-current",
       },
+      // Local edit (keep when regenerating with `shadcn add --overwrite`):
+      // `sm` is a slimmer alert for inline form feedback.
+      size: {
+        default: "",
+        sm: "py-2",
+      },
     },
     defaultVariants: {
       variant: "default",
+      size: "default",
     },
   }
 )
@@ -22,13 +29,14 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  size,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
     <div
       data-slot="alert"
       role="alert"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant, size }), className)}
       {...props}
     />
   )

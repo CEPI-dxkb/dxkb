@@ -41,7 +41,8 @@ export async function TaxonomySummary({
       {metrics.map((metric) => (
         <Card
           key={metric.label}
-          className="min-w-0 gap-0 rounded-md px-2.5 py-1.5 shadow-none"
+          variant="tile"
+          className="min-w-0 gap-0 px-2.5 py-1.5"
           title={metric.description}
         >
           <p className="text-2xs font-bold tracking-wider text-muted-foreground uppercase">

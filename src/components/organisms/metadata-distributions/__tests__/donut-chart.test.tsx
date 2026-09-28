@@ -388,10 +388,8 @@ describe("DonutChart", () => {
     fireEvent.focus(screen.getByRole("button", { name: "Alpha: 75" }));
 
     const tooltip = screen.getByRole("status");
-    expect(tooltip).toHaveStyle({
-      left: "180px",
-      transform: "translateX(-50%)",
-    });
+    expect(tooltip).toHaveStyle({ left: "180px" });
+    expect(tooltip).toHaveClass("-translate-x-1/2");
     expect(
       tooltip.querySelector('[aria-hidden="true"]')?.getAttribute("style"),
     ).toMatch(/left: calc\(50% \+ 52\.32\d+px\)/);

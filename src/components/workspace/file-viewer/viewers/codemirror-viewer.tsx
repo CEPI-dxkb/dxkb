@@ -251,9 +251,8 @@ export function CodeMirrorViewer({
             {fileSize ? formatFileSize(fileSize) : "full file"}.
           </span>
           <Button
-            variant="ghost"
-            size="sm"
-            className="h-auto px-2 py-0.5 text-xs font-bold hover:bg-accent/90 hover:text-white"
+            variant="banner"
+            size="banner"
             onClick={() => {
               triggerDownload(getProxyUrl(filePath));
             }}

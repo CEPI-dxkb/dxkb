@@ -1,6 +1,11 @@
 "use client";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type {
+  CSSProperties,
+  Dispatch,
+  RefObject,
+  SetStateAction,
+} from "react";
 import {
   FlexRender,
   type Row,
@@ -24,6 +29,13 @@ import {
 import { clsx } from "cn";
 
 export const taxonomyRowHeight = 24;
+
+// Column width for the `w-(--col-size)` class. A column without a size (0)
+// leaves `--col-size` unset, so its width stays auto, as it did when the
+// inline width was `undefined`.
+function columnSize(size: number): string | undefined {
+  return size ? `${String(size)}px` : undefined;
+}
 
 interface TreeTableViewProps {
   table: TableModel<TaxonomyTableFeatures, TaxonRecord>;
@@ -92,20 +104,34 @@ export function TreeTableView({
           ref={scrollRef}
         >
           <Table
-            className="w-full table-auto border-collapse text-xs"
+            size="xs"
+            className="w-full table-auto border-collapse"
             disableScrollWrapper
           >
             <TreeTableHeader table={table} />
             <TableBody>
               {rows.length === 0 ? (
                 <TableRow className="flex w-full">
-                  <TableCell className="w-full border-t border-border py-8 text-center text-muted-foreground">
-                    No results
+                  {/* The cell stays unstyled; its HEAD border, padding and text
+                      live on a block wrapper that fills it exactly. */}
+                  <TableCell className="w-full p-0">
+                    <div className="border-t px-2 py-8 text-center text-muted-foreground">
+                      No results
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 <>
-                  {paddingTop > 0 && <tr style={{ height: paddingTop }} />}
+                  {paddingTop > 0 && (
+                    <tr
+                      className="h-(--spacer-height)"
+                      style={
+                        {
+                          "--spacer-height": `${String(paddingTop)}px`,
+                        } as CSSProperties
+                      }
+                    />
+                  )}
                   {virtualItems.map((item) => (
                     <TreeBodyRow
                       key={rows[item.index].id}
@@ -115,15 +141,26 @@ export function TreeTableView({
                     />
                   ))}
                   {paddingBottom > 0 && (
-                    <tr style={{ display: "flex", height: paddingBottom }}>
+                    <tr
+                      className="flex h-(--spacer-height)"
+                      style={
+                        {
+                          "--spacer-height": `${String(paddingBottom)}px`,
+                        } as CSSProperties
+                      }
+                    >
                       {table.getVisibleLeafColumns().map((column) => (
                         <td
                           key={column.id}
-                          className="border-r border-border"
-                          style={{
-                            width: column.getSize() || undefined,
-                            flex: column.id === "taxon_name" ? 1 : undefined,
-                          }}
+                          className={clsx(
+                            "w-(--col-size) border-r border-border",
+                            column.id === "taxon_name" && "flex-1",
+                          )}
+                          style={
+                            {
+                              "--col-size": columnSize(column.getSize()),
+                            } as CSSProperties
+                          }
                         />
                       ))}
                     </tr>
@@ -144,31 +181,26 @@ function TreeTableHeader({
   table: TableModel<TaxonomyTableFeatures, TaxonRecord>;
 }) {
   return (
-    <TableHeader
-      className="bg-muted text-foreground"
-      style={{ position: "sticky", top: 0, zIndex: 30 }}
-    >
+    <TableHeader variant="muted" className="sticky top-0 z-30">
       {table.getHeaderGroups().map((group) => (
-        <TableRow
-          key={group.id}
-          className="flex border-y border-border bg-muted"
-        >
+        <TableRow key={group.id} variant="muted-header" className="flex">
           {group.headers.map((header) => (
             <TableHead
               key={header.id}
-              className="flex items-center border-r border-border px-2 py-0"
-              style={{
-                width: header.getSize() || undefined,
-                height: 32,
-                flex: header.column.id === "taxon_name" ? 1 : undefined,
-                justifyContent:
-                  header.column.id === "__select__" ||
-                  header.column.id === "trees"
-                    ? "center"
-                    : header.column.id === "genomes"
-                      ? "flex-end"
-                      : undefined,
-              }}
+              variant="divider"
+              className={clsx(
+                "flex h-8 w-(--col-size) items-center px-2 py-0",
+                header.column.id === "taxon_name" && "flex-1",
+                (header.column.id === "__select__" ||
+                  header.column.id === "trees") &&
+                  "justify-center",
+                header.column.id === "genomes" && "justify-end",
+              )}
+              style={
+                {
+                  "--col-size": columnSize(header.getSize()),
+                } as CSSProperties
+              }
             >
               <FlexRender header={header} />
             </TableHead>
@@ -193,15 +225,19 @@ function TreeBodyRow({
       onClick={() => {
         onClick(row);
       }}
-      style={{ display: "flex", height: taxonomyRowHeight }}
-      className={clsx(
-        "cursor-pointer items-center",
-        selected ? "bg-primary/15 dark:bg-primary/30" : "hover:bg-muted",
-      )}
+      style={
+        {
+          "--row-height": `${String(taxonomyRowHeight)}px`,
+        } as CSSProperties
+      }
+      variant="tint"
+      data-state={selected ? "selected" : undefined}
+      className="flex h-(--row-height) cursor-pointer items-center"
     >
       {row.getVisibleCells().map((cell) => (
         <TableCell
           key={cell.id}
+          variant="divider"
           onClick={
             cell.column.id === "__select__" && row.getCanSelect()
               ? (event) => {
@@ -219,22 +255,20 @@ function TreeBodyRow({
               : undefined
           }
           className={clsx(
-            "flex items-center overflow-hidden border-r border-border px-2",
+            "flex h-(--row-height) w-(--col-size) items-center overflow-hidden px-2",
             cell.column.id === "__select__" && "cursor-pointer",
+            cell.column.id === "taxon_name" && "flex-1",
+            cell.column.id === "__select__" || cell.column.id === "trees"
+              ? "justify-center"
+              : cell.column.id === "genomes"
+                ? "justify-end"
+                : "justify-start",
           )}
-          style={{
-            width: cell.column.getSize() || undefined,
-            flex: cell.column.id === "taxon_name" ? 1 : undefined,
-            height: taxonomyRowHeight,
-            whiteSpace: "nowrap",
-            textOverflow: "ellipsis",
-            justifyContent:
-              cell.column.id === "__select__" || cell.column.id === "trees"
-                ? "center"
-                : cell.column.id === "genomes"
-                  ? "flex-end"
-                  : "flex-start",
-          }}
+          style={
+            {
+              "--col-size": columnSize(cell.column.getSize()),
+            } as CSSProperties
+          }
         >
           {cell.column.id === "__select__" && !isPlaceholder(row.original) ? (
             <input

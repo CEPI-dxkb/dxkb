@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 import { ChevronRightIcon, CheckIcon } from "lucide-react"
@@ -53,18 +54,38 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+// Local edit (keep when regenerating with `shadcn add --overwrite`): the
+// DropdownMenuLabel `variant` axis (`heading`: a one-line title at the top of
+// a menu, such as the signed-in user's greeting).
+const dropdownMenuLabelVariants = cva(
+  "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+  {
+    variants: {
+      variant: {
+        default: "",
+        heading: "truncate text-sm text-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
 function DropdownMenuLabel({
   className,
   inset,
+  variant,
   ...props
-}: MenuPrimitive.GroupLabel.Props & {
-  inset?: boolean
-}) {
+}: MenuPrimitive.GroupLabel.Props &
+  VariantProps<typeof dropdownMenuLabelVariants> & {
+    inset?: boolean
+  }) {
   return (
     <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       data-inset={inset}
-      className={cn("px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7", className)}
+      className={cn(dropdownMenuLabelVariants({ variant }), className)}
       {...props}
     />
   )

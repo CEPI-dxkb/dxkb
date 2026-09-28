@@ -8,7 +8,7 @@ import { AreaClosed, LinePath } from "@visx/shape";
 import { useTooltip } from "@visx/tooltip";
 import { curveMonotoneX } from "@visx/vendor/d3-shape";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { chartTooltipStyle } from "@/lib/services/organisms/chart-utils";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
@@ -61,11 +61,19 @@ export function AreaChart({
 
   const yTicks = yScale.ticks(4);
   const step = labelStep(yearData.length);
+  // A literal style object with static keys: the lint rule allows the
+  // runtime left/right/top, but not a style computed by a call.
+  const tooltipPosition = chartTooltipStyle(
+    tooltipLeft ?? 0,
+    tooltipTop ?? 0,
+    150,
+    28,
+  );
 
   return (
-    <Card className="relative rounded-lg" size="sm">
+    <Card variant="panel" className="relative" size="sm">
       <CardHeader>
-        <CardTitle className="text-sm! font-semibold!">{title}</CardTitle>
+        <h3 className="text-sm leading-snug font-semibold">{title}</h3>
       </CardHeader>
       <CardContent>
         {errorMessage ? (
@@ -219,7 +227,11 @@ export function AreaChart({
         <div
           role="status"
           className="pointer-events-none fixed z-50 rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
-          style={chartTooltipStyle(tooltipLeft ?? 0, tooltipTop ?? 0, 150, 28)}
+          style={{
+            left: tooltipPosition.left,
+            right: tooltipPosition.right,
+            top: tooltipPosition.top,
+          }}
         >
           {tooltipData.year}: {numberFormatter.format(tooltipData.count)}
         </div>

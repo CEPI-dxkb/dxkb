@@ -53,7 +53,8 @@ export async function DataSummary({ taxonId }: { taxonId: number }) {
           <Card
             key={metric.key}
             data-testid={`organism-kpi-${metric.key}`}
-            className="min-w-0 gap-0 rounded-md px-2.5 py-1.5 shadow-none"
+            variant="tile"
+            className="min-w-0 gap-0 px-2.5 py-1.5"
             title={metric.description}
           >
             <p className="text-2xs font-bold tracking-wider text-muted-foreground uppercase">

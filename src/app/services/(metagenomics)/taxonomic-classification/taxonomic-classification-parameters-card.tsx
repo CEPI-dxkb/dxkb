@@ -112,13 +112,13 @@ function BooleanRadio({
     >
       <div className="flex items-center gap-3">
         <RadioGroupItem value="no" id={`${id}-no`} />
-        <Label htmlFor={`${id}-no`} className="text-sm">
+        <Label htmlFor={`${id}-no`} leading="normal">
           No
         </Label>
       </div>
       <div className="flex items-center gap-3">
         <RadioGroupItem value="yes" id={`${id}-yes`} />
-        <Label htmlFor={`${id}-yes`} className="text-sm">
+        <Label htmlFor={`${id}-yes`} leading="normal">
           Yes
         </Label>
       </div>
@@ -190,13 +190,13 @@ export function ClassificationParametersCard({
                   >
                     <div className="flex items-center gap-3">
                       <RadioGroupItem value="wgs" id="wgs" />
-                      <Label htmlFor="wgs" className="text-sm">
+                      <Label htmlFor="wgs" leading="normal">
                         Whole Genome Sequencing (WGS)
                       </Label>
                     </div>
                     <div className="flex items-center gap-3">
                       <RadioGroupItem value="16s" id="16s" />
-                      <Label htmlFor="16s" className="text-sm">
+                      <Label htmlFor="16s" leading="normal">
                         16S Ribosomal RNA
                       </Label>
                     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import type { ListPermissionsResult } from "@/lib/services/workspace/domain";
@@ -228,14 +229,20 @@ export function useWorkspaceDirectory(
 
   const isAuthenticated = isAuthenticatedMode(mode);
 
-  let memberCountByPath: Record<string, number> | undefined;
-  if (isAuthenticated && permissionsQuery.data) {
-    memberCountByPath = {};
-    for (const path of itemPaths) {
-      const list = permissionsQuery.data[path];
-      memberCountByPath[path] = Array.isArray(list) ? list.length : 0;
+  // Explicit memo: the React Compiler leaves this derivation uncached, and a
+  // new object every render rebuilds the workspace table columns (see
+  // `useWorkspaceColumns`), remounting every cell.
+  const listingData = listingQuery.data;
+  const permissionsData = permissionsQuery.data;
+  const memberCountByPath = useMemo(() => {
+    if (!isAuthenticated || !permissionsData) return undefined;
+    const counts: Record<string, number> = {};
+    for (const item of listingData ?? []) {
+      const list = permissionsData[item.path];
+      counts[item.path] = Array.isArray(list) ? list.length : 0;
     }
-  }
+    return counts;
+  }, [isAuthenticated, permissionsData, listingData]);
 
   const combinedPermissions: ListPermissionsResult | undefined = isAuthenticated
     ? {

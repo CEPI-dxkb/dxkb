@@ -92,7 +92,8 @@ export function JobsActionBar({
             <Button
               key={action.id}
               variant="secondary"
-              className="h-15 w-full flex-col gap-1 font-normal whitespace-normal"
+              size="tile"
+              className="w-full whitespace-normal"
               disabled={disabled}
               onClick={() => { onAction(action.id, selection); }}
             >

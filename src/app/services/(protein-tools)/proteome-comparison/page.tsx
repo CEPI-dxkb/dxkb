@@ -431,7 +431,6 @@ function useProteomeComparisonPage() {
                                   if (value !== undefined)
                                     field.handleChange(value);
                                 }}
-                                className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>
@@ -470,7 +469,6 @@ function useProteomeComparisonPage() {
                                   if (value !== undefined)
                                     field.handleChange(value);
                                 }}
-                                className="relative [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                               />
                               <FieldErrors field={field} />
                             </FieldItem>

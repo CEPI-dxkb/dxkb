@@ -14,24 +14,32 @@ export const statusConfig: Record<
 > = {
   completed: {
     icon: CheckCircle2,
-    className: "text-emerald-500",
+    className: "text-success",
     label: "Completed",
   },
-  failed: { icon: XCircle, className: "text-red-500", label: "Failed" },
-  error: { icon: AlertCircle, className: "text-red-600", label: "Error" },
+  failed: { icon: XCircle, className: "text-destructive", label: "Failed" },
+  error: { icon: AlertCircle, className: "text-destructive", label: "Error" },
   running: {
     icon: Loader2,
-    className: "text-blue-500 animate-spin",
+    className: "text-info animate-spin",
     label: "Running",
   },
   "in-progress": {
     icon: Loader2,
-    className: "text-blue-500 animate-spin",
+    className: "text-info animate-spin",
     label: "Running",
   },
-  queued: { icon: Clock, className: "text-gray-500", label: "Queued" },
-  pending: { icon: Clock, className: "text-gray-400", label: "Pending" },
-  cancelled: { icon: Ban, className: "text-orange-500", label: "Cancelled" },
+  queued: { icon: Clock, className: "text-muted-foreground", label: "Queued" },
+  pending: {
+    icon: Clock,
+    className: "text-muted-foreground",
+    label: "Pending",
+  },
+  cancelled: {
+    icon: Ban,
+    className: "text-muted-foreground",
+    label: "Cancelled",
+  },
 };
 
 /** Status filter options for the jobs toolbar dropdown. */

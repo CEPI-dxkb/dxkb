@@ -2,9 +2,12 @@ import { Children, type FocusEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
+// The runtime tint of an active entry is split into backgroundColor and
+// borderColor so the element's style stays a literal object with static keys.
 interface LegendAppearance {
   className: string;
-  style?: React.CSSProperties;
+  backgroundColor?: string;
+  borderColor?: string;
 }
 
 function legendAppearance(
@@ -16,29 +19,22 @@ function legendAppearance(
   let className = isPill
     ? "border-border text-foreground/70"
     : "text-foreground/70";
-  let style: React.CSSProperties | undefined;
+  let backgroundColor: string | undefined;
+  let borderColor: string | undefined;
 
   if (active && !dimmed) {
     className = "text-foreground";
-    style = {
-      backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`,
-      ...(isPill ? { borderColor: color } : {}),
-    };
+    backgroundColor = `color-mix(in srgb, ${color} 12%, transparent)`;
+    if (isPill) borderColor = color;
   } else if (dimmed) {
     className = cn(
       isPill && "border-border",
       "text-foreground/40",
-      active ? "opacity-40" : "opacity-30",
+      active ? "bg-foreground/30 opacity-40" : "opacity-30",
     );
-    if (active) {
-      style = {
-        backgroundColor:
-          "color-mix(in srgb, var(--foreground) 30%, transparent)",
-      };
-    }
   }
 
-  return { className, style };
+  return { className, backgroundColor, borderColor };
 }
 
 interface ChartLegendPillProps {
@@ -91,7 +87,10 @@ export function ChartLegendPill({
         shapeClass,
         appearance.className,
       )}
-      style={appearance.style}
+      style={{
+        backgroundColor: appearance.backgroundColor,
+        borderColor: appearance.borderColor,
+      }}
       onMouseEnter={onActivate}
       onMouseLeave={onDeactivate}
       onFocus={(event) => {
@@ -102,12 +101,8 @@ export function ChartLegendPill({
       onClick={onClick}
     >
       <span
-        className="inline-block size-2.5 shrink-0 rounded-full"
-        style={{
-          background: color,
-          border:
-            "1px solid color-mix(in srgb, var(--foreground) 70%, transparent)",
-        }}
+        className="inline-block size-2.5 shrink-0 rounded-full border border-foreground/70"
+        style={{ background: color }}
         aria-hidden="true"
       />
       {children ?? label}

@@ -1,17 +1,28 @@
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+// Local edit: `variant` is rendered as data-variant, like `size`, and the
+// base classes key on it. panel: organism chart and section cards. tile:
+// compact KPI and genus tiles. panel-error: a panel reporting a failed
+// section (CardTitle turns destructive inside it). raised: a bordered,
+// shadowed results card.
 function Card({
   className,
   size = "default",
+  variant = "default",
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & {
+  size?: "default" | "sm"
+  variant?: "default" | "panel" | "tile" | "panel-error" | "raised"
+}) {
   return (
     <div
       data-slot="card"
       data-size={size}
-      className={cn("group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl", className)}
+      data-variant={variant}
+      className={cn("group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 data-[variant=panel]:rounded-lg data-[variant=panel-error]:rounded-lg data-[variant=panel-error]:bg-destructive/5 data-[variant=raised]:rounded-lg data-[variant=raised]:border data-[variant=raised]:shadow-sm data-[variant=tile]:rounded-md *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl", className)}
       {...props}
     />
   )
@@ -30,11 +41,35 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+// Local edit: title variants. The variant's text size merges after the base,
+// so it drops `leading-snug` for the size's own line height.
+const cardTitleVariants = cva(
+  "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm group-data-[variant=panel-error]/card:text-destructive",
+  {
+    variants: {
+      variant: {
+        default: "",
+        // The title of a full-page card (the auth pages).
+        page: "text-2xl font-bold",
+        // The title of a results section card.
+        section: "text-xl font-semibold",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+function CardTitle({
+  className,
+  variant,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof cardTitleVariants>) {
   return (
     <div
       data-slot="card-title"
-      className={cn("text-base leading-snug font-medium group-data-[size=sm]/card:text-sm", className)}
+      className={cn(cardTitleVariants({ variant }), className)}
       {...props}
     />
   )

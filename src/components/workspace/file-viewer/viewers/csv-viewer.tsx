@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { parse } from "csv-parse/sync";
 import {
   columnVisibilityFeature,
@@ -224,11 +224,12 @@ function InteractiveCsvViewer({
               <tr>
                 <td
                   colSpan={columns.length}
-                  style={{
-                    height: virtualizer.getVirtualItems()[0]?.start ?? 0,
-                    padding: 0,
-                    border: "none",
-                  }}
+                  className="h-(--spacer-height) border-none p-0"
+                  style={
+                    {
+                      "--spacer-height": `${String(virtualizer.getVirtualItems()[0]?.start ?? 0)}px`,
+                    } as CSSProperties
+                  }
                 />
               </tr>
             )}
@@ -254,13 +255,15 @@ function InteractiveCsvViewer({
               <tr>
                 <td
                   colSpan={columns.length}
-                  style={{
-                    height:
-                      virtualizer.getTotalSize() -
-                      (virtualizer.getVirtualItems().at(-1)?.end ?? 0),
-                    padding: 0,
-                    border: "none",
-                  }}
+                  className="h-(--spacer-height) border-none p-0"
+                  style={
+                    {
+                      "--spacer-height": `${String(
+                        virtualizer.getTotalSize() -
+                          (virtualizer.getVirtualItems().at(-1)?.end ?? 0),
+                      )}px`,
+                    } as CSSProperties
+                  }
                 />
               </tr>
             )}

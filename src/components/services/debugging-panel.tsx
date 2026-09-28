@@ -90,16 +90,13 @@ export function DebuggingPanel() {
                 setLocalDebugMode(checked);
               }}
             />
-            <Label
-              htmlFor="debug-mode"
-              className="text-sm leading-none font-normal peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
+            <Label htmlFor="debug-mode" variant="option">
               Don&apos;t Submit Jobs (print to params to console)
             </Label>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="container-build-id" className="text-sm font-medium">
+            <Label htmlFor="container-build-id" leading="normal">
               Use Container Build ID:
             </Label>
             <Input

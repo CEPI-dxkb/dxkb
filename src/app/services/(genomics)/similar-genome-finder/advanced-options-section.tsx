@@ -146,36 +146,43 @@ export function AdvancedOptionsSection({
           <ServiceLabel>Organism Type</ServiceLabel>
           <form.Field name="include_bacterial">
             {(field) => (
-              <FieldItem className="flex flex-row items-center space-y-0 space-x-2">
+              <FieldItem className="flex flex-row items-center">
                 <Checkbox
                   id="include_bacterial"
                   name="include_bacterial"
                   checked={field.state.value}
                   onCheckedChange={field.handleChange}
+                  className="mr-2"
                 />
                 <Label
                   htmlFor="include_bacterial"
-                  className="text-sm font-normal"
+                  variant="option"
+                  leading="normal"
                 >
                   Bacterial and Archaeal Genomes
                 </Label>
-                <FieldErrors field={field} />
+                <FieldErrors field={field} className="ml-2" />
               </FieldItem>
             )}
           </form.Field>
           <form.Field name="include_viral">
             {(field) => (
-              <FieldItem className="flex flex-row items-center space-y-0 space-x-2">
+              <FieldItem className="flex flex-row items-center">
                 <Checkbox
                   id="include_viral"
                   name="include_viral"
                   checked={field.state.value}
                   onCheckedChange={field.handleChange}
+                  className="mr-2"
                 />
-                <Label htmlFor="include_viral" className="text-sm font-normal">
+                <Label
+                  htmlFor="include_viral"
+                  variant="option"
+                  leading="normal"
+                >
                   Viral Genomes
                 </Label>
-                <FieldErrors field={field} />
+                <FieldErrors field={field} className="ml-2" />
               </FieldItem>
             )}
           </form.Field>
@@ -190,17 +197,24 @@ export function AdvancedOptionsSection({
                   onValueChange={(value) =>
                     { field.handleChange(value as "reference" | "all"); }
                   }
-                  className="grid w-full gap-2"
                 >
                   <div className="flex items-center gap-3">
                     <RadioGroupItem value="reference" id="reference" />
-                    <Label htmlFor="reference" className="text-sm font-normal">
+                    <Label
+                      htmlFor="reference"
+                      variant="option"
+                      leading="normal"
+                    >
                       Reference and Representative Genomes
                     </Label>
                   </div>
                   <div className="flex items-center gap-3">
                     <RadioGroupItem value="all" id="all" />
-                    <Label htmlFor="all" className="text-sm font-normal">
+                    <Label
+                      htmlFor="all"
+                      variant="option"
+                      leading="normal"
+                    >
                       All Public Genomes
                     </Label>
                   </div>

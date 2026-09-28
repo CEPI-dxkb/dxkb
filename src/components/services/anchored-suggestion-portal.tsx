@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   type ReactNode,
   type RefObject,
   useEffectEvent,
@@ -85,8 +86,15 @@ export function AnchoredSuggestionPortal({
   return createPortal(
     <div
       ref={dropdownRef}
-      className="fixed z-40 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40"
-      style={rect}
+      className="fixed top-(--dropdown-top) left-(--dropdown-left) z-40 max-h-(--dropdown-max-height) w-(--dropdown-width) scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40"
+      style={
+        {
+          "--dropdown-top": `${String(rect.top)}px`,
+          "--dropdown-left": `${String(rect.left)}px`,
+          "--dropdown-width": `${String(rect.width)}px`,
+          "--dropdown-max-height": `${String(rect.maxHeight)}px`,
+        } as CSSProperties
+      }
     >
       {children}
     </div>,

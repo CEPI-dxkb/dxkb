@@ -452,7 +452,7 @@ function useMetaCATSPage() {
                       onValueChange={(value) => {
                         if (value !== undefined) field.handleChange(value);
                       }}
-                      className="relative max-w-32 [appearance:textfield] rounded-r-none bg-muted [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="max-w-32"
                     />
                     <FieldErrors field={field} />
                   </FieldItem>
@@ -729,7 +729,7 @@ function useMetaCATSPage() {
                     </div>
 
                     <div className="overflow-hidden rounded-md border">
-                      <Table className="service-table">
+                      <Table variant="well">
                         <TableHeader>
                           <TableRow>
                             <TableHead className="w-12">
@@ -756,10 +756,12 @@ function useMetaCATSPage() {
                             <TableRow>
                               <TableCell
                                 colSpan={6}
-                                className="py-8 text-center text-muted-foreground"
+                                className="py-8 text-center"
                               >
-                                No features added. Select a feature group and
-                                click + to add.
+                                <span className="text-muted-foreground">
+                                  No features added. Select a feature group and
+                                  click + to add.
+                                </span>
                               </TableCell>
                             </TableRow>
                           ) : (
@@ -776,13 +778,13 @@ function useMetaCATSPage() {
                                     }}
                                   />
                                 </TableCell>
-                                <TableCell className="font-mono text-xs">
+                                <TableCell variant="code">
                                   {getMetaCatsDisplayName(item.patric_id, 24)}
                                 </TableCell>
                                 <TableCell>{item.strain || "-"}</TableCell>
                                 <TableCell>{item.metadata || "-"}</TableCell>
                                 <TableCell>{item.group || "-"}</TableCell>
-                                <TableCell className="font-mono text-xs">
+                                <TableCell variant="code">
                                   {item.genome_id}
                                 </TableCell>
                               </TableRow>
@@ -893,7 +895,7 @@ function useMetaCATSPage() {
                     />
                     {featureGroups.length < minGroups && (
                       <Alert variant="default">
-                        <AlertDescription className="text-sm">
+                        <AlertDescription>
                           At least {minGroups} feature groups are required.
                         </AlertDescription>
                       </Alert>

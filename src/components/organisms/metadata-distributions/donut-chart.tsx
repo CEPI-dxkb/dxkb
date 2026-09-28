@@ -411,8 +411,7 @@ function DonutChartTabs({
       </div>
       <div
         ref={scrollRef}
-        className="flex min-w-0 flex-1 overflow-x-auto"
-        style={{ scrollbarWidth: "none" }}
+        className="flex min-w-0 flex-1 scrollbar-none overflow-x-auto"
       >
         <div className="flex flex-nowrap items-center gap-0.5">
           {tabs.map((tab, index) => (
@@ -483,10 +482,9 @@ function DonutChartLegend({
     <div
       className={
         isSide
-          ? "flex min-w-0 flex-1 flex-col justify-center gap-0.5"
-          : "flex flex-wrap justify-center gap-1.5"
+          ? "flex min-w-0 flex-1 animate-donut-legend-up flex-col justify-center gap-0.5"
+          : "flex animate-donut-legend-up flex-wrap justify-center gap-1.5"
       }
-      style={{ animation: "donut-legend-up 0.4s 0.4s ease-out both" }}
     >
       {slices.map((slice) => {
         const isHidden = hiddenIds.has(slice.id);
@@ -766,8 +764,27 @@ function useDonutChart({
     }
   };
 
+  // Legend activation centers the tooltip on the anchor (the
+  // -translate-x-1/2 below avoids width-estimation error) and floats it above
+  // with room for the ▼ caret. Kept as left/right/top so the tooltip's style
+  // is a literal object with static keys, which the lint rule can check.
+  const tooltipPosition: { left?: number; right?: number; top: number } =
+    activationSource === "legend"
+      ? {
+          left: tooltipLeft ?? 0,
+          top: (tooltipTop ?? 0) - tooltipEstimatedHeight - 4,
+        }
+      : chartTooltipStyle(
+          tooltipLeft ?? 0,
+          tooltipTop ?? 0,
+          tooltipEstimatedWidth,
+          tooltipEstimatedHeight,
+          12,
+          -36,
+        );
+
   return (
-    <Card className="relative rounded-lg" size="sm">
+    <Card variant="panel" className="relative" size="sm">
       <CardContent className="flex flex-1 flex-col">
         <div className="flex items-start gap-2">
           <h3 className="m-0 max-w-[60%] shrink-0 text-sm font-semibold">
@@ -804,10 +821,9 @@ function useDonutChart({
               role="img"
               aria-label={`${title} distribution`}
               className={cn(
-                "shrink-0",
+                "shrink-0 overflow-visible",
                 layout === "side" ? "h-full w-1/2" : "w-full max-w-40",
               )}
-              style={{ overflow: "visible" }}
             >
               <g
                 transform={`translate(${String(chartCenter)},${String(chartCenter)})`}
@@ -820,11 +836,11 @@ function useDonutChart({
                   return (
                     <g
                       key={arc.slice.id}
+                      className="transition-chart-pop"
                       style={{
                         transform: isActive
                           ? `translate(${String(arc.popX)}px, ${String(arc.popY)}px)`
                           : undefined,
-                        transition: "transform 180ms ease-out",
                       }}
                     >
                       <path
@@ -883,26 +899,16 @@ function useDonutChart({
       {tooltipData && (
         <div
           role="status"
-          className="pointer-events-none fixed z-50 rounded-md border border-foreground/80 bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
-          style={
+          className={
             activationSource === "legend"
-              ? // Center exactly on the anchor via transform (avoids width-
-                // estimation error) and float above with room for the ▼ caret.
-                {
-                  position: "fixed" as const,
-                  left: `${String(tooltipLeft ?? 0)}px`,
-                  top: `${String((tooltipTop ?? 0) - tooltipEstimatedHeight - 4)}px`,
-                  transform: "translateX(-50%)",
-                }
-              : chartTooltipStyle(
-                  tooltipLeft ?? 0,
-                  tooltipTop ?? 0,
-                  tooltipEstimatedWidth,
-                  tooltipEstimatedHeight,
-                  12,
-                  -36,
-                )
+              ? "pointer-events-none fixed z-50 -translate-x-1/2 rounded-md border border-foreground/80 bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
+              : "pointer-events-none fixed z-50 rounded-md border border-foreground/80 bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
           }
+          style={{
+            left: tooltipPosition.left,
+            right: tooltipPosition.right,
+            top: tooltipPosition.top,
+          }}
         >
           {/* ▼ caret at tooltip bottom, pointing down toward the arc.
               calc(50% + offset) shifts the caret when the tooltip is pushed
@@ -911,15 +917,9 @@ function useDonutChart({
           {activationSource === "legend" && (
             <span
               aria-hidden="true"
-              className="absolute size-3 border border-foreground/80 bg-popover"
+              className="absolute -bottom-1.75 size-3 -translate-x-1/2 rotate-45 border border-foreground/80 border-t-transparent border-l-transparent bg-popover"
               style={{
-                bottom: -7,
                 left: `calc(50% + ${String(legendCaretOffsetPx)}px)`,
-                transform: "translateX(-50%) rotate(45deg)",
-                borderRightWidth: 1,
-                borderBottomWidth: 1,
-                borderTopColor: "transparent",
-                borderLeftColor: "transparent",
               }}
             />
           )}

@@ -292,7 +292,7 @@ const Updates = () => {
               {timelineData.map((item) => (
                 <TimelineItem key={item.id}>
                   <TimelineHeader>
-                    <TimelineTime className="bg-primary">
+                    <TimelineTime>
                       {item.time}
                     </TimelineTime>
                     <TimelineTitle>{item.title}</TimelineTitle>

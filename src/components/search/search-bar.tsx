@@ -113,7 +113,8 @@ function SearchBarForm({
           <SelectTrigger
             id={typeId}
             aria-label="Search type"
-            className={`${size === "lg" ? "h-auto py-6" : ""} min-w-30 rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-sm text-foreground shadow-none focus:ring-0`}
+            variant={size === "lg" ? "segment-start-lg" : "segment-start"}
+            className="min-w-30"
           >
             <SelectValue aria-label="Search type" />
           </SelectTrigger>
@@ -132,7 +133,9 @@ function SearchBarForm({
           <Input
             type="text"
             placeholder={placeholder}
-            className={`${size === "lg" ? "py-6" : ""} ${showIcon ? "pl-10" : ""} w-full rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0`}
+            variant={size === "lg" ? "segment-end-lg" : "segment-end"}
+            inset={showIcon ? "start" : "none"}
+            className="w-full"
             value={inputValue}
             onChange={(e) => {
               setInputValue(e.target.value);

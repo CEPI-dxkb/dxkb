@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -107,11 +108,30 @@ function DialogFooter({
   )
 }
 
-function DialogTitle({ className, ...props }: DialogPrimitive.Title.Props) {
+// Local edit (keep when regenerating with `shadcn add --overwrite`): the
+// DialogTitle `size` axis. `lg`'s `text-2xl` drops the base `leading-none`
+// through tailwind-merge, so the large title keeps text-2xl's own line height.
+const dialogTitleVariants = cva("text-base leading-none font-medium", {
+  variants: {
+    size: {
+      default: "",
+      lg: "text-2xl font-semibold",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+})
+
+function DialogTitle({
+  className,
+  size,
+  ...props
+}: DialogPrimitive.Title.Props & VariantProps<typeof dialogTitleVariants>) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-base leading-none font-medium", className)}
+      className={cn(dialogTitleVariants({ size }), className)}
       {...props}
     />
   )

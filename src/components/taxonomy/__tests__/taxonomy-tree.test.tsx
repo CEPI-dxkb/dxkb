@@ -375,6 +375,26 @@ describe("TaxonomyTree", () => {
     ).toBeInTheDocument();
   });
 
+  it("tags each rank badge with its rank for the globals.css rank colors", async () => {
+    mockChildren({
+      234: [child(235, "Brucella abortus", "species", 581)],
+    });
+
+    render(<TaxonomyTree rootTaxa={[rootTaxon]} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    const speciesLink = await screen.findByRole("link", {
+      name: "Brucella abortus",
+    });
+    const badge = within(speciesLink.closest("tr") as HTMLElement).getByText(
+      "species",
+    );
+    // The [data-slot="badge"][data-rank="…"] rules in globals.css key on both.
+    expect(badge).toHaveAttribute("data-slot", "badge");
+    expect(badge).toHaveAttribute("data-rank", "species");
+  });
+
   it("renders strain (leaf) rows without an expand toggle", async () => {
     mockChildren({
       234: [child(235, "Brucella abortus", "species", 581)],
@@ -442,7 +462,9 @@ describe("TaxonomyTree", () => {
     const row = checkbox.closest("tr") as HTMLElement;
     const selectionCell = checkbox.closest("td") as HTMLElement;
 
-    expect(row).toHaveStyle({ height: "24px" });
+    // Height comes from the h-(--row-height) class, fed by this property.
+    expect(row).toHaveClass("h-(--row-height)");
+    expect(row.style.getPropertyValue("--row-height")).toBe("24px");
     fireEvent.click(selectionCell);
 
     expect(checkbox).toBeChecked();

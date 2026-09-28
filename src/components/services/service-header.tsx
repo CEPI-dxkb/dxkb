@@ -55,9 +55,7 @@ export function ServiceHeader({
           />
         )}
         {version && (
-          <Badge variant="outline" className="bg-primary text-foreground">
-            {version}
-          </Badge>
+          <Badge variant="default">{version}</Badge>
         )}
       </div>
       <div className="service-header-description">

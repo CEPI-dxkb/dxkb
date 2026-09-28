@@ -12,14 +12,6 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const themePrimary: Record<string, string> = {
-  zinc:   "#18181b",
-  orange: "#c2410c",
-  violet: "#6d28d9",
-  dxkb:   "#FF7248",
-  bvbrc:  "#008C81",
-};
-
 const themeLabel: Record<string, string> = {
   zinc:   "Zinc",
   orange: "Orange",
@@ -65,7 +57,9 @@ export function NavbarThemeSwitcher() {
         }
       />
       <PopoverContent
-        className="w-52 gap-0 p-0 shadow-lg"
+        size="flush"
+        variant="raised"
+        className="w-52"
         align="end"
         side="bottom"
         sideOffset={8}
@@ -116,9 +110,10 @@ export function NavbarThemeSwitcher() {
                 )}
               >
                 <span className="w-4 shrink-0 text-xs text-muted-foreground/40">{i + 1}</span>
+                {/* Swatch colors: the [data-swatch] rules in globals.css. */}
                 <span
-                  className="size-2.5 shrink-0 rounded-full"
-                  style={{ background: themePrimary[base] }}
+                  data-swatch={base}
+                  className="size-2.5 shrink-0 rounded-full bg-(--swatch)"
                 />
                 <span className="flex-1 text-left">{themeLabel[base] ?? base}</span>
                 {/* fixed-width slot keeps name centered regardless of selection */}

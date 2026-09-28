@@ -95,7 +95,7 @@ function SelectionMenu<T extends SubgraphSelection | HubSelection>({
         {icon}
         {selectedLabel ?? label}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-52 gap-1 p-1">
+      <PopoverContent align="start" size="menu" className="w-52">
         {options.map(([option, optionLabel]) => {
           const isSelected = option === value;
           return (
@@ -184,7 +184,7 @@ export function GraphActionBar({
             onLayoutChange(value as LayoutName);
           }}
         >
-          <SelectTrigger aria-label="Layout" className="w-40 bg-background">
+          <SelectTrigger aria-label="Layout" className="w-40">
             <SelectValue placeholder="Layout" />
           </SelectTrigger>
           <SelectContent>

@@ -29,7 +29,7 @@ const TimelineHeader = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      'mb-1 flex flex-col items-start before:absolute before:left-2 before:h-full before:-translate-x-1/2 before:translate-y-3 before:self-start before:bg-slate-300 before:px-px group-last:before:hidden after:absolute after:left-2 after:box-content after:size-2 after:-translate-x-1/2 after:translate-y-1.5 after:rounded-full after:border-4 after:border-primary-foreground/95 after:bg-secondary sm:flex-row sm:before:left-0 sm:before:ml-40 sm:after:left-0 sm:after:ml-40',
+      'mb-1 flex flex-col items-start before:absolute before:left-2 before:h-full before:-translate-x-1/2 before:translate-y-3 before:self-start before:bg-border before:px-px group-last:before:hidden after:absolute after:left-2 after:box-content after:size-2 after:-translate-x-1/2 after:translate-y-1.5 after:rounded-full after:border-4 after:border-primary-foreground/95 after:bg-secondary sm:flex-row sm:before:left-0 sm:before:ml-40 sm:after:left-0 sm:after:ml-40',
       className
     )}
     {...props}
@@ -54,18 +54,21 @@ TimelineTitle.displayName = 'TimelineTitle';
 const TimelineTime = ({
   className,
   variant = 'default',
+  children,
   ...props
 }: React.ComponentProps<typeof Badge>) => {
   return (
     <Badge
       className={cn(
-        'left-0 mb-3 inline-flex h-6 w-36 translate-y-0.5 items-center justify-center text-xs font-semibold uppercase sm:absolute sm:mb-0',
+        'left-0 mb-3 inline-flex h-6 w-36 translate-y-0.5 items-center justify-center sm:absolute sm:mb-0',
         className
       )}
       variant={variant}
       {...props}
     >
-      {props.children}
+      {/* The label's weight and case live on a child: Badge owns its own
+          typography. */}
+      <span className="font-semibold uppercase">{children}</span>
     </Badge>
   );
 };

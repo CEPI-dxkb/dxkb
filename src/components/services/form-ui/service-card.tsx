@@ -1,6 +1,11 @@
 import type * as React from "react";
 
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function ServiceCardHeader({
@@ -28,4 +33,12 @@ export function ServiceCardContent({
   return (
     <CardContent className={cn("service-card-content", className)} {...props} />
   );
+}
+
+/** A card's helper line in the service forms' compact 12px size. */
+export function ServiceCardDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof CardDescription>) {
+  return <CardDescription className={cn("text-xs", className)} {...props} />;
 }

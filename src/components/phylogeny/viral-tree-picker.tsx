@@ -1,5 +1,11 @@
 import { CircleOff, Download, Filter } from "lucide-react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -32,11 +38,6 @@ import {
   type PhyloFamilyBlock,
 } from "@/lib/services/organisms/phylogeny";
 
-// Label styling for an option whose facet count is zero. Base UI renders its
-// radio/checkbox as a <span role> with aria-disabled rather than a natively
-// disabled control, so match on that instead of `peer-disabled:`.
-const disabledOption =
-  "has-aria-disabled:cursor-not-allowed has-aria-disabled:opacity-50";
 const viewerEntries = Object.entries(viewerLabel) as [PhyloViewer, string][];
 const viewers = Object.keys(viewerLabel) as PhyloViewer[];
 
@@ -182,7 +183,7 @@ export function ViralTreePicker({
                     {viewerEntries.map(([value, title]) => {
                       const count = counts.viewer(value);
                       return (
-                        <Label key={value} className={disabledOption}>
+                        <Label key={value}>
                           <RadioGroupItem
                             value={value}
                             disabled={count === 0}
@@ -206,7 +207,7 @@ export function ViralTreePicker({
                     {segments.map((segment) => {
                       const count = counts.segment(segment);
                       return (
-                        <Label key={segment} className={disabledOption}>
+                        <Label key={segment}>
                           <Checkbox
                             checked={filters.segments.has(segment)}
                             disabled={count === 0}
@@ -303,16 +304,14 @@ function TreeResults({
             <div
               data-slot="tree-row"
               className="group grid grid-cols-[3.5rem_1fr] items-center gap-y-2 border-b border-border/50 px-5 py-3 transition-colors hover:bg-muted/25 lg:grid-cols-[3.5rem_1fr_auto] lg:gap-y-0 lg:py-0"
-              style={{ ["--seg" as string]: segmentColor(row.segment) }}
+              style={
+                { "--seg": segmentColor(row.segment) } as CSSProperties
+              }
             >
-              <span
-                className="relative py-1 font-mono text-xs font-semibold lg:py-3.5"
-                style={{ color: segmentColor(row.segment) }}
-              >
+              <span className="relative py-1 font-mono text-xs font-semibold text-(--seg) lg:py-3.5">
                 <span
                   aria-hidden
-                  className="absolute top-1/2 -left-5 h-full w-0.75 -translate-y-1/2 rounded-r-sm opacity-0 transition-opacity group-hover:opacity-100"
-                  style={{ background: segmentColor(row.segment) }}
+                  className="absolute top-1/2 -left-5 h-full w-0.75 -translate-y-1/2 rounded-r-sm bg-(--seg) opacity-0 transition-opacity group-hover:opacity-100"
                 />
                 {row.segment ?? "—"}
               </span>

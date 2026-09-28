@@ -1,7 +1,6 @@
 import { useSelector } from "@tanstack/react-store";
 import { HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
@@ -76,7 +76,7 @@ export function GenomeAnnotationParameters({
           <form.Field name="contigs">
             {(field) => (
               <FieldItem>
-                <RequiredLabel>Contigs</RequiredLabel>
+                <RequiredFormLabel>Contigs</RequiredFormLabel>
                 <WorkspaceObjectSelector
                   preset="contigs"
                   placeholder="Select or Upload Contigs to your workspace for Annotation"
@@ -92,7 +92,7 @@ export function GenomeAnnotationParameters({
           <form.Field name="recipe">
             {(field) => (
               <FieldItem>
-                <RequiredLabel>Annotation Recipe</RequiredLabel>
+                <RequiredFormLabel>Annotation Recipe</RequiredFormLabel>
                 <Select
                   items={genomeAnnotationRecipes}
                   value={field.state.value}
@@ -123,7 +123,7 @@ export function GenomeAnnotationParameters({
             <form.Field name="scientific_name">
               {(field) => (
                 <FieldItem className="sm:w-9/12">
-                  <Label className="gap-1">
+                  <RequiredFormLabel>
                     Taxonomy Name
                     <TooltipProvider>
                       <Tooltip>
@@ -138,8 +138,7 @@ export function GenomeAnnotationParameters({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <span className="text-red-500">*</span>
-                  </Label>
+                  </RequiredFormLabel>
                   <TaxonNameSelector
                     value={
                       field.state.value
@@ -195,7 +194,7 @@ export function GenomeAnnotationParameters({
           <form.Field name="my_label">
             {(field) => (
               <FieldItem>
-                <RequiredLabel>My Label</RequiredLabel>
+                <RequiredFormLabel>My Label</RequiredFormLabel>
                 <ServiceInput
                   placeholder="My identifier123"
                   value={field.state.value}
@@ -241,14 +240,5 @@ export function GenomeAnnotationParameters({
         </div>
       </ServiceCardContent>
     </Card>
-  );
-}
-
-function RequiredLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <Label className="gap-1">
-      {children}
-      <span className="text-red-500">*</span>
-    </Label>
   );
 }

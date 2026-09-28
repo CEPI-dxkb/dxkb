@@ -118,26 +118,28 @@ const ContactForm = () => {
                               onValueChange={(value) => {
                                 field.handleChange(value as InquiryType);
                               }}
-                              className="mt-1 grid grid-cols-1 gap-3 md:grid-cols-2"
+                              className="mt-1"
                             >
-                              {inquiryTypes.map((option) => (
-                                <div
-                                  key={option.value}
-                                  className="flex items-center gap-3"
-                                >
-                                  <RadioGroupItem
-                                    value={option.value}
-                                    id={option.value}
-                                  />
-                                  <FieldLabel
-                                    field={field}
-                                    htmlFor={option.value}
-                                    className="font-normal"
+                              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                {inquiryTypes.map((option) => (
+                                  <div
+                                    key={option.value}
+                                    className="flex items-center gap-3"
                                   >
-                                    {option.label}
-                                  </FieldLabel>
-                                </div>
-                              ))}
+                                    <RadioGroupItem
+                                      value={option.value}
+                                      id={option.value}
+                                    />
+                                    <FieldLabel
+                                      field={field}
+                                      htmlFor={option.value}
+                                      variant="option"
+                                    >
+                                      {option.label}
+                                    </FieldLabel>
+                                  </div>
+                                ))}
+                              </div>
                             </RadioGroup>
                           </FieldItem>
                         )}
@@ -147,10 +149,7 @@ const ContactForm = () => {
                         <form.Field name="name">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel
-                                field={field}
-                                className="text-sm font-medium"
-                              >
+                              <FieldLabel field={field} leading="normal">
                                 Full Name
                               </FieldLabel>
                               <Input
@@ -171,10 +170,7 @@ const ContactForm = () => {
                         <form.Field name="email">
                           {(field) => (
                             <FieldItem>
-                              <FieldLabel
-                                field={field}
-                                className="text-sm font-medium"
-                              >
+                              <FieldLabel field={field} leading="normal">
                                 Email Address
                               </FieldLabel>
                               <Input
@@ -197,10 +193,7 @@ const ContactForm = () => {
                       <form.Field name="subject">
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel
-                              field={field}
-                              className="text-sm font-medium"
-                            >
+                            <FieldLabel field={field} leading="normal">
                               Subject
                             </FieldLabel>
                             <Input
@@ -221,10 +214,7 @@ const ContactForm = () => {
                       <form.Field name="message">
                         {(field) => (
                           <FieldItem>
-                            <FieldLabel
-                              field={field}
-                              className="text-sm font-medium"
-                            >
+                            <FieldLabel field={field} leading="normal">
                               Message
                             </FieldLabel>
                             <Textarea
@@ -250,7 +240,9 @@ const ContactForm = () => {
                           <Button
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full bg-secondary py-6 hover:bg-secondary"
+                            variant="cta"
+                            size="xl"
+                            className="w-full"
                           >
                             {isSubmitting ? (
                               <>

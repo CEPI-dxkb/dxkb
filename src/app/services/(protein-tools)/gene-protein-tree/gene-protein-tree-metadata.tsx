@@ -79,7 +79,8 @@ export function GeneProteinTreeMetadata({
                         field.isLabel ? (
                           <SelectLabel
                             key={field.value}
-                            className="mb-1 border-b border-border pb-1.5 font-medium"
+                            variant="section"
+                            className="mb-1"
                           >
                             {field.label}
                           </SelectLabel>
@@ -120,13 +121,13 @@ export function GeneProteinTreeMetadata({
                     <TableCell className="py-1">{field.name}</TableCell>
                     <TableCell className="py-1 text-center">
                       <Button
-                        variant="ghost"
+                        variant="ghost-destructive"
                         size="icon"
                         aria-label="Remove metadata field"
                         onClick={() => {
                           removeMetadataField(field.id);
                         }}
-                        className="size-6 text-destructive hover:text-destructive/90"
+                        className="size-6"
                       >
                         <X size={14} />
                       </Button>

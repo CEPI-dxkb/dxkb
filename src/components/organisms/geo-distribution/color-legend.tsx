@@ -20,7 +20,6 @@ export function ColorLegend({ maxCount, accent }: ColorLegendProps) {
         className="h-2 w-40 rounded-sm border"
         style={{
           background: `linear-gradient(to right, ${palette.light}, ${palette.dark})`,
-          borderColor: "var(--border)",
         }}
         aria-hidden
       />

@@ -2,6 +2,8 @@
 
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 
+import { cn } from "@/lib/utils";
+
 import type { GeoMapView } from "./types";
 
 export interface HoverPayload {
@@ -45,9 +47,13 @@ export function ChoroplethPath({
     <path
       d={pathD}
       fill={fill}
-      stroke="#475569"
+      stroke="currentColor"
       strokeWidth={strokeWidth}
-      style={cursor ? { cursor } : undefined}
+      className={cn(
+        "text-muted-foreground",
+        cursor === "pointer" && "cursor-pointer",
+        cursor === "default" && "cursor-default",
+      )}
       onPointerMove={(event) => {
         if (isDraggingRef.current) return;
         onHoverEnter(payload, event);

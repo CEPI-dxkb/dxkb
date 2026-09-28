@@ -26,14 +26,12 @@ export function DialogInfoPopup({
         render={(triggerProps) => (
           <Button
             {...triggerProps}
-            variant="ghost"
+            variant={isHeader ? "ghost-accent-primary" : "ghost-accent"}
             size="icon"
             aria-label={`More info: ${title}`}
             className={cn(
-              isHeader
-                ? "size-8 rounded-full p-2 font-bold text-primary"
-                : "size-5 rounded-full p-0.5",
-              "hover:cursor-pointer hover:bg-accent hover:text-accent-foreground",
+              !isHeader && "size-5",
+              "hover:cursor-pointer",
               className,
               triggerProps.className,
             )}
@@ -51,8 +49,8 @@ export function DialogInfoPopup({
 
       <DialogContent className="sm:max-w-xl">
         <DialogHeader className="w-full">
-          <DialogTitle className="text-2xl font-semibold">{title}</DialogTitle>
-          <DialogDescription className="overflow-x-auto break-all text-foreground/70">
+          <DialogTitle size="lg">{title}</DialogTitle>
+          <DialogDescription className="overflow-x-auto break-all">
             {description}
           </DialogDescription>
         </DialogHeader>

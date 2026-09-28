@@ -1,13 +1,14 @@
 import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceRadioGroupGrid } from "@/components/services/form-ui/service-radio-group";
 import { blastServiceSearchProgram } from "@/lib/services/info/blast";
 import { getCompatibleBlastDatabaseType } from "@/lib/forms/(genomics)/blast/blast-form-utils";
 import type { BlastFormData } from "@/lib/forms/(genomics)/blast/blast-form-schema";
@@ -39,7 +40,7 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
         <form.Field name="blast_program">
           {(field) => (
             <FieldItem>
-              <RadioGroup
+              <ServiceRadioGroupGrid
                 value={field.state.value}
                 onValueChange={(value) => {
                   const program = value as BlastFormData["blast_program"];
@@ -53,7 +54,6 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
                     ) as BlastFormData["db_type"],
                   );
                 }}
-                className="grid w-full grid-cols-1 gap-4 md:grid-cols-2"
               >
                 {options.map(([value, label]) => (
                   <div key={value} className="flex items-center gap-3">
@@ -63,7 +63,7 @@ export function SearchProgramCard({ form }: { form: BlastForm }) {
                     </Label>
                   </div>
                 ))}
-              </RadioGroup>
+              </ServiceRadioGroupGrid>
               <FieldErrors field={field} />
             </FieldItem>
           )}

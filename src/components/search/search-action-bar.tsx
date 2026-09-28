@@ -117,7 +117,8 @@ export function SearchActionBar({
             <Button
               key={renderKey}
               variant="secondary"
-              className="h-15 w-full flex-col gap-1 font-normal max-md:w-16 max-md:shrink-0"
+              size="tile"
+              className="w-full max-md:w-16 max-md:shrink-0"
               disabled={disabled}
               onClick={
                 popoverContent
@@ -155,7 +156,8 @@ export function SearchActionBar({
                   render={
                     <Button
                       variant="secondary"
-                      className="h-15 w-full flex-col gap-1 font-normal max-md:w-16 max-md:shrink-0"
+                      size="tile"
+                      className="w-full max-md:w-16 max-md:shrink-0"
                       disabled={showSpinner}
                     >
                       {actionContent}

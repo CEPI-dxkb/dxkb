@@ -26,7 +26,7 @@ export function JobParamsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[80vh] sm:max-w-175">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between pr-6">
+          <DialogTitle className="mr-6 flex items-center justify-between">
             {serviceName} Submission Params:
           </DialogTitle>
         </DialogHeader>

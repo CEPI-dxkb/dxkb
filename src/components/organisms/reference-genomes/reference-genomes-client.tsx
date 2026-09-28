@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -137,12 +137,19 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
     >
       <Table disableScrollWrapper className="table-fixed">
         <colgroup>
-          <col style={{ width: typeColumnWidth }} />
+          <col
+            className="w-(--type-col-width)"
+            style={{ "--type-col-width": `${String(typeColumnWidth)}px` } as CSSProperties}
+          />
           <col />
         </colgroup>
-        <TableHeader className="sticky top-0 z-10 bg-muted">
+        <TableHeader variant="muted" className="sticky top-0 z-10">
           <TableRow className="h-8">
-            <TableHead className="group relative h-[31.5px]! border-r border-foreground/20 px-3 py-1 text-center text-xs">
+            <TableHead
+              variant="divider-strong"
+              size="xs"
+              className="group relative h-[31.5px]! px-3 py-1 text-center"
+            >
               Type
               <div
                 role="separator"
@@ -181,7 +188,7 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
                   className={cn(
                     "mx-auto h-full w-1 transition-opacity",
                     isResizingTypeColumn
-                      ? "bg-blue-500 opacity-100"
+                      ? "bg-info opacity-100"
                       : "bg-muted-foreground opacity-0 group-hover:opacity-100",
                   )}
                 />
@@ -189,7 +196,8 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
             </TableHead>
             <TableHead
               aria-sort={ariaSort}
-              className="h-[31.5px]! overflow-hidden p-0 text-xs"
+              size="xs"
+              className="h-[31.5px]! overflow-hidden p-0"
             >
               <button
                 type="button"
@@ -206,25 +214,33 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
         <TableBody>
           {sorted.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={2} className="py-4 text-center text-sm text-muted-foreground">
-                No genomes in this category.
+              <TableCell colSpan={2} className="py-4 text-center">
+                <span className="text-muted-foreground">
+                  No genomes in this category.
+                </span>
               </TableCell>
             </TableRow>
           ) : (
             <>
-              {paddingTop > 0 && <tr style={{ height: paddingTop }} />}
+              {paddingTop > 0 && (
+                <tr
+                  className="h-(--spacer-height)"
+                  style={{ "--spacer-height": `${String(paddingTop)}px` } as CSSProperties}
+                />
+              )}
               {virtualItems.map((virtualItem) => {
                 const g = sorted[virtualItem.index];
                 return (
                   <TableRow
                     key={g.genome_id}
-                    className={cn("h-8", virtualItem.index % 2 === 1 && "bg-muted/20")}
+                    variant={virtualItem.index % 2 === 1 ? "striped" : "default"}
+                    className="h-8"
                   >
-                    <TableCell className="border-r border-foreground/20 px-3 py-1">
+                    <TableCell variant="divider-strong" className="px-3 py-1">
                       <div className="flex items-center justify-center">
                         <Badge
                           variant={badgeVariantForType[g.reference_genome] ?? "outline"}
-                          className="text-2xs"
+                          size="sm"
                         >
                           {g.reference_genome}
                         </Badge>
@@ -244,13 +260,19 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
                   </TableRow>
                 );
               })}
-              {paddingBottom > 0 && <tr style={{ height: paddingBottom }} />}
+              {paddingBottom > 0 && (
+                <tr
+                  className="h-(--spacer-height)"
+                  style={{ "--spacer-height": `${String(paddingBottom)}px` } as CSSProperties}
+                />
+              )}
               {Array.from({ length: fillerCount }, (_, i) => (
                 <TableRow
                   key={`filler-${String(i)}`}
-                  className={cn("h-8", (sorted.length + i) % 2 === 1 && "bg-muted/20")}
+                  variant={(sorted.length + i) % 2 === 1 ? "striped" : "default"}
+                  className="h-8"
                 >
-                  <TableCell className="border-r border-foreground/20 px-3 py-1" />
+                  <TableCell variant="divider-strong" className="px-3 py-1" />
                   <TableCell className="px-3 py-1" />
                 </TableRow>
               ))}
@@ -269,16 +291,18 @@ export function ReferenceGenomesClient({ genomes }: { genomes: ReferenceGenome[]
   );
 
   return (
-    <Card className="h-full rounded-lg xl:min-h-0 xl:flex-1" size="sm">
+    <Card variant="panel" className="h-full xl:min-h-0 xl:flex-1" size="sm">
       <Tabs defaultValue="all" className="xl:flex xl:min-h-0 xl:flex-1 xl:flex-col">
         <CardHeader className="pb-0">
-          <CardTitle className="text-base!">Reference &amp; Representative Genomes</CardTitle>
+          <h2 className="text-base leading-snug font-medium">
+            Reference &amp; Representative Genomes
+          </h2>
           <TabsList className="mt-2 w-full">
-            <TabsTrigger value="all" className="flex-1 text-xs">
+            <TabsTrigger value="all" size="xs" className="flex-1">
               All ({genomes.length})
             </TabsTrigger>
             {types.map((type) => (
-              <TabsTrigger key={type} value={type} className="flex-1 text-xs">
+              <TabsTrigger key={type} value={type} size="xs" className="flex-1">
                 {type} ({byType[type].length})
               </TabsTrigger>
             ))}

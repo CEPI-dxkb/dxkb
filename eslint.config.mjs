@@ -66,28 +66,76 @@ export default defineConfig(
     // `@/components/ui`, theme `src/app/globals.css`), so no
     // `settings.shadcn` is needed.
     //
-    // Every rule is an error, but violations that predate the rules are
-    // recorded in eslint-suppressions.json, which ESLint applies
-    // automatically. New code must pass; after fixing a recorded violation,
-    // run `pnpm lint --prune-suppressions` (lint fails on stale entries).
+    // Every rule is an error and the tree has no recorded exceptions.
     plugins: { shadcn },
     rules: {
       "shadcn/no-restyle": [
         "error",
         {
           allow: ["layout"],
+          // The rule applies one contract per component: the LAST entry whose
+          // pattern matches wins, and entries are not merged. Keep the
+          // patterns disjoint so each component matches exactly one entry.
+          // A wrapper that forwards className (e.g. ServiceCollapsibleTrigger)
+          // is checked against the contract of the component it wraps.
           contracts: [
-            // Padding is set per table and per card section.
-            { pattern: "^Table(Cell|Head)$", allow: ["layout", "spacing"] },
-            { pattern: "^Card(Header|Content)$", allow: ["layout", "spacing"] },
+            // Padding is set per table cell.
+            { pattern: "^TableCell$", allow: ["layout", "spacing"] },
+            // Header cells also take opacity, for drag feedback on a column
+            // being reordered.
+            {
+              pattern: "^TableHead$",
+              allow: ["layout", "spacing", "opacity-*"],
+            },
+            // Card padding and gap are set per card, as for its content.
+            { pattern: "^Card(Content)?$", allow: ["layout", "spacing"] },
+            // CardHeader also allows `border-b`: card.tsx keys the header's
+            // own bottom padding off `[.border-b]` (upstream API).
+            {
+              pattern: "^CardHeader$",
+              allow: ["layout", "spacing", "border-b"],
+            },
             // A skeleton's size and shape mirror the content it stands in for.
             { pattern: "^Skeleton$", allow: ["layout", "shape", "spacing"] },
+            // Opacity hides and reveals a button in place (collapsed-panel
+            // swaps, hover reveals); `shadow-sm` lifts controls that float
+            // over a map canvas. Neither restyles the button.
+            {
+              pattern: "^Button$",
+              allow: ["layout", "opacity-*", "shadow-sm"],
+            },
+            // Opacity reveals the handle on hover.
+            { pattern: "^ResizableHandle$", allow: ["layout", "opacity-*"] },
+            // ui/collapsible.tsx gives the root, trigger and panel no classes
+            // of their own (unstyled Base UI primitives; the panel only adds
+            // a divider child), so callers style them.
+            {
+              pattern: "^Collapsible(Trigger|Content)?$",
+              allow: [
+                "layout",
+                "spacing",
+                "typography",
+                "color",
+                "shape",
+                "effects",
+                "motion",
+              ],
+            },
           ],
         },
       ],
       "shadcn/no-raw-colors": "error",
       "shadcn/no-arbitrary-values": ["error", { allow: arbitraryValueAllow }],
-      "shadcn/no-inline-styles": "error",
+      "shadcn/no-inline-styles": [
+        "error",
+        {
+          contracts: [
+            // Sortable column headers take dnd-kit's runtime transition
+            // shorthand ("transform 200ms ease"), which no utility expresses.
+            { pattern: "^TableHead$", allow: ["transition"] },
+          ],
+        },
+      ],
       "shadcn/require-static-classes": "error",
       "shadcn/no-unknown-classes": [
         "error",
@@ -116,6 +164,40 @@ export default defineConfig(
       "shadcn/no-restyle": "off",
       "shadcn/no-arbitrary-values": "off",
       "shadcn/require-static-classes": "off",
+    },
+  },
+  {
+    // Chart and map geometry is computed at runtime: cursor-anchored tooltip
+    // positions, bar extents, slice pop offsets and animation opacity, the
+    // map height, data-driven series colors. Only the properties that carry
+    // those values are allowed; any other inline property, and any style
+    // object the rule cannot read (a spread or a call), is still reported.
+    // Static values of these properties still belong in classes.
+    files: [
+      "src/components/organisms/metadata-distributions/**",
+      "src/components/organisms/geo-distribution/**",
+      "src/components/interactions/sigma/**",
+    ],
+    rules: {
+      "shadcn/no-inline-styles": [
+        "error",
+        {
+          allow: [
+            "left",
+            "right",
+            "top",
+            "width",
+            "height",
+            "x",
+            "y",
+            "transform",
+            "opacity",
+            "background",
+            "backgroundColor",
+            "borderColor",
+          ],
+        },
+      ],
     },
   },
   {

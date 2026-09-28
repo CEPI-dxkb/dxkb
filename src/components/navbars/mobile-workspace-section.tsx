@@ -61,12 +61,12 @@ export function MobileWorkspaceSection({
       {isAuthenticated && favoritePaths.length > 0 && (
         <MobileDecoratedSubSection
           alwaysShow
-          dotColor="bg-amber-400/50"
-          lineColor="bg-amber-400/25"
-          curveColor="border-amber-400/25"
+          dotColor="bg-highlight/50"
+          lineColor="bg-highlight/25"
+          curveColor="border-highlight/25"
         >
           <MobileSubSectionLabel>
-            Favorites <Star className="size-3 fill-amber-400 text-amber-400" />
+            Favorites <Star className="size-3 fill-highlight text-highlight" />
           </MobileSubSectionLabel>
           {favoritePaths.map((path) => (
             <MobileNavLink key={path} href={buildFolderHref(path)}>

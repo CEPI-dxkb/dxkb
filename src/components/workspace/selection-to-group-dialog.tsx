@@ -162,8 +162,8 @@ function SelectionToGroupForm({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="new" className="min-h-0 overflow-y-auto pt-2 pr-1">
-          <div className="grid gap-4">
+        <TabsContent value="new" className="min-h-0 overflow-y-auto">
+          <div className="grid gap-4 pt-2 pr-1">
             <div className="grid min-w-0 gap-2">
               <Label htmlFor="selection-group-folder">Folder path</Label>
               <Input
@@ -218,18 +218,20 @@ function SelectionToGroupForm({
           </div>
         </TabsContent>
 
-        <TabsContent value="existing" className="grid gap-2 pt-2">
-          <Label htmlFor="selection-existing-group">{copy.groupLabel}</Label>
-          <WorkspaceObjectSelector
-            id="selection-existing-group"
-            preset={copy.preset}
-            value={existingGroupPath}
-            placeholder={copy.searchPlaceholder}
-            onSelectedObjectChange={(object) => {
-              setExistingGroupPath(object?.path ?? "");
-              setError(null);
-            }}
-          />
+        <TabsContent value="existing">
+          <div className="grid gap-2 pt-2">
+            <Label htmlFor="selection-existing-group">{copy.groupLabel}</Label>
+            <WorkspaceObjectSelector
+              id="selection-existing-group"
+              preset={copy.preset}
+              value={existingGroupPath}
+              placeholder={copy.searchPlaceholder}
+              onSelectedObjectChange={(object) => {
+                setExistingGroupPath(object?.path ?? "");
+                setError(null);
+              }}
+            />
+          </div>
         </TabsContent>
       </Tabs>
 

@@ -66,7 +66,9 @@ export function DataTableControls({
       <div className="relative inline-block text-left" ref={columnMenuRef}>
         {" "}
         <Button
-          className="mr-2 flex w-full justify-end rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+          variant="outline"
+          size="toolbar"
+          className="mr-2 flex w-full justify-end"
           onClick={() => {
             setShowColumnMenu((previous) => !previous);
           }}
@@ -105,7 +107,7 @@ export function DataTableControls({
             buttonKey="csv-all"
             downloadingButton={downloadingButton}
             onClick={() => handleDownload("csv")}
-            className="mx-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted"
+            className="mx-2"
           />
           <DownloadButton
             label="Download (TXT)"
@@ -154,7 +156,7 @@ function DownloadButton({
   buttonKey,
   downloadingButton,
   onClick,
-  className = "mr-2 rounded border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-muted",
+  className = "mr-2",
 }: {
   label: string;
   buttonKey: string;
@@ -164,6 +166,8 @@ function DownloadButton({
 }) {
   return (
     <Button
+      variant="outline"
+      size="toolbar"
       onClick={() => {
         void onClick();
       }}
@@ -171,7 +175,7 @@ function DownloadButton({
       disabled={downloadingButton !== null}
     >
       {downloadingButton === buttonKey ? (
-        <span className="text-red-600">Downloading...</span>
+        <span className="text-destructive">Downloading...</span>
       ) : (
         label
       )}

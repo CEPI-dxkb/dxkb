@@ -28,7 +28,7 @@ const WelcomeSearch = () => {
           <div className="container mx-auto px-4">
             <Alert variant="destructive">
               <AlertTitle>Unverified Account Email</AlertTitle>
-              <AlertDescription className="text-destructive">
+              <AlertDescription>
                 <span>
                   Please verify your email to continue using the platform. Click{" "}
                   <button
@@ -37,7 +37,6 @@ const WelcomeSearch = () => {
                       void resendVerificationEmail();
                     }}
                     className="cursor-pointer border-0 bg-transparent p-0 text-inherit underline hover:text-foreground focus:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    style={{ font: "inherit" }}
                   >
                     here
                   </button>{" "}
@@ -74,31 +73,31 @@ const WelcomeSearch = () => {
                     </span>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="cursor-pointer"
                     >
                       SARS-CoV-2
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="cursor-pointer"
                     >
                       Influenza A
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="cursor-pointer"
                     >
                       HIV-1
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="cursor-pointer"
                     >
                       Ebola virus
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="cursor-pointer text-foreground"
+                      className="cursor-pointer"
                     >
                       Zika virus
                     </Badge>
@@ -136,7 +135,7 @@ const WelcomeSearch = () => {
                       />
                     </div>
                   </div>
-                  <Button className="w-full bg-secondary hover:bg-secondary-foreground">
+                  <Button variant="cta" className="w-full">
                     Submit Advanced Search
                   </Button>
                 </TabsContent>
@@ -158,12 +157,13 @@ const WelcomeSearch = () => {
                     <div className="gap-4 text-foreground">
                       <CardFieldLabel>Enter Sequence</CardFieldLabel>
                       <Textarea
-                        className="m-2 h-24 w-full rounded-md border font-mono text-sm text-foreground"
+                        variant="mono"
+                        className="m-2 h-24 w-full"
                         placeholder="Paste your sequence here (FASTA format supported)"
                       ></Textarea>
                     </div>
                   </div>
-                  <Button className="w-full bg-secondary hover:bg-secondary-foreground">
+                  <Button variant="cta" className="w-full">
                     Search by Sequence
                   </Button>
                 </TabsContent>

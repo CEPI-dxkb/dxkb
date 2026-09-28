@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function GeoDistributionSkeleton() {
   return (
-    <Card className="rounded-lg" size="sm">
+    <Card variant="panel" size="sm">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-3">
         <Skeleton className="h-6 w-48" />
         <div className="flex items-center gap-2">

@@ -17,8 +17,16 @@ export const genomeSorts = genomeMetadata.sorts;
 export const recentGenomeRql =
   "and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))";
 
+/**
+ * The recent-genomes default applies only to an otherwise unscoped list. An
+ * explicit RQL query replaces it, and so does a `public` visibility filter:
+ * "My Genomes" (`public=false`) must list every private genome, not just the
+ * ones completed in the last year.
+ */
 export function genomeBaseRql(state: CollectionState): string | undefined {
-  return state.rql ? undefined : recentGenomeRql;
+  return state.rql || Object.hasOwn(state.filters, "public")
+    ? undefined
+    : recentGenomeRql;
 }
 
 export const genomeCollectionOptions: CollectionStateOptions = {
@@ -31,6 +39,9 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     "collection_year",
     "isolation_country",
     "host_common_name",
+    // Visibility scope behind the "My Genomes" link. A friendly filter rather
+    // than `rql` so selecting a facet adds to it instead of replacing it.
+    "public",
   ],
 };
 
@@ -39,12 +50,20 @@ export function parseGenomeCollectionState(
 ): CollectionState {
   const state = parseCollectionState(params, genomeCollectionOptions);
   if (state.rql) state.rql = validateRql("genome", state.rql);
+
+  const visibility = Object.hasOwn(state.filters, "public")
+    ? state.filters.public.filter(
+        (value) => value === "true" || value === "false",
+      )
+    : [];
+  if (visibility.length > 0) state.filters.public = visibility;
+  else delete state.filters.public;
   return state;
 }
 
 // Derived from `friendlyFilters` so the two lists agree by construction: each
 // friendly filter name maps to itself, except the shared taxonomic-lineage
-// remap. Restating the six names here instead would let the lists drift.
+// remap. Restating the names here instead would let the lists drift.
 //
 // Genome pairs this with `unknownFilters: "drop"` (every other
 // structural-filter module passes unmapped names through unchanged). Note what

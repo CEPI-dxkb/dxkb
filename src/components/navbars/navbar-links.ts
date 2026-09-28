@@ -235,8 +235,11 @@ interface WorkspaceNavSection {
   items: WorkspaceNavItem[];
 }
 
-/** The user's private genomes; DXKB equivalent of BV-BRC `/view/GenomeList/?eq(public,false)`. */
-const myGenomesHref = "/genome?rql=eq(public%2Cfalse)";
+/**
+ * The user's private genomes; DXKB equivalent of BV-BRC `/view/GenomeList/?eq(public,false)`.
+ * A `public` filter rather than `rql`, which selecting a facet would clear.
+ */
+const myGenomesHref = "/genome?public=false";
 
 const workspaceNavItems: Record<string, WorkspaceNavSection> = {
   workspaces: {

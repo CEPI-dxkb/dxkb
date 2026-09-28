@@ -3,6 +3,7 @@ import {
   workspaceOverrides,
   emptyBackendFallbackOverrides,
 } from "../fixtures/overrides";
+import { SignInPage } from "../pages";
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
@@ -40,10 +41,7 @@ test.describe("public routes (no auth)", () => {
     "/workspace/workshop",
   ]) {
     test(`${path} redirects to sign-in`, async ({ page }) => {
-      await page.goto(path);
-      await expect(page).toHaveURL(
-        `/sign-in?redirect=${encodeURIComponent(path)}`,
-      );
+      await new SignInPage(page).gotoProtected(path);
     });
   }
 

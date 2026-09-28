@@ -28,7 +28,7 @@ describe("MobileWorkspaceSection", () => {
     );
     expect(screen.getByRole("link", { name: "My Genomes" })).toHaveAttribute(
       "href",
-      "/genome?rql=eq(public%2Cfalse)",
+      "/genome?public=false",
     );
     expect(
       screen.getByRole("link", { name: "Favorite Folder" }),
@@ -63,7 +63,7 @@ describe("MobileWorkspaceSection", () => {
     );
     expect(screen.getByRole("link", { name: "My Genomes" })).toHaveAttribute(
       "href",
-      "/sign-in?redirect=%2Fgenome%3Frql%3Deq(public%252Cfalse)",
+      "/sign-in?redirect=%2Fgenome%3Fpublic%3Dfalse",
     );
     expect(
       screen.getByRole("link", { name: "Public Workspaces" }),

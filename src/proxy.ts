@@ -4,7 +4,10 @@ import {
   protectedPageRequestHeader,
 } from "@/lib/auth/routes";
 import { hasSessionCookies } from "@/lib/auth/server/cookies";
-import { mapLegacyViewPath } from "@/lib/views/legacy-redirect";
+import {
+  legacySearchFromParams,
+  mapLegacyViewPath,
+} from "@/lib/views/legacy-redirect";
 import { viewSegments } from "@/lib/views/view-registry";
 
 /**
@@ -16,7 +19,10 @@ export function proxy(request: NextRequest) {
 
   // 1. Legacy /view/* → new schema (path + query only; hash handled client-side).
   if (pathname.startsWith("/view/")) {
-    const mapped = mapLegacyViewPath(pathname, search.startsWith("?") ? search.slice(1) : search);
+    const mapped = mapLegacyViewPath(
+      pathname,
+      legacySearchFromParams(request.nextUrl.searchParams),
+    );
     if (mapped) {
       const url = new URL(mapped.pathname, request.url);
       url.search = mapped.search;

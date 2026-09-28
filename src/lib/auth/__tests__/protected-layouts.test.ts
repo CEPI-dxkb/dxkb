@@ -20,15 +20,12 @@ const protectedLayouts = [
   "src/app/services/(protein-tools)/layout.tsx",
   "src/app/services/(utilities)/layout.tsx",
   "src/app/services/(viral-tools)/layout.tsx",
-  "src/app/workspace/[username]/layout.tsx",
-  "src/app/workspace/home/layout.tsx",
-  "src/app/workspace/shared/layout.tsx",
+  "src/app/workspace/layout.tsx",
 ] as const;
 
 /**
- * Layouts that must stay unguarded. `src/app/workspace/layout.tsx` is the direct
- * ancestor of the public workspace routes below, so a guard added here would put
- * them behind a login wall — hence the symmetric assertion, not just an omission.
+ * Layouts that must stay unguarded — hence the symmetric assertion, not just an
+ * omission.
  */
 const publicLayouts = [
   "src/app/layout.tsx",
@@ -39,18 +36,19 @@ const publicLayouts = [
   "src/app/organisms/layout.tsx",
   "src/app/search/layout.tsx",
   "src/app/services/layout.tsx",
-  "src/app/workspace/layout.tsx",
 ] as const;
 
-const protectedPagesWithInlineChecks = ["src/app/workspace/page.tsx"] as const;
-
-const publicExceptions = [
-  "src/app/services/page.tsx",
-  "src/app/workspace/public/page.tsx",
-  "src/app/workspace/public/[username]/page.tsx",
-  "src/app/workspace/public/[username]/[...path]/page.tsx",
+/**
+ * Workspace pages that only redirect to another workspace page, which runs the
+ * check itself. Every other workspace page must validate the user.
+ */
+const workspaceRedirectPages = new Set<string>([
+  "src/app/workspace/home/[[...path]]/page.tsx",
+  "src/app/workspace/shared/[[...path]]/page.tsx",
   "src/app/workspace/workshop/page.tsx",
-] as const;
+]);
+
+const publicExceptions = ["src/app/services/page.tsx"] as const;
 
 async function readSource(path: string): Promise<string> {
   return readFile(resolve(path), "utf8");
@@ -69,12 +67,31 @@ describe("protected route server boundaries", () => {
     );
   });
 
-  it.each([...protectedLayouts, ...protectedPagesWithInlineChecks])(
+  it.each(protectedLayouts)(
     "%s validates the current user before rendering",
     async (path) => {
       expect(await readSource(path)).toMatch(guardCallPattern);
     },
   );
+
+  it("validates the current user in every workspace page that renders", async () => {
+    // Layouts are not re-rendered on client-side navigation, so the workspace
+    // layout guard alone would miss a folder-to-folder move on an expired
+    // session. Each rendering page repeats the check.
+    const discovered: string[] = [];
+    for await (const match of glob("src/app/workspace/**/page.tsx")) {
+      discovered.push(match.split(sep).join("/"));
+    }
+
+    expect(discovered).toEqual(expect.arrayContaining([...workspaceRedirectPages]));
+    const renderingPages = discovered.filter(
+      (path) => !workspaceRedirectPages.has(path),
+    );
+    expect(renderingPages.length).toBeGreaterThan(0);
+    for (const path of renderingPages) {
+      expect(await readSource(path), path).toMatch(guardCallPattern);
+    }
+  });
 
   it.each(publicLayouts)("keeps %s unguarded for its subtree", async (path) => {
     expect(await readSource(path)).not.toMatch(guardCallPattern);

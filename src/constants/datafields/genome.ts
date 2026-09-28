@@ -145,6 +145,18 @@ export const genomeFields = {
         facet_hidden: false, 
         search: true 
       },
+      // Filter-only: private genomes carry public=false, which the "My Genomes"
+      // link queries. Not a table column.
+      public: {
+        label: 'Public',
+        field: 'public',
+        hidden: true,
+        show_in_table: false,
+        group: 'Status',
+        facet: false,
+        facet_hidden: true,
+        search: false
+      },
   
       // Type Info
       strain: {

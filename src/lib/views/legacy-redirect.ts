@@ -71,10 +71,44 @@ function renameRqlField(rql: string, from: string, to: string): string {
   return result;
 }
 
+/** A query key that can name a legacy parameter such as `keyword` or `filter`. */
+const namedParamPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Rebuild the raw legacy query string `mapLegacyViewPath` expects from parsed
+ * search params.
+ *
+ * The proxy never sees the raw query. Next.js parses it and re-serializes it
+ * form-encoded before the proxy runs (`runMiddleware` in next-server), so
+ * `?eq(genome_status,Complete)` arrives as `?eq%28genome_status%2CComplete%29=`,
+ * and encoding that string again double-encodes the RQL. The parsed pairs are
+ * still faithful: a raw RQL fragment becomes a key with an empty value, split
+ * at its first `=` if it has one. `%` and `&` are re-escaped so the mapper's
+ * `&` split and the RQL parser's per-value `decodeURIComponent` read the
+ * original text.
+ *
+ * Next's decode loses two distinctions that cannot be restored here: an
+ * unquoted `%2C` inside a value becomes a structural comma, and `+` becomes a
+ * space. A bare identifier (`?foo`) is read as a named parameter.
+ */
+export function legacySearchFromParams(params: URLSearchParams): string {
+  const parts: string[] = [];
+  for (const [key, value] of params) {
+    if (namedParamPattern.test(key)) {
+      parts.push(new URLSearchParams([[key, value]]).toString());
+      continue;
+    }
+    const rql = value ? `${key}=${value}` : key;
+    parts.push(rql.replaceAll("%", "%25").replaceAll("&", "%26"));
+  }
+  return parts.join("&");
+}
+
 /**
  * Map a legacy BV-BRC /view/* request (path + raw query string, no leading "?")
  * to the new schema. Returns null if the path is not a mappable /view/* URL.
- * Hash is intentionally NOT handled here (the server cannot read it).
+ * Hash is intentionally NOT handled here (the server cannot read it). The proxy
+ * builds `rawSearch` with `legacySearchFromParams`.
  */
 export function mapLegacyViewPath(
   pathname: string,

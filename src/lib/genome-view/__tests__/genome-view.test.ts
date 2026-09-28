@@ -105,6 +105,12 @@ describe("Genome view contracts", () => {
     expect(genomeStructuralRql(state)).toBeUndefined();
   });
 
+  it("accepts the private-genome query behind the My Genomes link", () => {
+    const state = parseGenomeCollectionState({ rql: "eq(public,false)" });
+    expect(state.rql).toBe("eq(public,false)");
+    expect(genomeBaseRql(state)).toBeUndefined();
+  });
+
   it("canonicalizes invalid pages and sorts while rejecting transport RQL", () => {
     expect(parseGenomeCollectionState({ page: "0" }).page).toBe(1);
     expect(parseGenomeCollectionState({ sort: "unknown:asc" }).sort).toBe(

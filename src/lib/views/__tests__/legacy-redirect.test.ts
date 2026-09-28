@@ -1,4 +1,4 @@
-import { mapLegacyViewPath } from "../legacy-redirect";
+import { legacySearchFromParams, mapLegacyViewPath } from "../legacy-redirect";
 
 describe("mapLegacyViewPath", () => {
   it("maps a singular legacy path", () => {
@@ -183,5 +183,40 @@ describe("mapLegacyViewPath", () => {
       pathname: "/feature",
       search: "rql=eq(genome_id%2C83332.12)&filter=%22CDS%22",
     });
+  });
+});
+
+describe("legacySearchFromParams", () => {
+  // Each input is the form-encoded query Next.js hands the proxy after parsing
+  // and re-serializing the raw legacy URL (see the helper's doc comment).
+  it.each([
+    ["an RQL fragment", "eq%28genome_status%2CComplete%29=", "eq(genome_status,Complete)"],
+    ["an unnormalized RQL fragment", "eq(taxon_id,1763)", "eq(taxon_id,1763)"],
+    [
+      "RQL beside named params",
+      "eq%28taxon_id%2C1763%29=&keyword=a+b&filter=%22CDS%22",
+      "eq(taxon_id,1763)&keyword=a+b&filter=%22CDS%22",
+    ],
+    ["RQL containing =", "eq%28a%2Cb=c%29", "eq(a,b=c)"],
+    [
+      "a literal % and & in an RQL value",
+      "eq%28name%2C100%25%26more%29=",
+      "eq(name,100%25%26more)",
+    ],
+    ["separate RQL fragments", "eq%28a%2C1%29=&eq%28b%2C2%29=", "eq(a,1)&eq(b,2)"],
+    ["no query", "", ""],
+  ])("rebuilds %s", (_name, normalized, raw) => {
+    expect(legacySearchFromParams(new URLSearchParams(normalized))).toBe(raw);
+  });
+
+  it("gives the mapper the same RQL as the raw query string", () => {
+    const normalized = new URLSearchParams(
+      "eq%28taxon_lineage_ids%2C1763%29=&keyword=kinase",
+    );
+    expect(
+      mapLegacyViewPath("/view/TaxonList/", legacySearchFromParams(normalized)),
+    ).toEqual(
+      mapLegacyViewPath("/view/TaxonList/", "eq(taxon_lineage_ids,1763)&keyword=kinase"),
+    );
   });
 });

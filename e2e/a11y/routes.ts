@@ -625,7 +625,7 @@ export const routes: RouteEntry[] = [
       await awaitSettled(page, { skeletonSelector: '[data-slot="skeleton"]' });
     },
   },
-  // Public workspace listing (no auth required to VIEW, but authenticated user sees their context)
+  // Public workspace listing (signed in, like every workspace route)
   {
     name: "workspace-public",
     path: "/workspace/public",

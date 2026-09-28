@@ -37,7 +37,7 @@ e2e/
     record-har.ts               # Manual HAR recorder
   tests/
     auth.spec.ts                # Sign-in redirects, submit payload, sign-out journey
-    public.spec.ts              # /, /services, /workspace/public, footer pages
+    public.spec.ts              # /, /services, footer pages, workspace sign-in redirects
     workspace.spec.ts           # Signed-in workspace browsing
     services/services-smoke.spec.ts  # Parametrized h1 smoke for all 21 services
     jobs.spec.ts                # Jobs list + detail

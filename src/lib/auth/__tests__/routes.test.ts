@@ -17,23 +17,29 @@ describe("isProtectedPagePath", () => {
     expect(isProtectedPagePath("/workspace/user1/home")).toBe(true);
   });
 
-  it("returns false for /workspace/public exact path and sub-paths", () => {
-    expect(isProtectedPagePath("/workspace/public")).toBe(false);
-    expect(isProtectedPagePath("/workspace/public/")).toBe(false);
-    expect(isProtectedPagePath("/workspace/public/user@bvbrc")).toBe(false);
-    expect(isProtectedPagePath("/workspace/public/user@bvbrc/home")).toBe(false);
+  it("returns true for nested workspace folders", () => {
+    expect(
+      isProtectedPagePath("/workspace/user1/For-Jim/test1_SRR1695593"),
+    ).toBe(true);
+    expect(isProtectedPagePath("/workspace/user1/home/a/b/c")).toBe(true);
+    expect(isProtectedPagePath("/workspace/shared/a/b")).toBe(true);
   });
 
-  it("returns false for /workspace/workshop exact path and sub-paths", () => {
-    expect(isProtectedPagePath("/workspace/workshop")).toBe(false);
-    expect(isProtectedPagePath("/workspace/workshop/")).toBe(false);
-    expect(isProtectedPagePath("/workspace/workshop/some-event")).toBe(false);
+  it("returns true for /workspace/public exact path and sub-paths", () => {
+    expect(isProtectedPagePath("/workspace/public")).toBe(true);
+    expect(isProtectedPagePath("/workspace/public/")).toBe(true);
+    expect(isProtectedPagePath("/workspace/public/user@bvbrc")).toBe(true);
+    expect(
+      isProtectedPagePath(
+        "/workspace/public/ntvy@patricbrc.org/2023-NVDDTHD/GD63ONT_DuongQC",
+      ),
+    ).toBe(true);
   });
 
-  it("protects workspace paths that resemble the public exceptions", () => {
-    expect(isProtectedPagePath("/workspace/publicXYZ")).toBe(true);
-    expect(isProtectedPagePath("/workspace/workshops")).toBe(true);
-    expect(isProtectedPagePath("/workspace/publicity")).toBe(true);
+  it("returns true for /workspace/workshop exact path and sub-paths", () => {
+    expect(isProtectedPagePath("/workspace/workshop")).toBe(true);
+    expect(isProtectedPagePath("/workspace/workshop/")).toBe(true);
+    expect(isProtectedPagePath("/workspace/workshop/some-event")).toBe(true);
   });
 
   it("does not classify unrelated prefix lookalikes as protected", () => {

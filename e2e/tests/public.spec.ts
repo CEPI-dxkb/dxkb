@@ -33,18 +33,19 @@ test.describe("public routes (no auth)", () => {
     ).toBeVisible();
   });
 
-  test("/workspace/public is publicly accessible", async ({ page }) => {
-    await page.goto("/workspace/public");
-    await expect(page).toHaveURL(/\/workspace\/public/);
-    await expect(page.locator("body")).toBeVisible();
-  });
-
-  test("/workspace/workshop is publicly accessible", async ({ page }) => {
-    await page.goto("/workspace/workshop");
-    // Workshop route redirects to the public workshop location; just confirm we land on a workspace public URL and not at sign-in.
-    await expect(page).toHaveURL(/\/workspace\/(workshop|public)/);
-    await expect(page).not.toHaveURL(/sign-in/);
-  });
+  // Every workspace route, public folders included, needs a signed-in user.
+  for (const path of [
+    "/workspace/public",
+    "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop",
+    "/workspace/workshop",
+  ]) {
+    test(`${path} redirects to sign-in`, async ({ page }) => {
+      await page.goto(path);
+      await expect(page).toHaveURL(
+        `/sign-in?redirect=${encodeURIComponent(path)}`,
+      );
+    });
+  }
 
   test("footer pages render: /about, /contact, /faq", async ({ page }) => {
     for (const path of ["/about", "/contact", "/faq"]) {

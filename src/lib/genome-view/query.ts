@@ -43,6 +43,8 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     // than `rql` so selecting a facet adds to it instead of replacing it.
     "public",
   ],
+  // `public` is a boolean field; the gateway rejects any other value.
+  filterValues: { public: ["true", "false"] },
 };
 
 export function parseGenomeCollectionState(
@@ -50,14 +52,6 @@ export function parseGenomeCollectionState(
 ): CollectionState {
   const state = parseCollectionState(params, genomeCollectionOptions);
   if (state.rql) state.rql = validateRql("genome", state.rql);
-
-  const visibility = Object.hasOwn(state.filters, "public")
-    ? state.filters.public.filter(
-        (value) => value === "true" || value === "false",
-      )
-    : [];
-  if (visibility.length > 0) state.filters.public = visibility;
-  else delete state.filters.public;
   return state;
 }
 

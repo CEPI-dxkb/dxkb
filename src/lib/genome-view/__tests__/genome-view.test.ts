@@ -21,6 +21,7 @@ import {
   recentGenomeRql,
 } from "@/lib/genome-view";
 import {
+  parseCollectionState,
   toSearchParamsRecord,
   updateCollectionSearchParams,
 } from "@/lib/views/collection-state";
@@ -135,6 +136,16 @@ describe("Genome view contracts", () => {
     const state = parseGenomeCollectionState({ public: "maybe" });
     expect(state.filters).toEqual({});
     expect(genomeBaseRql(state)).toBe(recentGenomeRql);
+  });
+
+  it("drops a non-boolean visibility filter on the taxon Genomes tab", () => {
+    // That tab reads the URL through the generic parser, not
+    // parseGenomeCollectionState, and the gateway rejects eq(public,maybe).
+    const state = parseCollectionState(
+      { public: "maybe", genome_status: "Complete" },
+      genomeCollectionOptions,
+    );
+    expect(genomeStructuralRql(state)).toBe("eq(genome_status,Complete)");
   });
 
   it("canonicalizes invalid pages and sorts while rejecting transport RQL", () => {

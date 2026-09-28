@@ -6,6 +6,12 @@ export interface CollectionStateOptions<Sort extends string = string> {
   friendlyFilters?: readonly string[];
   /** Filters that remain active and serialized alongside explicit structural RQL. */
   independentFilters?: readonly string[];
+  /**
+   * Closed value sets for friendly filters, such as `true`/`false` for a
+   * boolean field. Values outside the set are dropped wherever state is parsed
+   * or canonicalized, so they never reach the backend, which rejects them.
+   */
+  filterValues?: Readonly<Record<string, readonly string[]>>;
   /** Accept legacy `filter=<RQL>` URLs and canonicalize them to `rql`. */
   legacyRqlFilter?: boolean;
 }
@@ -64,6 +70,20 @@ function values(params: SearchParamsRecord, name: string): string[] {
   ];
 }
 
+function allowedValues<Sort extends string>(
+  name: string,
+  selected: readonly string[],
+  options: CollectionStateOptions<Sort>,
+): string[] {
+  const allowed =
+    options.filterValues && Object.hasOwn(options.filterValues, name)
+      ? options.filterValues[name]
+      : undefined;
+  return allowed
+    ? selected.filter((value) => allowed.includes(value))
+    : [...selected];
+}
+
 function parsePage(params: SearchParamsRecord): number {
   const rawPage = optionalValue(params, "page", true);
   if (rawPage === undefined) return 1;
@@ -112,7 +132,7 @@ export function parseCollectionState<Sort extends string>(
   const independentFilters = new Set(options.independentFilters);
   for (const name of options.friendlyFilters ?? []) {
     if (rql !== undefined && !independentFilters.has(name)) continue;
-    const selected = values(params, name);
+    const selected = allowedValues(name, values(params, name), options);
     if (selected.length > 0) filters[name] = selected;
   }
 
@@ -139,7 +159,11 @@ export function canonicalizeCollectionState<Sort extends string>(
 
   for (const name of options.friendlyFilters ?? []) {
     if (rql !== undefined && !independentFilters.has(name)) continue;
-    const selected = [...new Set(state.filters[name] ?? [])].filter(Boolean);
+    const selected = allowedValues(
+      name,
+      [...new Set(state.filters[name] ?? [])].filter(Boolean),
+      options,
+    );
     if (selected.length > 0) filters[name] = selected;
   }
 

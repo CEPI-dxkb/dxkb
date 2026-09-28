@@ -41,11 +41,13 @@ const selectTriggerVariants = cva(
       variant: {
         default: "",
         // Leading part of a joined control whose wrapper draws the outline
-        // (search bar: type select + query input). `-lg` is the tall form.
+        // (search bar: type select + query input). `-lg` is the tall form; it
+        // overrides the `data-[size=default]:h-8` of the base, which a plain
+        // `h-*` loses to on specificity, and matches `segment-end-lg` on Input.
         "segment-start":
-          "rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-sm text-foreground shadow-none focus:ring-0",
+          "rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-sm text-foreground shadow-none focus-visible:ring-0",
         "segment-start-lg":
-          "rounded-l-md rounded-r-none border-0 border-r border-input bg-background py-6 text-sm text-foreground shadow-none focus:ring-0",
+          "rounded-l-md rounded-r-none border-0 border-r border-input bg-background text-sm text-foreground shadow-none focus-visible:ring-0 data-[size=default]:h-12",
       },
       density: {
         default: "",

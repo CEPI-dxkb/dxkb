@@ -22,8 +22,9 @@ export const buttonVariants = cva(
         "ghost-inverse":
           "text-primary-foreground hover:bg-white/15 hover:text-primary-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         // Call-to-action on marketing and help surfaces: brand secondary
-        // fill with light text.
-        cta: "bg-secondary text-white hover:bg-secondary/80",
+        // fill with the theme's paired foreground (the zinc, orange and
+        // violet light themes have a near-white secondary).
+        cta: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         // Outlined control on a dark or brand surface (the navbar job pill).
         "inverse-outline":
           "border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
@@ -40,7 +41,7 @@ export const buttonVariants = cva(
           "border-border bg-primary text-primary-foreground [a]:hover:bg-primary/80",
         // Outline button on an accent surface (the impersonation banner).
         "outline-accent":
-          "border-accent-foreground/30 bg-transparent hover:bg-accent-foreground/10 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-accent-foreground/30 bg-transparent hover:bg-accent-foreground/10 hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         // Bordered ghost icon action over content (copy-to-clipboard on a
         // code block).
         "ghost-outline":
@@ -54,9 +55,9 @@ export const buttonVariants = cva(
         // Round ghost info triggers with an accent hover (service info
         // popups); ghost-accent-primary is the header one.
         "ghost-accent":
-          "rounded-full hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "rounded-full hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         "ghost-accent-primary":
-          "rounded-full text-primary hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "rounded-full text-primary hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         // Primary-tinted chip, solid in dark themes (the dropdown toggles in
         // the service-form pickers).
         soft: "bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80",
@@ -68,9 +69,10 @@ export const buttonVariants = cva(
         "menu-item":
           "rounded-md border-none hover:bg-secondary/80 hover:text-foreground focus:bg-secondary/80 aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         // Action inside a notice banner on a primary bar (the truncated
-        // preview banner).
+        // preview banner). The hover text follows the hover fill: accent in
+        // light themes, a muted wash over the primary bar in dark ones.
         banner:
-          "hover:bg-accent/90 hover:text-white aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-accent/90 hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-primary-foreground",
       },
       size: {
         default:

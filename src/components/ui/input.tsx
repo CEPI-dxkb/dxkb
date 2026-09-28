@@ -20,11 +20,12 @@ const inputVariants = cva(
         // Paths, ids and sequences.
         mono: "font-mono text-sm",
         // Trailing part of a joined control whose wrapper draws the outline
-        // (search bar: type select + query input). `-lg` is the tall form.
+        // (search bar: type select + query input). `-lg` is the tall form, the
+        // same height as `segment-start-lg` on SelectTrigger.
         "segment-end":
           "rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0",
         "segment-end-lg":
-          "rounded-l-none rounded-r-md border-0 bg-background py-6 text-foreground shadow-none focus-visible:ring-0",
+          "h-12 rounded-l-none rounded-r-md border-0 bg-background text-foreground shadow-none focus-visible:ring-0",
         // Error border without the `aria-invalid` focus ring, for the service
         // pickers that must keep their border-only error look.
         invalid: "border-destructive",

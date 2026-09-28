@@ -20,9 +20,9 @@ const tableVariants = cva("w-full caption-bottom text-sm", {
     },
     variant: {
       default: "",
-      // A framed, muted table inside a bordered box. The border sits on the
-      // table itself so it collapses into the cell borders.
-      well: "overflow-hidden rounded-md border bg-muted",
+      // The muted surface of a table inside a bordered, rounded box; the box
+      // draws the frame, so the table adds none of its own.
+      well: "bg-muted",
     },
   },
   defaultVariants: {
@@ -110,11 +110,12 @@ const tableCellVariants = cva(
         grid: "border",
         // The sticky checkbox column of a `grid` table whose rows use the
         // `tint` variant (and a `group` class): an opaque surface so scrolled
-        // cells do not show through, hover-tracking the row, and an opaque
-        // equivalent of the row's bg-primary/15 when the row has
-        // `data-state="selected"`.
+        // cells do not show through, and opaque equivalents of the row's
+        // surface in each state: hover (bg-muted), selected (bg-primary/15,
+        // /30 in dark themes) and selected + hover (bg-muted/50 in light
+        // themes; dark themes keep the tint).
         "sticky-select":
-          "border bg-background group-hover:bg-muted group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_15%,var(--color-background))]",
+          "border bg-background group-hover:bg-muted group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_15%,var(--color-background))] group-data-[state=selected]:group-hover:bg-[color-mix(in_srgb,var(--color-muted)_50%,var(--color-background))] dark:group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-background))] dark:group-data-[state=selected]:group-hover:bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-background))]",
         // Identifiers and sequences.
         code: "font-mono text-xs",
       },

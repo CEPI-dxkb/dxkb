@@ -41,6 +41,29 @@
   }
 }
 
+/* Chart motion (metadata distributions). Each is a list of per-property
+   transitions or a keyframe shorthand, which the transition and animate
+   scales cannot express. */
+@utility animate-donut-legend-up {
+  animation: donut-legend-up 0.4s 0.4s ease-out both;
+}
+
+@utility transition-chart-pop {
+  transition: transform 180ms ease-out;
+}
+
+@utility transition-chart-dim {
+  transition: opacity 160ms ease;
+}
+
+@utility transition-chart-bar {
+  transition:
+    x 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    y 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 160ms ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -173,7 +196,8 @@
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(84.57% 0.167 84.87);
-  --accent-foreground: oklch(0.985 0 0);
+  /* Dark text: the dark theme keeps the pale light-theme accent fill. */
+  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --success: oklch(0.792 0.209 151.711);
   --warning: oklch(0.828 0.189 84.429);
@@ -271,11 +295,11 @@
 }
 
 .news-link {
-  @apply font-semibold text-blue-600 transition-all duration-300;
+  @apply text-link font-semibold transition-all duration-300;
 }
 
 .news-link:hover {
-  @apply scale-110 font-bold text-blue-400 underline;
+  @apply scale-110 font-bold underline;
 }
 
 .icon-link {
@@ -454,7 +478,7 @@
 }
 
 .service-header a {
-  @apply inline-flex items-center text-blue-700 hover:text-blue-900;
+  @apply inline-flex items-center text-link hover:underline;
 }
 
 .service-header-title {
@@ -474,11 +498,7 @@
 }
 
 .service-header-description a {
-  @apply inline-flex items-center text-blue-700 hover:text-blue-900;
-}
-
-.service-header-tooltip {
-  @apply h-5 w-5 text-blue-500;
+  @apply inline-flex items-center text-link hover:underline;
 }
 
 .service-radio-group {
@@ -591,10 +611,6 @@
 
 .service-card-input-search {
   @apply relative flex-1;
-}
-
-.service-card-input-search-icon {
-  @apply absolute top-2.5 right-3 h-4 w-4 text-gray-400;
 }
 
 .service-card-input-group {
@@ -742,46 +758,50 @@
 /* Taxonomy rank badges (the Rank column of the taxonomy tree). This is the one
    place to theme ranks: the Badge sets data-rank={rank} and these rules color
    it. They sit outside any @layer so they beat the outline variant's
-   border-border / text-foreground utilities. Ranks without a rule (including
+   border-border / text-foreground utilities. Each rank tints the badge with
+   one of the theme's categorical chart-* colors and keeps foreground text, so
+   the label holds its contrast whatever the chart color's lightness. The
+   slots are picked so a rank's hue sits well apart from the ranks above and
+   below it in every theme's chart palette. Ranks without a rule (including
    "no rank") use the neutral default, which must stay first. */
 [data-slot="badge"][data-rank] {
-  @apply border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-600 dark:bg-slate-700/50 dark:text-slate-300;
+  @apply border-border bg-muted text-foreground;
 }
 
 [data-slot="badge"][data-rank="superkingdom"],
 [data-slot="badge"][data-rank="kingdom"] {
-  @apply border-purple-200 bg-purple-100 text-purple-700 dark:border-purple-700 dark:bg-purple-900/40 dark:text-purple-300;
+  @apply border-chart-2/50 bg-chart-2/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="phylum"] {
-  @apply border-indigo-200 bg-indigo-100 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300;
+  @apply border-chart-1/50 bg-chart-1/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="class"] {
-  @apply border-blue-200 bg-blue-100 text-blue-700 dark:border-blue-700 dark:bg-blue-900/40 dark:text-blue-300;
+  @apply border-chart-10/50 bg-chart-10/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="order"] {
-  @apply border-cyan-200 bg-cyan-100 text-cyan-700 dark:border-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300;
+  @apply border-chart-4/50 bg-chart-4/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="family"] {
-  @apply border-teal-200 bg-teal-100 text-teal-700 dark:border-teal-700 dark:bg-teal-900/40 dark:text-teal-300;
+  @apply border-chart-6/50 bg-chart-6/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="genus"] {
-  @apply border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300;
+  @apply border-chart-7/50 bg-chart-7/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="species"] {
-  @apply border-amber-200 bg-amber-100 text-amber-700 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-300;
+  @apply border-chart-8/50 bg-chart-8/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="serotype"],
 [data-slot="badge"][data-rank="subtype"] {
-  @apply border-rose-200 bg-rose-100 text-rose-700 dark:border-rose-700 dark:bg-rose-900/40 dark:text-rose-300;
+  @apply border-chart-3/50 bg-chart-3/15 text-foreground;
 }
 
 [data-slot="badge"][data-rank="strain"] {
-  @apply border-orange-200 bg-orange-100 text-orange-700 dark:border-orange-700 dark:bg-orange-900/40 dark:text-orange-300;
+  @apply border-chart-9/50 bg-chart-9/15 text-foreground;
 }

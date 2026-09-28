@@ -106,6 +106,17 @@ export function BarStackChart({
 
   const yTicks = yScale.ticks(4);
 
+  // A literal style object with static keys: the lint rule allows the
+  // runtime left/right/top, but not a style computed by a call.
+  const tooltipPosition = chartTooltipStyle(
+    tooltipLeft ?? 0,
+    tooltipTop ?? 0,
+    160,
+    20 + (tooltipData?.rows.length ?? 0) * 22,
+    tooltipOffsetX,
+    tooltipOffsetY,
+  );
+
   return (
     <Card variant="panel" className="relative" size="sm">
       <CardContent className="flex flex-1 flex-col">
@@ -181,10 +192,11 @@ export function BarStackChart({
                           role="graphics-symbol"
                           aria-label={label}
                           pointerEvents="none"
-                          style={{
-                            opacity: isDimmed ? 0.12 : 1,
-                            transition: "opacity 160ms ease",
-                          }}
+                          className={
+                            isDimmed
+                              ? "opacity-12 transition-chart-dim"
+                              : "transition-chart-dim"
+                          }
                         >
                           <title>{label}</title>
                         </rect>
@@ -299,14 +311,11 @@ export function BarStackChart({
         <div
           role="status"
           className="pointer-events-none fixed z-50 rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
-          style={chartTooltipStyle(
-            tooltipLeft ?? 0,
-            tooltipTop ?? 0,
-            160,
-            20 + tooltipData.rows.length * 22,
-            tooltipOffsetX,
-            tooltipOffsetY,
-          )}
+          style={{
+            left: tooltipPosition.left,
+            right: tooltipPosition.right,
+            top: tooltipPosition.top,
+          }}
         >
           <p className="mb-1.5 font-semibold text-foreground">
             {tooltipData.year}

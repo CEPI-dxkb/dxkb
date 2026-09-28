@@ -114,7 +114,7 @@ function SearchBarForm({
             id={typeId}
             aria-label="Search type"
             variant={size === "lg" ? "segment-start-lg" : "segment-start"}
-            className={size === "lg" ? "h-auto min-w-30" : "min-w-30"}
+            className="min-w-30"
           >
             <SelectValue aria-label="Search type" />
           </SelectTrigger>

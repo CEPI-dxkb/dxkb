@@ -185,26 +185,23 @@ describe("ChartLegendPill", () => {
       name: "inactive pill",
       props: { active: false, dimmed: false, variant: "pill" as const },
       classes: ["border-border", "text-foreground/70"],
-      opacity: "",
     },
     {
       name: "dimmed pill",
       props: { active: false, dimmed: true, variant: "pill" as const },
       classes: ["border-border", "text-foreground/40", "opacity-30"],
-      opacity: "",
     },
     {
       name: "active dimmed row",
       props: { active: true, dimmed: true, variant: "row" as const },
-      classes: ["text-foreground/40", "opacity-40"],
-      opacity: "color-mix(in srgb, var(--foreground) 30%, transparent)",
+      classes: ["text-foreground/40", "bg-foreground/30", "opacity-40"],
     },
-  ])("preserves the $name appearance", ({ props, classes, opacity }) => {
+  ])("preserves the $name appearance", ({ props, classes }) => {
     render(<ChartLegendPill label="Alpha" color="red" {...props} />);
 
     const button = screen.getByRole("button");
     expect(button).toHaveClass(...classes);
-    if (opacity) expect(button.style.backgroundColor).toBe(opacity);
+    expect(button.style.backgroundColor).toBe("");
   });
 
   it("uses the slice color for an active pill border and background", () => {
@@ -234,6 +231,6 @@ describe("ChartLegendPill", () => {
       .querySelector('span[aria-hidden="true"]');
 
     expect(swatch).not.toBeNull();
-    expect(swatch?.getAttribute("style")).toMatch(/border:\s*1px solid/);
+    expect(swatch).toHaveClass("border", "border-foreground/70");
   });
 });

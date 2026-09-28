@@ -167,16 +167,37 @@ export default defineConfig(
     },
   },
   {
-    // Chart and map geometry (slice angles, bar extents, projected paths,
-    // canvas overlays) is computed at runtime and has no class equivalent.
-    // Static values in these folders still belong in classes.
+    // Chart and map geometry is computed at runtime: cursor-anchored tooltip
+    // positions, bar extents, slice pop offsets and animation opacity, the
+    // map height, data-driven series colors. Only the properties that carry
+    // those values are allowed; any other inline property, and any style
+    // object the rule cannot read (a spread or a call), is still reported.
+    // Static values of these properties still belong in classes.
     files: [
       "src/components/organisms/metadata-distributions/**",
       "src/components/organisms/geo-distribution/**",
       "src/components/interactions/sigma/**",
     ],
     rules: {
-      "shadcn/no-inline-styles": "off",
+      "shadcn/no-inline-styles": [
+        "error",
+        {
+          allow: [
+            "left",
+            "right",
+            "top",
+            "width",
+            "height",
+            "x",
+            "y",
+            "transform",
+            "opacity",
+            "background",
+            "backgroundColor",
+            "borderColor",
+          ],
+        },
+      ],
     },
   },
   {

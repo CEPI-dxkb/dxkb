@@ -61,6 +61,14 @@ export function AreaChart({
 
   const yTicks = yScale.ticks(4);
   const step = labelStep(yearData.length);
+  // A literal style object with static keys: the lint rule allows the
+  // runtime left/right/top, but not a style computed by a call.
+  const tooltipPosition = chartTooltipStyle(
+    tooltipLeft ?? 0,
+    tooltipTop ?? 0,
+    150,
+    28,
+  );
 
   return (
     <Card variant="panel" className="relative" size="sm">
@@ -219,7 +227,11 @@ export function AreaChart({
         <div
           role="status"
           className="pointer-events-none fixed z-50 rounded-md border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-md"
-          style={chartTooltipStyle(tooltipLeft ?? 0, tooltipTop ?? 0, 150, 28)}
+          style={{
+            left: tooltipPosition.left,
+            right: tooltipPosition.right,
+            top: tooltipPosition.top,
+          }}
         >
           {tooltipData.year}: {numberFormatter.format(tooltipData.count)}
         </div>

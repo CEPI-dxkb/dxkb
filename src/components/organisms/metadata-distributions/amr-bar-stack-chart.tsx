@@ -197,6 +197,17 @@ function useAmrBarStackChart({
 
   const yTicks = scale === "percent" ? [0, 25, 50, 75, 100] : yScale.ticks(4);
 
+  // A literal style object with static keys: the lint rule allows the
+  // runtime left/right/top, but not a style computed by a call.
+  const tooltipPosition = chartTooltipStyle(
+    tooltipLeft ?? 0,
+    tooltipTop ?? 0,
+    180,
+    20 + (tooltipData?.rows.length ?? 0) * 22,
+    tooltipOffsetX,
+    tooltipOffsetY,
+  );
+
   return (
     <Card variant="panel" className="relative flex-1" size="sm">
       <CardContent className="flex flex-1 flex-col">
@@ -322,14 +333,16 @@ function useAmrBarStackChart({
                             role="graphics-symbol"
                             aria-label={label}
                             pointerEvents="none"
+                            className={
+                              isDimmed
+                                ? "opacity-12 transition-chart-bar"
+                                : "transition-chart-bar"
+                            }
                             style={{
                               x: bar.x,
                               y: bar.y,
                               height: Math.max(bar.height, 0),
                               width: bar.width,
-                              opacity: isDimmed ? 0.12 : 1,
-                              transition:
-                                "x 280ms cubic-bezier(0.4,0,0.2,1), y 280ms cubic-bezier(0.4,0,0.2,1), height 280ms cubic-bezier(0.4,0,0.2,1), opacity 160ms ease",
                             }}
                           >
                             <title>{label}</title>
@@ -418,14 +431,11 @@ function useAmrBarStackChart({
         <div
           role="status"
           className="pointer-events-none fixed z-50 rounded-md border bg-popover px-3 py-2 text-xs text-popover-foreground shadow-md"
-          style={chartTooltipStyle(
-            tooltipLeft ?? 0,
-            tooltipTop ?? 0,
-            180,
-            20 + tooltipData.rows.length * 22,
-            tooltipOffsetX,
-            tooltipOffsetY,
-          )}
+          style={{
+            left: tooltipPosition.left,
+            right: tooltipPosition.right,
+            top: tooltipPosition.top,
+          }}
         >
           <p className="mb-1.5 font-semibold text-foreground capitalize">
             {tooltipData.antibiotic}

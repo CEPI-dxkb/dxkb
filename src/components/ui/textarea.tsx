@@ -14,6 +14,9 @@ const textareaVariants = cva(
         // Sequence entry (FASTA and similar).
         mono: "font-mono text-sm",
         "mono-xs": "font-mono text-xs",
+        // Success border for content that passed validation (the FASTA
+        // sequence box). The error state stays on `aria-invalid`.
+        valid: "border-success focus-visible:ring-success/50",
       },
     },
     defaultVariants: {

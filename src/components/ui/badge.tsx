@@ -20,10 +20,10 @@ const badgeVariants = cva(
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
         // Local edit: statistic chips on an accent tint (quick links).
-        accent: "bg-accent text-foreground [a]:hover:bg-accent/80",
+        accent: "bg-accent text-accent-foreground [a]:hover:bg-accent/80",
         // Local edit: a result count on the brand secondary fill.
         count:
-          "bg-secondary font-semibold text-white [a]:hover:bg-secondary/80",
+          "bg-secondary font-semibold text-secondary-foreground [a]:hover:bg-secondary/80",
       },
       // Local edit: smaller badges. xs is the taxonomy rank chip; sm keeps
       // the default box with 11px text.

@@ -93,6 +93,7 @@ export function FastaTextarea({
         placeholder={placeholder}
         disabled={disabled}
         aria-invalid={hasError || undefined}
+        variant={validationResult?.valid ? "valid" : undefined}
         className={className}
       />
 

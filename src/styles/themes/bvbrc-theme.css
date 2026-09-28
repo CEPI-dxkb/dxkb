@@ -58,7 +58,8 @@
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(.6692 0.1588 129.43);
-  --accent-foreground: oklch(.9612 0 0);
+  /* Dark text: the dark theme keeps the pale light-theme accent fill. */
+  --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --success: oklch(0.792 0.209 151.711);
   --warning: oklch(0.828 0.189 84.429);

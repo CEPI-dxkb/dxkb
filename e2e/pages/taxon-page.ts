@@ -1,14 +1,26 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { ViewNavRail } from "./view-nav-rail";
+
 /** Taxonomy landing page with its data-view tabs (serology, strains, epitopes, ...). */
 export class TaxonPage {
   readonly page: Page;
+  readonly viewNav: ViewNavRail;
+  /** Links to other taxon pages (the lineage breadcrumb), which Next prefetches. */
+  readonly taxonomyLinks: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.viewNav = new ViewNavRail(page);
+    this.taxonomyLinks = page.locator('a[href^="/taxonomy/"]');
   }
 
-  async goto(taxonId: string, tab: string): Promise<void> {
+  /** Without a tab, the page opens on its default tab. */
+  async goto(taxonId: string, tab?: string): Promise<void> {
+    if (tab === undefined) {
+      await this.page.goto(`/taxonomy/${taxonId}`);
+      return;
+    }
     await this.page.goto(`/taxonomy/${taxonId}?tab=${tab}`);
     await expect(this.page).toHaveURL(new RegExp(`tab=${tab}`));
   }

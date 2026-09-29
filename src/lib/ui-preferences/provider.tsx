@@ -12,7 +12,6 @@ import { serializeUiPreferenceCookie } from "./cookie";
 import {
   defaultUiPreferences,
   legacyUiPreferenceCookies,
-  uiPreferenceKeys,
   type UiPreferenceKey,
   type UiPreferences,
 } from "./definitions";
@@ -43,22 +42,9 @@ export function UiPreferencesProvider({
   children,
 }: PropsWithChildren<{ initialPreferences: UiPreferences }>) {
   const [preferences, setPreferences] = useState(initialPreferences);
-  const persistedRef = useRef(initialPreferences);
-
-  // React state is the source of truth; the cookies mirror it for the next server
-  // render. Writing after commit keeps the state updater pure, so callers can still
-  // wrap updates in startTransition.
-  useEffect(() => {
-    const secure = window.location.protocol === "https:";
-    for (const key of uiPreferenceKeys) {
-      if (!Object.is(preferences[key], persistedRef.current[key])) {
-        document.cookie = serializeUiPreferenceCookie(key, preferences[key], {
-          secure,
-        });
-      }
-    }
-    persistedRef.current = preferences;
-  }, [preferences]);
+  // The latest value each setter asked for, which can be ahead of `preferences` while
+  // a render (or a startTransition) is still pending.
+  const requestedRef = useRef(initialPreferences);
 
   useEffect(() => {
     for (const { name, path } of legacyUiPreferenceCookies) {
@@ -66,16 +52,25 @@ export function UiPreferencesProvider({
     }
   }, []);
 
+  // The cookie is written inside the setter, not from an effect after commit. A
+  // reload or full navigation right after a click or drag can land before a pending
+  // render commits (the view rail toggles in a transition), and the next server render
+  // would then restore the old value. The state updater stays pure and touches only
+  // its own key, so a transition still defers just its own change.
   const setPreference = <K extends UiPreferenceKey>(
     key: K,
     update: PreferenceUpdate<UiPreferences[K]>,
   ) => {
-    setPreferences((current) => {
-      const next = isUpdater(update) ? update(current[key]) : update;
-      return Object.is(next, current[key])
-        ? current
-        : { ...current, [key]: next };
+    const current = requestedRef.current[key];
+    const next = isUpdater(update) ? update(current) : update;
+    if (Object.is(next, current)) return;
+    requestedRef.current = { ...requestedRef.current, [key]: next };
+    document.cookie = serializeUiPreferenceCookie(key, next, {
+      secure: window.location.protocol === "https:",
     });
+    setPreferences((state) =>
+      Object.is(state[key], next) ? state : { ...state, [key]: next },
+    );
   };
 
   return (

@@ -1,10 +1,17 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
+import { ViewNavRail } from "./view-nav-rail";
+
 export class OrganismLandingPage {
   readonly page: Page;
+  readonly viewNav: ViewNavRail;
+  /** Links into taxon pages (the genus cards), which Next prefetches. */
+  readonly taxonomyLinks: Locator;
 
   constructor(page: Page) {
     this.page = page;
+    this.viewNav = new ViewNavRail(page);
+    this.taxonomyLinks = page.locator('a[href^="/taxonomy/"]');
   }
 
   async goto(slug: string): Promise<void> {

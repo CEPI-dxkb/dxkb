@@ -30,6 +30,8 @@ e2e/
   mocks/
     backends.ts                 # applyBackendMocks(page, { overrides })
   pages/                        # Page-object helpers (SignInPage, …) — import from "../pages"
+  support/
+    runtime-errors.ts           # failOnRuntimeErrors(page): fail on page errors / console errors
   fixtures/
     hars/                       # Recorded HAR files (committed)
     overrides/                  # Hand-written JSON overrides (committed)
@@ -111,6 +113,8 @@ await signIn.expectInlineError(/invalid/i);
 ```
 
 Add a new page object when a spec starts repeating the same selector tuple twice, not preemptively — the wrappers are meant to encode the actual shape of the page, not a speculative surface.
+
+A part that several pages render is its own small object, composed into each page object that has it rather than duplicated: `PanelSplit` (the resizable main/details split) is `WorkspacePage.panels` and `JobsListPage.panels`, and `ViewNavRail` (the collapsible view rail) is `OrganismLandingPage.viewNav` and `TaxonPage.viewNav`.
 
 Prefer role locators (`getByRole`) for anything inside a Suspense boundary on a streamed page. React can render a boundary's content in place while its hidden staged copy (`<div hidden id="S:n">` at the end of `<body>`) is still waiting for the queued reveal script to remove it. Role locators skip hidden subtrees, but CSS, `getByTestId`, `getByText` and `getByPlaceholder` locators match them, so a strict assertion briefly sees two elements, and a strict-mode violation fails at once rather than retrying. That flaked `OrganismLandingPage.getKpi` about once in 80 runs under parallel load, and failed most WebKit visits to `/sign-in?redirect=…` through `SignInPage`. When a non-role locator is unavoidable, add `.filter({ visible: true })`.
 

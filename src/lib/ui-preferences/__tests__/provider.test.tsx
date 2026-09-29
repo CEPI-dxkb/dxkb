@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
+import { startTransition } from "react";
 import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import { useUiPreference } from "../provider";
 
@@ -34,6 +35,46 @@ describe("useUiPreference", () => {
     expect(cookieSpy).toHaveBeenCalledWith(
       "dxkb-view-nav-collapsed=true; Path=/; Max-Age=31536000; SameSite=Lax",
     );
+  });
+
+  it("writes the cookie before the update commits, even in a transition", () => {
+    const cookieSpy = vi.spyOn(document, "cookie", "set");
+    const { result } = renderHook(() => useUiPreference("viewNavCollapsed"), {
+      wrapper: createUiPreferencesWrapper(),
+    });
+    cookieSpy.mockClear();
+
+    act(() => {
+      startTransition(() => {
+        result.current[1](true);
+      });
+      // act has not flushed the render yet: a reload issued now must still see it.
+      expect(cookieSpy).toHaveBeenCalledWith(
+        "dxkb-view-nav-collapsed=true; Path=/; Max-Age=31536000; SameSite=Lax",
+      );
+      expect(result.current[0]).toBe(false);
+    });
+
+    expect(result.current[0]).toBe(true);
+  });
+
+  it("applies back-to-back updates to the latest requested value", () => {
+    const cookieSpy = vi.spyOn(document, "cookie", "set");
+    const { result } = renderHook(() => useUiPreference("viewNavCollapsed"), {
+      wrapper: createUiPreferencesWrapper(),
+    });
+    cookieSpy.mockClear();
+
+    act(() => {
+      result.current[1]((current) => !current);
+      result.current[1]((current) => !current);
+    });
+
+    expect(result.current[0]).toBe(false);
+    expect(cookieSpy.mock.calls.map(([value]) => value.split(";")[0])).toEqual([
+      "dxkb-view-nav-collapsed=true",
+      "dxkb-view-nav-collapsed=false",
+    ]);
   });
 
   it("does not write a cookie when the value is unchanged", () => {

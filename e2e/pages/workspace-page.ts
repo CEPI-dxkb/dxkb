@@ -1,6 +1,7 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
 import { awaitPanelLayoutCommitted } from "../a11y/settle";
+import { PanelSplit } from "./panel-split";
 
 /**
  * Page object for `/workspace/*` routes. Encapsulates the selectors the browser exposes for
@@ -17,6 +18,8 @@ export class WorkspacePage {
   readonly newFolderButton: Locator;
   readonly uploadButton: Locator;
   readonly showHiddenButton: Locator;
+  readonly showDetailsButton: Locator;
+  readonly panels: PanelSplit;
 
   constructor(page: Page) {
     this.page = page;
@@ -29,6 +32,9 @@ export class WorkspacePage {
     this.showHiddenButton = page.getByRole("button", {
       name: /^(show|hide) hidden$/i,
     });
+    // By title: the button's accessible name is just its "Show" label.
+    this.showDetailsButton = page.getByTitle("Show details panel");
+    this.panels = new PanelSplit(page);
   }
 
   /** Navigate to a workspace path, defaulting to the signed-in user's home. */
@@ -65,6 +71,13 @@ export class WorkspacePage {
    */
   private async awaitToolbarStable(): Promise<void> {
     await awaitPanelLayoutCommitted(this.page);
+  }
+
+  /** Open the details panel from the action strip and wait for the split to settle. */
+  async showDetailsPanel(): Promise<void> {
+    await this.awaitToolbarStable();
+    await this.showDetailsButton.click();
+    await this.panels.settle();
   }
 
   async openUpload(): Promise<void> {

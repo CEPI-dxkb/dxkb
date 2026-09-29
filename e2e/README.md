@@ -37,7 +37,7 @@ e2e/
     record-har.ts               # Manual HAR recorder
   tests/
     auth.spec.ts                # Sign-in redirects, submit payload, sign-out journey
-    public.spec.ts              # /, /services, /workspace/public, footer pages
+    public.spec.ts              # /, /services, footer pages, workspace sign-in redirects
     workspace.spec.ts           # Signed-in workspace browsing
     services/services-smoke.spec.ts  # Parametrized h1 smoke for all 21 services
     jobs.spec.ts                # Jobs list + detail
@@ -112,7 +112,7 @@ await signIn.expectInlineError(/invalid/i);
 
 Add a new page object when a spec starts repeating the same selector tuple twice, not preemptively — the wrappers are meant to encode the actual shape of the page, not a speculative surface.
 
-Prefer role locators (`getByRole`) for anything inside a Suspense boundary on a streamed page. React can render a boundary's content in place while its hidden staged copy (`<div hidden id="S:n">` at the end of `<body>`) is still waiting for the queued reveal script to remove it. Role locators skip hidden subtrees, but CSS and `getByTestId` locators match them, so a strict assertion briefly sees two elements. That flaked `OrganismLandingPage.getKpi` about once in 80 runs under parallel load. When a CSS or test-id locator is unavoidable, add `.filter({ visible: true })`.
+Prefer role locators (`getByRole`) for anything inside a Suspense boundary on a streamed page. React can render a boundary's content in place while its hidden staged copy (`<div hidden id="S:n">` at the end of `<body>`) is still waiting for the queued reveal script to remove it. Role locators skip hidden subtrees, but CSS, `getByTestId`, `getByText` and `getByPlaceholder` locators match them, so a strict assertion briefly sees two elements, and a strict-mode violation fails at once rather than retrying. That flaked `OrganismLandingPage.getKpi` about once in 80 runs under parallel load, and failed most WebKit visits to `/sign-in?redirect=…` through `SignInPage`. When a non-role locator is unavoidable, add `.filter({ visible: true })`.
 
 ## Recording a HAR
 

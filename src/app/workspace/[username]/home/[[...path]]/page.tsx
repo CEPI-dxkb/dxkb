@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
+import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
 import { getRequiredEnv } from "@/lib/env";
 import { safeDecode } from "@/lib/url";
 
@@ -8,6 +9,7 @@ interface WorkspaceHomePageProps {
 }
 
 export default async function WorkspaceHomePage({ params }: WorkspaceHomePageProps) {
+  await requireCurrentUserOrRedirect("/workspace");
   const resolved = await params;
   const username = safeDecode(resolved.username ?? "");
   const segments = resolved.path ?? [];

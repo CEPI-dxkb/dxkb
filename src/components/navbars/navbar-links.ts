@@ -235,6 +235,12 @@ interface WorkspaceNavSection {
   items: WorkspaceNavItem[];
 }
 
+/**
+ * The user's private genomes; DXKB equivalent of BV-BRC `/view/GenomeList/?eq(public,false)`.
+ * A `public` filter rather than `rql`, which selecting a facet would clear.
+ */
+const myGenomesHref = "/genome?public=false";
+
 const workspaceNavItems: Record<string, WorkspaceNavSection> = {
   workspaces: {
     title: "Workspaces",
@@ -252,12 +258,14 @@ const workspaceNavItems: Record<string, WorkspaceNavSection> = {
       {
         title: "Public Workspaces",
         href: "/workspace/public",
-        requiresAuth: false,
+        requiresAuth: true,
+        signInRedirect: "/sign-in?redirect=/workspace/public",
       },
       {
         title: "BV-BRC Workshop",
         href: "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop",
-        requiresAuth: false,
+        requiresAuth: true,
+        signInRedirect: "/sign-in?redirect=/workspace/workshop",
       },
     ],
   },
@@ -272,8 +280,9 @@ const workspaceNavItems: Record<string, WorkspaceNavSection> = {
       },
       {
         title: "My Genomes",
-        href: (u) => `/workspace/${u}/home/.genomes`,
+        href: myGenomesHref,
         requiresAuth: true,
+        signInRedirect: `/sign-in?redirect=${encodeURIComponent(myGenomesHref)}`,
       },
       {
         title: "My Genome Groups",

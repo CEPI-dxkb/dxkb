@@ -71,10 +71,107 @@ function renameRqlField(rql: string, from: string, to: string): string {
   return result;
 }
 
+/** A query key that can name a legacy parameter such as `keyword` or `filter`. */
+const namedParamPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** RQL operators the Data API parser accepts with exactly this many arguments. */
+const fixedArityOperators: Readonly<Record<string, number>> = {
+  eq: 2,
+  ne: 2,
+  lt: 2,
+  le: 2,
+  gt: 2,
+  ge: 2,
+  keyword: 1,
+};
+
+interface RqlCall {
+  arity: number | undefined;
+  commas: number;
+}
+
+/**
+ * Re-escape commas that Next's decode turned from a value's `%2C` into what
+ * reads as an argument separator. A fixed-arity call takes only so many
+ * arguments, so a comma past its last separator cannot be structural: the
+ * destination parser would reject the extra argument. Escaping it restores the
+ * value, and a comma already inside a value decodes to the same text either
+ * way. Quoted text (the parser keeps its commas) and the commas of `and`, `or`,
+ * `not` and `in` lists are left alone.
+ */
+function escapeValueCommas(rql: string): string {
+  const calls: RqlCall[] = [];
+  let result = "";
+  let name = "";
+  let quoted = false;
+  let escaped = false;
+  for (const char of rql) {
+    if (escaped) escaped = false;
+    else if (char === "\\" && quoted) escaped = true;
+    else if (char === '"') quoted = !quoted;
+    else if (!quoted && char === "(") {
+      calls.push({
+        arity: Object.hasOwn(fixedArityOperators, name)
+          ? fixedArityOperators[name]
+          : undefined,
+        commas: 0,
+      });
+    } else if (!quoted && char === ")") calls.pop();
+    else if (!quoted && char === ",") {
+      const call = calls.length > 0 ? calls[calls.length - 1] : undefined;
+      if (call?.arity !== undefined && call.commas >= call.arity - 1) {
+        result += "%2C";
+        name = "";
+        continue;
+      }
+      if (call) call.commas += 1;
+    }
+    name = /[a-z_]/.test(char) ? name + char : "";
+    result += char;
+  }
+  return result;
+}
+
+/**
+ * Rebuild the raw legacy query string `mapLegacyViewPath` expects from parsed
+ * search params.
+ *
+ * The proxy never sees the raw query. Next.js parses it and re-serializes it
+ * form-encoded before the proxy runs (`runMiddleware` in next-server), so
+ * `?eq(genome_status,Complete)` arrives as `?eq%28genome_status%2CComplete%29=`,
+ * and encoding that string again double-encodes the RQL. The parsed pairs are
+ * still faithful: a raw RQL fragment becomes a key with an empty value, split
+ * at its first `=` if it has one. `%` and `&` are re-escaped so the mapper's
+ * `&` split and the RQL parser's per-value `decodeURIComponent` read the
+ * original text.
+ *
+ * Next's decode also turns an unquoted `%2C` inside a value into a comma.
+ * `escapeValueCommas` restores it wherever the operator's arity proves the
+ * comma belongs to a value (`eq(genome_name,foo%2Cbar)`); inside an `in` list
+ * the two readings are both valid, so `in(genome_id,(a,b%2Cc))` still arrives
+ * as three members. `+` becomes a space, an encoded parenthesis becomes a
+ * structural one, and a bare identifier (`?foo`) is read as a named parameter.
+ */
+export function legacySearchFromParams(params: URLSearchParams): string {
+  const parts: string[] = [];
+  for (const [key, value] of params) {
+    if (namedParamPattern.test(key)) {
+      parts.push(new URLSearchParams([[key, value]]).toString());
+      continue;
+    }
+    const rql = value ? `${key}=${value}` : key;
+    parts.push(
+      escapeValueCommas(rql.replaceAll("%", "%25").replaceAll("&", "%26")),
+    );
+  }
+  return parts.join("&");
+}
+
 /**
  * Map a legacy BV-BRC /view/* request (path + raw query string, no leading "?")
  * to the new schema. Returns null if the path is not a mappable /view/* URL.
- * Hash is intentionally NOT handled here (the server cannot read it).
+ * Hash is intentionally NOT handled here (the server cannot read it). The proxy
+ * builds `rawSearch` with `legacySearchFromParams`.
  */
 export function mapLegacyViewPath(
   pathname: string,

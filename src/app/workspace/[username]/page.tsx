@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
-import { getCurrentUser } from "@/lib/auth/server/actions";
+import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
 import { getRequiredEnv } from "@/lib/env";
-import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 import { readRouteParam } from "@/lib/views/route-params";
 
 interface WorkspaceUsernamePageProps {
@@ -14,15 +13,11 @@ interface WorkspaceUsernamePageProps {
  * Data is fetched on the client so requests appear in the browser Network tab.
  */
 export default async function WorkspaceUsernamePage({ params }: WorkspaceUsernamePageProps) {
+  await requireCurrentUserOrRedirect("/workspace");
   const resolved = await params;
   const username = readRouteParam(resolved.username, "page");
   if (!username) {
     redirect("/workspace/home");
-  }
-
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
-    redirect(`/sign-in?redirect=${encodeURIComponent(`/workspace/${encodeWorkspaceSegment(username)}`)}`);
   }
 
   const workspaceGuideUrl = getRequiredEnv("WORKSPACE_GUIDE_URL");

@@ -1,4 +1,5 @@
-import { mapLegacyViewPath } from "../legacy-redirect";
+import { parseRql } from "@/lib/data-api";
+import { legacySearchFromParams, mapLegacyViewPath } from "../legacy-redirect";
 
 describe("mapLegacyViewPath", () => {
   it("maps a singular legacy path", () => {
@@ -183,5 +184,72 @@ describe("mapLegacyViewPath", () => {
       pathname: "/feature",
       search: "rql=eq(genome_id%2C83332.12)&filter=%22CDS%22",
     });
+  });
+});
+
+describe("legacySearchFromParams", () => {
+  // Each input is the form-encoded query Next.js hands the proxy after parsing
+  // and re-serializing the raw legacy URL (see the helper's doc comment).
+  it.each([
+    ["an RQL fragment", "eq%28genome_status%2CComplete%29=", "eq(genome_status,Complete)"],
+    ["an unnormalized RQL fragment", "eq(taxon_id,1763)", "eq(taxon_id,1763)"],
+    [
+      "RQL beside named params",
+      "eq%28taxon_id%2C1763%29=&keyword=a+b&filter=%22CDS%22",
+      "eq(taxon_id,1763)&keyword=a+b&filter=%22CDS%22",
+    ],
+    ["RQL containing =", "eq%28a%2Cb=c%29", "eq(a,b=c)"],
+    [
+      "a literal % and & in an RQL value",
+      "eq%28name%2C100%25%26more%29=",
+      "eq(name,100%25%26more)",
+    ],
+    ["separate RQL fragments", "eq%28a%2C1%29=&eq%28b%2C2%29=", "eq(a,1)&eq(b,2)"],
+    [
+      "an encoded comma in a comparison value",
+      "eq%28genome_name%2Cfoo%2Cbar%29=",
+      "eq(genome_name,foo%2Cbar)",
+    ],
+    [
+      "an encoded comma in a nested comparison value",
+      "and%28eq%28a%2C1%29%2Cne%28b%2Cx%2Cy%2Cz%29%29=",
+      "and(eq(a,1),ne(b,x%2Cy%2Cz))",
+    ],
+    ["an encoded comma in a keyword", "keyword%28a%2Cb%29=", "keyword(a%2Cb)"],
+    [
+      "a quoted comma",
+      "eq%28genome_name%2C%22foo%2Cbar%22%29=",
+      'eq(genome_name,"foo,bar")',
+    ],
+    ["in-list commas", "in%28genome_id%2C%28a%2Cb%29%29=", "in(genome_id,(a,b))"],
+    ["no query", "", ""],
+  ])("rebuilds %s", (_name, normalized, raw) => {
+    expect(legacySearchFromParams(new URLSearchParams(normalized))).toBe(raw);
+  });
+
+  it("keeps an encoded comma inside the destination's comparison value", () => {
+    // Next hands the proxy ?eq(genome_name,foo%2Cbar) as this normalized form.
+    const normalized = new URLSearchParams("eq%28genome_name%2Cfoo%2Cbar%29=");
+    const mapped = mapLegacyViewPath(
+      "/view/GenomeList/",
+      legacySearchFromParams(normalized),
+    );
+    const rql = new URLSearchParams(mapped?.search).get("rql") ?? "";
+    expect(parseRql("genome", rql)).toEqual({
+      operator: "eq",
+      field: "genome_name",
+      value: "foo,bar",
+    });
+  });
+
+  it("gives the mapper the same RQL as the raw query string", () => {
+    const normalized = new URLSearchParams(
+      "eq%28taxon_lineage_ids%2C1763%29=&keyword=kinase",
+    );
+    expect(
+      mapLegacyViewPath("/view/TaxonList/", legacySearchFromParams(normalized)),
+    ).toEqual(
+      mapLegacyViewPath("/view/TaxonList/", "eq(taxon_lineage_ids,1763)&keyword=kinase"),
+    );
   });
 });

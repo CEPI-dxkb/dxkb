@@ -151,6 +151,30 @@ describe("collection URL state", () => {
     ]);
   });
 
+  it("drops values outside a filter's closed value set", () => {
+    const closed = {
+      ...options,
+      filterValues: { host: ["human", "swine"] },
+    } satisfies CollectionStateOptions<"relevance" | "name" | "date">;
+    expect(
+      parseCollectionState({ host: ["human", "bat"], taxon_id: "2" }, closed)
+        .filters,
+    ).toEqual({ taxon_id: ["2"], host: ["human"] });
+    expect(parseCollectionState({ host: "bat" }, closed).filters).toEqual({});
+    expect(
+      canonicalizeCollectionSearchParams(
+        { host: "bat", keep: "yes" },
+        closed,
+      ).toString(),
+    ).toBe("keep=yes");
+    expect(
+      canonicalizeCollectionState(
+        { filters: { host: ["bat", "swine"] }, page: 1, sort: "relevance" },
+        closed,
+      ).filters,
+    ).toEqual({ host: ["swine"] });
+  });
+
   it("serializes a refinement independently from the primary keyword", () => {
     const state = parseCollectionState(
       { keyword: "influenza", refine: "N034" },

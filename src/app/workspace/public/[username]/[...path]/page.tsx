@@ -1,4 +1,5 @@
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
+import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
 import { getRequiredEnv } from "@/lib/env";
 import { safeDecode } from "@/lib/url";
 
@@ -9,6 +10,7 @@ interface PublicWorkspacePathPageProps {
 export default async function PublicWorkspacePathPage({
   params,
 }: PublicWorkspacePathPageProps) {
+  await requireCurrentUserOrRedirect("/workspace/public");
   const resolved = await params;
   const username = safeDecode(resolved.username);
   const segments = resolved.path.map((s) => safeDecode(s));

@@ -10,6 +10,7 @@ import {
   buildGenomeTabs,
   canonicalGenomeTab,
   genomeBaseRql,
+  genomeCollectionOptions,
   genomeCollectionProfile,
   genomeInteractionsRql,
   genomeSequenceRql,
@@ -19,6 +20,11 @@ import {
   parseGenomeCollectionState,
   recentGenomeRql,
 } from "@/lib/genome-view";
+import {
+  parseCollectionState,
+  toSearchParamsRecord,
+  updateCollectionSearchParams,
+} from "@/lib/views/collection-state";
 
 describe("Genome view contracts", () => {
   it("preserves backend relevance order by default", () => {
@@ -103,6 +109,43 @@ describe("Genome view contracts", () => {
     expect(state.filters).toEqual({});
     expect(state.rql).toBe("eq(genome_status,Complete)");
     expect(genomeStructuralRql(state)).toBeUndefined();
+  });
+
+  it("scopes the My Genomes link to private genomes without the recent default", () => {
+    const state = parseGenomeCollectionState({ public: "false" });
+    expect(state.rql).toBeUndefined();
+    expect(state.filters).toEqual({ public: ["false"] });
+    expect(genomeStructuralRql(state)).toBe("eq(public,false)");
+    expect(genomeBaseRql(state)).toBeUndefined();
+  });
+
+  it("keeps the private-genome scope when a facet is selected", () => {
+    const next = updateCollectionSearchParams(
+      { public: "false" },
+      { filters: { genome_status: ["Complete"] } },
+      genomeCollectionOptions,
+    );
+    const state = parseGenomeCollectionState(toSearchParamsRecord(next));
+    expect(genomeStructuralRql(state)).toBe(
+      "and(eq(genome_status,Complete),eq(public,false))",
+    );
+    expect(genomeBaseRql(state)).toBeUndefined();
+  });
+
+  it("drops a non-boolean visibility filter", () => {
+    const state = parseGenomeCollectionState({ public: "maybe" });
+    expect(state.filters).toEqual({});
+    expect(genomeBaseRql(state)).toBe(recentGenomeRql);
+  });
+
+  it("drops a non-boolean visibility filter on the taxon Genomes tab", () => {
+    // That tab reads the URL through the generic parser, not
+    // parseGenomeCollectionState, and the gateway rejects eq(public,maybe).
+    const state = parseCollectionState(
+      { public: "maybe", genome_status: "Complete" },
+      genomeCollectionOptions,
+    );
+    expect(genomeStructuralRql(state)).toBe("eq(genome_status,Complete)");
   });
 
   it("canonicalizes invalid pages and sorts while rejecting transport RQL", () => {

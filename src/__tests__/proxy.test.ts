@@ -122,40 +122,24 @@ describe("proxy", () => {
 
       expect(response.headers.get("x-middleware-next")).toBe("1");
     });
+  });
 
-    it("allows /workspace/public without session", () => {
-      const request = buildRequest("/workspace/public");
-      const response = proxy(request);
-
-      expect(response.headers.get("x-middleware-next")).toBe("1");
-    });
-
-    it("allows /workspace/public/ sub-paths without session", () => {
-      const request = buildRequest("/workspace/public/user@bvbrc/home");
-      const response = proxy(request);
-
-      expect(response.headers.get("x-middleware-next")).toBe("1");
-    });
-
-    it("allows /workspace/workshop without session", () => {
-      const request = buildRequest("/workspace/workshop");
-      const response = proxy(request);
-
-      expect(response.headers.get("x-middleware-next")).toBe("1");
-    });
-
-    it("allows /workspace/workshop/ sub-paths without session", () => {
-      const request = buildRequest("/workspace/workshop/some-event");
-      const response = proxy(request);
-
-      expect(response.headers.get("x-middleware-next")).toBe("1");
-    });
-
-    it("does not allow /workspace/publicXYZ without session", () => {
-      const request = buildRequest("/workspace/publicXYZ");
+  describe("workspace routes", () => {
+    it.each([
+      "/workspace/public",
+      "/workspace/public/ARWattam@patricbrc.org/BV-BRC%20Workshop",
+      "/workspace/public/ntvy@patricbrc.org/2023-NVDDTHD/GD63ONT_DuongQC",
+      "/workspace/workshop",
+      "/workspace/user@bvbrc/For-Jim/test1_SRR1695593",
+      "/workspace/user@bvbrc/home/a/b/c",
+    ])("redirects %s to sign-in without session", (path) => {
+      const request = buildRequest(path);
       const response = proxy(request);
 
       expect(response.status).toBe(307);
+      const location = getRedirectLocation(response);
+      expect(location.pathname).toBe("/sign-in");
+      expect(location.searchParams.get("redirect")).toBe(path);
     });
   });
 
@@ -192,6 +176,35 @@ describe("proxy", () => {
       const loc = getRedirectLocation(response);
       expect(loc.pathname).toBe("/genome");
       expect(loc.searchParams.get("rql")).toBe("eq(taxon_id,1763)");
+    });
+    // Next.js re-serializes the query before the proxy runs, so a raw legacy
+    // `?eq(genome_status,Complete)` arrives form-encoded. These inputs use that
+    // normalized form; the tests above use the raw form a hand-built request keeps.
+    it("redirects a normalized list query without double-encoding the RQL", () => {
+      const request = buildRequest(
+        "/view/GenomeList?eq%28genome_status%2CComplete%29=",
+      );
+      const response = proxy(request);
+      expect(response.status).toBe(308);
+      const loc = getRedirectLocation(response);
+      expect(loc.pathname).toBe("/genome");
+      expect(loc.search).toBe("?rql=eq(genome_status%2CComplete)");
+    });
+    it("keeps quoted values and named params from a normalized list query", () => {
+      const request = buildRequest(
+        "/view/GenomeList?eq%28genome_name%2C%22E+coli%2C+K12%22%29=&keyword=a+b",
+      );
+      const loc = getRedirectLocation(proxy(request));
+      expect(loc.searchParams.get("rql")).toBe('eq(genome_name,"E coli, K12")');
+      expect(loc.searchParams.get("keyword")).toBe("a b");
+    });
+    it("renames the TaxonList lineage field in a normalized list query", () => {
+      const request = buildRequest(
+        "/view/TaxonList?eq%28taxon_lineage_ids%2C1763%29=",
+      );
+      const loc = getRedirectLocation(proxy(request));
+      expect(loc.pathname).toBe("/taxonomy");
+      expect(loc.searchParams.get("rql")).toBe("eq(lineage_ids,1763)");
     });
     it("redirects Protein aliases to Feature routes", () => {
       const member = proxy(buildRequest("/view/Protein/fig%7C83332.12.peg.1"));

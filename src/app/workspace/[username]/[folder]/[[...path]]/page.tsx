@@ -1,4 +1,5 @@
 import { WorkspaceBrowser } from "@/components/workspace/workspace-browser";
+import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
 import { getRequiredEnv } from "@/lib/env";
 import { safeDecode } from "@/lib/url";
 
@@ -13,6 +14,7 @@ interface WorkspaceFolderPageProps {
 export default async function WorkspaceFolderPage({
   params,
 }: WorkspaceFolderPageProps) {
+  await requireCurrentUserOrRedirect("/workspace");
   const resolved = await params;
   const username = safeDecode(resolved.username);
   const folder = safeDecode(resolved.folder);

@@ -26,6 +26,10 @@ describe("MobileWorkspaceSection", () => {
       "href",
       "/jobs",
     );
+    expect(screen.getByRole("link", { name: "My Genomes" })).toHaveAttribute(
+      "href",
+      "/genome?public=false",
+    );
     expect(
       screen.getByRole("link", { name: "Favorite Folder" }),
     ).toHaveAttribute("href", "/workspace/alice@bvbrc/home/Favorite%20Folder");
@@ -57,9 +61,16 @@ describe("MobileWorkspaceSection", () => {
       "href",
       "/sign-in?redirect=/jobs",
     );
+    expect(screen.getByRole("link", { name: "My Genomes" })).toHaveAttribute(
+      "href",
+      "/sign-in?redirect=%2Fgenome%3Fpublic%3Dfalse",
+    );
     expect(
       screen.getByRole("link", { name: "Public Workspaces" }),
-    ).toHaveAttribute("href", "/workspace/public");
+    ).toHaveAttribute("href", "/sign-in?redirect=/workspace/public");
+    expect(
+      screen.getByRole("link", { name: "BV-BRC Workshop" }),
+    ).toHaveAttribute("href", "/sign-in?redirect=/workspace/workshop");
     expect(
       screen.queryByRole("link", { name: "Favorite Folder" }),
     ).not.toBeInTheDocument();

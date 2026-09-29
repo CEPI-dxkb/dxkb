@@ -14,8 +14,6 @@ function isPathOrDescendant(path: string, route: string): boolean {
 export function isProtectedPagePath(path: string): boolean {
   if (path === "/services" || path === "/services/") return false;
   if (path.startsWith("/services/")) return true;
-  if (isPathOrDescendant(path, "/workspace/public")) return false;
-  if (isPathOrDescendant(path, "/workspace/workshop")) return false;
   return protectedPagePrefixes.some((prefix) =>
     isPathOrDescendant(path, prefix),
   );

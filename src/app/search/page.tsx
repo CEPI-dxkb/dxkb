@@ -8,6 +8,7 @@ import {
   resolveLegacySearch,
 } from "@/app/search/search-type-routing";
 import type { SearchParamsRecord } from "@/lib/views/rql";
+import { encodeQueryComponent } from "@/lib/url";
 
 /** Overview with nothing to search for yet. */
 function SearchPrompt() {
@@ -37,7 +38,7 @@ function UnsupportedSearchType({
         <p>
           <Link
             className="underline underline-offset-4"
-            href={`/search?type=everything&q=${encodeURIComponent(keyword)}`}
+            href={`/search?type=everything&q=${encodeQueryComponent(keyword)}`}
           >
             Search all data types for &ldquo;{keyword}&rdquo;
           </Link>{" "}

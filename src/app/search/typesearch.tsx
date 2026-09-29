@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { searchDescriptors, searchHref } from "@/constants/search-info";
 import { searchTypeMenuItems } from "@/constants/search-menu";
 import { isDataResource } from "@/lib/data-api";
+import { toQueryString } from "@/lib/url";
 import type { DataResource } from "@/lib/data-api";
 import { genomeHref, genomeIdFromRow } from "@/lib/views/hrefs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -94,7 +95,7 @@ function TypeSearchList({
       const params = new URLSearchParams();
       params.set("type", item.key);
       if (q) params.set("q", q);
-      router.push(`/search?${params.toString()}`);
+      router.push(`/search?${toQueryString(params)}`);
     },
   }));
 

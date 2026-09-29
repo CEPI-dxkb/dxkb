@@ -60,7 +60,7 @@ test.describe("Surveillance view", () => {
     await surveillancePage.selectFacet("RAT/antigen (1)");
     await facetRequest;
     await expect(page).toHaveURL(
-      /\/surveillance\?keyword=sentinel&refine=Nasal\+swab&pathogen_test_type=RAT%2Fantigen$/,
+      /\/surveillance\?keyword=sentinel&refine=Nasal\+swab&pathogen_test_type=RAT\/antigen$/,
     );
 
     await surveillancePage.openMember("sample/1", "RAT/antigen");

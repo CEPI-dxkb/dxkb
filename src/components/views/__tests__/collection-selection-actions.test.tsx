@@ -37,11 +37,17 @@ vi.mock("../selection-service-chooser", () => ({
   SelectionServiceChooser: ({
     open,
     ids,
+    signInHref,
   }: {
     open: boolean;
     ids: readonly string[];
+    signInHref: string;
   }) =>
-    open ? <div data-testid="selection-services">{ids.join(",")}</div> : null,
+    open ? (
+      <div data-testid="selection-services" data-sign-in-href={signInHref}>
+        {ids.join(",")}
+      </div>
+    ) : null,
 }));
 vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
   SelectionToGroupDialog: ({
@@ -121,6 +127,22 @@ describe("CollectionSelectionActions", () => {
     expect(onError).not.toHaveBeenCalledWith(expect.any(String));
   });
 
+  it("passes a readable sign-in redirect back to the current collection", async () => {
+    const user = userEvent.setup();
+    renderStrainActions({
+      resolveActionRows: vi.fn(() =>
+        Promise.resolve([{ genome_ids: ["11320.1"] }]),
+      ),
+    });
+
+    await user.click(screen.getByRole("button", { name: /^services$/i }));
+
+    expect(await screen.findByTestId("selection-services")).toHaveAttribute(
+      "data-sign-in-href",
+      "/sign-in?redirect=/taxonomy/2955291?tab%3Dstrains",
+    );
+  });
+
   it("re-enables the other actions once the pending one settles", async () => {
     const user = userEvent.setup();
     const onError = vi.fn();
@@ -180,7 +202,7 @@ describe("CollectionSelectionActions", () => {
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith(
-        "/genome?rql=in(genome_id%2C(11320.1%2C11320.2))",
+        "/genome?rql=in(genome_id,(11320.1,11320.2))",
       );
     });
   });

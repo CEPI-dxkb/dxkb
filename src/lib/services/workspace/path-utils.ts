@@ -6,7 +6,7 @@
 
 import type { ListPermissionsResult, WorkspaceItem } from "./domain";
 import type { WorkspaceViewMode } from "@/types/workspace-browser";
-import { safeDecode } from "@/lib/url";
+import { encodePathSegment, safeDecode } from "@/lib/url";
 
 export type WorkspaceBreadcrumbViewMode = WorkspaceViewMode | "root";
 
@@ -164,13 +164,12 @@ export function sanitizePathSegment(segment: string): string {
 }
 
 /**
- * Encode a path segment for use in workspace URLs. Keeps `@` as `@` so it
- * displays correctly in the browser address bar (instead of %40).
- * Sanitizes input so control characters are never added to the URL.
+ * Encode a path segment for use in workspace URLs, keeping RFC 3986-legal
+ * characters (`@`, `,`, `&`, …) readable in the address bar. Sanitizes input so
+ * control characters are never added to the URL.
  */
 export function encodeWorkspaceSegment(segment: string): string {
-  const safe = sanitizePathSegment(segment);
-  return encodeURIComponent(safe).replace(/%40/g, "@");
+  return encodePathSegment(sanitizePathSegment(segment));
 }
 
 /** Split a workspace path into sanitized, non-empty segments. */

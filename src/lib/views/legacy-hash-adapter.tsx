@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { toQueryString } from "@/lib/url";
 
 /**
  * Legacy BV-BRC put the active tab in the URL hash (#view_tab=x), which the server
@@ -32,24 +33,26 @@ export function LegacyHashAdapter() {
     )
       return;
 
+    // A separate URLSearchParams, because mutating url.searchParams re-escapes
+    // the whole query (`,` → `%2C`) before toQueryString can keep it readable.
     const url = new URL(window.location.href);
-    if (tab !== null) url.searchParams.set("tab", tab);
-    if (filter !== null && filter !== "false")
-      url.searchParams.set("filter", filter);
-    if (accession !== null) url.searchParams.set("accession", accession);
-    if (path !== null) url.searchParams.set("path", path);
-    if (keyword && !url.searchParams.has("keyword")) {
-      url.searchParams.set("keyword", keyword);
+    const params = new URLSearchParams(url.search);
+    if (tab !== null) params.set("tab", tab);
+    if (filter !== null && filter !== "false") params.set("filter", filter);
+    if (accession !== null) params.set("accession", accession);
+    if (path !== null) params.set("path", path);
+    if (keyword && !params.has("keyword")) {
+      params.set("keyword", keyword);
     }
     if (
       defaultSort === "-score" &&
-      url.searchParams.get("keyword") &&
-      !url.searchParams.has("sort")
+      params.get("keyword") &&
+      !params.has("sort")
     ) {
-      url.searchParams.set("sort", "score:desc");
+      params.set("sort", "score:desc");
     }
-    url.hash = "";
-    router.replace(url.pathname + url.search);
+    const query = toQueryString(params);
+    router.replace(`${url.pathname}${query ? `?${query}` : ""}`);
   }, [router]);
 
   return null;

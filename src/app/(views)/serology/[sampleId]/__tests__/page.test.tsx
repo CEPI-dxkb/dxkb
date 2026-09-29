@@ -102,7 +102,7 @@ describe("Serology member page", () => {
       screen.getByRole("link", { name: "ELISA/IgG test" }),
     ).toHaveAttribute(
       "href",
-      "/serology/sample%2F1?test_type=ELISA%2FIgG%20test",
+      "/serology/sample%2F1?test_type=ELISA/IgG+test",
     );
   });
 

@@ -92,10 +92,10 @@ describe("Taxonomy view contract", () => {
   it("deduplicates Taxon IDs and builds bounded canonical actions", () => {
     expect(normalizeTaxonIds(["234", 10239, "234"])).toEqual(["234", "10239"]);
     expect(taxonomyGenomesHref(["234", "10239"])).toBe(
-      "/genome?rql=and(in(taxon_lineage_ids%2C(234%2C10239))%2Cne(genome_status%2CDeprecated))",
+      "/genome?rql=and(in(taxon_lineage_ids,(234,10239)),ne(genome_status,Deprecated))",
     );
     expect(taxonomyFeaturesHref(["234"])).toBe(
-      "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated)))%2Ceq(annotation%2CPATRIC))",
+      "/feature?rql=and(eq(genome_id,*),genome(and(in(taxon_lineage_ids,(234)),ne(genome_status,Deprecated))),eq(annotation,PATRIC))",
     );
     expect(taxonomyBlastPrefill(["234", "234"])).toEqual({
       db_precomputed_database: "selTaxon",

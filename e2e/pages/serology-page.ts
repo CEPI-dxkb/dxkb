@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
 
 export class SerologyPage {
   readonly page: Page;
@@ -87,9 +88,9 @@ export class SerologyPage {
   }
 
   memberUrl(sampleIdentifier: string, testType?: string): string {
-    const path = `/serology/${encodeURIComponent(sampleIdentifier)}`;
+    const path = `/serology/${encodePathSegment(sampleIdentifier)}`;
     return testType === undefined
       ? path
-      : `${path}?test_type=${encodeURIComponent(testType)}`;
+      : `${path}?test_type=${encodeQueryComponent(testType)}`;
   }
 }

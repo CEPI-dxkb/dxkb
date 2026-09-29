@@ -12,7 +12,7 @@ describe("mapLegacyViewPath", () => {
     expect(mapLegacyViewPath("/view/GenomeList/", "eq(taxon_id,1763)")).toEqual(
       {
         pathname: "/genome",
-        search: "rql=eq(taxon_id%2C1763)",
+        search: "rql=eq(taxon_id,1763)",
       },
     );
   });
@@ -21,7 +21,7 @@ describe("mapLegacyViewPath", () => {
       mapLegacyViewPath("/view/TaxonList/", "eq(taxon_lineage_ids,1763)"),
     ).toEqual({
       pathname: "/taxonomy",
-      search: "rql=eq(lineage_ids%2C1763)",
+      search: "rql=eq(lineage_ids,1763)",
     });
   });
   it("renames the TaxonList lineage field in field position only", () => {
@@ -33,7 +33,7 @@ describe("mapLegacyViewPath", () => {
     ).toEqual({
       pathname: "/taxonomy",
       search:
-        "rql=and(in(lineage_ids%2C(1763%2C562))%2Ceq(description%2C%2522taxon_lineage_ids%2522))",
+        "rql=and(in(lineage_ids,(1763,562)),eq(description,%2522taxon_lineage_ids%2522))",
     });
   });
   it("leaves the lineage field alone in value position", () => {
@@ -48,7 +48,7 @@ describe("mapLegacyViewPath", () => {
       mapLegacyViewPath("/view/TaxonList/", "eq(taxon_name,taxon_lineage_ids)"),
     ).toEqual({
       pathname: "/taxonomy",
-      search: "rql=eq(taxon_name%2Ctaxon_lineage_ids)",
+      search: "rql=eq(taxon_name,taxon_lineage_ids)",
     });
     expect(
       mapLegacyViewPath(
@@ -57,7 +57,7 @@ describe("mapLegacyViewPath", () => {
       ),
     ).toEqual({
       pathname: "/taxonomy",
-      search: "rql=in(taxon_name%2C(taxon_lineage_ids%2Cfoo))",
+      search: "rql=in(taxon_name,(taxon_lineage_ids,foo))",
     });
   });
   it("renames the lineage field nested inside logical expressions", () => {
@@ -69,7 +69,7 @@ describe("mapLegacyViewPath", () => {
     ).toEqual({
       pathname: "/taxonomy",
       search:
-        "rql=and(or(eq(lineage_ids%2C1763)%2Cne(lineage_ids%2C562))%2Csort(%2Blineage_ids))",
+        "rql=and(or(eq(lineage_ids,1763),ne(lineage_ids,562)),sort(%2Blineage_ids))",
     });
   });
   it("leaves the lineage field alone outside the taxonomy segment", () => {
@@ -77,7 +77,7 @@ describe("mapLegacyViewPath", () => {
       mapLegacyViewPath("/view/GenomeList/", "eq(taxon_lineage_ids,1763)"),
     ).toEqual({
       pathname: "/genome",
-      search: "rql=eq(taxon_lineage_ids%2C1763)",
+      search: "rql=eq(taxon_lineage_ids,1763)",
     });
   });
   it("preserves a named query param (surveillance)", () => {
@@ -99,7 +99,7 @@ describe("mapLegacyViewPath", () => {
       ),
     ).toEqual({
       pathname: "/serology/000123",
-      search: "test_type=ELISA%2FIgG+test",
+      search: "test_type=ELISA/IgG+test",
     });
   });
 
@@ -119,7 +119,7 @@ describe("mapLegacyViewPath", () => {
       mapLegacyViewPath("/view/EpitopeList/", "eq(taxon_id,11520)"),
     ).toEqual({
       pathname: "/epitope",
-      search: "rql=eq(taxon_id%2C11520)",
+      search: "rql=eq(taxon_id,11520)",
     });
   });
 
@@ -131,7 +131,7 @@ describe("mapLegacyViewPath", () => {
       ),
     ).toEqual({
       pathname: "/domains-and-motifs",
-      search: "rql=eq(genome_id%2C83332.12)",
+      search: "rql=eq(genome_id,83332.12)",
     });
     expect(
       mapLegacyViewPath(
@@ -182,7 +182,7 @@ describe("mapLegacyViewPath", () => {
       ),
     ).toEqual({
       pathname: "/feature",
-      search: "rql=eq(genome_id%2C83332.12)&filter=%22CDS%22",
+      search: "rql=eq(genome_id,83332.12)&filter=%22CDS%22",
     });
   });
 });

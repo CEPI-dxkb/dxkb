@@ -63,7 +63,7 @@ describe("MobileWorkspaceSection", () => {
     );
     expect(screen.getByRole("link", { name: "My Genomes" })).toHaveAttribute(
       "href",
-      "/sign-in?redirect=%2Fgenome%3Fpublic%3Dfalse",
+      "/sign-in?redirect=/genome?public%3Dfalse",
     );
     expect(
       screen.getByRole("link", { name: "Public Workspaces" }),

@@ -49,6 +49,11 @@ Requires **Node v24** (`nvm use 24`, pinned in `.nvmrc`). `pnpm start` = prod se
 
 - Do NOT swap real errors for generic ones — the original message must still be displayed. Condense if too long, but preserve the meaning.
 
+### URLs
+
+- Browser-visible URLs are built with `encodeQueryComponent`, `encodePathSegment`, and `toQueryString` from `src/lib/url.ts`, never `encodeURIComponent` or `URLSearchParams#toString()`, so RQL and paths stay readable (`/genome?rql=eq(genus,Escherichia)`). Backend request URLs, external links, iframe sources, and RQL value escaping (`escapeRqlValue`) are exempt. Mutating `url.searchParams` re-escapes the whole query; build a separate `URLSearchParams` and serialize it with `toQueryString`.
+- `encodePathSegment` leaves `:` literal, so use it only after a literal `/` (`/genome/${…}`). Template substitution that can put a value first (`resolveLink` in `metadata-link-policy.ts`) keeps `encodeURIComponent`, or a row value like `javascript:…` would survive as a scheme.
+
 ### Design-system lint (`@shadcn/lint`)
 
 - `eslint.config.mjs` enables all six `shadcn/*` rules as errors (off for `no-restyle`, `no-arbitrary-values`, and `require-static-classes` inside `src/components/ui/**`, which owns component appearance, and inside `src/components/services/form-ui/**`, whose wrappers own the global `service-*` classes; `no-inline-styles` in the chart folders `organisms/metadata-distributions/**`, `organisms/geo-distribution/**` and `interactions/sigma/**` allows only the properties that carry runtime geometry and series colors (the `allow` list in `eslint.config.mjs`); static motion and borders there live in classes or the `@utility` rules in `globals.css`). The tree has no recorded violations, so every finding fails `pnpm lint`.

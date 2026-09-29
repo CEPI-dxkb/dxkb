@@ -245,7 +245,7 @@ describe("ResourceCollection sequence actions", () => {
     );
     expect(open).toHaveBeenNthCalledWith(
       2,
-      "/feature?rql=and(eq(sequence_id%2C83332.12.con.0001)%2Ceq(annotation%2CPATRIC)%2Ceq(feature_type%2CCDS))",
+      "/feature?rql=and(eq(sequence_id,83332.12.con.0001),eq(annotation,PATRIC),eq(feature_type,CDS))",
       "_blank",
     );
   });
@@ -395,7 +395,7 @@ describe("ResourceCollection sequence actions", () => {
       selected.mock.calls.every((call) => call[1].fields.includes("id")),
     ).toBe(true);
     expect(push).toHaveBeenCalledWith(
-      "/feature?rql=in(feature_id%2C(feature-a%2Cfeature-b))",
+      "/feature?rql=in(feature_id,(feature-a,feature-b))",
     );
   });
 });

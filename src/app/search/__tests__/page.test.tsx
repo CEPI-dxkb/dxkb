@@ -100,7 +100,7 @@ describe("legacy search route", () => {
         }),
       }),
     ).rejects.toThrow(
-      "NEXT_REDIRECT:/taxonomy?keyword=Influenza+A&taxon_id=10239&taxon_id=11308&sort=taxon_name%3Aasc",
+      "NEXT_REDIRECT:/taxonomy?keyword=Influenza+A&taxon_id=10239&taxon_id=11308&sort=taxon_name:asc",
     );
   });
 

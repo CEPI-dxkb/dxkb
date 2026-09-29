@@ -162,7 +162,7 @@ describe("legacy search routing contract", () => {
         "influenza",
       ),
     ).toBe(
-      "/genome?keyword=influenza&genome_status=Complete&genome_status=WGS&page=3&sort=genome_name%3Aasc&tab=genome",
+      "/genome?keyword=influenza&genome_status=Complete&genome_status=WGS&page=3&sort=genome_name:asc&tab=genome",
     );
   });
 

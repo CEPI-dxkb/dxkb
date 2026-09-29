@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
 
 export class SurveillancePage {
   readonly page: Page;
@@ -126,10 +127,10 @@ export class SurveillancePage {
   }
 
   private memberUrl(sampleIdentifier: string, testType?: string): string {
-    const path = `/surveillance/${encodeURIComponent(sampleIdentifier)}`;
+    const path = `/surveillance/${encodePathSegment(sampleIdentifier)}`;
     return testType === undefined
       ? path
-      : `${path}?pathogen_test_type=${encodeURIComponent(testType)}`;
+      : `${path}?pathogen_test_type=${encodeQueryComponent(testType)}`;
   }
 
   private async expectSectionValue(

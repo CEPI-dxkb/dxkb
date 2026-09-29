@@ -50,7 +50,7 @@ describe("Protein Structure route", () => {
         }),
       }),
     ).rejects.toThrow(
-      "NEXT_REDIRECT:/protein-structure?source=search&accession=1ABC%2CAF-P12345-F1",
+      "NEXT_REDIRECT:/protein-structure?source=search&accession=1ABC,AF-P12345-F1",
     );
     expect(mocks.getProteinStructures).not.toHaveBeenCalled();
   });

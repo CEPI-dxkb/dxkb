@@ -86,7 +86,7 @@ describe("Protein Structure view contracts", () => {
           { accession: ["1abc", "1ABC, af-p12345-f1"], source: "search" },
           accessionMode,
         ),
-      ).toBe("/protein-structure?source=search&accession=1ABC%2CAF-P12345-F1");
+      ).toBe("/protein-structure?source=search&accession=1ABC,AF-P12345-F1");
     }
   });
 

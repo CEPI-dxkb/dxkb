@@ -4,6 +4,7 @@ import {
   protectedPageRequestHeader,
 } from "@/lib/auth/routes";
 import { hasSessionCookies } from "@/lib/auth/server/cookies";
+import { encodeQueryComponent, toQueryString } from "@/lib/url";
 import {
   legacySearchFromParams,
   mapLegacyViewPath,
@@ -35,22 +36,31 @@ export function proxy(request: NextRequest) {
   if (firstSegment && viewSegments.includes(firstSegment)) {
     const viewValue = request.nextUrl.searchParams.get("view");
     if (viewValue !== null) {
-      const url = new URL(request.url);
-      url.searchParams.delete("view");
-      url.searchParams.set("tab", viewValue);
-      return NextResponse.redirect(url, 308);
+      const params = new URLSearchParams(request.nextUrl.searchParams);
+      params.delete("view");
+      params.set("tab", viewValue);
+      return NextResponse.redirect(
+        new URL(`${pathname}?${toQueryString(params)}`, request.url),
+        308,
+      );
     }
   }
 
   if (isProtectedPagePath(pathname)) {
+    const requestPath = search
+      ? `${pathname}?${toQueryString(request.nextUrl.searchParams)}`
+      : pathname;
     if (!hasSessionCookies(request)) {
-      const signInUrl = new URL("/sign-in", request.url);
-      signInUrl.searchParams.set("redirect", pathname + search);
-      return NextResponse.redirect(signInUrl);
+      return NextResponse.redirect(
+        new URL(
+          `/sign-in?redirect=${encodeQueryComponent(requestPath)}`,
+          request.url,
+        ),
+      );
     }
 
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set(protectedPageRequestHeader, pathname + search);
+    requestHeaders.set(protectedPageRequestHeader, requestPath);
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 

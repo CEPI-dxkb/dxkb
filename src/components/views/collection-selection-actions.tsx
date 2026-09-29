@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth/provider";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-keys";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
+import { encodeQueryComponent, toQueryString } from "@/lib/url";
 import { featuresHrefFromIds, genomesHrefFromIds } from "@/lib/views/hrefs";
 import {
   idsFromRows,
@@ -309,8 +310,9 @@ export function CollectionSelectionActions({
     );
   };
 
-  const redirect = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
-  const signInHref = `/sign-in?redirect=${encodeURIComponent(redirect)}`;
+  const query = toQueryString(new URLSearchParams(searchParams.toString()));
+  const redirect = `${pathname}${query ? `?${query}` : ""}`;
+  const signInHref = `/sign-in?redirect=${encodeQueryComponent(redirect)}`;
   const noGenomesReason = `No genomes are associated with this ${singularLabel.toLowerCase()}`;
   // While one owned action resolves, the others would overwrite the shared IDs, so
   // only the actions this component dispatches are disabled. Entries the owning

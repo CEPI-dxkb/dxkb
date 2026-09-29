@@ -1,3 +1,5 @@
+import { encodeQueryComponent } from "@/lib/url";
+
 const resourcesItems: {
   title: string;
   href: string;
@@ -282,7 +284,7 @@ const workspaceNavItems: Record<string, WorkspaceNavSection> = {
         title: "My Genomes",
         href: myGenomesHref,
         requiresAuth: true,
-        signInRedirect: `/sign-in?redirect=${encodeURIComponent(myGenomesHref)}`,
+        signInRedirect: `/sign-in?redirect=${encodeQueryComponent(myGenomesHref)}`,
       },
       {
         title: "My Genome Groups",

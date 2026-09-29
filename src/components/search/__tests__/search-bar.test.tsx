@@ -126,7 +126,7 @@ describe("SearchBar", () => {
       fireEvent.submit(getForm());
 
       expect(mockPush).toHaveBeenCalledWith(
-        "/genome?keyword=E.%20coli%20%26%20phage",
+        "/genome?keyword=E.+coli+%26+phage",
       );
     });
 
@@ -140,7 +140,7 @@ describe("SearchBar", () => {
       await user.type(screen.getByRole("textbox"), "DNA kinase");
       fireEvent.submit(getForm());
 
-      expect(mockPush).toHaveBeenCalledWith("/feature?keyword=DNA%20kinase");
+      expect(mockPush).toHaveBeenCalledWith("/feature?keyword=DNA+kinase");
     });
 
     it("URL-encodes special characters in the query", async () => {
@@ -151,7 +151,7 @@ describe("SearchBar", () => {
       fireEvent.submit(getForm());
 
       expect(mockPush).toHaveBeenCalledWith(
-        "/search?type=everything&q=test%20%26%20more",
+        "/search?type=everything&q=test+%26+more",
       );
     });
 

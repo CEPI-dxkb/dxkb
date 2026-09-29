@@ -95,7 +95,7 @@ describe("Surveillance view contracts", () => {
         sample_identifier: "sample/1",
         pathogen_test_type: ["RAT/antigen"],
       }),
-    ).toBe("/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen");
+    ).toBe("/surveillance/sample%2F1?pathogen_test_type=RAT/antigen");
     expect(
       surveillanceCollectionProfile.rowHref?.({
         id: "2",

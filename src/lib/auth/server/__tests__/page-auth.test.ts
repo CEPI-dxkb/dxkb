@@ -44,7 +44,7 @@ describe("requireCurrentUserOrRedirect", () => {
     );
 
     await expect(requireCurrentUserOrRedirect("/services")).rejects.toThrow(
-      "NEXT_REDIRECT:/sign-in?redirect=%2Fservices%2Fblast%3Fquery%3Dalpha%2520beta%26filter%3Da%252Fb",
+      "NEXT_REDIRECT:/sign-in?redirect=/services/blast?query%3Dalpha%2520beta%26filter%3Da%252Fb",
     );
   });
 
@@ -53,7 +53,7 @@ describe("requireCurrentUserOrRedirect", () => {
     mocks.headers.mockResolvedValue(requestHeaders());
 
     await expect(requireCurrentUserOrRedirect("/settings")).rejects.toThrow(
-      "NEXT_REDIRECT:/sign-in?redirect=%2Fsettings",
+      "NEXT_REDIRECT:/sign-in?redirect=/settings",
     );
   });
 
@@ -64,7 +64,7 @@ describe("requireCurrentUserOrRedirect", () => {
     );
 
     await expect(requireCurrentUserOrRedirect("/jobs")).rejects.toThrow(
-      "NEXT_REDIRECT:/sign-in?redirect=%2Fjobs",
+      "NEXT_REDIRECT:/sign-in?redirect=/jobs",
     );
   });
 });

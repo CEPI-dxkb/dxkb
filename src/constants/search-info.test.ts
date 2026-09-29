@@ -35,7 +35,7 @@ describe("search descriptors", () => {
   it("routes Taxa searches to the canonical collection", () => {
     const taxonomy = searchDescriptors.find((item) => item.id === "taxonomy");
     expect(taxonomy && searchHref(taxonomy, "Influenza A")).toBe(
-      "/taxonomy?keyword=Influenza%20A",
+      "/taxonomy?keyword=Influenza+A",
     );
     expect(
       searchTypeForLocation(
@@ -51,24 +51,24 @@ describe("search descriptors", () => {
     );
     const protein = searchDescriptors.find((item) => item.id === "protein");
     expect(feature && searchHref(feature, "DNA kinase")).toBe(
-      "/feature?keyword=DNA%20kinase",
+      "/feature?keyword=DNA+kinase",
     );
     expect(protein && searchHref(protein, "DNA kinase")).toBe(
-      "/feature?keyword=DNA%20kinase&filter=protein",
+      "/feature?keyword=DNA+kinase&filter=protein",
     );
   });
 
   it("routes Epitope searches to the canonical collection", () => {
     const epitope = searchDescriptors.find((item) => item.id === "epitope");
     expect(epitope && searchHref(epitope, "linear peptide")).toBe(
-      "/epitope?keyword=linear%20peptide",
+      "/epitope?keyword=linear+peptide",
     );
   });
 
   it("routes Experiment searches to the canonical collection", () => {
     const experiment = searchDescriptors.find((item) => item.id === "experiment");
     expect(experiment && searchHref(experiment, "RNA sequencing")).toBe(
-      "/experiment?keyword=RNA%20sequencing",
+      "/experiment?keyword=RNA+sequencing",
     );
   });
 
@@ -77,7 +77,7 @@ describe("search descriptors", () => {
       (item) => item.id === "protein_feature",
     );
     expect(domains && searchHref(domains, "DNA kinase")).toBe(
-      "/domains-and-motifs?keyword=DNA%20kinase",
+      "/domains-and-motifs?keyword=DNA+kinase",
     );
   });
 
@@ -86,7 +86,7 @@ describe("search descriptors", () => {
       (item) => item.id === "protein_structure",
     );
     expect(structures && searchHref(structures, "spike protein")).toBe(
-      "/protein-structure?keyword=spike%20protein",
+      "/protein-structure?keyword=spike+protein",
     );
   });
 
@@ -97,13 +97,13 @@ describe("search descriptors", () => {
     );
     const serology = searchDescriptors.find((item) => item.id === "serology");
     expect(strain && searchHref(strain, "A/B strain")).toBe(
-      "/strain?keyword=A%2FB%20strain",
+      "/strain?keyword=A/B+strain",
     );
     expect(surveillance && searchHref(surveillance, "RAT/antigen")).toBe(
-      "/surveillance?keyword=RAT%2Fantigen",
+      "/surveillance?keyword=RAT/antigen",
     );
     expect(serology && searchHref(serology, "neutralizing antibody")).toBe(
-      "/serology?keyword=neutralizing%20antibody",
+      "/serology?keyword=neutralizing+antibody",
     );
   });
 });

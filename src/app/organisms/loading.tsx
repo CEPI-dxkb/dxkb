@@ -1,4 +1,5 @@
 import { DataSummarySkeleton } from "@/components/organisms/data-summary/data-summary-skeleton";
+import { LandingNavSkeleton } from "@/components/organisms/landing-shell/landing-nav-skeleton";
 import { MetadataDistributionsSkeleton } from "@/components/organisms/metadata-distributions/metadata-distributions-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,7 +13,7 @@ export default function OrganismsLoading() {
       role="status"
       aria-label="Loading organism data"
     >
-      <Skeleton className="hidden h-112 w-56 shrink-0 rounded-lg lg:block" />
+      <LandingNavSkeleton />
       <div className="flex min-w-0 flex-1 flex-col">
         <Skeleton className="h-18 rounded-lg" />
         <div className="flex flex-col gap-8 py-4 pr-2 pl-1">

@@ -5,8 +5,13 @@ const pushSpy = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushSpy }),
+  usePathname: () => "/organisms/bacteria",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
+import { LandingShellClient } from "@/components/organisms/landing-shell/landing-shell-client";
+import { defaultUiPreferences } from "@/lib/ui-preferences/definitions";
+import { UiPreferencesProvider } from "@/lib/ui-preferences/provider";
 import { EntityViewShell, type EntityViewTab } from "../entity-view-shell";
 
 type TabKey = "summary" | "records" | "history";
@@ -153,4 +158,41 @@ it("supports scrolling and bounded fill content regions", () => {
   expect(
     screen.queryByTestId("entity-view-scroll-region"),
   ).not.toBeInTheDocument();
+});
+
+it("keeps the rail collapsed when moving from an organism page to an entity view", async () => {
+  const user = userEvent.setup();
+  const { rerender } = render(
+    <UiPreferencesProvider initialPreferences={defaultUiPreferences}>
+      <LandingShellClient
+        displayName="Bacteria"
+        activeView="overview"
+        defaultView="overview"
+        navItems={[{ key: "overview", label: "Overview", icon: null }]}
+      >
+        <div />
+      </LandingShellClient>
+    </UiPreferencesProvider>,
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Collapse view navigation" }),
+  );
+
+  // Same provider, different shell: what a client navigation to /taxonomy/1386 does.
+  rerender(
+    <UiPreferencesProvider initialPreferences={defaultUiPreferences}>
+      <EntityViewShell
+        viewLabel="Taxon"
+        title="Bacillus"
+        tabs={[{ key: "overview", label: "Overview" }]}
+        activeTab="overview"
+        defaultTab="overview"
+      >
+        <div />
+      </EntityViewShell>
+    </UiPreferencesProvider>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Expand view navigation" }),
+  ).toBeInTheDocument();
 });

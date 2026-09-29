@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { DataResource } from "@/lib/data-api";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface ColumnField {
   id: string;
@@ -54,7 +55,7 @@ export function FilterBar({
     onKeywordChange?.(nextKeywords.join(" "));
   };
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
-  const [showFacets, setShowFacets] = useState(false);
+  const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
   const [facetVisibilityOverrides, setFacetVisibilityOverrides] = useState<
     Map<string, FacetVisibilityOverride>
   >(() => new Map());

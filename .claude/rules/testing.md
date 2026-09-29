@@ -32,7 +32,7 @@ V8 coverage with floor thresholds enforced by `pnpm test:coverage`. **`vitest.co
 
 ## CI / GitHub Actions
 
-These workflows run automatically on every PR targeting `main`:
+These workflows run automatically on every PR targeting `main`, `test`, `dev`, or a `DXKBCORE-*` stack branch:
 
 | Workflow  | File                                   | Command          |
 | --------- | -------------------------------------- | ---------------- |

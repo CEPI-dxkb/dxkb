@@ -1,5 +1,7 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
+import { PanelSplit } from "./panel-split";
+
 /**
  * Page object for the `/jobs` list view. Covers the heading, status filter, row selection, the
  * details panel that appears on click, and the KILL action. Rows are matched by `job.id` which
@@ -9,11 +11,13 @@ export class JobsListPage {
   readonly page: Page;
   readonly heading: Locator;
   readonly searchInput: Locator;
+  readonly panels: PanelSplit;
 
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole("heading", { level: 1, name: /^jobs$/i });
     this.searchInput = page.getByPlaceholder(/search by name, id, or service/i);
+    this.panels = new PanelSplit(page);
   }
 
   async goto(): Promise<void> {

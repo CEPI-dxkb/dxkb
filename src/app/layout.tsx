@@ -9,6 +9,8 @@ import { AuthBoundary } from "@/lib/auth/provider";
 import { getCurrentUser } from "@/lib/auth/server/actions";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CommandPalette } from "@/components/search/command-palette";
+import { UiPreferencesProvider } from "@/lib/ui-preferences/provider";
+import { readUiPreferences } from "@/lib/ui-preferences/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +34,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialUser = await getCurrentUser();
+  const [initialUser, initialPreferences] = await Promise.all([
+    getCurrentUser(),
+    readUiPreferences(),
+  ]);
 
   return (
     <html
@@ -44,11 +49,13 @@ export default async function RootLayout({
         <Providers>
           <ThemeProvider>
             <AuthBoundary user={initialUser}>
-              <TooltipProvider>
-                {children}
-                {/* Dev-only debug loader: safe to include in dev; no runtime UI */}
-              </TooltipProvider>
-              <CommandPalette />
+              <UiPreferencesProvider initialPreferences={initialPreferences}>
+                <TooltipProvider>
+                  {children}
+                  {/* Dev-only debug loader: safe to include in dev; no runtime UI */}
+                </TooltipProvider>
+                <CommandPalette />
+              </UiPreferencesProvider>
             </AuthBoundary>
             <Toaster
               richColors

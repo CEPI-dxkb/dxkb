@@ -11,6 +11,7 @@ on:
       - main
       - test
       - dev
+      - "DXKBCORE-*"
 
 permissions:
   contents: read

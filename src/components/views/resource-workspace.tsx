@@ -8,6 +8,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface ResourceWorkspaceProps {
   children: ReactNode;
@@ -43,6 +44,9 @@ const narrowWorkspaceQuery = "(max-width: 47.999rem)";
  * would mean nothing), and a width the user dragged side by side is handed back when
  * they return to it. `resource-workspace.test.tsx` pins all of that as rendered
  * `flex-grow`, because a `defaultSize` assertion cannot see any of it.
+ *
+ * The side-by-side `defaultSize` is the user's remembered width
+ * (`resourceDetailPanelSize`); 15% is only the first-visit default.
  */
 const detailPanelSizes = {
   stacked: {
@@ -91,6 +95,14 @@ export function ResourceWorkspace({
   // the DOM `id` attribute, so two workspaces mounted at once would otherwise collide
   // on a bare "detail-side" — the duplicate-id failure this item exists to avoid.
   const instanceId = useId();
+  const [savedDetailSize, setSavedDetailSize] = useUiPreference(
+    "resourceDetailPanelSize",
+  );
+  // Read once per mount. Within a mount the group's own per-id layout cache already
+  // hands the user's width back (see detailPanelSizes); this only seeds new groups.
+  const [sideBySideDefaultSize] = useState(
+    () => `${String(savedDetailSize)}%`,
+  );
   const [panelExpanded, setPanelExpanded] = useState(hasSidePanel);
   const [isNarrow, setIsNarrow] = useState(false);
   const [previousHasSidePanel, setPreviousHasSidePanel] =
@@ -115,7 +127,8 @@ export function ResourceWorkspace({
 
   const detailSizes = isNarrow
     ? detailPanelSizes.stacked
-    : detailPanelSizes.sideBySide;
+    : { ...detailPanelSizes.sideBySide, defaultSize: sideBySideDefaultSize };
+  const detailPanelId = `${instanceId}${detailSizes.panelId}`;
 
   return (
     <div
@@ -130,6 +143,11 @@ export function ResourceWorkspace({
         // is hidden there, so nothing should be draggable.
         disabled={isNarrow}
         className="size-full min-h-0"
+        onLayoutChanged={(layout, meta) => {
+          if (!meta.isUserInteraction || isNarrow) return;
+          const size = layout[detailPanelId] ?? 0;
+          if (size > 0) setSavedDetailSize(size);
+        }}
       >
         <ResizablePanel
           minSize="20%"
@@ -173,7 +191,7 @@ export function ResourceWorkspace({
                 and out of the accessibility tree and tab order with it. */}
             <ResizableHandle withHandle className="max-md:hidden" />
             <ResizablePanel
-              id={`${instanceId}${detailSizes.panelId}`}
+              id={detailPanelId}
               defaultSize={detailSizes.defaultSize}
               minSize={detailSizes.minSize}
               maxSize={detailSizes.maxSize}

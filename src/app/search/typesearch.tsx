@@ -16,6 +16,7 @@ import { searchDescriptors, searchHref } from "@/constants/search-info";
 import { searchTypeMenuItems } from "@/constants/search-menu";
 import { isDataResource } from "@/lib/data-api";
 import { toQueryString } from "@/lib/url";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 import type { DataResource } from "@/lib/data-api";
 import { genomeHref, genomeIdFromRow } from "@/lib/views/hrefs";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -51,7 +52,9 @@ function TypeSearchList({
   const router = useRouter();
   const clearTimeoutRef = useRef<number | null>(null);
 
-  const [menuCollapsed, setMenuCollapsed] = useState(false);
+  const [menuCollapsed, setMenuCollapsed] = useUiPreference(
+    "searchNavCollapsed",
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedGenomeId, setSelectedGenomeId] = useState<string | null>(null);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});

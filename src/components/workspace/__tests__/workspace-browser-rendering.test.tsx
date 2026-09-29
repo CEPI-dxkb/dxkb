@@ -7,6 +7,9 @@ import { WorkspaceDialogProvider } from "@/contexts/workspace-dialog-context";
 import { WorkspacePanelProvider } from "@/contexts/workspace-panel-context";
 import { WorkspaceRepositoryProvider } from "@/contexts/workspace-repository-context";
 import { InMemoryWorkspaceRepository } from "@/lib/services/workspace/adapters/in-memory-workspace-repository";
+import { getWorkspaceMetadata } from "@/lib/services/workspace/shared";
+import type { UiPreferences } from "@/lib/ui-preferences/definitions";
+import { createUiPreferencesWrapper } from "@/test-helpers/react";
 
 vi.mock("@/lib/auth/provider", () => ({
   useAuth: () => ({
@@ -19,6 +22,15 @@ vi.mock("@/lib/auth/provider", () => ({
     status: "authed",
     isAuthenticated: true,
   }),
+}));
+
+// Only the path resolve calls this. Tests that need a folder to stay unresolved make
+// it return a promise that never settles.
+vi.mock("@/lib/services/workspace/shared", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@/lib/services/workspace/shared")
+  >()),
+  getWorkspaceMetadata: vi.fn(),
 }));
 
 vi.mock("@/lib/services/workspace/favorites", () => ({
@@ -42,22 +54,28 @@ class ResizeObserverStub {
 
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 
-function makeWrapper(repository: InMemoryWorkspaceRepository) {
+function makeWrapper(
+  repository: InMemoryWorkspaceRepository,
+  preferences: Partial<UiPreferences> = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  const UiPreferencesWrapper = createUiPreferencesWrapper(preferences);
 
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <QueryClientProvider client={queryClient}>
-        <WorkspaceRepositoryProvider
-          value={{ authenticated: repository, public: repository }}
-        >
-          <WorkspacePanelProvider>
-            <WorkspaceDialogProvider>{children}</WorkspaceDialogProvider>
-          </WorkspacePanelProvider>
-        </WorkspaceRepositoryProvider>
-      </QueryClientProvider>
+      <UiPreferencesWrapper>
+        <QueryClientProvider client={queryClient}>
+          <WorkspaceRepositoryProvider
+            value={{ authenticated: repository, public: repository }}
+          >
+            <WorkspacePanelProvider>
+              <WorkspaceDialogProvider>{children}</WorkspaceDialogProvider>
+            </WorkspacePanelProvider>
+          </WorkspaceRepositoryProvider>
+        </QueryClientProvider>
+      </UiPreferencesWrapper>
     );
   };
 }
@@ -213,4 +231,74 @@ describe("WorkspaceBrowser rendering", () => {
       screen.getByRole("region", { name: /workspace items/i }),
     ).toBeVisible();
   }, 10_000);
+
+  it("shows the remembered sort in the skeleton while a folder resolves", () => {
+    vi.mocked(getWorkspaceMetadata).mockReturnValue(
+      new Promise(() => undefined),
+    );
+    render(
+      <WorkspaceBrowser
+        mode="home"
+        username="alice@bvbrc"
+        path="docs"
+        workspaceGuideUrl="https://example.test/workspace-guide"
+      />,
+      {
+        wrapper: makeWrapper(new InMemoryWorkspaceRepository(), {
+          workspaceSort: { field: "size", direction: "desc" },
+        }),
+      },
+    );
+    // The skeleton has no toolbar; the loaded browser does. Without this guard the
+    // sort icons below would come from the loaded table, not the skeleton.
+    expect(screen.queryByPlaceholderText(/search files/i)).toBeNull();
+    // Otherwise the skeleton flashes the default name-ascending arrow while the
+    // folder resolves, then flips to the saved sort.
+    expect(
+      screen
+        .getByRole("button", { name: "Sort by Size" })
+        .querySelector(".lucide-arrow-down"),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("button", { name: "Sort by Name" })
+        .querySelector(".lucide-arrow-up-down"),
+    ).toBeInTheDocument();
+  });
+
+  it("applies the remembered sort and hidden-files choice", async () => {
+    const repository = new InMemoryWorkspaceRepository({
+      directories: {
+        "/alice@bvbrc/home": [
+          { name: "small.txt", type: "txt", size: 3 },
+          { name: "large.txt", type: "txt", size: 2 },
+          { name: ".hidden.txt", type: "txt", size: 1 },
+        ],
+      },
+    });
+    render(
+      <WorkspaceBrowser
+        mode="home"
+        username="alice@bvbrc"
+        path=""
+        workspaceGuideUrl="https://example.test/workspace-guide"
+      />,
+      {
+        wrapper: makeWrapper(repository, {
+          workspaceSort: { field: "size", direction: "desc" },
+          workspaceShowHiddenFiles: true,
+        }),
+      },
+    );
+    await screen.findByRole("row", { name: /large\.txt/i }, { timeout: 5_000 });
+    const fileRows = screen
+      .getAllByRole("row")
+      .map((row) => row.textContent)
+      .filter((text) => text.includes(".txt"));
+    // Size descending (small, large, hidden) differs from name ascending
+    // (hidden, large, small), so a default sort would fail these.
+    expect(fileRows[0]).toContain("small.txt");
+    expect(fileRows[1]).toContain("large.txt");
+    expect(fileRows[2]).toContain(".hidden.txt");
+  });
 });

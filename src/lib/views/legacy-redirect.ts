@@ -1,3 +1,8 @@
+import {
+  encodePathSegment,
+  encodeQueryComponent,
+  toQueryString,
+} from "@/lib/url";
 import { legacyViewTargets } from "./view-registry";
 
 export interface MappedPath {
@@ -214,13 +219,13 @@ export function mapLegacyViewPath(
         segment === "taxonomy"
           ? renameRqlField(joined, "taxon_lineage_ids", "lineage_ids")
           : joined;
-      searchParts.push(`rql=${encodeURIComponent(rql)}`);
+      searchParts.push(`rql=${encodeQueryComponent(rql)}`);
     }
     const namedParams = new URLSearchParams(namedParts.join("&"));
     for (const [name, value] of Object.entries(target.defaultParams ?? {})) {
       if (!namedParams.has(name)) namedParams.set(name, value);
     }
-    if (namedParams.size > 0) searchParts.push(namedParams.toString());
+    if (namedParams.size > 0) searchParts.push(toQueryString(namedParams));
     return { pathname: `/${segment}`, search: searchParts.join("&") };
   }
 
@@ -228,11 +233,13 @@ export function mapLegacyViewPath(
   let id: string;
   try {
     id = idParts
-      .map((part) => encodeURIComponent(decodeURIComponent(part)))
+      .map((part) => encodePathSegment(decodeURIComponent(part)))
       .join("%2F");
   } catch {
     return null;
   }
-  const search = rawSearch ? new URLSearchParams(rawSearch).toString() : "";
+  const search = rawSearch
+    ? toQueryString(new URLSearchParams(rawSearch))
+    : "";
   return { pathname: `/${segment}/${id}`, search };
 }

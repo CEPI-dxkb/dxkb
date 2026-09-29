@@ -1,4 +1,5 @@
 import type { ResourceCollectionProfile } from "@/components/views";
+import { encodePathSegment } from "@/lib/url";
 import { genomeMetadata } from "./fields";
 import { genomeStructuralRql } from "./query";
 import type { GenomeViewRecord } from "./schema";
@@ -21,7 +22,7 @@ export const genomeCollectionProfile: ResourceCollectionProfile<GenomeViewRecord
     facets: genomeFacets,
     rowHref: (row) =>
       row.genome_id
-        ? `/genome/${encodeURIComponent(row.genome_id)}`
+        ? `/genome/${encodePathSegment(row.genome_id)}`
         : undefined,
     rowLinkField: "genome_name",
   };

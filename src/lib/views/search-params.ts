@@ -1,3 +1,4 @@
+import { toQueryString } from "@/lib/url";
 import type { SearchParamsRecord } from "./rql";
 
 /**
@@ -29,5 +30,5 @@ export function canonicalizeMemberTabQuery(
     }
   }
   if (canonicalTab) next.set("tab", canonicalTab);
-  return next.toString();
+  return toQueryString(next);
 }

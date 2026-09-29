@@ -16,6 +16,7 @@ import {
 
 import { useAuth } from "@/lib/auth/provider";
 import { signOutAndRedirect } from "@/app/(auth)/redirect-action";
+import { encodeQueryComponent } from "@/lib/url";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 import {
@@ -105,7 +106,7 @@ export function CommandPalette() {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
     runCommand(() => {
-      router.push(`/search?type=everything&q=${encodeURIComponent(trimmed)}`);
+      router.push(`/search?type=everything&q=${encodeQueryComponent(trimmed)}`);
       void queryClient.invalidateQueries({
         predicate: (query) => {
           const key = query.queryKey[0];

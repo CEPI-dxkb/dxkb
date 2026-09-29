@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { DataApiError } from "@/lib/data-api/repository";
+import { toQueryString } from "@/lib/url";
 import { readRouteParam, type RouteParamSource } from "./route-params";
 
 export type CompoundSampleQuery = Record<string, string | string[] | undefined>;
@@ -79,5 +80,7 @@ export function canonicalizeCompoundSampleUrl(
   }
   const discriminator = scalarQueryParam(discriminatorValue);
   if (discriminator) next.set(options.discriminatorParam, discriminator);
-  redirect(`${options.href(sampleId)}${next.size ? `?${next}` : ""}`);
+  redirect(
+    `${options.href(sampleId)}${next.size ? `?${toQueryString(next)}` : ""}`,
+  );
 }

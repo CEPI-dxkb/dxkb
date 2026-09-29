@@ -12,6 +12,7 @@ import {
   replaceCollectionSearchParams,
   toSearchParamsRecord,
 } from "@/lib/views/collection-state";
+import { toQueryString } from "@/lib/url";
 
 export function useCollectionUrlState<Sort extends string>(
   options: CollectionStateOptions<Sort>,
@@ -26,24 +27,31 @@ export function useCollectionUrlState<Sort extends string>(
 
   const setState = (next: CollectionState<Sort>) => {
     const merged = replaceCollectionSearchParams(current, next, options);
-    router.push(merged.size ? `${pathname}?${merged}` : pathname, {
-      scroll: false,
-    });
+    router.push(
+      merged.size ? `${pathname}?${toQueryString(merged)}` : pathname,
+      {
+        scroll: false,
+      },
+    );
   };
 
   const canonical = canonicalizeCollectionSearchParams(current, options);
+  // Compare in URLSearchParams form: useSearchParams().toString() re-escapes
+  // whatever the address bar holds, so comparing the readable string would
+  // never match and the effect would replace the URL forever.
   const canonicalSearch = canonical.toString();
   const currentSearch = searchParams.toString();
+  const readableSearch = toQueryString(canonical);
   useEffect(() => {
     if (canonicalSearch !== currentSearch) {
       router.replace(
-        canonicalSearch ? `${pathname}?${canonicalSearch}` : pathname,
+        readableSearch ? `${pathname}?${readableSearch}` : pathname,
         {
           scroll: false,
         },
       );
     }
-  }, [canonicalSearch, currentSearch, pathname, router]);
+  }, [canonicalSearch, currentSearch, readableSearch, pathname, router]);
 
   return [state, setState];
 }

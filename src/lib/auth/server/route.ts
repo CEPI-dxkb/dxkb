@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import type { SessionIdentity } from "@/lib/auth/types";
+import { encodeQueryComponent } from "@/lib/url";
 import { errorResponse } from "./errors";
 import { readSession } from "./session";
 
@@ -31,7 +32,7 @@ export async function requireAuthSessionOrRedirect(
   redirectTo: string,
 ): Promise<SessionIdentity> {
   const session = await readSession();
-  if (!session) redirect(`/sign-in?redirect=${encodeURIComponent(redirectTo)}`);
+  if (!session) redirect(`/sign-in?redirect=${encodeQueryComponent(redirectTo)}`);
   return session;
 }
 

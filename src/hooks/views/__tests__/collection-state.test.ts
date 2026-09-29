@@ -81,7 +81,7 @@ describe("view collection state exports", () => {
     });
 
     expect(navigation.push).toHaveBeenCalledWith(
-      "/protein-feature?tab=details&rql=eq%28public%2Cfalse%29",
+      "/protein-feature?tab=details&rql=eq(public,false)",
       { scroll: false },
     );
   });
@@ -123,7 +123,29 @@ describe("view collection state exports", () => {
     });
 
     expect(navigation.push).toHaveBeenCalledWith(
-      "/protein-feature?tab=details&keep=a&keep=b&keyword=flu&host=human&page=5&sort=year%3Adesc",
+      "/protein-feature?tab=details&keep=a&keep=b&keyword=flu&host=human&page=5&sort=year:desc",
+      { scroll: false },
+    );
+  });
+});
+
+describe("useCollectionUrlState canonical replace", () => {
+  beforeEach(() => {
+    navigation.push.mockClear();
+    navigation.replace.mockClear();
+  });
+
+  it("does not replace a canonical URL whose RQL is already readable", () => {
+    navigation.searchParams = new URLSearchParams("rql=eq(public,false)");
+    renderHook(() => useCollectionUrlState(options));
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it("replaces a non-canonical URL with readable query text", () => {
+    navigation.searchParams = new URLSearchParams("rql=eq(public,false)&page=1");
+    renderHook(() => useCollectionUrlState(options));
+    expect(navigation.replace).toHaveBeenCalledWith(
+      "/protein-feature?rql=eq(public,false)",
       { scroll: false },
     );
   });

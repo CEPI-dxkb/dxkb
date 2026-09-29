@@ -4,6 +4,7 @@ import {
   type SearchType,
 } from "@/constants/search-info";
 import { taxonomyCollectionOptions } from "@/lib/taxonomy-view/query";
+import { toQueryString } from "@/lib/url";
 import {
   collectionManagedParamNames,
   type CollectionStateOptions,
@@ -171,7 +172,7 @@ function canonicalRedirectHref(
     if (!destination.has(name)) destination.set(name, value);
   }
 
-  return `/${route.segment}${destination.size ? `?${destination.toString()}` : ""}`;
+  return `/${route.segment}${destination.size ? `?${toQueryString(destination)}` : ""}`;
 }
 
 /**

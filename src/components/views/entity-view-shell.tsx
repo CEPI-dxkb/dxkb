@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { startTransition, useState, type ReactNode } from "react";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
+import { toQueryString } from "@/lib/url";
 
 export interface EntityViewTab<Key extends string = string> {
   key: Key;
@@ -55,9 +56,11 @@ export function EntityViewShell<Key extends string>({
     const tab = tabs.find((item) => item.key === key);
     if (tab?.enabled === false) return;
     const url = new URL(window.location.href);
-    if (key === defaultTab) url.searchParams.delete("tab");
-    else url.searchParams.set("tab", key);
-    router.push(`${url.pathname}${url.search}${url.hash}`);
+    const params = new URLSearchParams(url.search);
+    if (key === defaultTab) params.delete("tab");
+    else params.set("tab", key);
+    const query = toQueryString(params);
+    router.push(`${url.pathname}${query ? `?${query}` : ""}${url.hash}`);
   };
 
   const header = (

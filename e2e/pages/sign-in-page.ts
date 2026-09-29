@@ -4,6 +4,7 @@ import {
   type Locator,
   type Response,
 } from "@playwright/test";
+import { encodeQueryComponent } from "@/lib/url";
 
 /**
  * Page object for the /sign-in route. Wraps the form selectors and the common
@@ -53,7 +54,7 @@ export class SignInPage {
   async gotoProtected(path: string): Promise<void> {
     await this.page.goto(path);
     await expect(this.page).toHaveURL(
-      `/sign-in?redirect=${encodeURIComponent(path)}`,
+      `/sign-in?redirect=${encodeQueryComponent(path)}`,
     );
     await expect(this.heading).toBeVisible();
   }

@@ -297,7 +297,7 @@ describe("CommandPalette", () => {
       await user.click(searchItem);
 
       expect(mockPush).toHaveBeenCalledWith(
-        "/search?type=everything&q=test%20%26%20more",
+        "/search?type=everything&q=test+%26+more",
       );
     });
   });

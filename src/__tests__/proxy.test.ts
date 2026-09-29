@@ -80,6 +80,13 @@ describe("proxy", () => {
       expect(location.searchParams.get("redirect")).toBe("/services/blast?param=value");
     });
 
+    it("writes a readable sign-in redirect", () => {
+      const response = proxy(buildRequest("/workspace/user@bvbrc/home?x=a,b"));
+      expect(response.headers.get("location")).toBe(
+        "http://localhost:3019/sign-in?redirect=/workspace/user@bvbrc/home?x%3Da,b",
+      );
+    });
+
     it("forwards the complete request URL for authoritative server validation", () => {
       const request = buildRequest(
         "/services/blast?query=alpha%20beta&filter=a%2Fb",
@@ -90,7 +97,7 @@ describe("proxy", () => {
       expect(response.headers.get("x-middleware-next")).toBe("1");
       expect(
         response.headers.get("x-middleware-request-x-dxkb-request-path"),
-      ).toBe("/services/blast?query=alpha%20beta&filter=a%2Fb");
+      ).toBe("/services/blast?query=alpha+beta&filter=a/b");
     });
   });
 
@@ -154,6 +161,16 @@ describe("proxy", () => {
       expect(loc.searchParams.get("view")).toBeNull();
     });
 
+    it("keeps RQL readable when rewriting ?view= to ?tab=", () => {
+      const response = proxy(
+        buildRequest("/genome?rql=eq%28public%2Cfalse%29&view=genomes"),
+      );
+      expect(response.status).toBe(308);
+      expect(getRedirectLocation(response).search).toBe(
+        "?rql=eq(public,false)&tab=genomes",
+      );
+    });
+
     it("does not redirect ?view= on a non-(views) path", () => {
       const request = buildRequest("/search?view=genomes");
       const response = proxy(request);
@@ -188,7 +205,7 @@ describe("proxy", () => {
       expect(response.status).toBe(308);
       const loc = getRedirectLocation(response);
       expect(loc.pathname).toBe("/genome");
-      expect(loc.search).toBe("?rql=eq(genome_status%2CComplete)");
+      expect(loc.search).toBe("?rql=eq(genome_status,Complete)");
     });
     it("keeps quoted values and named params from a normalized list query", () => {
       const request = buildRequest(

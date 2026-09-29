@@ -71,10 +71,10 @@ describe("GenomeOverview", () => {
       "Mature peptides",
     ]);
     expect(overviewSectionHrefs("Annotation summary")).toEqual([
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CCDS))",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CtRNA))",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CrRNA))",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2Cmat_peptide))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,CDS))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,tRNA))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,rRNA))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,mat_peptide))",
     ]);
     expect(screen.getByRole("link", { name: "4004" })).toBeInTheDocument();
   });

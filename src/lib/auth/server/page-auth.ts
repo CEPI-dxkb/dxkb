@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { encodeQueryComponent } from "@/lib/url";
 
 import { getCurrentUser } from "./actions";
 import { protectedPageRequestHeader } from "../routes";
@@ -20,5 +21,5 @@ export async function requireCurrentUserOrRedirect(fallbackPath: string) {
 
   const requestPath = (await headers()).get(protectedPageRequestHeader);
   const destination = requestDestination(fallbackPath, requestPath);
-  redirect(`/sign-in?redirect=${encodeURIComponent(destination)}`);
+  redirect(`/sign-in?redirect=${encodeQueryComponent(destination)}`);
 }

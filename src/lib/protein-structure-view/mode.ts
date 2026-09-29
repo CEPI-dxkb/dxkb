@@ -1,3 +1,4 @@
+import { toQueryString } from "@/lib/url";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 
 export const maxProteinStructureAccessions = 10;
@@ -61,7 +62,7 @@ export function canonicalProteinStructureQuery(
   return rawDiscriminator.length === 1 &&
     rawDiscriminator[0] === canonicalDiscriminator
     ? undefined
-    : `/protein-structure?${query.toString()}`;
+    : `/protein-structure?${toQueryString(query)}`;
 }
 
 /**

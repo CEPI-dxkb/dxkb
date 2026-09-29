@@ -85,19 +85,19 @@ describe("Genome member route", () => {
     expect(screen.getByText("Contigs:")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "10" })).toHaveAttribute(
       "href",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CCDS))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,CDS))",
     );
     expect(screen.getByRole("link", { name: "2" })).toHaveAttribute(
       "href",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CtRNA))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,tRNA))",
     );
     expect(screen.getByRole("link", { name: "3" })).toHaveAttribute(
       "href",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CrRNA))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,rRNA))",
     );
     expect(screen.getByRole("link", { name: "4" })).toHaveAttribute(
       "href",
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2Cmat_peptide))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,mat_peptide))",
     );
     expect(
       await generateMetadata({

@@ -7,6 +7,7 @@ import {
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
 } from "@/lib/views/collection-state";
+import { toQueryString } from "@/lib/url";
 
 import { LandingNav } from "./landing-nav";
 import { LandingMobileNav } from "./landing-mobile-nav";
@@ -71,7 +72,7 @@ export function LandingShellClient({
     } else {
       params.set("tab", nextView);
     }
-    const queryString = params.toString();
+    const queryString = toQueryString(params);
     router.push(queryString ? `${pathname}?${queryString}` : pathname);
   }
 

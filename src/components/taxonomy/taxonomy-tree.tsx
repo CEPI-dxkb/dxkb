@@ -24,6 +24,7 @@ import {
 
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
+import { toQueryString } from "@/lib/url";
 
 import {
   fetchTaxonChildren,
@@ -135,7 +136,7 @@ function usePersistedExpansion(
     const params = new URLSearchParams(window.location.search);
     if (openParam) params.set("open", openParam);
     else params.delete("open");
-    const query = params.toString();
+    const query = toQueryString(params);
     window.history.replaceState(
       null,
       "",

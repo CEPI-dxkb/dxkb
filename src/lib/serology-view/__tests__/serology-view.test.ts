@@ -89,7 +89,7 @@ describe("Serology view contracts", () => {
         sample_identifier: "000123",
         test_type: "ELISA/IgG test",
       }),
-    ).toBe("/serology/000123?test_type=ELISA%2FIgG%20test");
+    ).toBe("/serology/000123?test_type=ELISA/IgG+test");
   });
 });
 

@@ -65,7 +65,7 @@ describe("Surveillance hrefs", () => {
     ).toBe("sample/1");
     expect(surveillanceIdFromRow({ id: "backend-only" })).toBeNull();
     expect(surveillanceHref("sample/1", "RAT/antigen")).toBe(
-      "/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen",
+      "/surveillance/sample%2F1?pathogen_test_type=RAT/antigen",
     );
   });
 });
@@ -77,7 +77,7 @@ describe("Serology hrefs", () => {
     ).toBe("000123");
     expect(serologyIdFromRow({ id: "backend-only" })).toBeNull();
     expect(serologyHref("sample/1", "ELISA/IgG test")).toBe(
-      "/serology/sample%2F1?test_type=ELISA%2FIgG%20test",
+      "/serology/sample%2F1?test_type=ELISA/IgG+test",
     );
   });
 });
@@ -91,7 +91,7 @@ describe("Interaction hrefs", () => {
         "PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd",
       ]),
     ).toBe(
-      "/feature?rql=in(feature_id%2C(PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd%2CPATRIC.224914.16.NZ_GG703779.CDS.873651.874052.fwd))",
+      "/feature?rql=in(feature_id,(PATRIC.224914.16.NZ_GG703778.CDS.1084382.1084843.fwd,PATRIC.224914.16.NZ_GG703779.CDS.873651.874052.fwd))",
     );
     expect(featuresHrefFromIds([])).toBeNull();
   });
@@ -115,14 +115,14 @@ describe("Feature hrefs", () => {
         rql: "and(eq(genome_id,83332.12),eq(feature_type,CDS))",
       }),
     ).toBe(
-      "/feature?rql=and(eq(genome_id%2C83332.12)%2Ceq(feature_type%2CCDS))",
+      "/feature?rql=and(eq(genome_id,83332.12),eq(feature_type,CDS))",
     );
   });
 
   it("builds bare, keyword, and protein-filtered list routes", () => {
     expect(featureListHref()).toBe("/feature");
     expect(featureListHref({ keyword: "DNA kinase" })).toBe(
-      "/feature?keyword=DNA%20kinase",
+      "/feature?keyword=DNA+kinase",
     );
     expect(featureListHref({ keyword: "kinase", filter: "protein" })).toBe(
       "/feature?keyword=kinase&filter=protein",
@@ -147,13 +147,13 @@ describe("genomeHref", () => {
 describe("genomesHrefFromIds", () => {
   it("builds a canonical list filtered to unique Genome IDs", () => {
     expect(genomesHrefFromIds(["11320.1", "11320.2", "11320.1"])).toBe(
-      "/genome?rql=in(genome_id%2C(11320.1%2C11320.2))",
+      "/genome?rql=in(genome_id,(11320.1,11320.2))",
     );
   });
 
   it("builds a canonical list from IDs used by the Strain view", () => {
     expect(genomesHrefFromIds(["641501.3", "id,with spaces", "641501.3"])).toBe(
-      "/genome?rql=in(genome_id%2C(641501.3%2Cid%252Cwith%20spaces))",
+      "/genome?rql=in(genome_id,(641501.3,id%252Cwith+spaces))",
     );
   });
 
@@ -170,7 +170,7 @@ describe("genomesHrefFromIds", () => {
 
   it("accepts the Data API's maximum in(...) value count", () => {
     const ids = Array.from({ length: 500 }, (_value, index) => `1.${String(index)}`);
-    expect(genomesHrefFromIds(ids)).toContain("in(genome_id%2C(1.0%2C");
+    expect(genomesHrefFromIds(ids)).toContain("in(genome_id,(1.0,");
   });
 
   it("returns null above the Data API's in(...) value limit", () => {
@@ -194,17 +194,17 @@ describe("genomeListHref", () => {
   });
   it("adds and URL-encodes a friendly keyword", () => {
     expect(genomeListHref({ keyword: "E. coli & phage" })).toBe(
-      "/genome?keyword=E.%20coli%20%26%20phage",
+      "/genome?keyword=E.+coli+%26+phage",
     );
   });
   it("prefers explicit rql when keyword is also provided", () => {
     expect(
       genomeListHref({ keyword: "ignored", rql: "eq(genus,Escherichia)" }),
-    ).toBe("/genome?rql=eq(genus%2CEscherichia)");
+    ).toBe("/genome?rql=eq(genus,Escherichia)");
   });
-  it("URL-encodes the rql query value once (comma → %2C, parens preserved)", () => {
+  it("URL-encodes the rql query value once, keeping RQL punctuation readable", () => {
     expect(genomeListHref({ rql: "eq(genus,Escherichia)" })).toBe(
-      "/genome?rql=eq(genus%2CEscherichia)",
+      "/genome?rql=eq(genus,Escherichia)",
     );
   });
   it("round-trips a built rqlEq clause back to the unescaped RQL", () => {

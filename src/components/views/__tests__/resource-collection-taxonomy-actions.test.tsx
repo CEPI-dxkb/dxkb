@@ -172,8 +172,8 @@ describe("ResourceCollection Taxonomy actions", () => {
     expect(open).toHaveBeenCalledWith("about:blank", "_blank");
     expect(links.map(({ href }) => href)).toEqual([
       "/taxonomy/234",
-      "/genome?rql=and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated))",
-      "/feature?rql=and(eq(genome_id%2C*)%2Cgenome(and(in(taxon_lineage_ids%2C(234))%2Cne(genome_status%2CDeprecated)))%2Ceq(annotation%2CPATRIC))",
+      "/genome?rql=and(in(taxon_lineage_ids,(234)),ne(genome_status,Deprecated))",
+      "/feature?rql=and(eq(genome_id,*),genome(and(in(taxon_lineage_ids,(234)),ne(genome_status,Deprecated))),eq(annotation,PATRIC))",
     ]);
     expect(links.map(({ target, rel }) => ({ target, rel }))).toEqual([
       { target: "_self", rel: "noreferrer" },

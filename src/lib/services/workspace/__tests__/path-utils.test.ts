@@ -193,6 +193,14 @@ describe("encodeWorkspaceSegment", () => {
   it("encodes slashes", () => {
     expect(encodeWorkspaceSegment("a/b")).toBe("a%2Fb");
   });
+
+  it("keeps RFC 3986 sub-delimiters readable in workspace segments", () => {
+    expect(encodeWorkspaceSegment("Run 1, 2 & 3 (final)")).toBe(
+      "Run%201,%202%20&%203%20(final)",
+    );
+    expect(encodeWorkspaceSegment("user@bvbrc")).toBe("user@bvbrc");
+    expect(encodeWorkspaceSegment("a/b")).toBe("a%2Fb");
+  });
 });
 
 describe("parsePathSegments", () => {

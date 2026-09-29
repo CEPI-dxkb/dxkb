@@ -1,3 +1,4 @@
+import { encodeQueryComponent } from "@/lib/url";
 import { viewRegistry } from "@/lib/views/view-registry";
 
 export type SearchRoute =
@@ -20,14 +21,14 @@ export interface SearchType {
 export function searchHref(searchType: SearchType, query: string): string {
   if (searchType.route.status === "canonical") {
     const params = [
-      `keyword=${encodeURIComponent(query)}`,
+      `keyword=${encodeQueryComponent(query)}`,
       ...Object.entries(searchType.route.params ?? {}).map(
-        ([name, value]) => `${name}=${encodeURIComponent(value)}`,
+        ([name, value]) => `${name}=${encodeQueryComponent(value)}`,
       ),
     ];
     return `/${searchType.route.segment}?${params.join("&")}`;
   }
-  return `/search?type=${searchType.id}&q=${encodeURIComponent(query)}`;
+  return `/search?type=${searchType.id}&q=${encodeQueryComponent(query)}`;
 }
 
 export const searchDescriptors: readonly SearchType[] = [

@@ -235,7 +235,7 @@ describe("ResourceCollection resource-navigation actions", () => {
     });
     await user.click(screen.getByRole("button", { name: "Genomes action" }));
     expect(push).toHaveBeenCalledWith(
-      "/genome?rql=in(genome_id%2C(11320.1%2C11320.2%2C11320.3))",
+      "/genome?rql=in(genome_id,(11320.1,11320.2,11320.3))",
     );
   });
 
@@ -358,7 +358,7 @@ describe("ResourceCollection resource-navigation actions", () => {
     });
     // Legacy pools feature_id_a and feature_id_b across every selected row.
     expect(push).toHaveBeenCalledWith(
-      "/feature?rql=in(feature_id%2C(feature-a1%2Cfeature-b1%2Cfeature-a2))",
+      "/feature?rql=in(feature_id,(feature-a1,feature-b1,feature-a2))",
     );
 
     // Legacy errors with "Missing or invalid type for Services" on this tab.
@@ -407,7 +407,7 @@ describe("ResourceCollection resource-navigation actions", () => {
       screen.getByRole("button", { name: "Surveillance action" }),
     );
     expect(open).toHaveBeenCalledWith(
-      "/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen",
+      "/surveillance/sample%2F1?pathogen_test_type=RAT/antigen",
       "_blank",
     );
     expect(push).not.toHaveBeenCalled();

@@ -107,7 +107,7 @@ describe("Surveillance member page", () => {
     );
     expect(screen.getByRole("link", { name: "RAT/antigen" })).toHaveAttribute(
       "href",
-      "/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen",
+      "/surveillance/sample%2F1?pathogen_test_type=RAT/antigen",
     );
   });
 

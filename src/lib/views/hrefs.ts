@@ -3,6 +3,7 @@
 // rules) at each site.
 
 import { maxRqlInValues } from "@/lib/data-api/rql";
+import { encodePathSegment, encodeQueryComponent } from "@/lib/url";
 import { escapeRqlValue } from "./rql";
 
 /**
@@ -26,7 +27,7 @@ function idListRql(
 export function taxonomyHref(taxonId: number | string): string {
   const id = String(taxonId);
   if (!/^(?=.*[1-9])\d+$/.test(id)) throw new Error(`Invalid Taxon ID: ${id}`);
-  return `/taxonomy/${encodeURIComponent(id)}`;
+  return `/taxonomy/${encodePathSegment(id)}`;
 }
 
 /** Return a navigable Genome ID from an API row, if present. */
@@ -41,7 +42,7 @@ export function genomeIdFromRow(
 
 /** Internal genome singular route, e.g. `/genome/83332.12`. */
 export function genomeHref(genomeId: number | string): string {
-  return `/genome/${encodeURIComponent(String(genomeId))}`;
+  return `/genome/${encodePathSegment(String(genomeId))}`;
 }
 
 /** Return the canonical Genome list for the supplied genome IDs. */
@@ -60,9 +61,9 @@ export function genomeListHref(opts?: {
   keyword?: string;
   rql?: string;
 }): string {
-  if (opts?.rql) return `/genome?rql=${encodeURIComponent(opts.rql)}`;
+  if (opts?.rql) return `/genome?rql=${encodeQueryComponent(opts.rql)}`;
   if (opts?.keyword) {
-    return `/genome?keyword=${encodeURIComponent(opts.keyword)}`;
+    return `/genome?keyword=${encodeQueryComponent(opts.keyword)}`;
   }
   return "/genome";
 }
@@ -79,7 +80,7 @@ export function featureIdFromRow(
 
 /** Internal Feature member route. */
 export function featureHref(featureId: number | string): string {
-  return `/feature/${encodeURIComponent(String(featureId))}`;
+  return `/feature/${encodePathSegment(String(featureId))}`;
 }
 
 /**
@@ -103,10 +104,10 @@ export function featureListHref(opts?: {
   filter?: string;
 }): string {
   const params: string[] = [];
-  if (opts?.rql) params.push(`rql=${encodeURIComponent(opts.rql)}`);
+  if (opts?.rql) params.push(`rql=${encodeQueryComponent(opts.rql)}`);
   else if (opts?.keyword)
-    params.push(`keyword=${encodeURIComponent(opts.keyword)}`);
-  if (opts?.filter) params.push(`filter=${encodeURIComponent(opts.filter)}`);
+    params.push(`keyword=${encodeQueryComponent(opts.keyword)}`);
+  if (opts?.filter) params.push(`filter=${encodeQueryComponent(opts.filter)}`);
   return params.length ? `/feature?${params.join("&")}` : "/feature";
 }
 
@@ -122,7 +123,7 @@ export function epitopeIdFromRow(
 
 /** Internal Epitope member route. */
 export function epitopeHref(epitopeId: number | string): string {
-  return `/epitope/${encodeURIComponent(String(epitopeId))}`;
+  return `/epitope/${encodePathSegment(String(epitopeId))}`;
 }
 
 /** Return a canonical Experiment ID from an API row, if present. */
@@ -137,7 +138,7 @@ export function experimentIdFromRow(
 
 /** Internal Experiment member route. */
 export function experimentHref(experimentId: number | string): string {
-  return `/experiment/${encodeURIComponent(String(experimentId))}`;
+  return `/experiment/${encodePathSegment(String(experimentId))}`;
 }
 
 /** Legacy Bioset Results view; no canonical V2 result-analysis route exists yet. */
@@ -148,7 +149,7 @@ export function biosetResultsHref(experimentIds: readonly string[]): string {
 
 /** Internal Protein Structure route using the canonical accession query. */
 export function proteinStructureHref(accession: number | string): string {
-  return `/protein-structure?accession=${encodeURIComponent(String(accession))}`;
+  return `/protein-structure?accession=${encodeQueryComponent(String(accession))}`;
 }
 
 /** Return a public Surveillance sample identifier from an API row, if present. */
@@ -167,9 +168,9 @@ export function surveillanceHref(
   sampleIdentifier: number | string,
   pathogenTestType?: string,
 ): string {
-  const path = `/surveillance/${encodeURIComponent(String(sampleIdentifier))}`;
+  const path = `/surveillance/${encodePathSegment(String(sampleIdentifier))}`;
   return pathogenTestType
-    ? `${path}?pathogen_test_type=${encodeURIComponent(pathogenTestType)}`
+    ? `${path}?pathogen_test_type=${encodeQueryComponent(pathogenTestType)}`
     : path;
 }
 
@@ -189,6 +190,6 @@ export function serologyHref(
   sampleIdentifier: number | string,
   testType?: string,
 ): string {
-  const path = `/serology/${encodeURIComponent(String(sampleIdentifier))}`;
-  return testType ? `${path}?test_type=${encodeURIComponent(testType)}` : path;
+  const path = `/serology/${encodePathSegment(String(sampleIdentifier))}`;
+  return testType ? `${path}?test_type=${encodeQueryComponent(testType)}` : path;
 }

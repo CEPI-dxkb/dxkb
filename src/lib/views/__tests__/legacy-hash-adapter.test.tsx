@@ -79,7 +79,7 @@ it("converts defaultSort=-score when a canonical keyword is present", () => {
   render(<LegacyHashAdapter />);
 
   expect(mockReplace).toHaveBeenCalledWith(
-    "/genome?keyword=influenza&sort=score%3Adesc",
+    "/genome?keyword=influenza&sort=score:desc",
   );
 });
 
@@ -88,7 +88,7 @@ it("promotes a hash keyword before converting defaultSort=-score", () => {
   render(<LegacyHashAdapter />);
 
   expect(mockReplace).toHaveBeenCalledWith(
-    "/?keyword=E.+coli&sort=score%3Adesc",
+    "/?keyword=E.+coli&sort=score:desc",
   );
 });
 
@@ -102,7 +102,7 @@ it("preserves an explicit sort when converting defaultSort=-score", () => {
   render(<LegacyHashAdapter />);
 
   expect(mockReplace).toHaveBeenCalledWith(
-    "/genome?keyword=influenza&sort=genome_name%3Aasc",
+    "/genome?keyword=influenza&sort=genome_name:asc",
   );
 });
 

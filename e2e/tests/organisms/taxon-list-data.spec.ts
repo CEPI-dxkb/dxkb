@@ -12,6 +12,7 @@ import {
   strainScenarioOverrides,
 } from "../../fixtures/overrides";
 import { TaxonPage } from "../../pages";
+import { encodeQueryComponent } from "@/lib/url";
 
 // This spec exercises strain (default beforeEach fixture), genome, genome
 // feature, and epitope tabs across several describe blocks below — each tab's
@@ -180,7 +181,7 @@ test.describe("taxon strains actions", () => {
     await taxon.openAssociatedGenomes();
 
     await expect(page).toHaveURL(
-      /\/genome\?rql=in\(genome_id%2C\(641501\.3%2C641501\.4%2C641501\.5\)\)/,
+      /\/genome\?rql=in\(genome_id,\(641501\.3,641501\.4,641501\.5\)\)/,
     );
     await expect(page.getByRole("button", { name: "Sequences" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Features" })).toBeVisible();
@@ -227,7 +228,7 @@ test.describe("taxon strains actions", () => {
     // The protected service route sends a signed-out user through sign-in, but the
     // rerun key survives the round trip, so the prefill is still there afterwards.
     await expect(opened).toHaveURL(
-      /\/sign-in\?redirect=%2Fservices%2Fblast%3Frerun_key%3D/,
+      /\/sign-in\?redirect=\/services\/blast\?rerun_key%3D/,
     );
     const rerunKey =
       new URL(opened.url()).searchParams
@@ -261,7 +262,7 @@ test.describe("taxon strains actions", () => {
       page.getByRole("dialog").getByRole("button", { name: "Sign In" }),
     ).toHaveAttribute(
       "href",
-      `/sign-in?redirect=${encodeURIComponent(`/taxonomy/${influenzaTaxonId}?tab=strains`)}`,
+      `/sign-in?redirect=${encodeQueryComponent(`/taxonomy/${influenzaTaxonId}?tab=strains`)}`,
     );
     await expect(page).toHaveURL(`/taxonomy/${influenzaTaxonId}?tab=strains`);
   });

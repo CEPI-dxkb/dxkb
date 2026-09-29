@@ -15,6 +15,7 @@ import {
 import { FacetColumn } from "@/components/filterbar/facet-column";
 import { SelectedFilters } from "@/components/filterbar/selected-filters";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 import type { CollectionState } from "@/lib/views/collection-state";
 import type { ResourceCollectionFacet } from "./resource-collection";
 
@@ -42,7 +43,7 @@ export function ResourceFilterBar({
   onChange,
 }: ResourceFilterBarProps) {
   const [keywordDraft, setKeywordDraft] = useState(keyword ?? "");
-  const [showFacets, setShowFacets] = useState(false);
+  const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
   const [visibleFacets, setVisibleFacets] = useState(
     () =>
       new Set(

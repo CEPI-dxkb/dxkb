@@ -1,6 +1,8 @@
+import type { workspaceSortFields } from "@/constants/workspace-sort";
+
 export type WorkspaceViewMode = "home" | "shared" | "public";
 
-export type SortField = "name" | "type" | "size" | "ownerId" | "createdAt";
+export type SortField = (typeof workspaceSortFields)[number];
 export type SortDirection = "asc" | "desc";
 
 export interface WorkspaceSortConfig {

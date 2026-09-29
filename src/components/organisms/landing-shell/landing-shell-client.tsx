@@ -1,8 +1,8 @@
 "use client";
 
-import { useHotkey } from "@tanstack/react-hotkeys";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { startTransition, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import {
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
@@ -44,13 +44,7 @@ export function LandingShellClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [navCollapsed, setNavCollapsed] = useState(false);
-
-  useHotkey("Mod+B", () => {
-    startTransition(() => {
-      setNavCollapsed((current) => !current);
-    });
-  });
+  const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
 
   function handleViewChange(nextView: OrganismViewKey) {
     const target = navItems.find((item) => item.key === nextView);
@@ -94,11 +88,7 @@ export function LandingShellClient({
             activeView={serverActiveView}
             collapsed={navCollapsed}
             onChange={handleViewChange}
-            onCollapseToggle={() => {
-              startTransition(() => {
-                setNavCollapsed((current) => !current);
-              });
-            }}
+            onCollapseToggle={toggleNav}
           />
         </div>
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">

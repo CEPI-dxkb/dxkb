@@ -23,10 +23,13 @@ export function WorkspaceBrowserLoading({
   path,
   username,
   viewMode,
+  sort,
 }: {
   path: string;
   username: string;
   viewMode: "home" | "shared";
+  /** The saved sort, so the skeleton header matches the table that replaces it. */
+  sort: WorkspaceSortConfig;
 }) {
   return (
     <div className="flex min-h-[calc(100vh-12rem)] w-full flex-col overflow-hidden">
@@ -39,7 +42,7 @@ export function WorkspaceBrowserLoading({
           items={[]}
           isLoading={true}
           path={path}
-          sort={{ field: "name", direction: "asc" }}
+          sort={sort}
           onSortChange={() => undefined}
           viewMode={viewMode}
           username={username}

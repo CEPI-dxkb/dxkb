@@ -96,6 +96,9 @@ Find the existing example of the same shape and follow it:
 - **New auth endpoint** → add a named operation in `src/lib/auth/server/actions.ts`, a concrete browser call in `src/lib/auth/client.ts` when needed, and a thin route under `src/app/api/auth/` using `{error, code}` (see `docs/auth-api.md`). Do not add a factory, port, or browser session endpoint.
 - **New backend call** → via `JsonRpcClient` / `AppService` / workspace repository. Never raw `fetch`.
 - **New async client state** → TanStack Query hook, not `useEffect` + `useState`.
+- **New piece of UI state** → pick its home by what it is (full table in `docs/architecture.md` → "UI state"):
+  - a small device preference the server renders (panel width, collapsed rail, a toggle) → a key in `src/lib/ui-preferences/definitions.ts`, read with `useUiPreference(key)`; the root layout seeds it from cookies so the first paint is right.
+  - Never import a constant from a `"use client"` module into server code: it arrives as a client reference, not the value.
 
 ## Keeping guidance current
 

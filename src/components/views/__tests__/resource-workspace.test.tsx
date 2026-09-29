@@ -1,6 +1,12 @@
 import { useEffect, useState, type ComponentProps } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
+import {
+  panelShares,
+  pressOnSeparator,
+  stubResizableGeometry,
+} from "@/test-helpers/resizable";
+import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import { ResourceWorkspace } from "../resource-workspace";
 
 /**
@@ -23,43 +29,12 @@ vi.mock("@/components/ui/button", () => ({
   ),
 }));
 
-const unstubbedOffsets = {
-  width: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth"),
-  height: Object.getOwnPropertyDescriptor(
-    HTMLElement.prototype,
-    "offsetHeight",
-  ),
-};
+stubResizableGeometry();
 
-beforeAll(() => {
-  globalThis.ResizeObserver = class {
-    observe = () => undefined;
-    unobserve = () => undefined;
-    disconnect = () => undefined;
-  };
-  for (const property of ["offsetWidth", "offsetHeight"] as const) {
-    Object.defineProperty(HTMLElement.prototype, property, {
-      configurable: true,
-      value: 500,
-    });
-  }
-});
-
-afterAll(() => {
-  if (unstubbedOffsets.width) {
-    Object.defineProperty(
-      HTMLElement.prototype,
-      "offsetWidth",
-      unstubbedOffsets.width,
-    );
-  }
-  if (unstubbedOffsets.height) {
-    Object.defineProperty(
-      HTMLElement.prototype,
-      "offsetHeight",
-      unstubbedOffsets.height,
-    );
-  }
+// vitest.config.mts sets clearMocks but not restoreMocks. Restore here so a failing
+// assertion cannot leave document.cookie spied for the next test.
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 /** A `matchMedia` whose `matches` can change and notify, like a real resize. */
@@ -93,13 +68,6 @@ function mockViewport(initiallyNarrow = false) {
   };
 }
 
-/** The split the group actually rendered: `flex-grow` per panel, content first. */
-function panelShares() {
-  return [...document.querySelectorAll("[data-panel]")].map(
-    (panel) => (panel as HTMLElement).style.flexGrow,
-  );
-}
-
 function panelGroup() {
   return document.querySelector("[data-group]") as HTMLElement;
 }
@@ -122,13 +90,6 @@ function resizeWindow() {
     handle.getAttribute("aria-valuenow"),
     handle.getAttribute("aria-valuemax"),
   ];
-}
-
-/** Drive a real resize through the library's own keyboard handler. */
-function pressOnSeparator(key: string) {
-  act(() => {
-    fireEvent.keyDown(separator(), { key });
-  });
 }
 
 /**
@@ -265,6 +226,45 @@ describe("ResourceWorkspace layout", () => {
     expect(screen.queryByText("Details")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Show" }));
     expect(screen.getByText("Details")).toBeInTheDocument();
+  });
+
+  it("opens side by side at the remembered width", () => {
+    mockViewport(false);
+    render(
+      <ResourceWorkspace
+        actionBar={<span>Actions</span>}
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+      { wrapper: createUiPreferencesWrapper({ resourceDetailPanelSize: 30 }) },
+    );
+    expect(panelShares()).toStrictEqual(["70", "30"]);
+  });
+
+  it("remembers a side-by-side resize but never the stacked split", () => {
+    const viewport = mockViewport(false);
+    const cookieSpy = vi.spyOn(document, "cookie", "set");
+    render(
+      <ResourceWorkspace
+        actionBar={<span>Actions</span>}
+        sidePanel={<span>Details</span>}
+      >
+        <span>Table</span>
+      </ResourceWorkspace>,
+      { wrapper: createUiPreferencesWrapper() },
+    );
+    pressOnSeparator("ArrowLeft");
+    expect(cookieSpy).toHaveBeenCalledWith(
+      expect.stringContaining("dxkb-resource-detail-panel-size=20;"),
+    );
+    cookieSpy.mockClear();
+    viewport.crossBreakpoint(true);
+    expect(
+      cookieSpy.mock.calls.some(([value]) =>
+        value.startsWith("dxkb-resource-detail-panel-size="),
+      ),
+    ).toBe(false);
   });
 
   it("removes the details region when the side panel is no longer available", () => {

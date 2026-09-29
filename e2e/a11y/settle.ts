@@ -29,13 +29,25 @@ const panelHandleSelector = '[data-slot="resizable-handle"]';
 /**
  * Wait until the `ResizablePanelGroup` has committed its client-side layout.
  *
- * Neither networkidle nor skeleton-detach covers layout that a *client effect*
- * commits after the data has landed. The workspace shell is the case in point:
- * `workspace-shell.tsx` server-renders the details panel at its `defaultSize`,
- * then a `useLayoutEffect` collapses it to zero because `panelExpanded` starts
- * false. That runs once react-resizable-panels' store has settled, which is
- * well after the fetches go quiet — measured at ~4.4s into the load under a
- * 20x CPU throttle, against an `awaitSettled()` that returned at ~3.2s.
+ * Neither networkidle nor skeleton-detach covers layout that the library's own
+ * store or a *client effect* commits after the data has landed. The workspace
+ * shell seeds its layout snapshot from `panelExpanded`, so a closed panel (the
+ * state every load starts in) is server-rendered at 100/0 and hydrates to that
+ * same split: there is no load-time collapse left to wait out. What still lands
+ * late is:
+ *
+ *   - the separator's `aria-valuenow`, which react-resizable-panels only
+ *     computes once its store has registered the group on the client;
+ *   - a `ResizeObserver` callback that discards a committed layout and
+ *     recomputes it from each panel's `defaultSize`;
+ *   - an open panel, which the shell's `useLayoutEffect` sizes with `resize()`
+ *     only after hydration (a selection or a click on Show opens it).
+ *
+ * All three run once the store has settled, well after the fetches go quiet.
+ * The one measurement on record predates the seeding: the shell then
+ * server-rendered the panel open and collapsed it in that effect, ~4.4s into
+ * the load under a 20x CPU throttle, against an `awaitSettled()` that returned
+ * at ~3.2s.
  *
  * Two distinct CI failures come out of that one gap, which is why this lives in
  * `settle` rather than in either spec:
@@ -45,11 +57,12 @@ const panelHandleSelector = '[data-slot="resizable-handle"]';
  *     with no value, so axe's `aria-required-attr` fires `critical` on a state
  *     that is gone a few hundred ms later.
  *   - Clicking early puts `mousedown` on a toolbar button and `mouseup`
- *     wherever that button used to be, because the collapse shifts the whole
- *     toolbar between the two (x=377 -> x=1094 in the reproduction). No
- *     `click` is synthesised at all, so the dialog never opens and the failure
- *     reads as "element(s) not found" against the *dialog* — pointing away
- *     from the layout that actually caused it.
+ *     wherever that button used to be, because a late layout change shifts the
+ *     whole toolbar between the two (x=377 -> 1094 in the reproduction, which
+ *     was the old load-time collapse; opening the panel now moves it the other
+ *     way). No `click` is synthesised at all, so the dialog never opens and the
+ *     failure reads as "element(s) not found" against the *dialog* — pointing
+ *     away from the layout that actually caused it.
  *
  * The post-condition is the commit itself. Three conditions together stand in
  * for it, and the third is what makes the set sufficient:
@@ -72,13 +85,12 @@ const panelHandleSelector = '[data-slot="resizable-handle"]';
  * fixed `extraMs` would mask both symptoms, but only while the pause happens to
  * outlast the commit.
  *
- * On the measured workspace load the collapse is a single DOM write: React
- * flushes the group's registration and the shell's collapse in one layout-effect
- * pass, so no 60/40 intermediate is ever written (0 such frames across 497
- * samples, at both 1x and 20x CPU throttle; the attribute and the collapsed
- * geometry appear together at ~249ms and ~4129ms respectively). Conditions 2
- * and 3 therefore cost nothing on the happy path — they remove the dependence
- * on that batching holding.
+ * On a closed load the seeded 100/0 leaves nothing to reflow once the attribute
+ * exists, so conditions 2 and 3 cost at most two frames there. They are not
+ * dead weight: they remove the dependence on that holding, because a
+ * `ResizeObserver` recompute from `defaultSize` or an open panel's
+ * post-hydration `resize()` can still move the geometry after the attribute has
+ * appeared.
  *
  * No-ops on pages with no panel group, so it is safe on any route.
  */

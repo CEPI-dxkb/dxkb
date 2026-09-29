@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import type { ListPermissionsResult } from "@/lib/services/workspace/domain";
 import { useAuth } from "@/lib/auth/provider";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 import { useWorkspacePanel } from "@/contexts/workspace-panel-context";
 import { useWorkspaceDialog } from "@/contexts/workspace-dialog-context";
 import { useWorkspacePathResolve } from "@/hooks/services/workspace/use-workspace-path-resolve";
@@ -38,10 +39,7 @@ import { WorkspaceNotFoundDialog } from "./workspace-not-found-dialog";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { addRecentFolder } from "@/lib/recent-workspace-folders";
-import {
-  type WorkspaceSortConfig,
-  type WorkspaceViewMode,
-} from "@/types/workspace-browser";
+import { type WorkspaceViewMode } from "@/types/workspace-browser";
 import { noop } from "@/lib/utils";
 import {
   encodeWorkspaceSegment,
@@ -96,12 +94,7 @@ function useWorkspaceBrowser({
   const notFoundDismissed = dismissedPath === path;
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
-  const {
-    panelManuallyHidden,
-    setPanelExpanded,
-    showHiddenFiles,
-    setShowHiddenFiles,
-  } = useWorkspacePanel();
+  const { panelManuallyHidden, setPanelExpanded } = useWorkspacePanel();
   const { state: dialogState, dispatch: dialogDispatch } = useWorkspaceDialog();
 
   const queryClient = useQueryClient();
@@ -112,10 +105,12 @@ function useWorkspaceBrowser({
     staleTime: 2 * 60 * 1000,
   });
 
-  const [sort, setSort] = useState<WorkspaceSortConfig>({
-    field: "name",
-    direction: "asc",
-  });
+  // Remembered per device and shared by every folder: this component is keyed by
+  // path, so local state here would reset on each folder change.
+  const [sort, setSort] = useUiPreference("workspaceSort");
+  const [showHiddenFiles, setShowHiddenFiles] = useUiPreference(
+    "workspaceShowHiddenFiles",
+  );
   const tableRef = useRef<WorkspaceDataTableHandle>(null);
 
   const isHome = mode === "home";
@@ -332,6 +327,7 @@ function useWorkspaceBrowser({
         path={path}
         username={username}
         viewMode={isHome ? "home" : "shared"}
+        sort={sort}
       />
     );
   }
@@ -343,6 +339,7 @@ function useWorkspaceBrowser({
           path={path}
           username={username}
           viewMode="shared"
+          sort={sort}
         />
       );
     }

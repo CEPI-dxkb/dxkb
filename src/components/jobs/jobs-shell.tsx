@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/resizable";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const jobsPanelIds = { main: "jobs-main", details: "jobs-details" } as const;
+import { jobsPanelIds } from "@/constants/jobs-panels";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface JobsShellProps {
   children: ReactNode;
@@ -25,6 +25,9 @@ export function JobsShell({
 }: JobsShellProps) {
   const detailsPanelRef = useRef<PanelImperativeHandle>(null);
   const [panelExpanded, setPanelExpanded] = useState(true);
+  const [savedLayout, setSavedLayout] = useUiPreference("jobsPanelLayout");
+  // Read once: the group only honours defaultLayout on mount.
+  const [initialLayout] = useState(savedLayout);
 
   const handleResize = (size: { asPercentage: number }) => {
     const collapsed = size.asPercentage === 0;
@@ -41,7 +44,14 @@ export function JobsShell({
           className={`absolute inset-0 size-full justify-start ${
             panelExpanded ? "pointer-events-none opacity-0" : "opacity-100"
           }`}
-          onClick={() => detailsPanelRef.current?.expand()}
+          onClick={() => {
+            const panel = detailsPanelRef.current;
+            // resize, not expand(): expand() returns to the size before an *imperative*
+            // collapse, and falls back to minSize after the user drags the panel shut.
+            if (panel?.isCollapsed()) {
+              panel.resize(`${String(savedLayout[jobsPanelIds.details])}%`);
+            }
+          }}
           title="Show details panel"
         >
           <PanelRightOpen className="size-4 shrink-0" />
@@ -67,10 +77,24 @@ export function JobsShell({
   );
 
   return (
-    <ResizablePanelGroup orientation="horizontal" className="size-full min-h-0">
+    <ResizablePanelGroup
+      orientation="horizontal"
+      className="size-full min-h-0"
+      defaultLayout={initialLayout}
+      onLayoutChanged={(layout, meta) => {
+        if (!meta.isUserInteraction) return;
+        const details = layout[jobsPanelIds.details] ?? 0;
+        if (details > 0) {
+          setSavedLayout({
+            [jobsPanelIds.main]: layout[jobsPanelIds.main] ?? 0,
+            [jobsPanelIds.details]: details,
+          });
+        }
+      }}
+    >
       <ResizablePanel
         id={jobsPanelIds.main}
-        defaultSize="75%"
+        defaultSize={`${String(initialLayout[jobsPanelIds.main])}%`}
         minSize="50%"
         className="flex h-full min-h-0 flex-row overflow-hidden"
       >
@@ -88,7 +112,7 @@ export function JobsShell({
       <ResizablePanel
         panelRef={detailsPanelRef}
         id={jobsPanelIds.details}
-        defaultSize="20%"
+        defaultSize={`${String(initialLayout[jobsPanelIds.details])}%`}
         minSize={110}
         maxSize={600}
         collapsible

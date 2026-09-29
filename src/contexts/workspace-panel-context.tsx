@@ -1,27 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useRef,
-  type ReactNode,
-} from "react";
-import {
-  panelLayoutCookieName,
-  workspacePanelIds,
-} from "@/constants/workspace-panels";
-
-export {
-  panelLayoutCookieName,
-  workspacePanelIds,
-} from "@/constants/workspace-panels";
-
-/** Layout from react-resizable-panels: panel id -> size (%). Persists across folder navigation. */
-const defaultPanelLayout: Record<string, number> = {
-  [workspacePanelIds.main]: 60,
-  [workspacePanelIds.details]: 40,
-};
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 interface WorkspacePanelContextType {
   /** When true, user has manually hidden the details panel; don't auto-open on item selection or when traversing folders. */
@@ -30,50 +9,21 @@ interface WorkspacePanelContextType {
   /** When true, the details panel is expanded (persists across folder navigation). */
   panelExpanded: boolean;
   setPanelExpanded: (value: boolean) => void;
-  /** When true, show files/folders whose name starts with "." (persists across folder navigation). */
-  showHiddenFiles: boolean;
-  setShowHiddenFiles: (value: boolean) => void;
-  /** Stable snapshot of the initial panel layout — safe to read during render (e.g. for defaultSize props). */
-  panelInitialLayout: Record<string, number>;
-  /** Ref holding resizable panel layout (panel id -> %). Stored as a ref to avoid re-renders during resize drag. */
-  panelLayoutRef: React.RefObject<Record<string, number>>;
-  setPanelLayout: (layout: Record<string, number>) => void;
 }
 
 const WorkspacePanelContext = createContext<
   WorkspacePanelContextType | undefined
 >(undefined);
 
-export function WorkspacePanelProvider({
-  children,
-  initialLayout,
-}: {
-  children: ReactNode;
-  initialLayout?: Record<string, number>;
-}) {
+export function WorkspacePanelProvider({ children }: { children: ReactNode }) {
   const [panelManuallyHidden, setPanelManuallyHidden] = useState(false);
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const [showHiddenFiles, setShowHiddenFiles] = useState(false);
-  const [panelInitialLayout] = useState(
-    () => initialLayout ?? defaultPanelLayout,
-  );
-  const panelLayoutRef = useRef<Record<string, number>>(panelInitialLayout);
-  const setPanelLayout = (layout: Record<string, number>) => {
-    panelLayoutRef.current = layout;
-    // Persist to cookie so the server can render the correct layout on next page load
-    document.cookie = `${panelLayoutCookieName}=${JSON.stringify(layout)};path=/workspace;max-age=${String(60 * 60 * 24 * 365)};SameSite=Lax`;
-  };
 
   const value: WorkspacePanelContextType = {
     panelManuallyHidden,
     setPanelManuallyHidden,
     panelExpanded,
     setPanelExpanded,
-    showHiddenFiles,
-    setShowHiddenFiles,
-    panelInitialLayout,
-    panelLayoutRef,
-    setPanelLayout,
   };
 
   return (

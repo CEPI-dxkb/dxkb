@@ -1,8 +1,8 @@
 "use client";
 
-import { useHotkey } from "@tanstack/react-hotkeys";
 import { useRouter } from "next/navigation";
-import { startTransition, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
 import { toQueryString } from "@/lib/url";
@@ -43,14 +43,8 @@ export function EntityViewShell<Key extends string>({
   children,
 }: EntityViewShellProps<Key>) {
   const router = useRouter();
-  const [navCollapsed, setNavCollapsed] = useState(false);
+  const { collapsed: navCollapsed, toggle: toggleNav } = useViewNavCollapsed();
   const navItems = tabs.map((tab) => ({ ...tab, icon: tab.icon ?? null }));
-
-  useHotkey("Mod+B", () => {
-    startTransition(() => {
-      setNavCollapsed((current) => !current);
-    });
-  });
 
   const navigate = (key: Key) => {
     const tab = tabs.find((item) => item.key === key);
@@ -96,11 +90,7 @@ export function EntityViewShell<Key extends string>({
             ariaLabel="Entity views"
             collapsed={navCollapsed}
             onChange={navigate}
-            onCollapseToggle={() => {
-              startTransition(() => {
-                setNavCollapsed((current) => !current);
-              });
-            }}
+            onCollapseToggle={toggleNav}
           />
         </div>
         <article className="flex min-h-0 min-w-0 flex-1 flex-col">

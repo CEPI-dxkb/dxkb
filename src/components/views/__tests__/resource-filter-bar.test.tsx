@@ -6,6 +6,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import { ResourceFilterBar } from "../resource-filter-bar";
 
 const facets = {
@@ -125,6 +126,21 @@ describe("ResourceFilterBar facet controls", () => {
     expect(
       screen.queryByRole("button", { name: "Facets" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens with the filter panel the user left open", () => {
+    render(
+      <ResourceFilterBar
+        filters={{}}
+        facets={facets}
+        definitions={definitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.getByRole("button", { name: "Hide Filters" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "WGS (20)" })).toBeVisible();
   });
 
   it("opens the facet chooser via keyboard and exposes aria-expanded", async () => {

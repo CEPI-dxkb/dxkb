@@ -5,6 +5,7 @@ import {
   genomeScenarioOverrides,
   genomeSequenceScenarioOverrides,
 } from "../fixtures/overrides";
+import { GenomeMemberPage } from "../pages";
 
 const genomeViewOverrides = [
   ...genomeScenarioOverrides,
@@ -210,5 +211,75 @@ test.describe("Genome view", () => {
       "MERS",
     );
     await expect(page.getByPlaceholder("Search keywords...")).toHaveValue("");
+  });
+
+  test("a nested table keeps its sort across a refresh, one Back step undoes it, and a tab switch clears it", async ({
+    page,
+  }) => {
+    const genome = new GenomeMemberPage(page);
+    // The overview is the entry that a second Back must reach. Features is then opened
+    // by URL: its rows load client-side, which proves hydration before any tab click.
+    await genome.goto("1282460.2049");
+    await genome.goto("1282460.2049", "features");
+    await genome.expectRow(/replicase polyprotein/);
+    await genome.expectUrlParams({ tab: "features", "features.sort": null });
+    // The fixture has one page of features, so this exercises the sort. The table
+    // starts sorted by BRC ID (patric_id), ascending.
+    await genome.expectSort("BRC ID", "ascending");
+
+    const entriesBeforeSort = await genome.historyLength();
+    await genome.sortBy("Product");
+    await genome.expectUrlParams({
+      tab: "features",
+      "features.sort": "product:asc",
+    });
+    await genome.expectSort("Product", "ascending");
+    await genome.expectSort("BRC ID", "none");
+    // A sort click also resets the page, which used to add a second entry.
+    await expect
+      .poll(() => genome.historyLength())
+      .toBe(entriesBeforeSort + 1);
+
+    await page.reload();
+    await genome.expectUrlParams({
+      tab: "features",
+      "features.sort": "product:asc",
+    });
+    await genome.expectSort("Product", "ascending");
+    await genome.expectSort("BRC ID", "none");
+
+    // One Back undoes the sort and lands on the features tab as it was before the click.
+    await page.goBack();
+    await genome.expectUrlParams({ tab: "features", "features.sort": null });
+    await expect(page).toHaveURL(/\/genome\/1282460\.2049\?tab=features$/);
+    await genome.expectSort("BRC ID", "ascending");
+    // The reload orphaned the older entries, so each step below loads a fresh document.
+    await genome.expectRow(/replicase polyprotein/);
+    await genome.settle();
+    // A second Back leaves the tab. A leftover duplicate entry would stop on the
+    // features URL again instead of reaching the overview.
+    await page.goBack();
+    await expect(page).toHaveURL(/\/genome\/1282460\.2049$/);
+    await expect(genome.heading).toBeVisible();
+    await genome.settle();
+
+    await page.goForward();
+    await genome.expectUrlParams({ tab: "features", "features.sort": null });
+    await genome.expectRow(/replicase polyprotein/);
+    await genome.settle();
+    await page.goForward();
+    await genome.expectUrlParams({
+      tab: "features",
+      "features.sort": "product:asc",
+    });
+    // The restored table has loaded, so the page has hydrated and a tab click will be handled.
+    await genome.expectRow(/replicase polyprotein/);
+    await genome.expectSort("Product", "ascending");
+    await genome.settle();
+
+    // Another tab must not inherit the Features table's sort.
+    await genome.openTab("Sequences");
+    await expect(page).toHaveURL(/\/genome\/1282460\.2049\?tab=sequences$/);
+    await genome.expectRow(/JX869059/);
   });
 });

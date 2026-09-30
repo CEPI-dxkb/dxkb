@@ -6,6 +6,7 @@ import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
 import { toQueryString } from "@/lib/url";
+import { deleteChildCollectionParams } from "@/lib/views/child-collection-state";
 
 export interface EntityViewTab<Key extends string = string> {
   key: Key;
@@ -51,6 +52,8 @@ export function EntityViewShell<Key extends string>({
     if (tab?.enabled === false) return;
     const url = new URL(window.location.href);
     const params = new URLSearchParams(url.search);
+    // A page number or sort from one tab's table must not land on another's.
+    if (key !== activeTab) deleteChildCollectionParams(params);
     if (key === defaultTab) params.delete("tab");
     else params.set("tab", key);
     const query = toQueryString(params);

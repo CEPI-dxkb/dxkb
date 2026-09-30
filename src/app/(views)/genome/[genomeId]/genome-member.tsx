@@ -108,6 +108,7 @@ export function GenomeMember({
   } else if (activeTab === "interactions") {
     content = (
       <ResourceChildCollection
+        urlKey="interactions"
         resource="ppi"
         label="Interactions"
         idField="id"

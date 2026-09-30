@@ -27,7 +27,7 @@ interface EpitopeMemberProps {
 
 export function EpitopeMember({ epitope, activeTab }: EpitopeMemberProps) {
   const content = activeTab === "assays"
-    ? <ResourceChildCollection resource="epitope_assay" label="Assays" idField="assay_id" rql={epitopeAssayRql(epitope.epitope_id)} columns={epitopeAssayColumns} defaultSort="assay_id:asc" />
+    ? <ResourceChildCollection urlKey="assays" resource="epitope_assay" label="Assays" idField="assay_id" rql={epitopeAssayRql(epitope.epitope_id)} columns={epitopeAssayColumns} defaultSort="assay_id:asc" />
     : <EpitopeOverview epitope={epitope} />;
   const tabs = epitopeTabs.map((tab) => ({ ...tab, icon: icons[tab.key] }));
   return (

@@ -99,6 +99,7 @@ Find the existing example of the same shape and follow it:
 - **New piece of UI state** → pick its home by what it is (full table in `docs/architecture.md` → "UI state"):
   - a small device preference the server renders (panel width, collapsed rail, a toggle) → a key in `src/lib/ui-preferences/definitions.ts`, read with `useUiPreference(key)`; the root layout seeds it from cookies so the first paint is right.
   - a table's column visibility/order/widths or visible facets → `useTableLayout("<table key>")` (localStorage, only differences from the defaults).
+  - which rows a link shows (filters, sort, page) → the URL. Collection pages use `useCollectionUrlState`; a table nested in an entity page uses `ResourceChildCollection`'s required `urlKey` (`<urlKey>.page`, cleared on tab and parent-query changes); other lists follow `src/lib/jobs/jobs-url-state.ts` (parse/serialize with defaults omitted, written with `window.history` and `toQueryString`). A text box over URL state shows a draft (`useDebouncedDraft`): Next applies History API writes in a transition, so an input bound straight to the URL drops keystrokes.
   - Never read `localStorage` during render — use `useStorageItem` / `src/lib/browser-storage.ts`.
   - Never import a constant from a `"use client"` module into server code: it arrives as a client reference, not the value.
 

@@ -32,6 +32,7 @@ e2e/
   pages/                        # Page-object helpers (SignInPage, …) — import from "../pages"
   support/
     runtime-errors.ts           # failOnRuntimeErrors(page): fail on page errors / console errors
+    url-params.ts               # expectUrlParams(page, {name: value | null}): poll the address bar's query params
   fixtures/
     hars/                       # Recorded HAR files (committed)
     overrides/                  # Hand-written JSON overrides (committed)

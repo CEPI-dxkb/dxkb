@@ -24,6 +24,7 @@ export function makeExperimentsView({ scope }: { scope: TaxonViewScope }) {
         </TabsContent>
         <TabsContent value="biosets" className="mt-2 flex min-h-0 flex-1 flex-col">
           <ResourceChildCollection
+            urlKey="biosets"
             resource="bioset"
             label="Biosets"
             idField="bioset_id"

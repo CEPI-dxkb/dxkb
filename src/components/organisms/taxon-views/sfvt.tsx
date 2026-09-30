@@ -57,6 +57,7 @@ export function makeSfvtView({
       : `in(taxon_id,(${taxonIds.join(",")}))`;
     return (
       <ResourceChildCollection
+        urlKey="sfvt"
         resource="sequence_feature"
         label="Sequence Features"
         idField="id"

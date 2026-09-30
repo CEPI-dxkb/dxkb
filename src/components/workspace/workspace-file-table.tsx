@@ -244,6 +244,7 @@ export const WorkspaceDataTable = forwardRef<
       data={items}
       columns={columns}
       defaultColumnOrder={defaultColumnOrder}
+      layoutKey="workspace"
       isLoading={isLoading}
       getRowId={(row) => row.id}
       sort={{ field: sort.field, direction: sort.direction }}

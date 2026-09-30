@@ -98,6 +98,8 @@ Find the existing example of the same shape and follow it:
 - **New async client state** → TanStack Query hook, not `useEffect` + `useState`.
 - **New piece of UI state** → pick its home by what it is (full table in `docs/architecture.md` → "UI state"):
   - a small device preference the server renders (panel width, collapsed rail, a toggle) → a key in `src/lib/ui-preferences/definitions.ts`, read with `useUiPreference(key)`; the root layout seeds it from cookies so the first paint is right.
+  - a table's column visibility/order/widths or visible facets → `useTableLayout("<table key>")` (localStorage, only differences from the defaults).
+  - Never read `localStorage` during render — use `useStorageItem` / `src/lib/browser-storage.ts`.
   - Never import a constant from a `"use client"` module into server code: it arrives as a client reference, not the value.
 
 ## Keeping guidance current

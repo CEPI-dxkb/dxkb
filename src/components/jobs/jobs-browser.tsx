@@ -446,6 +446,7 @@ function useJobsBrowser() {
             data={filteredJobs}
             columns={columns}
             defaultColumnOrder={defaultJobsColumnOrder}
+            layoutKey="jobs"
             isLoading={isLoading}
             getRowId={(row) => row.id}
             sort={sort}

@@ -29,4 +29,26 @@ test.describe("jobs preferences survive a refresh (signed in)", () => {
     await jobs.panels.expectDetailsWidth(dragged);
     assertNoRuntimeErrors();
   });
+
+  test("the jobs table keeps a dragged column width across a refresh", async ({
+    page,
+  }) => {
+    const assertNoRuntimeErrors = failOnRuntimeErrors(page);
+    const jobs = new JobsListPage(page);
+    await jobs.goto();
+    await jobs.waitForRows();
+    // Service is not the first column, so nothing pins its width.
+    const before = await jobs.columnSize("Service");
+    await jobs.dragColumnHandle("Service", 120);
+    // The pointer drag lands a render or two after mouse-up; wait for it, then
+    // take the rendered width. (Not `before + 120` of the rendered width: the
+    // table stretches to fill its pane until the columns outgrow it.)
+    await expect.poll(() => jobs.columnSize("Service")).toBe(before + 120);
+    const dragged = await jobs.columnWidth("Service");
+
+    await page.reload();
+    await jobs.waitForRows();
+    await jobs.expectColumnWidth("Service", dragged);
+    assertNoRuntimeErrors();
+  });
 });

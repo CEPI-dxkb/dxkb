@@ -7,6 +7,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createUiPreferencesWrapper } from "@/test-helpers/react";
+import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { ResourceFilterBar } from "../resource-filter-bar";
 
 const facets = {
@@ -31,6 +32,19 @@ const multiDefinitions = [
   { field: "host_name", label: "Host Name", initiallyVisible: true },
 ];
 
+const layoutKey = "collection:genome";
+const layoutStorageKey = "dxkb-table-layout:v1:collection:genome";
+// `a` shows by default and `b` starts collapsed.
+const pickableDefinitions = [
+  { field: "a", label: "Facet A" },
+  { field: "b", label: "Facet B", initiallyVisible: false },
+];
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", jsdomLocalStorage());
+  localStorage.clear();
+});
+
 describe("ResourceFilterBar", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -44,6 +58,7 @@ describe("ResourceFilterBar", () => {
     const onChange = vi.fn();
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={facets}
         definitions={definitions}
@@ -71,6 +86,7 @@ describe("ResourceFilterBar", () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{ genome_status: ["Complete"] }}
         facets={facets}
         definitions={definitions}
@@ -88,6 +104,7 @@ describe("ResourceFilterBar", () => {
 
     rerender(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{ genome_status: ["Complete", "WGS"] }}
         facets={facets}
         definitions={definitions}
@@ -110,6 +127,7 @@ describe("ResourceFilterBar facet controls", () => {
   it("renders no facet controls when there are no facet definitions", () => {
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={{}}
         definitions={[]}
@@ -131,6 +149,7 @@ describe("ResourceFilterBar facet controls", () => {
   it("opens with the filter panel the user left open", () => {
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={facets}
         definitions={definitions}
@@ -147,6 +166,7 @@ describe("ResourceFilterBar facet controls", () => {
     const user = userEvent.setup();
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={facets}
         definitions={definitions}
@@ -171,6 +191,7 @@ describe("ResourceFilterBar facet controls", () => {
     const user = userEvent.setup();
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={facets}
         definitions={definitions}
@@ -201,6 +222,7 @@ describe("ResourceFilterBar facet controls", () => {
     const user = userEvent.setup();
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={facets}
         definitions={definitions}
@@ -225,6 +247,7 @@ describe("ResourceFilterBar facet controls", () => {
     const user = userEvent.setup();
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={multiFacets}
         definitions={multiDefinitions}
@@ -276,10 +299,91 @@ describe("ResourceFilterBar facet controls", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the facets the user picked on an earlier visit", () => {
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ facets: { a: false, b: true } }),
+    );
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        definitions={pickableDefinitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.queryByText("Facet A")).not.toBeInTheDocument();
+    expect(screen.getByText("Facet B")).toBeInTheDocument();
+  });
+
+  it("stores only the difference from the defaults when a facet is toggled", async () => {
+    const user = userEvent.setup();
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        definitions={pickableDefinitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+    await user.click(screen.getByRole("button", { name: "Facets" }));
+    const facetB = await screen.findByRole("menuitemcheckbox", {
+      name: "Facet B",
+    });
+
+    await user.click(facetB);
+
+    expect(facetB).toHaveAttribute("aria-checked", "true");
+    expect(JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null")).toStrictEqual({
+      facets: { b: true },
+    });
+
+    // Back at the defaults, so there is nothing left to remember.
+    await user.click(facetB);
+
+    expect(facetB).toHaveAttribute("aria-checked", "false");
+    expect(localStorage.getItem(layoutStorageKey)).toBeNull();
+  });
+
+  it("keeps the column layout stored under the same key when a facet is toggled", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ visibility: { genome_id: false }, widths: { name: 180 } }),
+    );
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        definitions={pickableDefinitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+    await user.click(screen.getByRole("button", { name: "Facets" }));
+
+    await user.click(
+      await screen.findByRole("menuitemcheckbox", { name: "Facet B" }),
+    );
+
+    expect(JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null")).toStrictEqual({
+      visibility: { genome_id: false },
+      widths: { name: 180 },
+      facets: { b: true },
+    });
+  });
+
   it("uses theme tokens instead of hardcoded gray utility classes", async () => {
     const user = userEvent.setup();
     render(
       <ResourceFilterBar
+        layoutKey={layoutKey}
         filters={{}}
         facets={facets}
         definitions={definitions}

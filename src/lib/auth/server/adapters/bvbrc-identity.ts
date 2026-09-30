@@ -1,10 +1,10 @@
 import { getRequiredEnv } from "@/lib/env";
 import type {
   AuthErrorCode,
-  ProfilePatch,
   Result,
   SigninCredentials,
   SignupCredentials,
+  UpstreamProfilePatch,
   UserProfile,
 } from "@/lib/auth/types";
 import { fail, networkFailure, ok } from "../result";
@@ -229,7 +229,7 @@ export async function getProfile(
 export async function updateProfile(
   userId: string,
   token: string,
-  patches: ProfilePatch[],
+  patches: UpstreamProfilePatch[],
 ): Promise<Result<void>> {
   const result = await request(
     joinUrl(getRequiredEnv("USER_URL"), encodeURIComponent(userId)),

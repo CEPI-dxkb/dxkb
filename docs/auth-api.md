@@ -77,6 +77,8 @@ All status mapping flows through `statusFor()` in `src/lib/auth/server/errors.ts
 | POST   | `/api/auth/su-exit`                 | Session     | —                                | `{user, session}`                    | Yes (cookie)  |
 | POST   | `/api/auth/ensure-workspace`        | Exception   | —                                | `{success: true, created, failures}` | Yes (cookie)  |
 
+**`POST /api/auth/profile` notes:** A `/settings` patch is merged server-side over the stored settings (unknown keys preserved); the route reads the profile first and returns that read's error unchanged if it fails. The read-merge-write is not atomic: a write from another client between the read and the write is overwritten.
+
 ---
 
 ## Nine rules

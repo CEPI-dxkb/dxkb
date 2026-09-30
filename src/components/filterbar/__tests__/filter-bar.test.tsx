@@ -18,6 +18,7 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { FilterBar } from "../filter-bar";
 
 const facetFields = [
@@ -36,6 +37,13 @@ const facetFields = [
     facet_hidden: true,
   },
 ];
+
+const layoutStorageKey = "dxkb-table-layout:v1:search:genome_sequence";
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", jsdomLocalStorage());
+  localStorage.clear();
+});
 
 function stubFacets() {
   server.use(
@@ -261,7 +269,7 @@ describe("FilterBar facet chooser", () => {
     ).toHaveAttribute("aria-checked", "true");
   });
 
-  it("resets facet visibility overrides on remount", async () => {
+  it("remembers the user's facet choices when the bar remounts", async () => {
     const user = userEvent.setup();
     const { view } = renderFilterBar();
     await openChooser(user);
@@ -275,10 +283,78 @@ describe("FilterBar facet chooser", () => {
 
     expect(
       screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
-    ).toHaveAttribute("aria-checked", "true");
+    ).toHaveAttribute("aria-checked", "false");
     expect(
       screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
     ).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("shows the facets the user picked on an earlier visit", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ facets: { sequence_type: false, mol_type: true } }),
+    );
+    renderFilterBar();
+    await openChooser(user);
+
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
+    ).toHaveAttribute("aria-checked", "true");
+    await user.keyboard("{Escape}");
+    expect(
+      await screen.findByRole("button", { name: "DNA (7)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "plasmid (3)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("stores only the difference from the defaults when a facet is toggled", async () => {
+    const user = userEvent.setup();
+    renderFilterBar();
+    await openChooser(user);
+
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Mol Type" }));
+    expect(
+      JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
+    ).toStrictEqual({ facets: { mol_type: true } });
+
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+    expect(
+      JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
+    ).toStrictEqual({ facets: { mol_type: true, sequence_type: false } });
+
+    // Back at the defaults, so there is nothing left to remember.
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Mol Type" }));
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+    expect(localStorage.getItem(layoutStorageKey)).toBeNull();
+  });
+
+  it("keeps the table layout stored under the same key when a facet is toggled", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ visibility: { sequence_type: false } }),
+    );
+    renderFilterBar();
+    await openChooser(user);
+
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Mol Type" }));
+
+    expect(
+      JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
+    ).toStrictEqual({
+      visibility: { sequence_type: false },
+      facets: { mol_type: true },
+    });
   });
 
   it("uses theme tokens for the chooser and panel, not hardcoded colours", async () => {

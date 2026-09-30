@@ -8,12 +8,29 @@ import { clearCurrentSession } from "@/lib/auth/server/session";
 import { statusFor } from "@/lib/auth/server/errors";
 import { statusToErrorCode } from "@/lib/api/types";
 import { respondWithAck } from "@/lib/auth/server/respond";
-import type { ProfilePatch, Result } from "@/lib/auth/types";
+import { mergeSettingsPatches } from "@/lib/auth/server/profile-settings";
+import type {
+  AuthError,
+  ProfilePatch,
+  UpstreamProfilePatch,
+} from "@/lib/auth/types";
 
-async function clearRejectedSession(result: Result<unknown>): Promise<boolean> {
-  if (result.error?.code !== "unauthorized") return false;
-  await clearCurrentSession();
-  return true;
+/**
+ * The `{error, code}` response for a failed upstream call. An `unauthorized`
+ * failure means the upstream rejected the session token, so the session is cleared
+ * and the code is `session_expired`.
+ */
+async function failureResponse(error: AuthError): Promise<NextResponse> {
+  const sessionExpired = error.code === "unauthorized";
+  if (sessionExpired) await clearCurrentSession();
+  const status = statusFor(error);
+  return NextResponse.json(
+    {
+      error: error.message,
+      code: sessionExpired ? "session_expired" : statusToErrorCode(status),
+    },
+    { status },
+  );
 }
 
 const stringPatchPaths = new Set([
@@ -69,17 +86,7 @@ function isProfilePatch(value: unknown): value is ProfilePatch {
 
 export const GET = withAuth(async (_request, { token, userId }) => {
   const result = await getProfile(userId, token);
-  if (result.error) {
-    const sessionExpired = await clearRejectedSession(result);
-    const status = statusFor(result.error);
-    return NextResponse.json(
-      {
-        error: result.error.message,
-        code: sessionExpired ? "session_expired" : statusToErrorCode(status),
-      },
-      { status },
-    );
-  }
+  if (result.error) return failureResponse(result.error);
 
   return NextResponse.json(result.data);
 });
@@ -104,13 +111,14 @@ export const POST = withAuth(
     }
 
     const patches: ProfilePatch[] = body;
-    const result = await updateProfile(userId, token, patches);
-    if (result.error && (await clearRejectedSession(result))) {
-      return NextResponse.json(
-        { error: result.error.message, code: "session_expired" },
-        { status: statusFor(result.error) },
-      );
+    let upstreamPatches: UpstreamProfilePatch[] = patches;
+    if (patches.some((patch) => patch.path === "/settings")) {
+      const stored = await getProfile(userId, token);
+      if (stored.error) return failureResponse(stored.error);
+      upstreamPatches = mergeSettingsPatches(patches, stored.data.settings);
     }
+    const result = await updateProfile(userId, token, upstreamPatches);
+    if (result.error) return failureResponse(result.error);
     return respondWithAck(result);
   },
 );

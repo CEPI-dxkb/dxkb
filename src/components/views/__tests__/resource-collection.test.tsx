@@ -7,6 +7,8 @@ import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { CollectionState } from "@/lib/views/collection-state";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { ResourceCollection } from "../resource-collection";
+import { writeStorageItem } from "@/lib/browser-storage";
+import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
 // Generic ResourceCollection behaviour: rendering the same profile across scopes,
@@ -1463,5 +1465,142 @@ describe("ResourceCollection error presentation", () => {
     ).toBeVisible();
     expect(screen.queryByText("gateway reset")).not.toBeInTheDocument();
     expect(close).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ResourceCollection column layout", () => {
+  const storageKey = "dxkb-table-layout:v1:collection:genome";
+  const shownByDefault = genomeCollectionProfile.columns.find(
+    (column) => column.visible !== false,
+  );
+  if (!shownByDefault) throw new Error("fixture needs a default-visible column");
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", jsdomLocalStorage());
+    localStorage.clear();
+  });
+
+  // browser-storage keeps a refused write in module state; a successful write to the
+  // key is what clears it, so do that once storage works again.
+  afterEach(() => {
+    vi.stubGlobal("localStorage", jsdomLocalStorage());
+    writeStorageItem(storageKey, null);
+  });
+
+  it("hides the columns the user hid on an earlier visit", () => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ visibility: { [shownByDefault.id]: false } }),
+    );
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    expect(dataTableProps.columnVisibility).toMatchObject({
+      [shownByDefault.id]: false,
+    });
+  });
+
+  it("saves only the difference from the profile defaults", () => {
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const change = dataTableProps.onColumnVisibilityChange as (
+      next: Record<string, boolean>,
+    ) => void;
+    act(() => {
+      change({
+        ...(dataTableProps.columnVisibility as Record<string, boolean>),
+        [shownByDefault.id]: false,
+      });
+    });
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toStrictEqual({
+      visibility: { [shownByDefault.id]: false },
+    });
+  });
+
+  it("starts the table at the widths saved on an earlier visit", () => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ widths: { [shownByDefault.id]: 321 } }),
+    );
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    expect(dataTableProps.savedColumnWidths).toStrictEqual({
+      [shownByDefault.id]: 321,
+    });
+  });
+
+  it("saves a finished resize next to the widths already saved", () => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ widths: { earlier_column: 200 } }),
+    );
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const commit = dataTableProps.onColumnWidthsCommit as (
+      widths: Record<string, number>,
+    ) => void;
+    act(() => {
+      commit({ [shownByDefault.id]: 250 });
+    });
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toStrictEqual({
+      widths: { earlier_column: 200, [shownByDefault.id]: 250 },
+    });
+  });
+
+  it("still applies a column toggle when storage refuses the write", () => {
+    const workingStorage = jsdomLocalStorage();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => workingStorage.getItem(key),
+      setItem: () => {
+        throw new Error("quota");
+      },
+      removeItem: () => {
+        throw new Error("denied");
+      },
+    });
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const change = dataTableProps.onColumnVisibilityChange as (
+      next: Record<string, boolean>,
+    ) => void;
+    act(() => {
+      change({
+        ...(dataTableProps.columnVisibility as Record<string, boolean>),
+        [shownByDefault.id]: false,
+      });
+    });
+    expect(dataTableProps.columnVisibility).toMatchObject({
+      [shownByDefault.id]: false,
+    });
+    expect(workingStorage.getItem(storageKey)).toBeNull();
   });
 });

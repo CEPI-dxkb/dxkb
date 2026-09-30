@@ -14,12 +14,22 @@ import {
 } from "@/components/filterbar/keyword-search";
 import { FacetColumn } from "@/components/filterbar/facet-column";
 import { SelectedFilters } from "@/components/filterbar/selected-filters";
+import { useTableLayout } from "@/hooks/use-table-layout";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
+import {
+  applyBooleanOverrides,
+  diffBooleanOverrides,
+} from "@/lib/table-layout";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import type { CollectionState } from "@/lib/views/collection-state";
 import type { ResourceCollectionFacet } from "./resource-collection";
 
 interface ResourceFilterBarProps {
+  /**
+   * Table-layout key the shown facets are remembered under. Pass the resource
+   * table's own key, so its column and facet choices live in one entry.
+   */
+  layoutKey: string;
   keyword?: string;
   filters: CollectionState["filters"];
   facets: ResourceFacets;
@@ -34,6 +44,7 @@ interface ResourceFilterBarProps {
 }
 
 export function ResourceFilterBar({
+  layoutKey,
   keyword,
   filters,
   facets,
@@ -44,13 +55,19 @@ export function ResourceFilterBar({
 }: ResourceFilterBarProps) {
   const [keywordDraft, setKeywordDraft] = useState(keyword ?? "");
   const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
-  const [visibleFacets, setVisibleFacets] = useState(
-    () =>
-      new Set(
-        definitions
-          .filter((definition) => definition.initiallyVisible !== false)
-          .map((definition) => definition.field),
-      ),
+  const [layout, updateLayout] = useTableLayout(layoutKey);
+  const defaultFacetVisibility = Object.fromEntries(
+    definitions.map((definition) => [
+      definition.field,
+      definition.initiallyVisible !== false,
+    ]),
+  );
+  const facetVisibility = applyBooleanOverrides(
+    defaultFacetVisibility,
+    layout.facets,
+  );
+  const visibleFacets = new Set(
+    Object.keys(facetVisibility).filter((field) => facetVisibility[field]),
   );
 
   const externalKeyword = keyword ?? "";
@@ -124,11 +141,11 @@ export function ResourceFilterBar({
                     key={definition.field}
                     checked={visibleFacets.has(definition.field)}
                     onCheckedChange={(checked) => {
-                      setVisibleFacets((current) => {
-                        const next = new Set(current);
-                        if (checked) next.add(definition.field);
-                        else next.delete(definition.field);
-                        return next;
+                      updateLayout({
+                        facets: diffBooleanOverrides(defaultFacetVisibility, {
+                          ...facetVisibility,
+                          [definition.field]: checked,
+                        }),
                       });
                     }}
                   >

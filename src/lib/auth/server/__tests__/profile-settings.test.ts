@@ -29,6 +29,21 @@ describe("mergeSettingsPatches", () => {
     ]);
   });
 
+  it.each([
+    ["null", null],
+    ["an array", ["a", "b"]],
+    ["a string", "abc"],
+  ])("replaces settings the profile stores as %s with the patch value alone", (_label, stored) => {
+    expect(
+      mergeSettingsPatches(
+        [{ op: "replace", path: "/settings", value: { default_job_folder: "/b" } }],
+        stored,
+      ),
+    ).toStrictEqual([
+      { op: "replace", path: "/settings", value: { default_job_folder: "/b" } },
+    ]);
+  });
+
   it("passes other patches through untouched", () => {
     const patch = { op: "replace", path: "/email", value: "a@b.c" } as const;
     expect(mergeSettingsPatches([patch], undefined)).toStrictEqual([patch]);

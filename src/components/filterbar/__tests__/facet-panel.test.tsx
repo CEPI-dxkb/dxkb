@@ -17,18 +17,26 @@ import { FacetPanel } from "../facet-panel";
 const gateway = "/api/data/genome";
 const fields = [{ id: "genome_status", label: "Genome Status" }];
 
-function renderPanel(query = "") {
+function renderPanel(query = "", enabled?: boolean) {
   const Wrapper = createQueryClientWrapper();
-  return render(
+  const panel = (isEnabled?: boolean) => (
     <Wrapper>
       <FacetPanel
         fields={fields}
         query={query}
         resource="genome"
+        enabled={isEnabled}
         onSelect={vi.fn()}
       />
-    </Wrapper>,
+    </Wrapper>
   );
+  const view = render(panel(enabled));
+  return {
+    ...view,
+    rerenderPanel: (isEnabled?: boolean) => {
+      view.rerender(panel(isEnabled));
+    },
+  };
 }
 
 describe("FacetPanel request", () => {
@@ -57,6 +65,57 @@ describe("FacetPanel request", () => {
     expect(url.searchParams.getAll("facet")).toEqual(["genome_status"]);
     // Counts, not rows: the smallest page the gateway accepts.
     expect(url.searchParams.get("pageSize")).toBe("1");
+  });
+});
+
+describe("FacetPanel enabled", () => {
+  const loadedBody = {
+    rows: [],
+    total: 0,
+    facets: { genome_status: [{ value: "Complete", count: 5 }] },
+    page: 1,
+    pageSize: 1,
+  };
+
+  it("makes no request while disabled, shows the skeleton, then requests once when enabled", async () => {
+    const requests: URL[] = [];
+    server.use(
+      http.get(gateway, ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json(loadedBody);
+      }),
+    );
+
+    const { container, rerenderPanel } = renderPanel("", false);
+
+    // The skeleton, not an empty panel and not the error panel.
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+    expect(screen.queryByText("Facets unavailable")).not.toBeInTheDocument();
+    // Long enough for a wrongly started query to reach the handler.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(requests).toHaveLength(0);
+    expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
+
+    rerenderPanel(true);
+
+    await screen.findByText("Complete (5)");
+    expect(requests).toHaveLength(1);
+    expect(requests[0].searchParams.getAll("facet")).toEqual(["genome_status"]);
+  });
+
+  it("fetches at once when not told otherwise", async () => {
+    const requests: URL[] = [];
+    server.use(
+      http.get(gateway, ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json(loadedBody);
+      }),
+    );
+
+    renderPanel();
+
+    await screen.findByText("Complete (5)");
+    expect(requests).toHaveLength(1);
   });
 });
 

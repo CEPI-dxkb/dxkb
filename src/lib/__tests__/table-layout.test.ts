@@ -2,6 +2,7 @@ import {
   applyBooleanOverrides,
   applyColumnOrder,
   diffBooleanOverrides,
+  mergeTableLayout,
   parseTableLayout,
   sameOrder,
 } from "../table-layout";
@@ -50,6 +51,89 @@ describe("parseTableLayout", () => {
         JSON.stringify({ order: "b,a", visibility: { a: 1 }, widths: { a: 120 } }),
       ),
     ).toStrictEqual({ widths: { a: 120 } });
+  });
+});
+
+describe("mergeTableLayout", () => {
+  it("applies a patch to nothing stored", () => {
+    expect(mergeTableLayout(null, { widths: { a: 120 } })).toBe(
+      '{"widths":{"a":120}}',
+    );
+  });
+
+  it("keeps a field this build does not know when it writes another", () => {
+    const stored = '{"density":"compact","order":["b","a"]}';
+    const written = mergeTableLayout(stored, { widths: { a: 120 } });
+    expect(JSON.parse(written ?? "null")).toStrictEqual({
+      density: "compact",
+      order: ["b", "a"],
+      widths: { a: 120 },
+    });
+  });
+
+  it("keeps an unknown field verbatim, whatever its value", () => {
+    const density = { nested: [1, { deep: null }], flag: true };
+    const written = mergeTableLayout(
+      JSON.stringify({ density, order: ["b"] }),
+      { visibility: { a: false } },
+    );
+    expect(JSON.parse(written ?? "null")).toStrictEqual({
+      density,
+      order: ["b"],
+      visibility: { a: false },
+    });
+  });
+
+  it("drops a known field that fails validation but keeps unknown ones", () => {
+    const stored = JSON.stringify({
+      density: "compact",
+      widths: { a: 4100 },
+      order: ["b", "a"],
+    });
+    const written = mergeTableLayout(stored, { facets: { f: true } });
+    expect(JSON.parse(written ?? "null")).toStrictEqual({
+      density: "compact",
+      order: ["b", "a"],
+      facets: { f: true },
+    });
+  });
+
+  it("removes a field the patch sets to undefined", () => {
+    const written = mergeTableLayout('{"order":["b","a"],"widths":{"a":120}}', {
+      order: undefined,
+    });
+    expect(JSON.parse(written ?? "null")).toStrictEqual({ widths: { a: 120 } });
+  });
+
+  it("keeps an unknown field when the patch clears the last known one", () => {
+    const written = mergeTableLayout('{"density":"compact","order":["b","a"]}', {
+      order: undefined,
+    });
+    expect(written).not.toBeNull();
+    expect(JSON.parse(written ?? "null")).toStrictEqual({ density: "compact" });
+  });
+
+  it("is null when the patch clears everything and nothing unknown is stored", () => {
+    expect(mergeTableLayout('{"order":["b","a"]}', { order: undefined })).toBeNull();
+    expect(mergeTableLayout(null, { order: undefined })).toBeNull();
+    expect(mergeTableLayout(null, {})).toBeNull();
+    // A stored field that fails validation counts as absent, so nothing is left.
+    expect(
+      mergeTableLayout('{"widths":{"a":4100}}', { order: undefined }),
+    ).toBeNull();
+  });
+
+  it.each(["{nope", "null", "42", '"widths"', "[]", '["order"]', "true"])(
+    "replaces a stored value that is not a plain object (%s)",
+    (raw) => {
+      expect(mergeTableLayout(raw, { widths: { a: 120 } })).toBe(
+        '{"widths":{"a":120}}',
+      );
+    },
+  );
+
+  it("removes a stored value that is not a plain object when nothing is patched in", () => {
+    expect(mergeTableLayout("[1,2]", { order: undefined })).toBeNull();
   });
 });
 

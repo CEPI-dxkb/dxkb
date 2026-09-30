@@ -11,6 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import type { DataResource } from "@/lib/data-api";
 import {
@@ -60,6 +61,9 @@ export function FilterBar({
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
   const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
   const [layout, updateLayout] = useTableLayout(`search:${resource}`);
+  // The saved facet set reads as empty until the render after hydration, and
+  // useIsMounted flips in that same render, so counts wait for the set shown.
+  const facetsSettled = useIsMounted();
   const locallyRequestedKeywords = useRef<string | null>(null);
   const syncExternalKeywords = useEffectEvent((value: string) => {
     if (locallyRequestedKeywords.current === value) {
@@ -212,6 +216,7 @@ export function FilterBar({
           fields={activeFacetFields}
           resource={resource}
           query={facetQuery}
+          enabled={facetsSettled}
           onSelect={(field, value) => {
             const exists = selected.some(
               (filter) => filter.field === field && filter.value === value,

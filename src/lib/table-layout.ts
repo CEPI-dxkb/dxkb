@@ -48,6 +48,50 @@ export function parseTableLayout(raw: string | null): TableLayout {
   }
 }
 
+const knownLayoutKeys: ReadonlySet<string> = new Set(
+  Object.keys(tableLayoutSchema.shape),
+);
+
+/**
+ * Every stored top-level field this build has no schema for, verbatim. A later
+ * build may add fields under the same `v1` key; a write here must not erase them.
+ */
+function unknownLayoutFields(raw: string | null): Record<string, unknown> {
+  if (raw === null) return {};
+  try {
+    const stored: unknown = JSON.parse(raw);
+    if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(stored).filter(([key]) => !knownLayoutKeys.has(key)),
+    );
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The string to store after applying `patch` to the stored `raw` value, or null
+ * when nothing is left to keep. A patch field set to undefined is removed, a known
+ * stored field that fails validation is dropped (as `parseTableLayout` reads it),
+ * and fields this build does not know are carried through unchanged.
+ */
+export function mergeTableLayout(
+  raw: string | null,
+  patch: Partial<TableLayout>,
+): string | null {
+  const merged: Record<string, unknown> = {
+    ...unknownLayoutFields(raw),
+    ...parseTableLayout(raw),
+    ...patch,
+  };
+  const compact = Object.fromEntries(
+    Object.entries(merged).filter(([, value]) => value !== undefined),
+  );
+  return Object.keys(compact).length > 0 ? JSON.stringify(compact) : null;
+}
+
 export function applyBooleanOverrides(
   defaults: Readonly<Record<string, boolean>>,
   overrides: Readonly<Record<string, boolean>> | undefined,

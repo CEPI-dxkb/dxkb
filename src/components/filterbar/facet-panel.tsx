@@ -24,6 +24,12 @@ interface FacetPanelProps {
   /** RQL predicate the facet counts are computed over. */
   query: string;
   resource: DataResource;
+  /**
+   * False holds the request back and shows the loading skeleton, for a caller
+   * whose `fields` are not settled yet (say, still waiting on saved choices), so
+   * counts are fetched once for the set that ends up shown.
+   */
+  enabled?: boolean;
   onSelect: (field: string, value: string) => void;
 }
 
@@ -31,6 +37,7 @@ export function FacetPanel({
   fields,
   query,
   resource,
+  enabled = true,
   onSelect,
 }: FacetPanelProps) {
   const validFieldIds = fields
@@ -53,7 +60,7 @@ export function FacetPanel({
     // previous counts on screen during a background refetch — no flash, no
     // spinner — so only `enabled` and the facet-specific stale window differ.
     ...collectionQueryOptions(dataRepository, resource, request),
-    enabled: validFieldIds.length > 0,
+    enabled: enabled && validFieldIds.length > 0,
     staleTime: 30_000,
   });
 
@@ -65,7 +72,7 @@ export function FacetPanel({
     );
   }
 
-  if (isLoading) {
+  if (isLoading || !enabled) {
     return (
       <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-2xs">
         {fields.map((field) => (

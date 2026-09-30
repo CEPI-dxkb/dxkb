@@ -29,6 +29,26 @@ describe("useTableLayout", () => {
     ).toBeNull();
   });
 
+  it("writes back a field this build does not know, without rendering it", () => {
+    const key = "dxkb-table-layout:v1:collection:genome";
+    localStorage.setItem(key, '{"density":"compact","order":["b","a"]}');
+    const { result } = renderHook(() => useTableLayout("collection:genome"));
+    expect(result.current[0]).toStrictEqual({ order: ["b", "a"] });
+
+    act(() => {
+      result.current[1]({ widths: { a: 120 } });
+    });
+    expect(JSON.parse(localStorage.getItem(key) ?? "null")).toStrictEqual({
+      density: "compact",
+      order: ["b", "a"],
+      widths: { a: 120 },
+    });
+    expect(result.current[0]).toStrictEqual({
+      order: ["b", "a"],
+      widths: { a: 120 },
+    });
+  });
+
   it("keeps tables apart", () => {
     const { result } = renderHook(() => ({
       genome: useTableLayout("collection:genome"),

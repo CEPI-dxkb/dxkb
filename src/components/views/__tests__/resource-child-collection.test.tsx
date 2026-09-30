@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
 import type { FeatureViewRecord } from "@/lib/feature-view";
 import type { GenomeViewRecord } from "@/lib/genome-view";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
+import { resetChildCollectionPage } from "@/hooks/views/use-child-collection-url-state";
 import { FeatureMember } from "@/app/(views)/feature/[featureId]/feature-member";
 import { GenomeMember } from "@/app/(views)/genome/[genomeId]/genome-member";
 import { ResourceChildCollection } from "../resource-child-collection";
@@ -18,20 +19,21 @@ const {
   exportAll,
   selected,
   resourceCollectionProfile,
+  resourceCollectionProps,
   useRealResourceCollection,
   useResourceCollection,
 } = vi.hoisted(() => ({
   exportAll: vi.fn().mockResolvedValue({ rows: [] }),
   selected: vi.fn().mockResolvedValue({ rows: [] }),
   resourceCollectionProfile: vi.fn(),
+  resourceCollectionProps: vi.fn(),
   useRealResourceCollection: { current: false },
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
 }));
 
 vi.mock("next/navigation", async () =>
-  (await import("./fixtures/resource-collection-mocks")).nextNavigationMock({
-    pathname: "/experiment/1",
-    search: "",
+  (await import("@/test-helpers/history-navigation")).historyNavigationMock({
+    pathname: "/genome/1.1",
   }),
 );
 vi.mock("@tanstack/react-query", async () =>
@@ -150,6 +152,7 @@ vi.mock("../resource-collection", async (importOriginal) => {
       props: React.ComponentProps<typeof actual.ResourceCollection>,
     ) => {
       resourceCollectionProfile(props.profile);
+      resourceCollectionProps(props);
       if (useRealResourceCollection.current) {
         return <actual.ResourceCollection {...props} />;
       }
@@ -158,17 +161,6 @@ vi.mock("../resource-collection", async (importOriginal) => {
           <output data-testid="collection-state">
             {JSON.stringify(props.state)}
           </output>
-          <button
-            onClick={() => {
-              props.onStateChange({
-                filters: { status: ["active"] },
-                page: 4,
-                sort: "custom:desc",
-              });
-            }}
-          >
-            Change collection state
-          </button>
           <button
             onClick={() => {
               props.onStateChange({
@@ -187,13 +179,16 @@ vi.mock("../resource-collection", async (importOriginal) => {
   };
 });
 
+// Every child sort allowlist takes "unsorted", and the URL only carries a state its
+// profile could have produced, so a sort or filter the profile lacks would throw.
 const changedState = {
-  filters: { status: ["active"] },
+  filters: {},
   page: 4,
-  sort: "custom:desc",
+  sort: "unsorted",
 };
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/genome/1.1");
   useRealResourceCollection.current = false;
   exportAll.mockClear();
   selected.mockClear();
@@ -242,16 +237,21 @@ function spyOnDownload() {
   };
 }
 
-async function changeCollectionState() {
-  await userEvent.click(
-    screen.getByRole("button", { name: "Change collection state" }),
-  );
-  expect(screen.getByTestId("collection-state")).toHaveTextContent(
-    JSON.stringify(changedState),
-  );
+/** The state the mocked collection is currently showing, as it received it. */
+function shownCollectionState() {
+  return JSON.parse(screen.getByTestId("collection-state").textContent) as unknown;
+}
+
+/** Has the table report `state`, as its own pager, sort header or facets would. */
+function changeCollectionState(state: typeof changedState = changedState) {
+  act(() => {
+    lastResourceCollectionProps().onStateChange(state);
+  });
+  expect(shownCollectionState()).toStrictEqual(state);
 }
 
 const interactionsChildProps = {
+  urlKey: "interactions",
   resource: "ppi",
   label: "Interactions",
   idField: "id",
@@ -301,7 +301,7 @@ describe("ResourceChildCollection controlled server keyword", () => {
     );
   });
 
-  it("restarts at page 1 when the owner's keyword changes", async () => {
+  it("restarts at page 1 when the owner's keyword changes", () => {
     const { rerender } = render(
       <ResourceChildCollection
         {...interactionsChildProps}
@@ -310,7 +310,7 @@ describe("ResourceChildCollection controlled server keyword", () => {
       />,
     );
 
-    await changeCollectionState();
+    changeCollectionState();
 
     rerender(
       <ResourceChildCollection
@@ -329,7 +329,7 @@ describe("ResourceChildCollection controlled server keyword", () => {
     expect(collectionState).toHaveTextContent('"keyword":"groEL"');
   });
 
-  it("leaves paging alone when the shared keyword filters client-side", async () => {
+  it("leaves paging alone when the shared keyword filters client-side", () => {
     // "loaded" mode is a filter over the rows already fetched, not a request
     // predicate, so the page it is filtering stays meaningful. Only the
     // controlled *server* keyword path resets it.
@@ -342,7 +342,7 @@ describe("ResourceChildCollection controlled server keyword", () => {
       />,
     );
 
-    await changeCollectionState();
+    changeCollectionState();
 
     rerender(
       <ResourceChildCollection
@@ -359,11 +359,167 @@ describe("ResourceChildCollection controlled server keyword", () => {
   });
 });
 
+const assaysChildProps = {
+  urlKey: "assays",
+  resource: "epitope_assay",
+  label: "Assays",
+  idField: "assay_id",
+  rql: "eq(epitope_id,1)",
+  columns: [
+    { id: "assay_id", label: "Assay ID" },
+    { id: "assay_type", label: "Assay Type" },
+  ],
+  defaultSort: "assay_id:asc",
+} as const;
+
+function renderChild(overrides: Partial<typeof assaysChildProps> = {}) {
+  return render(<ResourceChildCollection {...assaysChildProps} {...overrides} />);
+}
+
+function lastResourceCollectionProps() {
+  const props = resourceCollectionProps.mock.lastCall?.[0] as
+    | React.ComponentProps<typeof ResourceCollection>
+    | undefined;
+  if (!props) throw new Error("ResourceCollection has not rendered");
+  return props;
+}
+
+describe("ResourceChildCollection URL state", () => {
+  it("restores its page and sort from its own prefixed params", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=assays&assays.page=2&assays.sort=assay_id:desc",
+    );
+    renderChild();
+    expect(lastResourceCollectionProps().state).toMatchObject({
+      page: 2,
+      sort: "assay_id:desc",
+    });
+  });
+
+  it("ignores the page's own params and a sibling table's", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=assays&page=7&sort=assay_id:desc&keyword=x&domains.page=5",
+    );
+    renderChild();
+    expect(lastResourceCollectionProps().state).toStrictEqual({
+      keyword: undefined,
+      refine: undefined,
+      rql: undefined,
+      filters: {},
+      page: 1,
+      sort: "assay_id:asc",
+    });
+  });
+
+  it("writes state changes under its prefix without touching the page's params", () => {
+    window.history.replaceState(null, "", "/genome/1.1?tab=assays");
+    const pushState = vi.spyOn(window.history, "pushState");
+    renderChild();
+    act(() => {
+      lastResourceCollectionProps().onStateChange({
+        filters: {},
+        page: 3,
+        sort: "assay_id:asc",
+      });
+    });
+    expect(pushState).toHaveBeenCalledWith(
+      null,
+      "",
+      "/genome/1.1?tab=assays&assays.page=3",
+    );
+    expect(lastResourceCollectionProps().state).toMatchObject({ page: 3 });
+  });
+
+  it("does not adopt another table's params after a tab switch", () => {
+    window.history.replaceState(null, "", "/genome/1.1?assays.page=2");
+    const { rerender } = renderChild();
+    rerender(
+      <ResourceChildCollection
+        {...assaysChildProps}
+        urlKey="biosets"
+        resource="bioset"
+        defaultSort="bioset_id:asc"
+      />,
+    );
+    expect(lastResourceCollectionProps().state).toMatchObject({ page: 1 });
+  });
+
+  describe("with a keyword box shared with a sibling view", () => {
+    const sharedKeywordProps = { ...assaysChildProps, keywordValue: "" };
+
+    it("shows page 1 for a new keyword until the URL drops the stale page", () => {
+      window.history.replaceState(null, "", "/genome/1.1?assays.page=4");
+      const { rerender } = render(
+        <ResourceChildCollection {...sharedKeywordProps} />,
+      );
+      expect(lastResourceCollectionProps().state).toMatchObject({ page: 4 });
+
+      rerender(
+        <ResourceChildCollection {...sharedKeywordProps} keywordValue="ha" />,
+      );
+      expect(lastResourceCollectionProps().state).toMatchObject({
+        keyword: "ha",
+        page: 1,
+      });
+      // The owner has not dropped the param yet, so the URL still says page 4.
+      expect(window.location.search).toBe("?assays.page=4");
+
+      act(() => {
+        resetChildCollectionPage("assays");
+      });
+      expect(window.location.search).toBe("");
+      expect(lastResourceCollectionProps().state).toMatchObject({ page: 1 });
+    });
+
+    it("lets the user page onward once the bridge has done its job", () => {
+      window.history.replaceState(null, "", "/genome/1.1?assays.page=4");
+      const { rerender } = render(
+        <ResourceChildCollection {...sharedKeywordProps} />,
+      );
+      rerender(
+        <ResourceChildCollection {...sharedKeywordProps} keywordValue="ha" />,
+      );
+      act(() => {
+        lastResourceCollectionProps().onStateChange({
+          filters: {},
+          page: 2,
+          sort: "assay_id:asc",
+          keyword: "ha",
+        });
+      });
+      // Paging on is not held on page 1 by the pending reset.
+      expect(lastResourceCollectionProps().state).toMatchObject({ page: 2 });
+      expect(window.location.search).toBe("?assays.page=2");
+    });
+
+    it("keeps the shared keyword out of the URL", () => {
+      window.history.replaceState(null, "", "/genome/1.1");
+      render(
+        <ResourceChildCollection {...sharedKeywordProps} keywordValue="ha" />,
+      );
+      act(() => {
+        lastResourceCollectionProps().onStateChange({
+          filters: {},
+          page: 2,
+          sort: "assay_id:asc",
+          keyword: "ha",
+        });
+      });
+      expect(window.location.search).toBe("?assays.page=2");
+    });
+  });
+});
+
 describe("ResourceChildCollection scope changes", () => {
   it("keeps a filtered Bioset collection scoped to its experiment", () => {
     render(
       <ResourceChildCollection
         resource="bioset"
+        urlKey="biosets"
         label="Biosets"
         idField="bioset_id"
         rql="eq(exp_id,experiment-1)"
@@ -398,6 +554,7 @@ describe("ResourceChildCollection scope changes", () => {
     render(
       <ResourceChildCollection
         resource="genome"
+        urlKey="structures"
         label="Related genomes"
         idField="genome_id"
         rql="eq(parent_id,parent-1)"
@@ -451,6 +608,7 @@ describe("ResourceChildCollection scope changes", () => {
     render(
       <ResourceChildCollection
         resource="bioset"
+        urlKey="biosets"
         label="Biosets"
         idField="bioset_id"
         rql="eq(exp_id,experiment-1)"
@@ -478,24 +636,35 @@ describe("ResourceChildCollection scope changes", () => {
     ).toBeInTheDocument();
   });
 
-  it("resets state when FeatureMember switches child tabs", async () => {
+  // Each test leaves the source tab with a sort its table accepts that is not the
+  // destination tab's default, so state carrying over would show in the
+  // destination. The Genome pair also shares a profile, so its facet filter would
+  // survive parsing there too; Feature's tabs have no facets in common, so that
+  // test can only pin the sort.
+  it("resets state when FeatureMember switches child tabs", () => {
     const feature = {
       feature_id: "feature-1",
       patric_id: "fig|feature-1",
     } as FeatureViewRecord;
     const { rerender } = render(
-      <FeatureMember feature={feature} activeTab="interactions" />,
+      <FeatureMember feature={feature} activeTab="domains" />,
     );
-    await changeCollectionState();
+    changeCollectionState({
+      filters: { feature_type: ["domain"] },
+      page: 4,
+      sort: "id:desc",
+    });
 
-    rerender(<FeatureMember feature={feature} activeTab="domains" />);
+    rerender(<FeatureMember feature={feature} activeTab="interactions" />);
 
-    expect(screen.getByTestId("collection-state")).toHaveTextContent(
-      JSON.stringify({ filters: {}, page: 1, sort: "unsorted" }),
-    );
+    expect(shownCollectionState()).toStrictEqual({
+      filters: {},
+      page: 1,
+      sort: "id:asc",
+    });
   });
 
-  it("resets state when GenomeMember switches child tabs", async () => {
+  it("resets state when GenomeMember switches child tabs", () => {
     const genome = {
       genome_id: "genome-1",
       genome_name: "Genome 1",
@@ -503,19 +672,26 @@ describe("ResourceChildCollection scope changes", () => {
     const { rerender } = render(
       <GenomeMember genome={genome} activeTab="features" />,
     );
-    await changeCollectionState();
+    changeCollectionState({
+      filters: { feature_type: ["CDS"] },
+      page: 4,
+      sort: "start:desc",
+    });
 
     rerender(<GenomeMember genome={genome} activeTab="proteins" />);
 
-    expect(screen.getByTestId("collection-state")).toHaveTextContent(
-      JSON.stringify({ filters: {}, page: 1, sort: "patric_id:asc" }),
-    );
+    expect(shownCollectionState()).toStrictEqual({
+      filters: {},
+      page: 1,
+      sort: "patric_id:asc",
+    });
   });
 
   it("supplies the canonical protein-structure profile to its child tab", () => {
     render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Protein Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -567,6 +743,7 @@ describe("ResourceChildCollection scope changes", () => {
     render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Protein Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -595,6 +772,7 @@ describe("ResourceChildCollection scope changes", () => {
     render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Protein Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -672,6 +850,7 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -698,6 +877,7 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     const { unmount } = render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -751,6 +931,7 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     const { unmount } = render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -801,6 +982,7 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     render(
       <ResourceChildCollection
         resource="protein_structure"
+        urlKey="structures"
         label="Structures"
         idField="pdb_id"
         rql="eq(genome_id,83332.12)"
@@ -829,6 +1011,7 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     render(
       <ResourceChildCollection
         resource="bioset"
+        urlKey="biosets"
         label="Biosets"
         idField="bioset_id"
         rql="eq(exp_id,experiment-1)"

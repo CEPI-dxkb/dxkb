@@ -108,6 +108,30 @@ it("clears a Strain-owned parameter and a stale refine on an unrelated tab switc
   expect(pushSpy).toHaveBeenCalledWith("/taxonomy/234?utm_source=email");
 });
 
+it("clears nested-table params on a tab switch, and keeps them when the active tab is chosen again", async () => {
+  searchParamsRef.current = new URLSearchParams(
+    "tab=genomes&sequences.page=3&sequences.sort=length:desc&utm_source=email",
+  );
+  render(
+    <LandingShellClient
+      displayName="Brucella"
+      activeView="genomes"
+      defaultView="overview"
+      navItems={navItems}
+    >
+      <div />
+    </LandingShellClient>,
+  );
+
+  await userEvent.click(screen.getByRole("button", { name: "Overview" }));
+  expect(pushSpy).toHaveBeenLastCalledWith("/taxonomy/234?utm_source=email");
+
+  await userEvent.click(screen.getByRole("button", { name: "Genomes" }));
+  expect(pushSpy).toHaveBeenLastCalledWith(
+    "/taxonomy/234?tab=genomes&sequences.page=3&sequences.sort=length:desc&utm_source=email",
+  );
+});
+
 it("clears a friendly filter belonging to every participating organism view on a tab switch", async () => {
   const distinctFriendlyFilterNames = [
     ...new Set(

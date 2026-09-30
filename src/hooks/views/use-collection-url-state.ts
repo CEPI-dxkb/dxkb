@@ -13,6 +13,7 @@ import {
   toSearchParamsRecord,
 } from "@/lib/views/collection-state";
 import { toQueryString } from "@/lib/url";
+import { withoutChildCollectionParams } from "@/lib/views/child-collection-state";
 
 export function useCollectionUrlState<Sort extends string>(
   options: CollectionStateOptions<Sort>,
@@ -26,7 +27,12 @@ export function useCollectionUrlState<Sort extends string>(
   const state = parseCollectionState(current, options);
 
   const setState = (next: CollectionState<Sort>) => {
-    const merged = replaceCollectionSearchParams(current, next, options);
+    // A new parent query is a new scope for every nested table.
+    const merged = replaceCollectionSearchParams(
+      withoutChildCollectionParams(current),
+      next,
+      options,
+    );
     router.push(
       merged.size ? `${pathname}?${toQueryString(merged)}` : pathname,
       {

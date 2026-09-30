@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,12 +7,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  KeywordSearch,
-  keywordDebounceMs,
-} from "@/components/filterbar/keyword-search";
+import { KeywordSearch } from "@/components/filterbar/keyword-search";
 import { FacetColumn } from "@/components/filterbar/facet-column";
 import { SelectedFilters } from "@/components/filterbar/selected-filters";
+import { useDebouncedDraft } from "@/hooks/use-debounced-draft";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
 import {
@@ -53,7 +50,16 @@ export function ResourceFilterBar({
   keywordPlaceholder,
   onChange,
 }: ResourceFilterBarProps) {
-  const [keywordDraft, setKeywordDraft] = useState(keyword ?? "");
+  const [keywordDraft, setKeywordDraft] = useDebouncedDraft(
+    keyword ?? "",
+    (value) => {
+      onChange({
+        keyword: value || undefined,
+        filters,
+      });
+    },
+    { normalize: (value) => value.trim() },
+  );
   const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
   const [layout, updateLayout] = useTableLayout(layoutKey);
   const defaultFacetVisibility = Object.fromEntries(
@@ -69,30 +75,6 @@ export function ResourceFilterBar({
   const visibleFacets = new Set(
     Object.keys(facetVisibility).filter((field) => facetVisibility[field]),
   );
-
-  const externalKeyword = keyword ?? "";
-  const [previousKeyword, setPreviousKeyword] = useState(externalKeyword);
-  if (previousKeyword !== externalKeyword) {
-    setPreviousKeyword(externalKeyword);
-    setKeywordDraft(externalKeyword);
-  }
-
-  const commitKeyword = useEffectEvent((value: string) => {
-    onChange({
-      keyword: value.trim() || undefined,
-      filters,
-    });
-  });
-
-  useEffect(() => {
-    if (keywordDraft === (keyword ?? "")) return;
-    const timeout = setTimeout(() => {
-      commitKeyword(keywordDraft);
-    }, keywordDebounceMs);
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [keyword, keywordDraft]);
 
   const selected = Object.entries(filters).flatMap(([field, values]) =>
     values.map((value) => ({ field, value })),

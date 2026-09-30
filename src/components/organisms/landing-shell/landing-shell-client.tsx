@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
+import { deleteChildCollectionParams } from "@/lib/views/child-collection-state";
 import {
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
@@ -60,6 +61,8 @@ export function LandingShellClient({
       )) {
         params.delete(name);
       }
+      // Nested tables' params belong to the view being left.
+      deleteChildCollectionParams(params);
     }
     if (nextView === defaultView) {
       params.delete("tab");

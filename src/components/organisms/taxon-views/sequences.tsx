@@ -9,6 +9,7 @@ export function makeSequencesView({ scope }: { scope: TaxonViewScope }) {
   function SequencesView() {
     return (
       <ResourceChildCollection
+        urlKey="sequences"
         resource="genome_sequence"
         label="Sequences"
         idField="sequence_id"

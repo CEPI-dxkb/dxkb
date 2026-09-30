@@ -87,6 +87,7 @@ export function FeatureMember({ feature, activeTab }: FeatureMemberProps) {
   const content =
     activeTab === "interactions" ? (
       <ResourceChildCollection
+        urlKey="interactions"
         resource="ppi"
         label="Interactions"
         idField="id"
@@ -96,6 +97,7 @@ export function FeatureMember({ feature, activeTab }: FeatureMemberProps) {
       />
     ) : activeTab === "domains" ? (
       <ResourceChildCollection
+        urlKey="domains"
         resource="protein_feature"
         label="Domains and Motifs"
         idField="id"

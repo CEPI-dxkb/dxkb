@@ -20,6 +20,8 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { useKillJob } from "@/hooks/services/workspace/use-workspace";
 import { useJobsData } from "@/hooks/services/jobs/use-jobs-data";
 import { useJobsSummary } from "@/hooks/services/jobs/use-jobs-summary";
+import { useJobsUrlState } from "@/hooks/services/jobs/use-jobs-url-state";
+import { useDebouncedDraft } from "@/hooks/use-debounced-draft";
 import {
   DataTable,
   type DataTableSort,
@@ -39,10 +41,13 @@ import type { JobListItem } from "@/types/workspace";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
 import { rerunJob } from "@/lib/rerun-utility";
 import {
-  defaultPageSize,
   defaultJobsColumnOrder,
   activeJobStatuses,
 } from "@/lib/jobs/constants";
+import {
+  fromLocalDateParam,
+  toLocalDateParam,
+} from "@/lib/jobs/jobs-url-state";
 import { clsx } from "cn";
 
 interface JobDataRowProps {
@@ -147,31 +152,48 @@ function JobsTableBody({
 function useJobsBrowser() {
   const router = useRouter();
 
-  // State
-  const [offset, setOffset] = useState(0);
-  const [sort, setSort] = useState<DataTableSort>({
-    field: "submit_time",
-    direction: "desc",
-  });
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [serviceFilter, setServiceFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [includeArchived, setIncludeArchived] = useState(false);
+  // List state (filters, sort, page) lives in the URL; selection and the
+  // not-found dialog stay local.
+  const [listState, setListState] = useJobsUrlState();
+  const {
+    status: statusFilter,
+    service: serviceFilter,
+    includeArchived,
+    sort,
+    page,
+    pageSize,
+  } = listState;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showJobNotFound, setShowJobNotFound] = useState(false);
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [pageSize, setPageSize] = useState(defaultPageSize);
 
-  const toLocalDate = (date: Date) =>
-    `${String(date.getFullYear())}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  const startTime = dateFrom ? toLocalDate(dateFrom) : undefined;
+  // The search box shows a draft: Next applies URL writes inside a transition,
+  // which a controlled text input cannot follow. The list filters from the
+  // draft; the URL `q` follows after a pause, and one run of search edits is one
+  // history entry, pushed on top of whichever filter came before it.
+  const [searchQuery, setSearchQuery] = useDebouncedDraft(
+    listState.search,
+    (value) => {
+      setListState({ search: value }, { history: "coalesce" });
+    },
+  );
+
+  const offset = (page - 1) * pageSize;
+  const dateFrom = listState.dateFrom
+    ? fromLocalDateParam(listState.dateFrom)
+    : undefined;
+  const dateTo = listState.dateTo
+    ? fromLocalDateParam(listState.dateTo)
+    : undefined;
+  const startTime = listState.dateFrom;
   let endTime: string | undefined;
   if (dateTo) {
     const inclusive = new Date(dateTo);
     inclusive.setDate(inclusive.getDate() + 1);
-    endTime = toLocalDate(inclusive);
+    endTime = toLocalDateParam(inclusive);
   }
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
 
   // Data fetching
   const { data: summaryData } = useJobsSummary(includeArchived);
@@ -258,57 +280,58 @@ function useJobsBrowser() {
   };
 
   // Columns
-  const { columns, handleSort } = useJobsColumns(sort, setSort);
+  const handleSortChange = (next: DataTableSort) => {
+    setListState({ sort: next, page: 1 });
+  };
+  const { columns, handleSort } = useJobsColumns(sort, handleSortChange);
 
   // Pagination
   const handlePrevious = () => {
-    setOffset((prev) => Math.max(0, prev - pageSize));
-    setSelectedIds(new Set());
+    setListState({ page: Math.max(1, page - 1) });
+    clearSelection();
   };
 
   const handleNext = () => {
-    setOffset((prev) => prev + pageSize);
-    setSelectedIds(new Set());
+    setListState({ page: page + 1 });
+    clearSelection();
   };
 
-  const handlePageChange = (page: number) => {
-    setOffset((page - 1) * pageSize);
-    setSelectedIds(new Set());
+  const handlePageChange = (nextPage: number) => {
+    setListState({ page: nextPage });
+    clearSelection();
   };
 
-  // Reset offset when filters change
+  // Return to page 1 when filters change
   const handleStatusFilterChange = (value: string) => {
-    setStatusFilter(value);
-    setOffset(0);
-    setSelectedIds(new Set());
+    setListState({ status: value, page: 1 });
+    clearSelection();
   };
 
   const handleServiceFilterChange = (value: string) => {
-    setServiceFilter(value);
-    setOffset(0);
-    setSelectedIds(new Set());
+    setListState({ service: value, page: 1 });
+    clearSelection();
   };
 
   const handleArchivedChange = (value: boolean) => {
-    setIncludeArchived(value);
-    setOffset(0);
-    setSelectedIds(new Set());
+    setListState({ includeArchived: value, page: 1 });
+    clearSelection();
   };
 
   const handlePageSizeChange = (size: number) => {
-    setPageSize(size);
-    setOffset(0);
-    setSelectedIds(new Set());
+    setListState({ pageSize: size, page: 1 });
+    clearSelection();
   };
 
   const handleDateFilterChange = (
     from: Date | undefined,
     to: Date | undefined,
   ) => {
-    setDateFrom(from);
-    setDateTo(to);
-    setOffset(0);
-    setSelectedIds(new Set());
+    setListState({
+      dateFrom: from ? toLocalDateParam(from) : undefined,
+      dateTo: to ? toLocalDateParam(to) : undefined,
+      page: 1,
+    });
+    clearSelection();
   };
 
   // Row rendering & keyboard

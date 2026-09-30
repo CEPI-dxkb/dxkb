@@ -65,6 +65,7 @@ The core four (Lint, Typecheck, Build, Test) must pass before merging. `pnpm typ
   - `json(res)` — Tiny `res.json()` shorthand.
 - `react.ts`:
   - `createQueryClientWrapper()` — `QueryClientProvider` wrapper (with `retry: false`) for `renderHook` and React tests that touch TanStack Query.
+- `history-navigation.ts` — `historyNavigationMock({ pathname })`, a `next/navigation` mock for components whose URL state is written with `window.history.pushState`/`replaceState` (the `ResourceChildCollection` tests use it). The usual per-file `next/navigation` mocks return a fixed `useSearchParams`, which, unlike Next's, does not change when the History API writes; this one re-renders its subscribers on every write, which a test that pages or sorts a real child table needs. Build it inside the `vi.mock` factory and reset the address with `history.replaceState` in `beforeEach`.
 
 See `src/app/api/auth/profile/__tests__/route.test.ts` for a representative usage.
 

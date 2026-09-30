@@ -16,6 +16,13 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 // Only presentation is stubbed: Sigma's WebGL canvas and TanStack Virtual's
 // DataTable have no working geometry in jsdom, and the surrounding chrome
 // (action bars, dialogs) needs app-wide providers this test has no stake in.
+// The Table's page and sort live in the URL, so the Table only pages when
+// `useSearchParams` follows the History API writes.
+vi.mock("next/navigation", async () =>
+  (await import("@/test-helpers/history-navigation")).historyNavigationMock({
+    pathname: "/genome/1.1",
+  }),
+);
 vi.mock("../sigma/sigma-canvas", () => ({
   SigmaCanvas: () => <div data-testid="sigma-canvas" />,
 }));
@@ -132,6 +139,7 @@ function matching(keyword: string | undefined) {
 }
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/genome/1.1");
   tablePredicates.length = 0;
   graphPredicates.length = 0;
   tablePages.length = 0;
@@ -299,6 +307,9 @@ describe("Interactions Table paging follows the shared keyword", () => {
     await waitFor(() => {
       expect(tablePages.at(-1)).toBe(2);
     });
+    // The page is the Table's own URL state, so a refresh or a shared link
+    // lands on it.
+    expect(window.location.search).toBe("?interactions.page=2");
 
     // The Table panel stays mounted behind the Graph tab, so it keeps paging
     // state — and its keyword box never sees this edit.
@@ -319,5 +330,37 @@ describe("Interactions Table paging follows the shared keyword", () => {
     // end. Refetching the old page index showed an empty table under a pager
     // still reading 2, while the Graph showed the match.
     expect(tablePages.at(-1)).toBe(1);
+    // ...and the stale page is gone from the address too, so the URL and the
+    // Table agree once the keyword's owner has dropped it.
+    expect(window.location.search).not.toContain("interactions.page");
+  });
+
+  it("adds no history entry when the keyword is typed in the Table's own box", async () => {
+    const user = userEvent.setup();
+    render(<InteractionsSubviewShell rql={scopeRql} />, {
+      wrapper: createQueryClientWrapper(),
+    });
+    await waitFor(() => {
+      expect(tablePredicates).toHaveLength(1);
+    });
+    await user.click(tablePanel().getByRole("button", { name: "Next page" }));
+    await waitFor(() => {
+      expect(tablePages.at(-1)).toBe(2);
+    });
+
+    const pushState = vi.spyOn(window.history, "pushState");
+    try {
+      await searchInTable(user, "peg.601");
+      await waitFor(() => {
+        expect(tablePages.at(-1)).toBe(1);
+      });
+
+      // The commit drops the stale page (a replace) and then writes the table's
+      // state, which is by then the same address. A keyword pause is not a Back step.
+      expect(pushState).not.toHaveBeenCalled();
+      expect(window.location.search).not.toContain("interactions.page");
+    } finally {
+      pushState.mockRestore();
+    }
   });
 });

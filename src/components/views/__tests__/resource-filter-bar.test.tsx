@@ -82,6 +82,65 @@ describe("ResourceFilterBar", () => {
     });
   });
 
+  it("keeps typing that follows a trimmed keyword commit", () => {
+    const onChange = vi.fn();
+    const props = {
+      layoutKey,
+      filters: {},
+      facets,
+      definitions,
+      onChange,
+    };
+    const { rerender } = render(<ResourceFilterBar {...props} />);
+    const searchbox = screen.getByRole("searchbox");
+
+    fireEvent.change(searchbox, { target: { value: "eco " } });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(onChange).toHaveBeenLastCalledWith({ keyword: "eco", filters: {} });
+
+    // The user types on before the trimmed keyword reaches the URL.
+    fireEvent.change(searchbox, { target: { value: "eco k" } });
+    rerender(<ResourceFilterBar {...props} keyword="eco" />);
+    expect(searchbox).toHaveValue("eco k");
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: "eco k",
+      filters: {},
+    });
+  });
+
+  it("keeps a trailing space once the trimmed keyword lands", () => {
+    const onChange = vi.fn();
+    const props = {
+      layoutKey,
+      filters: {},
+      facets,
+      definitions,
+      onChange,
+    };
+    const { rerender } = render(<ResourceFilterBar {...props} />);
+    const searchbox = screen.getByRole("searchbox");
+
+    fireEvent.change(searchbox, { target: { value: "eco " } });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    rerender(<ResourceFilterBar {...props} keyword="eco" />);
+    expect(searchbox).toHaveValue("eco ");
+
+    // The URL already holds the trimmed draft, so nothing is written again.
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
   it("adds multiple facet values and removes selected chips", () => {
     const onChange = vi.fn();
     const { rerender } = render(

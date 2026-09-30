@@ -1,7 +1,16 @@
 import { epitopeAssayMetadata, epitopeMetadata } from "@/lib/epitope-view/fields";
 import { biosetMetadata, experimentMetadata } from "@/lib/experiment-view/fields";
 import { featureMetadata } from "@/lib/feature-view/fields";
+import { epitopeCollectionOptions } from "@/lib/epitope-view/query";
+import { experimentCollectionOptions } from "@/lib/experiment-view/query";
 import { featureCollectionOptions } from "@/lib/feature-view/query";
+import { genomeCollectionOptions } from "@/lib/genome-view/query";
+import { proteinFeatureCollectionOptions } from "@/lib/protein-feature-view/query";
+import { proteinStructureCollectionOptions } from "@/lib/protein-structure-view/query";
+import { serologyCollectionOptions } from "@/lib/serology-view/query";
+import { strainCollectionOptions } from "@/lib/strain-view/query";
+import { surveillanceCollectionOptions } from "@/lib/surveillance-view/query";
+import { taxonomyCollectionOptions } from "@/lib/taxonomy-view/query";
 import { genomeMetadata } from "@/lib/genome-view/fields";
 import { proteinFeatureMetadata } from "@/lib/protein-feature-view/fields";
 import { proteinStructureMetadata } from "@/lib/protein-structure-view/fields";
@@ -24,6 +33,7 @@ import { taxonomyFields } from "@/constants/datafields/taxonomy";
 import type { DataField, DataFieldMap } from "@/constants/datafields/types";
 import { resourceRegistry, type DataResource } from "@/lib/data-api";
 import { validateDataApiRequest } from "@/lib/data-api/validation";
+import { isChildCollectionParam } from "../child-collection-state";
 import type { DerivedFieldMetadata } from "../field-metadata";
 import {
   genomeSequenceColumns,
@@ -537,5 +547,54 @@ describe("child-resource columns", () => {
       "go",
     );
     expect(featureMetadata.sorts).not.toContain("go:asc");
+  });
+});
+
+describe("URL parameter names", () => {
+  // A nested table's params are `<urlKey>.page`, and a tab switch or a top-level
+  // write deletes every param `isChildCollectionParam` claims. A top-level name that
+  // gained a dot could start with a registered `urlKey` and silently vanish on every
+  // switch, so these names stay dot-free altogether.
+  const everyCollectionOptions = [
+    epitopeCollectionOptions,
+    experimentCollectionOptions,
+    featureCollectionOptions,
+    genomeCollectionOptions,
+    proteinFeatureCollectionOptions,
+    proteinStructureCollectionOptions,
+    serologyCollectionOptions,
+    strainCollectionOptions,
+    surveillanceCollectionOptions,
+    taxonomyCollectionOptions,
+  ];
+  const managedNames = ["keyword", "refine", "rql", "page", "sort", "filter"];
+
+  it("keeps every friendly and independent filter name free of dots", () => {
+    const names = everyCollectionOptions.flatMap((options) => [
+      ...(options.friendlyFilters ?? []),
+      ...(options.independentFilters ?? []),
+    ]);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      expect(name).not.toContain(".");
+      expect(isChildCollectionParam(name)).toBe(false);
+    }
+  });
+
+  it("keeps every facet field free of dots", () => {
+    const names = derived.flatMap(({ metadata }) => [
+      ...metadata.facets.map((facet) => facet.field),
+      ...metadata.facetFields,
+    ]);
+    expect(names.length).toBeGreaterThan(0);
+    for (const name of names) {
+      expect(isChildCollectionParam(name)).toBe(false);
+    }
+  });
+
+  it("keeps the managed collection params free of dots", () => {
+    for (const name of managedNames) {
+      expect(isChildCollectionParam(name)).toBe(false);
+    }
   });
 });

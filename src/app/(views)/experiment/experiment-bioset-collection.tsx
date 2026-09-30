@@ -83,6 +83,7 @@ export function ExperimentBiosetCollection({
 
   return (
     <ResourceChildCollection
+      urlKey="biosets"
       resource="bioset"
       label="Biosets"
       idField="bioset_id"

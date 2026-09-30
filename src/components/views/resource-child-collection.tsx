@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useChildCollectionUrlState } from "@/hooks/views/use-child-collection-url-state";
 import { DataRepository, type DataResource } from "@/lib/data-api";
 import {
   featureCollectionProfile,
@@ -15,6 +16,10 @@ import {
   proteinStructureCollectionProfile,
   type ProteinStructureViewRecord,
 } from "@/lib/protein-structure-view";
+import {
+  childCollectionOptions,
+  type ChildCollectionUrlKey,
+} from "@/lib/views/child-collection-state";
 import type { CollectionState } from "@/lib/views/collection-state";
 import {
   ResourceCollection,
@@ -42,6 +47,11 @@ function scopedStructuralRql(
 }
 
 interface ResourceChildCollectionProps {
+  /**
+   * Prefix for this table's URL params, e.g. "features" → `features.page`. Unique
+   * among the tables that can be on screen together.
+   */
+  urlKey: ChildCollectionUrlKey;
   resource: DataResource;
   label: string;
   idField: string;
@@ -86,13 +96,14 @@ interface ResourceChildCollectionProps {
 export function ResourceChildCollection(props: ResourceChildCollectionProps) {
   return (
     <ScopedResourceChildCollection
-      key={`${props.resource}:${props.rql}`}
+      key={`${props.urlKey}:${props.resource}:${props.rql}`}
       {...props}
     />
   );
 }
 
 function ScopedResourceChildCollection({
+  urlKey,
   resource,
   label,
   idField,
@@ -106,47 +117,7 @@ function ScopedResourceChildCollection({
   onKeywordChange,
   keywordPlaceholder,
 }: ResourceChildCollectionProps) {
-  const [state, setState] = useState<CollectionState>({
-    filters: {},
-    page: 1,
-    sort: defaultSort,
-  });
-  const isControlledServerKeyword =
-    keywordMode === "server" && keywordValue !== undefined;
   const exportFileName = label.toLowerCase();
-  /**
-   * A new keyword is a new result set, so the page index it was paged into no
-   * longer means anything — page 3 of an unfiltered scope is routinely past the
-   * end of the filtered one, which shows an empty table under a pager still
-   * reading 3. `ResourceCollection` resets the page when its *own* keyword box
-   * commits, but a keyword arriving as a prop (the sibling view's box committed)
-   * never passes through `handleStateChange`, so this is the only place that
-   * observes the transition. Render-phase update, like `GraphToolbar` and
-   * `ResourceFilterBar`: the stale page is corrected before it can be requested.
-   */
-  const [previousKeywordValue, setPreviousKeywordValue] =
-    useState(keywordValue);
-  if (isControlledServerKeyword && previousKeywordValue !== keywordValue) {
-    setPreviousKeywordValue(keywordValue);
-    setState((current) =>
-      current.page === 1 ? current : { ...current, page: 1 },
-    );
-  }
-  // The controlled text is the single source of truth, so the local state never
-  // holds a keyword of its own that could disagree with the sibling view's.
-  const effectiveState = isControlledServerKeyword
-    ? { ...state, keyword: keywordValue || undefined }
-    : state;
-  const handleStateChange = (next: CollectionState) => {
-    if (!isControlledServerKeyword) {
-      setState(next);
-      return;
-    }
-    if ((next.keyword ?? "") !== (effectiveState.keyword ?? "")) {
-      onKeywordChange?.(next.keyword ?? "");
-    }
-    setState({ ...next, keyword: undefined });
-  };
   let profile: ResourceCollectionProfile<ChildRow>;
   if (suppliedProfile) {
     profile = {
@@ -229,6 +200,59 @@ function ScopedResourceChildCollection({
       exportFileName,
     };
   }
+
+  const collectionOptions = childCollectionOptions(
+    profile.columns,
+    profile.facets,
+    defaultSort,
+  );
+  const [state, setState] = useChildCollectionUrlState(
+    urlKey,
+    collectionOptions,
+  );
+  const isControlledServerKeyword =
+    keywordMode === "server" && keywordValue !== undefined;
+  /**
+   * A new keyword is a new result set, so the page index it was paged into no
+   * longer means anything — page 3 of an unfiltered scope is routinely past the
+   * end of the filtered one, which shows an empty table under a pager still
+   * reading 3. `ResourceCollection` resets the page when its *own* keyword box
+   * commits, but a keyword arriving as a prop (the sibling view's box committed)
+   * never passes through `handleStateChange`, so this is the only place that
+   * observes the transition.
+   *
+   * The page lives in the URL now, and writing the URL during render is not
+   * possible, so the keyword's owner drops `<urlKey>.page` in the same event
+   * (`resetChildCollectionPage`). Until that update reaches `state`, request page 1
+   * so the stale page is never fetched. Render-phase state, like `GraphToolbar` and
+   * `ResourceFilterBar`.
+   */
+  const [previousKeywordValue, setPreviousKeywordValue] =
+    useState(keywordValue);
+  const [awaitingPageReset, setAwaitingPageReset] = useState(false);
+  if (isControlledServerKeyword && previousKeywordValue !== keywordValue) {
+    setPreviousKeywordValue(keywordValue);
+    setAwaitingPageReset(true);
+  }
+  if (awaitingPageReset && state.page === 1) setAwaitingPageReset(false);
+  const pagedState = awaitingPageReset ? { ...state, page: 1 } : state;
+  // The controlled text is the single source of truth, so the URL never holds a
+  // keyword of its own that could disagree with the sibling view's.
+  const effectiveState = isControlledServerKeyword
+    ? { ...pagedState, keyword: keywordValue || undefined }
+    : pagedState;
+  const handleStateChange = (next: CollectionState) => {
+    // The user is moving on from whatever page the reset was waiting to clear.
+    setAwaitingPageReset(false);
+    if (!isControlledServerKeyword) {
+      setState(next);
+      return;
+    }
+    if ((next.keyword ?? "") !== (effectiveState.keyword ?? "")) {
+      onKeywordChange?.(next.keyword ?? "");
+    }
+    setState({ ...next, keyword: undefined });
+  };
 
   return (
     <ResourceCollection

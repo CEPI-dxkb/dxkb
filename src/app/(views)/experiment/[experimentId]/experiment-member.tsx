@@ -27,6 +27,7 @@ export function ExperimentMember({
   const content =
     activeTab === "biosets" ? (
       <ResourceChildCollection
+        urlKey="biosets"
         resource="bioset"
         label="Biosets"
         idField="bioset_id"

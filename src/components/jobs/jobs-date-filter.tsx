@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { addDays, format } from "date-fns";
 import { CalendarIcon, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toLocalDateParam } from "@/lib/jobs/jobs-url-state";
 
 type DateCondition =
   | "is"
@@ -42,8 +43,8 @@ interface JobsDateFilterProps {
   onFilterChange: (from: Date | undefined, to: Date | undefined) => void;
 }
 
-const msPerDay = 24 * 60 * 60 * 1000;
-
+// Before/After step by calendar day (addDays), not by 24 hours: a day is 23 or
+// 25 hours long when the clocks change, and the result goes into the URL.
 function conditionToApiDates(
   condition: DateCondition,
   date: Date | undefined,
@@ -54,9 +55,9 @@ function conditionToApiDates(
     case "is":
       return { from: date, to: date };
     case "is_before":
-      return { from: undefined, to: new Date(date.getTime() - msPerDay) };
+      return { from: undefined, to: addDays(date, -1) };
     case "is_after":
-      return { from: new Date(date.getTime() + msPerDay), to: undefined };
+      return { from: addDays(date, 1), to: undefined };
     case "is_on_or_before":
       return { from: undefined, to: date };
     case "is_on_or_after":
@@ -86,16 +87,86 @@ function formatTriggerLabel(
   return `${label} ${d}`;
 }
 
+/** What the popover shows: a condition and the dates picked for it. */
+interface DateChoice {
+  condition: DateCondition;
+  singleDate: Date | undefined;
+  rangeFrom: Date | undefined;
+  rangeTo: Date | undefined;
+}
+
+/** Local calendar day of a date, the granularity the filter is applied at. */
+function dayOf(date: Date | undefined): string | undefined {
+  return date ? toLocalDateParam(date) : undefined;
+}
+
+/**
+ * The choice that best describes an applied `from`/`to`, for when the filter
+ * did not come from this component's own picks (a URL load, Back/Forward). The
+ * dates alone do not say which condition made them, so this is the plainest
+ * reading. With no dates, the condition already open stays.
+ */
+function choiceFromDates(
+  from: Date | undefined,
+  to: Date | undefined,
+  currentCondition: DateCondition,
+): DateChoice {
+  const none = {
+    singleDate: undefined,
+    rangeFrom: undefined,
+    rangeTo: undefined,
+  };
+  if (from && to) {
+    if (dayOf(from) === dayOf(to)) {
+      return { ...none, condition: "is", singleDate: from };
+    }
+    return { ...none, condition: "is_in_between", rangeFrom: from, rangeTo: to };
+  }
+  if (from) return { ...none, condition: "is_on_or_after", singleDate: from };
+  if (to) return { ...none, condition: "is_on_or_before", singleDate: to };
+  return { ...none, condition: currentCondition };
+}
+
+/** Whether a choice, applied, gives exactly these dates (by calendar day). */
+function choiceProduces(
+  choice: DateChoice,
+  from: Date | undefined,
+  to: Date | undefined,
+): boolean {
+  const isRange = choice.condition === "is_in_between";
+  const own = conditionToApiDates(
+    choice.condition,
+    isRange ? choice.rangeFrom : choice.singleDate,
+    isRange ? choice.rangeTo : undefined,
+  );
+  return dayOf(own.from) === dayOf(from) && dayOf(own.to) === dayOf(to);
+}
+
 export function JobsDateFilter({
   dateFrom,
   dateTo,
   onFilterChange,
 }: JobsDateFilterProps) {
   const [open, setOpen] = useState(false);
-  const [condition, setCondition] = useState<DateCondition>("is_in_between");
-  const [singleDate, setSingleDate] = useState<Date | undefined>(undefined);
-  const [rangeFrom, setRangeFrom] = useState<Date | undefined>(undefined);
-  const [rangeTo, setRangeTo] = useState<Date | undefined>(undefined);
+  const [choice, setChoice] = useState(() =>
+    choiceFromDates(dateFrom, dateTo, "is_in_between"),
+  );
+  const { condition, singleDate, rangeFrom, rangeTo } = choice;
+
+  // The dates are applied elsewhere (the URL), so they can change without this
+  // component: a refresh, a shared link, Back/Forward. When they no longer
+  // match what the user picked here, show what they say. When they do (the
+  // user's own pick coming back through the parent), keep the user's condition:
+  // "Before Sep 10" is applied as "to Sep 9" and must not turn into "On or
+  // before Sep 9".
+  const appliedDays = `${dayOf(dateFrom) ?? ""}|${dayOf(dateTo) ?? ""}`;
+  const [previousDays, setPreviousDays] = useState(appliedDays);
+  if (previousDays !== appliedDays) {
+    setPreviousDays(appliedDays);
+    if (!choiceProduces(choice, dateFrom, dateTo)) {
+      setChoice(choiceFromDates(dateFrom, dateTo, condition));
+    }
+  }
 
   const isRange = condition === "is_in_between";
   const hasActiveFilter = dateFrom !== undefined || dateTo !== undefined;
@@ -114,31 +185,24 @@ export function JobsDateFilter({
   };
 
   const handleConditionChange = (value: string) => {
-    const newCondition = value as DateCondition;
-    setCondition(newCondition);
-    setSingleDate(undefined);
-    setRangeFrom(undefined);
-    setRangeTo(undefined);
+    setChoice(choiceFromDates(undefined, undefined, value as DateCondition));
     onFilterChange(undefined, undefined);
   };
 
   const handleSingleDateSelect = (date: Date | undefined) => {
-    setSingleDate(date);
+    setChoice({ ...choice, singleDate: date });
     if (date) applyFilter(condition, date, undefined);
   };
 
   const handleRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
     const from = range?.from;
     const to = range?.to;
-    setRangeFrom(from);
-    setRangeTo(to);
+    setChoice({ ...choice, rangeFrom: from, rangeTo: to });
     applyFilter("is_in_between", from, to);
   };
 
   const resetFilter = (closePopover: boolean) => {
-    setSingleDate(undefined);
-    setRangeFrom(undefined);
-    setRangeTo(undefined);
+    setChoice(choiceFromDates(undefined, undefined, condition));
     onFilterChange(undefined, undefined);
     if (closePopover) setOpen(false);
   };

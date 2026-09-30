@@ -152,11 +152,13 @@ export function GenomeCollection({
   } else if (genomeRql && activeTab === "structures") {
     // Not ProteinStructureResourceCollection (which the member page uses): that
     // wrapper owns URL collection state, which would collide with this page's own
-    // rql/page/sort params. ResourceChildCollection keeps the tab state local and
+    // rql/page/sort params. ResourceChildCollection keeps its tab state under its
+    // own `<urlKey>.` params, so they never collide with this page's, and it
     // supplies the canonical protein-structure profile (columns, detail fields,
     // facets and row links) from its own `protein_structure` branch.
     content = (
       <ResourceChildCollection
+        urlKey="structures"
         resource="protein_structure"
         label="Protein Structures"
         idField="pdb_id"

@@ -34,33 +34,44 @@ export function GraphToolbar({
   const [draft, setDraft] = useState(filterValue);
   const draftRef = useRef(draft);
   const isDraftCommittedRef = useRef(true);
-  // Adopt the shared value whenever it changes elsewhere — the Table's box, or a
-  // commit of our own — so the input never shows a stale search.
+  // Adopt the shared value whenever it changes elsewhere — the Table's box — so
+  // the input never shows a stale search. Our own commit landing is not adopted:
+  // it is the draft trimmed, and taking it back would delete a trailing space the
+  // user is about to type past.
   const [previousValue, setPreviousValue] = useState(filterValue);
+  const [ownCommit, setOwnCommit] = useState<string | null>(null);
   if (previousValue !== filterValue) {
     setPreviousValue(filterValue);
-    setDraft(filterValue);
+    setOwnCommit(null);
+    if (filterValue !== ownCommit) setDraft(filterValue);
   }
 
   const commitKeyword = useEffectEvent((value: string) => {
-    onFilterChange(value.trim());
+    const keyword = value.trim();
+    setOwnCommit(keyword);
+    onFilterChange(keyword);
   });
 
+  // A draft that only adds whitespace to the shared value has nothing to commit.
+  const nextKeyword = draft.trim();
+
+  // Track the draft actually shown, not the shared value: when our own commit
+  // lands after the user typed on, the kept draft still needs its unmount flush.
   useEffect(() => {
-    draftRef.current = filterValue;
-    isDraftCommittedRef.current = true;
-  }, [filterValue]);
+    draftRef.current = draft;
+    isDraftCommittedRef.current = nextKeyword === filterValue;
+  }, [draft, nextKeyword, filterValue]);
 
   useEffect(() => {
-    if (draft === filterValue) return;
+    if (nextKeyword === filterValue) return;
     const timeout = setTimeout(() => {
       isDraftCommittedRef.current = true;
-      commitKeyword(draft);
+      commitKeyword(nextKeyword);
     }, keywordDebounceMs);
     return () => {
       clearTimeout(timeout);
     };
-  }, [draft, filterValue]);
+  }, [nextKeyword, filterValue]);
 
   useEffect(() => {
     return () => {

@@ -9,6 +9,7 @@ import { InteractionsSubviewShell } from "../interactions-subview-shell";
 let tableMountCount = 0;
 vi.mock("@/components/views", () => ({
   ResourceChildCollection: ({
+    urlKey,
     resource,
     rql,
     guideUrl,
@@ -16,6 +17,7 @@ vi.mock("@/components/views", () => ({
     keywordValue,
     onKeywordChange,
   }: {
+    urlKey: string;
     resource: string;
     rql: string;
     guideUrl?: string;
@@ -29,6 +31,7 @@ vi.mock("@/components/views", () => ({
     return (
       <div
         data-testid="table-panel"
+        data-url-key={urlKey}
         data-resource={resource}
         data-rql={rql}
         data-guide={guideUrl}
@@ -61,6 +64,7 @@ vi.mock("../interactions-graph", () => ({
 
 beforeEach(() => {
   tableMountCount = 0;
+  window.history.replaceState(null, "", "/");
 });
 
 describe("InteractionsSubviewShell", () => {
@@ -72,6 +76,7 @@ describe("InteractionsSubviewShell", () => {
       />,
     );
 
+    expect(screen.getByTestId("table-panel")).toHaveAttribute("data-url-key", "interactions");
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-resource", "ppi");
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-rql", "eq(evidence,experimental)");
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-guide", "https://example.test/guide");
@@ -135,5 +140,38 @@ describe("InteractionsSubviewShell", () => {
     fireEvent.click(screen.getByText("set-from-graph"));
     fireEvent.click(screen.getByRole("tab", { name: "Table" }));
     expect(screen.getByTestId("table-panel")).toHaveAttribute("data-keyword", "fromGraph");
+  });
+
+  it("drops the Table's URL page when the keyword changes, from either view", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactions.page=3&interactions.sort=id:desc",
+    );
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
+
+    fireEvent.click(screen.getByText("set-from-table"));
+    expect(window.location.search).toBe(
+      "?tab=interactions&interactions.sort=id:desc",
+    );
+
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=interactions&interactions.page=3",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Graph" }));
+    fireEvent.click(screen.getByText("set-from-graph"));
+    expect(window.location.search).toBe("?tab=interactions");
+  });
+
+  it("keeps the Table's URL page when the keyword is committed again unchanged", () => {
+    render(<InteractionsSubviewShell rql="eq(evidence,experimental)" />);
+    fireEvent.click(screen.getByText("set-from-table"));
+
+    window.history.replaceState(null, "", "/genome/1.1?interactions.page=3");
+    fireEvent.click(screen.getByText("set-from-table"));
+
+    expect(window.location.search).toBe("?interactions.page=3");
   });
 });

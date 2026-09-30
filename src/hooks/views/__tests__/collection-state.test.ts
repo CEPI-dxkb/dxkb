@@ -129,6 +129,38 @@ describe("view collection state exports", () => {
   });
 });
 
+describe("useCollectionUrlState nested tables", () => {
+  beforeEach(() => {
+    navigation.push.mockClear();
+  });
+
+  it("clears nested-table params when the page's own query changes", () => {
+    // A new parent query is a new scope for every nested table: page 3 of the
+    // old scope may not exist in the new one.
+    navigation.searchParams = new URLSearchParams(
+      "tab=features&host=human&features.page=3&features.sort=start:desc",
+    );
+    const { result } = renderHook(() => useCollectionUrlState(options));
+
+    act(() => {
+      result.current[1]({ filters: { host: ["bat"] }, page: 1, sort: "name:asc" });
+    });
+
+    expect(navigation.push).toHaveBeenCalledWith(
+      "/protein-feature?tab=features&host=bat",
+      { scroll: false },
+    );
+  });
+
+  it("does not mistake a nested table's params for its own state", () => {
+    navigation.searchParams = new URLSearchParams(
+      "features.page=3&features.sort=year:desc&features.host=human",
+    );
+    const { result } = renderHook(() => useCollectionUrlState(options));
+    expect(result.current[0]).toMatchObject({ filters: {}, page: 1, sort: "name:asc" });
+  });
+});
+
 describe("useCollectionUrlState canonical replace", () => {
   beforeEach(() => {
     navigation.push.mockClear();

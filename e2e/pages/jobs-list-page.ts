@@ -1,9 +1,11 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
+import { expectUrlParams } from "../support/url-params";
 import { PanelSplit } from "./panel-split";
 
 /**
- * Page object for the `/jobs` list view. Covers the heading, status filter, row selection, the
+ * Page object for the `/jobs` list view. Covers the heading, the status, search and date
+ * filters, column sorting, the query params they keep in the address, row selection, the
  * details panel that appears on click, the KILL action, and the column resize handles. Rows are
  * matched by `job.id` which renders verbatim in the table's id column.
  */
@@ -11,17 +13,24 @@ export class JobsListPage {
   readonly page: Page;
   readonly heading: Locator;
   readonly searchInput: Locator;
+  readonly statusTrigger: Locator;
   readonly panels: PanelSplit;
 
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole("heading", { level: 1, name: /^jobs$/i });
     this.searchInput = page.getByPlaceholder(/search by name, id, or service/i);
+    // Named by the trigger's aria-label, so it is the same element whichever
+    // status is chosen (its visible text changes from "All Status").
+    this.statusTrigger = page.getByRole("combobox", {
+      name: "Filter by status",
+    });
     this.panels = new PanelSplit(page);
   }
 
-  async goto(): Promise<void> {
-    await this.page.goto("/jobs");
+  /** Open the list; `query` is a raw query string (e.g. "?status=failed") for a shared link. */
+  async goto(query = ""): Promise<void> {
+    await this.page.goto(`/jobs${query}`);
     await expect(this.heading).toBeVisible();
   }
 
@@ -32,8 +41,17 @@ export class JobsListPage {
   }
 
   async waitForRows(): Promise<void> {
-    // Any data row in tbody means the list has hydrated.
+    // Any tbody row. The DataTable's skeleton and empty rows are server-rendered, so
+    // this can pass before hydration; use waitForJob before interacting.
     await expect(this.page.locator("tbody tr").first()).toBeVisible();
+  }
+
+  /**
+   * A job's row is on screen. Jobs are fetched client-side, so a real row proves the
+   * page has hydrated: a click made before that (a Select trigger, say) is lost.
+   */
+  async waitForJob(jobId: string): Promise<void> {
+    await expect(this.rowById(jobId)).toBeVisible();
   }
 
   async selectJob(jobId: string): Promise<void> {
@@ -42,15 +60,100 @@ export class JobsListPage {
 
   /**
    * Filter the table by one of the status dropdown values. The page has multiple comboboxes
-   * (the banner search dropdown, the service filter, and this one), so we match the trigger by
-   * its placeholder-derived accessible text ("All Status") rather than positional index.
+   * (the banner search dropdown, the service filter, and this one), so the trigger is matched
+   * by its accessible name, which stays "Filter by status" once a status is chosen. That lets
+   * a second call change the status again.
    */
   async filterByStatus(label: string | RegExp): Promise<void> {
-    const statusTrigger = this.page
-      .getByRole("combobox")
-      .filter({ hasText: /all status/i });
-    await statusTrigger.click();
+    await this.statusTrigger.click();
     await this.page.getByRole("option", { name: label }).click();
+  }
+
+  /** Type into the search box. The URL's `q` follows after the debounce, not per keystroke. */
+  async search(term: string): Promise<void> {
+    await this.searchInput.fill(term);
+  }
+
+  /** Polls the address for the given query params (`null` = absent). */
+  async expectUrlParams(
+    expected: Record<string, string | null>,
+  ): Promise<void> {
+    await expectUrlParams(this.page, expected);
+  }
+
+  /** The status trigger shows the chosen option (its label, e.g. "Completed"). */
+  async expectStatus(label: string): Promise<void> {
+    // Contains, not equals: the trigger also renders a chevron glyph after the label.
+    await expect(this.statusTrigger).toContainText(label);
+  }
+
+  async expectSearch(term: string): Promise<void> {
+    await expect(this.searchInput).toHaveValue(term);
+  }
+
+  /**
+   * The date filter's trigger reads its applied range, e.g.
+   * "Between Sep 1, 2026 → Sep 10, 2026", or "All dates" when none is set.
+   */
+  async expectDateFilter(label: string): Promise<void> {
+    await expect(
+      this.page.getByRole("button", { name: label, exact: true }),
+    ).toBeVisible();
+  }
+
+  private sortButton(label: string): Locator {
+    return this.page.getByRole("button", {
+      name: `Sort by ${label}`,
+      exact: true,
+    });
+  }
+
+  /** Click a column's sort button (first click sorts ascending). */
+  async sortBy(label: string): Promise<void> {
+    await this.sortButton(label).click();
+  }
+
+  /**
+   * A column's sort direction. The jobs table sets no `aria-sort`; its sort button shows a
+   * lucide arrow instead: up-down (unsorted), up (ascending) or down (descending).
+   */
+  async sortState(label: string): Promise<"ascending" | "descending" | "none"> {
+    const iconClasses =
+      (await this.sortButton(label).locator("svg").getAttribute("class")) ?? "";
+    const tokens = iconClasses.split(/\s+/);
+    if (tokens.includes("lucide-arrow-up")) return "ascending";
+    if (tokens.includes("lucide-arrow-down")) return "descending";
+    if (tokens.includes("lucide-arrow-up-down")) return "none";
+    // An icon rename must fail loudly, not read as "unsorted" and pass a "none" check.
+    throw new Error(
+      `Sort button for "${label}" shows an unrecognised icon (class="${iconClasses}")`,
+    );
+  }
+
+  async expectSort(
+    label: string,
+    state: "ascending" | "descending" | "none",
+  ): Promise<void> {
+    await expect.poll(() => this.sortState(label)).toBe(state);
+  }
+
+  /**
+   * Leave through the navbar's Workspace menu, Home. The menu link goes through the client
+   * router, so Back afterwards is a Next popstate, not a document load. The menu opens in a
+   * portal outside the banner; the trigger's `aria-controls` names it once open, which scopes
+   * "Home" to this menu so another "Home" link on the page cannot make it ambiguous.
+   */
+  async openWorkspaceHomeFromNavbar(): Promise<void> {
+    const trigger = this.page
+      .getByRole("banner")
+      .getByRole("button", { name: "Workspace", exact: true });
+    await trigger.click();
+    await expect(trigger).toHaveAttribute("aria-controls", /\S/);
+    const menuId = (await trigger.getAttribute("aria-controls")) ?? "";
+    await this.page
+      .locator(`[id="${menuId}"]`)
+      .getByRole("link", { name: "Home", exact: true })
+      .click();
   }
 
   /** Click the KILL action on the currently selected row. */

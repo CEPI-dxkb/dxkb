@@ -118,6 +118,30 @@ describe("GraphToolbar", () => {
       expect(keywordInput).toHaveValue("eco k");
     });
 
+    it("flushes typing that followed its own commit when the keyword lands late", () => {
+      const onFilterChange = vi.fn();
+      const { rerender, unmount } = render(
+        <GraphToolbar filterValue="" onFilterChange={onFilterChange} />,
+      );
+      const keywordInput = screen.getByPlaceholderText(placeholder);
+
+      fireEvent.change(keywordInput, { target: { value: "eco " } });
+      act(() => {
+        vi.advanceTimersByTime(keywordDebounceMs);
+      });
+      expect(onFilterChange).toHaveBeenCalledExactlyOnceWith("eco");
+
+      // The user types on before "eco" comes back as the shared keyword.
+      fireEvent.change(keywordInput, { target: { value: "eco k" } });
+      rerender(<GraphToolbar filterValue="eco" onFilterChange={onFilterChange} />);
+      expect(keywordInput).toHaveValue("eco k");
+
+      // Leaving the Graph before the next debounce still commits that typing.
+      unmount();
+      expect(onFilterChange).toHaveBeenCalledTimes(2);
+      expect(onFilterChange).toHaveBeenLastCalledWith("eco k");
+    });
+
     it("does not commit a draft that differs from the keyword only by whitespace", () => {
       const onFilterChange = vi.fn();
       render(<SharedKeyword initial="eco" onFilterChange={onFilterChange} />);

@@ -52,13 +52,16 @@ export function GraphToolbar({
     onFilterChange(keyword);
   });
 
-  useEffect(() => {
-    draftRef.current = filterValue;
-    isDraftCommittedRef.current = true;
-  }, [filterValue]);
-
   // A draft that only adds whitespace to the shared value has nothing to commit.
   const nextKeyword = draft.trim();
+
+  // Track the draft actually shown, not the shared value: when our own commit
+  // lands after the user typed on, the kept draft still needs its unmount flush.
+  useEffect(() => {
+    draftRef.current = draft;
+    isDraftCommittedRef.current = nextKeyword === filterValue;
+  }, [draft, nextKeyword, filterValue]);
+
   useEffect(() => {
     if (nextKeyword === filterValue) return;
     const timeout = setTimeout(() => {

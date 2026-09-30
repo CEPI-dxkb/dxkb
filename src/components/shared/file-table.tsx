@@ -385,7 +385,9 @@ function DataTableInner<T extends RowData>(
     });
   };
   // Live widths during a drag stay in component state (no storage write per
-  // pointer move); finished resizes are committed by the effect below.
+  // pointer move); finished resizes are committed by the effect below, which
+  // then empties this so the saved widths (and any later change to them, such
+  // as another tab's) are what the table shows.
   const [liveColumnSizing, setLiveColumnSizing] = useState<
     Record<string, number>
   >({});
@@ -481,7 +483,19 @@ function DataTableInner<T extends RowData>(
     updateTableLayout({
       widths: Object.keys(widths).length > 0 ? widths : undefined,
     });
-  });
+    // The write above is read back on the same re-render (a write storage
+    // refuses is kept in memory), so the widths on screen do not change.
+    setLiveColumnSizing({});
+    // liveColumnSizing is not read here, but every resize and reset replaces
+    // it, so it is what re-runs this for the ones that never set
+    // isResizingColumn.
+  }, [
+    resizingColumnId,
+    liveColumnSizing,
+    tableLayout.widths,
+    table,
+    updateTableLayout,
+  ]);
 
   // Computed after the hooks above: the React Compiler does not cache a value
   // whose computation spans a hook call. Cached, it changes when `table` does.

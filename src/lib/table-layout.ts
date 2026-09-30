@@ -115,15 +115,19 @@ export function diffBooleanOverrides(
   return Object.keys(diff).length > 0 ? diff : undefined;
 }
 
+/**
+ * The saved order over the table's columns: stale ids are dropped, a repeated id
+ * keeps only its first place (a column rendered twice would give the drag controls
+ * two items with one id), and columns the saved order lacks follow in default order.
+ */
 export function applyColumnOrder(
   defaultOrder: readonly string[],
   saved: readonly string[] | undefined,
 ): string[] {
   if (!saved) return [...defaultOrder];
   const known = new Set(defaultOrder);
-  const kept = saved.filter((id) => known.has(id));
-  const keptIds = new Set(kept);
-  return [...kept, ...defaultOrder.filter((id) => !keptIds.has(id))];
+  const keptIds = new Set(saved.filter((id) => known.has(id)));
+  return [...keptIds, ...defaultOrder.filter((id) => !keptIds.has(id))];
 }
 
 export function sameOrder(

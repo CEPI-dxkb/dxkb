@@ -262,7 +262,7 @@ describe("POST /api/auth/profile", () => {
     expect(data.error).toBeDefined();
   });
 
-  it("merges a settings change over the stored settings", async () => {
+  it("sets only the changed settings key, leaving the service's other keys alone", async () => {
     setAuthCookies("the-token", "user1");
     let upstreamBody: unknown = null;
     server.use(
@@ -294,11 +294,7 @@ describe("POST /api/auth/profile", () => {
 
     expect(response.status).toBe(200);
     expect(upstreamBody).toStrictEqual([
-      {
-        op: "replace",
-        path: "/settings",
-        value: { default_job_folder: "/new", legacy_key: "keep" },
-      },
+      { op: "add", path: "/settings/default_job_folder", value: "/new" },
     ]);
   });
 

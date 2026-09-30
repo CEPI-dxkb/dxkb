@@ -165,6 +165,12 @@ describe("applyColumnOrder", () => {
     ).toStrictEqual(["c", "a", "b", "d"]);
   });
 
+  it("keeps only the first of a repeated saved id", () => {
+    expect(
+      applyColumnOrder(["a", "b", "c"], ["c", "a", "c", "a"]),
+    ).toStrictEqual(["c", "a", "b"]);
+  });
+
   it("is the default order when nothing is saved", () => {
     expect(applyColumnOrder(["a", "b"], undefined)).toStrictEqual(["a", "b"]);
     expect(sameOrder(["a", "b"], ["a", "b"])).toBe(true);

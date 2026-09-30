@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
 import {
@@ -151,6 +151,53 @@ describe("FileTable remembered layout", () => {
         expect.stringContaining("Size"),
         expect.stringContaining("Name"),
       ]);
+    });
+  });
+
+  describe("after a saved resize, another tab's width change", () => {
+    function otherTabWrites(layout: unknown) {
+      act(() => {
+        if (layout === null) localStorage.removeItem(storageKey);
+        else localStorage.setItem(storageKey, JSON.stringify(layout));
+        window.dispatchEvent(new StorageEvent("storage", { key: storageKey }));
+      });
+    }
+
+    function resizeNameWithKeyboard() {
+      localStorage.setItem(
+        storageKey,
+        JSON.stringify({ widths: { name: 300, size: 120 } }),
+      );
+      renderTable();
+      fireEvent.keyDown(
+        screen.getByRole("separator", { name: /resize name column/i }),
+        { key: "ArrowRight" },
+      );
+      expect(storedLayout()).toStrictEqual({ widths: { name: 310, size: 120 } });
+    }
+
+    it("shows for the column this tab resized", () => {
+      resizeNameWithKeyboard();
+      otherTabWrites({ widths: { name: 500, size: 120 } });
+      expect(
+        screen.getByRole("separator", { name: /resize name column/i }),
+      ).toHaveAttribute("aria-valuenow", "500");
+    });
+
+    it("shows for a column this tab did not resize", () => {
+      resizeNameWithKeyboard();
+      otherTabWrites({ widths: { name: 310, size: 200 } });
+      expect(
+        screen.getByRole("separator", { name: /resize size column/i }),
+      ).toHaveAttribute("aria-valuenow", "200");
+    });
+
+    it("shows a reset of every width", () => {
+      resizeNameWithKeyboard();
+      otherTabWrites(null);
+      expect(
+        screen.getByRole("separator", { name: /resize name column/i }),
+      ).toHaveAttribute("aria-valuenow", "150");
     });
   });
 

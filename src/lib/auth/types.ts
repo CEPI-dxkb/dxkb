@@ -36,13 +36,12 @@ export type ProfilePatch =
     };
 
 /**
- * What the route sends upstream: a client patch as sent, or a settings patch that
- * carries the stored settings merged with the client's change, so it may hold keys
- * this app does not know.
+ * What the route sends upstream: a client patch as sent, or one settings key set in
+ * place, so the profile service leaves the other keys in its stored settings alone.
  */
 export type UpstreamProfilePatch =
   | ProfilePatch
-  | { op: "add" | "replace"; path: "/settings"; value: Record<string, unknown> };
+  | { op: "add"; path: `/settings/${string}`; value: unknown };
 
 export interface UserProfile {
   affiliation?: string;

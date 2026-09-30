@@ -4,34 +4,12 @@ import {
   updateProfile,
 } from "@/lib/auth/server/adapters/bvbrc-identity";
 import { withAuth } from "@/lib/auth/server/route";
-import { clearCurrentSession } from "@/lib/auth/server/session";
-import { statusFor } from "@/lib/auth/server/errors";
-import { statusToErrorCode } from "@/lib/api/types";
-import { respondWithAck } from "@/lib/auth/server/respond";
+import {
+  respondWithAck,
+  respondWithUpstreamFailure,
+} from "@/lib/auth/server/respond";
 import { mergeSettingsPatches } from "@/lib/auth/server/profile-settings";
-import type {
-  AuthError,
-  ProfilePatch,
-  UpstreamProfilePatch,
-} from "@/lib/auth/types";
-
-/**
- * The `{error, code}` response for a failed upstream call. An `unauthorized`
- * failure means the upstream rejected the session token, so the session is cleared
- * and the code is `session_expired`.
- */
-async function failureResponse(error: AuthError): Promise<NextResponse> {
-  const sessionExpired = error.code === "unauthorized";
-  if (sessionExpired) await clearCurrentSession();
-  const status = statusFor(error);
-  return NextResponse.json(
-    {
-      error: error.message,
-      code: sessionExpired ? "session_expired" : statusToErrorCode(status),
-    },
-    { status },
-  );
-}
+import type { ProfilePatch, UpstreamProfilePatch } from "@/lib/auth/types";
 
 const stringPatchPaths = new Set([
   "/email",
@@ -86,7 +64,7 @@ function isProfilePatch(value: unknown): value is ProfilePatch {
 
 export const GET = withAuth(async (_request, { token, userId }) => {
   const result = await getProfile(userId, token);
-  if (result.error) return failureResponse(result.error);
+  if (result.error) return respondWithUpstreamFailure(result.error);
 
   return NextResponse.json(result.data);
 });
@@ -114,11 +92,11 @@ export const POST = withAuth(
     let upstreamPatches: UpstreamProfilePatch[] = patches;
     if (patches.some((patch) => patch.path === "/settings")) {
       const stored = await getProfile(userId, token);
-      if (stored.error) return failureResponse(stored.error);
+      if (stored.error) return respondWithUpstreamFailure(stored.error);
       upstreamPatches = mergeSettingsPatches(patches, stored.data.settings);
     }
     const result = await updateProfile(userId, token, upstreamPatches);
-    if (result.error) return failureResponse(result.error);
+    if (result.error) return respondWithUpstreamFailure(result.error);
     return respondWithAck(result);
   },
 );

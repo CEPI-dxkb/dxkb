@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   jobsUrlParamNames,
   parseJobsUrlState,
@@ -28,8 +28,9 @@ function sameQuery(left: string, right: string): boolean {
  *
  * Every write pushes an entry, except that `history: "coalesce"` writes (the search
  * box's debounced commits) share one: the first pushes, and each later one replaces
- * that entry while it is still the current one. Any other write, or Back/Forward to
- * another entry, ends the run, so a search never overwrites a status or sort entry.
+ * that entry while it is still the current one. Any other write, or any Back/Forward,
+ * ends the run, so a search never overwrites a status or sort entry, nor an earlier
+ * entry that happens to share its address.
  */
 export function useJobsUrlState() {
   const searchParams = useSearchParams();
@@ -38,6 +39,17 @@ export function useJobsUrlState() {
   const coalescedAddress = useRef<{ pathname: string; query: string } | null>(
     null,
   );
+  // An address names a state, not an entry: Back can land on an earlier entry
+  // with the same one, so a traversal ends the run whatever the address.
+  useEffect(() => {
+    const endRun = () => {
+      coalescedAddress.current = null;
+    };
+    window.addEventListener("popstate", endRun);
+    return () => {
+      window.removeEventListener("popstate", endRun);
+    };
+  }, []);
   const setState = (
     patch: Partial<JobsUrlState>,
     { history = "push" }: { history?: "push" | "coalesce" } = {},

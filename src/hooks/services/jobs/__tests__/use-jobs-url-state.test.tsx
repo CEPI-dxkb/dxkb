@@ -121,6 +121,32 @@ describe("useJobsUrlState", () => {
     );
   });
 
+  it("starts a new search entry after Back to an entry with the same address", async () => {
+    window.history.replaceState(null, "", "/jobs?status=failed&q=eco&page=3");
+    const { result } = renderHook(() => useJobsUrlState());
+    result.current[1]({ search: "ecoli" }, { history: "coalesce" });
+    // Editing back to the landing value leaves this entry at the landing address.
+    result.current[1]({ search: "eco" }, { history: "coalesce" });
+
+    await new Promise((resolve) => {
+      window.addEventListener("popstate", resolve, { once: true });
+      window.history.back();
+    });
+    expect(window.location.search).toBe("?status=failed&q=eco&page=3");
+
+    const pushState = vi.spyOn(window.history, "pushState");
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    result.current[1]({ search: "ecol" }, { history: "coalesce" });
+
+    // The landing entry is not the search's own, so it keeps its state.
+    expect(pushState).toHaveBeenCalledExactlyOnceWith(
+      null,
+      "",
+      "/jobs?status=failed&q=ecol&page=3",
+    );
+    expect(replaceState).not.toHaveBeenCalled();
+  });
+
   it("keeps the hash, with or without a query", () => {
     window.history.replaceState(null, "", "/jobs?status=failed#results");
     const { result } = renderHook(() => useJobsUrlState());

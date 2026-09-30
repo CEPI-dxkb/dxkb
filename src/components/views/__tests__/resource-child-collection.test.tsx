@@ -554,7 +554,7 @@ describe("ResourceChildCollection scope changes", () => {
     render(
       <ResourceChildCollection
         resource="genome"
-        urlKey="genomes"
+        urlKey="structures"
         label="Related genomes"
         idField="genome_id"
         rql="eq(parent_id,parent-1)"

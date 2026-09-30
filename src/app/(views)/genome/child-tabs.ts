@@ -1,9 +1,10 @@
 import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
 import type { DataResource } from "@/lib/data-api";
+import type { ChildCollectionUrlKey } from "@/lib/views/child-collection-state";
 import { genomeSequenceColumns } from "@/lib/views/child-resources";
 
 interface GenomeChildCollection {
-  urlKey: string;
+  urlKey: ChildCollectionUrlKey;
   resource: DataResource;
   label: string;
   idField: string;

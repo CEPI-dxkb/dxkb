@@ -168,11 +168,12 @@ function useJobsBrowser() {
 
   // The search box shows a draft: Next applies URL writes inside a transition,
   // which a controlled text input cannot follow. The list filters from the
-  // draft; the URL `q` follows after a pause.
+  // draft; the URL `q` follows after a pause, and one run of search edits is one
+  // history entry, pushed on top of whichever filter came before it.
   const [searchQuery, setSearchQuery] = useDebouncedDraft(
     listState.search,
     (value) => {
-      setListState({ search: value }, { history: "replace" });
+      setListState({ search: value }, { history: "coalesce" });
     },
   );
 

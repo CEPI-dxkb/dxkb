@@ -54,10 +54,11 @@ export function ResourceFilterBar({
     keyword ?? "",
     (value) => {
       onChange({
-        keyword: value.trim() || undefined,
+        keyword: value || undefined,
         filters,
       });
     },
+    { normalize: (value) => value.trim() },
   );
   const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
   const [layout, updateLayout] = useTableLayout(layoutKey);

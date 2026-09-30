@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useRef } from "react";
 import {
   jobsUrlParamNames,
   parseJobsUrlState,
@@ -24,32 +25,50 @@ function sameQuery(left: string, right: string): boolean {
  * job's workspace folder, or a shared link shows the same list. Writes use the native
  * History API, which Next keeps in sync with useSearchParams; the jobs page fetches
  * client-side, so a router navigation would only add a server round trip.
+ *
+ * Every write pushes an entry, except that `history: "coalesce"` writes (the search
+ * box's debounced commits) share one: the first pushes, and each later one replaces
+ * that entry while it is still the current one. Any other write, or Back/Forward to
+ * another entry, ends the run, so a search never overwrites a status or sort entry.
  */
 export function useJobsUrlState() {
   const searchParams = useSearchParams();
   const state = parseJobsUrlState(new URLSearchParams(searchParams.toString()));
+  // The address the last "coalesce" write left, until another write replaces it.
+  const coalescedAddress = useRef<{ pathname: string; query: string } | null>(
+    null,
+  );
   const setState = (
     patch: Partial<JobsUrlState>,
-    { history = "push" }: { history?: "push" | "replace" } = {},
+    { history = "push" }: { history?: "push" | "coalesce" } = {},
   ) => {
     // Merge onto the live URL, not the last render's: a write that has not
     // reached a render yet (Next applies it in a transition) must survive.
-    const { pathname, search } = window.location;
+    const { pathname, search, hash } = window.location;
     const params = new URLSearchParams(search);
     const next = serializeJobsUrlState({
       ...parseJobsUrlState(params),
       ...patch,
     });
-    // Params the list does not own (`utm_source`) stay, ahead of the ones it does.
+    // Params the list does not own (`utm_source`) stay, ahead of the ones it does,
+    // and so does the hash.
     for (const name of jobsUrlParamNames) params.delete(name);
     for (const [name, value] of next) params.append(name, value);
     const query = toQueryString(params);
     // Nothing changed: no entry, so Back never lands on the page it is leaving
     // (the current page number, or a date cleared when none is applied).
     if (sameQuery(query, search)) return;
-    const url = query ? `${pathname}?${query}` : pathname;
-    if (history === "replace") window.history.replaceState(null, "", url);
-    else window.history.pushState(null, "", url);
+    const url = `${pathname}${query ? `?${query}` : ""}${hash}`;
+    const own = coalescedAddress.current;
+    const onOwnEntry =
+      own !== null && own.pathname === pathname && sameQuery(own.query, search);
+    if (history === "coalesce" && onOwnEntry) {
+      window.history.replaceState(null, "", url);
+    } else {
+      window.history.pushState(null, "", url);
+    }
+    coalescedAddress.current =
+      history === "coalesce" ? { pathname, query } : null;
   };
   return [state, setState] as const;
 }

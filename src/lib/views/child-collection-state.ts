@@ -9,15 +9,35 @@ import type { SearchParamsRecord } from "./rql";
 /**
  * URL state for a collection nested inside a page that already owns the top-level
  * collection params. Each child's params carry a `<urlKey>.` prefix
- * (`?tab=features&features.page=2`), so they can never collide with the page's own,
- * and any dotted name is known to be child state.
+ * (`?tab=features&features.page=2`), so they can never collide with the page's own.
  *
- * The dot is the whole contract: no top-level param contains one. The names
- * `collection-state.ts` manages are `keyword`, `refine`, `rql`, `page` and `sort`,
- * plus Solr field names for the friendly filters, and none of those has a dot.
+ * Every `urlKey` is listed here, and `ResourceChildCollection` accepts only these,
+ * so cleanup recognizes child state by a known prefix rather than by any dot: an
+ * unrelated dotted param (`source.id=123`) survives a tab switch or a parent
+ * collection write like every other param those navigations do not own. A new
+ * nested table adds its key to this list.
  */
+export const childCollectionUrlKeys = [
+  "assays",
+  "biosets",
+  "domains",
+  "features",
+  "interactions",
+  "proteins",
+  "sequences",
+  "sfvt",
+  "structures",
+] as const;
+
+export type ChildCollectionUrlKey = (typeof childCollectionUrlKeys)[number];
+
+const childCollectionUrlKeySet: ReadonlySet<string> = new Set(
+  childCollectionUrlKeys,
+);
+
 export function isChildCollectionParam(name: string): boolean {
-  return name.includes(".");
+  const dot = name.indexOf(".");
+  return dot > 0 && childCollectionUrlKeySet.has(name.slice(0, dot));
 }
 
 export function withoutChildCollectionParams(
@@ -51,7 +71,7 @@ const urlOnlyParamNames = new Set(["rql", "refine"]);
  */
 function ownParams(
   params: SearchParamsRecord,
-  urlKey: string,
+  urlKey: ChildCollectionUrlKey,
 ): SearchParamsRecord {
   const prefix = `${urlKey}.`;
   return Object.fromEntries(
@@ -68,7 +88,7 @@ function withoutUrlOnlyFields(state: CollectionState): CollectionState {
 
 export function parseChildCollectionState(
   params: SearchParamsRecord,
-  urlKey: string,
+  urlKey: ChildCollectionUrlKey,
   options: CollectionStateOptions,
 ): CollectionState {
   return parseCollectionState(ownParams(params, urlKey), options);
@@ -76,7 +96,7 @@ export function parseChildCollectionState(
 
 export function replaceChildCollectionSearchParams(
   params: SearchParamsRecord,
-  urlKey: string,
+  urlKey: ChildCollectionUrlKey,
   next: CollectionState,
   options: CollectionStateOptions,
 ): URLSearchParams {

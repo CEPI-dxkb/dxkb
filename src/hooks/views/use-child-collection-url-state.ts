@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import {
   parseChildCollectionState,
   replaceChildCollectionSearchParams,
+  type ChildCollectionUrlKey,
 } from "@/lib/views/child-collection-state";
 import {
   toSearchParamsRecord,
@@ -37,7 +38,7 @@ function sameQuery(left: string, right: string): boolean {
  * task replace it, so it ends up holding the final state.
  */
 export function useChildCollectionUrlState(
-  urlKey: string,
+  urlKey: ChildCollectionUrlKey,
   options: CollectionStateOptions,
 ): readonly [
   CollectionState,
@@ -85,7 +86,7 @@ export function useChildCollectionUrlState(
  * changes the table's scope from outside, such as the Interactions shell's shared
  * keyword box.
  */
-export function resetChildCollectionPage(urlKey: string): void {
+export function resetChildCollectionPage(urlKey: ChildCollectionUrlKey): void {
   const { pathname, search, hash } = window.location;
   const params = new URLSearchParams(search);
   if (!params.has(`${urlKey}.page`)) return;

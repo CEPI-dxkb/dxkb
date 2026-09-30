@@ -16,7 +16,10 @@ import {
   proteinStructureCollectionProfile,
   type ProteinStructureViewRecord,
 } from "@/lib/protein-structure-view";
-import { childCollectionOptions } from "@/lib/views/child-collection-state";
+import {
+  childCollectionOptions,
+  type ChildCollectionUrlKey,
+} from "@/lib/views/child-collection-state";
 import type { CollectionState } from "@/lib/views/collection-state";
 import {
   ResourceCollection,
@@ -48,7 +51,7 @@ interface ResourceChildCollectionProps {
    * Prefix for this table's URL params, e.g. "features" → `features.page`. Unique
    * among the tables that can be on screen together.
    */
-  urlKey: string;
+  urlKey: ChildCollectionUrlKey;
   resource: DataResource;
   label: string;
   idField: string;

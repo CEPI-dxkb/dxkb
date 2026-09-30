@@ -17,12 +17,23 @@ import { keywordDebounceMs } from "@/components/filterbar/keyword-search";
  * - A `committed` value that is this hook's own write landing does not: the
  *   user may have typed on since, and that text must survive.
  *
+ * `normalize` is what the committed value makes of a draft (the filter bar
+ * trims its keyword). The hook commits the normalized draft and recognizes it
+ * when it lands, so trailing whitespace neither reads as an outside change nor
+ * triggers a second commit; the box keeps showing what was typed.
+ *
  * `commit` runs through an effect event, so it always sees the latest props.
  */
 export function useDebouncedDraft(
   committed: string,
   commit: (value: string) => void,
-  delayMs: number = keywordDebounceMs,
+  {
+    normalize = identity,
+    delayMs = keywordDebounceMs,
+  }: {
+    normalize?: (value: string) => string;
+    delayMs?: number;
+  } = {},
 ): readonly [string, (value: string) => void] {
   const [draft, setDraft] = useState(committed);
   const [previousCommitted, setPreviousCommitted] = useState(committed);
@@ -39,15 +50,21 @@ export function useDebouncedDraft(
     commit(value);
   });
 
+  // A string, so an inline `normalize` does not restart the timer every render.
+  const nextCommit = normalize(draft);
   useEffect(() => {
-    if (draft === committed) return;
+    if (nextCommit === committed) return;
     const timeout = setTimeout(() => {
-      commitDraft(draft);
+      commitDraft(nextCommit);
     }, delayMs);
     return () => {
       clearTimeout(timeout);
     };
-  }, [committed, delayMs, draft]);
+  }, [committed, delayMs, nextCommit]);
 
   return [draft, setDraft];
+}
+
+function identity(value: string): string {
+  return value;
 }

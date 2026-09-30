@@ -35,15 +35,56 @@ describe("useJobsUrlState", () => {
     );
   });
 
-  it("replaces the entry while typing a search", () => {
+  it("gives successive search edits one entry of their own", () => {
+    const pushState = vi.spyOn(window.history, "pushState");
     const replaceState = vi.spyOn(window.history, "replaceState");
     const { result } = renderHook(() => useJobsUrlState());
-    result.current[1]({ search: "ecoli" }, { history: "replace" });
-    expect(replaceState).toHaveBeenLastCalledWith(
+
+    result.current[1]({ status: "completed" });
+    result.current[1]({ search: "eco" }, { history: "coalesce" });
+    result.current[1]({ search: "ecoli" }, { history: "coalesce" });
+
+    // The status entry survives: the search pushes once, then extends its own entry.
+    expect(pushState.mock.calls.map(([, , url]) => url)).toStrictEqual([
+      "/jobs?status=completed&page=3",
+      "/jobs?status=completed&q=eco&page=3",
+    ]);
+    expect(replaceState).toHaveBeenCalledExactlyOnceWith(
+      null,
+      "",
+      "/jobs?status=completed&q=ecoli&page=3",
+    );
+  });
+
+  it("starts a new search entry after another write", () => {
+    const pushState = vi.spyOn(window.history, "pushState");
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const { result } = renderHook(() => useJobsUrlState());
+
+    result.current[1]({ search: "eco" }, { history: "coalesce" });
+    result.current[1]({ status: "completed" });
+    result.current[1]({ search: "ecoli" }, { history: "coalesce" });
+
+    expect(pushState).toHaveBeenCalledTimes(3);
+    expect(replaceState).not.toHaveBeenCalled();
+  });
+
+  it("starts a new search entry once the address has moved off its own", () => {
+    const { result } = renderHook(() => useJobsUrlState());
+    result.current[1]({ search: "eco" }, { history: "coalesce" });
+
+    // Back (or a link) lands on an entry this search did not write.
+    window.history.replaceState(null, "", "/jobs?status=failed&page=3");
+    const pushState = vi.spyOn(window.history, "pushState");
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    result.current[1]({ search: "ecoli" }, { history: "coalesce" });
+
+    expect(pushState).toHaveBeenCalledExactlyOnceWith(
       null,
       "",
       "/jobs?status=failed&q=ecoli&page=3",
     );
+    expect(replaceState).not.toHaveBeenCalled();
   });
 
   it("writes nothing for a change that leaves the address as it is", () => {
@@ -53,7 +94,7 @@ describe("useJobsUrlState", () => {
     // The current page number, and a date cleared when none is applied.
     result.current[1]({ page: 3 });
     result.current[1]({ dateFrom: undefined, dateTo: undefined });
-    result.current[1]({ status: "failed" }, { history: "replace" });
+    result.current[1]({ status: "failed" }, { history: "coalesce" });
     expect(pushState).not.toHaveBeenCalled();
     expect(replaceState).not.toHaveBeenCalled();
   });
@@ -80,6 +121,21 @@ describe("useJobsUrlState", () => {
     );
   });
 
+  it("keeps the hash, with or without a query", () => {
+    window.history.replaceState(null, "", "/jobs?status=failed#results");
+    const { result } = renderHook(() => useJobsUrlState());
+
+    result.current[1]({ page: 2 });
+    expect(window.location.pathname + window.location.search).toBe(
+      "/jobs?status=failed&page=2",
+    );
+    expect(window.location.hash).toBe("#results");
+
+    result.current[1]({ status: "all", page: 1 }, { history: "coalesce" });
+    expect(window.location.pathname + window.location.search).toBe("/jobs");
+    expect(window.location.hash).toBe("#results");
+  });
+
   it("keeps an unrelated param when every list param is cleared", () => {
     window.history.replaceState(null, "", "/jobs?utm_source=x&status=failed");
     const { result } = renderHook(() => useJobsUrlState());
@@ -94,7 +150,7 @@ describe("useJobsUrlState", () => {
     // it does while Next applies a History API write inside a transition.
     const { result } = renderHook(() => useJobsUrlState());
     result.current[1]({ status: "completed" });
-    result.current[1]({ search: "ecoli" }, { history: "replace" });
+    result.current[1]({ search: "ecoli" }, { history: "coalesce" });
     expect(window.location.pathname + window.location.search).toBe(
       "/jobs?status=completed&q=ecoli&page=3",
     );

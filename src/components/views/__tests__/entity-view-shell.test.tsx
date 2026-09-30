@@ -112,17 +112,20 @@ it("drops nested-table params on a tab change and keeps the rest", async () => {
   window.history.replaceState(
     null,
     "",
-    "/records/alpha?tab=records&records.page=2&records.sort=id:desc&keep=1#results",
+    "/records/alpha?tab=records&features.page=2&features.sort=id:desc&source.id=123&keep=1#results",
   );
   await user.click(
     within(desktopNav).getByRole("button", { name: "Summary" }),
   );
 
-  // A page number from one tab's table can't land on another tab's.
-  expect(pushSpy).toHaveBeenCalledWith("/records/alpha?keep=1#results");
+  // A page number from one tab's table can't land on another tab's, and a dotted
+  // param no nested table owns is carried through like any other.
+  expect(pushSpy).toHaveBeenCalledWith(
+    "/records/alpha?source.id=123&keep=1#results",
+  );
   const pushed = String(pushSpy.mock.calls.at(-1)?.[0]);
   expect(pushed).toContain("keep=1");
-  expect(pushed).not.toContain("records.");
+  expect(pushed).not.toContain("features.");
 });
 
 it("keeps nested-table params when the active tab is chosen again", async () => {
@@ -133,12 +136,12 @@ it("keeps nested-table params when the active tab is chosen again", async () => 
   window.history.replaceState(
     null,
     "",
-    "/records/alpha?tab=records&records.page=2",
+    "/records/alpha?tab=records&features.page=2",
   );
   await user.click(within(desktopNav).getByRole("button", { name: "Records" }));
 
   expect(pushSpy).toHaveBeenCalledWith(
-    "/records/alpha?tab=records&records.page=2",
+    "/records/alpha?tab=records&features.page=2",
   );
 });
 

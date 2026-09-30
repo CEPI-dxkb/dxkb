@@ -551,10 +551,10 @@ describe("child-resource columns", () => {
 });
 
 describe("URL parameter names", () => {
-  // A nested table's params are `<urlKey>.page`, and `isChildCollectionParam` treats
-  // any dotted name as one, so a tab switch or a top-level write deletes every dotted
-  // param it finds. That is safe only while no top-level name has a dot: a friendly
-  // filter or facet field that gained one would silently vanish on every switch.
+  // A nested table's params are `<urlKey>.page`, and a tab switch or a top-level
+  // write deletes every param `isChildCollectionParam` claims. A top-level name that
+  // gained a dot could start with a registered `urlKey` and silently vanish on every
+  // switch, so these names stay dot-free altogether.
   const everyCollectionOptions = [
     epitopeCollectionOptions,
     experimentCollectionOptions,

@@ -106,4 +106,27 @@ test.describe("jobs page", () => {
     await expect(page).toHaveURL(/\/jobs$/);
     await jobs.expectStatus("All Status");
   });
+
+  test("a search is its own Back step after a filter change", async ({ page }) => {
+    const jobs = new JobsListPage(page);
+    await jobs.goto();
+    await jobs.waitForJob("job-001");
+
+    await jobs.filterByStatus("Completed");
+    await jobs.expectUrlParams({ status: "completed", q: null });
+    // Two debounced commits of one search share an entry on top of the status one.
+    await jobs.search("assem");
+    await jobs.expectUrlParams({ status: "completed", q: "assem" });
+    await jobs.search("assembly");
+    await jobs.expectUrlParams({ status: "completed", q: "assembly" });
+
+    await page.goBack();
+    await jobs.expectUrlParams({ status: "completed", q: null });
+    await jobs.expectStatus("Completed");
+    await jobs.expectSearch("");
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/jobs$/);
+    await jobs.expectStatus("All Status");
+  });
 });

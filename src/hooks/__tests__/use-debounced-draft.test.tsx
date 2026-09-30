@@ -110,6 +110,53 @@ describe("useDebouncedDraft", () => {
     expect(commit).toHaveBeenLastCalledWith("eco");
   });
 
+  it("commits the normalized draft and keeps typing that follows it", () => {
+    const commit = vi.fn();
+    const normalize = (value: string) => value.trim();
+    const { result, rerender } = renderHook(
+      ({ committed }) => useDebouncedDraft(committed, commit, { normalize }),
+      { initialProps: { committed: "" } },
+    );
+
+    act(() => {
+      result.current[1]("eco ");
+    });
+    act(() => {
+      vi.advanceTimersByTime(keywordDebounceMs);
+    });
+    expect(commit).toHaveBeenLastCalledWith("eco");
+
+    // The normalized value landing is this hook's own write, not an outside one.
+    act(() => {
+      result.current[1]("eco k");
+    });
+    rerender({ committed: "eco" });
+    expect(result.current[0]).toBe("eco k");
+
+    act(() => {
+      vi.advanceTimersByTime(keywordDebounceMs);
+    });
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(commit).toHaveBeenLastCalledWith("eco k");
+  });
+
+  it("does not commit a draft that normalizes to the committed value", () => {
+    const commit = vi.fn();
+    const normalize = (value: string) => value.trim();
+    const { result } = renderHook(() =>
+      useDebouncedDraft("eco", commit, { normalize }),
+    );
+
+    act(() => {
+      result.current[1]("eco ");
+    });
+    act(() => {
+      vi.advanceTimersByTime(keywordDebounceMs * 3);
+    });
+    expect(result.current[0]).toBe("eco ");
+    expect(commit).not.toHaveBeenCalled();
+  });
+
   it("still takes a later outside change to a value it committed earlier", () => {
     const commit = vi.fn();
     const { result, rerender } = renderHook(

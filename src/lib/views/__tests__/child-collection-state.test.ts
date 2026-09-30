@@ -1,5 +1,6 @@
 import {
   childCollectionOptions,
+  childCollectionUrlKeys,
   deleteChildCollectionParams,
   isChildCollectionParam,
   parseChildCollectionState,
@@ -119,7 +120,7 @@ describe("child collection URL state", () => {
     expect(isChildCollectionParam("features.page")).toBe(true);
     expect(isChildCollectionParam("page")).toBe(false);
     expect(
-      withoutChildCollectionParams({ tab: "x", "a.page": "2" }),
+      withoutChildCollectionParams({ tab: "x", "features.page": "2" }),
     ).toStrictEqual({ tab: "x" });
   });
 
@@ -129,6 +130,24 @@ describe("child collection URL state", () => {
     );
     deleteChildCollectionParams(params);
     expect(params.toString()).toBe("tab=x&keep=1&keep=2");
+  });
+
+  it("leaves a dotted param that no nested table owns", () => {
+    expect(isChildCollectionParam("source.id")).toBe(false);
+    expect(isChildCollectionParam(".page")).toBe(false);
+    expect(isChildCollectionParam("features")).toBe(false);
+    expect(
+      withoutChildCollectionParams({ "source.id": "123", "features.page": "2" }),
+    ).toStrictEqual({ "source.id": "123" });
+    const params = new URLSearchParams("source.id=123&domains.page=2");
+    deleteChildCollectionParams(params);
+    expect(params.toString()).toBe("source.id=123");
+  });
+
+  it("recognizes every registered urlKey", () => {
+    for (const urlKey of childCollectionUrlKeys) {
+      expect(isChildCollectionParam(`${urlKey}.page`)).toBe(true);
+    }
   });
 
   it("allows unsorted only alongside the sortable columns", () => {

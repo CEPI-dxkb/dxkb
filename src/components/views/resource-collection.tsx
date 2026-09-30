@@ -18,8 +18,13 @@ import {
   type DataTableRow,
 } from "@/components/shared/data-table";
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
+import { useTableLayout } from "@/hooks/use-table-layout";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
+import {
+  applyBooleanOverrides,
+  diffBooleanOverrides,
+} from "@/lib/table-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import type { DataRepository, DataResource } from "@/lib/data-api";
@@ -108,11 +113,21 @@ export function ResourceCollection<Row extends DataTableRow>({
     keywordMode === "refine" && state.refine?.trim()
       ? rqlKeyword(state.refine.trim())
       : undefined;
-  const [columnVisibility, setColumnVisibility] = useState(() =>
-    Object.fromEntries(
-      profile.columns.map((column) => [column.id, column.visible !== false]),
-    ),
+  const [tableLayout, updateTableLayout] = useTableLayout(
+    `collection:${profile.resource}`,
   );
+  const defaultColumnVisibility = Object.fromEntries(
+    profile.columns.map((column) => [column.id, column.visible !== false]),
+  );
+  const columnVisibility = applyBooleanOverrides(
+    defaultColumnVisibility,
+    tableLayout.visibility,
+  );
+  const setColumnVisibility = (next: Record<string, boolean>) => {
+    updateTableLayout({
+      visibility: diffBooleanOverrides(defaultColumnVisibility, next),
+    });
+  };
   const structuralRql = combinePredicates(
     baseRql,
     profile.buildStructuralRql?.(state) ?? profile.basePredicate,
@@ -288,6 +303,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       className="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <ResourceFilterBar
+        layoutKey={`collection:${profile.resource}`}
         keyword={
           keywordMode === "server"
             ? state.keyword
@@ -386,6 +402,12 @@ export function ResourceCollection<Row extends DataTableRow>({
             sorting={collection.sorting}
             columnVisibility={columnVisibility}
             onColumnVisibilityChange={setColumnVisibility}
+            savedColumnWidths={tableLayout.widths}
+            onColumnWidthsCommit={(widths) => {
+              updateTableLayout({
+                widths: { ...tableLayout.widths, ...widths },
+              });
+            }}
             rowSelection={displayedSelection}
             selectedIds={displayedSelectedIds}
             isAllPagesSelected={

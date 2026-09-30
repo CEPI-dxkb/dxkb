@@ -1315,3 +1315,162 @@ describe("DataTable resize handle pointer wiring", () => {
     }
   });
 });
+
+describe("DataTable remembered widths", () => {
+  it("starts a column at the width the user left it", async () => {
+    render(
+      <DataTable
+        id="widths"
+        data={selectionRows}
+        columns={columns}
+        totalItems={selectionRows.length}
+        resource="genome"
+        savedColumnWidths={{ strain_name: 333 }}
+      />,
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("separator", { name: "Resize strain_name column" }),
+      ).toHaveAttribute("aria-valuenow", "333");
+    });
+  });
+
+  it("commits a keyboard resize once, with the final width", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    render(
+      <DataTable
+        id="widths"
+        data={selectionRows}
+        columns={columns}
+        totalItems={selectionRows.length}
+        resource="genome"
+        savedColumnWidths={{ strain_name: 333 }}
+        onColumnWidthsCommit={onColumnWidthsCommit}
+      />,
+    );
+    const handle = await screen.findByRole("separator", {
+      name: "Resize strain_name column",
+    });
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+    await waitFor(() => {
+      expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 343 });
+    });
+    expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it("commits a pointer drag once, on release", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    render(
+      <DataTable
+        id="widths"
+        data={selectionRows}
+        columns={columns}
+        totalItems={selectionRows.length}
+        resource="genome"
+        savedColumnWidths={{ strain_name: 333 }}
+        onColumnWidthsCommit={onColumnWidthsCommit}
+      />,
+    );
+    const handle = await screen.findByRole("separator", {
+      name: "Resize strain_name column",
+    });
+    fireEvent.mouseDown(handle, { clientX: 100 });
+    fireEvent.mouseMove(document, { clientX: 120 });
+    fireEvent.mouseMove(document, { clientX: 150 });
+    await waitFor(() => {
+      expect(handle).toHaveAttribute("aria-valuenow", "383");
+    });
+    expect(onColumnWidthsCommit).not.toHaveBeenCalled();
+
+    fireEvent.mouseUp(document, { clientX: 150 });
+    await waitFor(() => {
+      expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 383 });
+    });
+    expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
+  });
+
+  // TanStack stores the raw drag width (0 when dragged far left, past the origin)
+  // and only getSize() clamps it to the column's limits. What is committed must be
+  // what the column renders at: a width outside the saved-layout schema (20-4000)
+  // makes the whole stored layout unreadable.
+  describe("a drag past the column's limits", () => {
+    async function dragBy(savedWidth: number, deltaX: number) {
+      const onColumnWidthsCommit = vi.fn();
+      render(
+        <DataTable
+          id="widths"
+          data={selectionRows}
+          columns={columns}
+          totalItems={selectionRows.length}
+          resource="genome"
+          savedColumnWidths={{ strain_name: savedWidth }}
+          onColumnWidthsCommit={onColumnWidthsCommit}
+        />,
+      );
+      const handle = await screen.findByRole("separator", {
+        name: "Resize strain_name column",
+      });
+      fireEvent.mouseDown(handle, { clientX: 1000 });
+      fireEvent.mouseMove(document, { clientX: 1000 + deltaX });
+      fireEvent.mouseUp(document, { clientX: 1000 + deltaX });
+      return { handle, onColumnWidthsCommit };
+    }
+
+    it("commits the minimum width, not the raw one", async () => {
+      const { handle, onColumnWidthsCommit } = await dragBy(333, -400);
+      await waitFor(() => {
+        expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 40 });
+      });
+      expect(handle).toHaveAttribute("aria-valuenow", "40");
+      expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
+    });
+
+    it("commits the maximum width, not the raw one", async () => {
+      const { handle, onColumnWidthsCommit } = await dragBy(900, 3200);
+      await waitFor(() => {
+        expect(onColumnWidthsCommit).toHaveBeenCalledWith({
+          strain_name: 1000,
+        });
+      });
+      expect(handle).toHaveAttribute("aria-valuenow", "1000");
+      expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // Loading and zero-row tables never run the auto-measure, so the saved widths are
+  // the only source of the sizes on screen, and a resize must start from all of them.
+  it("shows saved widths before any data is measured, and a resize keeps the others", async () => {
+    const onColumnWidthsCommit = vi.fn();
+    render(
+      <DataTable
+        id="widths"
+        data={[]}
+        columns={[
+          { id: "strain_name", label: "Strain Name", visible: true },
+          { id: "public_id", label: "Public ID", visible: true },
+        ]}
+        totalItems={0}
+        resource="genome"
+        savedColumnWidths={{ strain_name: 333, public_id: 222 }}
+        onColumnWidthsCommit={onColumnWidthsCommit}
+      />,
+    );
+    const strainHandle = screen.getByRole("separator", {
+      name: "Resize strain_name column",
+    });
+    const publicIdHandle = screen.getByRole("separator", {
+      name: "Resize public_id column",
+    });
+    expect(strainHandle).toHaveAttribute("aria-valuenow", "333");
+    expect(publicIdHandle).toHaveAttribute("aria-valuenow", "222");
+
+    fireEvent.keyDown(strainHandle, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(onColumnWidthsCommit).toHaveBeenCalledWith({ strain_name: 343 });
+    });
+    expect(onColumnWidthsCommit).toHaveBeenCalledTimes(1);
+    expect(strainHandle).toHaveAttribute("aria-valuenow", "343");
+    expect(publicIdHandle).toHaveAttribute("aria-valuenow", "222");
+  });
+});

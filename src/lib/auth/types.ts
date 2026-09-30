@@ -35,6 +35,14 @@ export type ProfilePatch =
       value: ProfileSettings;
     };
 
+/**
+ * What the route sends upstream: a client patch as sent, or one settings key set in
+ * place, so the profile service leaves the other keys in its stored settings alone.
+ */
+export type UpstreamProfilePatch =
+  | ProfilePatch
+  | { op: "add"; path: `/settings/${string}`; value: unknown };
+
 export interface UserProfile {
   affiliation?: string;
   created_by?: string;

@@ -38,10 +38,9 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
     }
 
     setIsSubmitting(true);
-    const hasExistingSettings = profile.settings !== undefined;
     await updateProfile([
       {
-        op: hasExistingSettings ? "replace" : "add",
+        op: "replace",
         path: "/settings",
         value: { default_job_folder: defaultJobFolder },
       },
@@ -49,8 +48,12 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
       .then(() => {
         toast.success("Preferences updated successfully.");
       })
-      .catch(() => {
-        toast.error("Failed to update preferences.");
+      .catch((error: unknown) => {
+        toast.error(
+          error instanceof Error && error.message
+            ? `Failed to update preferences: ${error.message}`
+            : "Failed to update preferences.",
+        );
       })
       .finally(() => {
         setIsSubmitting(false);

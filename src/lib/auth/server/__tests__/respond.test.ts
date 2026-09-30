@@ -1,8 +1,14 @@
 import type { AuthUser } from "@/lib/auth/types";
 import {
+  clearTestCookies,
+  setTestSession,
+  testCookieStore,
+} from "@/test-helpers/api-route-helpers";
+import {
   respondWithAck,
   respondWithSession,
   respondWithSessionMutation,
+  respondWithUpstreamFailure,
 } from "../respond";
 
 const user: AuthUser = { id: "alice-id", username: "alice", email: "a@x" };
@@ -63,6 +69,42 @@ describe("session responses", () => {
     expect(await ackResponse.json()).toEqual({
       error: "slow down",
       code: "validation",
+    });
+  });
+});
+
+describe("respondWithUpstreamFailure", () => {
+  beforeEach(() => {
+    clearTestCookies();
+    setTestSession({ token: "the-token", userId: "user1" });
+  });
+
+  it("ends the session when the upstream rejects its token", async () => {
+    const response = await respondWithUpstreamFailure({
+      code: "unauthorized",
+      message: "Profile lookup failed",
+    });
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Profile lookup failed",
+      code: "session_expired",
+    });
+    expect(testCookieStore.get("bvbrc_token")).toBeUndefined();
+  });
+
+  it("keeps the session for any other failure", async () => {
+    const response = await respondWithUpstreamFailure({
+      code: "service_unavailable",
+      message: "Profile service unavailable",
+    });
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toStrictEqual({
+      error: "Profile service unavailable",
+      code: "upstream",
+    });
+    expect(testCookieStore.get("bvbrc_token")).toStrictEqual({
+      name: "bvbrc_token",
+      value: "the-token",
     });
   });
 });

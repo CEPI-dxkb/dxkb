@@ -12,12 +12,18 @@
  * therefore a regression guard, not a new-feature check: it fails if the
  * rebuilt chooser dropped a dismissal the hand-rolled one provided.
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 
 import { server } from "@/test-helpers/msw-server";
-import { createQueryClientWrapper } from "@/test-helpers/react";
+import {
+  createQueryClientWrapper,
+  createUiPreferencesWrapper,
+} from "@/test-helpers/react";
+import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { FilterBar } from "../filter-bar";
 
 const facetFields = [
@@ -36,6 +42,13 @@ const facetFields = [
     facet_hidden: true,
   },
 ];
+
+const layoutStorageKey = "dxkb-table-layout:v1:search:genome_sequence";
+
+beforeEach(() => {
+  vi.stubGlobal("localStorage", jsdomLocalStorage());
+  localStorage.clear();
+});
 
 function stubFacets() {
   server.use(
@@ -261,7 +274,7 @@ describe("FilterBar facet chooser", () => {
     ).toHaveAttribute("aria-checked", "true");
   });
 
-  it("resets facet visibility overrides on remount", async () => {
+  it("remembers the user's facet choices when the bar remounts", async () => {
     const user = userEvent.setup();
     const { view } = renderFilterBar();
     await openChooser(user);
@@ -275,10 +288,78 @@ describe("FilterBar facet chooser", () => {
 
     expect(
       screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
-    ).toHaveAttribute("aria-checked", "true");
+    ).toHaveAttribute("aria-checked", "false");
     expect(
       screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
     ).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("shows the facets the user picked on an earlier visit", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ facets: { sequence_type: false, mol_type: true } }),
+    );
+    renderFilterBar();
+    await openChooser(user);
+
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    ).toHaveAttribute("aria-checked", "false");
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Mol Type" }),
+    ).toHaveAttribute("aria-checked", "true");
+    await user.keyboard("{Escape}");
+    expect(
+      await screen.findByRole("button", { name: "DNA (7)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "plasmid (3)" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("stores only the difference from the defaults when a facet is toggled", async () => {
+    const user = userEvent.setup();
+    renderFilterBar();
+    await openChooser(user);
+
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Mol Type" }));
+    expect(
+      JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
+    ).toStrictEqual({ facets: { mol_type: true } });
+
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+    expect(
+      JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
+    ).toStrictEqual({ facets: { mol_type: true, sequence_type: false } });
+
+    // Back at the defaults, so there is nothing left to remember.
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Mol Type" }));
+    await user.click(
+      screen.getByRole("menuitemcheckbox", { name: "Sequence Type" }),
+    );
+    expect(localStorage.getItem(layoutStorageKey)).toBeNull();
+  });
+
+  it("keeps the table layout stored under the same key when a facet is toggled", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ visibility: { sequence_type: false } }),
+    );
+    renderFilterBar();
+    await openChooser(user);
+
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Mol Type" }));
+
+    expect(
+      JSON.parse(localStorage.getItem(layoutStorageKey) ?? "null"),
+    ).toStrictEqual({
+      visibility: { sequence_type: false },
+      facets: { mol_type: true },
+    });
   });
 
   it("uses theme tokens for the chooser and panel, not hardcoded colours", async () => {
@@ -319,5 +400,70 @@ describe("FilterBar facet chooser", () => {
     await user.click(await screen.findByRole("button", { name: "plasmid (3)" }));
 
     expect(onFilterChange).toHaveBeenCalledWith("eq(sequence_type,plasmid)");
+  });
+});
+
+describe("FilterBar on a full page load", () => {
+  it("asks for counts of the saved facet set only, not the default set first", async () => {
+    localStorage.setItem(
+      layoutStorageKey,
+      JSON.stringify({ facets: { sequence_type: false, mol_type: true } }),
+    );
+    const requests: URL[] = [];
+    server.use(
+      http.get("/api/data/genome_sequence", ({ request }) => {
+        requests.push(new URL(request.url));
+        return HttpResponse.json({
+          rows: [],
+          total: 0,
+          facets: { mol_type: [{ value: "DNA", count: 7 }] },
+          page: 1,
+          pageSize: 1,
+        });
+      }),
+    );
+
+    const QueryWrapper = createQueryClientWrapper();
+    const PreferencesWrapper = createUiPreferencesWrapper({
+      facetPanelOpen: true,
+    });
+    const tree = (
+      <QueryWrapper>
+        <PreferencesWrapper>
+          <FilterBar
+            facetFields={facetFields}
+            resource="genome_sequence"
+            query="keyword(influenza*)"
+            onFilterChange={vi.fn()}
+          />
+        </PreferencesWrapper>
+      </QueryWrapper>
+    );
+
+    // Server HTML first (storage reads as empty there), then hydrate it, which
+    // is the render pair a full page load goes through.
+    const container = document.createElement("div");
+    document.body.append(container);
+    container.innerHTML = renderToString(tree);
+    expect(container.querySelector('[data-slot="skeleton"]')).not.toBeNull();
+
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    try {
+      act(() => {
+        root = hydrateRoot(container, tree);
+      });
+
+      expect(await screen.findByText("DNA (7)")).toBeInTheDocument();
+      // Long enough for a second, wrongly started request to reach the handler.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(requests.map((url) => url.searchParams.getAll("facet"))).toEqual([
+        ["mol_type"],
+      ]);
+    } finally {
+      act(() => {
+        root?.unmount();
+      });
+      container.remove();
+    }
   });
 });

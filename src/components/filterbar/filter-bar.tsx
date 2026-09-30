@@ -11,7 +11,13 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsMounted } from "@/hooks/use-is-mounted";
+import { useTableLayout } from "@/hooks/use-table-layout";
 import type { DataResource } from "@/lib/data-api";
+import {
+  applyBooleanOverrides,
+  diffBooleanOverrides,
+} from "@/lib/table-layout";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 
 interface ColumnField {
@@ -32,8 +38,6 @@ interface FilterBarProps {
   onKeywordChange?: (value: string) => void;
   keywordMode?: "server" | "loaded";
 }
-
-type FacetVisibilityOverride = "shown" | "hidden";
 
 export function FilterBar({
   facetFields,
@@ -56,9 +60,10 @@ export function FilterBar({
   };
   const [selected, setSelected] = useState<SelectedFilter[]>([]);
   const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
-  const [facetVisibilityOverrides, setFacetVisibilityOverrides] = useState<
-    Map<string, FacetVisibilityOverride>
-  >(() => new Map());
+  const [layout, updateLayout] = useTableLayout(`search:${resource}`);
+  // The saved facet set reads as empty until the render after hydration, and
+  // useIsMounted flips in that same render, so counts wait for the set shown.
+  const facetsSettled = useIsMounted();
   const locallyRequestedKeywords = useRef<string | null>(null);
   const syncExternalKeywords = useEffectEvent((value: string) => {
     if (locallyRequestedKeywords.current === value) {
@@ -92,19 +97,19 @@ export function FilterBar({
   };
 
   const configurableFacetFields = facetFields.filter((field) => field.facet);
-  const visibleFacetIds = new Set<string>();
-  const activeFacetFields: ColumnField[] = [];
-  for (const field of configurableFacetFields) {
-    const override = facetVisibilityOverrides.get(field.id);
-    const isVisible =
-      override === undefined
-        ? field.facet_hidden !== true
-        : override === "shown";
-    if (isVisible) {
-      visibleFacetIds.add(field.id);
-      activeFacetFields.push(field);
-    }
-  }
+  const defaultFacetVisibility = Object.fromEntries(
+    configurableFacetFields.map((field) => [
+      field.id,
+      field.facet_hidden !== true,
+    ]),
+  );
+  const facetVisibility = applyBooleanOverrides(
+    defaultFacetVisibility,
+    layout.facets,
+  );
+  const activeFacetFields = configurableFacetFields.filter(
+    (field) => facetVisibility[field.id],
+  );
 
   const filterRql = buildRql({
     selected,
@@ -163,12 +168,13 @@ export function FilterBar({
                 {configurableFacetFields.map((field) => (
                   <DropdownMenuCheckboxItem
                     key={field.id}
-                    checked={visibleFacetIds.has(field.id)}
+                    checked={facetVisibility[field.id]}
                     onCheckedChange={(checked) => {
-                      setFacetVisibilityOverrides((current) => {
-                        const next = new Map(current);
-                        next.set(field.id, checked ? "shown" : "hidden");
-                        return next;
+                      updateLayout({
+                        facets: diffBooleanOverrides(defaultFacetVisibility, {
+                          ...facetVisibility,
+                          [field.id]: checked,
+                        }),
                       });
                     }}
                   >
@@ -210,6 +216,7 @@ export function FilterBar({
           fields={activeFacetFields}
           resource={resource}
           query={facetQuery}
+          enabled={facetsSettled}
           onSelect={(field, value) => {
             const exists = selected.some(
               (filter) => filter.field === field && filter.value === value,

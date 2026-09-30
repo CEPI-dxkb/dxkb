@@ -77,6 +77,8 @@ All status mapping flows through `statusFor()` in `src/lib/auth/server/errors.ts
 | POST   | `/api/auth/su-exit`                 | Session     | —                                | `{user, session}`                    | Yes (cookie)  |
 | POST   | `/api/auth/ensure-workspace`        | Exception   | —                                | `{success: true, created, failures}` | Yes (cookie)  |
 
+**`POST /api/auth/profile` notes:** A `/settings` patch never replaces the stored settings object: the route reads the profile first (returning that read's error unchanged if it fails) and, when the stored settings are an object, sends one `add /settings/<key>` per changed key, so the profile service applies the change to the copy it holds at write time and keys other clients store, or change after the read, are kept. The service cannot patch inside settings that are missing or not an object, so then the whole object is written (`add` when missing, `replace` otherwise); a settings object another client creates between the read and that first write is overwritten.
+
 ---
 
 ## Nine rules
@@ -84,8 +86,8 @@ All status mapping flows through `statusFor()` in `src/lib/auth/server/errors.ts
 1. **Every auth route calls a named operation from `src/lib/auth/server/actions.ts` or explicitly proxies an upstream response.**
    Orchestration belongs in the named server action, while route files stay thin and searchable.
 
-2. **The three envelope helpers are the only path to a response.**
-   `respondWithSessionMutation` adapts session-changing action results, `respondWithSession` returns a user or empty session, and `respondWithAck` returns no payload. Adding another helper requires updating this document.
+2. **The four helpers in `src/lib/auth/server/respond.ts` are the only path to a response.**
+   `respondWithSessionMutation` adapts session-changing action results, `respondWithSession` returns a user or empty session, and `respondWithAck` returns no payload. `respondWithUpstreamFailure` returns the error envelope for a failed upstream call a route makes with the session token itself instead of through a named action (the `/api/auth/profile` proxy); an `unauthorized` failure clears the session and sets `code: "session_expired"`. Adding another helper requires updating this document.
 
 3. **Validation lives in the named server action, not the route.**
    Actions return a typed `Result` for invalid input. Routes use the shared JSON parser and do not re-check, re-message, or re-map action errors.

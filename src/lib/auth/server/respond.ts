@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
-import type { AuthSessionMutation, AuthUser, Result } from "@/lib/auth/types";
+import type {
+  AuthError,
+  AuthSessionMutation,
+  AuthUser,
+  Result,
+} from "@/lib/auth/types";
 import { statusToErrorCode } from "@/lib/api/types";
 import { statusFor } from "./errors";
+import { clearCurrentSession } from "./session";
 
 export interface SessionEnvelope {
   user: AuthUser | null;
@@ -23,11 +29,13 @@ export function buildEnvelope(
   };
 }
 
-function errorResultResponse(result: Result<unknown>): NextResponse | null {
-  if (!result.error) return null;
-  const status = statusFor(result.error);
+function errorResponse(error: AuthError, sessionExpired = false): NextResponse {
+  const status = statusFor(error);
   return NextResponse.json(
-    { error: result.error.message, code: statusToErrorCode(status) },
+    {
+      error: error.message,
+      code: sessionExpired ? "session_expired" : statusToErrorCode(status),
+    },
     { status },
   );
 }
@@ -37,16 +45,9 @@ export function respondWithSession(
   expiresAt?: number,
   options?: { sessionExpired?: boolean },
 ): NextResponse {
-  if (result.error && options?.sessionExpired) {
-    return NextResponse.json(
-      { error: result.error.message, code: "session_expired" },
-      { status: statusFor(result.error) },
-    );
-  }
-  return (
-    errorResultResponse(result) ??
-    NextResponse.json(buildEnvelope(result.data, expiresAt))
-  );
+  return result.error
+    ? errorResponse(result.error, options?.sessionExpired)
+    : NextResponse.json(buildEnvelope(result.data, expiresAt));
 }
 
 export function respondWithSessionMutation(
@@ -65,11 +66,22 @@ export function respondWithAck(
   result: Result<void>,
   options?: { sessionExpired?: boolean },
 ): NextResponse {
-  if (result.error && options?.sessionExpired) {
-    return NextResponse.json(
-      { error: result.error.message, code: "session_expired" },
-      { status: statusFor(result.error) },
-    );
-  }
-  return errorResultResponse(result) ?? NextResponse.json({ success: true });
+  return result.error
+    ? errorResponse(result.error, options?.sessionExpired)
+    : NextResponse.json({ success: true });
+}
+
+/**
+ * The error envelope for a failed upstream call a route makes with the session
+ * token itself, rather than through a named action (the profile proxy). An
+ * `unauthorized` failure means the upstream rejected that token, so the session is
+ * cleared and the code is `session_expired`, as the actions and `respondWithAck`'s
+ * `sessionExpired` option do together for the other routes.
+ */
+export async function respondWithUpstreamFailure(
+  error: AuthError,
+): Promise<NextResponse> {
+  const sessionExpired = error.code === "unauthorized";
+  if (sessionExpired) await clearCurrentSession();
+  return errorResponse(error, sessionExpired);
 }

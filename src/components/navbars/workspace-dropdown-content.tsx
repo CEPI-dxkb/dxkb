@@ -7,12 +7,10 @@ import { Star } from "lucide-react";
 import { workspaceNavItems } from "@/components/navbars/navbar-links";
 import { NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRecentWorkspaceFolders } from "@/hooks/use-recent-workspace-folders";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
-import {
-  getRecentFolders,
-  getWorkspaceFolderDisplayName,
-} from "@/lib/recent-workspace-folders";
+import { getWorkspaceFolderDisplayName } from "@/lib/recent-workspace-folders";
 import { buildFolderHref, resolveWorkspaceHref } from "./workspace-nav-utils";
 
 interface WorkspaceDropdownContentProps {
@@ -31,7 +29,9 @@ export function WorkspaceDropdownContent({
     staleTime: 2 * 60 * 1000,
   });
 
-  const recentFolders = isAuthenticated ? getRecentFolders(wsUsername) : [];
+  const recentFolders = useRecentWorkspaceFolders(
+    isAuthenticated ? wsUsername : undefined,
+  );
 
   const { workspaces, data } = workspaceNavItems;
 

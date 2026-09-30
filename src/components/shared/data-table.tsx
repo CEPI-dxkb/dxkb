@@ -408,6 +408,19 @@ export interface DataTableProps {
   columnVisibility?: Record<string, boolean>;
   onColumnVisibilityChange?: (newVis: Record<string, boolean>) => void;
 
+  // column widths
+  /**
+   * Widths the user set on an earlier visit, in px; they win over auto-measured sizes.
+   * Columns are measured once per data set, so saved widths must arrive before the
+   * first non-empty `data` (true for every caller today: rows load client-side).
+   */
+  savedColumnWidths?: Record<string, number>;
+  /**
+   * Called with the columns whose width the user changed — once per pointer drag,
+   * on release, and once per keyboard step.
+   */
+  onColumnWidthsCommit?: (widths: Record<string, number>) => void;
+
   // row selection (controlled)
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
@@ -456,6 +469,8 @@ function useDataTableContent(
     onColumnOrderChange,
     columnVisibility: controlledVisibility,
     onColumnVisibilityChange: onColumnVisibilityChangeProp,
+    savedColumnWidths,
+    onColumnWidthsCommit,
     rowSelection: controlledRowSelection,
     onRowSelectionChange,
     isAllPagesSelected = false,
@@ -532,8 +547,13 @@ function useDataTableContent(
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  const activeColumnSizing = sizingByKey[sizingKey] ?? emptyColumnSizing;
+  // What the table shows before this key's data has been measured (and what a
+  // resize starts from): the widths the user saved, else nothing.
+  const initialColumnSizing = savedColumnWidths ?? emptyColumnSizing;
+  const activeColumnSizing = sizingByKey[sizingKey] ?? initialColumnSizing;
   const measuredSizingKeysRef = useRef(new Set<string>());
+  // Columns the user resized since the owner was last told; see the commit effect.
+  const pendingWidthCommitRef = useRef(new Set<string>());
   useEffect(() => {
     if (
       measuredSizingKeysRef.current.has(sizingKey) ||
@@ -545,13 +565,12 @@ function useDataTableContent(
     const autoSizes = computeAutoColumnSizes(columns, data);
     const next: Record<string, number> = {};
     for (const col of columns) {
-      next[col.id] = Math.max(
-        estimateHeaderWidth(col.label),
-        autoSizes[col.id] ?? 0,
-      );
+      next[col.id] =
+        savedColumnWidths?.[col.id] ??
+        Math.max(estimateHeaderWidth(col.label), autoSizes[col.id] ?? 0);
     }
     setSizingByKey((current) => ({ ...current, [sizingKey]: next }));
-  }, [columns, data, sizingKey, setSizingByKey]);
+  }, [columns, data, sizingKey, savedColumnWidths, setSizingByKey]);
 
   // Track the scroll container's width so columns can stretch to fill it.
   // Fires on side-panel resize, vertical-menu collapse, and window resize.
@@ -697,8 +716,15 @@ function useDataTableContent(
     enableColumnResizing: true,
     onColumnSizingChange: (updater) => {
       setSizingByKey((prev) => {
-        const base = prev[sizingKey] ?? emptyColumnSizing;
+        // Same fallback as activeColumnSizing, so a resize before the first
+        // measurement starts from the widths actually on screen.
+        const base = prev[sizingKey] ?? initialColumnSizing;
         const next = typeof updater === "function" ? updater(base) : updater;
+        for (const [columnId, width] of Object.entries(next)) {
+          if (base[columnId] !== width) {
+            pendingWidthCommitRef.current.add(columnId);
+          }
+        }
         return { ...prev, [sizingKey]: next };
       });
     },
@@ -719,6 +745,24 @@ function useDataTableContent(
   // The actively-resizing column is excluded from stretch so its drag tracks the
   // cursor 1:1 and can push the total past the container edge.
   const resizingColumnId = table.state.columnResizing.isResizingColumn;
+
+  // Hand finished resizes to the owner: a pointer drag once it is released (TanStack
+  // clears isResizingColumn), a keyboard step immediately (it never sets it). The
+  // width sent is what the column renders at: a pointer drag stores its raw width in
+  // the sizing state (0 when dragged far left, unbounded to the right) and only
+  // getSize() clamps it to the column's minSize/maxSize.
+  useEffect(() => {
+    if (resizingColumnId || !onColumnWidthsCommit) return;
+    const pending = pendingWidthCommitRef.current;
+    if (pending.size === 0) return;
+    pendingWidthCommitRef.current = new Set();
+    const widths: Record<string, number> = {};
+    for (const columnId of pending) {
+      const column = table.getColumn(columnId);
+      if (column) widths[columnId] = Math.round(column.getSize());
+    }
+    if (Object.keys(widths).length > 0) onColumnWidthsCommit(widths);
+  });
   const columnWidths = (() => {
     const leafColumns = table.getVisibleLeafColumns();
     const naturalSizes = leafColumns.map((c) => c.getSize());

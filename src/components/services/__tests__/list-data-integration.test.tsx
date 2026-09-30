@@ -13,8 +13,10 @@ import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
 import { createQueryClientWrapper } from "@/test-helpers/react";
+import { jsdomLocalStorage } from "@/test-helpers/storage";
 import { maxExportRows } from "@/lib/data-api";
 import { ListData } from "../list-data";
+import { deriveTableFields } from "../list-data-utils";
 
 const gateway = "/api/data/genome_sequence";
 const query = "eq(genome_id,*)";
@@ -386,5 +388,187 @@ describe("ListData download all", () => {
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith("Upstream timed out.");
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Remembered column layout
+// ---------------------------------------------------------------------------
+// The search table keeps the user's column order, hidden columns and widths in
+// localStorage, keyed by resource. Only differences from the registry defaults are
+// stored, so the default layout leaves nothing behind.
+describe("ListData column layout", () => {
+  const storageKey = "dxkb-table-layout:v1:search:genome_sequence";
+  const visibleFields = deriveTableFields("genome_sequence").filter(
+    (field) => field.visible,
+  );
+  if (visibleFields.length < 3) {
+    throw new Error("fixture needs three default-visible columns");
+  }
+  const [firstField, secondField, thirdField, ...otherFields] = visibleFields;
+
+  function headerLabels() {
+    return screen
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent);
+  }
+
+  function dragHeader(sourceLabel: string, targetLabel: string) {
+    const wrapperOf = (label: string) => {
+      const wrapper = screen
+        .getAllByRole("columnheader")
+        .find((header) => header.textContent === label)
+        ?.querySelector<HTMLElement>("div[draggable]");
+      if (!wrapper) throw new Error(`${label} header has no drag handle`);
+      return wrapper;
+    };
+    const dataTransfer = { effectAllowed: "", dropEffect: "" };
+    fireEvent.dragStart(wrapperOf(sourceLabel), { dataTransfer });
+    fireEvent.drop(wrapperOf(targetLabel), { dataTransfer });
+  }
+
+  async function renderLoadedList() {
+    stubCollection({
+      rows: [{ sequence_id: "seq-1", genome_id: "100.1" }],
+      total: 1,
+    });
+    renderList();
+    await screen.findByText(/Showing 1-1 of 1 results/);
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal("localStorage", jsdomLocalStorage());
+    localStorage.clear();
+  });
+
+  it("restores the search table's column order and hidden columns", async () => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        order: ["__select__", secondField.id, firstField.id],
+        visibility: { [thirdField.id]: false },
+      }),
+    );
+
+    await renderLoadedList();
+
+    expect(headerLabels()).toStrictEqual([
+      "",
+      secondField.label,
+      firstField.label,
+      ...otherFields.map((field) => field.label),
+    ]);
+  });
+
+  it("starts at the default layout when nothing is saved", async () => {
+    await renderLoadedList();
+
+    expect(headerLabels()).toStrictEqual([
+      "",
+      ...visibleFields.map((field) => field.label),
+    ]);
+  });
+
+  it("saves a reordered column, and forgets it once the order is back to the default", async () => {
+    await renderLoadedList();
+
+    dragHeader(secondField.label, firstField.label);
+
+    await waitFor(() => {
+      expect(headerLabels().slice(1, 3)).toStrictEqual([
+        secondField.label,
+        firstField.label,
+      ]);
+    });
+    const saved = JSON.parse(localStorage.getItem(storageKey) ?? "null") as {
+      order: string[];
+    };
+    expect(saved.order.slice(0, 3)).toStrictEqual([
+      "__select__",
+      secondField.id,
+      firstField.id,
+    ]);
+
+    dragHeader(firstField.label, secondField.label);
+
+    await waitFor(() => {
+      expect(headerLabels().slice(1, 3)).toStrictEqual([
+        firstField.label,
+        secondField.label,
+      ]);
+    });
+    expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it("saves only the columns whose visibility differs from the default", async () => {
+    await renderLoadedList();
+
+    fireEvent.click(screen.getByRole("button", { name: /Columns/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: thirdField.label }));
+
+    await waitFor(() => {
+      expect(headerLabels()).not.toContain(thirdField.label);
+    });
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toStrictEqual({
+      visibility: { [thirdField.id]: false },
+    });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: thirdField.label }));
+
+    await waitFor(() => {
+      expect(headerLabels()).toContain(thirdField.label);
+    });
+    expect(localStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it("starts a column at its saved width and saves a resize", async () => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ widths: { [firstField.id]: 333 } }),
+    );
+
+    await renderLoadedList();
+
+    const handle = screen.getByRole("separator", {
+      name: `Resize ${firstField.id} column`,
+    });
+    expect(handle).toHaveAttribute("aria-valuenow", "333");
+
+    fireEvent.keyDown(handle, { key: "ArrowRight" });
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toStrictEqual(
+        { widths: { [firstField.id]: 343 } },
+      );
+    });
+  });
+
+  it("keeps the rest of the saved layout when a drag goes past a column's minimum", async () => {
+    const savedLayout = {
+      order: ["__select__", secondField.id, firstField.id],
+      visibility: { [thirdField.id]: false },
+      widths: { [firstField.id]: 333 },
+    };
+    localStorage.setItem(storageKey, JSON.stringify(savedLayout));
+
+    await renderLoadedList();
+
+    const handle = screen.getByRole("separator", {
+      name: `Resize ${firstField.id} column`,
+    });
+    fireEvent.mouseDown(handle, { clientX: 1000 });
+    fireEvent.mouseMove(document, { clientX: 600 });
+    fireEvent.mouseUp(document, { clientX: 600 });
+
+    await waitFor(() => {
+      expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toStrictEqual(
+        { ...savedLayout, widths: { [firstField.id]: 40 } },
+      );
+    });
+    expect(headerLabels().slice(1, 3)).toStrictEqual([
+      secondField.label,
+      firstField.label,
+    ]);
+    expect(headerLabels()).not.toContain(thirdField.label);
   });
 });

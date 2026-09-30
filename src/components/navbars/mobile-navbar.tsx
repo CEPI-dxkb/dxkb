@@ -24,7 +24,7 @@ import Logo from "@/components/ui/logo";
 import { UserAvatarDropdown } from "@/components/navbars/user-avatar-dropdown";
 import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
-import { getRecentFolders } from "@/lib/recent-workspace-folders";
+import { useRecentWorkspaceFolders } from "@/hooks/use-recent-workspace-folders";
 import { SuBanner } from "@/components/auth/su-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
 import { MobileSheetNavigation } from "@/components/navbars/mobile-sheet-navigation";
@@ -56,7 +56,9 @@ const useMobileNavbar = () => {
     staleTime: 2 * 60 * 1000,
   });
 
-  const recentFolders = isAuthenticated ? getRecentFolders(wsUsername) : [];
+  const recentFolders = useRecentWorkspaceFolders(
+    isAuthenticated ? wsUsername : undefined,
+  );
 
   return (
     <header className="flex flex-col bg-primary lg:hidden">

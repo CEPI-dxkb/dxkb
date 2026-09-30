@@ -1,9 +1,12 @@
+import { readStorageItem, writeStorageItem } from "./browser-storage";
+
 export interface RecentFolder {
   path: string;
   visitedAt: number;
 }
 
-const storageKey = "dxkb-recent-workspace-folders:v1";
+export const recentWorkspaceFoldersStorageKey =
+  "dxkb-recent-workspace-folders:v1";
 const defaultMaxItems = 5;
 
 /**
@@ -16,26 +19,34 @@ export function getWorkspaceFolderDisplayName(path: string): string {
   return lastSlash === -1 ? trimmed : trimmed.slice(lastSlash + 1);
 }
 
-/**
- * Read recently visited folders from localStorage.
- * Optionally filter by a user prefix (e.g. "/user@bvbrc/") to avoid showing other users' entries.
- */
-export function getRecentFolders(userPrefix?: string): RecentFolder[] {
+/** Parse the stored list, optionally keeping one user's entries. Pure: safe in render. */
+export function parseRecentFolders(
+  raw: string | null,
+  userPrefix?: string,
+): RecentFolder[] {
+  if (!raw) return [];
+  let parsed: unknown;
   try {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as (RecentFolder | null | undefined)[];
-    if (!Array.isArray(parsed)) return [];
-    const folders = parsed.filter(
-      (f): f is RecentFolder =>
-        f != null && typeof f.path === "string" && typeof f.visitedAt === "number",
-    );
-    if (!userPrefix) return folders;
-    const prefix = userPrefix.startsWith("/") ? userPrefix : `/${userPrefix}`;
-    return folders.filter((f) => f.path.startsWith(`${prefix}/`));
+    parsed = JSON.parse(raw);
   } catch {
     return [];
   }
+  if (!Array.isArray(parsed)) return [];
+  const folders = (parsed as (RecentFolder | null | undefined)[]).filter(
+    (f): f is RecentFolder =>
+      f != null && typeof f.path === "string" && typeof f.visitedAt === "number",
+  );
+  if (!userPrefix) return folders;
+  const prefix = userPrefix.startsWith("/") ? userPrefix : `/${userPrefix}`;
+  return folders.filter((f) => f.path.startsWith(`${prefix}/`));
+}
+
+/** Read outside render (event handlers, effects). Components use useRecentWorkspaceFolders. */
+export function getRecentFolders(userPrefix?: string): RecentFolder[] {
+  return parseRecentFolders(
+    readStorageItem(recentWorkspaceFoldersStorageKey),
+    userPrefix,
+  );
 }
 
 /**
@@ -47,39 +58,29 @@ export function addRecentFolder(
   userPrefix: string,
   maxItems: number = defaultMaxItems,
 ): void {
-  try {
-    const existing = getRecentFolders();
-    const prefix = userPrefix.startsWith("/") ? userPrefix : `/${userPrefix}`;
+  const existing = getRecentFolders();
+  const prefix = userPrefix.startsWith("/") ? userPrefix : `/${userPrefix}`;
 
-    const otherEntries = existing.filter(
-      (f) => !f.path.startsWith(`${prefix}/`),
-    );
-    const userEntries = existing.filter((f) =>
-      f.path.startsWith(`${prefix}/`),
-    );
+  const otherEntries = existing.filter(
+    (f) => !f.path.startsWith(`${prefix}/`),
+  );
+  const userEntries = existing.filter((f) => f.path.startsWith(`${prefix}/`));
 
-    const deduped = userEntries.filter((f) => f.path !== path);
-    const updatedUser = [{ path, visitedAt: Date.now() }, ...deduped].slice(
-      0,
-      maxItems,
-    );
+  const deduped = userEntries.filter((f) => f.path !== path);
+  const updatedUser = [{ path, visitedAt: Date.now() }, ...deduped].slice(
+    0,
+    maxItems,
+  );
 
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify([...updatedUser, ...otherEntries]),
-    );
-  } catch {
-    // localStorage unavailable — silently ignore
-  }
+  writeStorageItem(
+    recentWorkspaceFoldersStorageKey,
+    JSON.stringify([...updatedUser, ...otherEntries]),
+  );
 }
 
 /**
  * Clear all recently visited folders.
  */
 export function clearRecentFolders(): void {
-  try {
-    localStorage.removeItem(storageKey);
-  } catch {
-    // localStorage unavailable — silently ignore
-  }
+  writeStorageItem(recentWorkspaceFoldersStorageKey, null);
 }

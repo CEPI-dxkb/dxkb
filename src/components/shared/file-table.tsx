@@ -3,6 +3,7 @@
 import React, {
   createContext,
   useContext,
+  useEffect,
   useRef,
   forwardRef,
   useImperativeHandle,
@@ -44,6 +45,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { applyColumnOrder, sameOrder } from "@/lib/table-layout";
+import { useTableLayout } from "@/hooks/use-table-layout";
 import {
   Table,
   TableBody,
@@ -83,6 +86,8 @@ export interface DataTableProps<T extends RowData> {
   data: T[];
   columns: ColumnDef<FileTableFeatures, T>[];
   defaultColumnOrder: string[];
+  /** Where this table's column order and widths are remembered, e.g. "workspace". */
+  layoutKey: string;
   isLoading: boolean;
   getRowId: (row: T) => string;
   // Sort
@@ -357,6 +362,7 @@ function DataTableInner<T extends RowData>(
     data,
     columns,
     defaultColumnOrder,
+    layoutKey,
     isLoading,
     getRowId,
     sort,
@@ -371,7 +377,29 @@ function DataTableInner<T extends RowData>(
   ref: React.Ref<DataTableHandle>,
 ) {
   const tableContainerRef = useRef<HTMLDivElement>(null);
-  const [columnOrder, setColumnOrder] = useState<string[]>(defaultColumnOrder);
+  const [tableLayout, updateTableLayout] = useTableLayout(layoutKey);
+  const columnOrder = applyColumnOrder(defaultColumnOrder, tableLayout.order);
+  const setColumnOrder = (next: string[]) => {
+    updateTableLayout({
+      order: sameOrder(next, defaultColumnOrder) ? undefined : next,
+    });
+  };
+  // Live widths during a drag stay in component state (no storage write per
+  // pointer move); finished resizes are committed by the effect below, which
+  // then empties this so the saved widths (and any later change to them, such
+  // as another tab's) are what the table shows.
+  const [liveColumnSizing, setLiveColumnSizing] = useState<
+    Record<string, number>
+  >({});
+  const columnSizing = { ...tableLayout.widths, ...liveColumnSizing };
+  // Which columns the user resized (or reset with a double-click on the handle,
+  // which deletes the size) since the layout was last saved. Only ids are kept:
+  // the sizing state holds a pointer drag's raw width (0 when dragged far left,
+  // unbounded to the right), and only getSize() clamps it to minSize/maxSize.
+  const pendingWidthCommitRef = useRef({
+    resized: new Set<string>(),
+    reset: new Set<string>(),
+  });
 
   useImperativeHandle(ref, () => ({
     focus: () => tableContainerRef.current?.focus(),
@@ -387,11 +415,30 @@ function DataTableInner<T extends RowData>(
     },
     state: {
       columnOrder,
+      columnSizing,
     },
     onColumnOrderChange: (updater) => {
       const next =
         typeof updater === "function" ? updater(columnOrder) : updater;
       setColumnOrder(next);
+    },
+    onColumnSizingChange: (updater) => {
+      const next =
+        typeof updater === "function" ? updater(columnSizing) : updater;
+      const pending = pendingWidthCommitRef.current;
+      for (const [columnId, width] of Object.entries(next)) {
+        if (columnSizing[columnId] !== width) {
+          pending.resized.add(columnId);
+          pending.reset.delete(columnId);
+        }
+      }
+      for (const columnId of Object.keys(columnSizing)) {
+        if (!Object.hasOwn(next, columnId)) {
+          pending.reset.add(columnId);
+          pending.resized.delete(columnId);
+        }
+      }
+      setLiveColumnSizing(next);
     },
     getRowId,
     columnResizeMode: "onChange",
@@ -401,12 +448,10 @@ function DataTableInner<T extends RowData>(
   const handleColumnDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      setColumnOrder((prev) => {
-        const oldIndex = prev.indexOf(active.id as string);
-        const newIndex = prev.indexOf(over.id as string);
-        if (oldIndex === -1 || newIndex === -1) return prev;
-        return arrayMove(prev, oldIndex, newIndex);
-      });
+      const oldIndex = columnOrder.indexOf(active.id as string);
+      const newIndex = columnOrder.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+      setColumnOrder(arrayMove(columnOrder, oldIndex, newIndex));
     }
   };
 
@@ -415,6 +460,42 @@ function DataTableInner<T extends RowData>(
     useSensor(TouchSensor, {}),
     useSensor(KeyboardSensor, {}),
   );
+
+  // Save finished resizes: a pointer drag once it is released (TanStack clears
+  // isResizingColumn), a keyboard step or a reset immediately (they never set it).
+  // The width saved is what the column renders at, so it stays inside the
+  // saved-layout schema however far the drag went.
+  const resizingColumnId = table.state.columnResizing.isResizingColumn;
+  useEffect(() => {
+    if (resizingColumnId) return;
+    const { resized, reset } = pendingWidthCommitRef.current;
+    if (resized.size === 0 && reset.size === 0) return;
+    const widths: Record<string, number> = { ...tableLayout.widths };
+    for (const columnId of resized) {
+      const column = table.getColumn(columnId);
+      if (column) widths[columnId] = Math.round(column.getSize());
+    }
+    for (const columnId of reset) {
+      Reflect.deleteProperty(widths, columnId);
+    }
+    resized.clear();
+    reset.clear();
+    updateTableLayout({
+      widths: Object.keys(widths).length > 0 ? widths : undefined,
+    });
+    // The write above is read back on the same re-render (a write storage
+    // refuses is kept in memory), so the widths on screen do not change.
+    setLiveColumnSizing({});
+    // liveColumnSizing is not read here, but every resize and reset replaces
+    // it, so it is what re-runs this for the ones that never set
+    // isResizingColumn.
+  }, [
+    resizingColumnId,
+    liveColumnSizing,
+    tableLayout.widths,
+    table,
+    updateTableLayout,
+  ]);
 
   // Computed after the hooks above: the React Compiler does not cache a value
   // whose computation spans a hook call. Cached, it changes when `table` does.

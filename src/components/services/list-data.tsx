@@ -11,6 +11,13 @@ import { FilterBar } from "@/components/filterbar/filter-bar";
 import { combineRql } from "@/components/filterbar/filter-utils";
 import { DataRepository, collectionQueryOptions } from "@/lib/data-api";
 import type { CollectionRequest, DataResource, DataSort } from "@/lib/data-api";
+import { useTableLayout } from "@/hooks/use-table-layout";
+import {
+  applyBooleanOverrides,
+  applyColumnOrder,
+  diffBooleanOverrides,
+  sameOrder,
+} from "@/lib/table-layout";
 import {
   deriveTableFields,
   findPageRow,
@@ -116,8 +123,29 @@ function useListData({
   const cleanQ = q.split("#")[0];
 
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    fields.length ? ["__select__", ...fields.map((f) => f.id)] : [],
+  // Column order and visibility are the registry defaults with the user's saved
+  // differences applied, derived on every render — so a resource swap on the same
+  // ListData instance picks up that resource's fields and its own saved layout.
+  const [tableLayout, updateTableLayout] = useTableLayout(`search:${resource}`);
+  const defaultColumnOrder = fields.length
+    ? ["__select__", ...fields.map((field) => field.id)]
+    : [];
+  // The selection checkbox is always first; saved orders cannot move it.
+  const columnOrder = fields.length
+    ? [
+        "__select__",
+        ...applyColumnOrder(defaultColumnOrder, tableLayout.order).filter(
+          (id) => id !== "__select__",
+        ),
+      ]
+    : [];
+  const defaultColumnVisibility: Record<string, boolean> = {
+    __select__: true,
+    ...Object.fromEntries(fields.map((field) => [field.id, field.visible])),
+  };
+  const columnVisibility = applyBooleanOverrides(
+    defaultColumnVisibility,
+    tableLayout.visibility,
   );
   const [internalPageIndex, setInternalPageIndex] = useState(0);
   const pageIndex =
@@ -134,32 +162,6 @@ function useListData({
     setSorting(newSorting);
     setPageIndex(0);
   };
-
-  const [columnVisibility, setColumnVisibility] = useState<
-    Record<string, boolean>
-  >(() => {
-    const vis: Record<string, boolean> = { __select__: true };
-    fields.forEach((f) => {
-      vis[f.id] = f.visible;
-    });
-    return vis;
-  });
-
-  // Reseed order + visibility if `fields` identity changes (resource swap on the
-  // same ListData instance). With synchronous field derivation this does not fire
-  // on mount — only on an actual resource change.
-  const [prevFields, setPrevFields] = useState(fields);
-  if (prevFields !== fields) {
-    setPrevFields(fields);
-    if (fields.length) {
-      setColumnOrder(["__select__", ...fields.map((f) => f.id)]);
-      const vis: Record<string, boolean> = { __select__: true };
-      fields.forEach((f) => {
-        vis[f.id] = f.visible;
-      });
-      setColumnVisibility(vis);
-    }
-  }
 
   // DataTable only offers a sort header for a column the registry declares
   // sortable, which is the same value the gateway's `validateSort` enforces.
@@ -345,9 +347,21 @@ function useListData({
           sorting={sorting}
           onSortingChange={setSortingAndResetPage}
           columnOrder={columnOrder}
-          onColumnOrderChange={setColumnOrder}
+          onColumnOrderChange={(next) => {
+            updateTableLayout({
+              order: sameOrder(next, defaultColumnOrder) ? undefined : next,
+            });
+          }}
           columnVisibility={columnVisibility}
-          onColumnVisibilityChange={setColumnVisibility}
+          onColumnVisibilityChange={(next) => {
+            updateTableLayout({
+              visibility: diffBooleanOverrides(defaultColumnVisibility, next),
+            });
+          }}
+          savedColumnWidths={tableLayout.widths}
+          onColumnWidthsCommit={(widths) => {
+            updateTableLayout({ widths: { ...tableLayout.widths, ...widths } });
+          }}
           isAllPagesSelected={isAllPagesSelected}
           onAllPagesSelectionChange={handleAllPagesSelectionChange}
           onDownloadAll={handleDownloadAll}

@@ -53,6 +53,7 @@ import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
 import {
   exceedsReadLimit,
   staleResultsMessage,
+  type MatchingRowsRead,
 } from "./use-resource-collection-row-resolution";
 
 /** Actions each resource enables. Read by both visibility and dispatch. */
@@ -440,7 +441,7 @@ export interface ResourceCollectionActionsOptions<Row extends DataTableRow> {
    */
   resolveAllMatchingRows: (
     fields: readonly string[],
-  ) => Promise<Record<string, unknown>[]>;
+  ) => Promise<MatchingRowsRead>;
   /** Run the collection's own export over the current selection (DWNLD). */
   onExportSelection: () => void;
   /** Report an action failure to the collection shell, which renders it. */
@@ -525,7 +526,7 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     if (selection.total > maxTaxonomyActionIds) {
       throw new Error(taxonomyActionLimitMessage());
     }
-    const rows = await resolveAllMatchingRows(["taxon_id"]);
+    const { rows } = await resolveAllMatchingRows(["taxon_id"]);
     return normalizeTaxonIds(rows.map((row) => row.taxon_id));
   };
 
@@ -632,12 +633,11 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     pendingBiosetActionRef.current = true;
     setLoadingActionIds(["biosets"]);
     try {
-      const rows = await resolveAllMatchingRows(["exp_id"]);
-      if (exceedsReadLimit(rows.length, selection.total, maxExportRows)) {
-        throw new Error(
-          limitMessage(`at least ${maxExportRows.toLocaleString()}`),
-        );
+      const read = await resolveAllMatchingRows(["exp_id"]);
+      if (exceedsReadLimit(read, maxExportRows)) {
+        throw new Error(limitMessage(read.total.toLocaleString()));
       }
+      const { rows } = read;
       const experimentIds = rows.flatMap((row) => {
         const experimentId = experimentIdFromRow(row);
         return experimentId ? [experimentId] : [];

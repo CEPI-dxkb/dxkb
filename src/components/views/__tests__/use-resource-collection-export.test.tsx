@@ -16,10 +16,12 @@ const columns = [
 function repository() {
   const selected = vi.fn();
   const exportAll = vi.fn();
+  const collection = vi.fn();
   return {
-    data: { selected, exportAll } as unknown as DataRepository,
+    data: { selected, exportAll, collection } as unknown as DataRepository,
     selected,
     exportAll,
+    collection,
   };
 }
 
@@ -155,29 +157,63 @@ describe("useResourceCollectionExport", () => {
     expect(exportAll).not.toHaveBeenCalled();
   });
 
-  it("refuses a read that stops at the export cap the count on screen said it would not reach", async () => {
+  it("refuses a read that stops at the export cap when more rows match than it read", async () => {
     // A same-query refresh keeps the total it had, and the data can outgrow it, so
-    // the read is checked as well: 10,000 rows may be the first 10,000 of more.
-    const { data, exportAll } = repository();
+    // a read that stops at the cap is counted again: 10,000 rows may be the first
+    // 10,000 of more.
+    const { data, exportAll, collection } = repository();
     exportAll.mockResolvedValue({
       rows: Array.from({ length: maxExportRows }, (_, index) => ({
         genome_id: String(index),
       })),
     });
+    collection.mockResolvedValue({ total: 10_412 });
     const { result } = renderHook(() =>
       useResourceCollectionExport(options(data, { total: 9_000 })),
     );
 
     await act(() => result.current.exportRows("csv"));
 
+    expect(collection).toHaveBeenCalledWith("genome", {
+      rql: "eq(owner,public)",
+      keyword: "coli",
+      keywordMode: undefined,
+      pageSize: 1,
+      fields: ["genome_id"],
+    });
     expect(result.current.exportError).toBe(
-      "This export matches at least 10,000 rows. Narrow the results to 10,000 rows or fewer and try again.",
+      "This export matches 10,412 rows. Narrow the results to 10,000 rows or fewer and try again.",
     );
     expect(downloadResourceExport).not.toHaveBeenCalled();
   });
 
+  it("downloads a read that stops at the export cap when it read every match", async () => {
+    const { data, exportAll, collection } = repository();
+    const rows = Array.from({ length: maxExportRows }, (_, index) => ({
+      genome_id: String(index),
+    }));
+    exportAll.mockResolvedValue({ rows });
+    collection.mockResolvedValue({ total: maxExportRows });
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(options(data, { total: 9_000 })),
+    );
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toBeNull();
+    expect(downloadResourceExport).toHaveBeenCalledWith(
+      "genome",
+      rows,
+      columns,
+      ["genome_id", "genome_name"],
+      "csv",
+      "all",
+      "genome",
+    );
+  });
+
   it("downloads a read that outgrew the count but stayed under the export cap", async () => {
-    const { data, exportAll } = repository();
+    const { data, exportAll, collection } = repository();
     const rows = [{ genome_id: "1" }, { genome_id: "2" }, { genome_id: "3" }];
     exportAll.mockResolvedValue({ rows });
     const { result } = renderHook(() =>
@@ -186,6 +222,7 @@ describe("useResourceCollectionExport", () => {
 
     await act(() => result.current.exportRows("csv"));
 
+    expect(collection).not.toHaveBeenCalled();
     expect(result.current.exportError).toBeNull();
     expect(downloadResourceExport).toHaveBeenCalledWith(
       "genome",

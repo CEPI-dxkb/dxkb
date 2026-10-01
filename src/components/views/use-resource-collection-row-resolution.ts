@@ -33,7 +33,7 @@ interface UseResourceCollectionRowResolutionOptions<
    * The rows and total on screen belong to a previous query while this one
    * loads, so an all-matching read would be sized by the wrong total. A
    * background refresh of the same query is not this; its total is this
-   * query's latest count, and `exceedsReadLimit` checks the read against it.
+   * query's latest count, and `exceedsReadLimit` checks the read itself.
    */
   isPlaceholderData: boolean;
 }
@@ -46,21 +46,47 @@ interface UseResourceCollectionRowResolutionOptions<
 export const staleResultsMessage =
   "Wait for the current results to finish loading and try again.";
 
+/** The rows an all-matching read returned, and how many rows match its query. */
+export interface MatchingRowsRead {
+  rows: Record<string, unknown>[];
+  total: number;
+}
+
 /**
- * Whether an all-matching read is over `maxRows` although the count it was sized by
- * was not. That count is the total on screen: a same-query refresh keeps it, and the
- * data can outgrow it with no refresh at all. So the read is over when it returns more
- * than `maxRows` rows, or when it stops at the export cap that the count said it would
- * not reach (more rows may match than were read).
+ * Read every row matching a query, up to the export cap. A read under the cap holds
+ * every match. One that stops at the cap holds every match or only the first
+ * `maxExportRows` of them, and the total on screen cannot tell which (a same-query
+ * refresh keeps it, and the data can outgrow it with no refresh at all), so that
+ * query is counted again.
+ */
+export async function readAllMatchingRows(
+  repository: DataRepository,
+  resource: DataResource,
+  idField: string,
+  request: MatchingRowsRequest & { fields: string[] },
+): Promise<MatchingRowsRead> {
+  const { rows } = await repository.exportAll(resource, request);
+  if (rows.length < maxExportRows) return { rows, total: rows.length };
+  const { total } = await repository.collection(resource, {
+    rql: request.rql,
+    keyword: request.keyword,
+    keywordMode: request.keywordMode,
+    pageSize: 1,
+    fields: [idField],
+  });
+  return { rows, total };
+}
+
+/**
+ * Whether an all-matching read is over `maxRows` although the total on screen, which
+ * sized it, was not: it returned more than `maxRows` rows, or more rows match its
+ * query than it could read.
  */
 export function exceedsReadLimit(
-  rowCount: number,
-  countedRows: number,
+  { rows, total }: MatchingRowsRead,
   maxRows: number,
 ) {
-  return (
-    rowCount > maxRows || (rowCount >= maxExportRows && rowCount > countedRows)
-  );
+  return rows.length > maxRows || total > rows.length;
 }
 
 export async function fetchSelectedRows(
@@ -137,14 +163,13 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     // An all-matching read is scoped and sized by the query on screen, so none
     // runs while that is a previous query's.
     if (isPlaceholderData) throw new Error(staleResultsMessage);
-    const result = await repository.exportAll(resource, {
+    return readAllMatchingRows(repository, resource, idField, {
       rql,
       keyword,
       keywordMode,
       fields: [...fields],
       sort,
     });
-    return result.rows;
   };
 
   const resolveActionRows = async (
@@ -172,11 +197,9 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
         fields,
       );
     }
-    const rows = await resolveAllMatchingRows(fields);
-    if (exceedsReadLimit(rows.length, selectedActionCount, maxRows)) {
-      throw limitError();
-    }
-    return rows;
+    const read = await resolveAllMatchingRows(fields);
+    if (exceedsReadLimit(read, maxRows)) throw limitError();
+    return read.rows;
   };
 
   return {

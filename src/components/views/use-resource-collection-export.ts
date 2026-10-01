@@ -16,6 +16,7 @@ import { downloadResourceExport } from "./resource-export";
 import {
   exceedsReadLimit,
   fetchSelectedRows,
+  readAllMatchingRows,
 } from "./use-resource-collection-row-resolution";
 
 const genericExportErrorMessage =
@@ -45,7 +46,7 @@ interface UseResourceCollectionExportOptions {
    * The rows and total on screen belong to a previous query while this one
    * loads, so an all-matching read would be sized by the wrong total. A
    * background refresh of the same query is not this; its total is this
-   * query's latest count, and `exceedsReadLimit` checks the read against it.
+   * query's latest count, and `exceedsReadLimit` checks the read itself.
    */
   isPlaceholderData: boolean;
   hasLoadedKeyword: boolean;
@@ -114,21 +115,18 @@ export function useResourceCollectionExport({
         const requestFields = hasLoadedKeyword
           ? columns.map((column) => column.id)
           : selectedFields;
-        const rows = (
-          await repository.exportAll(resource, {
-            rql,
-            keyword: hasLoadedKeyword ? undefined : keyword,
-            keywordMode: hasLoadedKeyword ? undefined : keywordMode,
-            fields: requestFields,
-            sort,
-          })
-        ).rows;
-        if (exceedsReadLimit(rows.length, total, maxExportRows)) {
-          setExportError(
-            limitMessage(`at least ${maxExportRows.toLocaleString()}`),
-          );
+        const read = await readAllMatchingRows(repository, resource, idField, {
+          rql,
+          keyword: hasLoadedKeyword ? undefined : keyword,
+          keywordMode: hasLoadedKeyword ? undefined : keywordMode,
+          fields: requestFields,
+          sort,
+        });
+        if (exceedsReadLimit(read, maxExportRows)) {
+          setExportError(limitMessage(read.total.toLocaleString()));
           return;
         }
+        const { rows } = read;
         const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
         exportedRows = hasLoadedKeyword
           ? rows.filter((row) =>

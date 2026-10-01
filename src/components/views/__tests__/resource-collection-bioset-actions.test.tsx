@@ -439,7 +439,7 @@ describe("ResourceCollection Bioset actions", () => {
     expect(open).not.toHaveBeenCalled();
   });
 
-  it("closes the reserved tab when the read stops at the export cap the count said it would not reach", async () => {
+  it("closes the reserved tab when the read stops at the export cap and more Biosets match", async () => {
     const user = userEvent.setup();
     const { close, links } = reservedTab();
     const exportAll = vi.fn(() =>
@@ -449,6 +449,7 @@ describe("ResourceCollection Bioset actions", () => {
         })),
       }),
     );
+    const collection = vi.fn(() => Promise.resolve({ total: 10_412 }));
     useResourceCollection.mockReturnValue({
       ...collectionResult(),
       activeId: null,
@@ -464,7 +465,7 @@ describe("ResourceCollection Bioset actions", () => {
     render(
       <ResourceCollection
         profile={biosetCollectionProfile}
-        repository={{ exportAll } as unknown as DataRepository}
+        repository={{ exportAll, collection } as unknown as DataRepository}
         state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
         baseRql="eq(exp_id,*)"
         onStateChange={vi.fn()}
@@ -474,7 +475,7 @@ describe("ResourceCollection Bioset actions", () => {
 
     expect(
       await screen.findByText(
-        "This selection contains at least 10,000 Biosets. Narrow the results to 10,000 or fewer and try again.",
+        "This selection contains 10,412 Biosets. Narrow the results to 10,000 or fewer and try again.",
       ),
     ).toBeVisible();
     expect(close).toHaveBeenCalledOnce();

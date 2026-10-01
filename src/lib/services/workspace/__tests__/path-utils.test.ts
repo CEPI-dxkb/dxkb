@@ -446,6 +446,16 @@ describe("workspaceUsername", () => {
     ).toBe("clark.cucinell@patricbrc.org");
   });
 
+  it("uses the canonical id, not the login name, when both are present", () => {
+    expect(
+      workspaceUsername({
+        id: "Clark.Cucinell",
+        username: "clark.cucinell",
+        realm: "patricbrc.org",
+      }),
+    ).toBe("Clark.Cucinell@patricbrc.org");
+  });
+
   it("does not append the realm twice to an already qualified id", () => {
     expect(
       workspaceUsername({

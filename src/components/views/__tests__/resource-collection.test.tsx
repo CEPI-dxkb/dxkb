@@ -1,4 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
 import { maxSelectedRows } from "@/lib/data-api/validation";
@@ -9,6 +11,7 @@ import type { useResourceCollection as useResourceCollectionHook } from "@/hooks
 import { ResourceCollection } from "../resource-collection";
 import { writeStorageItem } from "@/lib/browser-storage";
 import { jsdomLocalStorage } from "@/test-helpers/storage";
+import { createUiPreferencesWrapper } from "@/test-helpers/react";
 import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
 // Generic ResourceCollection behaviour: rendering the same profile across scopes,
@@ -74,7 +77,19 @@ vi.mock("../resource-filter-bar", () => ({
       data-testid="filter-bar"
       data-definitions={JSON.stringify(props.definitions)}
       data-keyword={typeof props.keyword === "string" ? props.keyword : ""}
+      data-facets-loading={String(props.facetsLoading)}
+      data-facets-refreshing={String(props.facetsRefreshing)}
+      data-facets-error={
+        typeof props.facetsError === "string" ? props.facetsError : ""
+      }
     >
+      <button
+        onClick={() => {
+          (props.onRetryFacets as () => void)();
+        }}
+      >
+        Retry facets
+      </button>
       {["dna gy", "HUMAN", "absent", "N034", undefined].map((keyword) => (
         <button
           key={keyword ?? "clear"}
@@ -197,11 +212,15 @@ function repository(
 
 beforeEach(() => {
   useResourceCollection.mockReturnValue(collectionResult());
-  vi.stubGlobal("URL", {
-    ...URL,
-    createObjectURL: vi.fn(() => "blob:test"),
-    revokeObjectURL: vi.fn(),
-  });
+  // A subclass rather than a spread, so `URL` stays constructible: jsdom's
+  // cookie jar builds one when the UI-preferences provider clears old cookies.
+  vi.stubGlobal(
+    "URL",
+    class extends URL {
+      static createObjectURL = vi.fn(() => "blob:test");
+      static revokeObjectURL = vi.fn();
+    },
+  );
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -616,12 +635,12 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
   });
 
-  it("does not export all using a stale total while results refresh", async () => {
+  it("does not export all using a previous query's total", async () => {
     const data = repository();
     const exportAll = vi.spyOn(data, "exportAll");
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
-      isRefreshing: true,
+      isPlaceholderData: true,
     });
     render(
       <ResourceCollection
@@ -643,6 +662,36 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
 
     expect(exportAll).not.toHaveBeenCalled();
     expect(screen.getByText(/finish loading before exporting/)).toBeVisible();
+  });
+
+  it("exports all during a background refresh of the same query", async () => {
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    useResourceCollection.mockReturnValueOnce({
+      ...collectionResult(),
+      isRefreshing: true,
+      isPlaceholderData: false,
+    });
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    expect(exportAll).toHaveBeenCalled();
+    expect(screen.queryByText(/finish loading/)).not.toBeInTheDocument();
   });
 
   it("rejects all-matching exports over 10,000 rows before requesting data", async () => {
@@ -1005,6 +1054,104 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       "data-keyword",
       "",
     );
+  });
+
+  it("prefetches the next page unless a caller opts out", () => {
+    const { rerender } = render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ prefetchNextPage: true }),
+    );
+
+    rerender(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+        prefetchNextPage={false}
+      />,
+    );
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ prefetchNextPage: false }),
+    );
+  });
+
+  it("hands the filter bar the facet states, the facet error's own message, and its retry", async () => {
+    const user = userEvent.setup();
+    const refetchFacets = vi.fn();
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        isFacetsLoading: true,
+        isFacetsRefreshing: true,
+        facetsError: new Error("Facet query timed out upstream."),
+        refetchFacets,
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    const filterBar = screen.getByTestId("filter-bar");
+    expect(filterBar).toHaveAttribute("data-facets-loading", "true");
+    expect(filterBar).toHaveAttribute("data-facets-refreshing", "true");
+    expect(filterBar).toHaveAttribute(
+      "data-facets-error",
+      "Facet query timed out upstream.",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry facets" }));
+    expect(refetchFacets).toHaveBeenCalledOnce();
+  });
+
+  it("names what failed when the facet error has no message of its own", () => {
+    useResourceCollection.mockReturnValue(
+      collectionResult({ facetsError: new Error("   ") }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("filter-bar")).toHaveAttribute(
+      "data-facets-error",
+      "The filter values could not be loaded. Please try again.",
+    );
+  });
+
+  it("shows the table's loading skeleton while a page that was not prefetched loads", () => {
+    useResourceCollection.mockReturnValue(
+      collectionResult({ isPlaceholderData: true, isPageLoading: true }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(dataTableProps.isLoading).toBe(true);
+    // The previous page's total keeps the pager in place meanwhile.
+    expect(dataTableProps.totalItems).toBe(1);
   });
 
   it("keeps the data table mounted when no rows are available", () => {
@@ -1602,5 +1749,111 @@ describe("ResourceCollection column layout", () => {
       [shownByDefault.id]: false,
     });
     expect(workingStorage.getItem(storageKey)).toBeNull();
+  });
+
+  it("requests no facet counts while the filter panel is closed", () => {
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ facetFields: [] }),
+    );
+  });
+
+  it("requests counts only for the facets the open filter panel shows", () => {
+    const facetsShownByDefault = (genomeCollectionProfile.facets ?? []).filter(
+      (facet) => facet.initiallyVisible !== false,
+    );
+    const collapsedByUser = facetsShownByDefault.at(0);
+    if (!collapsedByUser) throw new Error("fixture needs a default-visible facet");
+    const stillShown = facetsShownByDefault.slice(1);
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ facets: { [collapsedByUser.field]: false } }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        facetFields: stillShown.map((facet) => facet.field),
+      }),
+    );
+  });
+
+  it("waits for the saved facet set before requesting counts, showing placeholders meanwhile", () => {
+    const facetsShownByDefault = (genomeCollectionProfile.facets ?? []).filter(
+      (facet) => facet.initiallyVisible !== false,
+    );
+    const collapsedByUser = facetsShownByDefault.at(0);
+    if (!collapsedByUser) throw new Error("fixture needs a default-visible facet");
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ facets: { [collapsedByUser.field]: false } }),
+    );
+    const Wrapper = createUiPreferencesWrapper({ facetPanelOpen: true });
+    const tree = (
+      <Wrapper>
+        <ResourceCollection
+          profile={genomeCollectionProfile}
+          repository={repository()}
+          state={state}
+          onStateChange={vi.fn()}
+        />
+      </Wrapper>
+    );
+
+    // Server HTML first (storage reads as empty there), then hydrate it, which
+    // is the render pair a full page load goes through.
+    const container = document.createElement("div");
+    document.body.append(container);
+    container.innerHTML = renderToString(tree);
+    // Before the saved set is known, a request would count the collapsed facet.
+    expect(
+      useResourceCollection.mock.calls.map(([options]) => options.facetFields),
+    ).toEqual([[]]);
+    expect(
+      container.querySelector('[data-testid="filter-bar"]'),
+    ).toHaveAttribute("data-facets-loading", "true");
+
+    let root: ReturnType<typeof hydrateRoot> | undefined;
+    try {
+      act(() => {
+        root = hydrateRoot(container, tree);
+      });
+
+      expect(
+        useResourceCollection.mock.calls.every(
+          ([options]) =>
+            !options.facetFields?.includes(collapsedByUser.field),
+        ),
+      ).toBe(true);
+      expect(useResourceCollection.mock.calls.at(-1)?.[0].facetFields).toEqual(
+        facetsShownByDefault.slice(1).map((facet) => facet.field),
+      );
+      expect(screen.getByTestId("filter-bar")).toHaveAttribute(
+        "data-facets-loading",
+        "false",
+      );
+    } finally {
+      act(() => {
+        root?.unmount();
+      });
+      container.remove();
+    }
   });
 });

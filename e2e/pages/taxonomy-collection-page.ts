@@ -53,6 +53,34 @@ export class TaxonomyCollectionPage {
     ).toBeEnabled();
   }
 
+  /** Narrow the collection with its own keyword box (the `refine` query). */
+  async filterCollection(query: string): Promise<void> {
+    await this.page.getByPlaceholder("Search keywords...").fill(query);
+  }
+
+  /** Select the page with the header checkbox, then every matching result. */
+  async selectAllResults(): Promise<void> {
+    await this.page
+      .getByRole("checkbox", { name: "Select all rows on this page" })
+      .check();
+    await this.page
+      .getByRole("button", { name: /^Select all \d+ results across all pages$/ })
+      .click();
+    await expect(
+      this.page.getByText(/^All \d+ results are selected across all pages\.$/),
+    ).toBeVisible();
+  }
+
+  /**
+   * The collection's live status reads "Refreshing results..." while the rows and total on screen
+   * belong to an earlier query (placeholder data), and the result count once the current one lands.
+   */
+  async expectRefreshing(refreshing: boolean): Promise<void> {
+    await expect(
+      this.page.getByText("Refreshing results...", { exact: true }),
+    ).toHaveCount(refreshing ? 1 : 0);
+  }
+
   async openServices(): Promise<void> {
     const services = this.page.getByRole("button", {
       name: "SERVICES",

@@ -4,6 +4,7 @@ import {
   diffBooleanOverrides,
   mergeTableLayout,
   parseTableLayout,
+  resolveFacetVisibility,
   sameOrder,
 } from "../table-layout";
 
@@ -175,5 +176,23 @@ describe("applyColumnOrder", () => {
     expect(applyColumnOrder(["a", "b"], undefined)).toStrictEqual(["a", "b"]);
     expect(sameOrder(["a", "b"], ["a", "b"])).toBe(true);
     expect(sameOrder(["a", "b"], ["b", "a"])).toBe(false);
+  });
+});
+
+describe("resolveFacetVisibility", () => {
+  it("applies saved choices over each facet's own default and ignores stale ids", () => {
+    expect(
+      resolveFacetVisibility(
+        [
+          { field: "a" },
+          { field: "b", initiallyVisible: false },
+          { field: "c", initiallyVisible: true },
+        ],
+        { a: false, b: true, gone: true },
+      ),
+    ).toStrictEqual({
+      defaults: { a: true, b: false, c: true },
+      visibility: { a: false, b: true, c: true },
+    });
   });
 });

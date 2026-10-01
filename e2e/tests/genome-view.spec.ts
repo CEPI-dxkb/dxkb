@@ -4,10 +4,12 @@ import {
   genomeFeatureScenarioOverrides,
   genomeScenarioOverrides,
   genomeSequenceScenarioOverrides,
+  taxonGenomesScenarioOverrides,
 } from "../fixtures/overrides";
 import { GenomeMemberPage } from "../pages";
 
 const genomeViewOverrides = [
+  ...taxonGenomesScenarioOverrides,
   ...genomeScenarioOverrides,
   ...genomeFeatureScenarioOverrides,
   ...genomeSequenceScenarioOverrides,
@@ -28,15 +30,20 @@ test.describe("Genome view", () => {
   }) => {
     await page.goto("/taxonomy/11974?tab=genomes");
 
-    const keyword = page.getByPlaceholder("Search keywords...");
-    await expect(keyword).toBeVisible();
+    const keyword = page.getByRole("searchbox", { name: "Search keywords..." });
+    const unmatchedRow = page.getByRole("row", { name: /Select row 11983\.1 / });
+    await expect(unmatchedRow).toBeVisible();
     await expect(
       page.getByRole("link", {
         name: "Middle East respiratory syndrome-related coronavirus isolate",
       }),
     ).toHaveCount(0);
 
+    // The tab filters the rows it has loaded once the keyword box's debounce
+    // commits, and a new keyword clears the selection, so a row checked before
+    // then is unchecked again. The other Genome leaving shows the commit.
     await keyword.fill("MERS");
+    await expect(unmatchedRow).toHaveCount(0);
     await expect(page).toHaveURL(/\/taxonomy\/11974\?tab=genomes$/);
     await page.getByRole("button", { name: "Show Filters" }).click();
     const filteredResponse = page.waitForResponse((response) => {
@@ -86,7 +93,7 @@ test.describe("Genome view", () => {
     await genomeRequest;
     await expect(page.getByRole("banner").getByRole("combobox", { name: "Search type" })).toContainText("Genomes");
     await expect(page.getByRole("banner").getByRole("textbox")).toHaveValue("MERS");
-    const genomeFilter = page.getByPlaceholder("Search keywords...");
+    const genomeFilter = page.getByRole("searchbox", { name: "Search keywords..." });
     await expect(genomeFilter).toHaveValue("");
     await expect(page.getByRole("row", { name: /Select row 1282460\.2049/ })).toBeVisible();
 
@@ -110,7 +117,7 @@ test.describe("Genome view", () => {
     await featureRequest;
     await expect(page.getByRole("banner").getByRole("combobox", { name: "Search type" })).toContainText("Features");
     await expect(page.getByRole("banner").getByRole("textbox")).toHaveValue("replicase");
-    const featureFilter = page.getByPlaceholder("Search keywords...");
+    const featureFilter = page.getByRole("searchbox", { name: "Search keywords..." });
     await expect(featureFilter).toHaveValue("");
     await expect(page.getByRole("row", { name: /replicase polyprotein/ })).toBeVisible();
 
@@ -158,7 +165,9 @@ test.describe("Genome view", () => {
     await expect(page.getByRole("banner").getByRole("textbox")).toHaveValue(
       "MERS",
     );
-    await expect(page.getByPlaceholder("Search keywords...")).toHaveValue("");
+    await expect(
+      page.getByRole("searchbox", { name: "Search keywords..." }),
+    ).toHaveValue("");
 
     const row = page.getByRole("row", { name: /Select row 1282460\.2049/ });
     await row.click();
@@ -179,6 +188,7 @@ test.describe("Genome view", () => {
     await applyBackendMocks(genomePage, {
       overrides: [...genomeViewOverrides],
     });
+    const genome = new GenomeMemberPage(genomePage);
 
     await expect(genomePage).toHaveURL(/\/genome\/1282460\.2049$/);
     await expect(
@@ -188,6 +198,9 @@ test.describe("Genome view", () => {
       }),
     ).toBeVisible();
     await expect(genomePage.getByText("Assembly summary").first()).toBeVisible();
+    // The overview is server-rendered, so it can be on screen before the tab click
+    // would be handled.
+    await genome.waitForHydration();
     const sequenceRequest = genomePage.waitForRequest((request) => {
       const url = new URL(request.url());
       return (
@@ -195,10 +208,10 @@ test.describe("Genome view", () => {
         url.searchParams.get("rql") === "eq(genome_id,1282460.2049)"
       );
     });
-    await genomePage.getByRole("button", { name: "Sequences" }).click();
+    await genome.openTab("Sequences");
     await sequenceRequest;
     await expect(genomePage).toHaveURL(/\?tab=sequences$/);
-    await expect(genomePage.getByText("JX869059")).toBeVisible();
+    await genome.expectRow(/JX869059/);
     await expect(
       genomePage.getByRole("button", { name: "Genome Browser" }),
     ).toHaveAttribute("aria-disabled", "true");
@@ -210,7 +223,9 @@ test.describe("Genome view", () => {
     await expect(page.getByRole("banner").getByRole("textbox")).toHaveValue(
       "MERS",
     );
-    await expect(page.getByPlaceholder("Search keywords...")).toHaveValue("");
+    await expect(
+      page.getByRole("searchbox", { name: "Search keywords..." }),
+    ).toHaveValue("");
   });
 
   test("a nested table keeps its sort across a refresh, one Back step undoes it, and a tab switch clears it", async ({

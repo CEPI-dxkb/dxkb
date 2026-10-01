@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import type { DataTableRow } from "@/components/shared/data-table";
-import type { DataRepository, DataResource, DataSort } from "@/lib/data-api";
+import {
+  maxExportRows,
+  type DataRepository,
+  type DataResource,
+  type DataSort,
+} from "@/lib/data-api";
 import { maxSelectedRows } from "@/lib/data-api/validation";
 
 interface MatchingRowsRequest {
@@ -24,7 +29,64 @@ interface UseResourceCollectionRowResolutionOptions<
   selectedActionCount: number;
   isAllPagesSelected: boolean;
   hasLoadedKeyword: boolean;
-  isRefreshing: boolean;
+  /**
+   * The rows and total on screen belong to a previous query while this one
+   * loads, so an all-matching read would be sized by the wrong total. A
+   * background refresh of the same query is not this; its total is this
+   * query's latest count, and `exceedsReadLimit` checks the read itself.
+   */
+  isPlaceholderData: boolean;
+}
+
+/**
+ * Why an all-matching read is refused while the rows and total on screen belong to
+ * a previous query. The Taxonomy and Bioset actions show it too, before their own
+ * size limits (sized by that same total) and before they reserve a tab.
+ */
+export const staleResultsMessage =
+  "Wait for the current results to finish loading and try again.";
+
+/** The rows an all-matching read returned, and how many rows match its query. */
+export interface MatchingRowsRead {
+  rows: Record<string, unknown>[];
+  total: number;
+}
+
+/**
+ * Read every row matching a query, up to the export cap. A read under the cap holds
+ * every match. One that stops at the cap holds every match or only the first
+ * `maxExportRows` of them, and the total on screen cannot tell which (a same-query
+ * refresh keeps it, and the data can outgrow it with no refresh at all), so that
+ * query is counted again.
+ */
+export async function readAllMatchingRows(
+  repository: DataRepository,
+  resource: DataResource,
+  idField: string,
+  request: MatchingRowsRequest & { fields: string[] },
+): Promise<MatchingRowsRead> {
+  const { rows } = await repository.exportAll(resource, request);
+  if (rows.length < maxExportRows) return { rows, total: rows.length };
+  const { total } = await repository.collection(resource, {
+    rql: request.rql,
+    keyword: request.keyword,
+    keywordMode: request.keywordMode,
+    pageSize: 1,
+    fields: [idField],
+  });
+  return { rows, total };
+}
+
+/**
+ * Whether an all-matching read is over `maxRows` although the total on screen, which
+ * sized it, was not: it returned more than `maxRows` rows, or more rows match its
+ * query than it could read.
+ */
+export function exceedsReadLimit(
+  { rows, total }: MatchingRowsRead,
+  maxRows: number,
+) {
+  return rows.length > maxRows || total > rows.length;
 }
 
 export async function fetchSelectedRows(
@@ -70,7 +132,7 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
   selectedActionCount,
   isAllPagesSelected,
   hasLoadedKeyword,
-  isRefreshing,
+  isPlaceholderData,
   rql,
   keyword,
   keywordMode,
@@ -98,14 +160,16 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
   };
 
   const resolveAllMatchingRows = async (fields: readonly string[]) => {
-    const result = await repository.exportAll(resource, {
+    // An all-matching read is scoped and sized by the query on screen, so none
+    // runs while that is a previous query's.
+    if (isPlaceholderData) throw new Error(staleResultsMessage);
+    return readAllMatchingRows(repository, resource, idField, {
       rql,
       keyword,
       keywordMode,
       fields: [...fields],
       sort,
     });
-    return result.rows;
   };
 
   const resolveActionRows = async (
@@ -113,12 +177,18 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     maxRows: number,
     actionLabel: string,
   ): Promise<Record<string, unknown>[]> => {
-    if (selectedActionCount > maxRows) {
-      throw new Error(
+    const isAllMatching = isAllPagesSelected && !hasLoadedKeyword;
+    // For every matching row the count below is a previous query's total, so wait
+    // for this query's rather than report a limit it may not exceed.
+    if (isAllMatching && isPlaceholderData) {
+      throw new Error(staleResultsMessage);
+    }
+    const limitError = () =>
+      new Error(
         `${actionLabel} supports at most ${maxRows.toLocaleString()} ${label}. Narrow the selection and try again.`,
       );
-    }
-    if (!isAllPagesSelected || hasLoadedKeyword) {
+    if (selectedActionCount > maxRows) throw limitError();
+    if (!isAllMatching) {
       return fetchSelectedRows(
         repository,
         resource,
@@ -127,12 +197,9 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
         fields,
       );
     }
-    if (isRefreshing) {
-      throw new Error(
-        "Wait for the current results to finish loading and try again.",
-      );
-    }
-    return resolveAllMatchingRows(fields);
+    const read = await resolveAllMatchingRows(fields);
+    if (exceedsReadLimit(read, maxRows)) throw limitError();
+    return read.rows;
   };
 
   return {

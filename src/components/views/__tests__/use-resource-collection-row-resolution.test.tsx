@@ -1,7 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
-import type { DataRepository } from "@/lib/data-api";
+import { maxExportRows, type DataRepository } from "@/lib/data-api";
 import { maxSelectedRows } from "@/lib/data-api/validation";
-import { useResourceCollectionRowResolution } from "../use-resource-collection-row-resolution";
+import {
+  exceedsReadLimit,
+  useResourceCollectionRowResolution,
+} from "../use-resource-collection-row-resolution";
 
 function options(
   repository: DataRepository,
@@ -19,7 +22,7 @@ function options(
     selectedActionCount: 1,
     isAllPagesSelected: false,
     hasLoadedKeyword: false,
-    isRefreshing: false,
+    isPlaceholderData: false,
     rql: "eq(owner,public)",
     keyword: "coli",
     keywordMode: "exact" as const,
@@ -31,10 +34,12 @@ function options(
 function repository() {
   const selected = vi.fn();
   const exportAll = vi.fn();
+  const collection = vi.fn();
   return {
-    data: { selected, exportAll } as unknown as DataRepository,
+    data: { selected, exportAll, collection } as unknown as DataRepository,
     selected,
     exportAll,
+    collection,
   };
 }
 
@@ -120,7 +125,7 @@ describe("useResourceCollectionRowResolution", () => {
 
     const refreshing = renderHook(() =>
       useResourceCollectionRowResolution(
-        options(data, { isAllPagesSelected: true, isRefreshing: true }),
+        options(data, { isAllPagesSelected: true, isPlaceholderData: true }),
       ),
     );
     await expect(
@@ -130,8 +135,121 @@ describe("useResourceCollectionRowResolution", () => {
     expect(exportAll).not.toHaveBeenCalled();
   });
 
-  it("resolves all matching rows with the shell query", async () => {
+  it("refuses every all-matching read while the rows belong to a previous query", async () => {
     const { data, exportAll } = repository();
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, isPlaceholderData: true }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveAllMatchingRows(["taxon_id"]),
+    ).rejects.toThrow(
+      "Wait for the current results to finish loading and try again.",
+    );
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("says to wait, not that the selection is too large, when a previous query's total is over the limit", async () => {
+    const { data, exportAll } = repository();
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, {
+          isAllPagesSelected: true,
+          isPlaceholderData: true,
+          selectedActionCount: 50_000,
+        }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], 10, "Copy"),
+    ).rejects.toThrow("finish loading");
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("still resolves an explicit selection while the rows refresh", async () => {
+    const { data, selected } = repository();
+    selected.mockResolvedValue({ rows: [{ genome_id: "1" }] });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isPlaceholderData: true }),
+      ),
+    );
+
+    // The user's own IDs do not depend on which query's rows are on screen.
+    await expect(
+      result.current.resolveActionRows(["genome_id"], 10, "Copy"),
+    ).resolves.toEqual([{ genome_id: "1" }]);
+  });
+
+  it("refuses an all-matching read that returns more rows than the action allows", async () => {
+    // The count passed the limit, but it is the total on screen, which the data
+    // can outgrow during a same-query refresh or with none at all.
+    const { data, exportAll } = repository();
+    exportAll.mockResolvedValue({
+      rows: [{ genome_id: "1" }, { genome_id: "2" }, { genome_id: "3" }],
+    });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, selectedActionCount: 2 }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], 2, "Copy"),
+    ).rejects.toThrow("Copy supports at most 2 Genomes");
+  });
+
+  it("refuses an all-matching read that stops at the export cap when more rows match than it read", async () => {
+    const { data, exportAll, collection } = repository();
+    exportAll.mockResolvedValue({
+      rows: Array.from({ length: maxExportRows }, (_, index) => ({
+        genome_id: String(index),
+      })),
+    });
+    collection.mockResolvedValue({ total: 10_412 });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, selectedActionCount: 9_000 }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], maxExportRows, "Copy"),
+    ).rejects.toThrow("Copy supports at most 10,000 Genomes");
+    expect(collection).toHaveBeenCalledWith("genome", {
+      rql: "eq(owner,public)",
+      keyword: "coli",
+      keywordMode: "exact",
+      pageSize: 1,
+      fields: ["genome_id"],
+    });
+  });
+
+  it("resolves an all-matching read that stops at the export cap when it read every match", async () => {
+    // The total on screen said fewer, but the cap alone does not mean rows were
+    // left out: a fresh count of the query decides.
+    const { data, exportAll, collection } = repository();
+    const rows = Array.from({ length: maxExportRows }, (_, index) => ({
+      genome_id: String(index),
+    }));
+    exportAll.mockResolvedValue({ rows });
+    collection.mockResolvedValue({ total: maxExportRows });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, selectedActionCount: 9_000 }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], maxExportRows, "Copy"),
+    ).resolves.toEqual(rows);
+  });
+
+  it("resolves all matching rows with the shell query", async () => {
+    const { data, exportAll, collection } = repository();
     exportAll.mockResolvedValue({ rows: [{ genome_id: "1" }] });
     const { result } = renderHook(() =>
       useResourceCollectionRowResolution(
@@ -149,5 +267,23 @@ describe("useResourceCollectionRowResolution", () => {
       fields: ["genome_id"],
       sort: { field: "genome_name", direction: "asc" },
     });
+    expect(collection).not.toHaveBeenCalled();
   });
+});
+
+describe("exceedsReadLimit", () => {
+  it.each([
+    // [rows read, rows matching, limit, over]
+    [3, 3, 2, true],
+    [2, 2, 2, false],
+    [3, 3, 10, false],
+    [maxExportRows, 10_412, maxExportRows, true],
+    [maxExportRows, maxExportRows, maxExportRows, false],
+  ])(
+    "reads %i of %i matching rows against a limit of %i: over is %s",
+    (rowCount, total, maxRows, over) => {
+      const rows = Array.from({ length: rowCount }, () => ({}));
+      expect(exceedsReadLimit({ rows, total }, maxRows)).toBe(over);
+    },
+  );
 });

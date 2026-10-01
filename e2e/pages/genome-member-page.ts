@@ -28,6 +28,39 @@ export class GenomeMemberPage {
     await expect(this.heading).toBeVisible();
   }
 
+  /**
+   * The view rail has hydrated, so a click on one of its tabs will be handled. For a tab with no
+   * client-loaded table to wait on (the overview is server-rendered throughout). Before this, the
+   * rail's buttons have no handlers and a click is lost. The navbar is no proxy: it sits outside
+   * the page's Suspense boundary (`genome/loading.tsx`), and React commits that shell before it
+   * hydrates the streamed page, so the navbar can be live while the rail is not. React attaches a
+   * hydrated element's props as `__reactProps$<id>`, so this waits for every rail button's
+   * `onClick` to be there.
+   */
+  async waitForHydration(): Promise<void> {
+    const railButtons = this.page
+      .getByRole("navigation", { name: "Entity views" })
+      .getByRole("button");
+    await expect
+      .poll(
+        () =>
+          railButtons.evaluateAll(
+            (buttons) =>
+              buttons.length > 0 &&
+              buttons.every((button) =>
+                Object.entries(button).some(
+                  ([key, props]) =>
+                    key.startsWith("__reactProps$") &&
+                    typeof (props as { onClick?: unknown }).onClick ===
+                      "function",
+                ),
+              ),
+          ),
+        { message: "the view rail's buttons did not hydrate" },
+      )
+      .toBe(true);
+  }
+
   /** Switch tab from the view rail (a router navigation, so one history entry). */
   async openTab(label: string): Promise<void> {
     await this.page.getByRole("button", { name: label, exact: true }).click();

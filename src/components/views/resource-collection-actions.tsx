@@ -50,6 +50,11 @@ import {
 import { CollectionSelectionActions } from "./collection-selection-actions";
 import type { SelectionServiceKind } from "./selection-service-chooser";
 import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
+import {
+  exceedsReadLimit,
+  staleResultsMessage,
+  type MatchingRowsRead,
+} from "./use-resource-collection-row-resolution";
 
 /** Actions each resource enables. Read by both visibility and dispatch. */
 const taxonomyActionIds = [
@@ -297,6 +302,11 @@ export interface ResourceCollectionActionsSelection<Row extends DataTableRow> {
   isAllPagesSelected: boolean;
   /** Rows matching the current query, which bounds the all-pages resolutions. */
   total: number;
+  /**
+   * The rows and `total` belong to a previous query while this one loads, so an
+   * all-pages resolution waits: that total would size and scope it wrongly.
+   */
+  isPlaceholderData: boolean;
   /** The row behind a selected ID, remembered across pages by the shell. */
   rowById: (id: string) => Row | undefined;
 }
@@ -431,7 +441,7 @@ export interface ResourceCollectionActionsOptions<Row extends DataTableRow> {
    */
   resolveAllMatchingRows: (
     fields: readonly string[],
-  ) => Promise<Record<string, unknown>[]>;
+  ) => Promise<MatchingRowsRead>;
   /** Run the collection's own export over the current selection (DWNLD). */
   onExportSelection: () => void;
   /** Report an action failure to the collection shell, which renders it. */
@@ -516,13 +526,19 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     if (selection.total > maxTaxonomyActionIds) {
       throw new Error(taxonomyActionLimitMessage());
     }
-    const rows = await resolveAllMatchingRows(["taxon_id"]);
+    const { rows } = await resolveAllMatchingRows(["taxon_id"]);
     return normalizeTaxonIds(rows.map((row) => row.taxon_id));
   };
 
   const runTaxonomyAction = async (actionId: SearchActionId) => {
     onError(null);
     if (pendingTaxonomyActionRef.current) return;
+    // Before the ID limit and the tab reservation below, which would both act on
+    // a previous query's total.
+    if (selection.isAllPagesSelected && selection.isPlaceholderData) {
+      onError(staleResultsMessage);
+      return;
+    }
     if (actionId === "services") {
       // Opens an in-page dialog, so there is no tab to reserve.
       pendingTaxonomyActionRef.current = actionId;
@@ -596,10 +612,16 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       return;
     }
     if (pendingBiosetActionRef.current) return;
+    // Before the row limit and the tab reservation below, which would both act on
+    // a previous query's total.
+    if (selection.isPlaceholderData) {
+      onError(staleResultsMessage);
+      return;
+    }
+    const limitMessage = (count: string) =>
+      `This selection contains ${count} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`;
     if (selection.total > maxExportRows) {
-      onError(
-        `This selection contains ${selection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
-      );
+      onError(limitMessage(selection.total.toLocaleString()));
       return;
     }
     const resultsWindow = window.open("about:blank", "_blank");
@@ -611,7 +633,11 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     pendingBiosetActionRef.current = true;
     setLoadingActionIds(["biosets"]);
     try {
-      const rows = await resolveAllMatchingRows(["exp_id"]);
+      const read = await resolveAllMatchingRows(["exp_id"]);
+      if (exceedsReadLimit(read, maxExportRows)) {
+        throw new Error(limitMessage(read.total.toLocaleString()));
+      }
+      const { rows } = read;
       const experimentIds = rows.flatMap((row) => {
         const experimentId = experimentIdFromRow(row);
         return experimentId ? [experimentId] : [];

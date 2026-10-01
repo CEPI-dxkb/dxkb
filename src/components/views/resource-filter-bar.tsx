@@ -7,6 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import { KeywordSearch } from "@/components/filterbar/keyword-search";
 import { FacetColumn } from "@/components/filterbar/facet-column";
 import { SelectedFilters } from "@/components/filterbar/selected-filters";
@@ -14,8 +15,8 @@ import { useDebouncedDraft } from "@/hooks/use-debounced-draft";
 import { useTableLayout } from "@/hooks/use-table-layout";
 import type { ResourceFacets } from "@/hooks/views/use-resource-collection";
 import {
-  applyBooleanOverrides,
   diffBooleanOverrides,
+  resolveFacetVisibility,
 } from "@/lib/table-layout";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import type { CollectionState } from "@/lib/views/collection-state";
@@ -30,6 +31,17 @@ interface ResourceFilterBarProps {
   keyword?: string;
   filters: CollectionState["filters"];
   facets: ResourceFacets;
+  /** No counts have arrived yet for this scope; they load apart from the rows. */
+  facetsLoading?: boolean;
+  /**
+   * The counts on screen belong to the previous scope or facet set and new ones
+   * are on the way. Columns with previous counts stay, marked stale; a column
+   * that was never counted shows a placeholder.
+   */
+  facetsRefreshing?: boolean;
+  /** Why the counts could not be loaded, already formatted for display. */
+  facetsError?: string;
+  onRetryFacets?: () => void;
   definitions: readonly ResourceCollectionFacet[];
   hasExplicitRql?: boolean;
   keywordPlaceholder?: string;
@@ -45,6 +57,10 @@ export function ResourceFilterBar({
   keyword,
   filters,
   facets,
+  facetsLoading = false,
+  facetsRefreshing = false,
+  facetsError,
+  onRetryFacets,
   definitions,
   hasExplicitRql = false,
   keywordPlaceholder,
@@ -62,16 +78,8 @@ export function ResourceFilterBar({
   );
   const [showFacets, setShowFacets] = useUiPreference("facetPanelOpen");
   const [layout, updateLayout] = useTableLayout(layoutKey);
-  const defaultFacetVisibility = Object.fromEntries(
-    definitions.map((definition) => [
-      definition.field,
-      definition.initiallyVisible !== false,
-    ]),
-  );
-  const facetVisibility = applyBooleanOverrides(
-    defaultFacetVisibility,
-    layout.facets,
-  );
+  const { defaults: defaultFacetVisibility, visibility: facetVisibility } =
+    resolveFacetVisibility(definitions, layout.facets);
   const visibleFacets = new Set(
     Object.keys(facetVisibility).filter((field) => facetVisibility[field]),
   );
@@ -164,31 +172,74 @@ export function ResourceFilterBar({
         </div>
       </div>
       {showFacets && definitions.length > 0 && (
-        <div className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-2xs">
-          {definitions
-            .filter((definition) => visibleFacets.has(definition.field))
-            .map((definition) => (
-              <FacetColumn
-                key={definition.field}
-                field={{ id: definition.field, label: definition.label }}
-                items={(facets[definition.field] ?? []).map((item) => ({
-                  label: String(item.value),
-                  value: String(item.value),
-                  count: item.count,
-                }))}
-                onSelect={(field, value) => {
-                  const current = filters[field] ?? [];
-                  if (current.includes(value)) return;
-                  onChange({
-                    keyword,
-                    filters: { ...filters, [field]: [...current, value] },
-                    clearRql: hasExplicitRql,
-                  });
-                }}
-              />
-            ))}
+        <div
+          aria-busy={facetsLoading || facetsRefreshing || undefined}
+          data-stale={facetsRefreshing || undefined}
+          className="flex max-h-30 gap-3 overflow-auto rounded bg-background p-2 text-2xs data-stale:opacity-60"
+        >
+          {facetsError ? (
+            <div
+              role="alert"
+              className="flex items-center gap-2 text-destructive"
+            >
+              <p>Could not load filter values: {facetsError}</p>
+              {onRetryFacets && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="toolbar"
+                  onClick={onRetryFacets}
+                >
+                  Retry
+                </Button>
+              )}
+            </div>
+          ) : (
+            definitions
+              .filter((definition) => visibleFacets.has(definition.field))
+              .map((definition) =>
+                facetsLoading ||
+                (facetsRefreshing &&
+                  !Object.hasOwn(facets, definition.field)) ? (
+                  <FacetColumnSkeleton key={definition.field} />
+                ) : (
+                  <FacetColumn
+                    key={definition.field}
+                    field={{ id: definition.field, label: definition.label }}
+                    items={(facets[definition.field] ?? []).map((item) => ({
+                      label: String(item.value),
+                      value: String(item.value),
+                      count: item.count,
+                    }))}
+                    onSelect={(field, value) => {
+                      const current = filters[field] ?? [];
+                      if (current.includes(value)) return;
+                      onChange({
+                        keyword,
+                        filters: { ...filters, [field]: [...current, value] },
+                        clearRql: hasExplicitRql,
+                      });
+                    }}
+                  />
+                ),
+              )
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Placeholder for one facet column; the sizes match `FacetPanel`'s. */
+function FacetColumnSkeleton() {
+  return (
+    <div aria-hidden="true" className="shrink-0">
+      <Skeleton className="mb-2 h-3 w-24" />
+      <div className="flex flex-col gap-1">
+        <Skeleton className="h-3.5 w-32" />
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-3.5 w-28" />
+      </div>
     </div>
   );
 }

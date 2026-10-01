@@ -119,7 +119,7 @@ const cases = [
 ] as const;
 
 for (const testCase of cases) {
-  test(`${testCase.route} preserves selection and scopes next-page prefetching`, async ({
+  test(`${testCase.route} preserves selection and prefetches the next page`, async ({
     page,
   }) => {
     const collectionRequests: number[] = [];
@@ -171,15 +171,7 @@ for (const testCase of cases) {
     );
 
     await collectionPage.goto(testCase.keyword);
-    if (
-      testCase.resource === "surveillance" ||
-      testCase.resource === "serology" ||
-      testCase.resource === "protein_feature"
-    ) {
-      await expect.poll(() => collectionRequests).toContain(2);
-    } else {
-      expect(collectionRequests).toEqual([1]);
-    }
+    await expect.poll(() => collectionRequests).toContain(2);
     await collectionPage.selectRow();
     await collectionPage.goToPage(2);
     await collectionPage.expectSelectionPreserved();
@@ -187,3 +179,79 @@ for (const testCase of cases) {
     await collectionPage.expectSelectedRowChecked();
   });
 }
+
+test("shows the loading skeleton, centered under the header checkbox, for a page that was not prefetched", async ({
+  page,
+}) => {
+  const rows = [1, 2, 3].map((number) => ({
+    genome_id: `1282460.${String(2048 + number)}`,
+    genome_name: `Genome on page ${String(number)}`,
+  }));
+  // Four pages, so page 3 is one the prefetch (page 2, from page 1) never reaches.
+  const total = 650;
+  await applyBackendMocks(page, {
+    overrides: [
+      ...rows.map((row, index) => ({
+        url: new RegExp(
+          `/api/data/genome(?=[^#]*[?&]operation=collection(?:&|$))(?=[^#]*[?&]page=${String(index + 1)}(?:&|$))`,
+        ),
+        method: "GET",
+        body: { rows: [row], total, facets: {}, page: index + 1, pageSize: 200 },
+      })),
+      ...resourceCollectionOverrides,
+    ],
+  });
+  // Hold page 3 so the state between the click and its rows can be observed.
+  // Registered after the mocks, so it is matched first.
+  let releasePageThree!: () => void;
+  const pageThreeHeld = new Promise<void>((resolve) => {
+    releasePageThree = resolve;
+  });
+  await page.route(
+    (url) =>
+      url.pathname === "/api/data/genome" &&
+      url.searchParams.get("page") === "3",
+    async (route) => {
+      await pageThreeHeld;
+      await route.fallback();
+    },
+  );
+  const collection = new ResourceCollectionPage(
+    page,
+    "genome",
+    "genome",
+    rows[0].genome_id,
+    rows[0].genome_name,
+  );
+
+  await collection.goto("influenza");
+  await expect(collection.rowSkeletons()).toHaveCount(0);
+  await collection.goToPage(3);
+
+  // The page being left is not shown as if it were page 3; the skeleton is,
+  // and the previous total keeps the pager and the range in place.
+  await expect(collection.rowSkeletons().first()).toBeVisible();
+  await expect(collection.rowCheckbox(rows[0].genome_id)).toHaveCount(0);
+  await expect(collection.resultRange(401, 600, 650)).toBeVisible();
+  await expect(collection.pager()).toBeVisible();
+
+  // The selection column's skeleton sits where the checkboxes do.
+  const headerCheckbox = await collection.headerCheckbox().boundingBox();
+  const selectionSkeleton = await collection
+    .selectionCellSkeleton()
+    .boundingBox();
+  if (!headerCheckbox || !selectionSkeleton) {
+    throw new Error("Expected the header checkbox and its skeleton on screen.");
+  }
+  expect(
+    Math.abs(
+      headerCheckbox.x +
+        headerCheckbox.width / 2 -
+        (selectionSkeleton.x + selectionSkeleton.width / 2),
+    ),
+  ).toBeLessThan(1);
+
+  releasePageThree();
+  await expect(collection.rowCheckbox(rows[2].genome_id)).toBeVisible();
+  await expect(collection.rowSkeletons()).toHaveCount(0);
+});

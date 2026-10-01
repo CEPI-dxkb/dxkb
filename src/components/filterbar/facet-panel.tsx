@@ -2,9 +2,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { FacetColumn } from "./facet-column";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataRepository, collectionQueryOptions } from "@/lib/data-api";
 import type { DataResource } from "@/lib/data-api";
+import { formatUserFacingErrorMessage } from "@/lib/utils";
 
 // Same-origin Data API entrypoint (`/api/data/<resource>`). Stateless wrapper
 // around fetch, so one module-level instance is the established pattern.
@@ -13,6 +15,10 @@ const dataRepository = new DataRepository();
 // A facet read wants counts, not rows, so it asks for the smallest page the
 // gateway allows (`pageSize` is validated as >= 1) and ignores the rows.
 const facetPageSize = 1;
+
+/** `formatUserFacingErrorMessage` fallback for a failed facet read. */
+const genericFacetErrorMessage =
+  "The filter values could not be loaded. Please try again.";
 
 interface FacetPanelProps {
   /**
@@ -53,7 +59,9 @@ export function FacetPanel({
   const {
     data: collection,
     error,
+    isFetching,
     isLoading,
+    refetch,
   } = useQuery({
     // Same shared options `list-data.tsx` spreads, so the key and the call are
     // built in one place. Its `keepPreviousData` default is what keeps the
@@ -66,8 +74,25 @@ export function FacetPanel({
 
   if (error) {
     return (
-      <div className="flex max-h-30 items-center rounded bg-background p-2 text-2xs text-muted-foreground">
-        Facets unavailable
+      <div
+        role="alert"
+        className="flex max-h-30 items-center gap-2 rounded bg-background p-2 text-2xs text-destructive"
+      >
+        <p>
+          Could not load filter values:{" "}
+          {formatUserFacingErrorMessage(error, genericFacetErrorMessage)}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="toolbar"
+          disabled={isFetching}
+          onClick={() => {
+            void refetch();
+          }}
+        >
+          Retry
+        </Button>
       </div>
     );
   }

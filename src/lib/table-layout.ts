@@ -116,6 +116,22 @@ export function diffBooleanOverrides(
 }
 
 /**
+ * Which facets show, by field: each facet's own default, with the user's saved
+ * choices applied (ids no facet has are ignored). `ResourceFilterBar` renders
+ * these and `ResourceCollection` requests counts for exactly these, so both read
+ * them through here; `defaults` is what a toggle is diffed against.
+ */
+export function resolveFacetVisibility(
+  facets: readonly { field: string; initiallyVisible?: boolean }[],
+  saved: TableLayout["facets"],
+): { defaults: Record<string, boolean>; visibility: Record<string, boolean> } {
+  const defaults = Object.fromEntries(
+    facets.map((facet) => [facet.field, facet.initiallyVisible !== false]),
+  );
+  return { defaults, visibility: applyBooleanOverrides(defaults, saved) };
+}
+
+/**
  * The saved order over the table's columns: stale ids are dropped, a repeated id
  * keeps only its first place (a column rendered twice would give the drag controls
  * two items with one id), and columns the saved order lacks follow in default order.

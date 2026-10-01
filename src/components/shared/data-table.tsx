@@ -201,6 +201,12 @@ function SelectionHeader({
 }: {
   table: TanStackTable<DataTableFeatures, DataRow>;
 }) {
+  // The column header context passes the core table, which useTable creates once.
+  // Compiled, everything below would be cached on that one value and the checkbox
+  // would never leave its first state (unchecked, "Select all rows on this page").
+  // SelectionCell gets its state as a prop instead; this header reads several values
+  // and the meta callbacks, so it opts out like DataTableHeader.
+  "use no memo";
   const meta = getTableMeta(table);
   const allPageRowsSelected = table.getIsAllPageRowsSelected();
   const somePageRowsSelected = table.getIsSomePageRowsSelected();
@@ -1014,7 +1020,8 @@ function DataTableBody({
                 variant="grid"
                 className={clsx(
                   "flex h-6 w-(--col-size) max-w-(--col-size) min-w-(--col-size) items-center",
-                  col.id === "__select__" ? "p-0" : "p-0.5",
+                  // Centered like the header and row checkboxes it stands in for.
+                  col.id === "__select__" ? "justify-center p-0" : "p-0.5",
                 )}
                 style={
                   {

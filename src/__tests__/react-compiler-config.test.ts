@@ -16,6 +16,15 @@ const optOutFiles = [
   "src/components/taxonomy/taxonomy-tree.tsx",
 ] as const;
 
+// Components that opt out inside a file whose other functions opt out too, so the
+// file-level check below would still pass without them. The unit suite does not run
+// the compiler; e2e/tests/resource-collection-selection.spec.ts shows the behavior.
+const optOutComponents = [
+  // Reads selection state off the column header context's table, which is created
+  // once; compiled, the header checkbox froze in its first state.
+  { path: "src/components/shared/data-table.tsx", name: "SelectionHeader" },
+] as const;
+
 function readRepoFile(relPath: string): string {
   return readFileSync(join(repoRoot, relPath), "utf8");
 }
@@ -50,6 +59,15 @@ describe("React Compiler configuration", () => {
 
   it.each(optOutFiles)('"%s" still contains the "use no memo" directive', (path) => {
     expect(readRepoFile(path)).toContain('"use no memo"');
+  });
+
+  it.each(optOutComponents)("$name in $path still opts out", ({ path, name }) => {
+    const source = readRepoFile(path);
+    const start = source.indexOf(`function ${name}(`);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = source.indexOf("\nfunction ", start + 1);
+    const body = source.slice(start, end === -1 ? undefined : end);
+    expect(body).toContain('"use no memo"');
   });
 
   it("eslint.config.mjs opt-out files list matches the documented opt-out set exactly", () => {

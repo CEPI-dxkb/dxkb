@@ -1,6 +1,10 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
+import {
+  maxTaxonomyActionIds,
+  taxonomyActionLimitMessage,
+} from "@/lib/taxonomy-view/actions";
 import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { ResourceCollection } from "../resource-collection";
@@ -463,5 +467,120 @@ describe("ResourceCollection Taxonomy actions", () => {
     expect(await screen.findByTestId("taxonomy-services")).toHaveTextContent(
       "234,235",
     );
+  });
+  describe("while the rows and total belong to a previous query", () => {
+    const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
+    const staleWait =
+      "Wait for the current results to finish loading and try again.";
+
+    function renderAllPagesTaxa(
+      overrides: Partial<ReturnType<typeof useResourceCollectionHook>>,
+      data = repository(
+        Promise.resolve({ rows: [{ taxon_id: "234" }, { taxon_id: "235" }] }),
+      ),
+    ) {
+      useResourceCollection.mockReturnValue(
+        collectionResult({
+          activeId: "234",
+          detail: taxonomyRow,
+          rows: [taxonomyRow],
+          isAllPagesSelected: true,
+          total: 2,
+          ...overrides,
+        }),
+      );
+      render(
+        <ResourceCollection
+          profile={taxonomyCollectionProfile}
+          repository={data}
+          state={{ filters: {}, page: 1, sort: "unsorted" }}
+          onStateChange={vi.fn()}
+        />,
+      );
+      return data;
+    }
+
+    it("does not resolve all matching Taxa for SERVICES", async () => {
+      const user = userEvent.setup();
+      const data = renderAllPagesTaxa({ isPlaceholderData: true });
+      const exportAll = vi.spyOn(data, "exportAll");
+
+      await user.click(screen.getByRole("button", { name: "services" }));
+
+      expect(await screen.findByText(staleWait)).toBeVisible();
+      expect(exportAll).not.toHaveBeenCalled();
+      expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
+    });
+
+    it("says to wait, not that the selection is too large, when the previous total is over the limit", async () => {
+      const user = userEvent.setup();
+      renderAllPagesTaxa({
+        isPlaceholderData: true,
+        total: maxTaxonomyActionIds + 1,
+      });
+
+      await user.click(screen.getByRole("button", { name: "services" }));
+
+      expect(await screen.findByText(staleWait)).toBeVisible();
+      expect(
+        screen.queryByText(taxonomyActionLimitMessage()),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not reserve a tab for a Taxonomy navigation", async () => {
+      const user = userEvent.setup();
+      const open = vi.fn();
+      vi.stubGlobal("open", open);
+      const data = renderAllPagesTaxa({ isPlaceholderData: true });
+      const exportAll = vi.spyOn(data, "exportAll");
+
+      await user.click(screen.getByRole("button", { name: "Genomes action" }));
+
+      expect(await screen.findByText(staleWait)).toBeVisible();
+      // No blank tab is opened only to be closed again.
+      expect(open).not.toHaveBeenCalled();
+      expect(exportAll).not.toHaveBeenCalled();
+    });
+
+    it("still resolves all matching Taxa during a background refresh of the same query", async () => {
+      const user = userEvent.setup();
+      const data = renderAllPagesTaxa({
+        isRefreshing: true,
+        isPlaceholderData: false,
+      });
+      const exportAll = vi.spyOn(data, "exportAll");
+
+      await user.click(screen.getByRole("button", { name: "services" }));
+
+      expect(await screen.findByTestId("taxonomy-services")).toHaveTextContent(
+        "234,235",
+      );
+      expect(exportAll).toHaveBeenCalledOnce();
+      expect(screen.queryByText(staleWait)).not.toBeInTheDocument();
+    });
+
+    it("refuses SERVICES when the read returns more Taxa than the count on screen allowed", async () => {
+      const user = userEvent.setup();
+      // The refreshed total was within the ID limit, but the data outgrew it.
+      // `normalizeTaxonIds` checks the IDs that were read, not the total.
+      renderAllPagesTaxa(
+        { isRefreshing: true, total: maxTaxonomyActionIds },
+        repository(
+          Promise.resolve({
+            rows: Array.from(
+              { length: maxTaxonomyActionIds + 1 },
+              (_, index) => ({ taxon_id: String(index + 1) }),
+            ),
+          }),
+        ),
+      );
+
+      await user.click(screen.getByRole("button", { name: "services" }));
+
+      expect(
+        await screen.findByText(taxonomyActionLimitMessage()),
+      ).toBeVisible();
+      expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
+    });
   });
 });

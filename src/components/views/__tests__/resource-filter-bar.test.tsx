@@ -221,6 +221,112 @@ describe("ResourceFilterBar facet controls", () => {
     expect(screen.getByRole("button", { name: "WGS (20)" })).toBeVisible();
   });
 
+  it("shows placeholders, not 'No values', until the first counts arrive", () => {
+    const { container } = render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        facetsLoading
+        definitions={definitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.queryByText("No values")).not.toBeInTheDocument();
+    expect(
+      container.querySelectorAll('[data-slot="skeleton"]'),
+    ).toHaveLength(4);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+
+  it("keeps the previous counts, marked stale, while new ones load", () => {
+    const { container } = render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={facets}
+        facetsRefreshing
+        definitions={multiDefinitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    // Genome Status has previous counts to keep; Host Name was never counted.
+    expect(screen.getByRole("button", { name: "WGS (20)" })).toBeVisible();
+    expect(
+      container.querySelectorAll('[data-slot="skeleton"]'),
+    ).toHaveLength(4);
+    expect(container.querySelector("[data-stale]")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+
+  it("shows 'No values' for a column whose refreshed counts came back empty", () => {
+    const { container } = render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{ ...facets, host_name: [] }}
+        facetsRefreshing
+        definitions={multiDefinitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    // Host Name was counted and has no values: that is an answer, not a wait.
+    expect(screen.getByText("No values")).toBeVisible();
+    expect(container.querySelector('[data-slot="skeleton"]')).toBeNull();
+  });
+
+  it("shows the facet error without a Retry button when no retry is given", () => {
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        facetsError="Facet query timed out upstream."
+        definitions={definitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not load filter values: Facet query timed out upstream.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Retry" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows why the facet counts could not be loaded, and retries them", () => {
+    const onRetryFacets = vi.fn();
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={{}}
+        facetsError="Facet query timed out upstream."
+        onRetryFacets={onRetryFacets}
+        definitions={definitions}
+        onChange={vi.fn()}
+      />,
+      { wrapper: createUiPreferencesWrapper({ facetPanelOpen: true }) },
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Could not load filter values: Facet query timed out upstream.",
+    );
+    expect(screen.queryByText("No values")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetryFacets).toHaveBeenCalledOnce();
+  });
+
   it("opens the facet chooser via keyboard and exposes aria-expanded", async () => {
     const user = userEvent.setup();
     render(

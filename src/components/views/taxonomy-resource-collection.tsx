@@ -27,7 +27,6 @@ export function TaxonomyResourceCollection({
       state={initialState}
       onStateChange={setState}
       keywordMode="refine"
-      prefetchNextPage
     />
   );
 }

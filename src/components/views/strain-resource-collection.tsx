@@ -44,7 +44,6 @@ function StrainResourceCollectionContent({
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
       keywordMode={keywordMode}
-      prefetchNextPage
     />
   );
 }

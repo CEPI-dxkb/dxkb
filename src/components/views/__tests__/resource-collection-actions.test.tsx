@@ -11,6 +11,7 @@ import type { DataRepository } from "@/lib/data-api";
 import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { ResourceCollection } from "../resource-collection";
+import { createResourceCollectionResult } from "./fixtures/resource-collection-result";
 
 /**
  * Where the action bar and its dialogs *mount*, rather than what they do —
@@ -161,7 +162,7 @@ function mockViewport(initiallyNarrow = false) {
 
 function allPagesTaxonomyCollection() {
   const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
-  return {
+  return createResourceCollectionResult({
     activeId: "234",
     detail: taxonomyRow,
     detailError: null,
@@ -181,7 +182,7 @@ function allPagesTaxonomyCollection() {
     setSelection: vi.fn(),
     setPageIndex: vi.fn(),
     setSorting: vi.fn(),
-  };
+  });
 }
 
 function taxonomyCollection(repository: DataRepository) {

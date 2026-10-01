@@ -55,15 +55,16 @@ test.describe("Epitope view", () => {
     await epitopePage.expectMemberVisible("15780");
     await epitopePage.expectCollectionUrl("Brucella");
 
-    const facetRequest = page.waitForRequest((request) => {
+    const filteredRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());
       return (
         url.pathname === "/api/data/epitope" &&
-        url.searchParams.get("keyword") === "Brucella"
+        url.searchParams.get("keyword") === "Brucella" &&
+        url.searchParams.get("rql")?.includes("epitope_type") === true
       );
     });
     await epitopePage.selectFacet("Discontinuous peptide (1)");
-    await facetRequest;
+    await filteredRequest;
     await expect(page).toHaveURL(
       /\/epitope\?keyword=Brucella&epitope_type=Discontinuous\+peptide$/,
     );

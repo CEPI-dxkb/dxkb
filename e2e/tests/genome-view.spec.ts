@@ -179,6 +179,7 @@ test.describe("Genome view", () => {
     await applyBackendMocks(genomePage, {
       overrides: [...genomeViewOverrides],
     });
+    const genome = new GenomeMemberPage(genomePage);
 
     await expect(genomePage).toHaveURL(/\/genome\/1282460\.2049$/);
     await expect(
@@ -188,6 +189,9 @@ test.describe("Genome view", () => {
       }),
     ).toBeVisible();
     await expect(genomePage.getByText("Assembly summary").first()).toBeVisible();
+    // The overview is server-rendered, so it can be on screen before the tab click
+    // would be handled.
+    await genome.waitForHydration();
     const sequenceRequest = genomePage.waitForRequest((request) => {
       const url = new URL(request.url());
       return (
@@ -195,7 +199,7 @@ test.describe("Genome view", () => {
         url.searchParams.get("rql") === "eq(genome_id,1282460.2049)"
       );
     });
-    await genomePage.getByRole("button", { name: "Sequences" }).click();
+    await genome.openTab("Sequences");
     await sequenceRequest;
     await expect(genomePage).toHaveURL(/\?tab=sequences$/);
     await expect(genomePage.getByText("JX869059")).toBeVisible();

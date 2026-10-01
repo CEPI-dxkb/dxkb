@@ -19,11 +19,14 @@ import {
 } from "@/components/shared/data-table";
 import { useResourceCollection } from "@/hooks/views/use-resource-collection";
 import { useTableLayout } from "@/hooks/use-table-layout";
+import { useIsMounted } from "@/hooks/use-is-mounted";
+import { useUiPreference } from "@/lib/ui-preferences/provider";
 import { dataSort, type CollectionState } from "@/lib/views/collection-state";
 import { rqlKeyword } from "@/lib/views/rql";
 import {
   applyBooleanOverrides,
   diffBooleanOverrides,
+  resolveFacetVisibility,
 } from "@/lib/table-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
@@ -76,6 +79,10 @@ function combinePredicates(...predicates: (string | undefined)[]) {
 const genericCollectionErrorMessage =
   "The requested records could not be loaded. Please try again.";
 
+/** `formatUserFacingErrorMessage` fallback for a failed facet read. */
+const genericFacetErrorMessage =
+  "The filter values could not be loaded. Please try again.";
+
 export interface ResourceCollectionProps<Row extends DataTableRow> {
   profile: ResourceCollectionProfile<Row>;
   repository: DataRepository;
@@ -87,6 +94,10 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   loadedKeywordValue?: string;
   onLoadedKeywordChange?: (value: string) => void;
   keywordPlaceholder?: string;
+  /**
+   * Fetch the page after the current one in the background so the pager's Next
+   * shows it without a round trip. On for every table unless a caller opts out.
+   */
   prefetchNextPage?: boolean;
 }
 
@@ -101,7 +112,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   loadedKeywordValue,
   onLoadedKeywordChange,
   keywordPlaceholder,
-  prefetchNextPage = false,
+  prefetchNextPage = true,
 }: ResourceCollectionProps<Row>) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [internalLoadedKeyword, setInternalLoadedKeyword] = useState("");
@@ -128,6 +139,23 @@ export function ResourceCollection<Row extends DataTableRow>({
       visibility: diffBooleanOverrides(defaultColumnVisibility, next),
     });
   };
+  const [facetPanelOpen] = useUiPreference("facetPanelOpen");
+  // The saved facet set reads as empty until the render after hydration, and
+  // useIsMounted flips in that same render, so counts wait for the set shown.
+  const facetsSettled = useIsMounted();
+  const { visibility: facetVisibility } = resolveFacetVisibility(
+    profile.facets ?? [],
+    tableLayout.facets,
+  );
+  // Counts are requested for exactly the columns `ResourceFilterBar` shows: none
+  // while its panel is closed (the default), and never a collapsed facet. Both
+  // read `facetPanelOpen` from the one provider the root layout mounts.
+  const shownFacetFields =
+    facetPanelOpen && facetsSettled
+      ? (profile.facets ?? [])
+          .map((facet) => facet.field)
+          .filter((field) => facetVisibility[field])
+      : [];
   const structuralRql = combinePredicates(
     baseRql,
     profile.buildStructuralRql?.(state) ?? profile.basePredicate,
@@ -142,7 +170,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     idField: profile.idField,
     fields: profile.columns.map((column) => column.id),
     detailFields: profile.detailFields,
-    facetFields: profile.facets?.map((facet) => facet.field),
+    facetFields: shownFacetFields,
     prefetchNextPage,
     structuralRql,
     serverKeywordMode: profile.serverKeywordMode,
@@ -212,7 +240,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     selectedActionCount,
     isAllPagesSelected: collection.isAllPagesSelected,
     hasLoadedKeyword,
-    isRefreshing: collection.isRefreshing,
+    isPlaceholderData: collection.isPlaceholderData,
     rql: effectiveRql,
     keyword: requestState.keyword,
     keywordMode: profile.serverKeywordMode,
@@ -225,7 +253,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     columns: profile.columns,
     exportFileName: profile.exportFileName,
     total: collection.total,
-    isRefreshing: collection.isRefreshing,
+    isPlaceholderData: collection.isPlaceholderData,
     hasLoadedKeyword,
     loadedKeyword: normalizedLoadedKeyword,
     rql: effectiveRql,
@@ -250,6 +278,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       displayedIds: displayedSelectedIds,
       isAllPagesSelected: collection.isAllPagesSelected,
       total: collection.total,
+      isPlaceholderData: collection.isPlaceholderData,
       rowById: selectedRowById,
     },
     detail: displayedDetail,
@@ -313,6 +342,21 @@ export function ResourceCollection<Row extends DataTableRow>({
         }
         filters={state.filters}
         facets={collection.facets}
+        // Until the saved facet set settles no counts are requested at all, so
+        // an open panel shows placeholders rather than "No values".
+        facetsLoading={!facetsSettled || collection.isFacetsLoading}
+        facetsRefreshing={collection.isFacetsRefreshing}
+        facetsError={
+          collection.facetsError
+            ? formatUserFacingErrorMessage(
+                collection.facetsError,
+                genericFacetErrorMessage,
+              )
+            : undefined
+        }
+        onRetryFacets={() => {
+          void collection.refetchFacets();
+        }}
         definitions={profile.facets ?? []}
         hasExplicitRql={Boolean(state.rql)}
         keywordPlaceholder={keywordPlaceholder}
@@ -437,7 +481,7 @@ export function ResourceCollection<Row extends DataTableRow>({
               exportRows(format, ids, fields)
             }
             scrollRegionLabel={`${profile.label} results table`}
-            isLoading={collection.isInitialLoading}
+            isLoading={collection.isInitialLoading || collection.isPageLoading}
           />
         </ResourceWorkspace>
       )}

@@ -400,6 +400,45 @@ describe("ResourceCollection Bioset actions", () => {
     expect(replace).not.toHaveBeenCalled();
   });
 
+  it("does not resolve all matching Biosets while the rows and total belong to a previous query", async () => {
+    const user = userEvent.setup();
+    const { open } = reservedTab();
+    const exportAll = vi.fn(() =>
+      Promise.resolve({ rows: [{ exp_id: "00042" }, { exp_id: "00051" }] }),
+    );
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      isAllPagesSelected: true,
+      isPlaceholderData: true,
+      rows: [{ bioset_id: "bioset-2", exp_id: "00051" }],
+      selection: {},
+      selectedIds: [],
+      total: 2,
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        baseRql="eq(exp_id,*)"
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+
+    expect(
+      await screen.findByText(
+        "Wait for the current results to finish loading and try again.",
+      ),
+    ).toBeVisible();
+    expect(exportAll).not.toHaveBeenCalled();
+    // No blank tab is opened only to be closed again.
+    expect(open).not.toHaveBeenCalled();
+  });
+
   it("rejects all matching Biosets when any lacks an experiment", async () => {
     const user = userEvent.setup();
     const close = vi.fn();

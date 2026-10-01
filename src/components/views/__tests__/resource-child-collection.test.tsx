@@ -582,7 +582,7 @@ describe("ResourceChildCollection scope changes", () => {
     exportAll.mockResolvedValueOnce({
       rows: [{ exp_id: "00042" }, { bioset_id: "bioset-2" }],
     });
-    useResourceCollection.mockReturnValue({
+    useResourceCollection.mockReturnValue(realCollectionResult({
       activeId: null,
       detail: null,
       detailError: null,
@@ -602,7 +602,7 @@ describe("ResourceChildCollection scope changes", () => {
       setSelection: vi.fn(),
       setPageIndex: vi.fn(),
       setSorting: vi.fn(),
-    });
+    }));
     useRealResourceCollection.current = true;
 
     render(

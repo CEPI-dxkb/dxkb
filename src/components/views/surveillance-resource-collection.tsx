@@ -45,7 +45,6 @@ export function SurveillanceResourceCollection({
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
       keywordMode={keywordMode}
-      prefetchNextPage
     />
   );
 }

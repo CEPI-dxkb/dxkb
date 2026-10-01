@@ -22,8 +22,16 @@ export interface UseResourceCollectionOptions {
   idField: string;
   fields: readonly string[];
   detailFields?: readonly string[];
+  /**
+   * The facets to count, which is exactly the set requested; empty requests
+   * none. `ResourceCollection` passes only what its filter panel shows.
+   */
   facetFields?: readonly string[];
-  prefetchNextPage?: boolean;
+  /**
+   * Fetch the page after the current one in the background. Required so the
+   * default lives in one place: `ResourceCollection`, the only caller.
+   */
+  prefetchNextPage: boolean;
   structuralRql?: string;
   serverKeywordMode?: "exact" | "prefix";
   state: CollectionState;
@@ -46,7 +54,7 @@ export function useResourceCollection<Row extends ResourceRow>({
   fields,
   detailFields = fields,
   facetFields = [],
-  prefetchNextPage = false,
+  prefetchNextPage,
   structuralRql,
   serverKeywordMode,
   state,
@@ -79,22 +87,36 @@ export function useResourceCollection<Row extends ResourceRow>({
       pageSize: resourceCollectionPageSize,
       sort: dataSort(state.sort),
       fields: [...fields],
+    }),
+    [fields, rql, serverKeywordMode, state.keyword, state.page, state.sort],
+  );
+  // Facet counts depend on the scope, not on the page or sort, and they are the
+  // expensive part of a collection read (Genome's 38 facets are ~10 s of an
+  // ~11 s request). Their own query means paging, sorting and the next-page
+  // prefetch fetch rows only, and the table does not wait for the counts.
+  const facetRequest = useMemo(
+    () => ({
+      rql,
+      keyword: state.keyword,
+      keywordMode: serverKeywordMode,
+      pageSize: 1,
+      fields: [idField],
       facets: [...facetFields],
     }),
-    [
-      facetFields,
-      fields,
-      rql,
-      serverKeywordMode,
-      state.keyword,
-      state.page,
-      state.sort,
-    ],
+    [facetFields, idField, rql, serverKeywordMode, state.keyword],
   );
 
   const query = useQuery(
     collectionQueryOptions<Row>(repository, resource, request),
   );
+  const facetQuery = useQuery({
+    ...collectionQueryOptions(repository, resource, facetRequest),
+    enabled: facetFields.length > 0,
+    // Counts change with the scope only and are the slow part of a read, so a
+    // remount inside this window (a tab switch and back) reuses them. The same
+    // window as the search list's `FacetPanel`.
+    staleTime: 30_000,
+  });
   const total = query.data?.total ?? 0;
   useEffect(() => {
     if (!prefetchNextPage || query.isPlaceholderData) return;
@@ -142,13 +164,27 @@ export function useResourceCollection<Row extends ResourceRow>({
       visibleRows.find((row) => String(row[idField]) === activeId) ??
       null,
     detailError: detailQuery.error,
-    facets: query.data?.facets ?? emptyFacets,
+    facets: facetQuery.data?.facets ?? emptyFacets,
+    facetsError: facetQuery.error,
     isAllPagesSelected,
     isDetailLoading: detailQuery.isLoading,
+    // No counts to show yet, not even a previous scope's.
+    isFacetsLoading: facetQuery.isLoading,
+    // The counts on screen belong to the previous scope or facet set.
+    isFacetsRefreshing: facetQuery.isPlaceholderData,
     isInitialLoading: query.isLoading,
     isRefreshing: query.isFetching && !query.isLoading,
+    // The rows and total on screen belong to a previous query (another page,
+    // sort or scope) while this one loads; a same-query refresh is not this.
+    isPlaceholderData: query.isPlaceholderData,
+    // The rows on screen belong to another page (a page that was not
+    // prefetched is still loading), so the table shows its loading skeleton
+    // rather than rows the user has paged away from. Their total still sizes the
+    // pager. A same-page change (sort, filter, keyword) keeps them on screen.
+    isPageLoading: query.isPlaceholderData && query.data.page !== state.page,
     error: query.error,
     refetch: query.refetch,
+    refetchFacets: facetQuery.refetch,
     rows: visibleRows,
     selection,
     selectedIds,

@@ -130,6 +130,48 @@ test.describe("legacy search list", () => {
     await expect(searchPage.facetOption("Sequence Type")).toBeHidden();
     await expect(trigger).toBeFocused();
   });
+
+  test("shows the facet read's own error and retries it", async ({ page }) => {
+    await applyBackendMocks(page, { overrides: sequenceCollectionOverrides });
+    // Registered after the mocks, so facet reads are answered here first. The
+    // app's query client retries a failed read once before it reports it.
+    let facetReads = 0;
+    await page.route(
+      (url) =>
+        url.pathname === "/api/data/genome_sequence" &&
+        url.searchParams.getAll("facet").length > 0,
+      async (route) => {
+        facetReads += 1;
+        if (facetReads <= 2) {
+          await route.fulfill({
+            status: 502,
+            json: { error: "Facet query timed out upstream." },
+          });
+          return;
+        }
+        await route.fallback();
+      },
+    );
+    const searchPage = new LegacySearchPage(page, "genome_sequence");
+
+    await searchPage.goto("influenza");
+    await searchPage.expectRowVisible("94625.28.con.0340");
+    await searchPage.showFilters();
+
+    // Filtered by text: Next's route announcer is an alert too.
+    await expect(
+      page.getByRole("alert").filter({ hasText: "Could not load filter values" }),
+    ).toHaveText(/Could not load filter values: Facet query timed out upstream\./);
+    // The list itself is unaffected by the failed count read.
+    await searchPage.expectRowVisible("94625.28.con.0340");
+
+    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "plasmid (2)", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("Could not load filter values")).toHaveCount(0);
+    expect(facetReads).toBe(3);
+  });
 });
 
 test.describe("legacy search list: AMR phenotypes", () => {

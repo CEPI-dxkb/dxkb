@@ -435,6 +435,76 @@ describe("ResourceCollection selection actions", () => {
     });
   });
 
+  it("does not resolve every matching Genome from a previous query's total", async () => {
+    const user = userEvent.setup();
+    const data = repository(
+      Promise.resolve({ rows: [{ genome_id: "83332.12" }] }),
+    );
+    const exportAll = vi.spyOn(data, "exportAll");
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        selection: {},
+        selectedIds: [],
+        isAllPagesSelected: true,
+        isPlaceholderData: true,
+        total: 2,
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={{ filters: {}, page: 1, sort: "genome_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "services" }));
+
+    expect(
+      await screen.findByText(
+        "Wait for the current results to finish loading and try again.",
+      ),
+    ).toBeVisible();
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("resolves every matching Genome during a background refresh of the same query", async () => {
+    const user = userEvent.setup();
+    const data = repository(
+      Promise.resolve({
+        rows: [{ genome_id: "83332.12" }, { genome_id: "83332.13" }],
+      }),
+    );
+    const exportAll = vi.spyOn(data, "exportAll");
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        selection: {},
+        selectedIds: [],
+        isAllPagesSelected: true,
+        isRefreshing: true,
+        isPlaceholderData: false,
+        total: 2,
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={{ filters: {}, page: 1, sort: "genome_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "services" }));
+
+    expect(await screen.findByTestId("selection-service-ids")).toHaveTextContent(
+      "83332.12,83332.13",
+    );
+    expect(exportAll).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/finish loading/)).not.toBeInTheDocument();
+  });
+
   it("enables COPY ROWS, DWNLD and an empty SERVICES chooser for Sequence Features", async () => {
     const user = userEvent.setup();
     const sequenceFeatureRow = {

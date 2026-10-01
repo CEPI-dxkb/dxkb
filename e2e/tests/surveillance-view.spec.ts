@@ -49,16 +49,17 @@ test.describe("Surveillance view", () => {
       "/surveillance?keyword=sentinel&refine=Nasal+swab",
     );
 
-    const facetRequest = page.waitForRequest((request) => {
+    const filteredRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());
       return (
         url.pathname === "/api/data/surveillance" &&
         url.searchParams.get("keyword") === "sentinel" &&
-        url.searchParams.get("rql")?.includes("keyword(Nasal swab)") === true
+        url.searchParams.get("rql")?.includes("keyword(Nasal swab)") === true &&
+        url.searchParams.get("rql")?.includes("pathogen_test_type") === true
       );
     });
     await surveillancePage.selectFacet("RAT/antigen (1)");
-    await facetRequest;
+    await filteredRequest;
     await expect(page).toHaveURL(
       /\/surveillance\?keyword=sentinel&refine=Nasal\+swab&pathogen_test_type=RAT\/antigen$/,
     );

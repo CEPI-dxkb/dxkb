@@ -46,7 +46,6 @@ function ProteinFeatureResourceCollectionContent({
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
       keywordMode={keywordMode}
-      prefetchNextPage
     />
   );
 }

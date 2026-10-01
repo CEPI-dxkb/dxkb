@@ -47,17 +47,17 @@ const rows = Array.from({ length: resourceCollectionPageSize + 50 }, (_, index) 
   interactor_b: `peg.${String(5000 + index)}`,
 }));
 
-const requestedPages: number[] = [];
+const requested: { page: number; sort: string | null }[] = [];
 
 beforeEach(() => {
-  requestedPages.length = 0;
+  requested.length = 0;
   // jsdom has no canvas; DataTable falls back to its default column widths.
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null);
   server.use(
     http.get("/api/data/ppi", ({ request }) => {
       const params = new URL(request.url).searchParams;
       const page = Number(params.get("page") ?? "1");
-      requestedPages.push(page);
+      requested.push({ page, sort: params.get("sort") });
       const size = Number(params.get("pageSize") ?? resourceCollectionPageSize);
       return HttpResponse.json({
         rows: rows.slice((page - 1) * size, page * size),
@@ -97,7 +97,7 @@ describe("ResourceChildCollection sort clicks in the address bar", () => {
     const user = userEvent.setup();
     renderInteractionsTable();
     await waitFor(() => {
-      expect(requestedPages).toContain(2);
+      expect(requested).toContainEqual({ page: 2, sort: "id:asc" });
     });
 
     await user.click(
@@ -110,8 +110,9 @@ describe("ResourceChildCollection sort clicks in the address bar", () => {
     expect(pushState).toHaveBeenCalledOnce();
     expect(window.history.length).toBe(lengthBefore + 1);
     expect(window.location.search).toBe("?interactions.sort=interactor_a:asc");
+    // The next page is prefetched after it, so check for the request, not the order.
     await waitFor(() => {
-      expect(requestedPages.at(-1)).toBe(1);
+      expect(requested).toContainEqual({ page: 1, sort: "interactor_a:asc" });
     });
   });
 });

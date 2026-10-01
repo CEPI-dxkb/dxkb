@@ -38,7 +38,12 @@ interface UseResourceCollectionExportOptions {
   columns: readonly DataTableColumn[];
   exportFileName?: string;
   total: number;
-  isRefreshing: boolean;
+  /**
+   * The rows and total on screen belong to a previous query while this one
+   * loads, so an all-matching read would be sized by the wrong total. A
+   * background refresh of the same query is not this; its total is right.
+   */
+  isPlaceholderData: boolean;
   hasLoadedKeyword: boolean;
   loadedKeyword: string;
   rql?: string;
@@ -54,7 +59,7 @@ export function useResourceCollectionExport({
   columns,
   exportFileName,
   total,
-  isRefreshing,
+  isPlaceholderData,
   hasLoadedKeyword,
   loadedKeyword,
   rql,
@@ -73,7 +78,7 @@ export function useResourceCollectionExport({
     setExportError(null);
     const ids = isAllPagesSelected ? undefined : selectedIds;
     if (ids && ids.length === 0) return;
-    if (!ids && isRefreshing) {
+    if (!ids && isPlaceholderData) {
       setExportError(
         "Wait for the current results to finish loading before exporting.",
       );

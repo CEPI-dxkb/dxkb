@@ -28,6 +28,18 @@ export class GenomeMemberPage {
     await expect(this.heading).toBeVisible();
   }
 
+  /**
+   * The page has hydrated, so a view rail click will be handled. For a tab with no client-loaded
+   * table to wait on (the overview is server-rendered throughout): the navbar's theme selector
+   * renders only once the client has mounted. Before that, `readyState` is still `interactive`
+   * and the rail's buttons have no handlers, so a click is lost.
+   */
+  async waitForHydration(): Promise<void> {
+    await expect(
+      this.page.getByRole("button", { name: "Open theme selector" }),
+    ).toBeVisible();
+  }
+
   /** Switch tab from the view rail (a router navigation, so one history entry). */
   async openTab(label: string): Promise<void> {
     await this.page.getByRole("button", { name: label, exact: true }).click();

@@ -552,6 +552,26 @@ describe("DataTable Showing display during loading", () => {
     expect(cells?.[1]).toHaveClass("p-0.5");
   });
 
+  it("centers the selection skeleton the way the checkboxes it stands in for are centered", () => {
+    const { container } = render(
+      <DataTable
+        id="loading-selection-skeleton"
+        data={[]}
+        columns={columns}
+        totalItems={200}
+        resource="strain"
+        isLoading={true}
+      />,
+    );
+
+    const headerSelectCell = container.querySelector(
+      'thead input[type="checkbox"]',
+    )?.parentElement;
+    const skeletonSelectCell = container.querySelector("tbody tr td");
+    expect(headerSelectCell).toHaveClass("justify-center");
+    expect(skeletonSelectCell).toHaveClass("justify-center");
+  });
+
   it("shows expected page range when isLoading=true and data is empty", () => {
     render(
       <DataTable
@@ -612,6 +632,8 @@ describe("DataTable Showing display during loading", () => {
     expect(
       screen.queryByText(/Showing 201-203 of 5000 results/),
     ).not.toBeInTheDocument();
+    // The rows handed in are another page's; the skeleton stands in for them.
+    expect(screen.queryByText("Previous Strain 0")).not.toBeInTheDocument();
   });
 
   it("shows 1-0 when data is genuinely empty and not loading", () => {

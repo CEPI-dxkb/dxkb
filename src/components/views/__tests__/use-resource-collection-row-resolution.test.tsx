@@ -19,7 +19,7 @@ function options(
     selectedActionCount: 1,
     isAllPagesSelected: false,
     hasLoadedKeyword: false,
-    isRefreshing: false,
+    isPlaceholderData: false,
     rql: "eq(owner,public)",
     keyword: "coli",
     keywordMode: "exact" as const,
@@ -120,7 +120,7 @@ describe("useResourceCollectionRowResolution", () => {
 
     const refreshing = renderHook(() =>
       useResourceCollectionRowResolution(
-        options(data, { isAllPagesSelected: true, isRefreshing: true }),
+        options(data, { isAllPagesSelected: true, isPlaceholderData: true }),
       ),
     );
     await expect(
@@ -128,6 +128,55 @@ describe("useResourceCollectionRowResolution", () => {
     ).rejects.toThrow("finish loading");
     expect(selected).not.toHaveBeenCalled();
     expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("refuses every all-matching read while the rows belong to a previous query", async () => {
+    const { data, exportAll } = repository();
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, isPlaceholderData: true }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveAllMatchingRows(["taxon_id"]),
+    ).rejects.toThrow(
+      "Wait for the current results to finish loading and try again.",
+    );
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("says to wait, not that the selection is too large, when a previous query's total is over the limit", async () => {
+    const { data, exportAll } = repository();
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, {
+          isAllPagesSelected: true,
+          isPlaceholderData: true,
+          selectedActionCount: 50_000,
+        }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], 10, "Copy"),
+    ).rejects.toThrow("finish loading");
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("still resolves an explicit selection while the rows refresh", async () => {
+    const { data, selected } = repository();
+    selected.mockResolvedValue({ rows: [{ genome_id: "1" }] });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isPlaceholderData: true }),
+      ),
+    );
+
+    // The user's own IDs do not depend on which query's rows are on screen.
+    await expect(
+      result.current.resolveActionRows(["genome_id"], 10, "Copy"),
+    ).resolves.toEqual([{ genome_id: "1" }]);
   });
 
   it("resolves all matching rows with the shell query", async () => {

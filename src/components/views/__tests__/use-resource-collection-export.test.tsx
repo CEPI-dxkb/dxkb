@@ -33,7 +33,7 @@ function options(
     idField: "genome_id",
     columns,
     total: 2,
-    isRefreshing: false,
+    isPlaceholderData: false,
     hasLoadedKeyword: false,
     loadedKeyword: "",
     rql: "eq(owner,public)",
@@ -142,7 +142,7 @@ describe("useResourceCollectionExport", () => {
   it("reports refresh and size guards without requesting rows", async () => {
     const { data, exportAll } = repository();
     const refreshing = renderHook(() =>
-      useResourceCollectionExport(options(data, { isRefreshing: true })),
+      useResourceCollectionExport(options(data, { isPlaceholderData: true })),
     );
     await act(() => refreshing.result.current.exportRows("csv"));
     expect(refreshing.result.current.exportError).toMatch(/finish loading/);

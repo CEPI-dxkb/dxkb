@@ -24,8 +24,21 @@ interface UseResourceCollectionRowResolutionOptions<
   selectedActionCount: number;
   isAllPagesSelected: boolean;
   hasLoadedKeyword: boolean;
-  isRefreshing: boolean;
+  /**
+   * The rows and total on screen belong to a previous query while this one
+   * loads, so an all-matching read would be sized by the wrong total. A
+   * background refresh of the same query is not this; its total is right.
+   */
+  isPlaceholderData: boolean;
 }
+
+/**
+ * Why an all-matching read is refused while the rows and total on screen belong to
+ * a previous query. The Taxonomy and Bioset actions show it too, before their own
+ * size limits (sized by that same total) and before they reserve a tab.
+ */
+export const staleResultsMessage =
+  "Wait for the current results to finish loading and try again.";
 
 export async function fetchSelectedRows(
   repository: DataRepository,
@@ -70,7 +83,7 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
   selectedActionCount,
   isAllPagesSelected,
   hasLoadedKeyword,
-  isRefreshing,
+  isPlaceholderData,
   rql,
   keyword,
   keywordMode,
@@ -98,6 +111,9 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
   };
 
   const resolveAllMatchingRows = async (fields: readonly string[]) => {
+    // An all-matching read is scoped and sized by the query on screen, so none
+    // runs while that is a previous query's.
+    if (isPlaceholderData) throw new Error(staleResultsMessage);
     const result = await repository.exportAll(resource, {
       rql,
       keyword,
@@ -113,23 +129,24 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     maxRows: number,
     actionLabel: string,
   ): Promise<Record<string, unknown>[]> => {
+    const isAllMatching = isAllPagesSelected && !hasLoadedKeyword;
+    // For every matching row the count below is a previous query's total, so wait
+    // for this query's rather than report a limit it may not exceed.
+    if (isAllMatching && isPlaceholderData) {
+      throw new Error(staleResultsMessage);
+    }
     if (selectedActionCount > maxRows) {
       throw new Error(
         `${actionLabel} supports at most ${maxRows.toLocaleString()} ${label}. Narrow the selection and try again.`,
       );
     }
-    if (!isAllPagesSelected || hasLoadedKeyword) {
+    if (!isAllMatching) {
       return fetchSelectedRows(
         repository,
         resource,
         idField,
         displayedSelectedIds,
         fields,
-      );
-    }
-    if (isRefreshing) {
-      throw new Error(
-        "Wait for the current results to finish loading and try again.",
       );
     }
     return resolveAllMatchingRows(fields);

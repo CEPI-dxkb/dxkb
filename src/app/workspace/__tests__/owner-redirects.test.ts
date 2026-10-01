@@ -1,22 +1,20 @@
+import { redirect } from "next/navigation";
+import { requireCurrentUserOrRedirect } from "@/lib/auth/server/page-auth";
 import type { AuthUser } from "@/lib/auth/types";
+import WorkspacePage from "../page";
+import WorkspaceHomePage from "../[username]/home/[[...path]]/page";
 
-const mocks = vi.hoisted(() => ({
+vi.mock("next/navigation", () => ({
   redirect: vi.fn((href: string) => {
     throw new Error(`NEXT_REDIRECT:${href}`);
   }),
-  requireCurrentUserOrRedirect: vi.fn(),
 }));
-
-vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/auth/server/page-auth", () => ({
-  requireCurrentUserOrRedirect: mocks.requireCurrentUserOrRedirect,
+  requireCurrentUserOrRedirect: vi.fn(),
 }));
 vi.mock("@/components/workspace/workspace-browser", () => ({
   WorkspaceBrowser: () => null,
 }));
-
-import WorkspacePage from "../page";
-import WorkspaceHomePage from "../[username]/home/[[...path]]/page";
 
 /**
  * The profile's login name (`l_id`) can differ from its canonical `id`. The
@@ -43,8 +41,8 @@ async function redirectTargetOf(run: () => Promise<unknown>): Promise<string> {
 
 describe("workspace owner redirects", () => {
   beforeEach(() => {
-    mocks.redirect.mockClear();
-    mocks.requireCurrentUserOrRedirect.mockResolvedValue(user);
+    vi.mocked(redirect).mockClear();
+    vi.mocked(requireCurrentUserOrRedirect).mockResolvedValue(user);
   });
 
   it("/workspace redirects to the canonical id@realm", async () => {

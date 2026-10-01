@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DataRepository } from "@/lib/data-api";
+import { maxExportRows, type DataRepository } from "@/lib/data-api";
 import { biosetCollectionProfile } from "@/lib/experiment-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { ResourceCollection } from "../resource-collection";
@@ -437,6 +437,48 @@ describe("ResourceCollection Bioset actions", () => {
     expect(exportAll).not.toHaveBeenCalled();
     // No blank tab is opened only to be closed again.
     expect(open).not.toHaveBeenCalled();
+  });
+
+  it("closes the reserved tab when the read stops at the export cap the count said it would not reach", async () => {
+    const user = userEvent.setup();
+    const { close, links } = reservedTab();
+    const exportAll = vi.fn(() =>
+      Promise.resolve({
+        rows: Array.from({ length: maxExportRows }, (_, index) => ({
+          exp_id: String(index),
+        })),
+      }),
+    );
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      activeId: null,
+      detail: null,
+      isAllPagesSelected: true,
+      isRefreshing: true,
+      rows: [{ bioset_id: "bioset-2", exp_id: "00051" }],
+      selection: {},
+      selectedIds: [],
+      total: 9_000,
+    });
+
+    render(
+      <ResourceCollection
+        profile={biosetCollectionProfile}
+        repository={{ exportAll } as unknown as DataRepository}
+        state={{ filters: {}, page: 1, sort: "bioset_id:asc" }}
+        baseRql="eq(exp_id,*)"
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Biosets action" }));
+
+    expect(
+      await screen.findByText(
+        "This selection contains at least 10,000 Biosets. Narrow the results to 10,000 or fewer and try again.",
+      ),
+    ).toBeVisible();
+    expect(close).toHaveBeenCalledOnce();
+    expect(links).toHaveLength(0);
   });
 
   it("rejects all matching Biosets when any lacks an experiment", async () => {

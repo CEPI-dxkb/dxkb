@@ -226,26 +226,19 @@ test("shows the loading skeleton, centered under the header checkbox, for a page
 
   await collection.goto("influenza");
   await expect(collection.rowSkeletons()).toHaveCount(0);
-  await collection.pager().getByRole("button", { name: "3", exact: true }).click();
+  await collection.goToPage(3);
 
   // The page being left is not shown as if it were page 3; the skeleton is,
   // and the previous total keeps the pager and the range in place.
   await expect(collection.rowSkeletons().first()).toBeVisible();
   await expect(collection.rowCheckbox(rows[0].genome_id)).toHaveCount(0);
-  await expect(page.getByText("Showing 401-600 of 650 results")).toBeVisible();
+  await expect(collection.resultRange(401, 600, 650)).toBeVisible();
   await expect(collection.pager()).toBeVisible();
 
   // The selection column's skeleton sits where the checkboxes do.
-  const headerCheckbox = await page
-    .getByRole("checkbox", { name: "Select all rows on this page" })
-    .boundingBox();
+  const headerCheckbox = await collection.headerCheckbox().boundingBox();
   const selectionSkeleton = await collection
-    .tableRegion()
-    .locator("tbody tr")
-    .first()
-    .locator("td")
-    .first()
-    .locator('[data-slot="skeleton"]')
+    .selectionCellSkeleton()
     .boundingBox();
   if (!headerCheckbox || !selectionSkeleton) {
     throw new Error("Expected the header checkbox and its skeleton on screen.");

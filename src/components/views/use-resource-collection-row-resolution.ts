@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import type { DataTableRow } from "@/components/shared/data-table";
-import type { DataRepository, DataResource, DataSort } from "@/lib/data-api";
+import {
+  maxExportRows,
+  type DataRepository,
+  type DataResource,
+  type DataSort,
+} from "@/lib/data-api";
 import { maxSelectedRows } from "@/lib/data-api/validation";
 
 interface MatchingRowsRequest {
@@ -27,7 +32,8 @@ interface UseResourceCollectionRowResolutionOptions<
   /**
    * The rows and total on screen belong to a previous query while this one
    * loads, so an all-matching read would be sized by the wrong total. A
-   * background refresh of the same query is not this; its total is right.
+   * background refresh of the same query is not this; its total is this
+   * query's latest count, and `exceedsReadLimit` checks the read against it.
    */
   isPlaceholderData: boolean;
 }
@@ -39,6 +45,23 @@ interface UseResourceCollectionRowResolutionOptions<
  */
 export const staleResultsMessage =
   "Wait for the current results to finish loading and try again.";
+
+/**
+ * Whether an all-matching read is over `maxRows` although the count it was sized by
+ * was not. That count is the total on screen: a same-query refresh keeps it, and the
+ * data can outgrow it with no refresh at all. So the read is over when it returns more
+ * than `maxRows` rows, or when it stops at the export cap that the count said it would
+ * not reach (more rows may match than were read).
+ */
+export function exceedsReadLimit(
+  rowCount: number,
+  countedRows: number,
+  maxRows: number,
+) {
+  return (
+    rowCount > maxRows || (rowCount >= maxExportRows && rowCount > countedRows)
+  );
+}
 
 export async function fetchSelectedRows(
   repository: DataRepository,
@@ -135,11 +158,11 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     if (isAllMatching && isPlaceholderData) {
       throw new Error(staleResultsMessage);
     }
-    if (selectedActionCount > maxRows) {
-      throw new Error(
+    const limitError = () =>
+      new Error(
         `${actionLabel} supports at most ${maxRows.toLocaleString()} ${label}. Narrow the selection and try again.`,
       );
-    }
+    if (selectedActionCount > maxRows) throw limitError();
     if (!isAllMatching) {
       return fetchSelectedRows(
         repository,
@@ -149,7 +172,11 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
         fields,
       );
     }
-    return resolveAllMatchingRows(fields);
+    const rows = await resolveAllMatchingRows(fields);
+    if (exceedsReadLimit(rows.length, selectedActionCount, maxRows)) {
+      throw limitError();
+    }
+    return rows;
   };
 
   return {

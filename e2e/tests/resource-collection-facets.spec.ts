@@ -134,11 +134,11 @@ test.describe("resource collection facet counts", () => {
     expect(requested).toContain("genome_status");
     expect(requested).not.toContain("superkingdom");
     expect(requested).not.toContain("genus");
-    await collection.facetChooserTrigger().click();
-    await expect(
-      page.getByRole("menuitemcheckbox", { checked: true }),
-    ).toHaveCount(requested.length);
-    await page.keyboard.press("Escape");
+    await collection.openFacetChooser();
+    await expect(collection.checkedFacetOptions()).toHaveCount(
+      requested.length,
+    );
+    await collection.closeFacetChooser();
 
     await collection.goToPage(2);
     await expect(collection.rowCheckbox(secondRow.genome_id)).toBeVisible();
@@ -173,11 +173,11 @@ test.describe("resource collection facet counts", () => {
     await collection.showFilters();
     await expect(collection.facetValue("Complete (5)")).toBeVisible();
     // The mock counts nothing for the other shown facets, so they read "No values".
-    const emptyColumns = await page.getByText("No values").count();
+    const emptyColumns = await collection.emptyFacetColumns().count();
 
-    await collection.facetChooserTrigger().click();
+    await collection.openFacetChooser();
     await collection.facetOption("Genus").click();
-    await page.keyboard.press("Escape");
+    await collection.closeFacetChooser();
 
     await expect.poll(() => reads.length).toBe(2);
     expect(reads[1].searchParams.getAll("facet")).toContain("genus");
@@ -185,10 +185,8 @@ test.describe("resource collection facet counts", () => {
     // the new column holds a placeholder rather than "No values".
     await expect(collection.staleFacetPanel()).toBeVisible();
     await expect(collection.facetValue("Complete (5)")).toBeVisible();
-    await expect(
-      collection.staleFacetPanel().locator('[data-slot="skeleton"]').first(),
-    ).toBeAttached();
-    await expect(page.getByText("No values")).toHaveCount(emptyColumns);
+    await expect(collection.staleFacetPlaceholders().first()).toBeAttached();
+    await expect(collection.emptyFacetColumns()).toHaveCount(emptyColumns);
 
     releaseWiderSet();
     await expect(collection.facetValue("Alphainfluenzavirus (5)")).toBeVisible();
@@ -222,18 +220,15 @@ test.describe("resource collection facet counts", () => {
     await collection.goto("influenza");
     await collection.showFilters();
 
-    // Filtered by text: Next's route announcer is an alert too.
-    await expect(
-      page.getByRole("alert").filter({ hasText: "Could not load filter values" }),
-    ).toHaveText(/Could not load filter values: Facet query timed out upstream\./);
+    await expect(collection.facetError()).toHaveText(
+      /Could not load filter values: Facet query timed out upstream\./,
+    );
     // A failed count read leaves the table usable.
     await expect(collection.rowCheckbox(firstRow.genome_id)).toBeVisible();
 
-    await page.getByRole("button", { name: "Retry", exact: true }).click();
+    await collection.retryFacets();
     await expect(collection.facetValue("Complete (5)")).toBeVisible();
-    await expect(
-      page.getByText("Could not load filter values", { exact: false }),
-    ).toHaveCount(0);
+    await expect(collection.facetError()).toHaveCount(0);
     expect(reads).toHaveLength(3);
   });
 });

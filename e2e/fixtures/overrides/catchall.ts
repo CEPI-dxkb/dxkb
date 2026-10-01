@@ -468,6 +468,36 @@ export const genomeScenarioOverrides: JsonOverride[] = [
 ];
 
 /**
+ * The rows of Taxon 11974's Genomes tab, with a second Genome that the MERS
+ * keyword does not match, so a spec can see that tab's keyword filter hide a
+ * row. Rows only: the tab's facet request (`facet=`) falls through to
+ * `genomeScenarioOverrides`.
+ */
+export const taxonGenomesScenarioOverrides: JsonOverride[] = [
+  {
+    url: /\/api\/data\/genome(?=\?)(?=[^#]*[?&]operation=collection(?:&|$))(?=[^#]*taxon_lineage_ids%2C11974%29)(?![^#]*[?&]facet=)/,
+    method: "GET",
+    body: buildGatewayCollectionEnvelope([
+      genomeRecord,
+      {
+        ...genomeRecord,
+        genome_id: "11983.1",
+        genome_name: "Norwalk virus isolate Hu/NLV/1968",
+        strain: "Hu/NLV/1968",
+        genome_length: 7_654,
+        cds: 3,
+        collection_year: 1968,
+        isolation_country: "USA",
+        genbank_accessions: ["M87661"],
+        taxon_id: 11983,
+        taxon_lineage_ids: [10239, 11974, 11983],
+        taxon_lineage_names: ["Viruses", "Caliciviridae", "Norwalk virus"],
+      },
+    ]),
+  },
+];
+
+/**
  * Union of every named resource scenario bundle above. Internal composition
  * building block only — not exported. No spec should import "every resource
  * bundle at once"; a spec that needs broad coverage across many resource

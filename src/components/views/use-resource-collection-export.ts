@@ -13,7 +13,10 @@ import {
 } from "@/lib/data-api";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { downloadResourceExport } from "./resource-export";
-import { fetchSelectedRows } from "./use-resource-collection-row-resolution";
+import {
+  exceedsReadLimit,
+  fetchSelectedRows,
+} from "./use-resource-collection-row-resolution";
 
 const genericExportErrorMessage =
   "The requested export could not be created. Please try again.";
@@ -41,7 +44,8 @@ interface UseResourceCollectionExportOptions {
   /**
    * The rows and total on screen belong to a previous query while this one
    * loads, so an all-matching read would be sized by the wrong total. A
-   * background refresh of the same query is not this; its total is right.
+   * background refresh of the same query is not this; its total is this
+   * query's latest count, and `exceedsReadLimit` checks the read against it.
    */
   isPlaceholderData: boolean;
   hasLoadedKeyword: boolean;
@@ -84,12 +88,12 @@ export function useResourceCollectionExport({
       );
       return;
     }
+    const limitMessage = (rowCount: string) =>
+      hasLoadedKeyword
+        ? `This export must search ${rowCount} rows. Narrow the source results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`
+        : `This export matches ${rowCount} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`;
     if (!ids?.length && total > maxExportRows) {
-      setExportError(
-        hasLoadedKeyword
-          ? `This export must search ${total.toLocaleString()} rows. Narrow the source results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`
-          : `This export matches ${total.toLocaleString()} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`,
-      );
+      setExportError(limitMessage(total.toLocaleString()));
       return;
     }
 
@@ -119,6 +123,12 @@ export function useResourceCollectionExport({
             sort,
           })
         ).rows;
+        if (exceedsReadLimit(rows.length, total, maxExportRows)) {
+          setExportError(
+            limitMessage(`at least ${maxExportRows.toLocaleString()}`),
+          );
+          return;
+        }
         const normalizedLoadedKeyword = loadedKeyword.trim().toLowerCase();
         exportedRows = hasLoadedKeyword
           ? rows.filter((row) =>

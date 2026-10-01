@@ -35,10 +35,11 @@ test.describe("Taxonomy collection", () => {
       releaseNarrowed = resolve;
     });
     let narrowedRequested = false;
+    const isNarrowedQuery = (url: URL) =>
+      url.pathname === "/api/data/taxonomy" &&
+      url.searchParams.get("rql")?.includes("keyword(virus)") === true;
     await page.route(
-      (url) =>
-        url.pathname === "/api/data/taxonomy" &&
-        url.searchParams.get("rql")?.includes("keyword(virus)") === true,
+      isNarrowedQuery,
       async (route) => {
         if (route.request().method() === "GET") {
           narrowedRequested = true;
@@ -65,8 +66,18 @@ test.describe("Taxonomy collection", () => {
       page.getByRole("heading", { name: "Use selected Taxa in a service" }),
     ).toHaveCount(0);
 
-    // Once the narrowed rows land, the same selection resolves.
+    await taxonomyPage.expectRefreshing(true);
+
+    // Once the narrowed rows land, the same selection resolves. The fixture serves
+    // the same row to both queries, so only the refresh status tells them apart.
+    const narrowedResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "GET" &&
+        isNarrowedQuery(new URL(response.url())),
+    );
     releaseNarrowed();
+    await narrowedResponse;
+    await taxonomyPage.expectRefreshing(false);
     await taxonomyPage.expectTaxonVisible("11520");
     await taxonomyPage.openServices();
     await taxonomyPage.expectServiceOptions();

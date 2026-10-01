@@ -71,6 +71,16 @@ export class TaxonomyCollectionPage {
     ).toBeVisible();
   }
 
+  /**
+   * The collection's live status reads "Refreshing results..." while the rows and total on screen
+   * belong to an earlier query (placeholder data), and the result count once the current one lands.
+   */
+  async expectRefreshing(refreshing: boolean): Promise<void> {
+    await expect(
+      this.page.getByText("Refreshing results...", { exact: true }),
+    ).toHaveCount(refreshing ? 1 : 0);
+  }
+
   async openServices(): Promise<void> {
     const services = this.page.getByRole("button", {
       name: "SERVICES",

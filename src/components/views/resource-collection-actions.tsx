@@ -50,7 +50,10 @@ import {
 import { CollectionSelectionActions } from "./collection-selection-actions";
 import type { SelectionServiceKind } from "./selection-service-chooser";
 import { TaxonomyServiceChooser } from "./taxonomy-service-chooser";
-import { staleResultsMessage } from "./use-resource-collection-row-resolution";
+import {
+  exceedsReadLimit,
+  staleResultsMessage,
+} from "./use-resource-collection-row-resolution";
 
 /** Actions each resource enables. Read by both visibility and dispatch. */
 const taxonomyActionIds = [
@@ -614,10 +617,10 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
       onError(staleResultsMessage);
       return;
     }
+    const limitMessage = (count: string) =>
+      `This selection contains ${count} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`;
     if (selection.total > maxExportRows) {
-      onError(
-        `This selection contains ${selection.total.toLocaleString()} Biosets. Narrow the results to ${maxExportRows.toLocaleString()} or fewer and try again.`,
-      );
+      onError(limitMessage(selection.total.toLocaleString()));
       return;
     }
     const resultsWindow = window.open("about:blank", "_blank");
@@ -630,6 +633,11 @@ export function useResourceCollectionActions<Row extends DataTableRow>({
     setLoadingActionIds(["biosets"]);
     try {
       const rows = await resolveAllMatchingRows(["exp_id"]);
+      if (exceedsReadLimit(rows.length, selection.total, maxExportRows)) {
+        throw new Error(
+          limitMessage(`at least ${maxExportRows.toLocaleString()}`),
+        );
+      }
       const experimentIds = rows.flatMap((row) => {
         const experimentId = experimentIdFromRow(row);
         return experimentId ? [experimentId] : [];

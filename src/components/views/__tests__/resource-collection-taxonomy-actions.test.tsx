@@ -1,7 +1,10 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { DataRepository } from "@/lib/data-api";
-import { maxTaxonomyActionIds } from "@/lib/taxonomy-view/actions";
+import {
+  maxTaxonomyActionIds,
+  taxonomyActionLimitMessage,
+} from "@/lib/taxonomy-view/actions";
 import { taxonomyCollectionProfile } from "@/lib/taxonomy-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
 import { ResourceCollection } from "../resource-collection";
@@ -520,7 +523,7 @@ describe("ResourceCollection Taxonomy actions", () => {
 
       expect(await screen.findByText(staleWait)).toBeVisible();
       expect(
-        screen.queryByText(/Narrow the results/),
+        screen.queryByText(taxonomyActionLimitMessage()),
       ).not.toBeInTheDocument();
     });
 
@@ -554,6 +557,30 @@ describe("ResourceCollection Taxonomy actions", () => {
       );
       expect(exportAll).toHaveBeenCalledOnce();
       expect(screen.queryByText(staleWait)).not.toBeInTheDocument();
+    });
+
+    it("refuses SERVICES when the read returns more Taxa than the count on screen allowed", async () => {
+      const user = userEvent.setup();
+      // The refreshed total was within the ID limit, but the data outgrew it.
+      // `normalizeTaxonIds` checks the IDs that were read, not the total.
+      renderAllPagesTaxa(
+        { isRefreshing: true, total: maxTaxonomyActionIds },
+        repository(
+          Promise.resolve({
+            rows: Array.from(
+              { length: maxTaxonomyActionIds + 1 },
+              (_, index) => ({ taxon_id: String(index + 1) }),
+            ),
+          }),
+        ),
+      );
+
+      await user.click(screen.getByRole("button", { name: "services" }));
+
+      expect(
+        await screen.findByText(taxonomyActionLimitMessage()),
+      ).toBeVisible();
+      expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
     });
   });
 });

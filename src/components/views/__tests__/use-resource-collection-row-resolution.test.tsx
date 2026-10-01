@@ -1,7 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
-import type { DataRepository } from "@/lib/data-api";
+import { maxExportRows, type DataRepository } from "@/lib/data-api";
 import { maxSelectedRows } from "@/lib/data-api/validation";
-import { useResourceCollectionRowResolution } from "../use-resource-collection-row-resolution";
+import {
+  exceedsReadLimit,
+  useResourceCollectionRowResolution,
+} from "../use-resource-collection-row-resolution";
 
 function options(
   repository: DataRepository,
@@ -179,6 +182,42 @@ describe("useResourceCollectionRowResolution", () => {
     ).resolves.toEqual([{ genome_id: "1" }]);
   });
 
+  it("refuses an all-matching read that returns more rows than the action allows", async () => {
+    // The count passed the limit, but it is the total on screen, which the data
+    // can outgrow during a same-query refresh or with none at all.
+    const { data, exportAll } = repository();
+    exportAll.mockResolvedValue({
+      rows: [{ genome_id: "1" }, { genome_id: "2" }, { genome_id: "3" }],
+    });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, selectedActionCount: 2 }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], 2, "Copy"),
+    ).rejects.toThrow("Copy supports at most 2 Genomes");
+  });
+
+  it("refuses an all-matching read that stops at the export cap the count said it would not reach", async () => {
+    const { data, exportAll } = repository();
+    exportAll.mockResolvedValue({
+      rows: Array.from({ length: maxExportRows }, (_, index) => ({
+        genome_id: String(index),
+      })),
+    });
+    const { result } = renderHook(() =>
+      useResourceCollectionRowResolution(
+        options(data, { isAllPagesSelected: true, selectedActionCount: 9_000 }),
+      ),
+    );
+
+    await expect(
+      result.current.resolveActionRows(["genome_id"], maxExportRows, "Copy"),
+    ).rejects.toThrow("Copy supports at most 10,000 Genomes");
+  });
+
   it("resolves all matching rows with the shell query", async () => {
     const { data, exportAll } = repository();
     exportAll.mockResolvedValue({ rows: [{ genome_id: "1" }] });
@@ -199,4 +238,21 @@ describe("useResourceCollectionRowResolution", () => {
       sort: { field: "genome_name", direction: "asc" },
     });
   });
+});
+
+describe("exceedsReadLimit", () => {
+  it.each([
+    // [rows read, rows counted, limit, over]
+    [3, 2, 2, true],
+    [2, 2, 2, false],
+    [3, 2, 10, false],
+    [maxExportRows, 9_000, maxExportRows, true],
+    // Exactly the counted cap: the read cannot tell this from more, so it passes.
+    [maxExportRows, maxExportRows, maxExportRows, false],
+  ])(
+    "reads %i rows counted as %i against a limit of %i: over is %s",
+    (rowCount, countedRows, maxRows, over) => {
+      expect(exceedsReadLimit(rowCount, countedRows, maxRows)).toBe(over);
+    },
+  );
 });

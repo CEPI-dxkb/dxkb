@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import type { DataRepository } from "@/lib/data-api";
+import { maxExportRows, type DataRepository } from "@/lib/data-api";
 import { useResourceCollectionExport } from "../use-resource-collection-export";
 
 const { downloadResourceExport } = vi.hoisted(() => ({
@@ -153,6 +153,49 @@ describe("useResourceCollectionExport", () => {
     await act(() => oversized.result.current.exportRows("csv"));
     expect(oversized.result.current.exportError).toContain("10,001");
     expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("refuses a read that stops at the export cap the count on screen said it would not reach", async () => {
+    // A same-query refresh keeps the total it had, and the data can outgrow it, so
+    // the read is checked as well: 10,000 rows may be the first 10,000 of more.
+    const { data, exportAll } = repository();
+    exportAll.mockResolvedValue({
+      rows: Array.from({ length: maxExportRows }, (_, index) => ({
+        genome_id: String(index),
+      })),
+    });
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(options(data, { total: 9_000 })),
+    );
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toBe(
+      "This export matches at least 10,000 rows. Narrow the results to 10,000 rows or fewer and try again.",
+    );
+    expect(downloadResourceExport).not.toHaveBeenCalled();
+  });
+
+  it("downloads a read that outgrew the count but stayed under the export cap", async () => {
+    const { data, exportAll } = repository();
+    const rows = [{ genome_id: "1" }, { genome_id: "2" }, { genome_id: "3" }];
+    exportAll.mockResolvedValue({ rows });
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(options(data, { total: 2 })),
+    );
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toBeNull();
+    expect(downloadResourceExport).toHaveBeenCalledWith(
+      "genome",
+      rows,
+      columns,
+      ["genome_id", "genome_name"],
+      "csv",
+      "all",
+      "genome",
+    );
   });
 
   it("preserves repository failures in export state", async () => {

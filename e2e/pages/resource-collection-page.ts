@@ -66,10 +66,50 @@ export class ResourceCollectionPage {
     return this.tableRegion().locator('tbody [data-slot="skeleton"]');
   }
 
+  /** The selection column's skeleton in the first loading row. */
+  selectionCellSkeleton() {
+    return this.tableRegion()
+      .locator("tbody tr")
+      .first()
+      .locator("td")
+      .first()
+      .locator('[data-slot="skeleton"]');
+  }
+
   pager() {
     return this.page.getByRole("navigation", {
       name: `${this.resource} results pagination`,
     });
+  }
+
+  /** The footer's range, like "Showing 401-600 of 650 results". */
+  resultRange(first: number, last: number, total: number) {
+    return this.page.getByText(
+      `Showing ${String(first)}-${String(last)} of ${String(total)} results`,
+    );
+  }
+
+  /** From the page-selected banner, select every matching result. */
+  async selectAllResults(total: number) {
+    await this.page
+      .getByRole("button", {
+        name: `Select all ${String(total)} results across all pages`,
+      })
+      .click();
+  }
+
+  /** The action bar's count while every matching result is selected. */
+  allResultsSelectedCount(total: number) {
+    return this.page.getByText(`All ${String(total)} selected`, {
+      exact: true,
+    });
+  }
+
+  /** The banner that confirms every matching result is selected. */
+  allResultsSelectedNotice(total: number) {
+    return this.page.getByText(
+      `All ${String(total)} results are selected across all pages.`,
+    );
   }
 
   async showFilters() {
@@ -80,8 +120,21 @@ export class ResourceCollectionPage {
     return this.page.getByRole("button", { name: "Facets" });
   }
 
+  async openFacetChooser() {
+    await this.facetChooserTrigger().click();
+  }
+
+  async closeFacetChooser() {
+    await this.page.keyboard.press("Escape");
+  }
+
   facetOption(label: string) {
     return this.page.getByRole("menuitemcheckbox", { name: label });
+  }
+
+  /** The chooser's checked entries: the facets the panel shows. */
+  checkedFacetOptions() {
+    return this.page.getByRole("menuitemcheckbox", { checked: true });
   }
 
   /** A facet value button, named like "Complete (5)". */
@@ -89,9 +142,30 @@ export class ResourceCollectionPage {
     return this.page.getByRole("button", { name, exact: true });
   }
 
+  /** Facet columns that have no counted values. */
+  emptyFacetColumns() {
+    return this.page.getByText("No values");
+  }
+
   /** The filter panel while its counts belong to a previous scope or facet set. */
   staleFacetPanel() {
     return this.page.locator('[data-stale][aria-busy="true"]');
+  }
+
+  /** Placeholders in the stale panel for facets that are not counted yet. */
+  staleFacetPlaceholders() {
+    return this.staleFacetPanel().locator('[data-slot="skeleton"]');
+  }
+
+  /** The filter panel's error. Filtered by text: Next's route announcer is an alert too. */
+  facetError() {
+    return this.page
+      .getByRole("alert")
+      .filter({ hasText: "Could not load filter values" });
+  }
+
+  async retryFacets() {
+    await this.page.getByRole("button", { name: "Retry", exact: true }).click();
   }
 
   async expectSelectedRowChecked() {

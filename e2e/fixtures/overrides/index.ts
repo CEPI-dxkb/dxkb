@@ -41,6 +41,7 @@ export {
   genomeFeatureScenarioOverrides,
   genomeSequenceScenarioOverrides,
   genomeScenarioOverrides,
+  taxonGenomesScenarioOverrides,
 } from "./catchall";
 export { journeyOverrides } from "./journey";
 export {

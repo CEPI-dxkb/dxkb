@@ -71,18 +71,14 @@ test("the header checkbox follows the page selection and the all-results selecti
 
   // Every matching result.
   await header.check();
-  await page
-    .getByRole("button", { name: "Select all 401 results across all pages" })
-    .click();
+  await collection.selectAllResults(401);
   await expect(header).toHaveAccessibleName("Deselect all results");
   await expect(header).toBeChecked();
-  await expect(page.getByText("All 401 selected", { exact: true })).toBeVisible();
+  await expect(collection.allResultsSelectedCount(401)).toBeVisible();
 
   await header.uncheck();
   await expect(header).toHaveAccessibleName("Select all rows on this page");
-  await expect(
-    page.getByText("All 401 results are selected across all pages."),
-  ).toHaveCount(0);
+  await expect(collection.allResultsSelectedNotice(401)).toHaveCount(0);
   await expect(collection.rowCheckbox(firstRow.genome_id)).not.toBeChecked();
   await expect(collection.rowCheckbox(secondRow.genome_id)).not.toBeChecked();
 });

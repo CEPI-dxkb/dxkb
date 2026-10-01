@@ -149,7 +149,9 @@ function useWorkspaceBrowser({
     username,
     path,
     fullPath,
-    currentUser,
+    // The shared root lists `/{owner}`, so it needs the realm-qualified root,
+    // not the short username.
+    currentUser: myWorkspaceRoot,
     isJobResultView,
     isAtSharedRoot,
     isPublic,

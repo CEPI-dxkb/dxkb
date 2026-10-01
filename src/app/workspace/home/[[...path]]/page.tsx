@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { requireAuthSessionOrRedirect } from "@/lib/auth/server/route";
-import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
+import {
+  encodeWorkspaceSegment,
+  workspaceUsername,
+} from "@/lib/services/workspace/path-utils";
 import { readRouteParamSegments } from "@/lib/views/route-params";
 
 export default async function WorkspaceHomeRedirect({
@@ -18,6 +21,7 @@ export default async function WorkspaceHomeRedirect({
     .join("/");
   const pathPart = encodedPath ? `/${encodedPath}` : "";
   const requestedPath = `/workspace/home${pathPart}`;
-  const { userId } = await requireAuthSessionOrRedirect(requestedPath);
-  redirect(`/workspace/${encodeWorkspaceSegment(userId)}/home${pathPart}`);
+  const { userId, realm } = await requireAuthSessionOrRedirect(requestedPath);
+  const owner = workspaceUsername({ username: userId, realm });
+  redirect(`/workspace/${encodeWorkspaceSegment(owner)}/home${pathPart}`);
 }

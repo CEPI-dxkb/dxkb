@@ -80,6 +80,22 @@ describe("workspace catch-all redirects", () => {
     },
   );
 
+  it("qualifies a bare session user id with the session realm", async () => {
+    // The BV-BRC profile service returns `id` without a realm, and legacy
+    // PATRIC accounts live under `@patricbrc.org`, not the `@bvbrc` default.
+    mocks.requireAuthSessionOrRedirect.mockResolvedValue({
+      userId: "clark.cucinell",
+      realm: "patricbrc.org",
+    });
+
+    await expect(redirectTargetOf(WorkspaceHomeRedirect, [])).resolves.toBe(
+      "/workspace/clark.cucinell@patricbrc.org/home",
+    );
+    await expect(redirectTargetOf(WorkspaceSharedRedirect, [])).resolves.toBe(
+      "/workspace/clark.cucinell@patricbrc.org",
+    );
+  });
+
   it("passes the singly encoded path to the auth redirect target too", async () => {
     // `requireAuthSessionOrRedirect` receives the path a signed-out visitor
     // is sent back to, so it has the same double-encoding exposure.

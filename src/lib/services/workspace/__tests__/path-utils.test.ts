@@ -439,4 +439,19 @@ describe("workspaceUsername", () => {
       "testuser@bvbrc",
     );
   });
+
+  it("keeps a legacy PATRIC realm instead of assuming bvbrc", () => {
+    expect(
+      workspaceUsername({ username: "clark.cucinell", realm: "patricbrc.org" }),
+    ).toBe("clark.cucinell@patricbrc.org");
+  });
+
+  it("does not append the realm twice to an already qualified id", () => {
+    expect(
+      workspaceUsername({
+        username: "testuser@patricbrc.org",
+        realm: "patricbrc.org",
+      }),
+    ).toBe("testuser@patricbrc.org");
+  });
 });

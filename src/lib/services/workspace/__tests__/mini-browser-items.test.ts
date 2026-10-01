@@ -55,8 +55,14 @@ describe("normalizePath", () => {
 });
 
 describe("usernameFromWorkspaceRoot", () => {
-  it("takes the segment before the realm suffix", () => {
-    expect(usernameFromWorkspaceRoot("/alice@bvbrc")).toBe("alice");
+  it("keeps the realm suffix", () => {
+    expect(usernameFromWorkspaceRoot("/alice@bvbrc")).toBe("alice@bvbrc");
+  });
+
+  it("keeps a legacy PATRIC realm, which a bvbrc default would lose", () => {
+    expect(usernameFromWorkspaceRoot("/alice@patricbrc.org/")).toBe(
+      "alice@patricbrc.org",
+    );
   });
 
   it("handles a root without a realm suffix", () => {

@@ -140,13 +140,11 @@ test.describe("workspace actions", () => {
     page,
   }) => {
     // The CopyToDialog mini-browser at root mode renders items from `useUserWorkspaces`,
-    // which derives the root listing path by stripping the realm from the workspaceRoot
-    // and reapplying `@bvbrc` (see `useUserWorkspaces` in
-    // src/hooks/services/workspace/use-shared-with-user.ts). With workspaceRoot
-    // `/e2e-test-user@patricbrc.org`, the hook ends up requesting `/e2e-test-user@bvbrc`
-    // — so the destination tree we render here lives at that path, and any picked
-    // destination paths use the same `@bvbrc` segment.
-    const userBvbrcRoot = `/${e2eUsername.split("@")[0]}@bvbrc`;
+    // which lists the realm-qualified workspace root (`/e2e-test-user@patricbrc.org`).
+    // The realm is kept rather than replaced with `@bvbrc`, which would list another
+    // user's workspace for a `@patricbrc.org` account, so the destination tree lives
+    // at the user's own root and picked destinations use the same segment.
+    const userRoot = `/${e2eUsername}`;
     await applyBackendMocks(page, {
       overrides: [
         ...buildWorkspaceOverrides({
@@ -165,17 +163,17 @@ test.describe("workspace actions", () => {
             // useUserWorkspaces). Stage "Reports" + "Archive" so we have at least
             // one obviously-pickable folder row that's distinct from the default
             // root destination.
-            [userBvbrcRoot]: [
+            [userRoot]: [
               {
                 name: "Reports",
                 type: "folder",
-                parentPath: userBvbrcRoot,
+                parentPath: userRoot,
                 userPermission: "o",
               },
               {
                 name: "Archive",
                 type: "folder",
-                parentPath: userBvbrcRoot,
+                parentPath: userRoot,
                 userPermission: "o",
               },
             ],
@@ -246,10 +244,10 @@ test.describe("workspace actions", () => {
     expect(pairs.length).toBe(1);
     // Source path is the full path of the selected file.
     expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/report.txt`);
-    // Destination uses the picked "Reports" folder under the @bvbrc root the mini-browser
-    // queries — distinct from the @patricbrc.org workspace-root default — with the
-    // original filename preserved.
-    expect(pairs[0]?.[1]).toBe(`${userBvbrcRoot}/Reports/report.txt`);
+    // Destination uses the picked "Reports" folder under the root the mini-browser
+    // queries — distinct from the workspace-root default — with the original
+    // filename preserved.
+    expect(pairs[0]?.[1]).toBe(`${userRoot}/Reports/report.txt`);
     // move: false distinguishes copy from move; recursive: true is the default.
     expect(body.params?.[0]?.move).toBe(false);
     expect(body.params?.[0]?.recursive).toBe(true);
@@ -258,8 +256,8 @@ test.describe("workspace actions", () => {
   test("moving a file: pick a non-default destination via the mini-browser and POST Workspace.copy with move: true", async ({
     page,
   }) => {
-    // See the copy test above for why the destination listing lives at /<user>@bvbrc.
-    const userBvbrcRoot = `/${e2eUsername.split("@")[0]}@bvbrc`;
+    // See the copy test above for why the destination listing lives at the user's root.
+    const userRoot = `/${e2eUsername}`;
     await applyBackendMocks(page, {
       overrides: [
         ...buildWorkspaceOverrides({
@@ -272,17 +270,17 @@ test.describe("workspace actions", () => {
                 userPermission: "o",
               },
             ],
-            [userBvbrcRoot]: [
+            [userRoot]: [
               {
                 name: "Reports",
                 type: "folder",
-                parentPath: userBvbrcRoot,
+                parentPath: userRoot,
                 userPermission: "o",
               },
               {
                 name: "Archive",
                 type: "folder",
-                parentPath: userBvbrcRoot,
+                parentPath: userRoot,
                 userPermission: "o",
               },
             ],
@@ -353,9 +351,8 @@ test.describe("workspace actions", () => {
     const pairs = body.params?.[0]?.objects ?? [];
     expect(pairs.length).toBe(1);
     expect(pairs[0]?.[0]).toBe(`${e2eHomePath}/report.txt`);
-    // Destination uses the picked "Reports" folder under the @bvbrc root, not the
-    // @patricbrc.org workspace root default.
-    expect(pairs[0]?.[1]).toBe(`${userBvbrcRoot}/Reports/report.txt`);
+    // Destination uses the picked "Reports" folder, not the workspace-root default.
+    expect(pairs[0]?.[1]).toBe(`${userRoot}/Reports/report.txt`);
     expect(body.params?.[0]?.move).toBe(true);
     expect(body.params?.[0]?.recursive).toBe(true);
   });

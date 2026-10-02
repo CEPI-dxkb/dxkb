@@ -197,42 +197,96 @@ function DropdownMenuCheckboxItem({
   )
 }
 
-function DropdownMenuRadioGroup({ ...props }: MenuPrimitive.RadioGroup.Props) {
+// Local edit (keep when regenerating with `shadcn add --overwrite`): the
+// radio group and radio item `variant` axes.
+// - `segmented` group + `segment` items: a two-or-three-way toggle drawn as a
+//   track whose checked segment is raised (the theme menu's Light/Dark mode).
+// - `preview` items: a radio circle at the start and room for a picture of
+//   the choice before its label (the theme menu's theme list).
+const dropdownMenuRadioGroupVariants = cva("", {
+  variants: {
+    variant: {
+      default: "",
+      segmented: "flex gap-0.5 rounded-md bg-muted p-0.5",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+})
+
+function DropdownMenuRadioGroup({
+  className,
+  variant,
+  ...props
+}: MenuPrimitive.RadioGroup.Props &
+  VariantProps<typeof dropdownMenuRadioGroupVariants>) {
   return (
     <MenuPrimitive.RadioGroup
       data-slot="dropdown-menu-radio-group"
+      data-variant={variant ?? "default"}
+      className={cn(dropdownMenuRadioGroupVariants({ variant }), className)}
       {...props}
     />
   )
 }
 
+const dropdownMenuRadioItemVariants = cva(
+  "group/dropdown-menu-radio-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-7 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default:
+          "gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground",
+        segment:
+          "flex-1 justify-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-muted-foreground focus:bg-background/60 focus:text-foreground data-checked:bg-background data-checked:text-foreground data-checked:shadow-sm",
+        preview:
+          "gap-3 rounded-md py-1.5 pr-3 pl-2 text-sm focus:bg-accent focus:text-accent-foreground data-checked:font-medium",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
 function DropdownMenuRadioItem({
   className,
   children,
   inset,
+  variant = "default",
   ...props
-}: MenuPrimitive.RadioItem.Props & {
-  inset?: boolean
-}) {
+}: MenuPrimitive.RadioItem.Props &
+  VariantProps<typeof dropdownMenuRadioItemVariants> & {
+    inset?: boolean
+  }) {
   return (
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
-      className={cn(
-        "relative flex cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 data-inset:pl-7 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-        className
-      )}
+      data-variant={variant}
+      className={cn(dropdownMenuRadioItemVariants({ variant }), className)}
       {...props}
     >
-      <span
-        className="pointer-events-none absolute right-2 flex items-center justify-center"
-        data-slot="dropdown-menu-radio-item-indicator"
-      >
-        <MenuPrimitive.RadioItemIndicator>
-          <CheckIcon
-          />
-        </MenuPrimitive.RadioItemIndicator>
-      </span>
+      {variant === "default" && (
+        <span
+          className="pointer-events-none absolute right-2 flex items-center justify-center"
+          data-slot="dropdown-menu-radio-item-indicator"
+        >
+          <MenuPrimitive.RadioItemIndicator>
+            <CheckIcon
+            />
+          </MenuPrimitive.RadioItemIndicator>
+        </span>
+      )}
+      {variant === "preview" && (
+        <span
+          className="pointer-events-none flex size-4 shrink-0 items-center justify-center rounded-full border border-muted-foreground/60 group-data-checked/dropdown-menu-radio-item:border-primary"
+          data-slot="dropdown-menu-radio-item-indicator"
+        >
+          <MenuPrimitive.RadioItemIndicator className="size-2 rounded-full bg-primary" />
+        </span>
+      )}
       {children}
     </MenuPrimitive.RadioItem>
   )

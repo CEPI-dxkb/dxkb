@@ -64,6 +64,19 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
     </div>
   ),
   DropdownMenuSeparator: () => <hr />,
+  DropdownMenuSub: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuSubTrigger: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DropdownMenuSubContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
+vi.mock("@/components/navbars/theme-menu-options", () => ({
+  ThemeMenuOptions: () => <div data-testid="theme-menu-options" />,
 }));
 
 vi.mock("@/components/ui/avatar", () => ({
@@ -89,6 +102,7 @@ vi.mock("lucide-react", () => {
     NotebookPen: icon,
     BriefcaseBusiness: icon,
     Settings: icon,
+    Contrast: icon,
     Mail: icon,
     ShieldUser: icon,
     LogIn: icon,
@@ -131,6 +145,15 @@ describe("UserAvatarDropdown", () => {
       );
       expect(greetingSpan).toBeDefined();
       expect(greetingSpan?.textContent).not.toBe("");
+    });
+  });
+
+  describe("theme submenu", () => {
+    it("offers the theme options under a Theme item", () => {
+      setUser({ id: "alice", username: "alice", email: "alice@example.com" });
+      render(<UserAvatarDropdown />);
+      expect(screen.getByText("Theme")).toBeInTheDocument();
+      expect(screen.getByTestId("theme-menu-options")).toBeInTheDocument();
     });
   });
 

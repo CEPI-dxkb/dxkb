@@ -11,8 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ThemeMenuOptions } from "@/components/navbars/theme-menu-options";
 import { SignoutButton } from "@/components/auth/signout-button";
 import { SuLoginDialog } from "@/components/auth/su-login-dialog";
 import {
@@ -29,6 +33,7 @@ import {
   NotebookPen,
   BriefcaseBusiness,
   Settings,
+  Contrast,
   Mail,
   ShieldUser,
   LogIn,
@@ -121,6 +126,16 @@ export function UserAvatarDropdown() {
                   <Settings className="size-4 text-foreground" />
                   Settings
                 </DropdownMenuItem>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Contrast className="size-4 text-foreground" />
+                    Theme
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent side="left" className="w-56">
+                    <ThemeMenuOptions />
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
 
                 {isAdmin && !isImpersonating && (
                   <>

@@ -194,7 +194,7 @@ The link boundary itself is **not** in that file. It lives in two siblings, so t
 ## UI
 
 - shadcn/ui (New York style, slate base) in `src/components/ui/`, built on `@base-ui` primitives (e.g. https://ui.shadcn.com/docs/components/base/accordion)
-- Tailwind CSS v4 with CSS variable theming; multiple named themes in `src/app/globals.css`
+- Tailwind CSS v4 with CSS variable theming. Three themes (DXKB, BV-BRC, Violet), each light and dark: `dxkb-*` in `src/app/globals.css`, the others in `src/styles/themes/*.css`. `src/styles/themes.ts` is the list (`themeBases`, `themeList`, `parseTheme`); `next-themes` stores the choice and sets `data-theme` on `<html>`, and `ThemeProvider` moves a stored theme that is no longer offered onto DXKB. The picker (`navbars/theme-menu-options.tsx`) is the profile dropdown's Theme submenu when signed in and the navbar palette button when signed out; its previews set `data-theme` on themselves, which scopes that theme's tokens to the preview.
 - SVG via `@svgr/webpack` (`import Icon from './file.svg'` or `'./file.svg?url'` for raw URL)
 - `sonner` for toasts; `lucide-react` for icons
 

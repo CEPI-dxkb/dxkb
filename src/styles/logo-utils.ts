@@ -1,7 +1,5 @@
 // Define logo folder mapping for each theme base
 const themeLogoMapping: Record<string, string> = {
-  zinc: "generic",
-  orange: "generic",
   violet: "generic",
   dxkb: "dxkb",
   bvbrc: "bvbrc",

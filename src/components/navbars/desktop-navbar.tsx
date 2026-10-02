@@ -172,7 +172,7 @@ const DesktopNavbar = () => {
         )}
 
         <div className="flex items-center space-x-2">
-          <NavbarThemeSwitcher />
+          {!isAuthenticated && <NavbarThemeSwitcher />}
           <div className="flex items-center space-x-2">
             {!isAuthenticated && (
               <>

@@ -1,7 +1,5 @@
 @import "tailwindcss";
 @import "../styles/debug-outline.css";
-@import "../styles/themes/zinc-theme.css";
-@import "../styles/themes/orange-theme.css";
 @import "../styles/themes/violet-theme.css";
 @import "../styles/themes/bvbrc-theme.css";
 @import "../styles/molstar-theme.css";
@@ -730,29 +728,6 @@
   position: sticky;
   left: 0;
   z-index: 10;
-}
-
-/* Theme swatches in the navbar theme switcher: each dot sets data-swatch to
-   its theme base and paints bg-(--swatch). One fixed color per base, the
-   same in every theme and mode. A base without a rule paints no color. */
-[data-swatch="zinc"] {
-  --swatch: #18181b;
-}
-
-[data-swatch="orange"] {
-  --swatch: #c2410c;
-}
-
-[data-swatch="violet"] {
-  --swatch: #6d28d9;
-}
-
-[data-swatch="dxkb"] {
-  --swatch: #ff7248;
-}
-
-[data-swatch="bvbrc"] {
-  --swatch: #008c81;
 }
 
 /* Taxonomy rank badges (the Rank column of the taxonomy tree). This is the one

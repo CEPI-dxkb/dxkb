@@ -75,6 +75,7 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   ),
 }));
 
+// The real submenu is exercised in user-avatar-theme-submenu.test.tsx.
 vi.mock("@/components/navbars/theme-menu-options", () => ({
   ThemeMenuOptions: () => <div data-testid="theme-menu-options" />,
 }));
@@ -145,15 +146,6 @@ describe("UserAvatarDropdown", () => {
       );
       expect(greetingSpan).toBeDefined();
       expect(greetingSpan?.textContent).not.toBe("");
-    });
-  });
-
-  describe("theme submenu", () => {
-    it("offers the theme options under a Theme item", () => {
-      setUser({ id: "alice", username: "alice", email: "alice@example.com" });
-      render(<UserAvatarDropdown />);
-      expect(screen.getByText("Theme")).toBeInTheDocument();
-      expect(screen.getByTestId("theme-menu-options")).toBeInTheDocument();
     });
   });
 

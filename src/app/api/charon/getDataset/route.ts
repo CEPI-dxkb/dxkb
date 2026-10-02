@@ -66,7 +66,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error(
-      `charon/getDataset: dataset sources unavailable for '${datasetId}'`,
+      "charon/getDataset: dataset sources unavailable for '%s'",
+      datasetId,
       error,
     );
     return NextResponse.json(

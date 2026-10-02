@@ -1,4 +1,4 @@
-import { getRequiredEnv } from "@/lib/env";
+import { getAppBaseUrl, getRequiredEnv } from "@/lib/env";
 import type {
   AuthErrorCode,
   Result,
@@ -134,6 +134,10 @@ export async function authenticate(
 export async function registerUser(
   input: SignupCredentials,
 ): Promise<Result<{ token: string }>> {
+  // Several frontends share one user service, which records the site an
+  // account was created from only if the caller declares it, so the value
+  // comes from server config and never from the request.
+  const siteUrl = getAppBaseUrl();
   const result = await request(
     getRequiredEnv("USER_REGISTER_URL"),
     {
@@ -150,6 +154,7 @@ export async function registerUser(
         interests: input.interests || "",
         password: input.password,
         password_repeat: input.password_repeat,
+        registration_site_url: siteUrl,
       }),
     },
     "Registration service unavailable",

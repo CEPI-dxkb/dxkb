@@ -12,6 +12,10 @@ import { fail, networkFailure, ok } from "../result";
 // Cloudflare rejects Node's default user-agent for BV-BRC API requests.
 const serverUserAgent = "curl/8.7.1 DXKB-V2/1.0";
 const requestTimeoutMs = 15_000;
+// The user service maps this origin to the `dxkb` registration site
+// (BV-BRC-UserManagement `registration_site_map`); `www.dxkb.org` and the
+// non-production tiers are not mapped and would be recorded as `unknown`.
+const defaultAppBaseUrl = "https://dxkb.org";
 
 function joinUrl(base: string, path = ""): string {
   return path
@@ -131,9 +135,33 @@ export async function authenticate(
   return readToken(result.data, "Authentication service returned no token");
 }
 
+/**
+ * The origin this deployment declares as `registration_site_url`. Several
+ * frontends share one user service, which records the site an account was
+ * created from only if the caller declares it, so it comes from server config
+ * and never from the request. The service rejects a malformed URL with a 400,
+ * so a misconfigured value fails here with a message naming the variable.
+ */
+function registrationSiteUrl(): string {
+  const configured = process.env.APP_BASE_URL || defaultAppBaseUrl;
+  let url: URL | null = null;
+  try {
+    url = new URL(configured);
+  } catch {
+    // Reported below with the other malformed values.
+  }
+  if (!url || (url.protocol !== "http:" && url.protocol !== "https:")) {
+    throw new Error(
+      `APP_BASE_URL must be an absolute http(s) URL, got "${configured}"`,
+    );
+  }
+  return url.origin;
+}
+
 export async function registerUser(
   input: SignupCredentials,
 ): Promise<Result<{ token: string }>> {
+  const siteUrl = registrationSiteUrl();
   const result = await request(
     getRequiredEnv("USER_REGISTER_URL"),
     {
@@ -150,6 +178,7 @@ export async function registerUser(
         interests: input.interests || "",
         password: input.password,
         password_repeat: input.password_repeat,
+        registration_site_url: siteUrl,
       }),
     },
     "Registration service unavailable",

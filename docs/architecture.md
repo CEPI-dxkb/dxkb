@@ -58,7 +58,7 @@ it reads through `readRouteParam` now.)
 - `server/cookies.ts` — Edge-safe cookie names and optimistic cookie-presence check
 - `server/route.ts` — authenticated route wrapping and direct session reads for routes and Server Components
 - `server/page-auth.ts` — authoritative protected-page redirect helper used by the narrowest protected layouts; it validates `getCurrentUser()` and preserves the proxy-forwarded path and query. `workspace/layout.tsx` guards the whole workspace subtree, and each workspace page that renders a folder repeats the call, because layouts do not re-render on client-side navigation between folders (`protected-layouts.test.ts` enforces both)
-- `server/adapters/bvbrc-identity.ts` — named BV-BRC identity protocol calls
+- `server/adapters/bvbrc-identity.ts` — named BV-BRC identity protocol calls. `registerUser` declares `registration_site_url` from `APP_BASE_URL` (default `https://dxkb.org`, normalized to its origin) so the user service, which several frontends share, records DXKB as the registration site; the value is server config, never taken from the sign-up request body
 
 Notes:
 

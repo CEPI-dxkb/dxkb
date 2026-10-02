@@ -1,6 +1,6 @@
 import { http, HttpResponse } from "msw";
 import { server } from "@/test-helpers/msw-server";
-import type { ProfilePatch } from "@/lib/auth/types";
+import type { ProfilePatch, SignupCredentials } from "@/lib/auth/types";
 import {
   authenticate,
   changePassword,
@@ -20,6 +20,11 @@ beforeEach(() => {
   process.env.USER_REGISTER_URL = "https://auth.test/register";
   process.env.USER_PASSWORD_RESET_URL = "https://auth.test/reset";
   process.env.USER_VERIFICATION_URL = "https://auth.test/verify";
+  delete process.env.APP_BASE_URL;
+});
+
+afterEach(() => {
+  delete process.env.APP_BASE_URL;
 });
 
 const validProfile = {
@@ -267,6 +272,63 @@ describe("named BV-BRC identity operations", () => {
       username: "alice",
     });
   });
+
+  async function registrationBody(
+    input: SignupCredentials = signupInput,
+  ): Promise<URLSearchParams> {
+    let body = "";
+    server.use(
+      http.post("https://auth.test/register", async ({ request }) => {
+        body = await request.text();
+        return new HttpResponse("t");
+      }),
+    );
+    expect((await registerUser(input)).data).toEqual({ token: "t" });
+    return new URLSearchParams(body);
+  }
+
+  it("declares the DXKB production origin as the registration site by default", async () => {
+    const body = await registrationBody();
+    expect(body.get("registration_site_url")).toBe("https://dxkb.org");
+  });
+
+  it("treats an empty APP_BASE_URL as unset", async () => {
+    process.env.APP_BASE_URL = "";
+    const body = await registrationBody();
+    expect(body.get("registration_site_url")).toBe("https://dxkb.org");
+  });
+
+  it("declares the configured APP_BASE_URL, normalized to its origin", async () => {
+    process.env.APP_BASE_URL = "https://Dev.DXKB.org:443/services/";
+    const body = await registrationBody();
+    expect(body.get("registration_site_url")).toBe("https://dev.dxkb.org");
+  });
+
+  it("never forwards a registration site supplied by the caller", async () => {
+    const body = await registrationBody({
+      ...signupInput,
+      registration_site_url: "https://www.bv-brc.org",
+    } as SignupCredentials);
+    expect(body.getAll("registration_site_url")).toEqual(["https://dxkb.org"]);
+  });
+
+  it.each(["dxkb.org", "javascript:alert(1)", "ftp://dxkb.org"])(
+    "refuses to register with a malformed APP_BASE_URL (%s)",
+    async (value) => {
+      process.env.APP_BASE_URL = value;
+      let requested = false;
+      server.use(
+        http.post("https://auth.test/register", () => {
+          requested = true;
+          return new HttpResponse("t");
+        }),
+      );
+      await expect(registerUser(signupInput)).rejects.toThrow(
+        `APP_BASE_URL must be an absolute http(s) URL, got "${value}"`,
+      );
+      expect(requested).toBe(false);
+    },
+  );
 
   it.each([
     ["400 verification", 400, "validation", () => verifyEmailToken("bad", "u")],

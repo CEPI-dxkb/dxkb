@@ -7,6 +7,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,25 @@ describe("DropdownMenu — a11y primitive", () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem>Delete</DropdownMenuItem>
             </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+    {
+      label: "open with segmented and preview radio groups",
+      ui: (
+        <DropdownMenu defaultOpen>
+          <DropdownMenuTrigger render={<Button variant="outline">Theme</Button>} />
+          <DropdownMenuContent>
+            <DropdownMenuRadioGroup variant="segmented" aria-label="Color mode" defaultValue="light">
+              <DropdownMenuRadioItem variant="segment" value="light">Light</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem variant="segment" value="dark">Dark</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup aria-label="Theme" defaultValue="dxkb">
+              <DropdownMenuRadioItem variant="preview" value="dxkb">DXKB</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem variant="preview" value="bvbrc">BV-BRC</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       ),

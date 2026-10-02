@@ -1,7 +1,5 @@
 // Define theme-to-folder mapping for content
 const themeContentMapping: Record<string, string> = {
-  zinc: "generic",
-  orange: "generic",
   violet: "generic",
   dxkb: "dxkb",
   bvbrc: "bvbrc",

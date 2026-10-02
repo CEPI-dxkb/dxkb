@@ -22,8 +22,8 @@ export const buttonVariants = cva(
         "ghost-inverse":
           "text-primary-foreground hover:bg-white/15 hover:text-primary-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         // Call-to-action on marketing and help surfaces: brand secondary
-        // fill with the theme's paired foreground (the zinc, orange and
-        // violet light themes have a near-white secondary).
+        // fill with the theme's paired foreground (the violet light theme
+        // has a near-white secondary).
         cta: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         // Outlined control on a dark or brand surface (the navbar job pill).
         "inverse-outline":

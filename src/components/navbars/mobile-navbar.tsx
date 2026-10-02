@@ -136,7 +136,7 @@ const useMobileNavbar = () => {
             </Button>
           )}
 
-          <NavbarThemeSwitcher />
+          {!isAuthenticated && <NavbarThemeSwitcher />}
 
           {!isAuthenticated && (
             <>

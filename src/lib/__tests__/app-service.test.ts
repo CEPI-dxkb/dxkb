@@ -325,53 +325,42 @@ describe("AppService", () => {
   });
 
   describe("submitService", () => {
-    it("calls start_app2 with app_name, params, and context", async () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("calls start_app2 with app_name, params, and APP_BASE_URL as the base_url", async () => {
+      vi.stubEnv("APP_BASE_URL", "https://dev.dxkb.org/");
       const expected = { success: true, job: [{ id: "999" }] };
       mockClient.call.mockResolvedValue(expected);
 
       const result = await service.submitService({
         app_name: "GenomeAssembly2",
         app_params: { genome_id: "123" },
-        context: { base_url: "https://prod.dxkb.org" },
       });
 
       expect(mockClient.call).toHaveBeenCalledWith("AppService.start_app2", [
         "GenomeAssembly2",
         { genome_id: "123" },
-        { base_url: "https://prod.dxkb.org" },
+        { base_url: "https://dev.dxkb.org" },
       ]);
       expect(result).toEqual(expected);
     });
 
-    it("uses default base_url when context is not provided", async () => {
-      mockClient.call.mockResolvedValue({});
+    it.each([
+      ["missing", "", "Missing required environment variable: APP_BASE_URL"],
+      [
+        "malformed",
+        "dxkb.org",
+        'APP_BASE_URL must be an absolute http(s) URL, got "dxkb.org"',
+      ],
+    ])("submits nothing when APP_BASE_URL is %s", async (_name, value, message) => {
+      vi.stubEnv("APP_BASE_URL", value);
 
-      await service.submitService({
-        app_name: "MyApp",
-        app_params: {},
-      });
-
-      expect(mockClient.call).toHaveBeenCalledWith("AppService.start_app2", [
-        "MyApp",
-        {},
-        { base_url: "https://dev.dxkb.org" },
-      ]);
-    });
-
-    it("uses default base_url when context.base_url is empty", async () => {
-      mockClient.call.mockResolvedValue({});
-
-      await service.submitService({
-        app_name: "MyApp",
-        app_params: {},
-        context: {},
-      });
-
-      expect(mockClient.call).toHaveBeenCalledWith("AppService.start_app2", [
-        "MyApp",
-        {},
-        { base_url: "https://dev.dxkb.org" },
-      ]);
+      await expect(
+        service.submitService({ app_name: "MyApp", app_params: {} }),
+      ).rejects.toThrow(message);
+      expect(mockClient.call).not.toHaveBeenCalled();
     });
   });
 });

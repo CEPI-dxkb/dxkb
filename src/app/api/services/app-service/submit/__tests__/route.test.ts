@@ -106,16 +106,15 @@ describe("POST /api/services/app-service/submit", () => {
     expect(data).toEqual({ success: true, job: mockResult });
   });
 
-  it("passes context to submitService when provided", async () => {
+  it("never forwards a job context supplied by the caller", async () => {
     mockAppService.submitService.mockResolvedValue({ id: "job-456" });
 
-    const context = { workspace: "/user@bvbrc/home" };
     const request = mockNextRequest({
       method: "POST",
       body: {
         app_name: "BLAST",
         app_params: { query: "ATCG" },
-        context,
+        context: { base_url: "https://www.bv-brc.org" },
       },
     });
 
@@ -124,7 +123,6 @@ describe("POST /api/services/app-service/submit", () => {
     expect(mockAppService.submitService).toHaveBeenCalledWith({
       app_name: "BLAST",
       app_params: { query: "ATCG" },
-      context,
     });
   });
 

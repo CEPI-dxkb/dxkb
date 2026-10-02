@@ -20,7 +20,7 @@ beforeEach(() => {
   process.env.USER_REGISTER_URL = "https://auth.test/register";
   process.env.USER_PASSWORD_RESET_URL = "https://auth.test/reset";
   process.env.USER_VERIFICATION_URL = "https://auth.test/verify";
-  delete process.env.APP_BASE_URL;
+  process.env.APP_BASE_URL = "https://dxkb.org";
 });
 
 afterEach(() => {
@@ -287,18 +287,7 @@ describe("named BV-BRC identity operations", () => {
     return new URLSearchParams(body);
   }
 
-  it("declares the DXKB production origin as the registration site by default", async () => {
-    const body = await registrationBody();
-    expect(body.get("registration_site_url")).toBe("https://dxkb.org");
-  });
-
-  it("treats an empty APP_BASE_URL as unset", async () => {
-    process.env.APP_BASE_URL = "";
-    const body = await registrationBody();
-    expect(body.get("registration_site_url")).toBe("https://dxkb.org");
-  });
-
-  it("declares the configured APP_BASE_URL, normalized to its origin", async () => {
+  it("declares APP_BASE_URL as the registration site, normalized to its origin", async () => {
     process.env.APP_BASE_URL = "https://Dev.DXKB.org:443/services/";
     const body = await registrationBody();
     expect(body.get("registration_site_url")).toBe("https://dev.dxkb.org");
@@ -312,23 +301,25 @@ describe("named BV-BRC identity operations", () => {
     expect(body.getAll("registration_site_url")).toEqual(["https://dxkb.org"]);
   });
 
-  it.each(["dxkb.org", "javascript:alert(1)", "ftp://dxkb.org"])(
-    "refuses to register with a malformed APP_BASE_URL (%s)",
-    async (value) => {
-      process.env.APP_BASE_URL = value;
-      let requested = false;
-      server.use(
-        http.post("https://auth.test/register", () => {
-          requested = true;
-          return new HttpResponse("t");
-        }),
-      );
-      await expect(registerUser(signupInput)).rejects.toThrow(
-        `APP_BASE_URL must be an absolute http(s) URL, got "${value}"`,
-      );
-      expect(requested).toBe(false);
-    },
-  );
+  it.each([
+    ["missing", "", "Missing required environment variable: APP_BASE_URL"],
+    [
+      "malformed",
+      "javascript:alert(1)",
+      'APP_BASE_URL must be an absolute http(s) URL, got "javascript:alert(1)"',
+    ],
+  ])("refuses to register with a %s APP_BASE_URL", async (_name, value, message) => {
+    process.env.APP_BASE_URL = value;
+    let requested = false;
+    server.use(
+      http.post("https://auth.test/register", () => {
+        requested = true;
+        return new HttpResponse("t");
+      }),
+    );
+    await expect(registerUser(signupInput)).rejects.toThrow(message);
+    expect(requested).toBe(false);
+  });
 
   it.each([
     ["400 verification", 400, "validation", () => verifyEmailToken("bad", "u")],

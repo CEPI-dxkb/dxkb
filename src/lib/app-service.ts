@@ -1,3 +1,4 @@
+import { getAppBaseUrl } from "./env";
 import { createBvBrcClient } from "./jsonrpc-client";
 import {
   QueryJobDetailsResponse,
@@ -169,17 +170,14 @@ export class AppService {
   async submitService(
     params: SubmitServiceParams,
   ): Promise<SubmitServiceResponse> {
-    const { app_name, app_params, context } = params;
+    const { app_name, app_params } = params;
 
-    // Build the context object with base_url
-    const contextObj = {
-      base_url: context?.base_url || "https://dev.dxkb.org",
-    };
-
+    // base_url picks the job's per-site container and becomes P3_BASE_URL in
+    // the job, so it comes from server config and never from the request.
     return this.client.call("AppService.start_app2", [
       app_name,
       app_params,
-      contextObj,
+      { base_url: getAppBaseUrl() },
     ]);
   }
 }

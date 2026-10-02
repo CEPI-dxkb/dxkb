@@ -107,9 +107,6 @@ export interface FetchJobOutputParams {
 export interface SubmitServiceParams {
   app_name: string;
   app_params: Record<string, unknown>;
-  context?: {
-    base_url?: string;
-  };
 }
 
 // Response types for each API method

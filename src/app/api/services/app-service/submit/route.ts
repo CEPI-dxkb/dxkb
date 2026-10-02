@@ -5,7 +5,6 @@ import { withAuth } from "@/lib/auth/server/route";
 interface SubmitRequestBody {
   app_name?: unknown;
   app_params?: unknown;
-  context?: { base_url?: string };
 }
 
 /**
@@ -15,7 +14,7 @@ interface SubmitRequestBody {
 export const POST = withAuth(async (request: NextRequest, { token }) => {
   // Parse request body
   const body = (await request.json()) as SubmitRequestBody;
-  const { app_name, app_params, context } = body;
+  const { app_name, app_params } = body;
 
   // Validate required fields
   if (!app_name || typeof app_name !== "string") {
@@ -39,7 +38,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
   const result = await appService.submitService({
     app_name,
     app_params: app_params as Record<string, unknown>,
-    context,
   });
 
   return NextResponse.json({

@@ -1,4 +1,4 @@
-import { getRequiredEnv } from "../env";
+import { getAppBaseUrl, getRequiredEnv } from "../env";
 
 describe("getRequiredEnv", () => {
   afterEach(() => {
@@ -26,4 +26,44 @@ describe("getRequiredEnv", () => {
       "Missing required environment variable: TEST_VAR",
     );
   });
+});
+
+describe("getAppBaseUrl", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([undefined, ""])(
+    "throws when APP_BASE_URL is not set (%j), rather than assume a tier",
+    (value) => {
+      vi.stubEnv("APP_BASE_URL", value);
+
+      expect(() => getAppBaseUrl()).toThrow(
+        "Missing required environment variable: APP_BASE_URL",
+      );
+    },
+  );
+
+  it("normalizes the configured value to its origin", () => {
+    vi.stubEnv("APP_BASE_URL", "https://Dev.DXKB.org:443/services/");
+
+    expect(getAppBaseUrl()).toBe("https://dev.dxkb.org");
+  });
+
+  it("keeps a non-default port", () => {
+    vi.stubEnv("APP_BASE_URL", "http://localhost:3019/");
+
+    expect(getAppBaseUrl()).toBe("http://localhost:3019");
+  });
+
+  it.each(["dxkb.org", "javascript:alert(1)", "ftp://dxkb.org"])(
+    "throws for a value that is not an absolute http(s) URL (%s)",
+    (value) => {
+      vi.stubEnv("APP_BASE_URL", value);
+
+      expect(() => getAppBaseUrl()).toThrow(
+        `APP_BASE_URL must be an absolute http(s) URL, got "${value}"`,
+      );
+    },
+  );
 });

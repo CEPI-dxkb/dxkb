@@ -35,9 +35,13 @@ export function normalizePath(path: string | null | undefined): string {
   return trimmed || "/";
 }
 
-/** "/alice@bvbrc" -> "alice". Used to key the root-level workspace queries. */
+/**
+ * "/alice@bvbrc" -> "alice@bvbrc". Used to list and key the root-level
+ * workspace queries. The realm is kept: it varies per account, so dropping it
+ * would make `useUserWorkspaces` list `/alice@bvbrc` for a `@patricbrc.org` user.
+ */
 export function usernameFromWorkspaceRoot(workspaceRoot: string): string {
-  return workspaceRoot.replace(/^\//, "").split("@")[0] ?? "";
+  return workspaceRoot.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
 }
 
 /**

@@ -349,10 +349,22 @@ export function buildWorkspaceBreadcrumbs({
   ];
 }
 
-/** Full username with @domain for workspace URLs (session stores short form in user.username). */
+/**
+ * Full username with @realm for workspace URLs and paths. The session and the
+ * profile service store the short form, and the realm differs per account
+ * (legacy PATRIC accounts are `@patricbrc.org`, newer ones `@bvbrc`), so a
+ * path must never be built from the short form plus an assumed realm.
+ *
+ * The canonical profile `id` wins over the login name (`username`, from
+ * `l_id`): the workspace is provisioned and owned under `id@realm`, the same
+ * owner the session user id gives the `/workspace/home` shortcut.
+ */
 export function workspaceUsername(
-  user: { username?: string; realm?: string } | null,
+  user: { id?: string; username?: string; realm?: string } | null,
 ): string {
-  if (!user?.username) return "";
-  return user.realm ? `${user.username}@${user.realm}` : user.username;
+  if (!user) return "";
+  const name = user.id || user.username;
+  if (!name) return "";
+  if (!user.realm || name.includes("@")) return name;
+  return `${name}@${user.realm}`;
 }

@@ -11,6 +11,7 @@ import {
   type WorkspaceSelectorPreset,
 } from "./workspace-selector-presets";
 import { useAuth } from "@/lib/auth/provider";
+import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 
 interface WorkspaceObjectSelectorProps {
   id?: string;
@@ -96,7 +97,7 @@ function useWorkspaceObjectSelector({
     setSearchQuery,
     search,
   } = useWorkspaceObjectSearch({
-    username: user?.username || "",
+    username: workspaceUsername(user),
     path,
     types: resolvedTypes,
   });

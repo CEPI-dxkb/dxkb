@@ -14,9 +14,13 @@ function isMissingFile(error: unknown): boolean {
   );
 }
 
+/** `directory` with exactly one trailing separator ("/" stays "/"). */
+export function directoryPrefix(directory: string): string {
+  return directory.endsWith(sep) ? directory : `${directory}${sep}`;
+}
+
 export function isWithinDirectory(parent: string, child: string): boolean {
-  const prefix = parent.endsWith(sep) ? parent : `${parent}${sep}`;
-  return child === parent || child.startsWith(prefix);
+  return child === parent || child.startsWith(directoryPrefix(parent));
 }
 
 export function isAuspiceV2Dataset(value: unknown): boolean {

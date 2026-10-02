@@ -4,6 +4,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
+  directoryPrefix,
   isWithinDirectory,
   localDatasetIds,
   sidecars,
@@ -117,7 +118,7 @@ export async function readDataset(
   if (!directory) return null;
 
   const target = resolve(directory, datasetFilename(parts, sidecar));
-  if (!isWithinDirectory(directory, target)) return null;
+  if (!target.startsWith(directoryPrefix(directory))) return null;
 
   const directoryRealPath = await realpath(directory);
 

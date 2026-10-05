@@ -19,9 +19,9 @@ const resourcesItems: {
     target: "_blank",
   },
   {
-    title: "PATRIC",
-    description: "About the PATRIC platform.",
-    href: "https://p3.theseed.org/p3_docs/about.html",
+    title: "BV-BRC",
+    description: "About the BV-BRC platform.",
+    href: "https://www.bv-brc.org/docs/overview.html",
     target: "_blank",
   },
   {

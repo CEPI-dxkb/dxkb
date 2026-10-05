@@ -1,6 +1,6 @@
 import type { JobListItem } from "@/types/workspace";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
-import { serviceNames } from "./constants";
+import { activeJobStatuses, serviceNames } from "./constants";
 
 const serviceNameMap = new Map<string, string>(
   serviceNames.map((entry) => [entry.value, entry.displayName]),
@@ -31,9 +31,12 @@ export function getOutputName(job: JobListItem): string {
 
 /**
  * Workspace URL of a job's result (`/workspace/<output_path>/<output_file>`),
- * or `undefined` when the job records no output location.
+ * or `undefined` when the job records no output location or is still active.
+ * The location is set at submission, so a queued or running job has one before
+ * any result exists there.
  */
 export function getJobResultHref(job: JobListItem): string | undefined {
+  if (activeJobStatuses.includes(job.status)) return undefined;
   const outputPath =
     job.output_path ?? ((job.parameters.output_path as string | undefined) ?? "");
   const outputFile = getOutputFile(job);

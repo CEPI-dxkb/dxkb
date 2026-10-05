@@ -14,7 +14,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { activeJobStatuses, statusConfig } from "@/lib/jobs/constants";
+import { statusConfig } from "@/lib/jobs/constants";
 import { CirclePlaySpinner } from "@/lib/jobs/icons";
 import {
   formatServiceName,
@@ -132,11 +132,7 @@ export function JobStatusPill() {
               const Icon = config.icon;
               const serviceName = formatServiceName(job.app);
               const jobName = getOutputFile(job);
-              // Output path and name are set at submission, so a job still in
-              // flight has a location but no result there yet.
-              const resultHref = activeJobStatuses.includes(job.status)
-                ? undefined
-                : getJobResultHref(job);
+              const resultHref = getJobResultHref(job);
               const label = (
                 <>
                   {serviceName}

@@ -135,4 +135,18 @@ describe("getJobResultHref", () => {
     expect(getJobResultHref(noFile)).toBeUndefined();
     expect(getJobResultHref(noPath)).toBeUndefined();
   });
+
+  it.each(["pending", "queued", "running", "in-progress"] as const)(
+    "returns undefined for a %s job, whose result does not exist yet",
+    (status) => {
+      const job = {
+        status,
+        output_path: "/user@bvbrc/home",
+        output_file: "run-4",
+        parameters: {},
+      } as unknown as JobListItem;
+
+      expect(getJobResultHref(job)).toBeUndefined();
+    },
+  );
 });

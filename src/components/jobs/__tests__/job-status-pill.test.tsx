@@ -131,7 +131,55 @@ describe("JobStatusPill", () => {
       ).toBeInTheDocument(),
     );
     const counts = screen.getAllByText(/^\d+$/);
-    expect(counts.map((el) => el.textContent)).toEqual(["4", "2", "1"]);
+    // Left to right: queued, running, completed.
+    expect(counts.map((el) => el.textContent)).toEqual(["1", "2", "4"]);
+  });
+
+  it("always shows running and queued counts, even when they are zero", async () => {
+    mockSummary({ completed: 245 });
+    mockJobsList([]);
+    renderPill();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /view job status/i }),
+      ).toBeInTheDocument(),
+    );
+    const counts = screen.getAllByText(/^\d+$/);
+    expect(counts.map((el) => el.textContent)).toEqual(["0", "0", "245"]);
+  });
+
+  it("hides the completed count when there are no completed jobs", async () => {
+    mockSummary({ running: 1, failed: 2 });
+    mockJobsList([]);
+    renderPill();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /view job status/i }),
+      ).toBeInTheDocument(),
+    );
+    const counts = screen.getAllByText(/^\d+$/);
+    expect(counts.map((el) => el.textContent)).toEqual(["0", "1"]);
+  });
+
+  it("spins the running icon's ring while jobs are running", async () => {
+    mockSummary({ running: 1 });
+    mockJobsList([]);
+    renderPill();
+    const pill = await screen.findByRole("button", {
+      name: /view job status/i,
+    });
+    expect(pill.querySelector(".lucide-circle-play-spinner")).not.toBeNull();
+  });
+
+  it("shows a still circle-play icon when nothing is running", async () => {
+    mockSummary({ completed: 1 });
+    mockJobsList([]);
+    renderPill();
+    const pill = await screen.findByRole("button", {
+      name: /view job status/i,
+    });
+    expect(pill.querySelector(".lucide-circle-play")).not.toBeNull();
+    expect(pill.querySelector(".animate-spin")).toBeNull();
   });
 
   it("shows loading state while jobs list is fetching", async () => {
@@ -160,7 +208,7 @@ describe("JobStatusPill", () => {
     expect(await screen.findByText("Loading…")).toBeInTheDocument();
   });
 
-  it("shows job list with service name and elapsed time when loaded", async () => {
+  it("shows job list with service name and no job time when loaded", async () => {
     mockSummary({ running: 1 });
     const job: Partial<JobListItem> = {
       id: "job-001",
@@ -187,7 +235,87 @@ describe("JobStatusPill", () => {
     await waitFor(() =>
       expect(screen.getByText("Genome Assembly")).toBeInTheDocument(),
     );
-    expect(screen.getByText("1m30s")).toBeInTheDocument();
+    expect(screen.queryByText("1m30s")).toBeNull();
+  });
+
+  it.each(["completed", "failed"] as const)(
+    "links a %s job's name to its workspace result",
+    async (status) => {
+      mockSummary({ completed: 1 });
+      mockJobsList([
+        {
+          id: "job-002",
+          app: "Homology",
+          status,
+          submit_time: "2026-01-01T00:00:00Z",
+          owner: "test",
+          output_path: "/test@bvbrc/home/Results",
+          output_file: "my blast",
+          parameters: {},
+        },
+      ]);
+
+      renderPill();
+      await userEvent.click(
+        await screen.findByRole("button", { name: /view job status/i }),
+      );
+
+      const link = await screen.findByRole("link", { name: /my blast/ });
+      expect(link).toHaveTextContent("BLAST · my blast");
+      expect(link).toHaveAttribute(
+        "href",
+        "/workspace/test@bvbrc/home/Results/my%20blast",
+      );
+    },
+  );
+
+  it.each(["pending", "queued", "running", "in-progress"] as const)(
+    "does not link a %s job's name, whose result does not exist yet",
+    async (status) => {
+      mockSummary({ running: 1 });
+      mockJobsList([
+        {
+          id: "job-004",
+          app: "Homology",
+          status,
+          submit_time: "2026-01-01T00:00:00Z",
+          owner: "test",
+          output_path: "/test@bvbrc/home/Results",
+          output_file: "my blast",
+          parameters: {},
+        },
+      ]);
+
+      renderPill();
+      await userEvent.click(
+        await screen.findByRole("button", { name: /view job status/i }),
+      );
+
+      expect(await screen.findByText(/my blast/)).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /my blast/ })).toBeNull();
+    },
+  );
+
+  it("shows the service name as plain text when the job has no output location", async () => {
+    mockSummary({ completed: 1 });
+    mockJobsList([
+      {
+        id: "job-003",
+        app: "Homology",
+        status: "completed",
+        submit_time: "2026-01-01T00:00:00Z",
+        owner: "test",
+        parameters: {},
+      },
+    ]);
+
+    renderPill();
+    await userEvent.click(
+      await screen.findByRole("button", { name: /view job status/i }),
+    );
+
+    expect(await screen.findByText("BLAST")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /blast/i })).toBeNull();
   });
 
   it("shows 'No recent jobs' when jobs list resolves empty", async () => {

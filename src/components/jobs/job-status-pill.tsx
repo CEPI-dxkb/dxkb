@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { CheckCircle2, CirclePlay, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/provider";
 import { useJobsSummary } from "@/hooks/services/jobs/use-jobs-summary";
@@ -15,30 +15,12 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { statusConfig } from "@/lib/jobs/constants";
-import { formatServiceName, formatElapsedSeconds } from "@/lib/jobs/formatting";
-import type { JobListItem } from "@/types/workspace";
-
-function formatJobTime(job: JobListItem): string {
-  if (
-    job.elapsed_time != null &&
-    Number.isFinite(job.elapsed_time) &&
-    job.elapsed_time >= 0
-  ) {
-    return formatElapsedSeconds(job.elapsed_time);
-  }
-  if (job.completed_time) {
-    const secondsAgo = Math.max(
-      0,
-      Math.floor((Date.now() - new Date(job.completed_time).getTime()) / 1000),
-    );
-    if (secondsAgo < 60) return "just now";
-    if (secondsAgo < 3600) return `${String(Math.floor(secondsAgo / 60))}m ago`;
-    if (secondsAgo < 86400)
-      return `${String(Math.floor(secondsAgo / 3600))}h ago`;
-    return `${String(Math.floor(secondsAgo / 86400))}d ago`;
-  }
-  return "";
-}
+import { CirclePlaySpinner } from "@/lib/jobs/icons";
+import {
+  formatServiceName,
+  getJobResultHref,
+  getOutputFile,
+} from "@/lib/jobs/formatting";
 
 export function JobStatusPill() {
   const { isAuthenticated } = useAuth();
@@ -54,26 +36,31 @@ export function JobStatusPill() {
     (taskSummary["queued"] ?? 0) + (taskSummary["pending"] ?? 0);
   const displayableCount = completedCount + runningCount + queuedCount;
 
+  // Running and queued counts always show, so a zero reads as "nothing in
+  // flight" rather than leaving the user to infer it from a missing icon.
   const statusGroups = [
-    {
-      key: "completed",
-      count: completedCount,
-      icon: CheckCircle2,
-      className: "text-emerald-400",
-    },
-    {
-      key: "running",
-      count: runningCount,
-      icon: Loader2,
-      className: "text-blue-300 animate-spin",
-    },
     {
       key: "queued",
       count: queuedCount,
       icon: Clock,
       className: "text-white/60",
+      alwaysShown: true,
     },
-  ].filter(({ count }) => count > 0);
+    {
+      key: "running",
+      count: runningCount,
+      icon: runningCount > 0 ? CirclePlaySpinner : CirclePlay,
+      className: "text-accent",
+      alwaysShown: true,
+    },
+    {
+      key: "completed",
+      count: completedCount,
+      icon: CheckCircle2,
+      className: "text-emerald-400",
+      alwaysShown: false,
+    },
+  ].filter(({ count, alwaysShown }) => alwaysShown || count > 0);
 
   const activeRefetchInterval =
     runningCount > 0 || queuedCount > 0 ? 3_000 : 30_000;
@@ -112,7 +99,7 @@ export function JobStatusPill() {
       />
       <PopoverContent
         size="flush"
-        className="w-72"
+        className="w-80"
         align="end"
         side="bottom"
         sideOffset={8}
@@ -121,7 +108,7 @@ export function JobStatusPill() {
           <PopoverTitle>My Jobs</PopoverTitle>
           <Link
             href="/jobs"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="text-xs font-medium text-link underline-offset-4 hover:underline"
             onClick={() => {
               setIsOpen(false);
             }}
@@ -143,15 +130,40 @@ export function JobStatusPill() {
             jobs.map((job) => {
               const config = statusConfig[job.status];
               const Icon = config.icon;
+              const serviceName = formatServiceName(job.app);
+              const jobName = getOutputFile(job);
+              const resultHref = getJobResultHref(job);
+              const label = (
+                <>
+                  {serviceName}
+                  {jobName && (
+                    <span className="text-muted-foreground"> · {jobName}</span>
+                  )}
+                </>
+              );
+              const title = jobName ? `${serviceName} · ${jobName}` : serviceName;
               return (
                 <div key={job.id} className="flex items-center gap-2 px-3 py-2">
                   <Icon className={cn("size-4 shrink-0", config.className)} />
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {formatServiceName(job.app)}
-                  </span>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatJobTime(job)}
-                  </span>
+                  {resultHref ? (
+                    <Link
+                      href={resultHref}
+                      title={title}
+                      className="min-w-0 truncate text-sm hover:underline"
+                      onClick={() => {
+                        setIsOpen(false);
+                      }}
+                    >
+                      {label}
+                    </Link>
+                  ) : (
+                    <span
+                      title={title}
+                      className="min-w-0 truncate text-sm"
+                    >
+                      {label}
+                    </span>
+                  )}
                 </div>
               );
             })

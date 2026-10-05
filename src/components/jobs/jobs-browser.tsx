@@ -39,6 +39,7 @@ import { JobsShell } from "./jobs-shell";
 import { DetailPanel } from "@/components/detail-panel";
 import type { JobListItem } from "@/types/workspace";
 import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
+import { getJobResultHref } from "@/lib/jobs/formatting";
 import { rerunJob } from "@/lib/rerun-utility";
 import {
   defaultJobsColumnOrder,
@@ -336,20 +337,9 @@ function useJobsBrowser() {
 
   // Row rendering & keyboard
   const handleDoubleClick = (job: JobListItem) => {
-    const outputPath =
-      job.output_path ??
-      (job.parameters.output_path as string | undefined) ??
-      "";
-    const outputFile =
-      job.output_file ??
-      (job.parameters.output_file as string | undefined) ??
-      "";
-
-    if (outputPath && outputFile) {
-      const fullPath = `${outputPath}/${outputFile}`;
-      const segments = fullPath.replace(/^\/+/, "").split("/").filter(Boolean);
-      const encoded = segments.map(encodeWorkspaceSegment).join("/");
-      router.push(`/workspace/${encoded}`);
+    const resultHref = getJobResultHref(job);
+    if (resultHref) {
+      router.push(resultHref);
     } else {
       setShowJobNotFound(true);
     }

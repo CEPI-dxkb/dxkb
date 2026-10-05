@@ -3,6 +3,7 @@ import {
   formatElapsedSeconds,
   formatServiceName,
   formatUnixTimestamp,
+  getJobResultHref,
   getOutputName,
 } from "../formatting";
 
@@ -96,4 +97,56 @@ describe("formatUnixTimestamp", () => {
   it('returns "\u2014" for NaN', () => {
     expect(formatUnixTimestamp(NaN)).toBe("\u2014");
   });
+});
+
+// ── getJobResultHref ───────────────────────────────────────────────
+
+describe("getJobResultHref", () => {
+  it("joins output_path and output_file into a workspace URL", () => {
+    const job = {
+      output_path: "/user@bvbrc/home/My Jobs",
+      output_file: "run-1",
+      parameters: {},
+    } as unknown as JobListItem;
+
+    expect(getJobResultHref(job)).toBe(
+      "/workspace/user@bvbrc/home/My%20Jobs/run-1",
+    );
+  });
+
+  it("falls back to the submitted parameters", () => {
+    const job = {
+      parameters: { output_path: "/user@bvbrc/home", output_file: "run-2" },
+    } as unknown as JobListItem;
+
+    expect(getJobResultHref(job)).toBe("/workspace/user@bvbrc/home/run-2");
+  });
+
+  it("returns undefined when the output location is incomplete", () => {
+    const noFile = {
+      output_path: "/user@bvbrc/home",
+      parameters: {},
+    } as unknown as JobListItem;
+    const noPath = {
+      output_file: "run-3",
+      parameters: {},
+    } as unknown as JobListItem;
+
+    expect(getJobResultHref(noFile)).toBeUndefined();
+    expect(getJobResultHref(noPath)).toBeUndefined();
+  });
+
+  it.each(["pending", "queued", "running", "in-progress"] as const)(
+    "returns undefined for a %s job, whose result does not exist yet",
+    (status) => {
+      const job = {
+        status,
+        output_path: "/user@bvbrc/home",
+        output_file: "run-4",
+        parameters: {},
+      } as unknown as JobListItem;
+
+      expect(getJobResultHref(job)).toBeUndefined();
+    },
+  );
 });

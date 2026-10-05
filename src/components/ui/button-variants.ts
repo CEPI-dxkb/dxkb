@@ -26,8 +26,11 @@ export const buttonVariants = cva(
         // has a near-white secondary).
         cta: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         // Outlined control on a dark or brand surface (the navbar job pill).
+        // Open matches hover rather than flipping to a light fill, so the pill
+        // keeps its white text and brand-bar icon tints. Any lighter than
+        // white/20 drops the white text under 4.5:1 on the navbar blue.
         "inverse-outline":
-          "border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white aria-expanded:bg-white/20 aria-expanded:text-white dark:hover:bg-muted/50 dark:aria-expanded:bg-muted/50",
         // Inverted pill that floats over page content (the mobile views
         // trigger).
         floating:

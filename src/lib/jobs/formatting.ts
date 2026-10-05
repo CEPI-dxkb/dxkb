@@ -1,5 +1,6 @@
 import type { JobListItem } from "@/types/workspace";
-import { serviceNames } from "./constants";
+import { encodeWorkspaceSegment } from "@/lib/services/workspace/path-utils";
+import { activeJobStatuses, serviceNames } from "./constants";
 
 const serviceNameMap = new Map<string, string>(
   serviceNames.map((entry) => [entry.value, entry.displayName]),
@@ -15,11 +16,37 @@ export function formatServiceName(app: string): string {
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
 }
 
+/** The job's output name, read from the job or, failing that, its submitted parameters. */
+export function getOutputFile(job: JobListItem): string {
+  return (
+    job.output_file ?? ((job.parameters.output_file as string | undefined) ?? "")
+  );
+}
+
 export function getOutputName(job: JobListItem): string {
-  const outputFile =
-    job.output_file ?? ((job.parameters.output_file as string | undefined) ?? "");
+  const outputFile = getOutputFile(job);
   if (outputFile) return outputFile;
   return "\u2014";
+}
+
+/**
+ * Workspace URL of a job's result (`/workspace/<output_path>/<output_file>`),
+ * or `undefined` when the job records no output location or is still active.
+ * The location is set at submission, so a queued or running job has one before
+ * any result exists there.
+ */
+export function getJobResultHref(job: JobListItem): string | undefined {
+  if (activeJobStatuses.includes(job.status)) return undefined;
+  const outputPath =
+    job.output_path ?? ((job.parameters.output_path as string | undefined) ?? "");
+  const outputFile = getOutputFile(job);
+  if (!outputPath || !outputFile) return undefined;
+
+  const segments = `${outputPath}/${outputFile}`
+    .replace(/^\/+/, "")
+    .split("/")
+    .filter(Boolean);
+  return `/workspace/${segments.map(encodeWorkspaceSegment).join("/")}`;
 }
 
 export function formatElapsedSeconds(seconds: number | undefined): string {

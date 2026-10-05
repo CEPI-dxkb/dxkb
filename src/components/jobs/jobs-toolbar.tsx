@@ -9,8 +9,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Loader2,
+  CirclePlay,
 } from "lucide-react";
+import { CirclePlaySpinner } from "@/lib/jobs/icons";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,
@@ -77,6 +78,9 @@ export function JobsToolbar({
 }: JobsToolbarProps) {
 
   const lastUpdatedText = formatTimestamp(dataUpdatedAt);
+  const runningCount =
+    (statusSummary?.running ?? 0) + (statusSummary?.["in-progress"] ?? 0);
+  const RunningIcon = runningCount > 0 ? CirclePlaySpinner : CirclePlay;
   return (
     <div className="space-y-3">
       {/* Search */}
@@ -179,11 +183,11 @@ export function JobsToolbar({
       </div>
 
       {/* Status bar + refresh */}
-      <div className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground">
+      <div className="flex min-w-0 flex-wrap items-center gap-1 text-sm text-muted-foreground">
         {statusSummary && (
           <>
             <span className="flex items-center gap-1">
-              <Clock className="size-3 text-muted-foreground" />
+              <Clock className="size-3.5 text-muted-foreground" />
               queued:{" "}
               <span className="font-medium text-foreground">
                 {statusSummary.queued ?? 0}
@@ -191,16 +195,15 @@ export function JobsToolbar({
             </span>
             <span>&middot;</span>
             <span className="flex items-center gap-1">
-              <Loader2 className="size-3 text-info" />
+              <RunningIcon className="size-3.5 text-accent" />
               running:{" "}
               <span className="font-medium text-foreground">
-                {(statusSummary.running ?? 0) +
-                  (statusSummary["in-progress"] ?? 0)}
+                {runningCount}
               </span>
             </span>
             <span>&middot;</span>
             <span className="flex items-center gap-1">
-              <CheckCircle2 className="size-3 text-success" />
+              <CheckCircle2 className="size-3.5 text-success" />
               completed:{" "}
               <span className="font-medium text-foreground">
                 {statusSummary.completed ?? 0}
@@ -208,7 +211,7 @@ export function JobsToolbar({
             </span>
             <span>&middot;</span>
             <span className="flex items-center gap-1">
-              <XCircle className="size-3 text-destructive" />
+              <XCircle className="size-3.5 text-destructive" />
               failed:{" "}
               <span className="font-medium text-foreground">
                 {statusSummary.failed ?? 0}

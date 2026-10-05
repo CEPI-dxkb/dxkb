@@ -136,7 +136,7 @@ test.describe("jobs lifecycle", () => {
     await page.getByRole("button", { name: /view job status/i }).click();
     const jobPopover = page.getByRole("dialog", { name: /my jobs/i });
     await expect(jobPopover.getByText("Predict Structure")).toBeVisible();
-    await expect(jobPopover.getByText("1m30s")).toBeVisible();
+    await expect(jobPopover.getByText("production-shaped-output")).toBeVisible();
   });
 
   test("shows a response contract error instead of silently hiding malformed jobs", async ({ page }) => {

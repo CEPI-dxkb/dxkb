@@ -2,10 +2,10 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Loader2,
   AlertCircle,
   Ban,
 } from "lucide-react";
+import { CirclePlaySpinner } from "./icons";
 
 /** Status display configuration for job status cells and badges. */
 export const statusConfig: Record<
@@ -20,13 +20,13 @@ export const statusConfig: Record<
   failed: { icon: XCircle, className: "text-destructive", label: "Failed" },
   error: { icon: AlertCircle, className: "text-destructive", label: "Error" },
   running: {
-    icon: Loader2,
-    className: "text-info animate-spin",
+    icon: CirclePlaySpinner,
+    className: "text-accent",
     label: "Running",
   },
   "in-progress": {
-    icon: Loader2,
-    className: "text-info animate-spin",
+    icon: CirclePlaySpinner,
+    className: "text-accent",
     label: "Running",
   },
   queued: { icon: Clock, className: "text-muted-foreground", label: "Queued" },

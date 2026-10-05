@@ -245,6 +245,25 @@ describe("GenomeCollection", () => {
     );
   });
 
+  it("scopes a related tab to a keyword search without the recent-genomes default", () => {
+    searchParams.current = new URLSearchParams("keyword=Dnak&tab=sequences");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "Dnak",
+        }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe(
+      "and(eq(genome_id,*),genome(keyword(Dnak)))",
+    );
+  });
+
   it("keeps the active refinement alongside the recent-genomes default", () => {
     searchParams.current = new URLSearchParams("refine=coli&tab=sequences");
 

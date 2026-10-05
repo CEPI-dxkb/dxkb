@@ -21,10 +21,12 @@ export const recentGenomeRql =
  * The recent-genomes default applies only to an otherwise unscoped list. An
  * explicit RQL query replaces it, and so does a `public` visibility filter:
  * "My Genomes" (`public=false`) must list every private genome, not just the
- * ones completed in the last year.
+ * ones completed in the last year. A keyword search replaces it too, as legacy
+ * BV-BRC's does (`keyword(...)` alone), so a search lists every genome it
+ * matches.
  */
 export function genomeBaseRql(state: CollectionState): string | undefined {
-  return state.rql || Object.hasOwn(state.filters, "public")
+  return state.rql || state.keyword || Object.hasOwn(state.filters, "public")
     ? undefined
     : recentGenomeRql;
 }

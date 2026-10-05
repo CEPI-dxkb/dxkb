@@ -2,7 +2,6 @@
 
 import { Blocks } from "lucide-react";
 import { EntityViewShell, FeatureResourceCollection } from "@/components/views";
-import { featureBaseRql } from "@/lib/feature-view";
 import type { CollectionState } from "@/lib/views/collection-state";
 
 interface FeatureCollectionProps {
@@ -22,7 +21,6 @@ export function FeatureCollection({
       layout="fill"
     >
       <FeatureResourceCollection
-        baseRql={featureBaseRql(initialState)}
         initialState={initialState}
         keywordMode="refine"
       />

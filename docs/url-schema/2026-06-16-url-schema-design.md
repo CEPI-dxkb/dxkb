@@ -369,7 +369,9 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   otherwise it is the implicit recent scope
   (`and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))`) combined with any
   friendly structural filters. An explicit `rql` replaces that implicit scope rather than
-  narrowing it.
+  narrowing it, and so does a `keyword` (legacy GenomeList sends `keyword(...)` alone).
+  `/feature` has no implicit scope: its old recent-genome `genome()` join was a
+  cross-collection Solr join costing 40–120 s per keyword query.
 - `/genome/{genomeId}` validates and fetches the exact `genome_id`, renders the member
   overview, and owns explicit member-tab composition.
 - Genome member tabs are Overview, Genome Browser, Sequences, Features, Proteins, Protein

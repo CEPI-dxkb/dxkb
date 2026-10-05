@@ -55,6 +55,17 @@ describe("Genome view contracts", () => {
     ).toBeUndefined();
   });
 
+  it("does not restrict a keyword search to recent genomes", () => {
+    expect(
+      genomeBaseRql({
+        keyword: "Dnak",
+        filters: {},
+        page: 1,
+        sort: "unsorted",
+      }),
+    ).toBeUndefined();
+  });
+
   it("accepts dotted numeric IDs only", () => {
     expect(isGenomeId("83332.12")).toBe(true);
     expect(isGenomeId("83332")).toBe(false);

@@ -79,13 +79,20 @@ async function fetchSearchResults(query: string): Promise<SearchResults> {
         break;
     }
 
+    typeQuery +=
+      searchType === "genome_feature"
+        ? "&limit(3)&sort(+annotation,-score)"
+        : "&limit(3)&sort(-score)";
+    // A whole Genome Sequence doc carries the full `sequence`: three preview
+    // rows can be whole chromosomes, 99% of a 12 MB response.
+    if (searchType === "genome_sequence")
+      typeQuery +=
+        "&select(sequence_id,genome_id,genome_name,accession,description)";
+
     searchPayload[searchType] = {
       dataType: searchType,
       accept: "application/solr+json",
-      query:
-        searchType === "genome_feature"
-          ? typeQuery + "&limit(3)&sort(+annotation,-score)"
-          : typeQuery + "&limit(3)&sort(-score)",
+      query: typeQuery,
     };
   });
 
@@ -456,6 +463,9 @@ function SearchResultsContent({ query }: { query: string }) {
                           doc.id ??
                           (dataType === "protein_structure"
                             ? doc.pdb_id
+                            : undefined) ??
+                          (dataType === "genome_sequence"
+                            ? doc.sequence_id
                             : undefined) ??
                           doc.genome_id ??
                           doc.patric_id ??

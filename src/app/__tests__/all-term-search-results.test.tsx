@@ -99,4 +99,69 @@ describe("SearchResults", () => {
       expect(consoleErrors).not.toContain("same key");
     });
   });
+
+  // An unprojected Genome Sequence doc carries its whole `sequence`: three
+  // preview rows for "Bacillus" were 12.4 MB of the 12.4 MB response.
+  it("requests only the displayed Genome Sequence fields", async () => {
+    let payload: Partial<Record<string, { query: string }>> = {};
+    server.use(
+      http.post(`${dataApi}/query/`, async ({ request }) => {
+        payload = (await request.json()) as typeof payload;
+        return HttpResponse.json({});
+      }),
+    );
+
+    render(<SearchResults query="Bacillus" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(payload.genome_sequence?.query).toMatch(
+        /&select\(sequence_id,genome_id,genome_name,accession,description\)$/,
+      );
+    });
+  });
+
+  it("uses sequence_id to distinguish sequences of the same genome", async () => {
+    server.use(
+      http.post(`${dataApi}/query/`, () =>
+        HttpResponse.json({
+          genome_sequence: {
+            result: {
+              response: {
+                docs: [
+                  {
+                    genome_id: "1408.861",
+                    sequence_id: "1408.861.con.0001",
+                    genome_name: "Bacillus pumilus",
+                    accession: "CP000001",
+                  },
+                  {
+                    genome_id: "1408.861",
+                    sequence_id: "1408.861.con.0002",
+                    genome_name: "Bacillus pumilus",
+                    accession: "CP000002",
+                  },
+                ],
+                numFound: 2,
+                maxScore: 1,
+                numFoundExact: true,
+              },
+            },
+          },
+        }),
+      ),
+    );
+
+    render(<SearchResults query="Bacillus" />, {
+      wrapper: createQueryClientWrapper(),
+    });
+
+    expect(await screen.findByText(/CP000001/)).toBeInTheDocument();
+    expect(screen.getByText(/CP000002/)).toBeInTheDocument();
+    await waitFor(() => {
+      const consoleErrors = vi.mocked(console.error).mock.calls.flat().join(" ");
+      expect(consoleErrors).not.toContain("same key");
+    });
+  });
 });

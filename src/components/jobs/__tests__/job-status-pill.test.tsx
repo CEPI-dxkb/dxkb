@@ -269,6 +269,33 @@ describe("JobStatusPill", () => {
     },
   );
 
+  it.each(["pending", "queued", "running", "in-progress"] as const)(
+    "does not link a %s job's name, whose result does not exist yet",
+    async (status) => {
+      mockSummary({ running: 1 });
+      mockJobsList([
+        {
+          id: "job-004",
+          app: "Homology",
+          status,
+          submit_time: "2026-01-01T00:00:00Z",
+          owner: "test",
+          output_path: "/test@bvbrc/home/Results",
+          output_file: "my blast",
+          parameters: {},
+        },
+      ]);
+
+      renderPill();
+      await userEvent.click(
+        await screen.findByRole("button", { name: /view job status/i }),
+      );
+
+      expect(await screen.findByText(/my blast/)).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /my blast/ })).toBeNull();
+    },
+  );
+
   it("shows the service name as plain text when the job has no output location", async () => {
     mockSummary({ completed: 1 });
     mockJobsList([

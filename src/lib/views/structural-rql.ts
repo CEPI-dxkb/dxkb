@@ -42,9 +42,12 @@ export interface StructuralFilterOptions {
  * values within one field are ORed, fields are ANDed, and an explicit
  * `state.rql` bypasses friendly filters entirely (returns `undefined`).
  *
- * Shared by every `*StructuralRql` domain wrapper except Feature's, whose
- * synthetic protein filter intentionally applies even when `state.rql` is
- * set (see `src/lib/feature-view/query.ts`).
+ * Shared by every `*StructuralRql` domain wrapper except Feature's, which
+ * applies every filter its parsed state holds: its independent `filter` and
+ * the `/feature` list's PATRIC default stay beside `state.rql`
+ * (`filtersBesideRql`; see `src/lib/feature-view/query.ts`). A view that gives
+ * another resource `defaultFilters` needs the same, or a default kept beside
+ * the rql would reach the URL but not the query.
  */
 export function structuralFilterRql(
   resource: DataResource,

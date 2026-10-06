@@ -19,6 +19,12 @@ interface ProteinFeatureResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The list page sends an exact
+   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
+   * unset keeps the token-prefix default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 function ProteinFeatureResourceCollectionContent({
@@ -27,19 +33,19 @@ function ProteinFeatureResourceCollectionContent({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: ProteinFeatureResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(
     proteinFeatureCollectionOptions,
   );
   const state = initialState ?? urlState;
+  const profile = enableFacets
+    ? proteinFeatureCollectionProfile
+    : { ...proteinFeatureCollectionProfile, facets: undefined };
 
   return (
     <ResourceCollection<ProteinFeatureViewRecord>
-      profile={
-        enableFacets
-          ? proteinFeatureCollectionProfile
-          : { ...proteinFeatureCollectionProfile, facets: undefined }
-      }
+      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
       onStateChange={setState}

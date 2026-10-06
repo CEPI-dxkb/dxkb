@@ -1,8 +1,15 @@
 import {
   encodePathSegment,
   encodeQueryComponent,
+  safeDecode,
   toQueryString,
 } from "@/lib/url";
+import {
+  keywordQuery,
+  keywordQueryClauses,
+  keywordTerms,
+} from "@/lib/data-api/keyword-terms";
+import { escapeRqlValue, rqlAnd } from "./rql";
 import { legacyViewTargets } from "./view-registry";
 
 export interface MappedPath {
@@ -173,6 +180,179 @@ export function legacySearchFromParams(params: URLSearchParams): string {
 }
 
 /**
+ * Lists whose `?keyword=` reproduces legacy's keyword query: the Feature list
+ * then applies its PATRIC default, and the Genome list's related tabs run the
+ * keyword on their own collections, as legacy's do. As `?rql=` neither would.
+ */
+const legacyKeywordSegments: ReadonlySet<string> = new Set(["feature", "genome"]);
+const keywordCallPattern = /^keyword\(([^()]*)\)$/;
+/** Legacy's search box form for several words: `and(keyword(a),keyword(b))`. */
+const keywordAndPattern = /^and\(keyword\([^()]*\)(?:,keyword\([^()]*\))+\)$/;
+const legacySortPattern = /^sort\([^()]*\)$/;
+/**
+ * Solr syntax that works inside one `keyword(...)` but that `?keyword=` reads
+ * as a space (`keywordQuery`): a boost (`keyword(coli^2)` is coli's 134,274
+ * genomes, coli and 2 ANDed 130,072), a range (`keyword(<coli)`: 129) and a
+ * regular expression (`keyword(/col/)`: 3,382). The rest of that syntax is an
+ * HTTP 400 as written (`keyword(GO:0003677)`), or Solr splits a word at it
+ * anyway (`keyword(coli-K12)` and the parts ANDed are both 1,666 genomes).
+ */
+const workingSolrSyntaxPattern = /[\^<>]|(?:^|\s)\//;
+
+/**
+ * The `keyword(...)` values of one legacy RQL part that is a lone keyword or
+ * legacy's search-box `and` of keywords, decoded; undefined for any other part.
+ */
+function keywordCallValues(part: string): string[] | undefined {
+  const lone = keywordCallPattern.exec(part);
+  if (lone) return [safeDecode(lone[1]).trim()];
+  if (!keywordAndPattern.test(part)) return undefined;
+  return [...part.matchAll(/keyword\(([^()]*)\)/g)].map((match) =>
+    safeDecode(match[1]).trim(),
+  );
+}
+
+/**
+ * Whether `?keyword=<value>` sends what one legacy `keyword(<value>)` sends.
+ * `?keyword=` reads its text with `keywordQuery`, one clause per term, which
+ * keeps the meaning of:
+ * - unquoted words: the Data API matches `keyword(coli Salmonella)` like
+ *   `and(keyword(coli),keyword(Salmonella))` (1,933 genomes on alpha);
+ * - a quoted word or phrase, sent whole with its quotes (`keyword("Rv0001")`
+ *   is 1 PATRIC feature, `keyword(Rv0001)` 341,190; `keyword("DNA
+ *   polymerase")` 16,285,620, the words apart 22,504,678);
+ * - Solr's `AND`, `NOT` and `-` exclusion (`keyword(coli NOT Salmonella)` and
+ *   `keyword(coli -Salmonella)` are both 132,341 genomes, as
+ *   `and(keyword(coli),not(keyword(Salmonella)))`).
+ * Not of: an open quote, which `keywordTerms` would close, a quote inside a
+ * word, `workingSolrSyntaxPattern`, `keyword(*)`, and an `OR`, which Solr
+ * reads oddly beside other words (`keyword(E coli OR Salmonella)` is 502,671
+ * genomes, `E` alone) and `orKeywordAsRql` sends as RQL.
+ */
+function readsAsWritten(value: string): boolean {
+  const query = keywordQuery(value);
+  return (
+    value !== "*" &&
+    query.length > 0 &&
+    keywordTerms(value).join(" ") === value.split(/\s+/).join(" ") &&
+    !workingSolrSyntaxPattern.test(value) &&
+    query.every((group) => group.length === 1)
+  );
+}
+
+/**
+ * The arguments of `part` when it is exactly one `name(...)` call, split at its
+ * top-level commas.
+ */
+function callArguments(part: string, name: string): string[] | undefined {
+  if (!part.startsWith(`${name}(`) || !part.endsWith(")")) return undefined;
+  const inner = part.slice(name.length + 1, -1);
+  const args: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < inner.length; index += 1) {
+    if (inner[index] === "(") depth += 1;
+    else if (inner[index] === ")") depth -= 1;
+    else if (inner[index] === "," && depth === 0) {
+      args.push(inner.slice(start, index));
+      start = index + 1;
+    }
+    if (depth < 0) return undefined;
+  }
+  if (depth !== 0) return undefined;
+  args.push(inner.slice(start));
+  return args;
+}
+
+/** The value of `keyword(<one term>)` that reads as written, not negated. */
+function searchBoxTerm(part: string): string | undefined {
+  const lone = keywordCallPattern.exec(part);
+  if (!lone) return undefined;
+  const value = safeDecode(lone[1]).trim();
+  const [term, ...others] = keywordTerms(value);
+  return term === value &&
+    others.length === 0 &&
+    readsAsWritten(value) &&
+    !keywordQuery(value)[0][0].negated
+    ? value
+    : undefined;
+}
+
+/**
+ * The `?keyword=` text of a query alpha's search box builds with `or(...)` or
+ * `not(...)` (`searchToQuery`): an `and` of `keyword(term)`,
+ * `not(keyword(term))` and `or(keyword(term),…)`, each term one word or
+ * phrase that reads as written. `keywordQuery` reads the text back as that
+ * query (`a b OR c NOT d`). A NOT inside an OR, and a query of only NOTs, stay
+ * RQL: the Data API reads `or(not(keyword(coli)),keyword(Salmonella))` as
+ * Lucene does (Salmonella AND NOT coli, 61,384 genomes) and
+ * `and(not(...),not(...))` as nothing, where `?keyword=` reads them as written.
+ */
+function searchBoxKeyword(part: string): string | undefined {
+  const items = callArguments(part, "and") ?? [part];
+  const texts: string[] = [];
+  let positive = false;
+  for (const item of items) {
+    const term = searchBoxTerm(item);
+    const negated = callArguments(item, "not");
+    const negatedTerm =
+      negated?.length === 1 ? searchBoxTerm(negated[0]) : undefined;
+    const options = callArguments(item, "or")?.map(searchBoxTerm);
+    if (term !== undefined) {
+      texts.push(term);
+      positive = true;
+    } else if (negatedTerm !== undefined) {
+      texts.push(`NOT ${negatedTerm}`);
+    } else if (
+      options !== undefined &&
+      options.length > 1 &&
+      options.every((option) => option !== undefined)
+    ) {
+      texts.push(options.join(" OR "));
+      positive = true;
+    } else return undefined;
+  }
+  return positive ? texts.join(" ") : undefined;
+}
+
+/**
+ * The `?keyword=` text that sends what a legacy list query sends: the query is
+ * one keyword part beside at most one `sort(...)`, a lone `keyword(x)` or
+ * `and(keyword(a),keyword(b),…)` whose values read as written
+ * (`readsAsWritten`), or alpha's search-box `or(...)`/`not(...)` form
+ * (`searchBoxKeyword`). The sort is dropped: parity is on totals, and legacy's
+ * own links carry their sort in the hash (`#defaultSort=-score`) instead.
+ */
+function legacyKeyword(rqlParts: readonly string[]): string | undefined {
+  const queryParts = rqlParts.filter((part) => !legacySortPattern.test(part));
+  if (queryParts.length !== 1 || rqlParts.length > 2) return undefined;
+  const values = keywordCallValues(queryParts[0]);
+  if (!values) return searchBoxKeyword(queryParts[0]);
+  // Joined, a value's dangling operator would bind the next one (`a OR`, `b`).
+  const keyword = values.join(" ");
+  return values.every(readsAsWritten) && readsAsWritten(keyword)
+    ? keyword
+    : undefined;
+}
+
+/**
+ * A lone `keyword(x)` whose text holds Solr's `OR` (or `||`), as RQL: alone,
+ * legacy sends it to Solr as written (195,658 genomes for
+ * `keyword(coli OR Salmonella)`), but beside any other clause the Data API
+ * lets the OR leak out of it. A NOT inside the OR stays as Solr reads it
+ * (`keyword(coli OR NOT Salmonella)`: coli AND NOT Salmonella, 132,341). A
+ * plain `a OR b` then reads back as `?keyword=` (`searchBoxKeyword`). Any other
+ * part is returned as it is.
+ */
+function orKeywordAsRql(part: string): string {
+  const lone = keywordCallPattern.exec(part);
+  if (!lone) return part;
+  const query = keywordQuery(safeDecode(lone[1]));
+  if (!query.some((group) => group.length > 1)) return part;
+  return rqlAnd(...keywordQueryClauses(query, escapeRqlValue, "asSolr"));
+}
+
+/**
  * Map a legacy BV-BRC /view/* request (path + raw query string, no leading "?")
  * to the new schema. Returns null if the path is not a mappable /view/* URL.
  * Hash is intentionally NOT handled here (the server cannot read it). The proxy
@@ -200,18 +380,28 @@ export function mapLegacyViewPath(
     if (!rawSearch && !target.defaultParams) {
       return { pathname: `/${segment}`, search: "" };
     }
-    const rqlParts: string[] = [];
+    const rawRqlParts: string[] = [];
     const namedParts: string[] = [];
     for (const seg of rawSearch.split("&")) {
       if (!seg) continue;
       if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(seg)) {
         namedParts.push(seg);
       } else {
-        rqlParts.push(seg);
+        rawRqlParts.push(seg);
       }
     }
+    const namedParams = new URLSearchParams(namedParts.join("&"));
+    const rqlParts = legacyKeywordSegments.has(segment)
+      ? rawRqlParts.map(orKeywordAsRql)
+      : rawRqlParts;
+    const keyword =
+      legacyKeywordSegments.has(segment) && !namedParams.has("keyword")
+        ? legacyKeyword(rqlParts)
+        : undefined;
     const searchParts: string[] = [];
-    if (rqlParts.length > 0) {
+    if (keyword !== undefined) {
+      searchParts.push(`keyword=${encodeQueryComponent(keyword)}`);
+    } else if (rqlParts.length > 0) {
       // TaxonList historically used the Genome lineage field name even though the
       // Taxonomy endpoint exposes the same relationship as `lineage_ids`.
       const joined = rqlParts.join("&");
@@ -221,7 +411,6 @@ export function mapLegacyViewPath(
           : joined;
       searchParts.push(`rql=${encodeQueryComponent(rql)}`);
     }
-    const namedParams = new URLSearchParams(namedParts.join("&"));
     for (const [name, value] of Object.entries(target.defaultParams ?? {})) {
       if (!namedParams.has(name)) namedParams.set(name, value);
     }

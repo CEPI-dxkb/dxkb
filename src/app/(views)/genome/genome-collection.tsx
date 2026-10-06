@@ -17,12 +17,13 @@ import {
   ResourceChildCollection,
   type EntityViewTab,
 } from "@/components/views";
-import { genomeBaseRql, genomeStructuralRql } from "@/lib/genome-view";
+import { featureListDefaultFilters } from "@/lib/feature-view";
+import { genomeBaseRql, genomeRelatedScope } from "@/lib/genome-view";
 import {
   genomesChildRql,
   proteinFeatureRql,
 } from "@/lib/views/child-resources";
-import { rqlAnd, rqlKeyword } from "@/lib/views/rql";
+import { rqlAnd } from "@/lib/views/rql";
 import { genomeChildCollections } from "./child-tabs";
 import type { CollectionState } from "@/lib/views/collection-state";
 
@@ -95,61 +96,75 @@ export function GenomeCollection({
     genomeCollectionTabs.find(
       (tab) => tab.key === requestedTab && tab.enabled !== false,
     )?.key ?? "genomes";
-  // Match the Genomes tab's effective query so child tabs stay scoped to exactly
-  // the genomes currently listed, including URL-owned keyword and refinement text.
-  const genomeScope = [
-    genomeBaseRql(initialState),
-    genomeStructuralRql(initialState),
-    initialState.keyword?.trim()
-      ? rqlKeyword(initialState.keyword.trim())
-      : undefined,
-    initialState.refine?.trim()
-      ? rqlKeyword(initialState.refine.trim())
-      : undefined,
-    initialState.rql,
-  ].filter((clause): clause is string => Boolean(clause));
-  const genomeRql = genomeScope.length > 0 ? rqlAnd(...genomeScope) : undefined;
+  const scope = genomeRelatedScope(initialState);
+  // A related tab's predicate, following legacy GenomeList where it works
+  // (`genomeRelatedScope`). An unscoped tab still sends its collection's own
+  // match-all, as every collection profile does: the Data API answers HTTP 400
+  // to an empty query once a sort or facet is added.
+  const relatedRql = (idField: string, extra?: string): string => {
+    if (!scope) return extra ?? `eq(${idField},*)`;
+    if (scope.join) return genomesChildRql(scope.rql, extra);
+    return extra ? rqlAnd(scope.rql, extra) : scope.rql;
+  };
+  // Legacy GenomeList sends the keyword exactly as typed: keyword(coli) finds
+  // 134,274 genomes, the token-prefix keyword(coli*) 137,836. The related tabs'
+  // own keyword boxes are exact too (`serverKeywordMode="exact"`), so no
+  // prefix keyword reaches the Data API from this page.
   let content = (
     <GenomeResourceCollection
       baseRql={genomeBaseRql(initialState)}
       initialState={initialState}
       keywordMode="refine"
+      serverKeywordMode="exact"
     />
   );
-  if (genomeRql && activeTab === "sequences") {
+  if (activeTab === "sequences") {
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.sequences}
-        rql={genomesChildRql(genomeRql)}
+        rql={relatedRql(genomeChildCollections.sequences.idField)}
         keywordMode="server"
+        serverKeywordMode="exact"
       />
     );
-  } else if (
-    genomeRql &&
-    (activeTab === "features" || activeTab === "proteins")
-  ) {
-    const featureRql = genomesChildRql(
-      genomeRql,
-      // Shared with the member Proteins view and the Feature list's
-      // `filter=protein`, so all three mean the same thing by "protein".
-      activeTab === "proteins" ? proteinFeatureRql : undefined,
-    );
+  } else if (activeTab === "features") {
+    // Legacy's Features tab: the Feature list's removable annotation=PATRIC
+    // default, and rows in backend order (the Feature list's sort decision).
     content = (
       <ResourceChildCollection
-        {...genomeChildCollections[activeTab]}
-        rql={featureRql}
+        {...genomeChildCollections.features}
+        rql={relatedRql(genomeChildCollections.features.idField)}
+        defaultFilters={featureListDefaultFilters}
+        defaultSort="unsorted"
         keywordMode="server"
+        serverKeywordMode="exact"
       />
     );
-  } else if (genomeRql && activeTab === "domains") {
+  } else if (activeTab === "proteins") {
+    // `proteinFeatureRql` is shared with the member Proteins view and the
+    // Feature list's `filter=protein`, so all three mean the same "protein".
+    content = (
+      <ResourceChildCollection
+        {...genomeChildCollections.proteins}
+        rql={relatedRql(
+          genomeChildCollections.proteins.idField,
+          proteinFeatureRql,
+        )}
+        defaultSort="unsorted"
+        keywordMode="server"
+        serverKeywordMode="exact"
+      />
+    );
+  } else if (activeTab === "domains") {
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.domains}
-        rql={genomesChildRql(genomeRql)}
+        rql={relatedRql(genomeChildCollections.domains.idField)}
         keywordMode="server"
+        serverKeywordMode="exact"
       />
     );
-  } else if (genomeRql && activeTab === "structures") {
+  } else if (activeTab === "structures") {
     // Not ProteinStructureResourceCollection (which the member page uses): that
     // wrapper owns URL collection state, which would collide with this page's own
     // rql/page/sort params. ResourceChildCollection keeps its tab state under its
@@ -162,9 +177,10 @@ export function GenomeCollection({
         resource="protein_structure"
         label="Protein Structures"
         idField="pdb_id"
-        rql={genomesChildRql(genomeRql)}
+        rql={relatedRql("pdb_id")}
         defaultSort="unsorted"
         keywordMode="server"
+        serverKeywordMode="exact"
       />
     );
   }

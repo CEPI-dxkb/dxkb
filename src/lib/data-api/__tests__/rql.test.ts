@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eq,
+  keywordClauses,
   maxRqlInValues,
   parseRql,
   serializeRql,
@@ -245,5 +246,142 @@ describe("typed RQL", () => {
         }),
       ).toThrow(/cannot be serialized for an unquoted field/);
     });
+  });
+});
+
+describe("keywordClauses", () => {
+  it("sends one clause per word, as legacy BV-BRC's search box does", () => {
+    // Legacy's searchToQuery turns "coli Salmonella" into
+    // and(keyword(coli),keyword(Salmonella)): every word, in any order.
+    expect(keywordClauses(" coli  Salmonella ", "exact")).toEqual([
+      "keyword(coli)",
+      "keyword(Salmonella)",
+    ]);
+    expect(keywordClauses("influenza virus")).toEqual([
+      "keyword(influenza%2A)",
+      "keyword(virus%2A)",
+    ]);
+    expect(keywordClauses("  ", "exact")).toEqual([]);
+  });
+
+  it("keeps a quoted word's quotes through RQL validation", () => {
+    // keyword("Rv0001") matches 4 features where keyword(Rv0001) matches
+    // 341,272, so the quotes must reach the Data API.
+    expect(keywordClauses('"Rv0001"', "exact")).toEqual([
+      "keyword(%22Rv0001%22)",
+    ]);
+    expect(validateRql("genome", "keyword(%22Rv0001%22)")).toBe(
+      "keyword(%22Rv0001%22)",
+    );
+  });
+
+  // Legacy's search box sends a typed "DNA polymerase" as one quoted clause,
+  // keyword("DNA polymerase"): 17 genomes, where the quote characters split
+  // onto two words find none.
+  it.each([
+    ["a quoted phrase", '"DNA polymerase"', "exact", ["keyword(%22DNA%20polymerase%22)"]],
+    [
+      "a quoted phrase beside a word, which alone takes the prefix",
+      '"DNA polymerase" coli',
+      "prefix",
+      ["keyword(%22DNA%20polymerase%22)", "keyword(coli%2A)"],
+    ],
+    ["a quoted word, without a prefix", '"Rv0001"', "prefix", ["keyword(%22Rv0001%22)"]],
+    [
+      "a quote left open, closed at the end of the text",
+      'coli "DNA polymerase',
+      "exact",
+      ["keyword(coli)", "keyword(%22DNA%20polymerase%22)"],
+    ],
+    [
+      "a phrase's surrounding and repeated spaces",
+      '"  DNA   polymerase "',
+      "exact",
+      ["keyword(%22DNA%20polymerase%22)"],
+    ],
+    ["empty quotes", '"" coli " "', "exact", ["keyword(coli)"]],
+    [
+      "a quote that opens inside a word",
+      'Rv0001"DNA polymerase"',
+      "exact",
+      ["keyword(Rv0001)", "keyword(%22DNA%20polymerase%22)"],
+    ],
+  ] as const)("keeps %s as one clause", (_label, keyword, mode, expected) => {
+    expect(keywordClauses(keyword, mode)).toEqual(expected);
+  });
+
+  // `keywordQuery` reads the operators and the syntax; each of these sent one
+  // clause per word would be a Solr SyntaxError.
+  it.each([
+    [
+      "Solr's NOT",
+      "kinase NOT hypothetical",
+      "exact",
+      ["keyword(kinase)", "not(keyword(hypothetical))"],
+    ],
+    [
+      "Solr's OR, each term prefixed",
+      "coli OR Salm",
+      "prefix",
+      ["or(keyword(coli%2A),keyword(Salm%2A))"],
+    ],
+    ["a trailing operator", "coli AND", "exact", ["keyword(coli)"]],
+    [
+      "a field-like word",
+      "GO:0003677",
+      "exact",
+      ["keyword(GO)", "keyword(0003677)"],
+    ],
+    ["a lone slash", "/", "exact", []],
+  ] as const)("reads %s", (_label, keyword, mode, expected) => {
+    expect(keywordClauses(keyword, mode)).toEqual(expected);
+  });
+});
+
+describe("validateRql keyword values", () => {
+  // The Data API matches keyword() text as written: unquoted words are ANDed
+  // in any order (keyword(coli Salmonella) finds 1,933 genomes, like
+  // and(keyword(coli),keyword(Salmonella))), and only quotes make a phrase
+  // (29 genomes) or an exact token (keyword("Rv0001"): 4 features against
+  // 341,272). Validation must keep that text, not re-quote or unquote it.
+  it.each([
+    ["unquoted words", "keyword(coli Salmonella)", "keyword(coli%20Salmonella)"],
+    [
+      "encoded unquoted words",
+      "keyword(coli%20Salmonella)",
+      "keyword(coli%20Salmonella)",
+    ],
+    ["a quoted word", 'keyword("Rv0001")', "keyword(%22Rv0001%22)"],
+    [
+      "a quoted phrase",
+      'keyword("DNA polymerase")',
+      "keyword(%22DNA%20polymerase%22)",
+    ],
+    [
+      "an encoded quoted phrase",
+      "keyword(%22DNA%20polymerase%22)",
+      "keyword(%22DNA%20polymerase%22)",
+    ],
+    [
+      "a quoted word beside a bare one",
+      'keyword("Rv0001" coli)',
+      "keyword(%22Rv0001%22%20coli)",
+    ],
+    ["a prefix", "keyword(Dnak*)", "keyword(Dnak%2A)"],
+  ])("keeps %s as written", (_label, rql, expected) => {
+    expect(validateRql("genome", rql)).toBe(expected);
+    expect(validateRql("genome", expected)).toBe(expected);
+  });
+
+  it("still quotes a field value with whitespace", () => {
+    expect(
+      validateRql("genome", "and(keyword(coli Salmonella),eq(genome_name,E coli))"),
+    ).toBe('and(keyword(coli%20Salmonella),eq(genome_name,"E%20coli"))');
+  });
+
+  it("rejects malformed percent encoding in a keyword", () => {
+    expect(() => validateRql("genome", "keyword(%E0%A4%A)")).toThrow(
+      "RQL contains invalid percent encoding.",
+    );
   });
 });

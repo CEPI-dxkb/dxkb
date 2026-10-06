@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
-import { eq, serializeRql } from "./rql";
+import { eq, keywordClauses, serializeRql } from "./rql";
 import type {
   CollectionRequest,
   CollectionResult,
@@ -44,18 +44,11 @@ function addPredicate(
     keyword?: string;
     keywordMode?: "exact" | "prefix";
   },
-  resource: DataResource,
 ): void {
   const clauses: string[] = [];
   if (request.rql) clauses.push(request.rql);
   if (request.keyword) {
-    const keywords = request.keyword.trim().split(/\s+/).filter(Boolean);
-    const expressions = keywords.map((value) =>
-      serializeRql(resource, {
-        operator: "keyword",
-        value: request.keywordMode === "exact" ? value : `${value}*`,
-      }),
-    );
+    const expressions = keywordClauses(request.keyword, request.keywordMode);
     if (expressions.length === 1) clauses.push(expressions[0]);
     else if (expressions.length > 1)
       clauses.push(`and(${expressions.join(",")})`);
@@ -235,7 +228,7 @@ export class ServerDataRepository {
     const page = request.page ?? 1;
     const start = (page - 1) * size;
     const url = this.url(resource);
-    addPredicate(url, request, resource);
+    addPredicate(url, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     if (request.facets?.length)
@@ -322,7 +315,7 @@ export class ServerDataRepository {
   ): Promise<RowsResult<Record<string, unknown>>> {
     const definition = getResourceDefinition(resource);
     const url = this.url(resource);
-    addPredicate(url, request, resource);
+    addPredicate(url, request);
     const projectLocally = addFields(url, request.fields, definition.idField);
     addSort(url, request.sort, definition.idField);
     const offset = request.offset ?? 0;

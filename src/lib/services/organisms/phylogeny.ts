@@ -1,7 +1,6 @@
 import { canonicalDatasetId } from "@/lib/phylogeny/nextstrain-dataset";
 
 const contentOrigin = "https://www.bv-brc.org";
-const bacterialTreeDictionaryUrl = `${contentOrigin}/api/content/bvbrc_phylogeny_tab/taxon_tree_dict.json`;
 const bacterialTreeBaseUrl = `${contentOrigin}/api/content/bvbrc_phylogeny_tab/phyloxml/`;
 const viralFamilyBaseUrl = `${contentOrigin}/api/content/phyloxml_trees/families/`;
 const phylogenyMetadataFetchTimeoutMs = 2000;
@@ -26,8 +25,6 @@ export interface PhyloFamilyBlock {
   order?: string[];
   groups: PhyloGroup[];
 }
-
-let dictionaryPromise: Promise<Record<string, string>> | null = null;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -89,39 +86,35 @@ function parseFamilyBlock(value: unknown): PhyloFamilyBlock {
   };
 }
 
-async function fetchTreeDictionary(): Promise<Record<string, string>> {
-  if (!dictionaryPromise) {
-    dictionaryPromise = fetch(bacterialTreeDictionaryUrl, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(phylogenyMetadataFetchTimeoutMs),
-    })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error(`tree dictionary: ${String(response.status)}`);
-        const value: unknown = await response.json();
-        if (!isRecord(value))
-          throw new Error("tree dictionary has an invalid shape");
-        return Object.fromEntries(
-          Object.entries(value).filter(
-            (entry): entry is [string, string] =>
-              /^\d+$/.test(entry[0]) && typeof entry[1] === "string",
-          ),
-        );
-      })
-      .catch((error: unknown) => {
-        dictionaryPromise = null;
-        throw error;
-      });
-  }
-  return dictionaryPromise;
-}
-
 export async function fetchBacterialTreeXml(
   taxonId: number,
 ): Promise<string | null> {
-  const filename = (await fetchTreeDictionary())[String(taxonId)];
-  if (!filename) return null;
-  const url = new URL(filename, bacterialTreeBaseUrl);
+  // The server holds BV-BRC's ~32 MB taxon-to-tree dictionary and answers
+  // with one filename. Its first lookup after a restart downloads that file,
+  // so this waits as long as a tree download rather than the metadata budget.
+  const response = await fetch(
+    `/api/phylogeny/bacterial-trees/${String(taxonId)}`,
+    {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(phylogenyTreeFetchTimeoutMs),
+    },
+  );
+  const value: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const detail =
+      isRecord(value) && typeof value.error === "string"
+        ? value.error
+        : `tree dictionary: ${String(response.status)}`;
+    throw new Error(detail);
+  }
+  if (
+    !isRecord(value) ||
+    !(value.filename === null || typeof value.filename === "string")
+  ) {
+    throw new Error("tree dictionary has an invalid shape");
+  }
+  if (value.filename === null) return null;
+  const url = new URL(value.filename, bacterialTreeBaseUrl);
   if (url.origin !== contentOrigin)
     throw new Error("tree dictionary returned an unsafe URL");
   return fetchTreeXml(url.toString());
@@ -185,8 +178,4 @@ export function resolvePhylogenyUrl(path: string): string | null {
   } catch {
     return null;
   }
-}
-
-export function resetPhylogenyCacheForTests(): void {
-  dictionaryPromise = null;
 }

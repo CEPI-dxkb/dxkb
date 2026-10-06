@@ -14,11 +14,12 @@ import { VerticalMenu } from "@/components/ui/vertical-menu";
 import { Button } from "@/components/ui/button";
 import { searchDescriptors, searchHref } from "@/constants/search-info";
 import { searchTypeMenuItems } from "@/constants/search-menu";
-import { isDataResource } from "@/lib/data-api";
+import { isDataResource, keywordClauses } from "@/lib/data-api";
 import { toQueryString } from "@/lib/url";
 import { useUiPreference } from "@/lib/ui-preferences/provider";
 import type { DataResource } from "@/lib/data-api";
 import { genomeHref, genomeIdFromRow } from "@/lib/views/hrefs";
+import { rqlAnd } from "@/lib/views/rql";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface TypeSearchProps {
@@ -182,7 +183,11 @@ function TypeSearchList({
         >
           <ListData
             resource={resource}
-            q={`keyword(${encodeURIComponent(q)})`}
+            // As the canonical exact lists read `?keyword=` (and the All Data
+            // Types counts): one clause per term, Solr's operators as RQL,
+            // percent-encoded, since ListData drops a `#...` as a legacy hash.
+            // `page.tsx` renders this list only for text with terms.
+            q={rqlAnd(...keywordClauses(q, "exact"))}
             selectedIds={selectedIds}
             onSelectionChange={(ids) => {
               if (!Array.isArray(ids)) return;

@@ -1021,3 +1021,52 @@ describe("useResourceCollection", () => {
     ]);
   });
 });
+
+describe("useResourceCollection facet scope", () => {
+  it("counts facets over their own structural scope when one is given", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          fields: ["feature_id"],
+          facetFields: ["annotation"],
+          facetScope: { structuralRql: "eq(feature_id,*)" },
+          prefetchNextPage: false,
+          structuralRql: "eq(annotation,PATRIC)",
+          state: {
+            keyword: "Dnak",
+            filters: { annotation: ["PATRIC"] },
+            page: 1,
+            sort: "unsorted",
+          },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(collection).toHaveBeenCalledWith(
+        "genome_feature",
+        expect.objectContaining({
+          facets: ["annotation"],
+          keyword: "Dnak",
+          rql: "eq(feature_id,*)",
+        }),
+        expect.any(AbortSignal),
+      );
+    });
+    expect(collection).toHaveBeenCalledWith(
+      "genome_feature",
+      expect.objectContaining({
+        page: 1,
+        keyword: "Dnak",
+        rql: "eq(annotation,PATRIC)",
+      }),
+      expect.any(AbortSignal),
+    );
+  });
+});

@@ -1,3 +1,8 @@
+import {
+  keywordQuery,
+  keywordQueryClauses,
+} from "@/lib/data-api/keyword-terms";
+
 export type SearchParamsRecord = Record<string, string | string[] | undefined>;
 
 /**
@@ -14,9 +19,18 @@ export function rqlEq(field: string, value: string): string {
   return `eq(${field},${escapeRqlValue(value)})`;
 }
 
-/** Build a single `keyword(value)` clause with the value escaped. */
-export function rqlKeyword(value: string): string {
-  return `keyword(${escapeRqlValue(value)})`;
+/**
+ * The RQL of a keyword refinement, or none when the text has no terms (blank,
+ * or only `"`): the text read by `keywordQuery` as the `?keyword=` search
+ * reads it, one exact `keyword(...)` per word or quoted phrase, Solr's `OR` as
+ * `or(...)` and its `NOT` as `not(...)`, ANDed. Never Solr's operators inside
+ * one clause: the Data API joins a keyword's text into the surrounding query
+ * without brackets, so `and(eq(genome_id,*),keyword(coli OR Salmonella))`
+ * would list all 17,033,311 genomes instead of the 195,658 the OR matches.
+ */
+export function rqlKeyword(value: string): string | undefined {
+  const clauses = keywordQueryClauses(keywordQuery(value), escapeRqlValue);
+  return clauses.length > 0 ? rqlAnd(...clauses) : undefined;
 }
 
 /** Combine two or more RQL clauses with `and(...)`. */

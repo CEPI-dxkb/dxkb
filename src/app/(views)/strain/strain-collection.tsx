@@ -21,6 +21,7 @@ export function StrainCollection({ initialState }: StrainCollectionProps) {
       <StrainResourceCollection
         initialState={initialState}
         keywordMode="refine"
+        serverKeywordMode="exact"
       />
     </EntityViewShell>
   );

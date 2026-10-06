@@ -19,6 +19,12 @@ interface StrainResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The list page sends an exact
+   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
+   * unset keeps the token-prefix default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 function StrainResourceCollectionContent({
@@ -27,17 +33,17 @@ function StrainResourceCollectionContent({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: StrainResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(strainCollectionOptions);
   const state = initialState ?? urlState;
+  const profile = enableFacets
+    ? strainCollectionProfile
+    : { ...strainCollectionProfile, facets: undefined };
 
   return (
     <ResourceCollection<StrainViewRecord>
-      profile={
-        enableFacets
-          ? strainCollectionProfile
-          : { ...strainCollectionProfile, facets: undefined }
-      }
+      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
       onStateChange={setState}

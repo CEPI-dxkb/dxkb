@@ -26,6 +26,7 @@ import {
   type GenomeViewRecord,
 } from "@/lib/genome-view";
 import { eq } from "@/lib/data-api";
+import { featureListDefaultFilters } from "@/lib/feature-view";
 import { isTaxonId } from "@/lib/taxonomy-view";
 import { taxonomyHref } from "@/lib/views/hrefs";
 import {
@@ -117,15 +118,22 @@ export function GenomeMember({
         defaultSort="id:asc"
       />
     );
-  } else if (activeTab === "features" || activeTab === "proteins") {
+  } else if (activeTab === "features") {
+    // Legacy's Genome Features tab: the Feature list's removable
+    // annotation=PATRIC default (5,425 of genome 83332.12's 10,940 features).
     content = (
       <ResourceChildCollection
-        {...genomeChildCollections[activeTab]}
-        rql={
-          activeTab === "proteins"
-            ? genomeProteinRql(genome.genome_id)
-            : genomeFeatureRql(genome.genome_id)
-        }
+        {...genomeChildCollections.features}
+        rql={genomeFeatureRql(genome.genome_id)}
+        defaultFilters={featureListDefaultFilters}
+      />
+    );
+  } else if (activeTab === "proteins") {
+    // `genomeProteinRql` pins PATRIC itself, so this tab has no default.
+    content = (
+      <ResourceChildCollection
+        {...genomeChildCollections.proteins}
+        rql={genomeProteinRql(genome.genome_id)}
       />
     );
   } else if (activeTab === "domains") {

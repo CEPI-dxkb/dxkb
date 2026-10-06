@@ -89,6 +89,23 @@ describe("buildRql", () => {
     });
   });
 
+  it("reads its keywords as the canonical lists read ?keyword=", () => {
+    // `keywordQuery`: each of these sent as keyword(word*) is an HTTP 400.
+    expect(buildRql({ selected: [], keywords: ["coli", "AND"] })).toBe(
+      "keyword(coli*)",
+    );
+    expect(buildRql({ selected: [], keywords: ["GO:0003677"] })).toBe(
+      "and(keyword(GO*),keyword(0003677*))",
+    );
+    expect(
+      buildRql({ selected: [], keywords: ["kinase", "NOT", "hypothetical"] }),
+    ).toBe("and(keyword(kinase*),not(keyword(hypothetical*)))");
+    expect(buildRql({ selected: [], keywords: ['"Rv0001"', "OR"] })).toBe(
+      "keyword(%22Rv0001%22)",
+    );
+    expect(buildRql({ selected: [], keywords: ["/", "-"] })).toBe("");
+  });
+
   it("returns empty string when nothing is selected", () => {
     expect(buildRql({ selected: [], keywords: [] })).toBe("");
   });

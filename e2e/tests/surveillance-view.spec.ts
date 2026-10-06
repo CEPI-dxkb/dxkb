@@ -34,12 +34,14 @@ test.describe("Surveillance view", () => {
     await surveillancePage.expectCollection("sentinel");
     await surveillancePage.expectMemberVisible("sample/1");
 
+    // A refinement sends one keyword() per word (`keywordQuery`).
+    const refinementClauses = "and(keyword(Nasal),keyword(swab))";
     const refinementRequest = page.waitForRequest((request) => {
       const url = new URL(request.url());
       return (
         url.pathname === "/api/data/surveillance" &&
         url.searchParams.get("keyword") === "sentinel" &&
-        url.searchParams.get("rql")?.includes("keyword(Nasal swab)") === true
+        url.searchParams.get("rql")?.includes(refinementClauses) === true
       );
     });
     await surveillancePage.filterCollection("Nasal swab");
@@ -54,7 +56,7 @@ test.describe("Surveillance view", () => {
       return (
         url.pathname === "/api/data/surveillance" &&
         url.searchParams.get("keyword") === "sentinel" &&
-        url.searchParams.get("rql")?.includes("keyword(Nasal swab)") === true &&
+        url.searchParams.get("rql")?.includes(refinementClauses) === true &&
         url.searchParams.get("rql")?.includes("pathogen_test_type") === true
       );
     });

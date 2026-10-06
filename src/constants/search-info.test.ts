@@ -58,6 +58,23 @@ describe("search descriptors", () => {
     );
   });
 
+  it("writes a canonical search's keyword as legacy's search box reads it", () => {
+    // A list reads ?keyword= as written; legacy's search box quotes an id-like
+    // word (keyword("Rv0001"): 4 features, unquoted 341,272) and reads `or` as
+    // Solr's OR. The /search page normalizes its own q.
+    const feature = searchDescriptors.find((item) => item.id === "genome_feature");
+    const everything = searchDescriptors.find((item) => item.id === "everything");
+    expect(feature && searchHref(feature, "Rv0001")).toBe(
+      "/feature?keyword=%22Rv0001%22",
+    );
+    expect(feature && searchHref(feature, "dnaK or dnaJ")).toBe(
+      "/feature?keyword=dnaK+OR+dnaJ",
+    );
+    expect(everything && searchHref(everything, "Rv0001")).toBe(
+      "/search?type=everything&q=Rv0001",
+    );
+  });
+
   it("routes Epitope searches to the canonical collection", () => {
     const epitope = searchDescriptors.find((item) => item.id === "epitope");
     expect(epitope && searchHref(epitope, "linear peptide")).toBe(
@@ -96,11 +113,12 @@ describe("search descriptors", () => {
       (item) => item.id === "surveillance",
     );
     const serology = searchDescriptors.find((item) => item.id === "serology");
+    // Legacy's search box reads `/` as a space.
     expect(strain && searchHref(strain, "A/B strain")).toBe(
-      "/strain?keyword=A/B+strain",
+      "/strain?keyword=A+B+strain",
     );
     expect(surveillance && searchHref(surveillance, "RAT/antigen")).toBe(
-      "/surveillance?keyword=RAT/antigen",
+      "/surveillance?keyword=RAT+antigen",
     );
     expect(serology && searchHref(serology, "neutralizing antibody")).toBe(
       "/serology?keyword=neutralizing+antibody",

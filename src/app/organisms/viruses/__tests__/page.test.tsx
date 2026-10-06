@@ -56,7 +56,7 @@ describe("VirusesPage", () => {
     render(await VirusesPage({ searchParams: Promise.resolve({ view: "features" }) }));
     expect(
       screen.getByText(
-        "genome_feature:and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,10239),ne(genome_status,Deprecated))),eq(annotation,PATRIC))",
+        "genome_feature:and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,10239),ne(genome_status,Deprecated))))",
       ),
     ).toBeInTheDocument();
   });

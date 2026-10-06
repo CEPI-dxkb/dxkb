@@ -1,16 +1,27 @@
 import { render } from "@testing-library/react";
+import {
+  featureCollectionOptions,
+  featureListCollectionOptions,
+} from "@/lib/feature-view";
 import type { CollectionState } from "@/lib/views/collection-state";
 import { FeatureCollection } from "../feature-collection";
 
+interface CollectionProps {
+  baseRql?: string;
+  collectionOptions?: unknown;
+  keywordMode?: string;
+  serverKeywordMode?: string;
+}
+
 const { collectionProps } = vi.hoisted(() => ({
-  collectionProps: { current: null as { baseRql?: string } | null },
+  collectionProps: { current: null as CollectionProps | null },
 }));
 
 vi.mock("@/components/views", () => ({
   EntityViewShell: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
-  FeatureResourceCollection: (props: { baseRql?: string }) => {
+  FeatureResourceCollection: (props: CollectionProps) => {
     collectionProps.current = props;
     return null;
   },
@@ -34,5 +45,31 @@ describe("FeatureCollection", () => {
 
     expect(collectionProps.current).not.toBeNull();
     expect(collectionProps.current?.baseRql).toBeUndefined();
+  });
+
+  it("lists features with legacy FeatureList's URL schema and exact keyword", () => {
+    render(<FeatureCollection initialState={bareState} />);
+
+    expect(collectionProps.current).toEqual(
+      expect.objectContaining({
+        collectionOptions: featureListCollectionOptions,
+        keywordMode: "refine",
+        serverKeywordMode: "exact",
+      }),
+    );
+  });
+
+  it("writes no removed-default marker on a Proteins search's URL", () => {
+    // The Proteins search has no PATRIC default (`featureListOptionsFor`), so
+    // its URL writes must not record one as removed (annotation=*).
+    render(
+      <FeatureCollection
+        initialState={{ ...bareState, filters: { filter: ["protein"] } }}
+      />,
+    );
+
+    expect(collectionProps.current?.collectionOptions).toBe(
+      featureCollectionOptions,
+    );
   });
 });

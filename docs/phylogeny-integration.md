@@ -4,6 +4,8 @@ DXKB's taxonomy Phylogeny view supports two renderers. Archaeopteryx renders phy
 
 ## Data flow
 
+Bacterial trees: the browser asks `/api/phylogeny/bacterial-trees/<taxonId>` for the taxon's phyloXML filename, then downloads that file from BV-BRC itself. The route answers from `src/lib/phylogeny/bacterial-tree-index.ts`, which downloads BV-BRC's `taxon_tree_dict.json` (~32 MB; 499,508 taxa mapped to 2,900 files) once per server process and refreshes it in the background after 24 h. The browser used to download that dictionary itself under a 2 s timeout, which failed on connections slower than ~17 Mbit/s. `PHYLO_TREE_DICTIONARY_URL` overrides the source; E2E points it at the loopback mock.
+
 Viral family JSON advertises Archaeopteryx and Nextstrain choices. Advertised Nextstrain choices are enabled when `/api/phylogeny/nextstrain-datasets` confirms that the corresponding BV-BRC dataset exists, or when an optional local fallback contains a renderable copy. Inventory loading or failure is shown separately from confirmed dataset absence.
 
 Auspice calls the local Charon-compatible routes under `/api/charon`, which fetch from BV-BRC first and fall back to the optional local store when the remote dataset is missing or unavailable. Dataset IDs are canonical slash-separated identifiers; main files in the fallback directory use the same segments joined by underscores and a `.json` suffix. Sidecars use the supported `_tip-frequencies`, `_root-sequence`, and `_measurements` suffixes. Because those suffixes are indistinguishable from a real final ID segment of the same name, `tip-frequencies`, `root-sequence`, and `measurements` are reserved and rejected as a dataset ID's final segment (`parseDatasetId`/`canonicalDatasetId`) — a main dataset must not be named after a sidecar.
@@ -38,6 +40,7 @@ Keep the visible "Powered by Nextstrain" attribution and the configured CARTO/Op
 ## References
 
 - `src/lib/phylogeny/archaeopteryx.ts`: Archaeopteryx loader, launch config, theme sync and control-panel collapse
+- `src/lib/phylogeny/bacterial-tree-index.ts`: server-side taxon → bacterial tree filename index
 - `src/lib/phylogeny/dataset-inventory.ts`: shared renderability policy
 - `src/lib/phylogeny/dataset-store.ts`: runtime inventory cache and exact reads
 - `scripts/check-nextstrain-datasets.ts`: deployment reconciliation

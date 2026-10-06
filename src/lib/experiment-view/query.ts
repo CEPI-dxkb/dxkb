@@ -50,7 +50,7 @@ export function experimentCollectionScopeRql(
 ): string | undefined {
   const predicates = [
     experimentStructuralRql(state),
-    state.refine?.trim() ? rqlKeyword(state.refine.trim()) : undefined,
+    state.refine ? rqlKeyword(state.refine) : undefined,
     state.rql,
   ].filter((predicate): predicate is string => Boolean(predicate));
   if (predicates.length === 0) return undefined;

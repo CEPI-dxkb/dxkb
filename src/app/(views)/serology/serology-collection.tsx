@@ -24,6 +24,7 @@ export function SerologyCollection({ initialState }: SerologyCollectionProps) {
       <SerologyResourceCollection
         initialState={initialState}
         keywordMode="refine"
+        serverKeywordMode="exact"
       />
     </EntityViewShell>
   );

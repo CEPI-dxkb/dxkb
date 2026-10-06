@@ -20,7 +20,11 @@ import {
   childCollectionOptions,
   type ChildCollectionUrlKey,
 } from "@/lib/views/child-collection-state";
-import type { CollectionState } from "@/lib/views/collection-state";
+import {
+  facetCountState,
+  type CollectionState,
+  type CollectionStateOptions,
+} from "@/lib/views/collection-state";
 import {
   ResourceCollection,
   type ResourceCollectionProfile,
@@ -59,6 +63,13 @@ interface ResourceChildCollectionProps {
   columns?: ResourceCollectionProfile<ChildRow>["columns"];
   defaultSort: string;
   /**
+   * Filters this table selects while its own URL params do not name them,
+   * removable like any facet value; `<urlKey>.<name>=*` records the removal.
+   * The Genome list's and Genome page's Features tabs pass
+   * `featureListDefaultFilters`.
+   */
+  defaultFilters?: CollectionStateOptions["defaultFilters"];
+  /**
    * Explicit collection profile, overriding the per-`resource` dispatch below.
    *
    * No production caller sets this today — every real child tab lands on one of
@@ -81,6 +92,13 @@ interface ResourceChildCollectionProps {
   // Matches ResourceCollection's own default. Pass "loaded" only where the caller
   // owns the keyword box and wants it to filter the current page client-side.
   keywordMode?: "server" | "loaded";
+  /**
+   * How this table's own keyword reaches the Data API, for export and
+   * select-all as well as the rows. The Genome list passes "exact" so its
+   * related tabs' keyword box sends `keyword(...)` like the list's own, as legacy
+   * GenomeList does; unset keeps the profile's mode (the token-prefix default).
+   */
+  serverKeywordMode?: "exact" | "prefix";
   /**
    * Controlled keyword text, for a caller that shares one keyword box with a
    * sibling view (the Interactions shell shares it with the Graph). In the
@@ -110,9 +128,11 @@ function ScopedResourceChildCollection({
   rql,
   columns,
   defaultSort,
+  defaultFilters,
   profile: suppliedProfile,
   guideUrl,
   keywordMode = "server",
+  serverKeywordMode,
   keywordValue,
   onKeywordChange,
   keywordPlaceholder,
@@ -200,11 +220,13 @@ function ScopedResourceChildCollection({
       exportFileName,
     };
   }
+  if (serverKeywordMode) profile = { ...profile, serverKeywordMode };
 
   const collectionOptions = childCollectionOptions(
     profile.columns,
     profile.facets,
     defaultSort,
+    defaultFilters,
   );
   const [state, setState] = useChildCollectionUrlState(
     urlKey,
@@ -259,6 +281,7 @@ function ScopedResourceChildCollection({
       profile={profile}
       repository={repository}
       state={effectiveState}
+      facetState={facetCountState(effectiveState, collectionOptions)}
       onStateChange={handleStateChange}
       keywordMode={keywordMode}
       loadedKeywordValue={keywordMode === "loaded" ? keywordValue : undefined}

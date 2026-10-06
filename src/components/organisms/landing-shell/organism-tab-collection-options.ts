@@ -1,6 +1,6 @@
 import { epitopeCollectionOptions } from "@/lib/epitope-view";
 import { experimentCollectionOptions } from "@/lib/experiment-view";
-import { featureCollectionOptions } from "@/lib/feature-view";
+import { featureListCollectionOptions } from "@/lib/feature-view";
 import { genomeCollectionOptions } from "@/lib/genome-view";
 import { proteinFeatureCollectionOptions } from "@/lib/protein-feature-view";
 import { proteinStructureCollectionOptions } from "@/lib/protein-structure-view";
@@ -20,7 +20,8 @@ export const organismTabCollectionOptionsByView: Record<
   "taxa-tree": null,
   genomes: genomeCollectionOptions,
   sequences: null,
-  features: featureCollectionOptions,
+  // The taxon Features tab's schema: the Feature list's, PATRIC default included.
+  features: featureListCollectionOptions,
   "protein-structures": proteinStructureCollectionOptions,
   "domains-and-motifs": proteinFeatureCollectionOptions,
   epitopes: epitopeCollectionOptions,

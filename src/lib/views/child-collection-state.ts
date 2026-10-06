@@ -116,11 +116,15 @@ export function replaceChildCollectionSearchParams(
   return result;
 }
 
-/** What a child table may carry in the URL, derived from what its profile can do. */
+/**
+ * What a child table may carry in the URL, derived from what its profile can do,
+ * plus any default filters its caller selects (`CollectionStateOptions`).
+ */
 export function childCollectionOptions(
   columns: readonly { id: string; sortable?: boolean }[],
   facets: readonly { field: string }[] | undefined,
   defaultSort: string,
+  defaultFilters?: CollectionStateOptions["defaultFilters"],
 ): CollectionStateOptions {
   const sortable = columns
     .filter((column) => column.sortable !== false)
@@ -135,5 +139,6 @@ export function childCollectionOptions(
       ]),
     ],
     friendlyFilters: facets?.map((facet) => facet.field) ?? [],
+    defaultFilters,
   };
 }

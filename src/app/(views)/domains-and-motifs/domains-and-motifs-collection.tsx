@@ -32,6 +32,7 @@ export function DomainsAndMotifsCollection({
       <ProteinFeatureResourceCollection
         initialState={initialState}
         keywordMode="refine"
+        serverKeywordMode="exact"
       />
     </EntityViewShell>
   );

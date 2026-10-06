@@ -5,14 +5,14 @@ import {
   fetchBacterialTreeXml,
   fetchTreeXml,
   fetchViralFamilyBlock,
-  resetPhylogenyCacheForTests,
   resolvePhylogenyUrl,
 } from "../phylogeny";
 
 const origin = "https://www.bv-brc.org";
-const dictionaryUrl = `${origin}/api/content/bvbrc_phylogeny_tab/taxon_tree_dict.json`;
 
-beforeEach(resetPhylogenyCacheForTests);
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("phylogeny services", () => {
   it("allows tree bodies longer to download than metadata", async () => {
@@ -31,19 +31,73 @@ describe("phylogeny services", () => {
     expect(timeout).toHaveBeenNthCalledWith(2, 30_000);
   });
 
+  const treeFileUrl = `${origin}/api/content/bvbrc_phylogeny_tab/phyloxml/ecoli.xml`;
+  const treeLookupUrl = "/api/phylogeny/bacterial-trees/:taxonId";
+
   it("distinguishes a missing bacterial tree from a failed request", async () => {
-    server.use(http.get(dictionaryUrl, () => HttpResponse.json({ "562": "ecoli.xml" })));
-    expect(await fetchBacterialTreeXml(2)).toBeNull();
+    const requests: Request[] = [];
+    server.use(
+      http.get(treeLookupUrl, ({ request }) => {
+        requests.push(request);
+        return HttpResponse.json({ filename: null });
+      }),
+    );
+
+    await expect(fetchBacterialTreeXml(2)).resolves.toBeNull();
+    expect(requests).toHaveLength(1);
+    expect(new URL(requests[0].url).pathname).toBe(
+      "/api/phylogeny/bacterial-trees/2",
+    );
+    expect(requests[0].headers.get("Accept")).toBe("application/json");
   });
 
-  it("fetches a bacterial tree selected by the dictionary", async () => {
+  it("fetches the bacterial tree the server names", async () => {
     server.use(
-      http.get(dictionaryUrl, () => HttpResponse.json({ "562": "ecoli.xml" })),
-      http.get(`${origin}/api/content/bvbrc_phylogeny_tab/phyloxml/ecoli.xml`, () =>
-        new HttpResponse("<phyloxml />", { headers: { "Content-Type": "application/xml" } })
+      http.get(treeLookupUrl, ({ params }) =>
+        params.taxonId === "562"
+          ? HttpResponse.json({ filename: "ecoli.xml" })
+          : new HttpResponse("unexpected", { status: 404 }),
+      ),
+      http.get(
+        treeFileUrl,
+        () =>
+          new HttpResponse("<phyloxml />", {
+            headers: { "Content-Type": "application/xml" },
+          }),
       ),
     );
-    expect(await fetchBacterialTreeXml(562)).toBe("<phyloxml />");
+
+    await expect(fetchBacterialTreeXml(562)).resolves.toBe("<phyloxml />");
+  });
+
+  it("keeps the server's error message", async () => {
+    server.use(
+      http.get(treeLookupUrl, () =>
+        HttpResponse.json(
+          {
+            error: "tree dictionary: 503 Service Unavailable",
+            code: "upstream_error",
+          },
+          { status: 502 },
+        ),
+      ),
+    );
+
+    await expect(fetchBacterialTreeXml(562)).rejects.toThrow(
+      "tree dictionary: 503 Service Unavailable",
+    );
+  });
+
+  it("refuses a tree filename that leaves the content origin", async () => {
+    server.use(
+      http.get(treeLookupUrl, () =>
+        HttpResponse.json({ filename: "https://example.org/tree.xml" }),
+      ),
+    );
+
+    await expect(fetchBacterialTreeXml(562)).rejects.toThrow(
+      "tree dictionary returned an unsafe URL",
+    );
   });
 
   it("validates and normalizes a viral family block", async () => {

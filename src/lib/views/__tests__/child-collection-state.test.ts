@@ -161,3 +161,45 @@ describe("child collection URL state", () => {
     expect(options.friendlyFilters).toStrictEqual(["feature_type"]);
   });
 });
+
+describe("child collection default filters", () => {
+  const withDefault = childCollectionOptions(
+    [{ id: "start" }],
+    [{ field: "annotation" }, { field: "feature_type" }],
+    "unsorted",
+    { annotation: ["PATRIC"] },
+  );
+
+  it("selects the default until its own prefixed param clears it", () => {
+    expect(
+      parseChildCollectionState({ tab: "features" }, "features", withDefault)
+        .filters,
+    ).toEqual({ annotation: ["PATRIC"] });
+    expect(
+      parseChildCollectionState(
+        { "features.annotation": "*" },
+        "features",
+        withDefault,
+      ).filters,
+    ).toEqual({});
+  });
+
+  it("writes only a removed default, under its prefix", () => {
+    expect(
+      replaceChildCollectionSearchParams(
+        { tab: "features" },
+        "features",
+        { filters: {}, page: 1, sort: "unsorted" },
+        withDefault,
+      ).toString(),
+    ).toBe("tab=features&features.annotation=*");
+    expect(
+      replaceChildCollectionSearchParams(
+        { tab: "features", "features.annotation": "*" },
+        "features",
+        { filters: { annotation: ["PATRIC"] }, page: 1, sort: "unsorted" },
+        withDefault,
+      ).toString(),
+    ).toBe("tab=features");
+  });
+});

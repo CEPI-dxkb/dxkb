@@ -89,6 +89,19 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
   baseRql?: string;
+  /**
+   * The state facet counts are read for, when it is not `state`: a view's
+   * untouched default filters do not narrow their own facet
+   * (`facetCountState`). Rows always use `state`.
+   */
+  facetState?: CollectionState;
+  /**
+   * Filters that stay beside an explicit `state.rql` (`filtersBesideRql`), such
+   * as the Feature list's PATRIC default: the user can remove or pick their
+   * values and keep the rql. Changes to any other filter wait until the rql is
+   * cleared, and picking one of their values clears it.
+   */
+  filtersBesideRql?: readonly string[];
   enableRowLinks?: boolean;
   keywordMode?: "server" | "loaded" | "refine";
   loadedKeywordValue?: string;
@@ -107,6 +120,8 @@ export function ResourceCollection<Row extends DataTableRow>({
   state,
   onStateChange,
   baseRql,
+  facetState,
+  filtersBesideRql = [],
   enableRowLinks = true,
   keywordMode = "server",
   loadedKeywordValue,
@@ -121,8 +136,8 @@ export function ResourceCollection<Row extends DataTableRow>({
   const hasLoadedKeyword =
     keywordMode === "loaded" && Boolean(normalizedLoadedKeyword);
   const refinementRql =
-    keywordMode === "refine" && state.refine?.trim()
-      ? rqlKeyword(state.refine.trim())
+    keywordMode === "refine" && state.refine
+      ? rqlKeyword(state.refine)
       : undefined;
   const [tableLayout, updateTableLayout] = useTableLayout(
     `collection:${profile.resource}`,
@@ -162,6 +177,15 @@ export function ResourceCollection<Row extends DataTableRow>({
     refinementRql,
   );
   const effectiveRql = combinePredicates(structuralRql, state.rql);
+  const facetScope = facetState
+    ? {
+        structuralRql: combinePredicates(
+          baseRql,
+          profile.buildStructuralRql?.(facetState) ?? profile.basePredicate,
+          refinementRql,
+        ),
+      }
+    : undefined;
   const requestState =
     keywordMode === "loaded" ? { ...state, keyword: undefined } : state;
   const collection = useResourceCollection({
@@ -173,6 +197,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     facetFields: shownFacetFields,
     prefetchNextPage,
     structuralRql,
+    facetScope,
     serverKeywordMode: profile.serverKeywordMode,
     state: requestState,
     onStateChange:
@@ -359,6 +384,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         }}
         definitions={profile.facets ?? []}
         hasExplicitRql={Boolean(state.rql)}
+        filtersBesideRql={filtersBesideRql}
         keywordPlaceholder={keywordPlaceholder}
         onChange={({ keyword, filters, clearRql }) => {
           if (keywordMode === "loaded") {
@@ -375,7 +401,17 @@ export function ResourceCollection<Row extends DataTableRow>({
             ...state,
             keyword: keywordMode === "server" ? keyword : state.keyword,
             refine: keywordMode === "refine" ? keyword : state.refine,
-            filters: state.rql && !clearRql ? state.filters : filters,
+            filters:
+              state.rql && !clearRql
+                ? Object.fromEntries([
+                    ...Object.entries(state.filters).filter(
+                      ([name]) => !filtersBesideRql.includes(name),
+                    ),
+                    ...Object.entries(filters).filter(([name]) =>
+                      filtersBesideRql.includes(name),
+                    ),
+                  ])
+                : filters,
             rql: clearRql ? undefined : state.rql,
             page: 1,
           });

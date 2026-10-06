@@ -18,6 +18,12 @@ interface SurveillanceResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The list page sends an exact
+   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
+   * unset keeps the token-prefix default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 export function SurveillanceResourceCollection({
@@ -26,19 +32,19 @@ export function SurveillanceResourceCollection({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: SurveillanceResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(
     surveillanceCollectionOptions,
   );
   const state = initialState ?? urlState;
+  const profile = enableFacets
+    ? surveillanceCollectionProfile
+    : { ...surveillanceCollectionProfile, facets: undefined };
 
   return (
     <ResourceCollection<SurveillanceViewRecord>
-      profile={
-        enableFacets
-          ? surveillanceCollectionProfile
-          : { ...surveillanceCollectionProfile, facets: undefined }
-      }
+      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
       onStateChange={setState}

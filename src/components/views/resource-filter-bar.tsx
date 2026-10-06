@@ -44,6 +44,11 @@ interface ResourceFilterBarProps {
   onRetryFacets?: () => void;
   definitions: readonly ResourceCollectionFacet[];
   hasExplicitRql?: boolean;
+  /**
+   * Filters that stay beside the explicit rql (`filtersBesideRql`): picking one
+   * of their values keeps the rql, where any other pick replaces it.
+   */
+  filtersBesideRql?: readonly string[];
   keywordPlaceholder?: string;
   onChange: (update: {
     keyword?: string;
@@ -63,6 +68,7 @@ export function ResourceFilterBar({
   onRetryFacets,
   definitions,
   hasExplicitRql = false,
+  filtersBesideRql = [],
   keywordPlaceholder,
   onChange,
 }: ResourceFilterBarProps) {
@@ -217,7 +223,8 @@ export function ResourceFilterBar({
                       onChange({
                         keyword,
                         filters: { ...filters, [field]: [...current, value] },
-                        clearRql: hasExplicitRql,
+                        clearRql:
+                          hasExplicitRql && !filtersBesideRql.includes(field),
                       });
                     }}
                   />

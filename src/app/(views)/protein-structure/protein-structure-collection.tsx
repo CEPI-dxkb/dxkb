@@ -28,6 +28,7 @@ export function ProteinStructureCollection({
       <ProteinStructureResourceCollection
         initialState={initialState}
         keywordMode="refine"
+        serverKeywordMode="exact"
       />
     </EntityViewShell>
   );

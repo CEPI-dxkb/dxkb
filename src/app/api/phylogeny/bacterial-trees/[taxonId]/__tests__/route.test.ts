@@ -58,17 +58,50 @@ describe("GET /api/phylogeny/bacterial-trees/[taxonId]", () => {
     },
   );
 
-  it("passes the upstream failure through as a 502", async () => {
-    bacterialTreeFilename.mockRejectedValue(
-      new Error("tree dictionary: 503 Service Unavailable"),
-    );
+  it("answers an upstream failure with a fixed 502 and logs the detail", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const failure = new Error("tree dictionary: 503 Service Unavailable");
+    bacterialTreeFilename.mockRejectedValue(failure);
 
     const response = await GET(request("562"), makeRouteContext({ taxonId: "562" }));
 
     expect(response.status).toBe(502);
     await expect(json(response)).resolves.toEqual({
-      error: "tree dictionary: 503 Service Unavailable",
+      error: "Phylogeny tree dictionary is unavailable.",
       code: "upstream_error",
     });
+    expect(logged).toHaveBeenCalledWith(
+      "phylogeny tree dictionary unavailable",
+      failure,
+    );
+    logged.mockRestore();
+  });
+
+  it.each([
+    ["an Error with internal detail", new Error("connect ECONNREFUSED 10.0.0.5:443")],
+    ["a thrown string", "secret-token-123"],
+    ["an undefined rejection", undefined],
+  ])("never leaks %s into the 502 body", async (_label, reason) => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    bacterialTreeFilename.mockRejectedValue(reason);
+
+    const response = await GET(request("562"), makeRouteContext({ taxonId: "562" }));
+    const text = await response.text();
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get("Cache-Control")).toBeNull();
+    expect(text).not.toContain("ECONNREFUSED");
+    expect(text).not.toContain("secret-token-123");
+    expect(JSON.parse(text)).toEqual({
+      error: "Phylogeny tree dictionary is unavailable.",
+      code: "upstream_error",
+    });
+    logged.mockRestore();
+  });
+
+  it("does not cache a 400", async () => {
+    const response = await GET(request("abc"), makeRouteContext({ taxonId: "abc" }));
+
+    expect(response.headers.get("Cache-Control")).toBeNull();
   });
 });

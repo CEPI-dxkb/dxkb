@@ -172,6 +172,20 @@ describe("SearchBar", () => {
       },
     );
 
+    it.each(["東京", "Ñandú", "٣٤"])(
+      "navigates for %j, a query of only non-ASCII letters or digits",
+      async (typed) => {
+        const user = userEvent.setup();
+        mockSearchParams.current = new URLSearchParams({ type: "genome" });
+        renderSearchBar();
+
+        await user.type(screen.getByRole("textbox"), typed);
+        fireEvent.submit(getForm());
+
+        expect(mockPush).toHaveBeenCalledTimes(1);
+      },
+    );
+
     it("URL-encodes special characters in the query", async () => {
       const user = userEvent.setup();
       renderSearchBar();

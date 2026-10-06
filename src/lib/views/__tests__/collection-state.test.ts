@@ -569,6 +569,47 @@ describe("default filters", () => {
     ).toEqual({});
   });
 
+  // The rql hid the default rather than the user removing it, so dropping the
+  // rql brings the default back; only an explicit removal writes the marker.
+  it("reapplies a default once the rql that named its field is gone", () => {
+    const shadowing = { rql: "eq(host,swine)", taxon_id: "2" };
+    // A facet click that clears the rql hands over filters without the default.
+    expect(
+      replaceCollectionSearchParams(
+        shadowing,
+        { filters: { taxon_id: ["3"] }, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("taxon_id=3");
+    expect(
+      updateCollectionSearchParams(shadowing, { rql: null }, withDefault).toString(),
+    ).toBe("");
+    // Swapping in an rql that no longer names the field reapplies it too.
+    expect(
+      updateCollectionSearchParams(
+        shadowing,
+        { rql: "eq(public,true)" },
+        withDefault,
+      ).toString(),
+    ).toBe("rql=eq%28public%2Ctrue%29");
+    // Removing the default in the same update still writes the marker.
+    expect(
+      updateCollectionSearchParams(
+        shadowing,
+        { rql: null, filters: { host: null } },
+        withDefault,
+      ).toString(),
+    ).toBe("host=*");
+    // Without a shadowing rql, an absent default is still a removal.
+    expect(
+      replaceCollectionSearchParams(
+        { rql: "eq(public,true)" },
+        { filters: {}, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("host=*");
+  });
+
   it("lists the filters an explicit rql keeps", () => {
     const scoped = {
       ...withDefault,

@@ -100,6 +100,95 @@ describe("bacterialTreeFilename", () => {
     });
   });
 
+  it.each([
+    ["an empty object", {}],
+    ["an error body", { error: "temporarily unavailable" }],
+    ["only malformed entries", { abc: "x.phyloxml", "2": null }],
+  ])(
+    "rejects a first load of %s and retries on the next lookup",
+    async (_label, body) => {
+      server.use(http.get(dictionaryUrl, () => HttpResponse.json(body)));
+      await expect(bacterialTreeFilename(562)).rejects.toThrow(
+        "tree dictionary has no valid entries",
+      );
+
+      server.use(
+        http.get(dictionaryUrl, () =>
+          HttpResponse.json({ "562": "e.phyloxml" }),
+        ),
+      );
+      await expect(bacterialTreeFilename(562)).resolves.toBe("e.phyloxml");
+    },
+  );
+
+  it("rejects non-object dictionary bodies", async () => {
+    server.use(http.get(dictionaryUrl, () => HttpResponse.json([1, 2])));
+    await expect(bacterialTreeFilename(562)).rejects.toThrow(
+      "tree dictionary has an invalid shape",
+    );
+  });
+
+  it("keeps the previous dictionary and refresh window when a refresh is empty", async () => {
+    const logged = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const now = vi.spyOn(Date, "now").mockReturnValue(0);
+    let downloads = 0;
+    server.use(
+      http.get(dictionaryUrl, () => {
+        downloads += 1;
+        return HttpResponse.json({ "562": "old.phyloxml" });
+      }),
+    );
+    await expect(bacterialTreeFilename(562)).resolves.toBe("old.phyloxml");
+
+    let badRefreshes = 0;
+    server.use(
+      http.get(dictionaryUrl, () => {
+        badRefreshes += 1;
+        return HttpResponse.json({ error: "temporarily unavailable" });
+      }),
+    );
+    now.mockReturnValue(25 * 60 * 60 * 1000);
+
+    // Concurrent lookups share one refresh and one failure log.
+    await Promise.all([
+      bacterialTreeFilename(562),
+      bacterialTreeFilename(562),
+      bacterialTreeFilename(562),
+    ]);
+    // The failure is logged only after the in-flight refresh has settled.
+    await vi.waitFor(() => {
+      expect(logged).toHaveBeenCalledTimes(1);
+    });
+    expect(badRefreshes).toBe(1);
+    await expect(bacterialTreeFilename(562)).resolves.toBe("old.phyloxml");
+    // Within the retry delay the failing upstream is left alone.
+    await bacterialTreeFilename(562);
+    expect(badRefreshes).toBe(1);
+    expect(logged).toHaveBeenCalledTimes(1);
+    expect(downloads).toBe(1);
+
+    // The window was not restarted, so once the delay passes it tries again.
+    now.mockReturnValue(25 * 60 * 60 * 1000 + 5 * 60 * 1000);
+    await expect(bacterialTreeFilename(562)).resolves.toBe("old.phyloxml");
+    await vi.waitFor(() => {
+      expect(logged).toHaveBeenCalledTimes(2);
+    });
+    expect(badRefreshes).toBe(2);
+
+    server.use(
+      http.get(dictionaryUrl, () =>
+        HttpResponse.json({ "562": "new.phyloxml" }),
+      ),
+    );
+    now.mockReturnValue(25 * 60 * 60 * 1000 + 10 * 60 * 1000);
+    await bacterialTreeFilename(562);
+    await vi.waitFor(async () => {
+      await expect(bacterialTreeFilename(562)).resolves.toBe("new.phyloxml");
+    });
+  });
+
   it("reads the dictionary from PHYLO_TREE_DICTIONARY_URL when set", async () => {
     const overrideUrl =
       "http://127.0.0.1:3100/api/e2e-mock/phylo-tree-dictionary";

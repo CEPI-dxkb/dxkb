@@ -25,7 +25,7 @@ export async function GET(
     console.error("phylogeny tree dictionary unavailable", error);
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : String(error),
+        error: "Phylogeny tree dictionary is unavailable.",
         code: "upstream_error",
       },
       { status: 502 },

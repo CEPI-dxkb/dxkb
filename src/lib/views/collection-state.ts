@@ -285,6 +285,32 @@ export function serializeCollectionState<Sort extends string>(
   return params;
 }
 
+/**
+ * Restore the defaults an outgoing rql hid. While an rql names a default's
+ * field the default drops out of the parsed filters, so a next state that no
+ * longer has that rql cannot tell "hidden" from "removed" and would otherwise
+ * serialize the cleared marker. A default the next state still leaves
+ * shadowed, or that `explicit` names (a removal or pick in this same change),
+ * is left as the caller set it.
+ */
+function withUnshadowedDefaults<Sort extends string>(
+  previousRql: string | undefined,
+  next: CollectionState<Sort>,
+  options: CollectionStateOptions<Sort>,
+  explicit: ReadonlySet<string> = new Set(),
+): CollectionState<Sort> {
+  if (previousRql === undefined || !options.defaultFilters) return next;
+  const before = filtersBesideRql(previousRql, options);
+  const after = filtersBesideRql(next.rql || undefined, options);
+  let filters = next.filters;
+  for (const [name, fallback] of Object.entries(options.defaultFilters)) {
+    if (before.has(name) || !after.has(name) || explicit.has(name)) continue;
+    if (Object.hasOwn(filters, name) && filters[name].length > 0) continue;
+    filters = { ...filters, [name]: [...fallback] };
+  }
+  return filters === next.filters ? next : { ...next, filters };
+}
+
 /** Canonicalize managed parameters while retaining unrelated URL state. */
 export function canonicalizeCollectionSearchParams<Sort extends string>(
   params: SearchParamsRecord,
@@ -312,9 +338,13 @@ export function replaceCollectionSearchParams<Sort extends string>(
   next: CollectionState<Sort>,
   options: CollectionStateOptions<Sort>,
 ): URLSearchParams {
+  const previousRql = parseCollectionState(params, options).rql;
   return mergeWithUnrelatedParams(
     params,
-    serializeCollectionState(next, options),
+    serializeCollectionState(
+      withUnshadowedDefaults(previousRql, next, options),
+      options,
+    ),
     options,
   );
 }
@@ -347,7 +377,15 @@ export function updateCollectionSearchParams<Sort extends string>(
     page: update.page ?? current.page,
     sort: update.sort ?? current.sort,
   };
-  const canonicalNext = canonicalizeCollectionState(next, options);
+  const canonicalNext = canonicalizeCollectionState(
+    withUnshadowedDefaults(
+      current.rql,
+      next,
+      options,
+      new Set(Object.keys(filterUpdates)),
+    ),
+    options,
+  );
   const queryChanged =
     current.keyword !== canonicalNext.keyword ||
     current.refine !== canonicalNext.refine ||

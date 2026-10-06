@@ -90,7 +90,7 @@ function SearchBarForm({
     // or no letter or digit, as legacy's search box requires (`*` alone would
     // list every record).
     const keyword = normalizeLegacyKeyword(inputValue);
-    if (keywordQuery(keyword).length === 0 || !/[a-z0-9]/i.test(keyword)) return;
+    if (keywordQuery(keyword).length === 0 || !/[\p{L}\p{N}]/u.test(keyword)) return;
 
     const searchType = searchTypes.find((type) => type.id === selected);
     if (!searchType) return;

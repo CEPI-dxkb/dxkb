@@ -7,6 +7,9 @@ const defaultDictionaryUrl =
 const dictionaryFetchTimeoutMs = 30_000;
 // BV-BRC republishes the trees rarely (the file was last modified 2024-01-23).
 const dictionaryTtlMs = 24 * 60 * 60 * 1000;
+// After a failed background refresh the saved dictionary keeps serving; wait
+// this long before hitting the failing upstream (and the log) again.
+const refreshRetryDelayMs = 5 * 60 * 1000;
 
 interface TreeIndex {
   loadedAt: number;
@@ -15,6 +18,7 @@ interface TreeIndex {
 
 let index: TreeIndex | null = null;
 let loading: Promise<TreeIndex> | null = null;
+let lastRefreshFailureAt: number | null = null;
 
 async function loadIndex(): Promise<TreeIndex> {
   const url = process.env.PHYLO_TREE_DICTIONARY_URL ?? defaultDictionaryUrl;
@@ -45,6 +49,11 @@ async function loadIndex(): Promise<TreeIndex> {
     }
     filenames.set(taxonId, name);
   }
+  // A 200 like `{}` or `{ "error": "..." }` parses fine but holds no taxa;
+  // accepting it would replace a working dictionary and hide every tree.
+  if (filenames.size === 0) {
+    throw new Error("tree dictionary has no valid entries");
+  }
   return { loadedAt: Date.now(), filenames };
 }
 
@@ -69,10 +78,23 @@ export async function bacterialTreeFilename(
   taxonId: number,
 ): Promise<string | null> {
   const current = index ?? (await reload());
-  if (Date.now() - current.loadedAt > dictionaryTtlMs) {
-    reload().catch((error: unknown) => {
-      console.error("phylogeny tree dictionary refresh failed", error);
-    });
+  const now = Date.now();
+  // Only the lookup that starts a refresh watches it, so one failure is
+  // logged once rather than once per request that arrived while it ran.
+  if (
+    loading === null &&
+    now - current.loadedAt > dictionaryTtlMs &&
+    (lastRefreshFailureAt === null ||
+      now - lastRefreshFailureAt >= refreshRetryDelayMs)
+  ) {
+    reload()
+      .then(() => {
+        lastRefreshFailureAt = null;
+      })
+      .catch((error: unknown) => {
+        lastRefreshFailureAt = Date.now();
+        console.error("phylogeny tree dictionary refresh failed", error);
+      });
   }
   return current.filenames.get(String(taxonId)) ?? null;
 }
@@ -80,4 +102,5 @@ export async function bacterialTreeFilename(
 export function resetBacterialTreeIndexForTests(): void {
   index = null;
   loading = null;
+  lastRefreshFailureAt = null;
 }

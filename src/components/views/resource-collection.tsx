@@ -87,7 +87,15 @@ export interface ResourceCollectionProps<Row extends DataTableRow> {
   profile: ResourceCollectionProfile<Row>;
   repository: DataRepository;
   state: CollectionState;
-  onStateChange: (state: CollectionState) => void;
+  /**
+   * `change.clearAll` marks "Clear All Filters", which removes a view's
+   * defaults too; any other change that drops the rql (a facet pick) leaves
+   * the defaults that rql hid for the caller to restore.
+   */
+  onStateChange: (
+    state: CollectionState,
+    change?: { clearAll?: boolean },
+  ) => void;
   baseRql?: string;
   /**
    * The state facet counts are read for, when it is not `state`: a view's
@@ -386,7 +394,7 @@ export function ResourceCollection<Row extends DataTableRow>({
         hasExplicitRql={Boolean(state.rql)}
         filtersBesideRql={filtersBesideRql}
         keywordPlaceholder={keywordPlaceholder}
-        onChange={({ keyword, filters, clearRql }) => {
+        onChange={({ keyword, filters, clearRql, clearAll }) => {
           if (keywordMode === "loaded") {
             const nextLoadedKeyword = keyword ?? "";
             if (nextLoadedKeyword !== loadedKeyword) {
@@ -397,7 +405,7 @@ export function ResourceCollection<Row extends DataTableRow>({
             onLoadedKeywordChange?.(nextLoadedKeyword);
             if (filters === state.filters && !clearRql) return;
           }
-          onStateChange({
+          const next = {
             ...state,
             keyword: keywordMode === "server" ? keyword : state.keyword,
             refine: keywordMode === "refine" ? keyword : state.refine,
@@ -414,7 +422,9 @@ export function ResourceCollection<Row extends DataTableRow>({
                 : filters,
             rql: clearRql ? undefined : state.rql,
             page: 1,
-          });
+          };
+          if (clearAll) onStateChange(next, { clearAll });
+          else onStateChange(next);
         }}
       />
       <span className="sr-only" aria-live="polite">

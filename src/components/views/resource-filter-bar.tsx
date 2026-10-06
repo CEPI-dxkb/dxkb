@@ -54,6 +54,8 @@ interface ResourceFilterBarProps {
     keyword?: string;
     filters: CollectionState["filters"];
     clearRql?: boolean;
+    /** "Clear All Filters": remove every filter, a view's defaults included. */
+    clearAll?: boolean;
   }) => void;
 }
 
@@ -157,7 +159,12 @@ export function ResourceFilterBar({
             disabled={!keywordDraft && selected.length === 0 && !hasExplicitRql}
             onClick={() => {
               setKeywordDraft("");
-              onChange({ keyword: undefined, filters: {}, clearRql: true });
+              onChange({
+                keyword: undefined,
+                filters: {},
+                clearRql: true,
+                clearAll: true,
+              });
             }}
             size="toolbar"
           >

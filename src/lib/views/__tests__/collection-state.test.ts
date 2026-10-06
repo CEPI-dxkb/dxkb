@@ -11,6 +11,7 @@ import {
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
   updateCollectionSearchParams,
+  withUnshadowedDefaults,
   type CollectionStateOptions,
 } from "../collection-state";
 
@@ -575,12 +576,21 @@ describe("default filters", () => {
     const shadowing = { rql: "eq(host,swine)", taxon_id: "2" };
     // A facet click that clears the rql hands over filters without the default.
     expect(
-      replaceCollectionSearchParams(
-        shadowing,
+      withUnshadowedDefaults(
+        "eq(host,swine)",
         { filters: { taxon_id: ["3"] }, page: 1, sort: "relevance" },
         withDefault,
+      ).filters,
+    ).toEqual({ taxon_id: ["3"], host: ["human"] });
+    // A wholesale replacement is taken as given: "Clear All Filters" passes
+    // empty filters and means the default too.
+    expect(
+      replaceCollectionSearchParams(
+        shadowing,
+        { filters: {}, page: 1, sort: "relevance" },
+        withDefault,
       ).toString(),
-    ).toBe("taxon_id=3");
+    ).toBe("host=*");
     expect(
       updateCollectionSearchParams(shadowing, { rql: null }, withDefault).toString(),
     ).toBe("");
@@ -600,14 +610,14 @@ describe("default filters", () => {
         withDefault,
       ).toString(),
     ).toBe("host=*");
-    // Without a shadowing rql, an absent default is still a removal.
+    // Without a shadowing rql there is nothing to restore.
     expect(
-      replaceCollectionSearchParams(
-        { rql: "eq(public,true)" },
+      withUnshadowedDefaults(
+        "eq(public,true)",
         { filters: {}, page: 1, sort: "relevance" },
         withDefault,
-      ).toString(),
-    ).toBe("host=*");
+      ).filters,
+    ).toEqual({});
   });
 
   it("lists the filters an explicit rql keeps", () => {

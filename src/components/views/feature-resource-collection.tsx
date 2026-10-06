@@ -11,6 +11,7 @@ import {
   filtersBesideRql,
   type CollectionState,
   type CollectionStateOptions,
+  withUnshadowedDefaults,
 } from "@/lib/views/collection-state";
 import { useCollectionUrlState } from "@/hooks/views/use-collection-url-state";
 import { ResourceCollection } from "./resource-collection";
@@ -59,7 +60,15 @@ export function FeatureResourceCollection({
       state={state}
       facetState={facetCountState(state, collectionOptions)}
       filtersBesideRql={[...filtersBesideRql(state.rql, collectionOptions)]}
-      onStateChange={setState}
+      onStateChange={(next, change) => {
+        // A facet pick that replaces an rql naming `annotation` brings the
+        // PATRIC default back; "Clear All Filters" removes it with the rest.
+        setState(
+          change?.clearAll
+            ? next
+            : withUnshadowedDefaults(state.rql, next, collectionOptions),
+        );
+      }}
       baseRql={baseRql}
       enableRowLinks={enableRowLinks}
       keywordMode={keywordMode}

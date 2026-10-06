@@ -291,9 +291,11 @@ export function serializeCollectionState<Sort extends string>(
  * longer has that rql cannot tell "hidden" from "removed" and would otherwise
  * serialize the cleared marker. A default the next state still leaves
  * shadowed, or that `explicit` names (a removal or pick in this same change),
- * is left as the caller set it.
+ * is left as the caller set it. Only the caller knows whether a change meant
+ * to remove everything ("Clear All Filters"), so a full-state replacement does
+ * not apply this; a caller replacing the rql through a facet pick does.
  */
-function withUnshadowedDefaults<Sort extends string>(
+export function withUnshadowedDefaults<Sort extends string>(
   previousRql: string | undefined,
   next: CollectionState<Sort>,
   options: CollectionStateOptions<Sort>,
@@ -338,13 +340,9 @@ export function replaceCollectionSearchParams<Sort extends string>(
   next: CollectionState<Sort>,
   options: CollectionStateOptions<Sort>,
 ): URLSearchParams {
-  const previousRql = parseCollectionState(params, options).rql;
   return mergeWithUnrelatedParams(
     params,
-    serializeCollectionState(
-      withUnshadowedDefaults(previousRql, next, options),
-      options,
-    ),
+    serializeCollectionState(next, options),
     options,
   );
 }

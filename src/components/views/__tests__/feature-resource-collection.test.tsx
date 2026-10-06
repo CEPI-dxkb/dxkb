@@ -11,17 +11,22 @@ interface CapturedCollectionProps {
   state: CollectionState;
   facetState?: CollectionState;
   filtersBesideRql?: readonly string[];
+  onStateChange: (
+    state: CollectionState,
+    change?: { clearAll?: boolean },
+  ) => void;
 }
 
-const { collectionProps, urlStateOptions } = vi.hoisted(() => ({
+const { collectionProps, urlStateOptions, setUrlState } = vi.hoisted(() => ({
   collectionProps: { current: null as CapturedCollectionProps | null },
   urlStateOptions: { current: null as object | null },
+  setUrlState: vi.fn(),
 }));
 
 vi.mock("@/hooks/views/use-collection-url-state", () => ({
   useCollectionUrlState: (options: object) => {
     urlStateOptions.current = options;
-    return [{ filters: {}, page: 1, sort: "unsorted" }, vi.fn()];
+    return [{ filters: {}, page: 1, sort: "unsorted" }, setUrlState];
   },
 }));
 vi.mock("../resource-collection", () => ({
@@ -42,6 +47,7 @@ describe("FeatureResourceCollection", () => {
   beforeEach(() => {
     collectionProps.current = null;
     urlStateOptions.current = null;
+    setUrlState.mockClear();
   });
 
   it("keeps the embedded schema and the prefix keyword by default", () => {
@@ -138,5 +144,47 @@ describe("FeatureResourceCollection", () => {
     );
 
     expect(collectionProps.current?.facetState).toBe(picked);
+  });
+
+  describe("leaving an rql that names annotation", () => {
+    const shadowed: CollectionState = {
+      filters: {},
+      rql: "eq(annotation,RefSeq)",
+      page: 1,
+      sort: "unsorted",
+    };
+
+    function renderShadowed() {
+      render(
+        <FeatureResourceCollection
+          collectionOptions={featureListCollectionOptions}
+          initialState={shadowed}
+        />,
+      );
+      const onStateChange = collectionProps.current?.onStateChange;
+      if (!onStateChange) throw new Error("ResourceCollection not rendered");
+      return onStateChange;
+    }
+
+    it("brings the PATRIC default back when a facet pick replaces the rql", () => {
+      renderShadowed()({
+        ...shadowed,
+        rql: undefined,
+        filters: { feature_type: ["CDS"] },
+      });
+
+      expect(setUrlState).toHaveBeenCalledWith({
+        ...shadowed,
+        rql: undefined,
+        filters: { feature_type: ["CDS"], annotation: ["PATRIC"] },
+      });
+    });
+
+    it("leaves every filter off after Clear All Filters", () => {
+      const cleared = { ...shadowed, rql: undefined };
+      renderShadowed()(cleared, { clearAll: true });
+
+      expect(setUrlState).toHaveBeenCalledWith(cleared);
+    });
   });
 });

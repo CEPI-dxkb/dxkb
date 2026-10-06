@@ -225,6 +225,27 @@ describe("ResourceFilterBar beside an explicit rql", () => {
       clearRql: true,
     });
   });
+
+  it("marks Clear All Filters apart from a pick that replaces the rql", () => {
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={facets}
+        definitions={definitions}
+        hasExplicitRql
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear All Filters" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: undefined,
+      filters: {},
+      clearRql: true,
+      clearAll: true,
+    });
+  });
 });
 
 describe("ResourceFilterBar facet controls", () => {

@@ -145,6 +145,16 @@ describe("WorkspaceFolderPickerDialog choosing a folder", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it("closes from the header's close button", async () => {
+    const { user, onOpenChange, onSelect } = renderPicker();
+    await findOption("Home", "Alpha");
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
   it("opens a clicked folder in the next column and commits it", async () => {
     const { user, onSelect } = renderPicker();
 
@@ -388,9 +398,7 @@ describe("WorkspaceFolderPickerDialog panes", () => {
 
     await user.click(screen.getByRole("button", { name: "Upload here" }));
     expect(screen.getByText(`${home}/Alpha`)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Start Upload" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Start Upload" })).toBeDisabled();
 
     await user.click(
       screen.getByRole("button", { name: "Back to folder info" }),
@@ -400,17 +408,31 @@ describe("WorkspaceFolderPickerDialog panes", () => {
     ).toBeInTheDocument();
   });
 
-  it("resizes a column from the keyboard", async () => {
+  it("starts the first column wider than the folder columns", async () => {
+    const { user } = renderPicker();
+    await user.click(await findOption("Home", "Experiments"));
+    await findOption("Experiments", "Run1");
+
+    expect(
+      screen.getByRole("separator", { name: "Resize Home column" }),
+    ).toHaveAttribute("aria-valuenow", "240");
+    expect(
+      screen.getByRole("separator", { name: "Resize Experiments column" }),
+    ).toHaveAttribute("aria-valuenow", "180");
+  });
+
+  it("resizes a column from the keyboard and resets it on double click", async () => {
     const { user } = renderPicker();
     await findOption("Home", "Alpha");
     const handle = screen.getByRole("separator", {
       name: "Resize Home column",
     });
-    expect(handle).toHaveAttribute("aria-valuenow", "180");
 
     handle.focus();
     await user.keyboard("{ArrowRight}");
+    expect(handle).toHaveAttribute("aria-valuenow", "256");
 
-    expect(handle).toHaveAttribute("aria-valuenow", "196");
+    await user.dblClick(handle);
+    expect(handle).toHaveAttribute("aria-valuenow", "240");
   });
 });

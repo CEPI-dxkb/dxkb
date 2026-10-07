@@ -19,10 +19,11 @@ import {
   type RefObject,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -65,7 +66,7 @@ import {
 import { FolderPickerInfo, FolderPickerUpload } from "./folder-picker-preview";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import {
-  columnWidthLimits,
+  columnWidthLimitsFor,
   folderTarget,
   isInlineEditTarget,
   placeGroups,
@@ -397,8 +398,7 @@ function FolderColumnsBrowser({
   return (
     <>
       <DialogHeader>
-        {/* A margin (not padding) keeps the header clear of the close button. */}
-        <div className="mr-8 flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 flex-col gap-1.5">
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
@@ -424,6 +424,23 @@ function FolderColumnsBrowser({
               )}
               {showFiles ? "Hide files" : "Show files"}
             </Button>
+            {/* In the header row rather than the dialog's own corner button,
+                which sits 8px higher than the rest of the row. Disabled, not
+                hidden, mid-upload so the row doesn't shift. */}
+            <DialogClose
+              disabled={isUploading}
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Close"
+                  title="Close"
+                >
+                  <XIcon />
+                </Button>
+              }
+            />
           </div>
         </div>
       </DialogHeader>
@@ -506,7 +523,8 @@ function FolderColumnsBrowser({
                       onShowFilesChange(true);
                     }}
                     width={
-                      layout.columnWidths[index] ?? columnWidthLimits.initial
+                      layout.columnWidths[index] ??
+                      columnWidthLimitsFor(index).initial
                     }
                     onResize={(width) => {
                       layout.onColumnWidthChange(index, width);
@@ -754,7 +772,7 @@ export function WorkspaceFolderPickerDialog({
           popup, so every open starts fresh. */}
       <DialogContent
         className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-5xl"
-        showCloseButton={!isUploading}
+        showCloseButton={false}
         initialFocus={() =>
           stripRef.current?.querySelector<HTMLElement>(tabStopSelector) ?? true
         }

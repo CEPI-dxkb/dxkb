@@ -33,7 +33,7 @@ import {
 } from "@/lib/services/workspace/picker-views";
 import { cn } from "@/lib/utils";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
-import { columnWidthLimits } from "./folder-picker-utils";
+import { columnWidthLimitsFor } from "./folder-picker-utils";
 
 export interface NewFolderRowHandlers {
   /** Rejects with the backend's error, which the row shows as-is. */
@@ -198,7 +198,7 @@ export function FolderPickerColumn({
         edge="end"
         label={`Resize ${label} column`}
         width={width}
-        limits={columnWidthLimits}
+        limits={columnWidthLimitsFor(index)}
         onResize={onResize}
       />
       <div className="flex h-8 shrink-0 items-center gap-2 border-b px-3 text-xs font-medium text-muted-foreground">

@@ -28,6 +28,7 @@ export function SurveillanceCollection({
       <SurveillanceResourceCollection
         initialState={initialState}
         keywordMode="refine"
+        serverKeywordMode="exact"
       />
     </EntityViewShell>
   );

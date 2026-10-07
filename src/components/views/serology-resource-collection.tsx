@@ -19,6 +19,12 @@ interface SerologyResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The list page sends an exact
+   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
+   * unset keeps the token-prefix default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 function SerologyResourceCollectionContent({
@@ -27,17 +33,17 @@ function SerologyResourceCollectionContent({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: SerologyResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(serologyCollectionOptions);
   const state = initialState ?? urlState;
+  const profile = enableFacets
+    ? serologyCollectionProfile
+    : { ...serologyCollectionProfile, facets: undefined };
 
   return (
     <ResourceCollection<SerologyViewRecord>
-      profile={
-        enableFacets
-          ? serologyCollectionProfile
-          : { ...serologyCollectionProfile, facets: undefined }
-      }
+      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
       onStateChange={setState}

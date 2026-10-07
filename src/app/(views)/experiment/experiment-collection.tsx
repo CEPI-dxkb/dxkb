@@ -36,6 +36,7 @@ export function ExperimentCollection({
         <ExperimentResourceCollection
           initialState={initialState}
           keywordMode="refine"
+          serverKeywordMode="exact"
         />
       )}
     </EntityViewShell>

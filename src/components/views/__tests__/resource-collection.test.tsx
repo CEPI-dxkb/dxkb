@@ -82,6 +82,7 @@ vi.mock("../resource-filter-bar", () => ({
       data-facets-error={
         typeof props.facetsError === "string" ? props.facetsError : ""
       }
+      data-filters-beside-rql={JSON.stringify(props.filtersBesideRql ?? [])}
     >
       <button
         onClick={() => {
@@ -89,6 +90,17 @@ vi.mock("../resource-filter-bar", () => ({
         }}
       >
         Retry facets
+      </button>
+      <button
+        onClick={() => {
+          const onChange = props.onChange as (update: {
+            keyword?: string;
+            filters: CollectionState["filters"];
+          }) => void;
+          onChange({ keyword: props.keyword as string | undefined, filters: {} });
+        }}
+      >
+        Remove every chip
       </button>
       {["dna gy", "HUMAN", "absent", "N034", undefined].map((keyword) => (
         <button
@@ -838,6 +850,67 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     expect(onStateChange).toHaveBeenCalledTimes(1);
   });
 
+  // The Feature list keeps its PATRIC default and its feature-type scope beside
+  // a link's rql (`filtersBesideRql`), so the user can remove either chip
+  // without losing the link's scope.
+  it("applies a chip removal beside an explicit rql to the filters it keeps", async () => {
+    const onStateChange = vi.fn();
+    useResourceCollection.mockReturnValue(collectionResult());
+    const linked: CollectionState = {
+      ...state,
+      rql: "eq(genome_id,83332.12)",
+      filters: { annotation: ["PATRIC"], filter: ["CDS"] },
+    };
+    const { rerender } = render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={linked}
+        onStateChange={onStateChange}
+        filtersBesideRql={["annotation", "filter"]}
+      />,
+    );
+    expect(screen.getByTestId("filter-bar")).toHaveAttribute(
+      "data-filters-beside-rql",
+      JSON.stringify(["annotation", "filter"]),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove every chip" }));
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      ...linked,
+      filters: {},
+      page: 1,
+    });
+
+    // A filter the rql does not keep stays as it is until the rql is cleared.
+    rerender(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={linked}
+        onStateChange={onStateChange}
+        filtersBesideRql={["annotation"]}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Remove every chip" }));
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      ...linked,
+      filters: { filter: ["CDS"] },
+      page: 1,
+    });
+
+    rerender(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={linked}
+        onStateChange={onStateChange}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Remove every chip" }));
+    expect(onStateChange).toHaveBeenLastCalledWith({ ...linked, page: 1 });
+  });
+
   it("refines the server query while preserving the primary keyword in URL state", async () => {
     const onStateChange = vi.fn();
     useResourceCollection.mockReturnValue({
@@ -870,7 +943,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
     expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
       structuralRql:
-        "and(eq(genome_status,Complete),keyword(existing refinement))",
+        "and(eq(genome_status,Complete),and(keyword(existing),keyword(refinement)))",
       state: { keyword: "influenza" },
     });
 
@@ -1855,5 +1928,40 @@ describe("ResourceCollection column layout", () => {
       });
       container.remove();
     }
+  });
+});
+
+describe("ResourceCollection facet state", () => {
+  it("reads facet counts for facetState while the rows keep state", () => {
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        facetState={{ ...state, filters: {} }}
+        onStateChange={vi.fn()}
+        baseRql="eq(taxon_lineage_ids,561)"
+      />,
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
+      structuralRql: "and(eq(taxon_lineage_ids,561),eq(genome_status,Complete))",
+      facetScope: {
+        structuralRql: "and(eq(taxon_lineage_ids,561),eq(genome_id,*))",
+      },
+    });
+  });
+
+  it("reads facet counts for the rows' own scope by default", () => {
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={repository()}
+        state={state}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]?.facetScope).toBeUndefined();
   });
 });

@@ -1,3 +1,4 @@
+import { keywordQuery, keywordQueryClauses } from "./keyword-terms";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
 import type {
   DataResource,
@@ -60,6 +61,10 @@ export interface RqlIn {
 }
 export interface RqlKeyword {
   operator: "keyword";
+  /**
+   * The search text the Data API matches, quotes included: unquoted words are
+   * ANDed in any order, and only a quoted span is a phrase or an exact token.
+   */
   value: string;
 }
 export interface RqlLogical {
@@ -109,16 +114,20 @@ function splitArguments(value: string): string[] {
   return parts;
 }
 
-function decodeValue(value: string): string {
-  const unquoted =
-    value.startsWith('"') && value.endsWith('"')
-      ? value.slice(1, -1).replace(/\\(["\\])/g, "$1")
-      : value;
+function percentDecode(value: string): string {
   try {
-    return decodeURIComponent(unquoted);
+    return decodeURIComponent(value);
   } catch {
     throw new DataApiValidationError("RQL contains invalid percent encoding.");
   }
+}
+
+function decodeValue(value: string): string {
+  return percentDecode(
+    value.startsWith('"') && value.endsWith('"')
+      ? value.slice(1, -1).replace(/\\(["\\])/g, "$1")
+      : value,
+  );
 }
 
 function coerceValue(
@@ -204,7 +213,9 @@ function parseExpression(
   if (operator === "keyword") {
     if (args.length !== 1)
       throw new DataApiValidationError("keyword requires one value.");
-    return { operator, value: decodeValue(args[0]) };
+    // Unlike a field value, a keyword's quotes are part of what it matches:
+    // keyword("Rv0001") is an exact token, keyword(Rv0001) is not.
+    return { operator, value: percentDecode(args[0]) };
   }
 
   if (!fieldOperators.has(operator) || args.length !== 2) {
@@ -270,6 +281,13 @@ export function parseRql(resource: DataResource, rql: string): RqlExpression {
   return parseExpression(resource, rql, 0);
 }
 
+function percentEncode(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
 function serializeValue(value: RqlValue, field?: ResourceField): string {
   if (typeof value !== "string") return String(value);
   if (value === "") {
@@ -280,13 +298,19 @@ function serializeValue(value: RqlValue, field?: ResourceField): string {
     }
     return '""';
   }
-  const encoded = encodeURIComponent(value).replace(
-    /[!'()*]/g,
-    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
-  );
+  const encoded = percentEncode(value);
   const quote =
     field?.quote === "always" || (field?.quote !== "never" && /\s/.test(value));
   return quote ? `"${encoded}"` : encoded;
+}
+
+/**
+ * A keyword's text, percent-encoded but never wrapped in quotes: quoting
+ * `coli Salmonella` would turn the Data API's any-order match of both words
+ * (1,933 genomes) into a phrase (29). Its own quotes travel as `%22`.
+ */
+function serializeKeyword(value: string): string {
+  return `keyword(${value === "" ? '""' : percentEncode(value)})`;
 }
 
 export function serializeRql(
@@ -295,7 +319,7 @@ export function serializeRql(
 ): string {
   const fields = getResourceDefinition(resource).fields;
   if (expression.operator === "keyword")
-    return `keyword(${serializeValue(expression.value)})`;
+    return serializeKeyword(expression.value);
   if (expression.operator === "and" || expression.operator === "or") {
     if (expression.operands.length < 2)
       throw new DataApiValidationError(
@@ -352,6 +376,27 @@ export function serializeRql(
     comparison.operator,
   );
   return `${comparison.operator}(${comparison.field},${serializeValue(comparison.value, field)})`;
+}
+
+/**
+ * The clauses a `?keyword=` search sends, ANDed by the caller: the text read
+ * by `keywordQuery` (words and quoted phrases, Solr's uppercase `AND`, `OR` and
+ * `NOT`, its syntax characters as spaces), one `keyword(...)` per term.
+ * Legacy BV-BRC's search box sends the same form (`searchToQuery`: "coli
+ * Salmonella" becomes `and(keyword(coli),keyword(Salmonella))`, and a typed
+ * `"DNA polymerase"` becomes `keyword("DNA polymerase")`, which the Data API
+ * matches as a phrase). An unquoted word is exact or a token prefix (`word*`);
+ * a quoted term is always exact, quotes included, as `%22`. A view that scopes
+ * another collection by its keyword builds the clause here too, so both cover
+ * the same records.
+ */
+export function keywordClauses(
+  keyword: string,
+  mode: "exact" | "prefix" = "prefix",
+): string[] {
+  return keywordQueryClauses(keywordQuery(keyword), (term) =>
+    percentEncode(mode === "exact" || term.startsWith('"') ? term : `${term}*`),
+  );
 }
 
 export function validateRql(resource: DataResource, rql: string): string {

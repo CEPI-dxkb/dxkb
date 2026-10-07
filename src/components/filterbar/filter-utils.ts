@@ -1,3 +1,5 @@
+import { keywordQuery, keywordQueryClauses } from "@/lib/data-api/keyword-terms";
+
 function encodeRqlField(val: string) {
   return encodeURIComponent(val);
 }
@@ -22,11 +24,12 @@ interface RqlFilter {
  *
  * Values are **not** quoted here. The predicate is sent to the same-origin Data
  * API gateway as `rql`, where `validateRql` re-serializes it and quotes any
- * value that needs it (`serializeRql`/`serializeValue` in
+ * field value that needs it (`serializeRql`/`serializeValue` in
  * `src/lib/data-api/rql.ts` quote on whitespace, and always for the phrase
- * fields). Quoting here as well — which this used to do by wrapping eq() values
- * in `%22` — produced a value whose *content* was a quoted string, so Solr
- * matched on the quote characters instead of the phrase.
+ * fields); a `keyword(...)` value goes through as written, since its quotes
+ * change what it matches. Quoting here as well — which this used to do by
+ * wrapping eq() values in `%22` — produced a value whose *content* was a quoted
+ * string, so Solr matched on the quote characters instead of the phrase.
  */
 export function buildRql({ selected, keywords }: { selected: RqlFilter[]; keywords: string[] }) {
   const parts: string[] = [];
@@ -47,15 +50,12 @@ export function buildRql({ selected, keywords }: { selected: RqlFilter[]; keywor
     parts.push(arr.length === 1 ? arr[0] : `or(${arr.join(",")})`);
   });
 
-  if (keywords.length) {
-    const kw = keywords.map((k) => {
-      const raw = `${k}*`;
-      const encoded = encodeRqlValue(raw);
-      return `keyword(${encoded})`;
-    });
-
-    parts.push(kw.length === 1 ? kw[0] : `and(${kw.join(",")})`);
-  }
+  // Read as the canonical lists read `?keyword=` (`keywordQuery`: Solr's
+  // operators, its syntax characters as spaces), each word a token prefix.
+  const kw = keywordQueryClauses(keywordQuery(keywords.join(" ")), (term) =>
+    encodeRqlValue(term.startsWith('"') ? term : `${term}*`),
+  );
+  if (kw.length) parts.push(kw.length === 1 ? kw[0] : `and(${kw.join(",")})`);
 
   if (!parts.length) return "";
   if (parts.length === 1) return parts[0];

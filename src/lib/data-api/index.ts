@@ -9,7 +9,13 @@ export {
   getResourceDefinition,
   isDataResource,
 } from "./resources";
-export { eq, parseRql, serializeRql, validateRql } from "./rql";
+export {
+  eq,
+  keywordClauses,
+  parseRql,
+  serializeRql,
+  validateRql,
+} from "./rql";
 export {
   biosetRecordSchema,
   epitopeAssayRecordSchema,

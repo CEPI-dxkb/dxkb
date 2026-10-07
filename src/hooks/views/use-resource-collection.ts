@@ -33,6 +33,12 @@ export interface UseResourceCollectionOptions {
    */
   prefetchNextPage: boolean;
   structuralRql?: string;
+  /**
+   * The facet counts' own structural RQL, when it differs from the rows' (see
+   * `ResourceCollection`'s `facetState`). Omitted: counts use `structuralRql`.
+   * An object, so a scope with no predicate stays distinct from "omitted".
+   */
+  facetScope?: { structuralRql: string | undefined };
   serverKeywordMode?: "exact" | "prefix";
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
@@ -56,6 +62,7 @@ export function useResourceCollection<Row extends ResourceRow>({
   facetFields = [],
   prefetchNextPage,
   structuralRql,
+  facetScope,
   serverKeywordMode,
   state,
   onStateChange,
@@ -64,6 +71,10 @@ export function useResourceCollection<Row extends ResourceRow>({
   const [selection, setSelection] = useState<RowSelectionState>({});
   const [isAllPagesSelected, setIsAllPagesSelected] = useState(false);
   const rql = combineRql(structuralRql, state.rql);
+  const facetRql = combineRql(
+    facetScope ? facetScope.structuralRql : structuralRql,
+    state.rql,
+  );
   const queryIdentity = JSON.stringify([
     resource,
     structuralRql,
@@ -96,14 +107,14 @@ export function useResourceCollection<Row extends ResourceRow>({
   // prefetch fetch rows only, and the table does not wait for the counts.
   const facetRequest = useMemo(
     () => ({
-      rql,
+      rql: facetRql,
       keyword: state.keyword,
       keywordMode: serverKeywordMode,
       pageSize: 1,
       fields: [idField],
       facets: [...facetFields],
     }),
-    [facetFields, idField, rql, serverKeywordMode, state.keyword],
+    [facetFields, facetRql, idField, serverKeywordMode, state.keyword],
   );
 
   const query = useQuery(

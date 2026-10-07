@@ -118,7 +118,7 @@ dxkb.org/genome/59201.7581?tab=features                                # genome 
 dxkb.org/feature/PATRIC.83332.707.NC_000962.CDS.1.1524.fwd            # feature singular, default tab (overview); dotted PATRIC id in path
 dxkb.org/surveillance/ISDN123456?pathogen_test_type=Influenza%20A      # surveillance singular; named query param carried verbatim
 dxkb.org/experiment/2000000                                            # experiment singular (legacy: ExperimentComparison), default tab
-dxkb.org/genome?keyword=influenza                                      # genome LIST, debounced token-prefix search → keyword(influenza*)
+dxkb.org/genome?keyword=influenza                                      # genome LIST, debounced exact search, as legacy → keyword(influenza)
 dxkb.org/genome?taxon_id=1763                                          # genome LIST, friendly filter → eq(taxon_lineage_ids,1763)
 dxkb.org/genome?genome_status=Complete&genome_status=WGS               # repeated facet values → or(eq(genome_status,Complete),eq(genome_status,WGS))
 dxkb.org/genome?rql=and(eq(taxon_lineage_ids,1763),gt(genomes,0))      # genome LIST, raw RQL escape hatch
@@ -131,14 +131,104 @@ dxkb.org/strain?keyword=H1N1                                           # strain 
 
 - Collection position uses one-based `?page=` and `?sort=field:asc|desc`.
 - Page 1 and the resource's default sort are omitted from canonical URLs.
+- A view's default filters are omitted too: `/feature` means `annotation=PATRIC`, legacy
+  FeatureList's removable default. Removing it writes `annotation=*`, so
+  `/feature?annotation=*` lists every annotation and survives reload and sharing. The default
+  stays beside an explicit `rql`, as legacy's does beside a link's query
+  (`/feature?rql=eq(genome_id,83332.12)` lists that genome's 5,425 PATRIC features, not all
+  10,940), unless the rql filters on `annotation` itself (`filtersBesideRql`). That carve-out
+  differs from legacy, which ANDs PATRIC onto every query: legacy's
+  `FeatureList/?and(eq(genome_id,83332.12),eq(annotation,RefSeq))` lists 0 rows until the
+  chip is removed, DXKB's the genome's 5,515 RefSeq features. The Genome list's and Genome
+  page's Features tabs (`features.annotation=*`) and the Taxonomy page's Features tab, which
+  the organism landing pages (`/organisms/*?tab=features`) share (`annotation=*`), carry the
+  same default.
 - Page size is fixed at 200 and is not URL state.
 - Selection and column visibility/order are transient local UI state, not URL state.
 - Explicit row selections persist across pages and sorting. They clear when keyword, facets,
   structural scope, or resource changes. "All matching" is symbolic query state and follows the
   same reset rule.
-- Keywords are tokenized, prefix-matched, committed after a short debounce, and URL-backed.
+- Keywords are read by `keywordQuery` (`src/lib/data-api/keyword-terms.ts`) and sent one
+  clause per term, committed after a short debounce, and URL-backed.
+  - **Terms** are words and quoted phrases (`keywordTerms`). A quoted phrase is one exact
+    clause, quotes included (`"DNA polymerase"` sends `keyword("DNA polymerase")`, 17
+    genomes, as legacy's search box does), and a quote left open is closed at the end of the
+    text, since Solr rejects an unbalanced quote.
+  - **Operators** are Solr's, in uppercase only, plus its `||` (OR) and a `-` that starts a
+    word or directly precedes a phrase (NOT: `coli -"DNA polymerase"` is 134,273 genomes,
+    the phrase excluded). `AND` is the implicit join. `NOT` negates the next term
+    (`kinase NOT hypothetical` and `kinase -hypothetical` send
+    `and(keyword(kinase),not(keyword(hypothetical)))`, 7 genomes, as Solr reads either in
+    one clause). `OR` joins the terms on either side and binds tighter than the implicit AND
+    (`E coli OR Salmonella` sends `and(keyword(E),or(keyword(coli),keyword(Salmonella)))`,
+    25,228). An operator with nothing to join (`coli OR`, a lone `NOT`) is dropped; as a
+    clause of its own it is a Solr SyntaxError. A lowercase `and`, `or` or `not` is a word, as
+    in Solr.
+  - **Negations** need a positive term beside them: the Data API brackets the keyword
+    clauses, and a bracketed group of only NOTs matches nothing
+    (`and(eq(genome_id,*),and(not(keyword(coli)),not(keyword(Salmonella))))` is 0 genomes).
+    A search of only NOTs therefore adds `keyword(*)` (16,837,798, at no measurable cost), and
+    a NOT an `OR` offers is `and(keyword(*),not(...))`.
+  - **Divergences from legacy's search-box parser** (`searchToQuery`), where its query
+    reads otherwise than it is written: it also ORs every term after an `OR`
+    (`kinase OR phosphatase human` as one OR of three; here `human` stays ANDed); it sends a
+    NOT inside an OR as `or(not(keyword(coli)),keyword(Salmonella))`, which the Data API
+    reads as Lucene does, Salmonella AND NOT coli (61,384 genomes; here not coli, or
+    Salmonella: 16,901,125); and its query of only NOTs lists nothing.
+  - **Syntax characters** `! ~ ' ( ) [ ] { } : ^ \ & < > = % , + - /` split a word into
+    parts, which are ANDed inside the term (`coli OR Salmonella-enterica` sends
+    `or(keyword(coli),and(keyword(Salmonella),keyword(enterica)))`, 193,964 genomes, as Solr
+    reads it), and a part that is an operator word is quoted. Each is an HTTP 400 in some
+    position as written (`keyword(GO:0003677)`; any `!`, `~` or `'`, which the Data API's
+    RQL parser refuses however encoded), and Solr's tokenizer splits a word at each of them
+    anyway (`keyword(coli-K12)` and `and(keyword(coli),keyword(K12))` are both 1,666 genomes).
+    Three readings that work in Solr differ: a boost (`coli^2`, coli's 134,274 genomes, reads
+    as coli and 2, 130,072), a range (`<coli`, 129) and a regular expression (`/col/`, 3,382).
+    `*` and `?` stay wildcards and `|` inside a word stays (`"fig|83332.12.peg.1"`).
+  - **Text without terms** (blank, `"`, `""`, a lone `OR`, only syntax) is no keyword at all,
+    so it neither sends a clause nor drops the Genome list's recent default.
+  - **Exact and prefix.** Every list route sends each word exact, `keyword(word)`, as legacy
+    BV-BRC's lists and the All Data Types counts do: `/feature`, `/genome` and the Genome
+    list's related tabs (§4, §5.6), `/taxonomy`, `/strain`, `/domains-and-motifs`,
+    `/epitope`, `/protein-structure`, `/surveillance`, `/serology` and `/experiment` (whose
+    Biosets tab scopes to the experiments its Experiments tab lists). Nested tables whose
+    keyword box searches the server (member-page tabs) and the keyword boxes of `/search`'s
+    legacy-type lists add a token prefix, `keyword(word*)`. A prefix is not only wider: Solr
+    does not analyze a wildcard term, so a word its tokenizer splits stops matching (Strains
+    `H1N1`: 260,889 exact, 76,178 as `H1N1*`; Domains and Motifs `kinase`: 3,283,037 exact,
+    3,452,410 as `kinase*`).
+  - **Refinements** (`refine`, `rqlKeyword`) are read the same way, exact. Never Solr's
+    operators inside one clause: the Data API joins a keyword's text into the surrounding
+    query without brackets, so `and(eq(genome_id,*),keyword(coli OR Salmonella))` lists all
+    17,033,311 genomes where `or(keyword(coli),keyword(Salmonella))` lists the 195,658 the OR
+    matches.
+  - **The Data API gateway** (`validateRql`) passes an explicit `rql`'s `keyword(...)` value
+    through as written, never adding or removing quotes: unquoted words match in any order
+    (`keyword(coli Salmonella)`, 1,933 genomes, like the per-word clauses), and only quotes
+    make a phrase or an exact token (`keyword("coli Salmonella")` 29 genomes;
+    `keyword("Rv0001")` 1 PATRIC feature against 341,190 unquoted).
+  - **The search bar** writes `?keyword=` as legacy's search box (`GlobalSearch.processQuery`)
+    reads the typed text: `normalizeLegacyKeyword`, applied by `searchHref` for every
+    canonical list and by `/search` to its `q`. It removes `'`, reads `: , + - = < > \ /` as
+    spaces, drops quotes that cannot delimit a phrase and closes the phrase left open at the
+    end, quotes an ID-like word outside a phrase (`Rv0001` becomes `"Rv0001"`: 1 PATRIC
+    feature, where `keyword(Rv0001)` finds 341,190), and writes the `and`/`or`/`not` that
+    legacy's parser reads as operators (any case, before another word) in uppercase. It does
+    not search text without a letter or digit (`*` alone would list every record), as
+    legacy's search box does not. A search therefore lists what alpha's search box lists,
+    and the All Data Types counts, built from the same text with exact `keywordClauses`, are
+    the totals of the lists they link to, except where a list adds its own default (the
+    Features count covers every annotation, the Feature list opens on PATRIC, as alpha's
+    do: `Rv0001` counts 4 and lists 1).
+  - **A list's own keyword box** sends its text through the same reading, without the
+    search bar's normalization: legacy's list boxes send `keyword(word)` per space-separated
+    word, so an ID typed there stays a token search (`Rv0001`, 341,190 features) on both.
 - Facets are URL-backed and multi-value. Repeated values for one field are ORed; separate fields
-  are ANDed. Facet counts remain constrained by the active query, including that facet's values.
+  are ANDed. Facet counts remain constrained by the active query, including that facet's values,
+  except while a view's default filters are untouched: `/feature` and the Features tabs that
+  carry its default then count the annotation facet without it, so it still shows RefSeq
+  (§5.6). Beside an explicit `rql`, picking a facet value replaces the rql, except a value of a
+  filter the rql keeps, such as the PATRIC default's `annotation`.
 - Changing keyword, structural filters, facets, or sort resets the page to 1. URL updates
   preserve unrelated parameters. Collection parameters are unprefixed; changing resource tabs
   removes parameters invalid for the destination resource.
@@ -217,12 +307,23 @@ Each is a single loop over `viewRegistry`:
 
 - **Friendly named params** → typed RQL: `?taxon_id=1763` maps to the resource's lineage
   field; `?keyword=influenza` becomes `keyword(influenza*)`. Multiple keyword tokens are
-  ANDed.
+  ANDed, one clause per word or quoted phrase (`keywordClauses` in `src/lib/data-api/rql.ts`),
+  as legacy BV-BRC's search box sends them (`and(keyword(coli),keyword(Salmonella))`;
+  `keyword("DNA polymerase")`, never prefixed), with Solr's `OR` and `NOT` as `or(...)` and
+  `not(...)` and its syntax characters read as spaces (`keywordQuery`, §2.8). Every list
+  route is an exception, for legacy parity: `/feature`, `/genome` (with the keyword clauses
+  its related tabs run and those tabs' own keyword boxes), `/taxonomy`
+  (`taxonomyCollectionProfile`) and the other seven lists (`serverKeywordMode="exact"`)
+  send `keyword(influenza)`, the exact form legacy BV-BRC and the All Data Types search
+  send (`coli` matches 134,274 genomes exactly and 137,836 as a prefix; §5.6; §2.8 for the
+  words a prefix misses). Nested tables (member-page tabs) and the `/search` legacy-type
+  lists' keyword boxes keep the token-prefix search.
 - **Multi-value facets** use repeated parameters. Values for one field are ORed and separate
   fields are ANDed.
 - **Raw escape hatch**: `?rql=` is accepted after validation/sanitization.
-- **Precedence**: an explicit `?rql=` wins over friendly structural facets; keyword remains
-  independently combinable with either form.
+- **Precedence**: an explicit `?rql=` wins over friendly structural facets, except a view's
+  default filter on a field the rql does not name (the Feature list's PATRIC default stays);
+  keyword remains independently combinable with either form.
 - **Named special params** (carried verbatim/mapped per legacy doc): `pathogen_test_type`
   (surveillance), `test_type` (serology), `accession`/`path` (protein-structure),
   `filter` (feature list grid default).
@@ -363,15 +464,56 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
 
 - `/genome` is a Genome collection backed by the `genome` resource. It supports
   `keyword`, `taxon_id` (mapped to `taxon_lineage_ids`), `rql`, `page`, and validated `sort`.
-  It always exposes the legacy GenomeList tab set; supported related-resource tabs are
-  scoped through the *effective* Genome predicate and unsupported tabs are
-  capability-gated. The effective predicate is the explicit `?rql=` when one is present;
+  It always exposes the legacy GenomeList tab set; unsupported tabs are capability-gated.
+  The Genomes tab reads the *effective* Genome predicate: the explicit `?rql=` when one is present;
   otherwise it is the implicit recent scope
   (`and(gt(completion_date,NOW-1YEARS),ne(genome_status,Deprecated))`) combined with any
   friendly structural filters. An explicit `rql` replaces that implicit scope rather than
-  narrowing it.
+  narrowing it, and so do a `keyword` (legacy GenomeList sends `keyword(...)` alone) and a
+  `refine` refinement. The keyword is sent exact, `keyword(coli)`, as legacy sends it
+  (134,274 genomes; the token-prefix `keyword(coli*)` found 137,836).
+  The related-resource tabs (Sequences, Features, Proteins, Protein Structures, Domains
+  and Motifs) follow legacy GenomeList, which hands its own query verbatim to each tab's
+  collection, wherever that works (`genomeRelatedScope`). On an unscoped list each tab
+  lists its whole collection, by its own `eq(<id>,*)` because the Data API rejects an
+  empty query once a sort or facet is added; on a keyword- or refinement-only list each
+  runs those `keyword(...)` clauses on its own collection, built as the Genomes tab builds
+  its own (one exact clause per term through `keywordClauses`, for the keyword and the
+  refinement alike), so it covers the same records as the Genomes tab: `coli Salmonella` is
+  `and(keyword(coli),keyword(Salmonella))` on every tab, 1,933 genomes and 38 structures
+  as on legacy, where the quoted phrase would find 29 and 0. Solr's `OR` and `NOT` stay
+  on this path too (`?keyword=coli OR Salmonella` runs `or(keyword(coli),keyword(Salmonella))`
+  on every tab, as legacy hands its search box's `or(...)` to each), where `?rql=` would
+  join. A keyword typed into the
+  tab's own box is exact too (`ResourceChildCollection`'s `serverKeywordMode`, also used
+  by export and select-all). Any friendly filter, `public` scope or `rql` keeps the
+  `genome(<effective predicate>)` join, because legacy's pass-through sends those genome
+  fields to the child collection and gets HTTP 400. A quoted phrase is one clause on every
+  tab (`keyword("DNA polymerase")`: 17 genomes, 16,199 sequences, as on legacy). The Features tab carries `/feature`'s
+  removable `annotation=PATRIC` default (`features.annotation=*` once removed), and
+  Features and Proteins rows stay in backend order. The unscoped Genomes tab keeps the
+  recent scope, where legacy loads no rows.
+  `/feature` has no implicit genome scope: its old recent-genome `genome()` join was a
+  cross-collection Solr join costing 40–120 s per keyword query. It does select legacy
+  FeatureList's removable `annotation=PATRIC` default (§2.8), and while that default is
+  untouched its facet counts leave it out, so the annotation facet still shows RefSeq.
+  The default stays beside an explicit `rql` that does not filter on `annotation`, as on
+  legacy (an rql that does filter on it replaces the default, where legacy still ANDs
+  PATRIC: §2.8): the Genome overview's count links (`/feature?rql=and(eq(genome_id,83332.12),
+  eq(feature_type,CDS))`) list the 4,367 PATRIC CDS they count, not all 8,356, and the user
+  can remove the chip (`&annotation=*`) without losing the link's rql. DXKB's own links that
+  pin `eq(annotation,PATRIC)` (sequence and taxon FEATURES actions, the sequence ID link)
+  replace the default with their own clause. The Proteins search
+  (`filter=protein`) has no default (`featureListOptionsFor`): its `proteinFeatureRql`
+  already pins `eq(annotation,PATRIC)`, so a removable chip would change nothing, as
+  legacy ProteinList's removal changes nothing (2,122,451 rows for Dnak either way). A `keyword` is sent
+  exact, `keyword(Dnak)`, and rows stay in backend order: legacy's
+  `sort(+genome_name,+accession,+start)` costs 0.4–2.8 s per keyword page and needs a
+  multi-key sort the Data API contract does not have.
 - `/genome/{genomeId}` validates and fetches the exact `genome_id`, renders the member
-  overview, and owns explicit member-tab composition.
+  overview, and owns explicit member-tab composition. Its Features tab carries `/feature`'s
+  removable `annotation=PATRIC` default (`features.annotation=*` once removed), as legacy's
+  Genome Features tab does; the Proteins tab's RQL pins PATRIC itself.
 - Genome member tabs are Overview, Genome Browser, Sequences, Features, Proteins, Protein
   Structures, Domains and Motifs, Experiments, and Interactions. Tabs ship only when backed
   by a current component and exact `genome_id` query contract; unavailable dependency-phase
@@ -415,6 +557,43 @@ So the redirect is two stages:
 
 - `/view/Genome/59201.7581` → `/genome/59201.7581`
 - `/view/GenomeList/?eq(taxon_id,1763)` → `/genome?rql=eq(taxon_id,1763)`
+- A legacy keyword query on FeatureList, ProteinList or GenomeList (beside at most one
+  `sort(...)`, which is dropped) becomes `?keyword=` instead of `?rql=`, so the Feature
+  list's PATRIC default and the Genome list's related-tab pass-through apply as on legacy,
+  wherever `?keyword=` reads the query back as written (`readsAsWritten`,
+  `searchBoxKeyword`):
+  - a lone `keyword(x)` (`/view/FeatureList/?keyword(Dnak)` → `/feature?keyword=Dnak`) and
+    legacy's search-box form for several words, `and(keyword(coli),keyword(Salmonella))` →
+    `/genome?keyword=coli+Salmonella`: unquoted words (the Data API matches
+    `keyword(coli Salmonella)` like the per-word clauses, 1,933 genomes), a quoted word or
+    phrase, sent whole with its quotes (`keyword("Rv0001")`: 1 PATRIC feature, 341,190
+    unquoted; `keyword("DNA polymerase")`: 16,285,620 PATRIC features against 22,504,678
+    for the words apart), Solr's `AND`, `NOT` and `-` (`keyword(coli NOT Salmonella)` and
+    `keyword(coli -Salmonella)` are both 132,341 genomes), and punctuation Solr splits a
+    word at (`keyword(coli-K12)`, `keyword(H1N1/2009)`); `keyword(GO:0003677)`, an HTTP 400
+    as written, goes there too and gets an answer;
+  - alpha's search-box `or(...)`/`not(...)` form, an `and` of `keyword(term)`,
+    `not(keyword(term))` and `or(keyword(term),…)` with one word or phrase per keyword
+    (`/view/GenomeList/?or(keyword(coli),keyword(Salmonella))` →
+    `/genome?keyword=coli+OR+Salmonella`, 195,658; `and(keyword(kinase),not(keyword(hypothetical)))`
+    → `?keyword=kinase+NOT+hypothetical`), so its related tabs run it on their own
+    collections, as alpha's do, rather than through the `genome()` join;
+  - a lone `keyword(...)` with `OR` (or `||`) is first rewritten as RQL, since beside any
+    other clause the OR would leak out of it (§2.8), and then reads back:
+    `keyword(coli OR Salmonella)` → `/genome?keyword=coli+OR+Salmonella`, 195,658 as on
+    legacy. Solr reads an `OR` beside other words oddly (`keyword(E coli OR Salmonella)` is
+    502,671 genomes, `E` alone); the rewrite sends what the text says, 25,228. A NOT inside
+    the OR is rewritten as Solr reads it and stays `?rql=`
+    (`keyword(coli OR NOT Salmonella)` → `?rql=or(keyword(coli),not(keyword(Salmonella)))`,
+    coli AND NOT Salmonella, 132,341 as on legacy).
+  Everything else stays `?rql=`, as written: an open quote, a quote inside a word,
+  `keyword(*)`, a keyword beside another clause, Solr syntax that works as written and that
+  `?keyword=` reads differently (a boost `keyword(coli^2)`, a range `keyword(<coli)`, a
+  regular expression `keyword(/col/)`), alpha's search-box form with a NOT inside an OR or
+  only NOTs (§2.8), and an `and` of keywords whose joined text would read differently (a
+  value ending in an operator, `and(keyword(coli OR),keyword(Salmonella))`).
+  On `/genome` that `?rql=` puts the related tabs on the `genome()` join; on `/feature` the
+  PATRIC default applies beside it unless the rql filters on `annotation`.
 - Legacy name → segment via the registry reverse-map (`legacySingular`/`legacyList`).
 - Named query params (`pathogen_test_type`, `test_type`, `accession`, `path`, `filter`)
   carried/mapped per the legacy doc.
@@ -425,6 +604,16 @@ So the redirect is two stages:
 - A small `LegacyHashAdapter` client component mounted in `(views)/layout.tsx` reads any
   leftover `#view_tab=x` (and `#filter=`, `#accession=`) after mount and rewrites it to the
   equivalent query param via `history.replaceState` (no reload).
+- `#filter=false` (legacy's "default filter removed") is dropped, except where DXKB carries
+  that default: on `/feature` it becomes `annotation=*` (not beside an `rql` that filters on
+  `annotation`, nor on the Proteins search, `filter=protein`); with `#view_tab=features` it
+  becomes `features.annotation=*` on `/genome` and `/genome/{id}` (the Features tab's child
+  URL key) and `annotation=*` on `/taxonomy/{id}`: the PATRIC default, removed (§2.8,
+  §5.6).
+- Known gap (pre-existing): a legacy `#filter=<rql>` (a filter picked in legacy's panel,
+  e.g. `#filter=eq(annotation,RefSeq)`) is not carried over. The adapter copies it to
+  `?filter=`, but the Feature list accepts only a plain feature type there
+  (`parseFeatureCollectionState`) and drops it, so its PATRIC default applies again.
 
 **Middleware matcher:** add `/view/:path*` (and the `(views)` paths for §6.1) to the
 `proxy.ts` `config.matcher`, which is currently auth-only.

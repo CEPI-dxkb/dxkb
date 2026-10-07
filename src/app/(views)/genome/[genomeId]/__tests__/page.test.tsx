@@ -31,17 +31,22 @@ vi.mock("@/components/views", async (importOriginal) => {
       idField,
       label,
       rql,
+      defaultFilters,
     }: {
       resource: string;
       idField: string;
       label: string;
       rql: string;
+      defaultFilters?: unknown;
     }) => (
       <div
         data-testid="resource-collection"
         data-resource={resource}
         data-id-field={idField}
         data-rql={rql}
+        data-default-filters={
+          defaultFilters ? JSON.stringify(defaultFilters) : undefined
+        }
         data-show-header="false"
       >
         {label}
@@ -138,6 +143,35 @@ describe("Genome member route", () => {
         searchParams: Promise.resolve(query),
       }),
     ).rejects.toThrow(`NEXT_REDIRECT:/genome/83332.12${suffix}`);
+  });
+
+  it("gives the Features tab legacy's removable PATRIC default", async () => {
+    // Legacy's Genome Features tab lists PATRIC features until its default is
+    // removed: 5,425 of genome 83332.12's 10,940.
+    render(
+      await GenomePage({
+        params: Promise.resolve({ genomeId: "83332.12" }),
+        searchParams: Promise.resolve({ tab: "features" }),
+      }),
+    );
+    const features = screen.getByTestId("resource-collection");
+    expect(features).toHaveAttribute("data-rql", "eq(genome_id,83332.12)");
+    expect(features).toHaveAttribute(
+      "data-default-filters",
+      JSON.stringify({ annotation: ["PATRIC"] }),
+    );
+  });
+
+  it("leaves the Proteins tab without a default, as its RQL pins PATRIC", async () => {
+    render(
+      await GenomePage({
+        params: Promise.resolve({ genomeId: "83332.12" }),
+        searchParams: Promise.resolve({ tab: "proteins" }),
+      }),
+    );
+    expect(screen.getByTestId("resource-collection")).not.toHaveAttribute(
+      "data-default-filters",
+    );
   });
 
   it("renders exact-genome domains and motifs", async () => {

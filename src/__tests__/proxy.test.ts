@@ -223,6 +223,32 @@ describe("proxy", () => {
       expect(loc.pathname).toBe("/taxonomy");
       expect(loc.searchParams.get("rql")).toBe("eq(lineage_ids,1763)");
     });
+    it("redirects a normalized lone legacy keyword to a keyword search", () => {
+      const request = buildRequest("/view/FeatureList?keyword%28Dnak%29=");
+      const loc = getRedirectLocation(proxy(request));
+      expect(loc.pathname).toBe("/feature");
+      expect(loc.search).toBe("?keyword=Dnak");
+    });
+    it("redirects legacy's multi-word search to a keyword search", () => {
+      // Legacy's search box: "coli Salmonella" -> and(keyword(coli),keyword(Salmonella)).
+      const request = buildRequest(
+        "/view/GenomeList/?and(keyword(coli),keyword(Salmonella))",
+      );
+      const loc = getRedirectLocation(proxy(request));
+      expect(loc.pathname).toBe("/genome");
+      expect(loc.search).toBe("?keyword=coli+Salmonella");
+    });
+    it("redirects a legacy quoted phrase to a keyword search", () => {
+      // `?keyword=` sends the quoted phrase whole, and the Feature list then
+      // applies its PATRIC default, as legacy's does (16,285,620 rows).
+      const request = buildRequest(
+        "/view/FeatureList/?keyword(%22DNA%20polymerase%22)",
+      );
+      const loc = getRedirectLocation(proxy(request));
+      expect(loc.pathname).toBe("/feature");
+      expect(loc.searchParams.get("keyword")).toBe('"DNA polymerase"');
+      expect(loc.searchParams.has("rql")).toBe(false);
+    });
     it("redirects Protein aliases to Feature routes", () => {
       const member = proxy(buildRequest("/view/Protein/fig%7C83332.12.peg.1"));
       expect(member.status).toBe(308);

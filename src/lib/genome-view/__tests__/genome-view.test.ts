@@ -13,6 +13,7 @@ import {
   genomeCollectionOptions,
   genomeCollectionProfile,
   genomeInteractionsRql,
+  genomeRelatedScope,
   genomeSequenceRql,
   genomeStructuralRql,
   genomeViewRecordSchema,
@@ -24,6 +25,7 @@ import {
   parseCollectionState,
   toSearchParamsRecord,
   updateCollectionSearchParams,
+  type CollectionState,
 } from "@/lib/views/collection-state";
 
 describe("Genome view contracts", () => {
@@ -51,6 +53,17 @@ describe("Genome view contracts", () => {
         page: 1,
         sort: "unsorted",
         rql: "in(genome_id,(11320.1,11320.2))",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("does not restrict a keyword search to recent genomes", () => {
+    expect(
+      genomeBaseRql({
+        keyword: "Dnak",
+        filters: {},
+        page: 1,
+        sort: "unsorted",
       }),
     ).toBeUndefined();
   });
@@ -225,5 +238,159 @@ describe("Genome view contracts", () => {
     expect(canonicalGenomeTab("domains", viral)).toBe("domains");
     expect(canonicalGenomeTab("sequences", bacterial)).toBe("sequences");
     expect(canonicalGenomeTab("nonsense", bacterial)).toBe("overview");
+  });
+});
+
+describe("genomeBaseRql with a refinement", () => {
+  it("does not restrict a refined list to recent genomes", () => {
+    // As for a keyword (Fix 2): the Genomes tab and the related tabs, which run
+    // the refinement on their own collections, then cover the same records.
+    expect(
+      genomeBaseRql({ filters: {}, page: 1, sort: "unsorted", refine: "coli" }),
+    ).toBeUndefined();
+    expect(
+      genomeBaseRql({ filters: {}, page: 1, sort: "unsorted", refine: "  " }),
+    ).toBe(recentGenomeRql);
+  });
+
+  it("keeps the recent default for a blank keyword, which searches nothing", () => {
+    // The Data API trims the keyword away, so `?keyword=%20` is the bare list.
+    expect(
+      genomeBaseRql({ filters: {}, page: 1, sort: "unsorted", keyword: " " }),
+    ).toBe(recentGenomeRql);
+  });
+});
+
+describe("genomeRelatedScope", () => {
+  const bare: CollectionState = { filters: {}, page: 1, sort: "unsorted" };
+
+  it("leaves the related tabs unscoped for the bare list", () => {
+    expect(genomeRelatedScope(bare)).toBeUndefined();
+    expect(genomeRelatedScope({ ...bare, keyword: " ", refine: "" })).toBeUndefined();
+  });
+
+  it("passes keyword and refinement clauses straight to the related collection", () => {
+    expect(genomeRelatedScope({ ...bare, keyword: " Dnak " })).toEqual({
+      rql: "keyword(Dnak)",
+      join: false,
+    });
+    expect(
+      genomeRelatedScope({ ...bare, keyword: "Dnak", refine: "coli" }),
+    ).toEqual({ rql: "and(keyword(Dnak),keyword(coli))", join: false });
+    expect(genomeRelatedScope({ ...bare, refine: "coli" })).toEqual({
+      rql: "keyword(coli)",
+      join: false,
+    });
+  });
+
+  it("keeps Solr's OR and NOT on the tabs' own collections", () => {
+    // Alpha's search box sends `coli or Salmonella` as
+    // or(keyword(coli),keyword(Salmonella)) and hands it to every tab's
+    // collection; as ?rql= the tabs would join through genome() instead.
+    expect(
+      genomeRelatedScope({ ...bare, keyword: "coli OR Salmonella" }),
+    ).toEqual({ rql: "or(keyword(coli),keyword(Salmonella))", join: false });
+    expect(
+      genomeRelatedScope({ ...bare, keyword: "kinase NOT hypothetical" }),
+    ).toEqual({
+      rql: "and(keyword(kinase),not(keyword(hypothetical)))",
+      join: false,
+    });
+  });
+
+  it("splits a multi-word keyword as the Genomes tab's own search does", () => {
+    // The Genomes tab sends ?keyword=coli Salmonella as
+    // and(keyword(coli),keyword(Salmonella)) (1,933 genomes, legacy's count);
+    // one keyword(coli Salmonella) clause is the phrase, 29 genomes.
+    expect(genomeRelatedScope({ ...bare, keyword: "coli Salmonella" })).toEqual({
+      rql: "and(keyword(coli),keyword(Salmonella))",
+      join: false,
+    });
+    // The refinement too, as ResourceCollection's `rqlKeyword` reads it.
+    expect(
+      genomeRelatedScope({
+        ...bare,
+        keyword: "coli Salmonella",
+        refine: " DNA polymerase ",
+      }),
+    ).toEqual({
+      rql: "and(keyword(coli),keyword(Salmonella),keyword(DNA),keyword(polymerase))",
+      join: false,
+    });
+    expect(
+      genomeRelatedScope({
+        ...bare,
+        filters: { taxon_id: ["1763"] },
+        keyword: "coli Salmonella",
+      }),
+    ).toEqual({
+      rql: "and(eq(taxon_lineage_ids,1763),keyword(coli),keyword(Salmonella))",
+      join: true,
+    });
+  });
+
+  it("keeps a quoted keyword's quotes on the related collections", () => {
+    // Legacy's search quotes id-like words (keyword(%22Rv0001%22)); the
+    // Genomes tab's ?keyword= sends them that way too.
+    expect(genomeRelatedScope({ ...bare, keyword: '"Rv0001"' })).toEqual({
+      rql: "keyword(%22Rv0001%22)",
+      join: false,
+    });
+  });
+
+  it("reads a keyword or refinement without terms as none", () => {
+    // `"` alone (a phrase being typed) or empty quotes search for nothing, so
+    // the list keeps its recent-genomes default instead of listing every genome.
+    const empty = { ...bare, keyword: '""', refine: '"' };
+    expect(genomeBaseRql(empty)).toBe(recentGenomeRql);
+    expect(genomeRelatedScope(empty)).toBeUndefined();
+    // Nor does an operator with nothing to join, or only syntax.
+    const syntax = { ...bare, keyword: "OR", refine: "/ -" };
+    expect(genomeBaseRql(syntax)).toBe(recentGenomeRql);
+    expect(genomeRelatedScope(syntax)).toBeUndefined();
+  });
+
+  it("sends a quoted phrase to the related collections whole", () => {
+    // Alpha's GenomeList/?keyword(%22DNA%20polymerase%22) Sequences tab reads
+    // 16,199 rows with the phrase; split onto its words it would find none.
+    expect(
+      genomeRelatedScope({ ...bare, keyword: 'coli "DNA polymerase"' }),
+    ).toEqual({
+      rql: "and(keyword(coli),keyword(%22DNA%20polymerase%22))",
+      join: false,
+    });
+  });
+
+  it("joins to the listed genomes for filters, visibility and explicit RQL", () => {
+    expect(
+      genomeRelatedScope({ ...bare, filters: { taxon_id: ["1763"] } }),
+    ).toEqual({
+      rql: `and(${recentGenomeRql},eq(taxon_lineage_ids,1763))`,
+      join: true,
+    });
+    expect(
+      genomeRelatedScope({
+        ...bare,
+        filters: { public: ["false"] },
+        keyword: "Dnak",
+      }),
+    ).toEqual({ rql: "and(eq(public,false),keyword(Dnak))", join: true });
+    expect(
+      genomeRelatedScope({
+        ...bare,
+        rql: "eq(genus,Mycobacterium)",
+        refine: "coli",
+      }),
+    ).toEqual({ rql: "and(keyword(coli),eq(genus,Mycobacterium))", join: true });
+    expect(
+      genomeRelatedScope({
+        ...bare,
+        filters: { taxon_id: ["1763"] },
+        refine: "coli",
+      }),
+    ).toEqual({
+      rql: "and(eq(taxon_lineage_ids,1763),keyword(coli))",
+      join: true,
+    });
   });
 });

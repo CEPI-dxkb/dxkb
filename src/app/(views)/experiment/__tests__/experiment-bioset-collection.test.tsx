@@ -20,11 +20,11 @@ vi.mock("@/components/views", () => ({
 }));
 
 describe("ExperimentBiosetCollection", () => {
-  it("treats a whitespace-only keyword as unscoped without exporting experiment IDs", () => {
+  it.each(["   ", '""', '"', "OR", "/"])("treats the keyword %j, which has no terms, as unscoped without exporting experiment IDs", (keyword) => {
     render(
       <ExperimentBiosetCollection
         experimentState={{
-          keyword: "   ",
+          keyword,
           filters: {},
           page: 1,
           sort: "exp_id:asc",
@@ -38,5 +38,30 @@ describe("ExperimentBiosetCollection", () => {
       "eq(bioset_id,*)",
     );
     expect(mocks.exportRecords).not.toHaveBeenCalled();
+  });
+
+  it("scopes to the experiments the Experiments tab lists, with the keyword exact", async () => {
+    mocks.exportRecords.mockResolvedValue({ rows: [{ exp_id: "100" }] });
+    render(
+      <ExperimentBiosetCollection
+        experimentState={{
+          keyword: "coli",
+          filters: {},
+          page: 1,
+          sort: "exp_id:asc",
+        }}
+      />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    expect(await screen.findByTestId("bioset-collection")).toHaveAttribute(
+      "data-rql",
+      "in(exp_id,(100))",
+    );
+    expect(mocks.exportRecords).toHaveBeenCalledWith(
+      "experiment",
+      expect.objectContaining({ keyword: "coli", keywordMode: "exact" }),
+      expect.anything(),
+    );
   });
 });

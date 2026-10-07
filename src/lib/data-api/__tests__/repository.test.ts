@@ -154,6 +154,31 @@ describe("ServerDataRepository", () => {
     );
   });
 
+  it("anchors a keyword of only negations beside a scope", async () => {
+    // The Data API brackets the keyword clauses, and a bracketed group with no
+    // positive clause matches nothing: genome 83332.12's features without
+    // hypothetical and putative are 8,141, and(not(...),not(...)) nested 0.
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
+    const repository = new ServerDataRepository({
+      baseUrl: "https://data.test",
+      fetch: fetcher,
+    });
+
+    await repository.collection("genome_feature", {
+      operation: "collection",
+      rql: "eq(genome_id,83332.12)",
+      keyword: "NOT hypothetical NOT putative",
+      keywordMode: "exact",
+    });
+
+    const [url] = fetcher.mock.calls[0];
+    expect(decodeURIComponent((url as URL).search)).toContain(
+      "and(eq(genome_id,83332.12),and(keyword(*),not(keyword(hypothetical)),not(keyword(putative))))",
+    );
+  });
+
   it("supports exact keyword matching for resources with that legacy contract", async () => {
     const fetcher = vi
       .fn<typeof fetch>()

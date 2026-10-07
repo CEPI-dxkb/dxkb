@@ -1,3 +1,4 @@
+import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
 import { encodeQueryComponent } from "@/lib/url";
 import { viewRegistry } from "@/lib/views/view-registry";
 
@@ -18,10 +19,16 @@ export interface SearchType {
   allTermOrder?: number;
 }
 
+/**
+ * Where a search for `query` (text as typed) goes. A canonical list reads its
+ * `?keyword=` as written, so the text goes there as legacy's search box reads
+ * it (`normalizeLegacyKeyword`: `Rv0001` as the exact token `"Rv0001"`, `or`
+ * as Solr's `OR`); `/search` normalizes its own `q`.
+ */
 export function searchHref(searchType: SearchType, query: string): string {
   if (searchType.route.status === "canonical") {
     const params = [
-      `keyword=${encodeQueryComponent(query)}`,
+      `keyword=${encodeQueryComponent(normalizeLegacyKeyword(query))}`,
       ...Object.entries(searchType.route.params ?? {}).map(
         ([name, value]) => `${name}=${encodeQueryComponent(value)}`,
       ),

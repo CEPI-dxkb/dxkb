@@ -964,6 +964,13 @@ export async function GET(
   if (path === "phylo-manifest") {
     return NextResponse.json({ trees: { "2955291": "influenza" } });
   }
+  if (path === "phylo-tree-dictionary") {
+    // PHYLO_TREE_DICTIONARY_URL: the taxon-to-tree dictionary the server-side
+    // tree index (src/lib/phylogeny/bacterial-tree-index.ts) downloads. Taxon
+    // 234 names the tree file e2e/tests/organisms/archaeopteryx.spec.ts
+    // serves in the browser.
+    return NextResponse.json({ "234": "regression.xml" });
+  }
   const identityResponse = handleIdentityGet(path);
   if (identityResponse) return identityResponse;
   const search = new URL(request.url).search;

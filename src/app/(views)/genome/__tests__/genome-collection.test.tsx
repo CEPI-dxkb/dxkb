@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { featureListDefaultFilters } from "@/lib/feature-view";
 import { proteinFeatureRql } from "@/lib/views/child-resources";
 import { GenomeCollection } from "../genome-collection";
 import type { CollectionState } from "@/lib/views/collection-state";
@@ -19,13 +20,22 @@ interface ChildProps {
   idField: string;
   rql: string;
   defaultSort: string;
+  defaultFilters?: unknown;
+  serverKeywordMode?: string;
   columns?: unknown;
   profile?: unknown;
   keywordMode?: string;
 }
 
-const { childProps, searchParams, shellProps } = vi.hoisted(() => ({
+interface GenomeProps {
+  baseRql?: string;
+  keywordMode?: string;
+  serverKeywordMode?: string;
+}
+
+const { childProps, genomeProps, searchParams, shellProps } = vi.hoisted(() => ({
   childProps: { current: null as ChildProps | null },
+  genomeProps: { current: null as GenomeProps | null },
   searchParams: { current: new URLSearchParams("rql=in(genome_id,(1.1,1.2))") },
   shellProps: { current: null as ShellProps | null },
 }));
@@ -51,7 +61,10 @@ vi.mock("@/components/views", () => ({
       </div>
     );
   },
-  GenomeResourceCollection: () => <div>Genome rows</div>,
+  GenomeResourceCollection: (props: GenomeProps) => {
+    genomeProps.current = props;
+    return <div>Genome rows</div>;
+  },
   FeatureResourceCollection: ({ baseRql }: { baseRql: string }) => (
     <div data-testid="feature-rql">{baseRql}</div>
   ),
@@ -81,6 +94,7 @@ const recentScope =
 describe("GenomeCollection", () => {
   beforeEach(() => {
     childProps.current = null;
+    genomeProps.current = null;
     shellProps.current = null;
     searchParams.current = new URLSearchParams("rql=in(genome_id,(1.1,1.2))");
   });
@@ -161,8 +175,17 @@ describe("GenomeCollection", () => {
     );
   });
 
-  it("scopes a related tab to the recent-genomes default on a bare URL", () => {
-    searchParams.current = new URLSearchParams("tab=sequences");
+  it.each([
+    ["sequences", "eq(sequence_id,*)"],
+    ["features", "eq(feature_id,*)"],
+    ["proteins", proteinFeatureRql],
+    ["structures", "eq(pdb_id,*)"],
+    ["domains", "eq(id,*)"],
+  ])("lists the whole %s collection on a bare URL, as legacy does", (tab, rql) => {
+    // No genome() join to the ~573,000 recent genomes (11–78 s a tab on prod).
+    // Each collection's own match-all, because the Data API rejects an empty
+    // query once a sort or facet is added.
+    searchParams.current = new URLSearchParams(`tab=${tab}`);
 
     render(
       <GenomeCollection
@@ -170,9 +193,8 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    expect(childProps.current?.rql).toBe(
-      `and(eq(genome_id,*),genome(${recentScope}))`,
-    );
+    expect(screen.getByTestId("active-tab")).toHaveTextContent(tab);
+    expect(childProps.current?.rql).toBe(rql);
   });
 
   it("keeps friendly filters in the child resource scope", () => {
@@ -240,12 +262,75 @@ describe("GenomeCollection", () => {
       />,
     );
 
+    // One clause per word, as the Genomes tab's ?keyword= sends it, so the
+    // join covers the genomes that tab lists.
     expect(childProps.current?.rql).toBe(
-      "and(eq(genome_id,*),genome(and(keyword(Escherichia coli),in(genome_id,(1.1,1.2)))))",
+      "and(eq(genome_id,*),genome(and(keyword(Escherichia),keyword(coli),in(genome_id,(1.1,1.2)))))",
     );
   });
 
-  it("keeps the active refinement alongside the recent-genomes default", () => {
+  it("runs a multi-word keyword's per-word clauses on the related collection", () => {
+    searchParams.current = new URLSearchParams(
+      "keyword=coli%20Salmonella&tab=structures",
+    );
+
+    render(
+      <GenomeCollection
+        initialState={{
+          ...initialState,
+          rql: undefined,
+          keyword: "coli Salmonella",
+        }}
+      />,
+    );
+
+    // Legacy GenomeList passes its search's and(keyword(coli),keyword(Salmonella))
+    // to each tab: 38 structures, where the phrase keyword(coli Salmonella) finds 0.
+    expect(childProps.current?.rql).toBe(
+      "and(keyword(coli),keyword(Salmonella))",
+    );
+  });
+
+  it("runs a keyword search's own clause on the related collection", () => {
+    searchParams.current = new URLSearchParams("keyword=Dnak&tab=sequences");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "Dnak",
+        }}
+      />,
+    );
+
+    // Legacy GenomeList hands its query to each tab's collection: 72
+    // sequences match keyword(Dnak), where the genome() join found 174.
+    expect(childProps.current?.rql).toBe("keyword(Dnak)");
+  });
+
+  it("runs keyword and refinement clauses together on the related collection", () => {
+    searchParams.current = new URLSearchParams(
+      "keyword=Dnak&refine=coli&tab=sequences",
+    );
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "Dnak",
+          refine: "coli",
+        }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe("and(keyword(Dnak),keyword(coli))");
+  });
+
+  it("drops the recent-genomes default for a refinement, as for a keyword", () => {
     searchParams.current = new URLSearchParams("refine=coli&tab=sequences");
 
     render(
@@ -259,9 +344,140 @@ describe("GenomeCollection", () => {
       />,
     );
 
-    expect(childProps.current?.rql).toBe(
-      `and(eq(genome_id,*),genome(and(${recentScope},keyword(coli))))`,
+    // Run on genome_sequence itself, so this tab and the Genomes tab cover the
+    // same records.
+    expect(childProps.current?.rql).toBe("keyword(coli)");
+  });
+
+  it("lists a refined list's genomes without the recent-genomes default", () => {
+    searchParams.current = new URLSearchParams("refine=coli");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          refine: "coli",
+        }}
+      />,
     );
+
+    expect(genomeProps.current?.baseRql).toBeUndefined();
+  });
+
+  it("keeps the recent-genomes default on the bare list's Genomes tab", () => {
+    searchParams.current = new URLSearchParams("");
+
+    render(
+      <GenomeCollection
+        initialState={{ filters: {}, page: 1, sort: "unsorted" }}
+      />,
+    );
+
+    expect(genomeProps.current?.baseRql).toBe(recentScope);
+  });
+
+  it("searches genomes with legacy GenomeList's exact keyword", () => {
+    searchParams.current = new URLSearchParams("keyword=coli");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "coli",
+        }}
+      />,
+    );
+
+    // keyword(coli) matches 134,274 genomes, as on legacy; the token-prefix
+    // keyword(coli*) matched 137,836.
+    expect(genomeProps.current).toEqual(
+      expect.objectContaining({
+        baseRql: undefined,
+        keywordMode: "refine",
+        serverKeywordMode: "exact",
+      }),
+    );
+  });
+
+  it("adds the shared protein predicate to a keyword search's Proteins tab", () => {
+    searchParams.current = new URLSearchParams("keyword=Dnak&tab=proteins");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "Dnak",
+        }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe(
+      `and(keyword(Dnak),${proteinFeatureRql})`,
+    );
+  });
+
+  it("keeps the genome() join for a visibility scope, where legacy's pass-through fails", () => {
+    searchParams.current = new URLSearchParams(
+      "public=false&keyword=Dnak&tab=sequences",
+    );
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: { public: ["false"] },
+          page: 1,
+          sort: "unsorted",
+          keyword: "Dnak",
+        }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe(
+      "and(eq(genome_id,*),genome(and(eq(public,false),keyword(Dnak))))",
+    );
+  });
+
+  it("gives the Features tab legacy's removable PATRIC default and backend order", () => {
+    searchParams.current = new URLSearchParams("keyword=Dnak&tab=features");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "Dnak",
+        }}
+      />,
+    );
+
+    expect(childProps.current).toEqual(
+      expect.objectContaining({
+        resource: "genome_feature",
+        rql: "keyword(Dnak)",
+        defaultFilters: featureListDefaultFilters,
+        defaultSort: "unsorted",
+      }),
+    );
+  });
+
+  it("leaves the Proteins tab in backend order with no default filter", () => {
+    searchParams.current = new URLSearchParams("tab=proteins");
+
+    render(
+      <GenomeCollection
+        initialState={{ filters: {}, page: 1, sort: "unsorted" }}
+      />,
+    );
+
+    expect(childProps.current?.defaultSort).toBe("unsorted");
+    expect(childProps.current?.defaultFilters).toBeUndefined();
   });
 
   it("leaves a blank refinement out of the child resource scope", () => {
@@ -326,6 +542,30 @@ describe("GenomeCollection", () => {
     expect(childProps.current?.columns).toBeUndefined();
     expect(childProps.current?.profile).toBeUndefined();
   });
+
+  it.each(["sequences", "features", "proteins", "structures", "domains"])(
+    "sends the %s tab's own keyword exact, as legacy does",
+    (tab) => {
+      // The in-tab keyword box would otherwise add a token-prefix
+      // keyword(gyrA*) beside the list's exact keyword(Dnak).
+      searchParams.current = new URLSearchParams(
+        `keyword=Dnak&tab=${tab}`,
+      );
+
+      render(
+        <GenomeCollection
+          initialState={{
+            filters: {},
+            page: 1,
+            sort: "unsorted",
+            keyword: "Dnak",
+          }}
+        />,
+      );
+
+      expect(childProps.current?.serverKeywordMode).toBe("exact");
+    },
+  );
 
   it.each(["sequences", "features", "proteins", "domains", "structures"])(
     "searches all pages of the %s tab on the server",

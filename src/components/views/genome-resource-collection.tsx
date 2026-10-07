@@ -17,6 +17,12 @@ interface GenomeResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The `/genome` list sends an exact
+   * `keyword(...)`, as legacy GenomeList does; unset keeps the token-prefix
+   * default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 export function GenomeResourceCollection({
@@ -24,13 +30,18 @@ export function GenomeResourceCollection({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: GenomeResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(genomeCollectionOptions);
   const state = initialState ?? urlState;
 
   return (
     <ResourceCollection<GenomeViewRecord>
-      profile={genomeCollectionProfile}
+      profile={
+        serverKeywordMode
+          ? { ...genomeCollectionProfile, serverKeywordMode }
+          : genomeCollectionProfile
+      }
       repository={repository}
       state={state}
       onStateChange={setState}

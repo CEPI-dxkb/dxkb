@@ -157,6 +157,9 @@ describe("legacy search route", () => {
     ["everything", { type: "everything", q: " / + " }],
     ["legacy list", { type: "genome_sequence", q: "---" }],
     ["canonical", { type: "genome", q: "---" }],
+    // Terms nothing would be searched for: an operator alone, empty quotes.
+    ["operator-only", { type: "everything", q: "OR" }],
+    ["empty-quote", { type: "genome_sequence", q: '""' }],
   ])("prompts for normalized-empty %s searches", async (_label, params) => {
     render(await GlobalSearch({ searchParams: Promise.resolve(params) }));
 

@@ -18,6 +18,12 @@ interface ExperimentResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The list page sends an exact
+   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
+   * unset keeps the token-prefix default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 export function ExperimentResourceCollection({
@@ -26,12 +32,16 @@ export function ExperimentResourceCollection({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: ExperimentResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(experimentCollectionOptions);
   const state = initialState ?? urlState;
+  const profile = enableFacets
+    ? experimentCollectionProfile
+    : { ...experimentCollectionProfile, facets: undefined };
   return (
     <ResourceCollection<ExperimentViewRecord>
-      profile={enableFacets ? experimentCollectionProfile : { ...experimentCollectionProfile, facets: undefined }}
+      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
       onStateChange={setState}

@@ -18,6 +18,12 @@ interface EpitopeResourceCollectionProps {
   enableRowLinks?: boolean;
   initialState?: CollectionState;
   keywordMode?: "server" | "loaded" | "refine";
+  /**
+   * How a URL keyword reaches the Data API. The list page sends an exact
+   * `keyword(...)`, as legacy BV-BRC's list and the All Data Types search do;
+   * unset keeps the token-prefix default.
+   */
+  serverKeywordMode?: "exact" | "prefix";
 }
 
 export function EpitopeResourceCollection({
@@ -26,12 +32,16 @@ export function EpitopeResourceCollection({
   enableRowLinks = true,
   initialState,
   keywordMode = "server",
+  serverKeywordMode,
 }: EpitopeResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(epitopeCollectionOptions);
   const state = initialState ?? urlState;
+  const profile = enableFacets
+    ? epitopeCollectionProfile
+    : { ...epitopeCollectionProfile, facets: undefined };
   return (
     <ResourceCollection<EpitopeViewRecord>
-      profile={enableFacets ? epitopeCollectionProfile : { ...epitopeCollectionProfile, facets: undefined }}
+      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
       repository={repository}
       state={state}
       onStateChange={setState}

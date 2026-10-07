@@ -32,13 +32,12 @@ const treeXml = `<?xml version="1.0" encoding="UTF-8"?>
 
 async function openPhylogeny(page: Page) {
   await applyBackendMocks(page);
-  await page.route(
-    /\/api\/content\/bvbrc_phylogeny_tab\/taxon_tree_dict\.json$/,
-    (route) =>
-      route.fulfill({
-        contentType: "application/json",
-        body: JSON.stringify({ 234: "regression.xml" }),
-      }),
+  // The tree lookup runs for real: this route goes to the app's server, whose
+  // tree index downloads PHYLO_TREE_DICTIONARY_URL, the e2e loopback's
+  // `phylo-tree-dictionary` ({ "234": "regression.xml" }). Registered after
+  // applyBackendMocks, so it wins over the strict guard.
+  await page.route("**/api/phylogeny/bacterial-trees/**", (route) =>
+    route.continue(),
   );
   await page.route(
     /\/api\/content\/bvbrc_phylogeny_tab\/phyloxml\/regression\.xml$/,

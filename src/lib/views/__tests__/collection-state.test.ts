@@ -1,13 +1,17 @@
 import {
   canonicalizeCollectionSearchParams,
   canonicalizeCollectionState,
+  clearedFilterValue,
   collectionManagedParamNames,
+  facetCountState,
+  filtersBesideRql,
   parseCollectionState,
   replaceCollectionSearchParams,
   serializeCollectionState,
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
   updateCollectionSearchParams,
+  withUnshadowedDefaults,
   type CollectionStateOptions,
 } from "../collection-state";
 
@@ -441,5 +445,256 @@ describe("unionCollectionManagedParamNames", () => {
     );
     for (const name of union) params.delete(name);
     expect(params.toString()).toBe("tab=strains&utm_source=email");
+  });
+});
+
+describe("default filters", () => {
+  // Legacy BV-BRC grids select a removable default filter (FeatureList's
+  // annotation=PATRIC); `host` stands in for it here.
+  const withDefault = {
+    ...options,
+    defaultFilters: { host: ["human"] },
+  } satisfies CollectionStateOptions<"relevance" | "name" | "date">;
+
+  it("selects a default the URL does not name", () => {
+    expect(parseCollectionState({}, withDefault).filters).toEqual({
+      host: ["human"],
+    });
+    expect(parseCollectionState({ host: "swine" }, withDefault).filters).toEqual(
+      { host: ["swine"] },
+    );
+  });
+
+  it("reads the cleared marker as no filter, and values beside it as the selection", () => {
+    expect(clearedFilterValue).toBe("*");
+    expect(parseCollectionState({ host: "*" }, withDefault).filters).toEqual({});
+    expect(
+      parseCollectionState({ host: ["*", "swine"] }, withDefault).filters,
+    ).toEqual({ host: ["swine"] });
+  });
+
+  it("omits the default from the URL and writes the marker once it is removed", () => {
+    expect(
+      serializeCollectionState(
+        { filters: { host: ["human"] }, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("");
+    expect(
+      serializeCollectionState(
+        { filters: {}, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("host=*");
+    expect(
+      serializeCollectionState(
+        { filters: { taxon_id: ["2"] }, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("taxon_id=2&host=*");
+    expect(
+      serializeCollectionState(
+        { filters: { host: ["swine", "human"] }, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("host=swine&host=human");
+  });
+
+  it("canonicalizes both forms and keeps unrelated params", () => {
+    expect(
+      canonicalizeCollectionSearchParams(
+        { host: "human", tab: "x" },
+        withDefault,
+      ).toString(),
+    ).toBe("tab=x");
+    expect(
+      canonicalizeCollectionSearchParams({ host: "*" }, withDefault).toString(),
+    ).toBe("host=*");
+    expect(
+      canonicalizeCollectionSearchParams(
+        { host: ["*", "swine"] },
+        withDefault,
+      ).toString(),
+    ).toBe("host=swine");
+  });
+
+  // Legacy applies a grid default to every query, a link's included:
+  // FeatureList/?eq(genome_id,83332.12) lists that genome's PATRIC features.
+  it("keeps a default beside an explicit rql, removable as without one", () => {
+    const rql = "eq(public,true)";
+    expect(parseCollectionState({ rql, taxon_id: "2" }, withDefault).filters).toEqual(
+      { host: ["human"] },
+    );
+    expect(
+      parseCollectionState({ rql, host: "*" }, withDefault).filters,
+    ).toEqual({});
+    expect(
+      parseCollectionState({ rql, host: "swine" }, withDefault).filters,
+    ).toEqual({ host: ["swine"] });
+    expect(
+      canonicalizeCollectionSearchParams({ rql, taxon_id: "2" }, withDefault).toString(),
+    ).toBe("rql=eq%28public%2Ctrue%29");
+    expect(
+      canonicalizeCollectionSearchParams({ rql, host: "*" }, withDefault).toString(),
+    ).toBe("rql=eq%28public%2Ctrue%29&host=*");
+    expect(
+      updateCollectionSearchParams({ rql }, { filters: { host: null } }, withDefault).toString(),
+    ).toBe("rql=eq%28public%2Ctrue%29&host=*");
+  });
+
+  it("lets an rql that names the default's field replace it", () => {
+    for (const rql of ["eq(host,swine)", "and(eq(public,true),in(host,(swine,human)))"]) {
+      expect(parseCollectionState({ rql }, withDefault).filters).toEqual({});
+      expect(parseCollectionState({ rql, host: "*" }, withDefault).filters).toEqual({});
+      expect(
+        serializeCollectionState(
+          { rql, filters: {}, page: 1, sort: "relevance" },
+          withDefault,
+        ).has("host"),
+      ).toBe(false);
+    }
+    // Only an operator's first argument names a field: not a longer field
+    // name, a keyword, or a value at the start of an in() list.
+    for (const rql of [
+      "eq(host_name,swine)",
+      "keyword(host)",
+      "in(taxon_id,(host,swine))",
+    ]) {
+      expect(parseCollectionState({ rql }, withDefault).filters).toEqual({
+        host: ["human"],
+      });
+    }
+    // Spaces the RQL parser accepts around the field still name it.
+    expect(
+      parseCollectionState({ rql: "eq( host ,swine)" }, withDefault).filters,
+    ).toEqual({});
+  });
+
+  // The rql hid the default rather than the user removing it, so dropping the
+  // rql brings the default back; only an explicit removal writes the marker.
+  it("reapplies a default once the rql that named its field is gone", () => {
+    const shadowing = { rql: "eq(host,swine)", taxon_id: "2" };
+    // A facet click that clears the rql hands over filters without the default.
+    expect(
+      withUnshadowedDefaults(
+        "eq(host,swine)",
+        { filters: { taxon_id: ["3"] }, page: 1, sort: "relevance" },
+        withDefault,
+      ).filters,
+    ).toEqual({ taxon_id: ["3"], host: ["human"] });
+    // A wholesale replacement is taken as given: "Clear All Filters" passes
+    // empty filters and means the default too.
+    expect(
+      replaceCollectionSearchParams(
+        shadowing,
+        { filters: {}, page: 1, sort: "relevance" },
+        withDefault,
+      ).toString(),
+    ).toBe("host=*");
+    expect(
+      updateCollectionSearchParams(shadowing, { rql: null }, withDefault).toString(),
+    ).toBe("");
+    // Swapping in an rql that no longer names the field reapplies it too.
+    expect(
+      updateCollectionSearchParams(
+        shadowing,
+        { rql: "eq(public,true)" },
+        withDefault,
+      ).toString(),
+    ).toBe("rql=eq%28public%2Ctrue%29");
+    // Removing the default in the same update still writes the marker.
+    expect(
+      updateCollectionSearchParams(
+        shadowing,
+        { rql: null, filters: { host: null } },
+        withDefault,
+      ).toString(),
+    ).toBe("host=*");
+    // Without a shadowing rql there is nothing to restore.
+    expect(
+      withUnshadowedDefaults(
+        "eq(public,true)",
+        { filters: {}, page: 1, sort: "relevance" },
+        withDefault,
+      ).filters,
+    ).toEqual({});
+  });
+
+  it("lists the filters an explicit rql keeps", () => {
+    const scoped = {
+      ...withDefault,
+      independentFilters: ["taxon_id"],
+    } satisfies CollectionStateOptions<"relevance" | "name" | "date">;
+    expect([...filtersBesideRql("eq(public,true)", scoped)].sort()).toEqual([
+      "host",
+      "taxon_id",
+    ]);
+    expect([...filtersBesideRql("eq(host,swine)", scoped)]).toEqual([
+      "taxon_id",
+    ]);
+    expect([...filtersBesideRql(undefined, options)].sort()).toEqual([
+      "host",
+      "taxon_id",
+    ]);
+  });
+
+  it("leaves an untouched default beside rql out of the facet-count state", () => {
+    const untouched = parseCollectionState({ rql: "eq(public,true)" }, withDefault);
+    expect(untouched.filters).toEqual({ host: ["human"] });
+    expect(facetCountState(untouched, withDefault)).toEqual({
+      ...untouched,
+      filters: {},
+    });
+  });
+
+  it("writes the marker when an update removes the default", () => {
+    expect(
+      updateCollectionSearchParams(
+        { page: "3" },
+        { filters: { host: null } },
+        withDefault,
+      ).toString(),
+    ).toBe("host=*");
+  });
+
+  it("leaves untouched defaults out of the facet-count state only", () => {
+    const untouched = parseCollectionState({ keyword: "flu" }, withDefault);
+    expect(facetCountState(untouched, withDefault)).toEqual({
+      ...untouched,
+      filters: {},
+    });
+    const picked = parseCollectionState(
+      { keyword: "flu", taxon_id: "2" },
+      withDefault,
+    );
+    expect(facetCountState(picked, withDefault)).toBe(picked);
+    const removed = parseCollectionState({ host: "*" }, withDefault);
+    expect(facetCountState(removed, withDefault)).toBe(removed);
+    const plain = parseCollectionState({ host: "human" }, options);
+    expect(facetCountState(plain, options)).toBe(plain);
+  });
+
+  it("keeps independent scope filters in the facet-count state", () => {
+    // The Proteins search always adds `filter=protein`, a scope kept beside
+    // explicit state; only the default is left out of the counts.
+    const scoped = {
+      ...withDefault,
+      independentFilters: ["taxon_id"],
+    } satisfies CollectionStateOptions<"relevance" | "name" | "date">;
+    const untouched = parseCollectionState(
+      { keyword: "flu", taxon_id: "2" },
+      scoped,
+    );
+    expect(untouched.filters).toEqual({ host: ["human"], taxon_id: ["2"] });
+    expect(facetCountState(untouched, scoped)).toEqual({
+      ...untouched,
+      filters: { taxon_id: ["2"] },
+    });
+    const picked = parseCollectionState({ host: "swine", taxon_id: "2" }, scoped);
+    expect(facetCountState(picked, scoped)).toBe(picked);
+    const removed = parseCollectionState({ host: "*", taxon_id: "2" }, scoped);
+    expect(facetCountState(removed, scoped)).toBe(removed);
+    const onlyScope = parseCollectionState({ host: "*" }, scoped);
+    expect(facetCountState(onlyScope, scoped)).toBe(onlyScope);
   });
 });

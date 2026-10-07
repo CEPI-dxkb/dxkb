@@ -143,6 +143,49 @@ describe("SearchBar", () => {
       expect(mockPush).toHaveBeenCalledWith("/feature?keyword=DNA+kinase");
     });
 
+    it("sends a Feature search for an id as legacy's exact token", async () => {
+      const user = userEvent.setup();
+      mockSearchParams.current = new URLSearchParams({
+        type: "genome_feature",
+      });
+      renderSearchBar();
+
+      await user.type(screen.getByRole("textbox"), "Rv0001");
+      fireEvent.submit(getForm());
+
+      expect(mockPush).toHaveBeenCalledWith("/feature?keyword=%22Rv0001%22");
+    });
+
+    // `*` alone would list all 17,033,456 genomes; legacy's search box also
+    // waits for a letter or digit.
+    it.each(["OR", ":/", '""', "*", "?"])(
+      "does not navigate for %j, which has nothing to search for",
+      async (typed) => {
+        const user = userEvent.setup();
+        mockSearchParams.current = new URLSearchParams({ type: "genome" });
+        renderSearchBar();
+
+        await user.type(screen.getByRole("textbox"), typed);
+        fireEvent.submit(getForm());
+
+        expect(mockPush).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(["東京", "Ñandú", "٣٤"])(
+      "navigates for %j, a query of only non-ASCII letters or digits",
+      async (typed) => {
+        const user = userEvent.setup();
+        mockSearchParams.current = new URLSearchParams({ type: "genome" });
+        renderSearchBar();
+
+        await user.type(screen.getByRole("textbox"), typed);
+        fireEvent.submit(getForm());
+
+        expect(mockPush).toHaveBeenCalledTimes(1);
+      },
+    );
+
     it("URL-encodes special characters in the query", async () => {
       const user = userEvent.setup();
       renderSearchBar();

@@ -18,6 +18,8 @@ import {
   searchTypes,
 } from "@/constants/search-info";
 import { Input } from "@/components/ui/input";
+import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
+import { keywordQuery } from "@/lib/data-api/keyword-terms";
 
 import { Search } from "lucide-react";
 
@@ -84,7 +86,11 @@ function SearchBarForm({
 
   const handleSearch = (e: SyntheticEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    // Nothing to search for once read as a search (blank, `OR`, only syntax),
+    // or no letter or digit, as legacy's search box requires (`*` alone would
+    // list every record).
+    const keyword = normalizeLegacyKeyword(inputValue);
+    if (keywordQuery(keyword).length === 0 || !/[\p{L}\p{N}]/u.test(keyword)) return;
 
     const searchType = searchTypes.find((type) => type.id === selected);
     if (!searchType) return;

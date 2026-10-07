@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResourceChildCollection } from "@/components/views";
 import { DataRepository } from "@/lib/data-api";
+import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import {
   experimentBiosetCollectionRql,
   experimentCollectionScopeRql,
@@ -22,7 +23,12 @@ export function ExperimentBiosetCollection({
   experimentState,
 }: ExperimentBiosetCollectionProps) {
   const experimentRql = experimentCollectionScopeRql(experimentState);
-  const keyword = experimentState.keyword?.trim() || undefined;
+  // Text without terms (blank, `""`, a lone `OR`, only syntax) searches for
+  // nothing.
+  const keyword =
+    keywordQuery(experimentState.keyword ?? "").length > 0
+      ? experimentState.keyword?.trim()
+      : undefined;
   const hasExperimentScope = Boolean(experimentRql || keyword);
   const experimentIds = useQuery({
     queryKey: ["experiment", "bioset-scope", experimentRql, keyword],
@@ -32,6 +38,9 @@ export function ExperimentBiosetCollection({
         {
           rql: experimentRql,
           keyword,
+          // As the Experiments tab sends it, so both tabs cover the same
+          // experiments.
+          keywordMode: "exact",
           fields: ["exp_id"],
           limit: maxScopedExperiments + 1,
         },

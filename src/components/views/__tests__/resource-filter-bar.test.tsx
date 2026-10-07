@@ -182,6 +182,72 @@ describe("ResourceFilterBar", () => {
   });
 });
 
+describe("ResourceFilterBar beside an explicit rql", () => {
+  it("keeps the rql when a picked value belongs to a filter kept beside it", () => {
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={facets}
+        definitions={definitions}
+        hasExplicitRql
+        filtersBesideRql={["genome_status"]}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "WGS (20)" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: undefined,
+      filters: { genome_status: ["WGS"] },
+      clearRql: false,
+    });
+  });
+
+  it("replaces the rql when a picked value belongs to any other filter", () => {
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={facets}
+        definitions={definitions}
+        hasExplicitRql
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "WGS (20)" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: undefined,
+      filters: { genome_status: ["WGS"] },
+      clearRql: true,
+    });
+  });
+
+  it("marks Clear All Filters apart from a pick that replaces the rql", () => {
+    const onChange = vi.fn();
+    render(
+      <ResourceFilterBar
+        layoutKey={layoutKey}
+        filters={{}}
+        facets={facets}
+        definitions={definitions}
+        hasExplicitRql
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear All Filters" }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      keyword: undefined,
+      filters: {},
+      clearRql: true,
+      clearAll: true,
+    });
+  });
+});
+
 describe("ResourceFilterBar facet controls", () => {
   it("renders no facet controls when there are no facet definitions", () => {
     render(

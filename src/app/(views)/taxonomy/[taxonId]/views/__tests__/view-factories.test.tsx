@@ -15,12 +15,14 @@ import { makeSfvtView } from "@/components/organisms/taxon-views/sfvt";
 
 interface FeatureResourceCollectionProps {
   baseRql: string;
+  collectionOptions?: { defaultFilters?: unknown };
   enableRowLinks: boolean;
   keywordMode?: "server" | "loaded";
 }
 
 function FeatureResourceCollection({
   baseRql,
+  collectionOptions,
   enableRowLinks,
   keywordMode,
 }: FeatureResourceCollectionProps) {
@@ -28,6 +30,7 @@ function FeatureResourceCollection({
     <div
       data-testid="feature-resource-collection"
       data-q={baseRql}
+      data-default-filters={JSON.stringify(collectionOptions?.defaultFilters)}
       data-row-links={String(enableRowLinks)}
       data-keyword-mode={keywordMode ?? "loaded"}
     />
@@ -308,7 +311,13 @@ describe("makeFeaturesView", () => {
     const panel = screen.getByTestId("feature-resource-collection");
     expect(panel).toHaveAttribute(
       "data-q",
-      "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))),eq(annotation,PATRIC))",
+      "and(eq(genome_id,*),genome(and(eq(taxon_lineage_ids,1234),ne(genome_status,Deprecated))))",
+    );
+    // Legacy's taxon Features tab: PATRIC features until the user removes the
+    // Feature list's default (taxon 1763: 233,216,595 of 265,873,048).
+    expect(panel).toHaveAttribute(
+      "data-default-filters",
+      JSON.stringify({ annotation: ["PATRIC"] }),
     );
     expect(panel).toHaveAttribute("data-row-links", "false");
     expect(panel).toHaveAttribute("data-keyword-mode", "loaded");
@@ -383,7 +392,7 @@ describe("composite scope queries", () => {
     [
       "genome_feature",
       makeFeaturesView,
-      `and(eq(genome_id,*),genome(and(${compositeClause},ne(genome_status,Deprecated))),eq(annotation,PATRIC))`,
+      `and(eq(genome_id,*),genome(and(${compositeClause},ne(genome_status,Deprecated))))`,
     ],
     ["strain", makeStrainsView, compositeClause],
     ["surveillance", makeSurveillanceView, compositeClause],

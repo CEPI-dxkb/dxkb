@@ -14,7 +14,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dna, Bug, Microscope, Activity, Database } from "lucide-react";
 import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
-import { searchToQuery } from "@/app/search/search-to-query";
+import {
+  getResourceDefinition,
+  isDataResource,
+  keywordClauses,
+} from "@/lib/data-api";
+import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import ResultsOverview from "@/components/search/results-overview";
 import {
   allTermSearchTypes,
@@ -37,6 +42,7 @@ import {
   taxonomyHref,
 } from "@/lib/views/hrefs";
 import { isTaxonId } from "@/lib/taxonomy-view";
+import { rqlAnd } from "@/lib/views/rql";
 
 const bvbrcAPI = "https://p3.theseed.org/services/data_api/";
 
@@ -64,9 +70,14 @@ function getSearchResultsHref(dataType: string, query: string): string | null {
     : null;
 }
 
-async function fetchSearchResults(query: string): Promise<SearchResults> {
+/**
+ * The counts for `keyword` (normalized text, as the links carry it), each
+ * built as the exact lists build their `?keyword=` (`keywordClauses`), so a
+ * count is the total the list it links to shows.
+ */
+async function fetchSearchResults(keyword: string): Promise<SearchResults> {
   const searchPayload: Record<string, unknown> = {};
-  const processedQuery = searchToQuery(normalizeLegacyKeyword(query));
+  const processedQuery = rqlAnd(...keywordClauses(keyword, "exact"));
 
   allTermSearchTypes.forEach(({ id: searchType }) => {
     let typeQuery = processedQuery;
@@ -79,13 +90,20 @@ async function fetchSearchResults(query: string): Promise<SearchResults> {
         break;
     }
 
+    typeQuery +=
+      searchType === "genome_feature"
+        ? "&limit(3)&sort(+annotation,-score)"
+        : "&limit(3)&sort(-score)";
+    // A whole Genome Sequence doc carries the full `sequence`: three preview
+    // rows can be whole chromosomes, 99% of a 12 MB response.
+    if (searchType === "genome_sequence")
+      typeQuery +=
+        "&select(sequence_id,genome_id,genome_name,accession,description)";
+
     searchPayload[searchType] = {
       dataType: searchType,
       accept: "application/solr+json",
-      query:
-        searchType === "genome_feature"
-          ? typeQuery + "&limit(3)&sort(+annotation,-score)"
-          : typeQuery + "&limit(3)&sort(-score)",
+      query: typeQuery,
     };
   });
 
@@ -106,6 +124,33 @@ async function fetchSearchResults(query: string): Promise<SearchResults> {
   }
 
   return (await response.json()) as SearchResults;
+}
+
+/** The ID fields of the search types the data layer has no resource for. */
+const legacyTypeIdFields: Partial<Record<string, string>> = {
+  antibiotics: "pubchem_cid",
+  pathway: "id",
+  sp_gene: "id",
+  subsystem: "id",
+};
+
+/**
+ * A result row's React key: its type's own ID (the resource's `idField`),
+ * never a field rows share. A Feature doc has no `id`, and the preview's three
+ * features can come from one genome ("kinase" returns two of 2993654.5's).
+ */
+function documentKey(
+  doc: Record<string, unknown>,
+  dataType: string,
+  index: number,
+): string {
+  const idField =
+    legacyTypeIdFields[dataType] ??
+    (isDataResource(dataType) ? getResourceDefinition(dataType).idField : "id");
+  const id = doc[idField];
+  return typeof id === "string" || typeof id === "number"
+    ? String(id)
+    : `row-${String(index)}`;
 }
 
 // Helper function to get the appropriate icon for each data type
@@ -358,14 +403,18 @@ function getFormattedContent(doc: Record<string, unknown>, dataType: string) {
 }
 
 function SearchResultsContent({ query }: { query: string }) {
+  // The text as the links write it (`searchHref`), legacy's normalization.
+  const keyword = normalizeLegacyKeyword(query);
   const {
     data: searchResults = {},
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["all-term-search-results", query],
-    queryFn: () => fetchSearchResults(query),
-    enabled: Boolean(query),
+    queryKey: ["all-term-search-results", keyword],
+    queryFn: () => fetchSearchResults(keyword),
+    // Text without terms (blank, `""`, a lone `OR`, only syntax) is no search:
+    // it would build an empty and(), which the Data API rejects.
+    enabled: keywordQuery(keyword).length > 0,
     retry: false,
     staleTime: 0,
   });
@@ -419,7 +468,10 @@ function SearchResultsContent({ query }: { query: string }) {
             {validResults.map(([dataType, data]) => {
               const docs = data.result.response.docs;
               const numFound = data.result.response.numFound;
-              const searchResultsHref = getSearchResultsHref(dataType, query);
+              const searchResultsHref = getSearchResultsHref(
+                dataType,
+                keyword,
+              );
 
               if (numFound === 0) return null;
 
@@ -450,25 +502,8 @@ function SearchResultsContent({ query }: { query: string }) {
                   </CardHeader>
                   <CardContent>
                     <div className="divide-y">
-                      {docs.map((docUnknown) => {
+                      {docs.map((docUnknown, index) => {
                         const doc = docUnknown as Record<string, unknown>;
-                        const rawDocumentKey =
-                          doc.id ??
-                          (dataType === "protein_structure"
-                            ? doc.pdb_id
-                            : undefined) ??
-                          doc.genome_id ??
-                          doc.patric_id ??
-                          doc.pdb_id ??
-                          doc.epitope_id ??
-                          doc.exp_id ??
-                          doc.sample_identifier ??
-                          doc.taxon_id;
-                        const documentKey =
-                          typeof rawDocumentKey === "string" ||
-                          typeof rawDocumentKey === "number"
-                            ? String(rawDocumentKey)
-                            : JSON.stringify(doc);
                         const genomeId =
                           typeof doc.genome_id === "string" ||
                           typeof doc.genome_id === "number"
@@ -525,7 +560,10 @@ function SearchResultsContent({ query }: { query: string }) {
                                       ? serologyHref(serologyId, testType)
                                       : null;
                         return (
-                          <div key={documentKey} className="py-6">
+                          <div
+                            key={documentKey(doc, dataType, index)}
+                            className="py-6"
+                          >
                             {href ? (
                               <Link href={href} className="block">
                                 {content}

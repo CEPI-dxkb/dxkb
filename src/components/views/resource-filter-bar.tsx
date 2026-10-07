@@ -44,11 +44,18 @@ interface ResourceFilterBarProps {
   onRetryFacets?: () => void;
   definitions: readonly ResourceCollectionFacet[];
   hasExplicitRql?: boolean;
+  /**
+   * Filters that stay beside the explicit rql (`filtersBesideRql`): picking one
+   * of their values keeps the rql, where any other pick replaces it.
+   */
+  filtersBesideRql?: readonly string[];
   keywordPlaceholder?: string;
   onChange: (update: {
     keyword?: string;
     filters: CollectionState["filters"];
     clearRql?: boolean;
+    /** "Clear All Filters": remove every filter, a view's defaults included. */
+    clearAll?: boolean;
   }) => void;
 }
 
@@ -63,6 +70,7 @@ export function ResourceFilterBar({
   onRetryFacets,
   definitions,
   hasExplicitRql = false,
+  filtersBesideRql = [],
   keywordPlaceholder,
   onChange,
 }: ResourceFilterBarProps) {
@@ -151,7 +159,12 @@ export function ResourceFilterBar({
             disabled={!keywordDraft && selected.length === 0 && !hasExplicitRql}
             onClick={() => {
               setKeywordDraft("");
-              onChange({ keyword: undefined, filters: {}, clearRql: true });
+              onChange({
+                keyword: undefined,
+                filters: {},
+                clearRql: true,
+                clearAll: true,
+              });
             }}
             size="toolbar"
           >
@@ -217,7 +230,8 @@ export function ResourceFilterBar({
                       onChange({
                         keyword,
                         filters: { ...filters, [field]: [...current, value] },
-                        clearRql: hasExplicitRql,
+                        clearRql:
+                          hasExplicitRql && !filtersBesideRql.includes(field),
                       });
                     }}
                   />

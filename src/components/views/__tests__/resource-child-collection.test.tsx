@@ -1031,3 +1031,140 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
     });
   });
 });
+
+describe("ResourceChildCollection default filters", () => {
+  const featuresChildProps = {
+    urlKey: "features",
+    resource: "genome_feature",
+    label: "Features",
+    idField: "feature_id",
+    rql: "keyword(Dnak)",
+    defaultSort: "unsorted",
+    defaultFilters: { annotation: ["PATRIC"] },
+  } as const;
+
+  it("selects the default and leaves it out of the facet counts", () => {
+    window.history.replaceState(null, "", "/genome/1.1?tab=features");
+    render(<ResourceChildCollection {...featuresChildProps} />);
+
+    const props = lastResourceCollectionProps();
+    expect(props.state.filters).toEqual({ annotation: ["PATRIC"] });
+    expect(props.profile.buildStructuralRql?.(props.state)).toBe(
+      "and(keyword(Dnak),eq(annotation,PATRIC))",
+    );
+    // Legacy counts the annotation facet without its untouched default, so
+    // RefSeq stays visible beside PATRIC.
+    expect(props.facetState?.filters).toEqual({});
+  });
+
+  it("records a removed default under its own prefix", () => {
+    window.history.replaceState(null, "", "/genome/1.1?tab=features");
+    const pushState = vi.spyOn(window.history, "pushState");
+    render(<ResourceChildCollection {...featuresChildProps} />);
+
+    act(() => {
+      lastResourceCollectionProps().onStateChange({
+        filters: {},
+        page: 1,
+        sort: "unsorted",
+      });
+    });
+
+    expect(pushState).toHaveBeenCalledWith(
+      null,
+      "",
+      "/genome/1.1?tab=features&features.annotation=*",
+    );
+    const props = lastResourceCollectionProps();
+    expect(props.state.filters).toEqual({});
+    expect(props.profile.buildStructuralRql?.(props.state)).toBe(
+      "keyword(Dnak)",
+    );
+  });
+});
+
+describe("ResourceChildCollection server keyword mode", () => {
+  const sequencesChildProps = {
+    urlKey: "sequences",
+    resource: "genome_sequence",
+    label: "Sequences",
+    idField: "sequence_id",
+    rql: "keyword(Dnak)",
+    columns: [{ id: "sequence_id", label: "Sequence ID" }],
+    defaultSort: "sequence_id:asc",
+  } as const;
+  const featuresChildProps = {
+    urlKey: "features",
+    resource: "genome_feature",
+    label: "Features",
+    idField: "feature_id",
+    rql: "keyword(Dnak)",
+    defaultSort: "unsorted",
+  } as const;
+
+  // Both profile shapes: the resource's canonical profile (Features) and the raw
+  // `columns` fallback (Sequences). Neither sets a keyword mode of its own.
+  it.each([
+    ["a canonical profile", featuresChildProps, "features"],
+    ["raw columns", sequencesChildProps, "sequences"],
+  ])(
+    "sends the in-tab keyword exact when the list asks for it, with %s",
+    async (_shape, childProps, urlKey) => {
+      // The Genome list passes "exact" so the table's own keyword box follows the
+      // list's `keyword(...)`: legacy GenomeList has no prefix search anywhere.
+      window.history.replaceState(
+        null,
+        "",
+        `/genome/1.1?tab=${urlKey}&${urlKey}.keyword=gyrA`,
+      );
+      exportAll.mockResolvedValueOnce({ rows: [] });
+      useResourceCollection.mockReturnValue(realCollectionResult());
+      useRealResourceCollection.current = true;
+
+      render(
+        <ResourceChildCollection {...childProps} serverKeywordMode="exact" />,
+      );
+
+      const request = useResourceCollection.mock.lastCall?.[0];
+      expect(request?.serverKeywordMode).toBe("exact");
+      expect(request?.state.keyword).toBe("gyrA");
+      // Export reads the same profile field (as does select-all's row
+      // resolution, in ResourceCollection).
+      await userEvent.click(
+        screen.getByRole("button", { name: "Real export all" }),
+      );
+      await waitFor(() => {
+        expect(exportAll).toHaveBeenCalledWith(
+          childProps.resource,
+          expect.objectContaining({ keyword: "gyrA", keywordMode: "exact" }),
+        );
+      });
+    },
+  );
+
+  it("keeps the token-prefix keyword for every other caller", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/genome/1.1?tab=features&features.keyword=gyrA",
+    );
+    exportAll.mockResolvedValueOnce({ rows: [] });
+    useResourceCollection.mockReturnValue(realCollectionResult());
+    useRealResourceCollection.current = true;
+
+    render(<ResourceChildCollection {...featuresChildProps} />);
+
+    const request = useResourceCollection.mock.lastCall?.[0];
+    expect(request?.serverKeywordMode).toBeUndefined();
+    expect(request?.state.keyword).toBe("gyrA");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Real export all" }),
+    );
+    await waitFor(() => {
+      expect(exportAll).toHaveBeenCalledWith(
+        "genome_feature",
+        expect.objectContaining({ keyword: "gyrA", keywordMode: undefined }),
+      );
+    });
+  });
+});

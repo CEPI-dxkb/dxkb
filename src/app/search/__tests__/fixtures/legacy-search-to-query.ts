@@ -1,5 +1,8 @@
 /**
- * Search query utility functions for handling different types of search operations
+ * A port of legacy BV-BRC's search-box parser (`p3/util/searchToQuery.js`):
+ * the RQL alpha's search box sends for its normalized text. The app reads
+ * `?keyword=` with `keywordQuery` instead; tests use this as the reference
+ * that reading must match.
  */
 
 /**

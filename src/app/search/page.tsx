@@ -3,6 +3,7 @@ import Link from "next/link";
 import { TypeSearch } from "@/app/search/typesearch";
 import { SearchResults } from "@/app/all-term-search-results";
 import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
+import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import {
   firstSearchParamValue,
   resolveLegacySearch,
@@ -57,7 +58,8 @@ export default async function GlobalSearch({
   const params = await searchParams;
   const keyword = firstSearchParamValue(params.q);
   const query = normalizeLegacyKeyword(keyword);
-  if (!query) return <SearchPrompt />;
+  // Nothing to search for once read as a search (only syntax, `""`, `OR`).
+  if (keywordQuery(query).length === 0) return <SearchPrompt />;
 
   // Now that we have the entire query formatted properly, let's figure out where
   // to send it. Every legacy type resolves through the descriptors, so marking a

@@ -14,6 +14,7 @@ import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picke
 import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { Spinner } from "@/components/ui/spinner";
 import { useAuth } from "@/lib/auth/provider";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 
@@ -23,6 +24,7 @@ const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
 const validationErrorMessage =
   "Unable to validate this name. Please try again.";
+const validatingMessage = "Checking name availability...";
 
 interface OutputFolderProps {
   title?: boolean;
@@ -159,6 +161,16 @@ const OutputFolder = ({
             </div>
           )}
         </div>
+        {variant === "name" && validation.isValidating && (
+          <p
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            {/* The paragraph is the status; the spinner's own "Loading" status would announce twice. */}
+            <Spinner aria-hidden className="size-3" />
+            {validatingMessage}
+          </p>
+        )}
         {variant === "name" &&
           (validation.status === "taken" || validation.status === "error") && (
             <p className="text-sm text-destructive" role="alert">

@@ -1,13 +1,13 @@
 /**
- * Pure rules for the workspace picker dialog
- * (`src/components/workspace/workspace-picker-dialog.tsx`).
+ * Pure rules for the workspace folder picker
+ * (`src/components/workspace/folder-picker/`).
  *
- * The picker shows one location at a time: either a real directory, or one of
- * the top-level listings the switcher offers (My Workspaces, Shared, Public,
- * Favorites, Recently Used). This module owns where each view points, which
- * view a path belongs to, how "parent" works across that boundary, which rows
- * show and can be picked, and whether the current choice can be committed. The
- * component keeps state and queries; everything decidable from data lives here.
+ * Each column of the picker shows one location: either a real directory, or
+ * one of the top-level listings the sidebar offers (My Workspaces, Shared,
+ * Public, Favorites, Recently Used). This module owns where each view points,
+ * which view a path belongs to, where the picker opens, which rows show, and
+ * whether the current choice can be committed. The component keeps state and
+ * queries; everything decidable from data lives here.
  */
 
 import type { WorkspaceItem } from "./domain";
@@ -17,12 +17,7 @@ import { sanitizePathSegment } from "./path-utils";
 import { isFolder, isFolderType, normalizeWorkspaceObjectType } from "./utils";
 
 export type PickerView =
-  | "home"
-  | "myWorkspaces"
-  | "shared"
-  | "public"
-  | "favorites"
-  | "recent";
+  "home" | "myWorkspaces" | "shared" | "public" | "favorites" | "recent";
 
 /** Views that are a listing rather than a directory. */
 export type PickerListView = Exclude<PickerView, "home">;
@@ -31,13 +26,11 @@ export type PickerListView = Exclude<PickerView, "home">;
 export type PickerForeignOrigin = "shared" | "public";
 
 export type PickerLocation =
-  | { kind: "path"; path: string }
-  | { kind: "list"; view: PickerListView };
+  { kind: "path"; path: string } | { kind: "list"; view: PickerListView };
 
 /** What the picker is choosing: a destination folder, or a file of some types. */
 export type PickerTarget =
-  | { kind: "folder" }
-  | { kind: "object"; types: readonly string[] };
+  { kind: "folder" } | { kind: "object"; types: readonly string[] };
 
 /** Extra caller rule on top of the target, e.g. "no hidden folders". */
 export type PickerSelectablePredicate = (object: {
@@ -51,25 +44,28 @@ export type PickerListingSource =
   | { kind: "favorites" }
   | { kind: "recent" };
 
-export const pickerViewOptions: readonly { value: PickerView; label: string }[] =
-  [
-    { value: "home", label: "Home" },
-    { value: "myWorkspaces", label: "My Workspaces" },
-    { value: "shared", label: "Shared Workspaces" },
-    { value: "public", label: "Public Workspaces" },
-    { value: "favorites", label: "Favorites" },
-    { value: "recent", label: "Recently Used" },
-  ];
+export const pickerViewOptions: readonly {
+  value: PickerView;
+  label: string;
+}[] = [
+  { value: "home", label: "Home" },
+  { value: "myWorkspaces", label: "My Workspaces" },
+  { value: "shared", label: "Shared Workspaces" },
+  { value: "public", label: "Public Workspaces" },
+  { value: "favorites", label: "Favorites" },
+  { value: "recent", label: "Recently Used" },
+];
 
-function viewLabel(view: PickerView): string {
+/** The sidebar label of a view, e.g. "Shared Workspaces". */
+export function viewLabel(view: PickerView): string {
   return pickerViewOptions.find((option) => option.value === view)?.label ?? "";
 }
 
-function pathSegments(path: string): string[] {
+export function pathSegments(path: string): string[] {
   return normalizePath(path).split("/").filter(Boolean);
 }
 
-function lastSegment(path: string): string {
+export function lastSegment(path: string): string {
   return pathSegments(path).pop() ?? "";
 }
 
@@ -95,44 +91,7 @@ export function locationForView(
   return { kind: "list", view };
 }
 
-/**
- * Parent of a directory. Above a workspace root (`/owner/workspace`) there is
- * no directory to show, so it goes back to the listing that holds it.
- */
-export function parentLocation(
-  path: string,
-  username: string,
-  origin: PickerForeignOrigin,
-): PickerLocation {
-  const segments = pathSegments(path);
-  if (segments.length <= 2) {
-    return {
-      kind: "list",
-      view: segments[0] === username ? "myWorkspaces" : origin,
-    };
-  }
-  return { kind: "path", path: `/${segments.slice(0, -1).join("/")}` };
-}
-
-/**
- * Opens on the folder that holds the current value, with the value selected,
- * so its siblings are visible. With no value it opens on Home.
- */
-export function initialPickerState(
-  initialPath: string | undefined,
-  username: string,
-): { location: PickerLocation; selectedPath: string | null } {
-  const normalized = normalizePath(initialPath);
-  if (pathSegments(normalized).length < 2) {
-    return { location: locationForView("home", username), selectedPath: null };
-  }
-  return {
-    location: parentLocation(normalized, username, "shared"),
-    selectedPath: normalized,
-  };
-}
-
-/** The switcher entry that describes the current location. */
+/** The view (sidebar place) a location belongs to. */
 export function viewForLocation(
   location: PickerLocation,
   username: string,
@@ -144,10 +103,31 @@ export function viewForLocation(
   return origin;
 }
 
-export function parentRowLabel(parent: PickerLocation): string {
-  return parent.kind === "path"
-    ? "Parent folder"
-    : `Back to ${viewLabel(parent.view)}`;
+/**
+ * Where the picker opens: the view the current value lives in, and the chain
+ * of folders selected from that view's first column down to the value. Home's
+ * first column is a directory (`/owner/home`); every other view starts with a
+ * listing of workspaces, so its first column already holds
+ * `/owner/workspace`. With no usable value it opens on Home with nothing
+ * selected, which makes Home itself the destination.
+ */
+export function initialColumnChain(
+  initialPath: string | undefined,
+  username: string,
+): { view: PickerView; chain: string[] } {
+  const segments = pathSegments(initialPath ?? "");
+  if (segments.length < 2) return { view: "home", chain: [] };
+  const view = viewForLocation(
+    { kind: "path", path: `/${segments.join("/")}` },
+    username,
+    "shared",
+  );
+  const rootDepth = view === "home" ? 2 : 1;
+  const chain: string[] = [];
+  for (let depth = rootDepth + 1; depth <= segments.length; depth += 1) {
+    chain.push(`/${segments.slice(0, depth).join("/")}`);
+  }
+  return { view, chain };
 }
 
 const emptyListMessages: Record<PickerListView, string> = {
@@ -252,6 +232,26 @@ export function buildPickerItems({
   });
 }
 
+const folderTarget: PickerTarget = { kind: "folder" };
+
+/**
+ * Rows a folder-picker column shows: folders, plus the folder's files with
+ * "Show files". Hidden (dot) items never show.
+ */
+export function visibleFolderRows(
+  location: PickerLocation,
+  items: WorkspaceItem[],
+  showFiles: boolean,
+): WorkspaceItem[] {
+  const rows = buildPickerItems({
+    items: filterListing({ location, items, target: folderTarget }),
+    target: folderTarget,
+    showAll: showFiles,
+    keepOrder: location.kind === "list" && location.view === "recent",
+  });
+  return showFiles ? rows.filter((item) => !item.name.startsWith(".")) : rows;
+}
+
 /** Rows for path-only listings (favorites, recent folders). */
 export function folderStubItems(paths: readonly string[]): WorkspaceItem[] {
   return paths.map((rawPath) => {
@@ -269,15 +269,6 @@ export function folderStubItems(paths: readonly string[]): WorkspaceItem[] {
 
 export function isPickerItemNavigable(item: WorkspaceItem): boolean {
   return isFolder(item.type);
-}
-
-export function isPickerItemSelectable(
-  item: WorkspaceItem,
-  target: PickerTarget,
-  isSelectable?: PickerSelectablePredicate,
-): boolean {
-  if (!matchesTargetType(item, target)) return false;
-  return isSelectable?.({ name: item.name, path: item.path }) ?? true;
 }
 
 /**

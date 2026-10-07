@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PROTOTYPE — variant B: a drag handle on a pane's edge. Drag, or focus it and
+ * A drag handle on a folder-picker pane's edge. Drag, or focus it and
  * press ← / →, to resize; double-click resets. It sits over the pane's border,
  * so the line it draws on hover is the border itself lighting up.
  */
@@ -20,7 +20,7 @@ interface ResizeHandleProps {
 
 const keyboardStep = 16;
 
-export function ResizeHandle({
+export function PaneResizeHandle({
   edge,
   label,
   width,

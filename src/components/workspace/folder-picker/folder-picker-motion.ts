@@ -1,5 +1,5 @@
 /**
- * PROTOTYPE — variant B: the motion when going into or out of a folder.
+ * The folder picker's motion when going into or out of a folder.
  *
  * Going in, a column fades in from slightly to the right; going out, the
  * right-hand column fades out the same way in reverse. When the strip has to

@@ -32,6 +32,12 @@ vi.mock("@/hooks/services/workspace/use-workspace-object-search", () => ({
 }));
 
 Element.prototype.scrollIntoView = vi.fn();
+// jsdom has no element scrolling; reduced motion skips the picker's animations.
+Element.prototype.scrollTo = vi.fn();
+Object.defineProperty(window, "matchMedia", {
+  configurable: true,
+  value: () => ({ matches: true }),
+});
 
 const home = "/alice@bvbrc/home";
 
@@ -77,28 +83,26 @@ describe("OutputFolder browse dialog", () => {
     expect(
       await screen.findByRole("dialog", { name: "Select an Output Folder" }),
     ).toBeInTheDocument();
-    await user.click(await screen.findByText("Alpha"));
-    await user.click(screen.getByRole("button", { name: "Select" }));
+    await user.click(await screen.findByRole("option", { name: "Alpha" }));
+    await user.click(screen.getByRole("button", { name: "Select “Alpha”" }));
 
     expect(onChange).toHaveBeenCalledWith(`${home}/Alpha`);
   });
 
   it("keeps hidden folders out of the picker's choices", async () => {
-    const { user } = renderOutputFolder();
+    const { user } = renderOutputFolder(`${home}/.hidden`);
 
     await user.click(
       screen.getByRole("button", { name: "Browse workspace folders" }),
     );
-    await user.click(
-      await screen.findByRole("checkbox", {
-        name: "Show all files and folders",
-      }),
-    );
-    await user.dblClick(await screen.findByText(".hidden"));
+    await screen.findByRole("option", { name: "Alpha" });
+    await user.click(screen.getByRole("button", { name: "Show files" }));
 
+    expect(screen.queryByRole("option", { name: ".hidden" })).toBeNull();
     expect(
-      await screen.findByText("This folder can't be used here."),
+      screen.getByText("This folder can't be used here."),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Select/ })).toBeDisabled();
   });
 
   it("disables browsing when signed out", () => {

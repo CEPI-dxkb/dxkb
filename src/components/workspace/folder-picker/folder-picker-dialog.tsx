@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * PROTOTYPE — variant B: "Finder columns". A wide dialog with a places sidebar,
- * horizontally scrolling, resizable Miller columns (click a folder to select it
- * and open it in the next column) and a preview pane pinned on the right with
- * inline New folder and Upload; the footer has a clickable breadcrumb of the
- * selection and Select. Column widths, the preview width and "Show files" last
- * between opens.
+ * Workspace folder picker: a wide dialog with a places sidebar (Home, My /
+ * Shared / Public Workspaces, Favorites, Recently Used), horizontally
+ * scrolling, resizable columns (click a folder to select it and open it in
+ * the next column), and an info pane pinned on the right with inline New
+ * folder and Upload. The footer has a clickable breadcrumb of the selection
+ * and Select. Column widths, the info-pane width and "Show files" last
+ * between opens; everything else starts fresh.
  */
 
 import {
@@ -15,11 +16,10 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
   type RefObject,
 } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Eye, EyeOff, FolderOpen } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -41,69 +41,40 @@ import {
 } from "@/lib/services/workspace/path-utils";
 import {
   canWriteTo,
-  initialPickerState,
+  initialColumnChain,
   isPickerItemNavigable,
+  lastSegment,
   locationForView,
   pickerCommitState,
   pickerHomePath,
-  viewForLocation,
+  viewLabel,
+  visibleFolderRows,
   type PickerLocation,
   type PickerSelectablePredicate,
   type PickerView,
 } from "@/lib/services/workspace/picker-views";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
-import type { FolderPickerVariantProps } from "./types";
-import { MillerColumn } from "./variant-b-column";
+import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
+import { FolderPickerColumn } from "./folder-picker-column";
 import {
   captureColumns,
   playColumnTransition,
   type ColumnsSnapshot,
-} from "./variant-b-column-motion";
-import { PreviewPane, UploadPane } from "./variant-b-preview";
-import { ResizeHandle } from "./variant-b-resize-handle";
+} from "./folder-picker-motion";
+import { FolderPickerInfo, FolderPickerUpload } from "./folder-picker-preview";
+import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import {
   columnWidthLimits,
   folderTarget,
   isInlineEditTarget,
-  lastSegment,
-  pathSegments,
   placeGroups,
   placeIcons,
-  placeLabel,
   previewWidthLimits,
   rowSelector,
   tabStopSelector,
   uploadPaneMinWidth,
-  visibleRows,
-} from "./variant-b-utils";
-
-/**
- * Where the picker opens: the place the current value lives in, and the chain
- * of folders selected from that place's root down to the value. With no value,
- * Home with nothing selected (Home itself is the destination).
- */
-function initialColumns(
-  value: string,
-  username: string,
-): { place: PickerView; chain: string[] } {
-  const { selectedPath } = initialPickerState(value, username);
-  if (!selectedPath) return { place: "home", chain: [] };
-  const place = viewForLocation(
-    { kind: "path", path: selectedPath },
-    username,
-    "shared",
-  );
-  const segments = pathSegments(selectedPath);
-  // Home's root is a directory (/owner/home); every other place is a listing
-  // of workspaces, so its first column already holds /owner/workspace.
-  const rootDepth = place === "home" ? 2 : 1;
-  const chain: string[] = [];
-  for (let depth = rootDepth + 1; depth <= segments.length; depth += 1) {
-    chain.push(`/${segments.slice(0, depth).join("/")}`);
-  }
-  return { place, chain };
-}
+} from "./folder-picker-utils";
 
 function columnFolderVariant(
   index: number,
@@ -133,9 +104,9 @@ interface PickerLayout {
   onPreviewWidthChange: (width: number) => void;
 }
 
-interface ColumnsPickerProps {
+interface FolderColumnsBrowserProps {
   layout: PickerLayout;
-  value: string;
+  initialPath: string;
   title: string;
   isSelectable: PickerSelectablePredicate;
   stripRef: RefObject<HTMLDivElement | null>;
@@ -145,9 +116,9 @@ interface ColumnsPickerProps {
   onCancel: () => void;
 }
 
-function ColumnsPicker({
+function FolderColumnsBrowser({
   layout,
-  value,
+  initialPath,
   title,
   isSelectable,
   stripRef,
@@ -155,14 +126,14 @@ function ColumnsPicker({
   onUploadingChange,
   onCommit,
   onCancel,
-}: ColumnsPickerProps) {
+}: FolderColumnsBrowserProps) {
   const { user } = useAuth();
   const username = workspaceUsername(user);
   const repository = useWorkspaceRepository("authenticated");
   const queryClient = useQueryClient();
 
-  const [initial] = useState(() => initialColumns(value, username));
-  const [place, setPlace] = useState<PickerView>(initial.place);
+  const [initial] = useState(() => initialColumnChain(initialPath, username));
+  const [place, setPlace] = useState<PickerView>(initial.view);
   /** chain[i] is the folder selected in column i; column i + 1 lists it. */
   const [chain, setChain] = useState<string[]>(initial.chain);
   const { showFiles, onShowFilesChange } = layout;
@@ -343,9 +314,11 @@ function ColumnsPicker({
       focusRow(column + 1, deeper);
       return;
     }
-    const first = visibleRows(lastLocation, contents.items, showFiles).find(
-      isPickerItemNavigable,
-    );
+    const first = visibleFolderRows(
+      lastLocation,
+      contents.items,
+      showFiles,
+    ).find(isPickerItemNavigable);
     if (!first) return;
     const firstPath = normalizePath(first.path);
     prepareTransition();
@@ -495,7 +468,7 @@ function ColumnsPicker({
                             : "text-muted-foreground",
                       )}
                     />
-                    <span className="truncate">{placeLabel(view)}</span>
+                    <span className="truncate">{viewLabel(view)}</span>
                   </button>
                 );
               })}
@@ -515,7 +488,7 @@ function ColumnsPicker({
                 const parent = index > 0 ? chain.at(index - 1) : undefined;
                 const isLast = index === lastIndex;
                 return (
-                  <MillerColumn
+                  <FolderPickerColumn
                     key={`${place}:${parent ?? ""}`}
                     transitionKey={`${place}:${parent ?? ""}`}
                     index={index}
@@ -525,7 +498,7 @@ function ColumnsPicker({
                         ? parent === homePath
                           ? "Home"
                           : lastSegment(parent)
-                        : placeLabel(place)
+                        : viewLabel(place)
                     }
                     username={username}
                     showFiles={showFiles}
@@ -597,7 +570,7 @@ function ColumnsPicker({
           // show as a double line when the columns fill the strip.
           className="relative -ml-px flex w-(--picker-preview-width) shrink-0 border-l bg-background"
         >
-          <ResizeHandle
+          <PaneResizeHandle
             edge="start"
             label="Resize info pane"
             width={layout.previewWidth}
@@ -605,7 +578,7 @@ function ColumnsPicker({
             onResize={layout.onPreviewWidthChange}
           />
           {isUploadOpen && selectedPath ? (
-            <UploadPane
+            <FolderPickerUpload
               targetPath={selectedPath}
               homePath={homePath}
               isUploading={isUploading}
@@ -623,7 +596,7 @@ function ColumnsPicker({
               onUploadingChange={onUploadingChange}
             />
           ) : (
-            <PreviewPane
+            <FolderPickerInfo
               place={place}
               path={selectedPath}
               homePath={homePath}
@@ -647,7 +620,7 @@ function ColumnsPicker({
       </div>
 
       <DialogFooter className="sm:items-center sm:justify-between">
-        <PathBreadcrumb
+        <FolderPickerBreadcrumb
           place={place}
           chain={chain}
           homePath={homePath}
@@ -672,7 +645,8 @@ function ColumnsPicker({
           >
             {selectedPath ? (
               <>
-                Select
+                {/* The space keeps the accessible name "Select “Name”". */}
+                Select{" "}
                 <span className="max-w-48 truncate">“{selectedName}”</span>
               </>
             ) : (
@@ -711,133 +685,28 @@ function Kbd({ children }: { children: string }) {
   );
 }
 
-/**
- * The selection as a path from the place root; each crumb jumps back to that
- * folder (closing the columns past it). Long chains keep the root and the last
- * two folders.
- */
-// tw-animate runs 150 ms by default. No `duration-*` here: in Tailwind v4 it
-// also sets `transition-duration`, which made the crumbs transition their
-// layout (min-width, flex-shrink) whenever they changed role.
-const crumbEnterClass =
-  "ease-out animate-in fade-in-0 slide-in-from-right-2 motion-reduce:animate-none";
-
-function PathBreadcrumb({
-  place,
-  chain,
-  homePath,
-  disabled,
-  onJump,
-}: {
-  place: PickerView;
-  chain: string[];
-  homePath: string;
-  disabled: boolean;
-  onJump: (depth: number) => void;
-}) {
-  const PlaceIcon = placeIcons[place];
-
-  return (
-    <nav
-      aria-label="Selected folder"
-      className="flex min-w-0 flex-1 items-center"
-    >
-      {/* A crumb that appears (going in, or moving to a sibling) fades in
-          from slightly to the right, like a new column does; going back, the
-          crumb that becomes current fades its colour in. Keyed by path, so
-          only the crumbs that changed animate. */}
-      <ol className="flex min-w-0 items-center gap-0.5 text-sm">
-        <li
-          key={place}
-          className={cn("flex shrink-0 items-center", crumbEnterClass)}
-        >
-          <CrumbButton
-            isCurrent={chain.length === 0}
-            disabled={disabled}
-            onClick={() => {
-              onJump(0);
-            }}
-          >
-            <PlaceIcon aria-hidden className="size-3.5 shrink-0" />
-            <span className="truncate">{placeLabel(place)}</span>
-          </CrumbButton>
-        </li>
-        {chain.map((path, position) => {
-          const depth = position + 1;
-          const isLast = depth === chain.length;
-          return (
-            <li
-              key={path}
-              className={cn(
-                "flex items-center gap-0.5",
-                crumbEnterClass,
-                isLast ? "max-w-64 min-w-0 shrink-0" : "min-w-12",
-              )}
-            >
-              <ChevronRight
-                aria-hidden
-                className="size-3.5 shrink-0 text-muted-foreground"
-              />
-              <CrumbButton
-                isCurrent={isLast}
-                title={path}
-                disabled={disabled}
-                onClick={() => {
-                  onJump(depth);
-                }}
-              >
-                <span className="truncate">
-                  {path === homePath ? "Home" : lastSegment(path)}
-                </span>
-              </CrumbButton>
-            </li>
-          );
-        })}
-      </ol>
-    </nav>
-  );
-}
-
-function CrumbButton({
-  isCurrent,
-  title,
-  disabled,
-  onClick,
-  children,
-}: {
-  isCurrent: boolean;
+export interface WorkspaceFolderPickerDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Called with the chosen folder; the dialog then closes. */
+  onSelect: (path: string) => void;
+  /** Current value; the picker opens with it selected. Defaults to Home. */
+  initialPath?: string;
+  /** Extra rule on top of "a folder you can write to", e.g. no hidden folders. */
+  isSelectable?: PickerSelectablePredicate;
   title?: string;
-  disabled: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-current={isCurrent ? "location" : undefined}
-      title={title}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "flex min-w-0 items-center gap-1 rounded px-1.5 py-0.5 transition-colors duration-150 outline-none hover:bg-foreground/5 focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
-        isCurrent
-          ? "font-medium text-foreground"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
-  );
 }
 
-export function VariantB({
-  value,
-  onChange,
-  disabled,
-  isSelectable,
-  title,
-}: FolderPickerVariantProps) {
-  const [open, setOpen] = useState(false);
+const anyFolder: PickerSelectablePredicate = () => true;
+
+export function WorkspaceFolderPickerDialog({
+  open,
+  onOpenChange,
+  onSelect,
+  initialPath = "",
+  isSelectable = anyFolder,
+  title = "Select a Folder",
+}: WorkspaceFolderPickerDialogProps) {
   const [isUploading, setIsUploading] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
   const [showFiles, setShowFiles] = useState(false);
@@ -855,71 +724,56 @@ export function VariantB({
   };
 
   const close = () => {
-    setOpen(false);
     setIsUploading(false);
+    onOpenChange(false);
   };
 
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        aria-label="Browse workspace folders"
-        title="Browse workspace folders"
-        disabled={disabled}
-        onClick={() => {
-          setOpen(true);
-        }}
+    <Dialog
+      open={open}
+      onOpenChange={(next, details) => {
+        if (next) {
+          onOpenChange(true);
+          return;
+        }
+        // No closing mid-upload, and Esc in the new-folder input only cancels
+        // the new folder.
+        if (
+          isUploading ||
+          (details.reason === "escape-key" &&
+            isInlineEditTarget(details.event.target))
+        ) {
+          details.cancel();
+          return;
+        }
+        close();
+      }}
+    >
+      {/* One fixed height, so nothing but the columns scroll and opening
+          columns never resizes the dialog. The browser unmounts with the
+          popup, so every open starts fresh. */}
+      <DialogContent
+        className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-5xl"
+        showCloseButton={!isUploading}
+        initialFocus={() =>
+          stripRef.current?.querySelector<HTMLElement>(tabStopSelector) ?? true
+        }
       >
-        <FolderOpen />
-      </Button>
-      <Dialog
-        open={open}
-        onOpenChange={(next, details) => {
-          if (next) {
-            setOpen(true);
-            return;
-          }
-          // No closing mid-upload, and Esc in the new-folder input only
-          // cancels the new folder.
-          if (
-            isUploading ||
-            (details.reason === "escape-key" &&
-              isInlineEditTarget(details.event.target))
-          ) {
-            details.cancel();
-            return;
-          }
-          close();
-        }}
-      >
-        {/* One fixed height, so nothing but the columns scroll and opening
-            columns never resizes the dialog. */}
-        <DialogContent
-          className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col overflow-clip sm:max-w-5xl"
-          showCloseButton={!isUploading}
-          initialFocus={() =>
-            stripRef.current?.querySelector<HTMLElement>(tabStopSelector) ??
-            true
-          }
-        >
-          <ColumnsPicker
-            layout={layout}
-            value={value}
-            title={title}
-            isSelectable={isSelectable}
-            stripRef={stripRef}
-            isUploading={isUploading}
-            onUploadingChange={setIsUploading}
-            onCommit={(path) => {
-              onChange(path);
-              close();
-            }}
-            onCancel={close}
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+        <FolderColumnsBrowser
+          layout={layout}
+          initialPath={initialPath}
+          title={title}
+          isSelectable={isSelectable}
+          stripRef={stripRef}
+          isUploading={isUploading}
+          onUploadingChange={setIsUploading}
+          onCommit={(path) => {
+            onSelect(path);
+            close();
+          }}
+          onCancel={close}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -6,15 +6,14 @@ import {
   filterListing,
   folderNameError,
   folderStubItems,
-  initialPickerState,
+  initialColumnChain,
   isPickerItemNavigable,
-  isPickerItemSelectable,
+  lastSegment,
   listingSourceFor,
   locationForView,
-  parentLocation,
-  parentRowLabel,
   pickerCommitState,
   viewForLocation,
+  visibleFolderRows,
 } from "../picker-views";
 
 const username = "alice@bvbrc";
@@ -55,25 +54,43 @@ describe("locationForView", () => {
   });
 });
 
-describe("initialPickerState", () => {
+describe("initialColumnChain", () => {
   it("opens at Home with nothing selected when there is no value", () => {
-    expect(initialPickerState("", username)).toEqual({
-      location: { kind: "path", path: home },
-      selectedPath: null,
+    expect(initialColumnChain("", username)).toEqual({
+      view: "home",
+      chain: [],
+    });
+    expect(initialColumnChain("/alice@bvbrc", username)).toEqual({
+      view: "home",
+      chain: [],
     });
   });
 
-  it("opens at the parent of the current value with the value selected", () => {
-    expect(initialPickerState(`${home}/Experiments/`, username)).toEqual({
-      location: { kind: "path", path: home },
-      selectedPath: `${home}/Experiments`,
+  it("selects Home itself when the value is the home folder", () => {
+    expect(initialColumnChain(`${home}/`, username)).toEqual({
+      view: "home",
+      chain: [],
     });
   });
 
-  it("opens My Workspaces when the value is a top-level workspace", () => {
-    expect(initialPickerState(home, username)).toEqual({
-      location: { kind: "list", view: "myWorkspaces" },
-      selectedPath: home,
+  it("selects every folder from Home down to the value", () => {
+    expect(initialColumnChain(`${home}/Experiments/Run1`, username)).toEqual({
+      view: "home",
+      chain: [`${home}/Experiments`, `${home}/Experiments/Run1`],
+    });
+  });
+
+  it("starts the user's other workspaces at the workspace root", () => {
+    expect(initialColumnChain("/alice@bvbrc/projects/a", username)).toEqual({
+      view: "myWorkspaces",
+      chain: ["/alice@bvbrc/projects", "/alice@bvbrc/projects/a"],
+    });
+  });
+
+  it("opens another user's workspace under Shared", () => {
+    expect(initialColumnChain("/bob@bvbrc/lab", username)).toEqual({
+      view: "shared",
+      chain: ["/bob@bvbrc/lab"],
     });
   });
 });
@@ -105,38 +122,6 @@ describe("viewForLocation", () => {
     expect(
       viewForLocation({ kind: "list", view: "favorites" }, username, "shared"),
     ).toBe("favorites");
-  });
-});
-
-describe("parentLocation", () => {
-  it("goes up one folder inside a workspace", () => {
-    expect(parentLocation(`${home}/a/b`, username, "shared")).toEqual({
-      kind: "path",
-      path: `${home}/a`,
-    });
-  });
-
-  it("returns to My Workspaces from the user's workspace root", () => {
-    expect(parentLocation(home, username, "shared")).toEqual({
-      kind: "list",
-      view: "myWorkspaces",
-    });
-  });
-
-  it("returns to the origin listing from another user's workspace root", () => {
-    expect(parentLocation("/bob@bvbrc/ws", username, "public")).toEqual({
-      kind: "list",
-      view: "public",
-    });
-  });
-});
-
-describe("parentRowLabel", () => {
-  it("labels folder parents and listing parents", () => {
-    expect(parentRowLabel({ kind: "path", path: home })).toBe("Parent folder");
-    expect(parentRowLabel({ kind: "list", view: "myWorkspaces" })).toBe(
-      "Back to My Workspaces",
-    );
   });
 });
 
@@ -252,6 +237,45 @@ describe("buildPickerItems", () => {
   });
 });
 
+describe("visibleFolderRows", () => {
+  const location = { kind: "path", path: home } as const;
+  const listing = [
+    item(`${home}/zeta`, "folder"),
+    item(`${home}/reads.fq`, "reads"),
+    item(`${home}/.hidden`, "folder"),
+    item(`${home}/.notes`, "txt"),
+    item(`${home}/Alpha`, "folder"),
+  ];
+
+  it("shows only visible folders by default", () => {
+    expect(
+      visibleFolderRows(location, listing, false).map((entry) => entry.name),
+    ).toEqual(["Alpha", "zeta"]);
+  });
+
+  it("adds files with Show files, but never hidden items", () => {
+    expect(
+      visibleFolderRows(location, listing, true).map((entry) => entry.name),
+    ).toEqual(["Alpha", "zeta", "reads.fq"]);
+  });
+
+  it("keeps Recently Used in the order it was used", () => {
+    const recent = [item(`${home}/b`, "folder"), item(`${home}/a`, "folder")];
+    expect(
+      visibleFolderRows({ kind: "list", view: "recent" }, recent, false).map(
+        (entry) => entry.name,
+      ),
+    ).toEqual(["b", "a"]);
+  });
+});
+
+describe("lastSegment", () => {
+  it("names a path by its last segment", () => {
+    expect(lastSegment(`${home}/Experiments/`)).toBe("Experiments");
+    expect(lastSegment("/")).toBe("");
+  });
+});
+
 describe("folderStubItems", () => {
   it("builds folder rows named after the last path segment", () => {
     expect(folderStubItems([`${home}/Experiments/`])).toEqual([
@@ -270,37 +294,6 @@ describe("row rules", () => {
     expect(isPickerItemNavigable(item(`${home}/a`, "folder"))).toBe(true);
     expect(isPickerItemNavigable(item(`${home}/j`, "job_result"))).toBe(false);
     expect(isPickerItemNavigable(item(`${home}/r.fq`, "reads"))).toBe(false);
-  });
-
-  it("selects folders when picking a folder", () => {
-    expect(
-      isPickerItemSelectable(item(`${home}/a`, "folder"), { kind: "folder" }),
-    ).toBe(true);
-    expect(
-      isPickerItemSelectable(item(`${home}/r.fq`, "reads"), {
-        kind: "folder",
-      }),
-    ).toBe(false);
-  });
-
-  it("selects only the requested types when picking a file", () => {
-    const target = { kind: "object", types: ["reads"] } as const;
-    expect(isPickerItemSelectable(item(`${home}/r.fq`, "reads"), target)).toBe(
-      true,
-    );
-    expect(isPickerItemSelectable(item(`${home}/a`, "folder"), target)).toBe(
-      false,
-    );
-  });
-
-  it("applies the caller's predicate", () => {
-    expect(
-      isPickerItemSelectable(
-        item(`${home}/.hidden`, "folder"),
-        { kind: "folder" },
-        (object) => !object.name.startsWith("."),
-      ),
-    ).toBe(false);
   });
 });
 

@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * PROTOTYPE — variant B: the pane pinned to the right of the columns. Either a
- * preview of the selected folder (details, write access, New folder / Upload
- * here) or, in its place, the upload form for that folder. The preview fades
- * its content in whenever the selection changes, whichever way the user moved,
- * so going into a folder and back out look the same.
+ * The folder picker's info pane, pinned to the right of the columns: either
+ * the selected folder's details (write access, New folder / Upload here) or,
+ * in its place, the upload form for that folder. The details fade in whenever
+ * the selection changes, whichever way the user moved, so going into a folder
+ * and back out look the same.
  */
 
 import { useEffect, useRef, type ReactNode } from "react";
@@ -24,15 +24,15 @@ import { Button } from "@/components/ui/button";
 import { WorkspaceUploadPanel } from "@/components/workspace/upload-panel";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { formatDate, formatOwner } from "@/lib/services/workspace/helpers";
-import type { PickerView } from "@/lib/services/workspace/picker-views";
-import { isFolder } from "@/lib/services/workspace/utils";
-import { cn } from "@/lib/utils";
 import {
   lastSegment,
   pathSegments,
-  placeIcons,
-  placeLabel,
-} from "./variant-b-utils";
+  viewLabel,
+  type PickerView,
+} from "@/lib/services/workspace/picker-views";
+import { isFolder } from "@/lib/services/workspace/utils";
+import { cn } from "@/lib/utils";
+import { placeIcons } from "./folder-picker-utils";
 
 const placeHints: Record<PickerView, string> = {
   home: "Your home folder.",
@@ -47,7 +47,7 @@ function plural(count: number, noun: string): string {
   return `${String(count)} ${noun}${count === 1 ? "" : "s"}`;
 }
 
-interface PreviewPaneProps {
+interface FolderPickerInfoProps {
   place: PickerView;
   /** The selected folder; `null` when a listing (not a folder) is open. */
   path: string | null;
@@ -61,7 +61,7 @@ interface PreviewPaneProps {
   onUpload: () => void;
 }
 
-export function PreviewPane({
+export function FolderPickerInfo({
   place,
   path,
   homePath,
@@ -71,7 +71,7 @@ export function PreviewPane({
   canChange,
   onNewFolder,
   onUpload,
-}: PreviewPaneProps) {
+}: FolderPickerInfoProps) {
   if (!path) {
     const PlaceIcon = placeIcons[place];
     return (
@@ -83,7 +83,7 @@ export function PreviewPane({
           <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
             <PlaceIcon aria-hidden className="size-8 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium">{placeLabel(place)}</p>
+          <p className="text-sm font-medium">{viewLabel(place)}</p>
           <p className="max-w-56 text-xs text-muted-foreground">
             {placeHints[place]}
           </p>
@@ -124,7 +124,7 @@ export function PreviewPane({
         </div>
 
         <dl className="flex flex-col gap-1.5 text-xs">
-          <DetailRow term="Where" value={placeLabel(place)} />
+          <DetailRow term="Where" value={viewLabel(place)} />
           <DetailRow term="Owner" value={owner} />
           {created ? <DetailRow term="Created" value={created} /> : null}
           <DetailRow
@@ -216,7 +216,7 @@ function PaneFrame({
   );
 }
 
-interface UploadPaneProps {
+interface FolderPickerUploadProps {
   targetPath: string;
   homePath: string;
   isUploading: boolean;
@@ -226,14 +226,14 @@ interface UploadPaneProps {
 }
 
 /** The upload form for the selected folder, in place of the preview. */
-export function UploadPane({
+export function FolderPickerUpload({
   targetPath,
   homePath,
   isUploading,
   onBack,
   onComplete,
   onUploadingChange,
-}: UploadPaneProps) {
+}: FolderPickerUploadProps) {
   const backRef = useRef<HTMLButtonElement>(null);
   const name = targetPath === homePath ? "Home" : lastSegment(targetPath);
 

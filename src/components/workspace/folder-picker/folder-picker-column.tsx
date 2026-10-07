@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * PROTOTYPE — variant B: one Miller column (its own listing, vertical scroll,
- * roving-focus rows) and the inline new-folder row it can host.
+ * One column of the folder picker: its own listing, vertical scroll and
+ * roving-focus rows, plus the inline new-folder row it can host.
  */
 
 import {
@@ -28,11 +28,12 @@ import {
   emptyListingMessage,
   folderNameError,
   isPickerItemNavigable,
+  visibleFolderRows,
   type PickerLocation,
 } from "@/lib/services/workspace/picker-views";
 import { cn } from "@/lib/utils";
-import { ResizeHandle } from "./variant-b-resize-handle";
-import { columnWidthLimits, visibleRows } from "./variant-b-utils";
+import { PaneResizeHandle } from "./folder-picker-resize-handle";
+import { columnWidthLimits } from "./folder-picker-utils";
 
 export interface NewFolderRowHandlers {
   /** Rejects with the backend's error, which the row shows as-is. */
@@ -40,7 +41,7 @@ export interface NewFolderRowHandlers {
   onCancel: () => void;
 }
 
-interface MillerColumnProps {
+interface FolderPickerColumnProps {
   /** Identifies the column across renders for the open/close motion. */
   transitionKey: string;
   index: number;
@@ -71,7 +72,7 @@ interface MillerColumnProps {
   focusRow: (index: number, path: string) => void;
 }
 
-export function MillerColumn({
+export function FolderPickerColumn({
   transitionKey,
   index,
   location,
@@ -95,11 +96,11 @@ export function MillerColumn({
   onExitToParent,
   onCommit,
   focusRow,
-}: MillerColumnProps) {
+}: FolderPickerColumnProps) {
   const listing = useWorkspacePickerListing({ location, username });
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const rows = visibleRows(location, listing.items, showFiles);
+  const rows = visibleFolderRows(location, listing.items, showFiles);
   const navRows = rows.filter(isPickerItemNavigable);
   const navPaths = navRows.map((row) => normalizePath(row.path));
   const tabStopPath = hasTabStop
@@ -190,12 +191,10 @@ export function MillerColumn({
       data-picker-column={index}
       data-picker-key={transitionKey}
       inert={inert}
-      style={
-        { "--picker-column-width": `${String(width)}px` } as CSSProperties
-      }
+      style={{ "--picker-column-width": `${String(width)}px` } as CSSProperties}
       className="relative flex h-full w-(--picker-column-width) shrink-0 flex-col border-r"
     >
-      <ResizeHandle
+      <PaneResizeHandle
         edge="end"
         label={`Resize ${label} column`}
         width={width}
@@ -247,7 +246,11 @@ export function MillerColumn({
             </div>
           )
         ) : (
-          <div role="listbox" aria-label={label} className="flex flex-col gap-px">
+          <div
+            role="listbox"
+            aria-label={label}
+            className="flex flex-col gap-px"
+          >
             {rows.map((item) => {
               const path = normalizePath(item.path);
               const navigable = isPickerItemNavigable(item);
@@ -261,7 +264,9 @@ export function MillerColumn({
                   role="option"
                   aria-selected={isSelected}
                   aria-disabled={navigable ? undefined : true}
-                  tabIndex={navigable ? (path === tabStopPath ? 0 : -1) : undefined}
+                  tabIndex={
+                    navigable ? (path === tabStopPath ? 0 : -1) : undefined
+                  }
                   data-picker-row=""
                   data-picker-col={index}
                   data-picker-path={path}
@@ -291,7 +296,10 @@ export function MillerColumn({
                     "flex h-7 shrink-0 items-center gap-2 rounded-md px-2 text-sm outline-none select-none focus-visible:ring-2 focus-visible:ring-ring",
                     !navigable && "text-muted-foreground",
                     navigable && !isSelected && "hover:bg-muted/70",
-                    navigable && !isSelected && !usable && "text-muted-foreground",
+                    navigable &&
+                      !isSelected &&
+                      !usable &&
+                      "text-muted-foreground",
                     isActive && "bg-primary text-primary-foreground",
                     isSelected && !isActive && "bg-muted text-foreground",
                   )}
@@ -383,7 +391,8 @@ function NewFolderRow({ onCreate, onCancel }: NewFolderRowHandlers) {
   const [backendError, setBackendError] = useState<string | null>(null);
   const nameError = folderNameError(name);
   const shownError =
-    backendError ?? ((submitted || name.length > 0) && nameError ? nameError : null);
+    backendError ??
+    ((submitted || name.length > 0) && nameError ? nameError : null);
 
   useEffect(() => {
     inputRef.current?.focus();

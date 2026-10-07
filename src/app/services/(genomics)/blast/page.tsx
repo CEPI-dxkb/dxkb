@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ServiceHeader } from "@/components/services/service-header";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
+import { FolderPickerPrototypeSwitcher } from "@/components/workspace/picker-prototypes/folder-picker-prototypes";
 import { blastServiceInfo } from "@/lib/services/info/blast";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { blastService } from "@/lib/forms/(genomics)/blast/blast-service";
@@ -178,6 +179,8 @@ export default function BlastServicePage() {
 
   return (
     <section>
+      {/* PROTOTYPE: floating bar that flips the output-folder picker design. */}
+      <FolderPickerPrototypeSwitcher />
       <ServiceHeader
         title="BLAST"
         description="The BLAST service uses BLAST (Basic Local Alignment Search Tool) to search against public or private genomes or other databases using DNA or protein sequence(s)."

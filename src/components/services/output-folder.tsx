@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 
 import {
   Tooltip,
@@ -8,16 +8,15 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspacePickerDialog } from "@/components/workspace/workspace-picker-dialog";
+import { FolderPickerPrototypes } from "@/components/workspace/picker-prototypes/folder-picker-prototypes";
 import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { useAuth } from "@/lib/auth/provider";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 
-import { FolderOpen, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
@@ -62,7 +61,6 @@ const OutputFolder = ({
 }: OutputFolderProps) => {
   const { user } = useAuth();
   const canBrowse = !!workspaceUsername(user);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const needsValidation =
     variant === "name" && !!outputFolderPath.trim() && !!value.trim();
   const validation = useOutputNameValidation({
@@ -121,28 +119,15 @@ const OutputFolder = ({
                   onChange?.(object.path || "");
                 }}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Browse workspace folders"
-                title="Browse workspace folders"
-                disabled={disabled || !canBrowse}
-                onClick={() => {
-                  setPickerOpen(true);
-                }}
-              >
-                <FolderOpen />
-              </Button>
-              <WorkspacePickerDialog
-                open={pickerOpen}
-                onOpenChange={setPickerOpen}
-                title="Select an Output Folder"
-                initialPath={value}
-                isSelectable={isSelectableOutputFolder}
-                onSelect={(path) => {
+              {/* PROTOTYPE: `?variant=A|B|C|D` swaps the picker design. */}
+              <FolderPickerPrototypes
+                value={value}
+                onChange={(path) => {
                   onChange?.(path);
                 }}
+                disabled={disabled || !canBrowse}
+                isSelectable={isSelectableOutputFolder}
+                title="Select an Output Folder"
               />
             </>
           )}

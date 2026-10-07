@@ -62,7 +62,7 @@ export function GenomeSuggestionList({
         }}
         type="button"
         className={cn(
-          "flex w-full flex-col items-start gap-1 px-4 py-2 text-left hover:bg-accent",
+          "flex w-full flex-col items-start px-4 py-1 text-left hover:bg-accent",
           // Caller overrides come before the state classes so a caller-supplied
           // background (e.g. `bg-transparent`) cannot strip the keyboard
           // highlight via tailwind-merge's last-wins resolution.

@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
 import { getRequiredEnv } from "@/lib/env";
 
-
+// Keep letters, digits and the dot of a genome ID. The genome_name wildcard
+// match runs against a form with spaces and punctuation removed, so
+// `*Grapevineleafrollassociatedvirus3*` finds "Grapevine leafroll-associated
+// virus 3" while a query that keeps the hyphen or a space finds nothing.
+// BV-BRC's GenomeNameSelector strips the same characters.
 function sanitizeQuery(input: string): string {
-  return input.replace(/[^a-zA-Z0-9._-]/g, "");
+  return input.replace(/[^a-zA-Z0-9.]/g, "");
 }
 
 export const GET = withAuth(async (request: NextRequest, { token }) => {

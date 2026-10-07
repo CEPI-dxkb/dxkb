@@ -35,13 +35,11 @@ function FieldLabel({
   );
 }
 
-function FieldErrors({
-  field,
-  className,
-}: {
-  field: AnyFieldApi;
-  className?: string;
-}) {
+/**
+ * The message `FieldErrors` shows for a field, or null while it shows none.
+ * For a control that renders the error itself instead of beside it.
+ */
+function fieldErrorMessage(field: AnyFieldApi): string | null {
   const errors = field.state.meta.errors;
   if (!errors.length) return null;
 
@@ -55,6 +53,17 @@ function FieldErrors({
       ? firstError
       : firstError.message ?? "";
 
+  return message || null;
+}
+
+function FieldErrors({
+  field,
+  className,
+}: {
+  field: AnyFieldApi;
+  className?: string;
+}) {
+  const message = fieldErrorMessage(field);
   if (!message) return null;
 
   return (
@@ -67,4 +76,4 @@ function FieldErrors({
   );
 }
 
-export { FieldItem, FieldLabel, FieldErrors };
+export { FieldItem, FieldLabel, FieldErrors, fieldErrorMessage };

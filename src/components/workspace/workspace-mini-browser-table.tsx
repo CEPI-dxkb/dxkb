@@ -17,6 +17,7 @@ import {
   formatFileSize,
   formatOwner,
 } from "@/lib/services/workspace/helpers";
+import { normalizePath } from "@/lib/services/workspace/mini-browser-items";
 import { isFolderType } from "@/lib/services/workspace/utils";
 import { WorkspaceItemIcon } from "./workspace-item-icon";
 
@@ -25,15 +26,16 @@ interface WorkspaceMiniBrowserTableProps {
   items: WorkspaceItem[];
   isLoading: boolean;
   error: Error | null;
-  selectedPath: string | null;
-  focusedRow: string | null;
-  showParentRow: boolean;
-  parentRowLabel: string;
-  normalizePath: (path: string | null | undefined) => string;
+  /** Row key ("parent" or a normalized path) drawn as selected. */
+  highlightedKey: string | null;
+  /** Label of the parent row; `null` hides the row. */
+  parentRowLabel: string | null;
+  ariaLabel: string;
+  emptyMessage?: string;
   onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   onParentClick: () => void;
-  onFolderClick: (item: WorkspaceItem) => void;
-  onFolderDoubleClick: (item: WorkspaceItem) => void;
+  onItemClick: (item: WorkspaceItem) => void;
+  onItemDoubleClick: (item: WorkspaceItem) => void;
 }
 
 export function WorkspaceMiniBrowserTable({
@@ -41,22 +43,21 @@ export function WorkspaceMiniBrowserTable({
   items,
   isLoading,
   error,
-  selectedPath,
-  focusedRow,
-  showParentRow,
+  highlightedKey,
   parentRowLabel,
-  normalizePath,
+  ariaLabel,
+  emptyMessage,
   onKeyDown,
   onParentClick,
-  onFolderClick,
-  onFolderDoubleClick,
+  onItemClick,
+  onItemDoubleClick,
 }: WorkspaceMiniBrowserTableProps) {
   return (
     <div
       ref={containerRef}
       role="region"
       tabIndex={0}
-      aria-label="Workspace destination browser"
+      aria-label={ariaLabel}
       className="scrollbar-themed flex h-full min-h-0 min-w-0 flex-col overflow-auto rounded-md border outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onKeyDown={onKeyDown}
       onPointerDownCapture={() => containerRef.current?.focus()}
@@ -71,11 +72,11 @@ export function WorkspaceMiniBrowserTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {showParentRow && (
+          {parentRowLabel !== null && (
             <TableRow
               data-row-key="parent"
               className="cursor-pointer"
-              data-state={focusedRow === "parent" ? "selected" : undefined}
+              data-state={highlightedKey === "parent" ? "selected" : undefined}
               onClick={onParentClick}
             >
               <TableCell className="pl-3" colSpan={4}>
@@ -116,28 +117,30 @@ export function WorkspaceMiniBrowserTable({
                 </span>
               </TableCell>
             </TableRow>
+          ) : items.length === 0 && emptyMessage ? (
+            <TableRow>
+              <TableCell className="pl-3" colSpan={4}>
+                <span className="text-sm text-muted-foreground">
+                  {emptyMessage}
+                </span>
+              </TableCell>
+            </TableRow>
           ) : (
             items.map((item) => {
-              const isSelected =
-                selectedPath != null &&
-                normalizePath(item.path) === normalizePath(selectedPath);
+              const rowKey = normalizePath(item.path);
               return (
                 <TableRow
                   key={item.id}
-                  data-row-key={normalizePath(item.path)}
+                  data-row-key={rowKey}
                   className="cursor-pointer"
                   data-state={
-                    isFolderType(item.type) &&
-                    isSelected &&
-                    focusedRow !== "parent"
-                      ? "selected"
-                      : undefined
+                    highlightedKey === rowKey ? "selected" : undefined
                   }
                   onClick={() => {
-                    onFolderClick(item);
+                    onItemClick(item);
                   }}
                   onDoubleClick={() => {
-                    onFolderDoubleClick(item);
+                    onItemDoubleClick(item);
                   }}
                 >
                   <TableCell className="pl-3">

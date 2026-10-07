@@ -61,6 +61,12 @@ export const buttonVariants = cva(
           "rounded-full hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         "ghost-accent-primary":
           "rounded-full text-primary hover:bg-accent hover:text-accent-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
+        // Remove buttons on the rows of a selected-items list: a near-
+        // foreground glyph (muted-foreground read as faint on the muted row)
+        // that takes the brand secondary (orange) wash on hover, while the
+        // row itself stays still.
+        "ghost-secondary":
+          "text-foreground/75 hover:bg-secondary/20 hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-secondary/30",
         // Primary-tinted chip, solid in dark themes (the dropdown toggles in
         // the service-form pickers).
         soft: "bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80",

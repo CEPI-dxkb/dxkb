@@ -635,8 +635,12 @@
   @apply text-muted-foreground h-4 w-4;
 }
 
+/* Transitions name the color and ring properties only. `transition-all`
+   also animated height and width, so every step of a drag on the resize
+   handle (and every line field-sizing added while typing) eased in over
+   300ms and the box trailed the pointer. */
 .service-card-textarea {
-  @apply bg-background max-h-96 min-h-48 overflow-y-auto font-mono text-sm transition-all duration-300;
+  @apply bg-background max-h-96 min-h-48 overflow-y-auto font-mono text-sm transition-[color,background-color,border-color,box-shadow] duration-300;
   overflow-x: auto;
   overflow-wrap: break-word;
   word-wrap: break-word;

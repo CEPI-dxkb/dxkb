@@ -60,6 +60,14 @@ const tableRowVariants = cva(
         tint: "hover:bg-muted data-[state=selected]:bg-primary/15 data-[state=selected]:hover:bg-muted/50 dark:data-[state=selected]:bg-primary/30",
         // Alternate (odd) rows of a striped table.
         striped: "bg-muted/20",
+        // Rows that do not react to the pointer (a selected-items list,
+        // where only the row's remove button has a hover state).
+        static: "hover:bg-transparent",
+        // `static`, with every second body row filled (BV-BRC's selected
+        // genome tables). The even rows repeat their fill on hover so they
+        // stay still too.
+        "static-striped":
+          "even:bg-muted/50 hover:bg-transparent even:hover:bg-muted/50",
       },
     },
     defaultVariants: {

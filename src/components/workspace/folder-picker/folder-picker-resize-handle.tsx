@@ -16,6 +16,7 @@ interface ResizeHandleProps {
   width: number;
   limits: { min: number; max: number; initial: number };
   onResize: (width: number) => void;
+  className?: string;
 }
 
 const keyboardStep = 16;
@@ -26,6 +27,7 @@ export function PaneResizeHandle({
   width,
   limits,
   onResize,
+  className,
 }: ResizeHandleProps) {
   const dragRef = useRef<{ x: number; width: number } | null>(null);
   // Dragging the divider right widens a pane whose handle is on its end edge
@@ -75,6 +77,7 @@ export function PaneResizeHandle({
       className={cn(
         "group absolute inset-y-0 z-10 w-2 cursor-col-resize touch-none outline-none",
         edge === "end" ? "-right-1" : "-left-1",
+        className,
       )}
     >
       <span

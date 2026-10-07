@@ -121,23 +121,20 @@ describe("useWorkspacePickerListing", () => {
     expect(result.current.isLoading).toBe(false);
   });
 
-  it("turns favorite paths into folder rows", async () => {
+  function serveFavorites(folders: string[]) {
     server.use(
       http.post("*/api/services/workspace", () =>
         HttpResponse.json({
           jsonrpc: "2.0",
           id: 1,
-          result: [
-            [
-              [
-                ["meta"],
-                JSON.stringify({ folders: [`${home}/Alpha/`, "/bob@bvbrc/ws"] }),
-              ],
-            ],
-          ],
+          result: [[[["meta"], JSON.stringify({ folders })]]],
         }),
       ),
     );
+  }
+
+  it("turns favorite paths into folder rows", async () => {
+    serveFavorites([`${home}/Alpha/`, `${home}/Beta`]);
     const { result, repository } = renderListing({
       kind: "list",
       view: "favorites",
@@ -153,9 +150,60 @@ describe("useWorkspacePickerListing", () => {
         type: "folder",
         ownerId: "alice@bvbrc",
       }),
-      expect.objectContaining({ name: "ws", ownerId: "bob@bvbrc" }),
+      expect.objectContaining({ name: "Beta", ownerId: "alice@bvbrc" }),
     ]);
+    expect(result.current.isLoading).toBe(false);
+    // The user's own folders are always writable, so nothing more is fetched.
     expect(listedPaths(repository)).toEqual([]);
+  });
+
+  it("gives a favorite in another user's workspace that workspace's permissions", async () => {
+    serveFavorites([`${home}/Alpha`, "/bob@bvbrc/ws/Results"]);
+    // In-memory `/` rows are `/${name}`, so the name carries the owner to give
+    // the row the real `/owner/workspace` path.
+    const repository = new InMemoryWorkspaceRepository({
+      directories: {
+        "/": [
+          {
+            name: "bob@bvbrc/ws",
+            type: "folder",
+            ownerId: "bob@bvbrc",
+            userPermission: "w",
+            globalPermission: "n",
+          },
+        ],
+      },
+    });
+    const { result } = renderListing(
+      { kind: "list", view: "favorites" },
+      repository,
+    );
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.items).toEqual([
+      expect.objectContaining({ name: "Alpha", permissions: undefined }),
+      expect.objectContaining({
+        name: "Results",
+        ownerId: "bob@bvbrc",
+        permissions: { user: "w", global: "n" },
+      }),
+    ]);
+    expect(listedPaths(repository)).toEqual(["/"]);
+  });
+
+  it("reports a failed permissions lookup with its own message", async () => {
+    serveFavorites(["/bob@bvbrc/ws/Results"]);
+    const { result } = renderListing(
+      { kind: "list", view: "favorites" },
+      makeRepository({ listDirectory: new Error("Workspace is offline") }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.error?.message).toBe("Workspace is offline");
+    });
+    expect(result.current.isLoading).toBe(false);
   });
 
   it("reads recent folders from storage, for this user only, in order", () => {

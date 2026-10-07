@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import {
   columnLabels,
   findOption,
@@ -8,6 +8,7 @@ import {
   renderPicker,
   selectButton,
   stubPickerBrowserApis,
+  type Gate,
   type PickerTestRepository,
 } from "./fixtures/picker-harness";
 
@@ -40,6 +41,21 @@ async function startNewFolder(
     expect(input).toHaveFocus();
   });
   return { ...rendered, input };
+}
+
+/**
+ * Let a held folder creation finish, then give what follows it (refetching
+ * the listings it invalidated, then the picker's own update) a turn to run.
+ * The in-memory backend answers within microtasks.
+ */
+async function finishCreation(repository: PickerTestRepository, gate: Gate) {
+  gate.release();
+  await waitFor(() => {
+    expect(repository.calls).toContainEqual(
+      expect.objectContaining({ method: "createFolder" }),
+    );
+  });
+  await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
 }
 
 beforeEach(() => {
@@ -136,9 +152,25 @@ describe("WorkspaceFolderPickerDialog new folder", () => {
     await user.keyboard("..");
 
     expect(input).toHaveAccessibleDescription(
-      'Folder name cannot be "." or "..".',
+      'Folder name cannot start with ".": hidden folders are not shown here.',
     );
     expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("refuses a hidden name, since the new folder could never be listed or chosen", async () => {
+    const { user, input, repository } = await startNewFolder();
+
+    await user.keyboard(".config{Enter}");
+
+    expect(input).toHaveAccessibleDescription(
+      'Folder name cannot start with ".": hidden folders are not shown here.',
+    );
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveFocus();
+    expect(repository.calls).not.toContainEqual(
+      expect.objectContaining({ method: "createFolder" }),
+    );
+    expect(selectButton()).toHaveAccessibleName("Select “Alpha”");
   });
 
   it("asks for a name when Enter is pressed on an empty field", async () => {
@@ -213,6 +245,42 @@ describe("WorkspaceFolderPickerDialog new folder", () => {
     await findOption("Experiments", "Run1");
     expect(selectButton()).toHaveAccessibleName("Select “Experiments”");
     expect(columnLabels()).toEqual(["Home", "Experiments"]);
+  });
+
+  it("stays in the place the user switched to while Home's folder was created", async () => {
+    const repository = makePickerRepository();
+    const gate = repository.holdCreateFolder();
+    const { user } = await startNewFolder(repository, null);
+
+    await user.keyboard("Results{Enter}");
+    await screen.findByText("Creating…");
+    await user.click(screen.getByRole("button", { name: "Shared Workspaces" }));
+    await findOption("Shared Workspaces", /shared-ws/);
+    await finishCreation(repository, gate);
+
+    expect(columnLabels()).toEqual(["Shared Workspaces"]);
+    expect(selectButton()).toHaveAccessibleName("Select");
+  });
+
+  it("leaves a newer folder field open when an earlier creation finishes", async () => {
+    const repository = makePickerRepository();
+    const gate = repository.holdCreateFolder();
+    const { user } = await startNewFolder(repository);
+
+    await user.keyboard("Results{Enter}");
+    await screen.findByText("Creating…");
+    await user.click(await findOption("Home", "Experiments"));
+    await user.click(screen.getByRole("button", { name: "New folder here" }));
+    const input = await screen.findByRole("textbox", {
+      name: "New folder name",
+    });
+    await user.keyboard("Draft");
+    await finishCreation(repository, gate);
+
+    expect(nameField()).toBe(input);
+    expect(input).toHaveValue("Draft");
+    expect(input).toHaveFocus();
+    expect(selectButton()).toHaveAccessibleName("Select “Experiments”");
   });
 
   it("closes the field when another folder is selected", async () => {

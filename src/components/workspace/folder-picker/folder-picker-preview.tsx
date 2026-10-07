@@ -78,13 +78,13 @@ export function FolderPickerInfo({
       <PaneFrame label="Info">
         <div
           key={place}
-          className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center duration-150 animate-in fade-in-0"
+          className="flex flex-1 flex-col items-center justify-center gap-1.5 p-3 text-center duration-150 animate-in fade-in-0 md:gap-3 md:p-6"
         >
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-muted">
+          <div className="hidden size-16 items-center justify-center rounded-2xl bg-muted md:flex">
             <PlaceIcon aria-hidden className="size-8 text-muted-foreground" />
           </div>
           <p className="text-sm font-medium">{viewLabel(place)}</p>
-          <p className="max-w-56 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground md:max-w-56">
             {placeHints[place]}
           </p>
         </div>
@@ -113,9 +113,12 @@ export function FolderPickerInfo({
     <PaneFrame label="Info">
       <div
         key={path}
-        className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 duration-150 animate-in fade-in-0"
+        className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 duration-150 animate-in fade-in-0 md:gap-4 md:p-4"
       >
-        <div className="flex flex-col items-center gap-2 pt-2 text-center">
+        {/* Stacked under the columns on a narrow screen, the pane keeps only
+            what decides the choice: whether it can be written to, and the
+            actions. The footer already names the folder. */}
+        <div className="hidden flex-col items-center gap-2 pt-2 text-center md:flex">
           <div className="flex size-20 items-center justify-center rounded-2xl bg-highlight/10">
             <FolderIcon aria-hidden className="size-11 text-highlight" />
           </div>
@@ -125,7 +128,7 @@ export function FolderPickerInfo({
           </p>
         </div>
 
-        <dl className="flex flex-col gap-1.5 text-xs">
+        <dl className="hidden flex-col gap-1.5 text-xs md:flex">
           <DetailRow term="Where" value={viewLabel(place)} />
           <DetailRow term="Owner" value={owner} />
           {created ? <DetailRow term="Created" value={created} /> : null}
@@ -161,7 +164,7 @@ export function FolderPickerInfo({
           </p>
         </div>
 
-        <div className="mt-auto flex flex-col gap-2">
+        <div className="mt-auto grid grid-cols-2 gap-2 md:flex md:flex-col">
           <Button
             type="button"
             variant="outline"

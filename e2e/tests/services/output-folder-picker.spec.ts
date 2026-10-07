@@ -395,6 +395,63 @@ test.describe("output folder picker: layout", () => {
       expect(close.x + close.width).toBeLessThanOrEqual(dialog.x + dialog.width);
     }
   });
+
+  test("stacks the places and info pane around the columns on a phone", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    const { picker } = await openBlast(page);
+    await picker.open();
+    await picker.option("Home", "Experiments").click();
+    await expect(picker.option("Experiments", "Run 1")).toBeVisible();
+    await picker.settled();
+
+    const newFolder = picker.dialog.getByRole("button", {
+      name: "New folder here",
+    });
+    const [dialog, places, strip, action] = await Promise.all([
+      picker.dialog.boundingBox(),
+      picker.places.boundingBox(),
+      picker.strip.boundingBox(),
+      newFolder.boundingBox(),
+    ]);
+    expect(dialog && places && strip && action).toBeTruthy();
+    if (dialog && places && strip && action) {
+      // The columns get the dialog's full width, between the places row and
+      // the info pane, and the pane's actions are inside the dialog.
+      expect(strip.width).toBeGreaterThanOrEqual(dialog.width - 1);
+      expect(strip.height).toBeGreaterThan(160);
+      expect(places.y + places.height).toBeLessThanOrEqual(strip.y + 1);
+      expect(action.y).toBeGreaterThanOrEqual(strip.y + strip.height);
+      expect(action.x).toBeGreaterThanOrEqual(dialog.x);
+      expect(action.x + action.width).toBeLessThanOrEqual(
+        dialog.x + dialog.width,
+      );
+    }
+    await expect(picker.infoPaneHandle()).toBeHidden();
+
+    // Every place is reachable from the scrolling row.
+    await picker.places
+      .getByRole("button", { name: "Public Workspaces" })
+      .click();
+    await expect(picker.column("Public Workspaces")).toBeVisible();
+
+    // The upload form takes the whole body, and Back brings the columns back.
+    await picker.places.getByRole("button", { name: "Home" }).click();
+    await picker.option("Home", "Experiments").click();
+    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await expect(picker.dialog.getByText("Upload to “Experiments”")).toBeVisible();
+    await expect(picker.strip).toBeHidden();
+    await picker.dialog
+      .getByRole("button", { name: "Back to folder info" })
+      .click();
+    await expect(picker.option("Experiments", "Run 1")).toBeVisible();
+
+    await picker.option("Experiments", "Run 1").click();
+    await expect(picker.selectButton).toHaveAccessibleName("Select “Run 1”");
+    await picker.selectButton.click();
+    await expect(picker.dialog).toBeHidden();
+  });
 });
 
 test.describe("output folder picker: motion", () => {

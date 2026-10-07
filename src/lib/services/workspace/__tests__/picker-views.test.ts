@@ -16,6 +16,7 @@ import {
   pickerCommitState,
   pickerHomePath,
   pickerViewOptions,
+  stubsNeedWorkspaces,
   viewForLocation,
   viewLabel,
   visibleFolderRows,
@@ -424,6 +425,43 @@ describe("folderStubItems", () => {
       }),
     ]);
   });
+  it("gives each row its workspace's permissions from the `/` listing", () => {
+    const workspaces = [
+      item("/bob@bvbrc/shared-ws/", "folder", { user: "w", global: "n" }),
+      item("/carol@bvbrc/public-ws", "folder", { user: "r", global: "r" }),
+    ];
+
+    expect(
+      folderStubItems(
+        [
+          "/bob@bvbrc/shared-ws",
+          "/bob@bvbrc/shared-ws/Runs/Run 1",
+          "/carol@bvbrc/public-ws/data",
+          "/dave@bvbrc/unlisted/data",
+          "/bob@bvbrc",
+        ],
+        workspaces,
+      ).map((row) => row.permissions),
+    ).toEqual([
+      { user: "w", global: "n" },
+      { user: "w", global: "n" },
+      { user: "r", global: "r" },
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
+describe("stubsNeedWorkspaces", () => {
+  it("is needed only for paths outside the user's own workspaces", () => {
+    expect(stubsNeedWorkspaces([`${home}/a`, "/alice@bvbrc/p"], username)).toBe(
+      false,
+    );
+    expect(stubsNeedWorkspaces([`${home}/a`, "/bob@bvbrc/ws"], username)).toBe(
+      true,
+    );
+    expect(stubsNeedWorkspaces([], username)).toBe(false);
+  });
 });
 
 describe("row rules", () => {
@@ -584,23 +622,23 @@ describe("pickerCommitState", () => {
 });
 
 describe("folderNameError", () => {
-  it("rejects empty, dot, and slash names", () => {
+  const hidden = 'Folder name cannot start with ".": hidden folders are not shown here.';
+
+  it("rejects empty and slash names", () => {
     expect(folderNameError("  ")).toBe("Enter a folder name.");
-    expect(folderNameError("..")).toBe('Folder name cannot be "." or "..".');
     expect(folderNameError("a/b")).toBe("Folder name cannot contain a slash.");
   });
 
-  it("rejects a lone dot", () => {
-    expect(folderNameError(".")).toBe('Folder name cannot be "." or "..".');
-    expect(folderNameError("  ..  ")).toBe(
-      'Folder name cannot be "." or "..".',
-    );
+  it("rejects hidden names, which the picker never lists, dots included", () => {
+    expect(folderNameError(".config")).toBe(hidden);
+    expect(folderNameError("  .config  ")).toBe(hidden);
+    expect(folderNameError(".")).toBe(hidden);
+    expect(folderNameError("..")).toBe(hidden);
   });
 
   it("accepts an ordinary name, with surrounding spaces trimmed", () => {
     expect(folderNameError("Results 2026")).toBeNull();
     expect(folderNameError("  Results  ")).toBeNull();
-    expect(folderNameError(".config")).toBeNull();
   });
 });
 

@@ -7,7 +7,8 @@
  * the next column), and an info pane pinned on the right with inline New
  * folder and Upload. The footer has a clickable breadcrumb of the selection
  * and Select. Column widths, the info-pane width and "Show files" last
- * between opens; everything else starts fresh.
+ * between opens; everything else starts fresh. Below `md` the panes stack
+ * (places, columns, a compact info pane) so the columns keep the width.
  */
 
 import {
@@ -140,6 +141,14 @@ function FolderColumnsBrowser({
   const { showFiles, onShowFilesChange } = layout;
   const [isNaming, setIsNaming] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  // Bumped whenever the new-folder field opens or closes, which every
+  // navigation does, so a creation that finishes after the user moved on can
+  // tell and leave the picker alone.
+  const namingRevisionRef = useRef(0);
+  const setNaming = (naming: boolean) => {
+    namingRevisionRef.current += 1;
+    setIsNaming(naming);
+  };
   const pendingFocusRef = useRef<PendingFocus | null>(
     initial.chain.length > 0
       ? {
@@ -281,7 +290,7 @@ function FolderColumnsBrowser({
   // --- navigation --------------------------------------------------------
 
   const closePanes = () => {
-    setIsNaming(false);
+    setNaming(false);
     setIsUploadOpen(false);
   };
 
@@ -366,20 +375,17 @@ function FolderColumnsBrowser({
 
   const handleCreate = async (name: string) => {
     if (!selectedPath) return;
-    const parent = selectedPath;
     const column = lastIndex;
-    const path = await createFolder.mutateAsync({ parent, name });
-    // Select it (opening its empty column) unless the user moved on meanwhile.
+    const revision = namingRevisionRef.current;
+    const path = await createFolder.mutateAsync({ parent: selectedPath, name });
+    // The user navigated or closed the field meanwhile: the folder is in its
+    // listing, but the selection, the field and focus are theirs now.
+    if (namingRevisionRef.current !== revision) return;
+    // Select it, opening its empty column. Nothing has moved since the field
+    // opened, so this render's chain is still current.
     prepareTransition();
-    setChain((previous) => {
-      const previousParent =
-        previous.at(-1) ??
-        (rootLocation.kind === "path" ? rootLocation.path : null);
-      return previous.length === column && previousParent === parent
-        ? [...previous, path]
-        : previous;
-    });
-    setIsNaming(false);
+    setChain([...chain, path]);
+    setNaming(false);
     pendingFocusRef.current = { column, path };
   };
 
@@ -445,15 +451,18 @@ function FolderColumnsBrowser({
         </div>
       </DialogHeader>
 
-      <div className="-mx-4 -mb-4 flex min-h-0 flex-1 border-t">
+      {/* Below `md` the sidebar and info pane would leave the columns no room,
+          so the body stacks: places as a scrolling row on top, the columns,
+          then the info pane, compact, underneath. */}
+      <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col border-t md:flex-row">
         <nav
           aria-label="Places"
           inert={isUploading}
-          className="scrollbar-themed flex w-48 shrink-0 flex-col gap-4 overflow-y-auto border-r bg-muted/50 p-2"
+          className="scrollbar-themed flex shrink-0 gap-1 overflow-auto border-b bg-muted/50 p-2 md:w-48 md:flex-col md:gap-4 md:border-r md:border-b-0"
         >
           {placeGroups.map((group) => (
-            <div key={group.label} className="flex flex-col gap-0.5">
-              <p className="px-2 py-1 text-2xs font-medium tracking-wide text-muted-foreground uppercase">
+            <div key={group.label} className="flex shrink-0 gap-0.5 md:flex-col">
+              <p className="hidden px-2 py-1 text-2xs font-medium tracking-wide text-muted-foreground uppercase md:block">
                 {group.label}
               </p>
               {group.views.map((view) => {
@@ -468,7 +477,7 @@ function FolderColumnsBrowser({
                       selectPlace(view);
                     }}
                     className={cn(
-                      "flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-full",
                       isActive
                         ? "bg-primary/10 font-medium text-primary"
                         : "text-foreground/80 hover:bg-foreground/5 hover:text-foreground",
@@ -493,7 +502,13 @@ function FolderColumnsBrowser({
           ))}
         </nav>
 
-        <div className="relative flex min-w-0 flex-1">
+        {/* On a narrow screen the upload form needs the whole body. */}
+        <div
+          className={cn(
+            "relative flex min-h-0 min-w-0 flex-1",
+            isUploadOpen && "max-md:hidden",
+          )}
+        >
           <div
             ref={stripRef}
             role="group"
@@ -542,7 +557,7 @@ function FolderColumnsBrowser({
                         ? {
                             onCreate: handleCreate,
                             onCancel: () => {
-                              setIsNaming(false);
+                              setNaming(false);
                               pendingFocusRef.current = {
                                 column: 0,
                                 path: null,
@@ -585,8 +600,12 @@ function FolderColumnsBrowser({
             } as CSSProperties
           }
           // `-ml-px` lays this border over the last column's, so the two never
-          // show as a double line when the columns fill the strip.
-          className="relative -ml-px flex w-(--picker-preview-width) shrink-0 border-l bg-background"
+          // show as a double line when the columns fill the strip. Stacked,
+          // it spans the dialog and is capped so the columns keep most of it.
+          className={cn(
+            "relative flex shrink-0 border-t bg-background md:-ml-px md:w-(--picker-preview-width) md:border-t-0 md:border-l",
+            isUploadOpen ? "max-md:min-h-0 max-md:flex-1" : "max-md:max-h-1/2",
+          )}
         >
           <PaneResizeHandle
             edge="start"
@@ -594,6 +613,7 @@ function FolderColumnsBrowser({
             width={layout.previewWidth}
             limits={previewWidthLimits}
             onResize={layout.onPreviewWidthChange}
+            className="hidden md:block"
           />
           {isUploadOpen && selectedPath ? (
             <FolderPickerUpload
@@ -625,11 +645,11 @@ function FolderColumnsBrowser({
               onNewFolder={() => {
                 pendingFocusRef.current = null;
                 setIsUploadOpen(false);
-                setIsNaming(true);
+                setNaming(true);
               }}
               onUpload={() => {
                 pendingFocusRef.current = null;
-                setIsNaming(false);
+                setNaming(false);
                 setIsUploadOpen(true);
               }}
             />

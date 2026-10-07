@@ -252,10 +252,39 @@ export function visibleFolderRows(
   return showFiles ? rows.filter((item) => !item.name.startsWith(".")) : rows;
 }
 
-/** Rows for path-only listings (favorites, recent folders). */
-export function folderStubItems(paths: readonly string[]): WorkspaceItem[] {
+/** `/owner/workspace` for a path inside a workspace; null above that. */
+function workspaceRootOf(path: string): string | null {
+  const [owner, workspace] = pathSegments(path);
+  return owner && workspace ? `/${owner}/${workspace}` : null;
+}
+
+/** Whether rows for these paths need the `/` listing for their permissions. */
+export function stubsNeedWorkspaces(
+  paths: readonly string[],
+  username: string,
+): boolean {
+  return paths.some((path) => !isOwnPath(path, username));
+}
+
+/**
+ * Rows for path-only listings (favorites, recent folders). A bare path carries
+ * no permission, so each row takes its workspace's row from `workspaces` (the
+ * `/` listing), because permissions are per workspace. A row with no match
+ * stays unknown, which `canWriteTo` reads as no.
+ */
+export function folderStubItems(
+  paths: readonly string[],
+  workspaces: readonly WorkspaceItem[] = [],
+): WorkspaceItem[] {
+  const permissionsByRoot = new Map(
+    workspaces.map((workspace) => [
+      normalizePath(workspace.path),
+      workspace.permissions,
+    ]),
+  );
   return paths.map((rawPath) => {
     const path = normalizePath(rawPath);
+    const root = workspaceRootOf(path);
     return {
       id: path,
       name: lastSegment(path),
@@ -263,6 +292,7 @@ export function folderStubItems(paths: readonly string[]): WorkspaceItem[] {
       type: "folder",
       size: 0,
       ownerId: pathSegments(path)[0] ?? "",
+      permissions: root ? permissionsByRoot.get(root) : undefined,
     };
   });
 }
@@ -319,11 +349,16 @@ export function pickerCommitState({
   return { canCommit: true, reason: null };
 }
 
+/**
+ * Why a new folder's name won't do, or null. The picker never lists hidden
+ * (dot) folders, so one created here could not be seen or chosen; that rule
+ * also covers "." and "..".
+ */
 export function folderNameError(name: string): string | null {
   const sanitizedName = sanitizePathSegment(name);
   if (!sanitizedName) return "Enter a folder name.";
-  if (sanitizedName === "." || sanitizedName === "..") {
-    return 'Folder name cannot be "." or "..".';
+  if (sanitizedName.startsWith(".")) {
+    return 'Folder name cannot start with ".": hidden folders are not shown here.';
   }
   if (sanitizedName.includes("/")) return "Folder name cannot contain a slash.";
   return null;

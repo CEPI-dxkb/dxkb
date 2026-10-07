@@ -7,7 +7,9 @@ import {
   breadcrumbLabels,
   breadcrumb,
   columnLabels,
+  defaultPickerDirectories,
   findOption,
+  makePickerRepository,
   pickerHome as home,
   pickerUser,
   renderPicker,
@@ -388,6 +390,51 @@ describe("WorkspaceFolderPickerDialog places", () => {
 
     expect(await findOption("Favorites", "Alpha")).toBeInTheDocument();
     expect(screen.queryByText("Experiments")).not.toBeInTheDocument();
+  });
+
+  it("chooses a favorite in another user's writable workspace", async () => {
+    const results = "/bob@bvbrc/shared-ws/Results";
+    const docs = "/bob@bvbrc/readonly-ws/Docs";
+    server.use(
+      http.post("*/api/services/workspace", () =>
+        HttpResponse.json({
+          jsonrpc: "2.0",
+          id: 1,
+          result: [[[["meta"], JSON.stringify({ folders: [results, docs] })]]],
+        }),
+      ),
+    );
+    const { user, onSelect } = renderPicker(
+      {},
+      makePickerRepository({
+        directories: {
+          ...defaultPickerDirectories,
+          [results]: [],
+          [docs]: [],
+        },
+      }),
+    );
+    await findOption("Home", "Alpha");
+    await user.click(place("Favorites"));
+
+    // A favorite is only a path; its workspace's row says what the user may do.
+    await user.click(await findOption("Favorites", /^Docs/));
+    expect(
+      await screen.findByText("You don't have write access to this folder."),
+    ).toBeInTheDocument();
+    expect(selectButton()).toBeDisabled();
+
+    await user.click(await findOption("Favorites", "Results"));
+    expect(
+      await screen.findByText(
+        "You can write here, so results can be saved in this folder.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New folder here" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Upload here" })).toBeEnabled();
+    await user.click(selectButton());
+
+    expect(onSelect).toHaveBeenCalledWith(results);
   });
 });
 

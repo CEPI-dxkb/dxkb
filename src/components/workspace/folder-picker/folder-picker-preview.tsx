@@ -104,8 +104,10 @@ export function FolderPickerInfo({
   const name = isHome ? "Home" : lastSegment(path);
   const owner = formatOwner(item?.ownerId ?? pathSegments(path).at(0) ?? "");
   const created = item?.createdAt ? formatDate(item.createdAt) : null;
-  const folders = contents.items.filter((child) => isFolder(child.type)).length;
-  const files = contents.items.length - folders;
+  // Hidden (dot) items never show in the columns, so they don't count here.
+  const children = contents.items.filter((child) => !child.name.startsWith("."));
+  const folders = children.filter((child) => isFolder(child.type)).length;
+  const files = children.length - folders;
 
   return (
     <PaneFrame label="Info">
@@ -132,7 +134,7 @@ export function FolderPickerInfo({
             value={
               contents.isLoading
                 ? "…"
-                : contents.items.length === 0
+                : children.length === 0
                   ? "Nothing yet"
                   : `${plural(folders, "folder")}, ${plural(files, "file")}`
             }

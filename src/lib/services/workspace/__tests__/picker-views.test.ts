@@ -7,12 +7,17 @@ import {
   folderNameError,
   folderStubItems,
   initialColumnChain,
+  isOwnPath,
   isPickerItemNavigable,
   lastSegment,
   listingSourceFor,
   locationForView,
+  pathSegments,
   pickerCommitState,
+  pickerHomePath,
+  pickerViewOptions,
   viewForLocation,
+  viewLabel,
   visibleFolderRows,
 } from "../picker-views";
 
@@ -54,6 +59,48 @@ describe("locationForView", () => {
   });
 });
 
+describe("viewLabel", () => {
+  it("labels every view as the sidebar does", () => {
+    expect(pickerViewOptions.map((option) => viewLabel(option.value))).toEqual([
+      "Home",
+      "My Workspaces",
+      "Shared Workspaces",
+      "Public Workspaces",
+      "Favorites",
+      "Recently Used",
+    ]);
+  });
+});
+
+describe("pathSegments", () => {
+  it("ignores leading, trailing and repeated slashes", () => {
+    expect(pathSegments("//alice@bvbrc//home/a/")).toEqual([
+      "alice@bvbrc",
+      "home",
+      "a",
+    ]);
+    expect(pathSegments("")).toEqual([]);
+    expect(pathSegments("/")).toEqual([]);
+  });
+});
+
+describe("isOwnPath", () => {
+  it("covers the user's workspaces and everything inside them", () => {
+    expect(isOwnPath("/alice@bvbrc", username)).toBe(true);
+    expect(isOwnPath("/alice@bvbrc/projects/x", username)).toBe(true);
+    expect(pickerHomePath(username)).toBe(home);
+  });
+
+  it("does not take a longer name with the same start for the user's", () => {
+    expect(isOwnPath("/alice@bvbrc.org/home", username)).toBe(false);
+    expect(isOwnPath("/bob@bvbrc/alice@bvbrc", username)).toBe(false);
+  });
+
+  it("owns nothing while signed out", () => {
+    expect(isOwnPath("/alice@bvbrc/home", "")).toBe(false);
+  });
+});
+
 describe("initialColumnChain", () => {
   it("opens at Home with nothing selected when there is no value", () => {
     expect(initialColumnChain("", username)).toEqual({
@@ -92,6 +139,38 @@ describe("initialColumnChain", () => {
       view: "shared",
       chain: ["/bob@bvbrc/lab"],
     });
+    expect(initialColumnChain("/bob@bvbrc/lab/a/b", username)).toEqual({
+      view: "shared",
+      chain: ["/bob@bvbrc/lab", "/bob@bvbrc/lab/a", "/bob@bvbrc/lab/a/b"],
+    });
+  });
+
+  it("treats a missing value like an empty one", () => {
+    expect(initialColumnChain(undefined, username)).toEqual({
+      view: "home",
+      chain: [],
+    });
+  });
+
+  it("tidies stray slashes in the value", () => {
+    expect(initialColumnChain(`//alice@bvbrc//home/a//b/`, username)).toEqual({
+      view: "home",
+      chain: [`${home}/a`, `${home}/a/b`],
+    });
+  });
+
+  it("does not take a workspace whose name starts with home for Home", () => {
+    expect(initialColumnChain("/alice@bvbrc/homework/x", username)).toEqual({
+      view: "myWorkspaces",
+      chain: ["/alice@bvbrc/homework", "/alice@bvbrc/homework/x"],
+    });
+  });
+
+  it("works for users of another realm", () => {
+    const legacy = "carol@patricbrc.org";
+    expect(
+      initialColumnChain("/carol@patricbrc.org/home/Data", legacy),
+    ).toEqual({ view: "home", chain: ["/carol@patricbrc.org/home/Data"] });
   });
 });
 
@@ -136,6 +215,15 @@ describe("listingSourceFor", () => {
     ).toEqual({ kind: "directory", path: "/alice@bvbrc" });
   });
 
+  it("lists favorites and recent folders from their own sources", () => {
+    expect(
+      listingSourceFor({ kind: "list", view: "favorites" }, username),
+    ).toEqual({ kind: "favorites" });
+    expect(listingSourceFor({ kind: "list", view: "recent" }, username)).toEqual(
+      { kind: "recent" },
+    );
+  });
+
   it("lists shared and public workspaces from the root listing", () => {
     expect(listingSourceFor({ kind: "list", view: "shared" }, username)).toEqual(
       { kind: "root" },
@@ -172,6 +260,19 @@ describe("filterListing", () => {
         target: { kind: "object", types: ["reads"] },
       }).map((entry) => entry.path),
     ).toEqual(["/bob@bvbrc/writable", "/bob@bvbrc/readonly"]);
+  });
+
+  it("leaves folders and the other listings alone", () => {
+    for (const location of [
+      { kind: "path", path: home },
+      { kind: "list", view: "favorites" },
+      { kind: "list", view: "recent" },
+      { kind: "list", view: "myWorkspaces" },
+    ] as const) {
+      expect(
+        filterListing({ location, items: root, target: { kind: "folder" } }),
+      ).toBe(root);
+    }
   });
 
   it("keeps only globally readable workspaces for Public", () => {
@@ -225,6 +326,20 @@ describe("buildPickerItems", () => {
     ).toEqual([".hidden", "Alpha", "job", "zeta", "notes.txt", "reads.fq"]);
   });
 
+  it("sorts names without regard to case", () => {
+    expect(
+      buildPickerItems({
+        items: [
+          item(`${home}/beta`, "folder"),
+          item(`${home}/Alpha`, "folder"),
+          item(`${home}/alpha2`, "folder"),
+        ],
+        target: { kind: "folder" },
+        showAll: false,
+      }).map((entry) => entry.name),
+    ).toEqual(["Alpha", "alpha2", "beta"]);
+  });
+
   it("keeps the given order when asked", () => {
     expect(
       buildPickerItems({
@@ -257,6 +372,28 @@ describe("visibleFolderRows", () => {
     expect(
       visibleFolderRows(location, listing, true).map((entry) => entry.name),
     ).toEqual(["Alpha", "zeta", "reads.fq"]);
+  });
+
+  it("shows folder-like items such as job results only with Show files", () => {
+    const withJob = [...listing, item(`${home}/job`, "job_result")];
+    expect(
+      visibleFolderRows(location, withJob, false).map((entry) => entry.name),
+    ).toEqual(["Alpha", "zeta"]);
+    expect(
+      visibleFolderRows(location, withJob, true).map((entry) => entry.name),
+    ).toEqual(["Alpha", "job", "zeta", "reads.fq"]);
+  });
+
+  it("drops read-only shared workspaces, which cannot take results", () => {
+    const root = [
+      item("/bob@bvbrc/writable", "folder", { user: "w", global: "n" }),
+      item("/bob@bvbrc/readonly", "folder", { user: "r", global: "n" }),
+    ];
+    expect(
+      visibleFolderRows({ kind: "list", view: "shared" }, root, true).map(
+        (entry) => entry.path,
+      ),
+    ).toEqual(["/bob@bvbrc/writable"]);
   });
 
   it("keeps Recently Used in the order it was used", () => {
@@ -333,6 +470,31 @@ describe("canWriteTo", () => {
     ).toBe(false);
   });
 
+  it("prefers the item's own permission over a sibling's", () => {
+    expect(
+      canWriteTo({
+        path: "/bob@bvbrc/ws/a",
+        username,
+        item: item("/bob@bvbrc/ws/a", "folder", { user: "w", global: "n" }),
+        siblings: [item("/bob@bvbrc/ws/b", "folder", { user: "r" })],
+      }),
+    ).toBe(true);
+  });
+
+  it("falls back to a sibling when the item carries no permission", () => {
+    expect(
+      canWriteTo({
+        path: "/bob@bvbrc/ws/a",
+        username,
+        item: item("/bob@bvbrc/ws/a", "folder"),
+        siblings: [
+          item("/bob@bvbrc/ws/c", "folder"),
+          item("/bob@bvbrc/ws/b", "folder", { user: "w" }),
+        ],
+      }),
+    ).toBe(true);
+  });
+
   it("refuses when nothing proves write access", () => {
     expect(
       canWriteTo({ path: "/bob@bvbrc/ws/a", username, siblings: [] }),
@@ -363,6 +525,31 @@ describe("pickerCommitState", () => {
       canCommit: false,
       reason: "This folder can't be used here.",
     });
+  });
+
+  it("asks the caller about the folder by name and path", () => {
+    const isSelectable = vi.fn(() => true);
+    pickerCommitState({
+      target: { kind: "folder" },
+      path: `${home}/Experiments/`,
+      writable: true,
+      isSelectable,
+    });
+    expect(isSelectable).toHaveBeenCalledWith({
+      name: "Experiments",
+      path: `${home}/Experiments/`,
+    });
+  });
+
+  it("gives the caller's rule precedence over write access", () => {
+    expect(
+      pickerCommitState({
+        target: { kind: "folder" },
+        path: "/carol@bvbrc/public/.cache",
+        writable: false,
+        isSelectable: () => false,
+      }).reason,
+    ).toBe("This folder can't be used here.");
   });
 
   it("explains a read-only folder", () => {
@@ -403,8 +590,17 @@ describe("folderNameError", () => {
     expect(folderNameError("a/b")).toBe("Folder name cannot contain a slash.");
   });
 
-  it("accepts an ordinary name", () => {
+  it("rejects a lone dot", () => {
+    expect(folderNameError(".")).toBe('Folder name cannot be "." or "..".');
+    expect(folderNameError("  ..  ")).toBe(
+      'Folder name cannot be "." or "..".',
+    );
+  });
+
+  it("accepts an ordinary name, with surrounding spaces trimmed", () => {
     expect(folderNameError("Results 2026")).toBeNull();
+    expect(folderNameError("  Results  ")).toBeNull();
+    expect(folderNameError(".config")).toBeNull();
   });
 });
 
@@ -418,6 +614,15 @@ describe("emptyListingMessage", () => {
     );
     expect(emptyListingMessage({ kind: "list", view: "recent" })).toBe(
       "No recently used folders.",
+    );
+    expect(emptyListingMessage({ kind: "list", view: "myWorkspaces" })).toBe(
+      "No workspaces yet.",
+    );
+    expect(emptyListingMessage({ kind: "list", view: "shared" })).toBe(
+      "No workspaces are shared with you.",
+    );
+    expect(emptyListingMessage({ kind: "list", view: "public" })).toBe(
+      "No public workspaces.",
     );
   });
 });

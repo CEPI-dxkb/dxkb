@@ -39,8 +39,8 @@ export interface WorkspaceUploadPanelProps {
 /**
  * Upload form (type, file picker, file list) with its Cancel / Start Upload
  * footer, for use inside a dialog: `UploadDialog` in the workspace browser, and
- * the upload page of `WorkspacePickerDialog`. State lives here, so it resets
- * whenever the panel mounts.
+ * the upload pane of `WorkspaceFolderPickerDialog`. State lives here, so it
+ * resets whenever the panel mounts.
  */
 export function WorkspaceUploadPanel({
   targetPath,

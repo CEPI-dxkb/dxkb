@@ -23,6 +23,7 @@ import { forEachTheme } from "../../a11y/theme";
 import { recordScan } from "../../a11y/report";
 import generatedBaseline from "../../a11y/baseline.generated";
 import { WorkspacePage } from "../../pages/workspace-page";
+import { FolderPickerDialog } from "../../pages/folder-picker-dialog";
 import { JobsListPage } from "../../pages/jobs-list-page";
 import { SettingsPage } from "../../pages/settings-page";
 import { TaxonInteractionsPage } from "../../pages/taxon-interactions-page";
@@ -117,6 +118,85 @@ test.describe("a11y deep tier: service forms", () => {
 
     await forEachTheme(page, async (theme) => {
       await assertNoBlocking(page, "genome-assembly/file-picker-open", theme);
+    });
+  });
+});
+
+// ── Output folder picker — interaction states ─────────────────────────────────────
+
+test.describe("a11y deep tier: output folder picker", () => {
+  const experiments = `${e2eHomePath}/Experiments`;
+
+  /** BLAST with its Output Folder picker open on Home → Experiments. */
+  async function openPicker(page: Parameters<typeof applyBackendMocks>[0]) {
+    await applyBackendMocks(page, {
+      overrides: [
+        ...authSessionOverrides,
+        ...buildWorkspaceOverrides({
+          pathItems: {
+            [e2eHomePath]: [
+              { name: "Experiments", type: "folder", parentPath: e2eHomePath },
+              { name: "FastQ", type: "folder", parentPath: e2eHomePath },
+              {
+                name: "reads.fq",
+                type: "reads",
+                parentPath: e2eHomePath,
+                size: 2048,
+              },
+            ],
+            [experiments]: [
+              { name: "Run 1", type: "folder", parentPath: experiments },
+            ],
+            [`${experiments}/Run 1`]: [],
+          },
+        }),
+        ...a11yBackendOverrides,
+      ],
+    });
+    await page.goto("/services/blast");
+    await page.waitForLoadState("networkidle");
+    const picker = new FolderPickerDialog(page);
+    await picker.open();
+    await picker.option("Home", "Experiments").click();
+    await expect(picker.option("Experiments", "Run 1")).toBeVisible();
+    return picker;
+  }
+
+  test("blast: folder picker open with files shown", async ({ page }) => {
+    const picker = await openPicker(page);
+    await picker.showFilesButton.click();
+    await expect(picker.option("Home", /reads\.fq/)).toBeVisible();
+    await awaitSettled(page);
+
+    await forEachTheme(page, async (theme) => {
+      await assertNoBlocking(page, "blast/folder-picker-open", theme);
+    });
+  });
+
+  test("blast: folder picker naming a new folder", async ({ page }) => {
+    const picker = await openPicker(page);
+    await picker.dialog.getByRole("button", { name: "New folder here" }).click();
+    await picker.dialog
+      .getByRole("textbox", { name: "New folder name" })
+      .fill("a/b");
+    await expect(
+      picker.dialog.getByText("Folder name cannot contain a slash."),
+    ).toBeVisible();
+
+    await forEachTheme(page, async (theme) => {
+      await assertNoBlocking(page, "blast/folder-picker-new-folder", theme);
+    });
+  });
+
+  test("blast: folder picker upload form", async ({ page }) => {
+    const picker = await openPicker(page);
+    await picker.dialog.getByRole("button", { name: "Upload here" }).click();
+    await expect(
+      picker.dialog.getByRole("button", { name: "Back to folder info" }),
+    ).toBeFocused();
+
+    await forEachTheme(page, async (theme) => {
+      await assertNoBlocking(page, "blast/folder-picker-upload", theme);
     });
   });
 });

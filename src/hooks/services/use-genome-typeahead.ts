@@ -89,16 +89,27 @@ export function useGenomeTypeahead({
     setHighlightedIndex(-1);
   };
 
-  // Debounced fetch
+  // Debounced fetch. Whichever request started last (this run or a
+  // `triggerSearch`) owns the results and loading state: starting one aborts
+  // the one before, and an aborted request never writes either.
   useEffect(() => {
-    if (skipCurrentFetch) return;
-
-    const shouldReset = !shouldSearch(query, minQueryLength) || disabled;
+    latestAbortController.current?.abort();
     const controller = new AbortController();
     latestAbortController.current = controller;
+    const shouldReset =
+      !skipCurrentFetch && (!shouldSearch(query, minQueryLength) || disabled);
 
     const timeoutId = window.setTimeout(
       () => {
+        // `triggerSearch` aborts this controller to take over. Running anyway
+        // would set loading for a fetch that can never clear it.
+        if (controller.signal.aborted) return;
+        // The query is the picked item's name: keep its suggestions, but a
+        // search this run superseded can no longer clear the loading state.
+        if (skipCurrentFetch) {
+          setIsLoading(false);
+          return;
+        }
         if (shouldReset) {
           itemRefs.current = [];
           setSuggestions([]);
@@ -134,7 +145,7 @@ export function useGenomeTypeahead({
             if (!controller.signal.aborted) setIsLoading(false);
           });
       },
-      shouldReset ? 0 : 250,
+      skipCurrentFetch || shouldReset ? 0 : 250,
     );
 
     return () => {

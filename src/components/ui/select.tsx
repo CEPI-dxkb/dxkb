@@ -30,12 +30,13 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
 }
 
 // Local edits (keep when regenerating with `shadcn add --overwrite`): the
-// `variant` and `density` axes. `size` still drives `data-size` (and with it
-// the trigger height and the `sm` corner radius); `density` only changes the
-// text size and the value-to-chevron gap, so a compact trigger keeps whichever
-// height its `size` gives it.
+// `variant`, `density` and `icon` axes, and the `group/select-trigger` the
+// chip icon keys on. `size` still drives `data-size` (and with it the trigger
+// height and the `sm` corner radius); `density` only changes the text size and
+// the value-to-chevron gap, so a compact trigger keeps whichever height its
+// `size` gives it.
 const selectTriggerVariants = cva(
-  "flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/select-trigger flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -64,16 +65,25 @@ const selectTriggerVariants = cva(
   }
 )
 
+// `chip` draws the chevron in the primary-tinted chip of the service-form
+// pickers' suggestions toggle (Button `soft`), deepening while the trigger is
+// hovered and turning over while the list is open, so a select and a picker
+// offer the same dropdown control.
+const selectIconChipClassName =
+  "pointer-events-none flex h-4 w-5.5 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary transition-colors group-hover/select-trigger:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:group-hover/select-trigger:bg-primary/80"
+
 function SelectTrigger({
   className,
   size = "default",
   variant,
   density,
+  icon = "default",
   children,
   ...props
 }: SelectPrimitive.Trigger.Props &
   VariantProps<typeof selectTriggerVariants> & {
     size?: "sm" | "default"
+    icon?: "default" | "chip"
   }) {
   return (
     <SelectPrimitive.Trigger
@@ -83,11 +93,17 @@ function SelectTrigger({
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon
-        render={
-          <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
-        }
-      />
+      {icon === "chip" ? (
+        <SelectPrimitive.Icon className={selectIconChipClassName}>
+          <ChevronDownIcon className="size-4 transition-transform group-data-popup-open/select-trigger:rotate-180" />
+        </SelectPrimitive.Icon>
+      ) : (
+        <SelectPrimitive.Icon
+          render={
+            <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
+          }
+        />
+      )}
     </SelectPrimitive.Trigger>
   )
 }

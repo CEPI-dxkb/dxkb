@@ -141,13 +141,18 @@ export default function BlastServicePage() {
       await runtime.submitFormData(data);
     };
   }, [runtime, isFastaValid, fastaValidationResult]);
+  // Clearing the fields a source choice swaps in leaves them untouched, so
+  // the newly shown field does not open on a "required" error before the
+  // user has done anything with it.
+  const untouched = { dontUpdateMeta: true };
   const changeSource = (next: BlastFormData["input_source"]) => {
     const fasta =
       next === "fasta_data" ? form.getFieldValue("input_fasta_data") : "";
-    form.setFieldValue("input_fasta_data", "");
-    form.setFieldValue("input_fasta_file", "");
-    form.setFieldValue("input_feature_group", "");
-    if (next === "fasta_data") form.setFieldValue("input_fasta_data", fasta);
+    form.setFieldValue("input_fasta_data", "", untouched);
+    form.setFieldValue("input_fasta_file", "", untouched);
+    form.setFieldValue("input_feature_group", "", untouched);
+    if (next === "fasta_data")
+      form.setFieldValue("input_fasta_data", fasta, untouched);
   };
   const changeDatabase = (next: BlastFormData["db_precomputed_database"]) => {
     form.setFieldValue("db_source", resolveDbSource(next));
@@ -159,11 +164,11 @@ export default function BlastServicePage() {
         next,
       ) as BlastFormData["db_type"],
     );
-    form.setFieldValue("db_genome_list", []);
-    form.setFieldValue("db_genome_group", "");
-    form.setFieldValue("db_feature_group", "");
-    form.setFieldValue("db_taxon_list", []);
-    form.setFieldValue("db_fasta_file", "");
+    form.setFieldValue("db_genome_list", [], untouched);
+    form.setFieldValue("db_genome_group", "", untouched);
+    form.setFieldValue("db_feature_group", "", untouched);
+    form.setFieldValue("db_taxon_list", [], untouched);
+    form.setFieldValue("db_fasta_file", "", untouched);
   };
   const inputPreset: WorkspaceSelectorPreset =
     program === "blastp" || program === "tblastn"

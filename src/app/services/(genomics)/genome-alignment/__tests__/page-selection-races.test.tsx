@@ -59,14 +59,18 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
   }: {
     onObjectSelect: (object: { id: string; name: string; path: string }) => void;
   }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onObjectSelect({ id: "group", name: "Test group", path: "/groups/test" });
-      }}
-    >
-      Select genome group
-    </button>
+    <>
+      {/* Uncontrolled like the real selector's search text: only a remount clears it. */}
+      <input aria-label="Search genome groups" />
+      <button
+        type="button"
+        onClick={() => {
+          onObjectSelect({ id: "group", name: "Test group", path: "/groups/test" });
+        }}
+      >
+        Select genome group
+      </button>
+    </>
   ),
 }));
 
@@ -116,6 +120,33 @@ describe("GenomeAlignmentServicePage selection races", () => {
     await request.promise;
 
     expect(screen.queryByText("Group genome")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Loading genomes from workspace group..."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("clears the genome group search text and last added group on reset", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([groupGenome]);
+    const user = userEvent.setup();
+
+    render(<GenomeAlignmentServicePage />);
+    await user.type(
+      screen.getByRole("textbox", { name: "Search genome groups" }),
+      "influenza",
+    );
+    await user.click(screen.getByRole("button", { name: "Select genome group" }));
+    expect(
+      await screen.findByText("Last group added: Test group"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(
+      screen.getByRole("textbox", { name: "Search genome groups" }),
+    ).toHaveValue("");
+    expect(
+      screen.queryByText("Last group added: Test group"),
+    ).not.toBeInTheDocument();
   });
 
   it("does not apply rerun genomes after an individual selection edit", async () => {

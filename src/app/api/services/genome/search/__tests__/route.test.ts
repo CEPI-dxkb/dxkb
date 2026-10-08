@@ -68,6 +68,44 @@ describe("GET /api/services/genome/search", () => {
     expect(capturedUrl).toContain("*test123*");
   });
 
+  it("drops spaces, hyphens and underscores as the BV-BRC genome index does", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const req = mockNextRequest({
+      url: "http://localhost:3019/api/services/genome/search",
+      searchParams: { q: "Grapevine leafroll-associated_virus 3" },
+    });
+    await GET(req, {});
+
+    expect(capturedUrl).toContain(
+      "eq(genome_name,*Grapevineleafrollassociatedvirus3*)",
+    );
+  });
+
+  it("keeps the dot in a genome ID", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const req = mockNextRequest({
+      url: "http://localhost:3019/api/services/genome/search",
+      searchParams: { q: "55951.466" },
+    });
+    await GET(req, {});
+
+    expect(capturedUrl).toContain("eq(genome_id,*55951.466*)");
+  });
+
   it("returns empty results when query is only special chars (sanitized to empty)", async () => {
     let handlerCalled = false;
     server.use(

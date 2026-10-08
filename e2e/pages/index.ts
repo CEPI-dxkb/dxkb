@@ -22,3 +22,4 @@ export { LegacySearchPage } from "./legacy-search-page";
 export { ArchaeopteryxPage } from "./archaeopteryx-page";
 export { PanelSplit } from "./panel-split";
 export { ViewNavRail } from "./view-nav-rail";
+export { FolderPickerDialog } from "./folder-picker-dialog";

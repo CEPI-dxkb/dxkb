@@ -91,12 +91,10 @@ export function useOutputNameValidation({
 
   return {
     status,
-    isChecking: status === "checking",
-    isPending,
-    isInvalid:
-      isPending ||
-      status === "checking" ||
-      status === "taken" ||
-      status === "error",
+    // Pending covers the debounce window; checking covers the lookup itself.
+    // Neither is a verdict, so they block submission (via onValidationChange)
+    // without marking the field invalid.
+    isValidating: isPending || status === "checking",
+    isInvalid: status === "taken" || status === "error",
   };
 }

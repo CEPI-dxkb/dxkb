@@ -35,6 +35,9 @@ type BlastFormDataPartial = Partial<{
   db_fasta_file: string;
 }>;
 
+/** Most genomes "Search within selected genome list" accepts (`maxGenomes` in BV-BRC's Homology app). */
+export const blastMaxGenomes = 20;
+
 /**
  * Get available database types for BLAST based on the selected program and database source
  */

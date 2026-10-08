@@ -35,14 +35,21 @@ export function ServiceCollapsibleTrigger({
   );
 }
 
+/**
+ * The padding sits on an inner div, and `className` with it, so the panel's
+ * open/close height animation runs all the way to 0 instead of stopping at
+ * the padding and then vanishing.
+ */
 export function ServiceCollapsibleContent({
   className,
+  children,
   ...props
 }: StringClassName<React.ComponentProps<typeof CollapsibleContent>>) {
   return (
-    <CollapsibleContent
-      className={cn("service-collapsible-content", className)}
-      {...props}
-    />
+    <CollapsibleContent {...props}>
+      <div className={cn("service-collapsible-content", className)}>
+        {children}
+      </div>
+    </CollapsibleContent>
   );
 }

@@ -2,8 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ServiceTextarea } from "@/components/services/form-ui/service-input";
+import { cn } from "@/lib/utils";
 import {
   validateFastaForBlast,
   getFastaErrorMessage,
@@ -25,6 +25,8 @@ export interface FastaTextareaProps {
   required?: boolean;
   showValidationStatus?: boolean;
   debounceMs?: number;
+  /** The form's own error for the field (e.g. "required"), shown when the FASTA itself has none. */
+  fieldError?: string | null;
 }
 
 export function FastaTextarea({
@@ -39,6 +41,7 @@ export function FastaTextarea({
   required: _required = false,
   // showValidationStatus = true,
   debounceMs = 500,
+  fieldError,
 }: FastaTextareaProps) {
   const [validationResult, setValidationResult] =
     useState<FastaValidationResult | null>(null);
@@ -81,8 +84,12 @@ export function FastaTextarea({
     return getFastaErrorMessage(validationResult, inputType.toUpperCase());
   };
 
-  const errorMessage = getErrorMessage();
+  const errorMessage = getErrorMessage() || fieldError || "";
   const hasError = errorMessage.length > 0;
+  const validMessage =
+    validationResult?.valid && validationResult.numseq > 0
+      ? `✓ Valid FASTA with ${String(validationResult.numseq)} sequence${validationResult.numseq !== 1 ? "s" : ""}`
+      : "";
 
   return (
     <div className="space-y-2">
@@ -93,24 +100,23 @@ export function FastaTextarea({
         placeholder={placeholder}
         disabled={disabled}
         aria-invalid={hasError || undefined}
-        variant={validationResult?.valid ? "valid" : undefined}
+        variant={!hasError && validationResult?.valid ? "valid" : undefined}
         className={className}
       />
 
-      {errorMessage && (
-        <Alert variant="destructive" size="sm">
-          <AlertDescription>
-            {errorMessage}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {validationResult?.valid && validationResult.numseq > 0 && (
-        <div className="text-sm text-success">
-          ✓ Valid FASTA with {validationResult.numseq} sequence
-          {validationResult.numseq !== 1 ? "s" : ""}
-        </div>
-      )}
+      {/* One line, always present: the FASTA error, the form's error, the
+          valid count, or nothing. Every state renders the same plain text
+          in the same reserved height, so the card does not resize as the
+          state changes. */}
+      <p
+        role="status"
+        className={cn(
+          "min-h-5 text-sm",
+          hasError ? "text-destructive" : "text-success",
+        )}
+      >
+        {hasError ? errorMessage : validMessage}
+      </p>
     </div>
   );
 }

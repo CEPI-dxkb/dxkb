@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { Button } from "@/components/ui/button";
 import { TaxonomySuggestionContent } from "@/components/taxonomy/taxonomy-suggestion-content";
 import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
@@ -41,8 +41,13 @@ async function searchTaxonById(
     throw new Error(`HTTP error! status: ${String(response.status)}`);
   }
 
-  const data = (await response.json()) as { response?: { docs?: unknown[] } };
-  return (data.response?.docs ?? []) as TaxonomyItem[];
+  // The proxy relays BV-BRC's `Accept: application/json` reply, a bare array
+  // of documents (the Solr `{ response: { docs } }` envelope only comes with
+  // application/solr+json), and the API serializes taxon_id as a string.
+  const docs = (await response.json()) as (Omit<TaxonomyItem, "taxon_id"> & {
+    taxon_id: number | string;
+  })[];
+  return docs.map((doc) => ({ ...doc, taxon_id: Number(doc.taxon_id) }));
 }
 
 export function TaxIDSelector({
@@ -152,7 +157,7 @@ export function TaxIDSelector({
         {!disabled && (
           <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
         )}
-        <Input
+        <ServiceInput
           id={id}
           placeholder={
             disabled && !value ? "Select a taxon name first" : placeholder
@@ -183,7 +188,7 @@ export function TaxIDSelector({
         {!disabled && (
           <Button
             type="button"
-            variant="picker-toggle"
+            variant="soft"
             aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
             onClick={handleManualDropdownToggle}
             className="absolute top-1/2 right-3 size-4 -translate-y-1/2"

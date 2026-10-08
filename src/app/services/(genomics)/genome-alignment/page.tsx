@@ -39,6 +39,9 @@ export default function GenomeAlignmentServicePage() {
   const selectionRevisionRef = useRef(0);
   const groupRequestRevisionRef = useRef(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  // Remounts GenomeSelection on reset: its selectors keep their search text
+  // internally, and its group fetch state must not outlive the reset.
+  const [selectionResetKey, setSelectionResetKey] = useState(0);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
   const submitRef = useRef<(value: GenomeAlignmentFormData) => Promise<void>>(
     () => Promise.resolve(),
@@ -99,6 +102,7 @@ export default function GenomeAlignmentServicePage() {
     form.reset(defaultGenomeAlignmentFormValues);
     replaceGenomes([]);
     setShowAdvanced(false);
+    setSelectionResetKey((key) => key + 1);
   };
 
   return (
@@ -127,6 +131,7 @@ export default function GenomeAlignmentServicePage() {
       />
       <form action={() => form.handleSubmit()} className="service-form-section">
         <GenomeSelection
+          key={selectionResetKey}
           form={form}
           genomes={genomes}
           genomesRef={genomesRef}

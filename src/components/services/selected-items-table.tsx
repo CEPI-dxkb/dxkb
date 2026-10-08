@@ -2,7 +2,7 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/comp
 import { Button } from "@/components/ui/button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, X } from "lucide-react";
 import type { CSSProperties } from "react";
 
 interface SelectedItem {
@@ -94,7 +94,7 @@ const SelectedItemsTable = ({
       >
         <div className="h-full overflow-y-auto rounded-md border">
           {items.length === 0 ? (
-            <div className="h-full bg-muted p-4.5 text-center text-sm text-foreground">
+            <div className="h-full bg-muted/50 p-4.5 text-center text-sm text-foreground">
               {emptyMessage}
             </div>
           ) : (
@@ -102,7 +102,7 @@ const SelectedItemsTable = ({
               {items.map((item) => (
                 <div
                   key={`${item.id}${item.type ?? ""}`}
-                  className="flex items-center justify-between bg-muted px-4 py-2 hover:bg-secondary/20"
+                  className="flex items-center justify-between bg-muted/50 px-4 py-2"
                 >
                   <div className="flex items-center gap-2">
                     <div>
@@ -125,13 +125,13 @@ const SelectedItemsTable = ({
                     </div>
                   </div>
                   <Button
-                    variant="ghost"
+                    variant="ghost-secondary"
                     size="icon"
                     className="size-6"
                     aria-label="Remove item"
                     onClick={() => { onRemove(item.id); }}
                   >
-                    <span className="text-muted-foreground hover:text-foreground">×</span>
+                    <X />
                   </Button>
                 </div>
               ))}

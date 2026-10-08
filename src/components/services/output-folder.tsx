@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 
 import {
   Tooltip,
@@ -8,17 +8,23 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
+import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog";
 import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { Spinner } from "@/components/ui/spinner";
+import { useAuth } from "@/lib/auth/provider";
+import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 
-import { HelpCircle } from "lucide-react";
+import { FolderOpen, HelpCircle } from "lucide-react";
 
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
 const validationErrorMessage =
   "Unable to validate this name. Please try again.";
+const validatingMessage = "Checking name availability...";
 
 interface OutputFolderProps {
   title?: boolean;
@@ -56,6 +62,9 @@ const OutputFolder = ({
   outputFolderPath = "",
   onValidationChange,
 }: OutputFolderProps) => {
+  const { user } = useAuth();
+  const canBrowse = !!workspaceUsername(user);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const needsValidation =
     variant === "name" && !!outputFolderPath.trim() && !!value.trim();
   const validation = useOutputNameValidation({
@@ -104,15 +113,40 @@ const OutputFolder = ({
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
           {variant === "default" && (
-            <WorkspaceObjectSelector
-              preset="folder"
-              placeholder="Search for folders..."
-              value={value}
-              filter={isSelectableOutputFolder}
-              onObjectSelect={(object) => {
-                onChange?.(object.path || "");
-              }}
-            />
+            <>
+              <WorkspaceObjectSelector
+                preset="folder"
+                placeholder="Search for folders..."
+                value={value}
+                filter={isSelectableOutputFolder}
+                onObjectSelect={(object) => {
+                  onChange?.(object.path || "");
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                aria-label="Browse workspace folders"
+                title="Browse workspace folders"
+                disabled={disabled || !canBrowse}
+                onClick={() => {
+                  setPickerOpen(true);
+                }}
+              >
+                <FolderOpen />
+              </Button>
+              <WorkspaceFolderPickerDialog
+                open={pickerOpen}
+                onOpenChange={setPickerOpen}
+                title="Select an Output Folder"
+                initialPath={value}
+                isSelectable={isSelectableOutputFolder}
+                onSelect={(path) => {
+                  onChange?.(path);
+                }}
+              />
+            </>
           )}
           {variant === "name" && (
             <div className="flex flex-1 items-center gap-2">
@@ -127,6 +161,16 @@ const OutputFolder = ({
             </div>
           )}
         </div>
+        {variant === "name" && validation.isValidating && (
+          <p
+            className="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            {/* The paragraph is the status; the spinner's own "Loading" status would announce twice. */}
+            <Spinner aria-hidden className="size-3" />
+            {validatingMessage}
+          </p>
+        )}
         {variant === "name" &&
           (validation.status === "taken" || validation.status === "error") && (
             <p className="text-sm text-destructive" role="alert">

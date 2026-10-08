@@ -48,7 +48,7 @@ export default function ServicesIndexPage() {
       </p>
       <ul className="mt-8 grid gap-4 sm:grid-cols-2">
         {serviceCategories.map((c) => (
-          <li key={c.label} className="rounded-md border p-4">
+          <li key={c.label} className="rounded-md border bg-card p-4">
             <Link href={c.href} className="font-medium hover:underline">
               {c.label}
             </Link>

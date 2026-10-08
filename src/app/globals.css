@@ -459,6 +459,41 @@
   @apply text-muted-foreground mt-2 space-y-1 text-sm;
 }
 
+/* The services layout's main area stacks three surfaces, darkest to
+   lightest, so every control stands out from what it sits on: the page, the
+   section cards, then the fields (`--background`, which the service-card-*
+   field classes below paint). The light themes' cards share the fields'
+   white, so there `--card` takes a tint of the foreground; anything portaled
+   to the body (dialogs, popovers) keeps the theme's card. Dark themes already
+   step up from page to card, so they only drop the page to `--background`.
+
+   The light themes' muted-foreground, link, destructive and warning text
+   only just clears 4.5:1 on white, so on the tinted surfaces each is pulled
+   a quarter of the way to the foreground (at least 4.68:1 on the page in
+   every light theme). The values are derived here, on the theme element,
+   because a custom property cannot mix its own value where it is redefined. */
+[data-theme] {
+  --service-page: color-mix(in oklab, var(--foreground) 10%, var(--background));
+  --service-card: color-mix(in oklab, var(--foreground) 4%, var(--background));
+  --service-muted-foreground: color-mix(in oklab, var(--muted-foreground) 75%, var(--foreground));
+  --service-link: color-mix(in oklab, var(--link) 75%, var(--foreground));
+  --service-destructive: color-mix(in oklab, var(--destructive) 75%, var(--foreground));
+  --service-warning: color-mix(in oklab, var(--warning) 75%, var(--foreground));
+}
+
+[data-theme$="-light"] .service-surface {
+  background-color: var(--service-page);
+  --card: var(--service-card);
+  --muted-foreground: var(--service-muted-foreground);
+  --link: var(--service-link);
+  --destructive: var(--service-destructive);
+  --warning: var(--service-warning);
+}
+
+[data-theme$="-dark"] .service-surface {
+  background-color: var(--background);
+}
+
 .service-container {
   @apply mx-auto max-w-6xl px-4 py-8;
 }
@@ -527,8 +562,12 @@
   @apply flex items-center gap-2 text-lg font-semibold;
 }
 
+/* A collapsible section (Advanced Options and the like) reads as a control
+   rather than a field: its trigger is a full-width neutral bar, grayer than
+   the card so it cannot pass for a white input, which deepens on hover; the
+   panel opens below it on the card surface. */
 .service-collapsible-container {
-  @apply bg-card w-full rounded-md border p-2;
+  @apply bg-card border-foreground/15 w-full rounded-md border shadow-xs;
 }
 
 .service-collapsible-header {
@@ -548,11 +587,11 @@
 }
 
 .service-collapsible-content {
-  @apply w-full space-y-4 px-2 py-2;
+  @apply w-full space-y-4 p-4;
 }
 
 .service-collapsible-trigger {
-  @apply flex items-center gap-1 p-2 font-medium;
+  @apply bg-muted/60 hover:bg-foreground/10 focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-1 rounded-md px-4 py-3 font-medium transition-colors outline-none focus-visible:ring-3 data-panel-open:rounded-b-none;
 }
 
 .service-card-content {
@@ -583,28 +622,15 @@
   @apply mt-4 flex flex-row justify-end gap-4;
 }
 
+/* The service fields' placeholders (input, number input, textarea, select)
+   sit darker than muted-foreground, so the hint stays readable on a white
+   field, while the typed value keeps the full foreground. */
 .service-card-input {
-  @apply bg-background w-full flex-1 text-sm transition-all duration-300;
-}
-
-.service-card-input:hover {
-  @apply bg-muted/60;
-}
-
-.service-card-input:focus {
-  @apply bg-background;
+  @apply bg-background placeholder:text-foreground/75 w-full flex-1 text-sm transition-all duration-300;
 }
 
 .service-card-num-input {
-  @apply bg-background transition-all duration-300;
-}
-
-.service-card-num-input:hover {
-  @apply bg-muted/60;
-}
-
-.service-card-num-input:focus {
-  @apply bg-background;
+  @apply bg-background placeholder:text-foreground/75 transition-all duration-300;
 }
 
 .service-card-input-search {
@@ -635,8 +661,14 @@
   @apply text-muted-foreground h-4 w-4;
 }
 
+/* Transitions name the color and ring properties only. `transition-all`
+   also animated height and width, so every step of a drag on the resize
+   handle (and every line field-sizing added while typing) eased in over
+   300ms and the box trailed the pointer. The placeholder is prose, so it
+   drops the mono face the sequence itself uses and reads like the other
+   fields' placeholders. */
 .service-card-textarea {
-  @apply bg-background max-h-96 min-h-48 overflow-y-auto font-mono text-sm transition-all duration-300;
+  @apply bg-background placeholder:text-foreground/75 placeholder:font-sans max-h-96 min-h-48 overflow-y-auto font-mono text-sm transition-[color,background-color,border-color,box-shadow] duration-300;
   overflow-x: auto;
   overflow-wrap: break-word;
   word-wrap: break-word;
@@ -644,24 +676,28 @@
   white-space: pre-wrap;
 }
 
-.service-card-textarea:hover {
-  @apply bg-muted/60;
-}
-
-.service-card-textarea:focus {
-  @apply bg-background;
-}
-
 .service-card-select-trigger {
-  @apply bg-background w-full transition-all duration-300;
+  @apply bg-background data-placeholder:text-foreground/75 w-full transition-all duration-300;
 }
 
-.service-card-select-trigger:hover {
-  @apply bg-muted/60;
+/* Hovering a service field darkens its border and keeps its white fill.
+   The fill has no room to move between the field's white and the card's
+   tint (see .service-surface), and the gray fill the hover used to take
+   made the hovered field blend into the card. Focused, invalid, valid and
+   disabled fields keep their own border color. */
+.service-card-input:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive),
+.service-card-num-input:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive),
+.service-card-textarea:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-success),
+.service-card-select-trigger:hover:not(:focus-visible, :disabled, [aria-invalid="true"]) {
+  border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
-.service-card-select-trigger:focus {
-  @apply bg-background;
+/* Outline buttons (Reset, the folder browser) hover the same way in the
+   light services layout. Their own hover fill, --muted, is the tinted page's
+   color, so a hovered Reset button vanished into the page. */
+[data-theme$="-light"] .service-surface [data-slot="button"][data-variant="outline"]:hover:not(:disabled, :focus-visible) {
+  background-color: var(--background);
+  border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
 .service-card-select-content {

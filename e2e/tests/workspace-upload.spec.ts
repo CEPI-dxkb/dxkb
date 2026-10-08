@@ -2,7 +2,9 @@ import { test, expect, applyBackendMocks } from "../mocks/backends";
 import {
   authSessionOverrides,
   buildWorkspaceOverrides,
+  e2eHomePath,
   journeyOverrides,
+  workspaceRpcOverride,
 } from "../fixtures/overrides";
 import { WorkspacePage } from "../pages";
 import { recordedTestUserId } from "../scripts/har-constants";
@@ -55,6 +57,59 @@ test.describe("workspace upload", () => {
     // a UI that POSTs successfully but never invalidates / re-renders the listing.
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(workspace.rowByName("sample.txt").first()).toBeVisible();
+  });
+
+  test("deletes the new entry when the file never reaches storage", async ({ page }) => {
+    // Workspace.create makes the object before the file is sent; when the upload proxy
+    // then fails, the dialog must delete that object rather than leave an empty entry
+    // that cannot be opened. (jsdom cannot send the multipart body, so this path is
+    // only reachable in a browser.)
+    await applyBackendMocks(page, {
+      overrides: [
+        {
+          url: /\/api\/services\/workspace\/upload/,
+          method: "POST",
+          status: 502,
+          body: { error: "Shock refused the upload" },
+        },
+        ...buildWorkspaceOverrides({
+          extraRpc: [workspaceRpcOverride("Workspace.delete", { result: [[]] })],
+        }),
+        ...journeyOverrides,
+      ],
+    });
+    const workspace = new WorkspacePage(page);
+    await workspace.goto();
+    await workspace.openUpload();
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "sample.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("hello e2e upload"),
+    });
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("sample.txt")).toBeVisible();
+
+    const deleteRequest = page.waitForRequest((req) => {
+      if (!req.url().endsWith("/api/services/workspace") || req.method() !== "POST") {
+        return false;
+      }
+      try {
+        const body = JSON.parse(req.postData() ?? "{}") as { method?: string };
+        return body.method === "Workspace.delete";
+      } catch {
+        return false;
+      }
+    });
+    await dialog.getByRole("button", { name: /^start upload$/i }).click();
+
+    const body = JSON.parse((await deleteRequest).postData() ?? "{}") as {
+      params?: [{ objects?: string[] }];
+    };
+    expect(body.params?.[0]?.objects).toEqual([`${e2eHomePath}/sample.txt`]);
+    // The backend's reason still reaches the user, and the file stays queued for a retry.
+    await expect(page.getByText("Upload failed: sample.txt")).toBeVisible();
+    await expect(page.getByText("Shock refused the upload")).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /^start upload$/i })).toBeEnabled();
   });
 });
 

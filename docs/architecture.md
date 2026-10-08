@@ -104,6 +104,18 @@ Notes:
 - `workspace-file-table.tsx` — the file listing, built on the shared `DataTable` in `src/components/shared/file-table.tsx` (also used by the jobs table). It is not virtualized. `DataTable` uses fixed table layout, so the header row sets every column's width, and a resize re-renders only the header cells. Body rows carry no widths and render their cells through `orderedCells(row, columnOrder)` from `useDataTableBody()`, because the React Compiler caches a row's cells on the `row` object, which a column reorder does not replace.
 - Details panel uses `react-resizable-panels`; its split is the `workspacePanelLayout` preference (see "UI state"), saved only while the panel is open. `WorkspacePanelContext` holds only whether the panel is expanded and whether the user hid it. Sort and show-hidden are preferences too (`workspaceSort`, `workspaceShowHiddenFiles`), so they carry across folders and reloads.
 - Favorites stored in `favorites.json` workspace file (see `src/lib/services/workspace/favorites.ts`)
+- **Mini browser and folder picker**:
+  - **Mini browser.** `WorkspaceMiniBrowser` (`workspace-mini-browser.tsx`) is the small path-navigating table used by the Copy/Move and Add-to-Group dialogs.
+  - **Folder picker.** `folder-picker/folder-picker-dialog.tsx` (`WorkspaceFolderPickerDialog`) is the destination-folder picker that `OutputFolder`'s browse button opens. It has:
+    - a places sidebar: Home, My / Shared / Public Workspaces, Favorites, Recently Used;
+    - horizontally scrolling, resizable columns (click a folder to open it in the next column);
+    - an info pane pinned on the right, with inline New folder and an Upload form that takes its place;
+    - a full-path breadcrumb and Select in the footer.
+  - **What it remembers.** Column widths, the info-pane width and Show files last between opens.
+  - **Motion.** Going into and out of folders animates the same way in both directions (`folder-picker-motion.ts`). The scroll position and the content width tween together, so the scroll bar doesn't snap.
+  - **Upload form.** It is `upload-panel.tsx` (`WorkspaceUploadPanel`), shared with the workspace browser's `UploadDialog`.
+  - **Rules and data.** The rules live in `src/lib/services/workspace/picker-views.ts`: where each place points, where the picker opens, which rows show, write access and commit. Listings come from `useWorkspacePickerListing`.
+  - **New browse buttons.** A new "browse the workspace" button on a service field should open this dialog rather than build another browser. `PickerTarget`'s file mode is the seam for the read-library selectors.
 - **Repository pattern**: workspace data access goes through `WorkspaceRepositorySet` (`src/lib/services/workspace/workspace-repository.ts`), provided via `WorkspaceRepositoryProvider`, consumed with `useWorkspaceRepository()`. Prefer this over calling the client directly. Path helpers in `path-utils.ts`; RQ keys in `workspace-query-keys.ts`.
 
 ## Views & organism landing

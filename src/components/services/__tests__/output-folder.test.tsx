@@ -93,7 +93,52 @@ describe("OutputFolder folder selection", () => {
 });
 
 describe("OutputFolder name validation", () => {
-  it("keeps a previously validated name invalid while revalidating it", async () => {
+  it("does not mark the name invalid while the user is still typing", async () => {
+    let resolveCheck: ((exists: boolean) => void) | undefined;
+    checkWorkspaceObjectExistsMock.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveCheck = resolve;
+        }),
+    );
+    const onValidationChange = vi.fn();
+    render(
+      <OutputFolder
+        title={false}
+        variant="name"
+        value="result"
+        outputFolderPath="/user/home"
+        onValidationChange={onValidationChange}
+      />,
+    );
+
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking name availability...",
+    );
+    expect(onValidationChange).toHaveBeenLastCalledWith(false);
+
+    await finishDebounce();
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking name availability...",
+    );
+
+    await act(async () => {
+      resolveCheck?.(false);
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(onValidationChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("blocks submission without marking the name invalid while revalidating it", async () => {
     checkWorkspaceObjectExistsMock.mockResolvedValue(false);
     const onValidationChange = vi.fn();
     const { rerender } = render(
@@ -131,7 +176,13 @@ describe("OutputFolder name validation", () => {
       />,
     );
 
-    expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Checking name availability...",
+    );
     expect(onValidationChange).toHaveBeenLastCalledWith(false);
   });
 

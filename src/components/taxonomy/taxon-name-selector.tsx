@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, ChevronDownIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { Button } from "@/components/ui/button";
 import { TaxonomySuggestionContent } from "@/components/taxonomy/taxonomy-suggestion-content";
 import { TaxonomyItem, TaxonomySelectorProps } from "@/types";
@@ -267,7 +267,7 @@ export function TaxonNameSelector({
     <div className={cn("relative w-full", className)}>
       <div ref={inputRef} className="relative">
         <SearchIcon className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
+        <ServiceInput
           placeholder={placeholder}
           value={inputValue}
           onChange={(e) => {
@@ -289,7 +289,7 @@ export function TaxonNameSelector({
         />
         <Button
           type="button"
-          variant="picker-toggle"
+          variant="soft"
           aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
           onClick={handleManualDropdownToggle}
           className="absolute top-1/2 right-3 size-4 -translate-y-1/2"

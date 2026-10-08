@@ -1,5 +1,9 @@
 import { Card } from "@/components/ui/card";
-import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import {
+  FieldErrors,
+  FieldItem,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
@@ -89,10 +93,10 @@ export function InputSourceCard({
                         onChange={item.handleChange}
                         inputType={program}
                         onValidationChange={onValidationChange}
+                        fieldError={fieldErrorMessage(item)}
                         required
                         showValidationStatus
                       />
-                      <FieldErrors field={item} />
                     </FieldItem>
                   )}
                 </form.Field>

@@ -70,10 +70,6 @@ export const buttonVariants = cva(
         // Primary-tinted chip, solid in dark themes (the dropdown toggles in
         // the service-form pickers).
         soft: "bg-primary/15 text-primary transition-colors hover:bg-primary/25 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/80",
-        // Suggestions toggle in the taxonomy pickers: the default fill with a
-        // muted chevron that turns foreground on hover.
-        "picker-toggle":
-          "bg-primary text-muted-foreground transition-colors hover:text-foreground [a]:hover:bg-primary/80",
         // A row in a dropdown menu (sign out in the user menu).
         "menu-item":
           "rounded-md border-none hover:bg-secondary/80 hover:text-foreground focus:bg-secondary/80 aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",

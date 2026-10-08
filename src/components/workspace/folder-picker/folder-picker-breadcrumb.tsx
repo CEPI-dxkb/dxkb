@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import {
   lastSegment,
@@ -19,7 +19,9 @@ const crumbEnterClass =
 /**
  * The selection as a path from the place root; each crumb jumps back to that
  * folder (closing the columns past it). Every folder shows; long names
- * truncate, with the full path on hover.
+ * truncate, with the full path on hover. A path too deep to fit even then
+ * scrolls instead of running under the footer's buttons, kept at its end so
+ * the current folder is always in view.
  */
 export function FolderPickerBreadcrumb({
   place,
@@ -35,11 +37,21 @@ export function FolderPickerBreadcrumb({
   onJump: (depth: number) => void;
 }) {
   const PlaceIcon = placeIcons[place];
+  const trailRef = useRef<HTMLElement>(null);
+
+  // The current folder is the last crumb. Before paint, so a new crumb never
+  // shows a frame scrolled out of view.
+  useLayoutEffect(() => {
+    const trail = trailRef.current;
+    if (trail) trail.scrollLeft = trail.scrollWidth;
+  }, [place, chain]);
 
   return (
+    // -m-1/p-1 leave room inside the scroller for the crumbs' focus rings.
     <nav
+      ref={trailRef}
       aria-label="Selected folder"
-      className="flex min-w-0 flex-1 items-center"
+      className="-m-1 no-scrollbar flex min-w-0 flex-1 items-center overflow-x-auto p-1"
     >
       {/* A crumb that appears (going in, or moving to a sibling) fades in
           from slightly to the right, like a new column does; going back, the

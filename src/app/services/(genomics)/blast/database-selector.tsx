@@ -72,7 +72,7 @@ function GenomeListField({ form }: { form: BlastForm }) {
               field.handleChange([...genomeIds, genome.genome_id]);
             }}
           />
-          <div className="max-h-84 overflow-y-auto rounded-md border">
+          <div className="max-h-84 overflow-y-auto rounded-md border bg-background">
             <Table aria-label="Selected genomes">
               <TableHeader>
                 <TableRow variant="static">
@@ -168,7 +168,7 @@ function TaxonListField({ form }: { form: BlastForm }) {
                 {taxonIds.map((taxonId) => (
                   <li
                     key={taxonId}
-                    className="flex items-center gap-1 rounded-md bg-muted py-0.5 pr-0.5 pl-2 text-sm"
+                    className="flex items-center gap-1 rounded-md border bg-background py-0.5 pr-0.5 pl-2 text-sm"
                   >
                     {taxonId}
                     <Button

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { ChevronDown, Search, Loader2, Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { Button } from "@/components/ui/button";
 import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
@@ -192,7 +192,7 @@ export function GenomeNameSelector({
       <div className="flex items-start gap-2">
         <div className="relative flex-1">
           <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+          <ServiceInput
             ref={inputRef}
             value={query}
             disabled={selectionDisabled}

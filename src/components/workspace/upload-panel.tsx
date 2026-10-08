@@ -80,18 +80,27 @@ export function WorkspaceUploadPanel({
     e.target.value = "";
   };
 
+  // A running upload works through the files and type it started with, so the
+  // form is frozen until it ends: anything added meanwhile would be dropped.
+  const openFilePicker = () => {
+    if (!isUploading) fileInputRef.current?.click();
+  };
+
+  // Drops are still handled while uploading, only refused, so the browser
+  // does not open the dropped file in place of the page.
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
+    if (isUploading) return;
     if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
   };
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragActive(true);
-    e.dataTransfer.dropEffect = "copy";
+    setIsDragActive(!isUploading);
+    e.dataTransfer.dropEffect = isUploading ? "none" : "copy";
   };
 
   const onDragLeave = (_e: React.DragEvent) => {
@@ -104,31 +113,44 @@ export function WorkspaceUploadPanel({
     let hasError = false;
     try {
       for (const file of files) {
+        const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
+        const fullPath = dir + file.name;
         const { linkReference } = await repository.createUploadNode({
           directoryPath: targetPath,
           filename: file.name,
           type: uploadType,
         });
+        // Workspace.create has made the object (it refuses an existing name,
+        // so this is ours). If the data never reaches Shock it is an empty
+        // entry that cannot be opened, so take it back out. Best effort: the
+        // upload error is what the user needs to see.
+        const discardObject = () =>
+          repository.delete([fullPath]).catch(() => undefined);
         const formData = new FormData();
         formData.append("url", linkReference);
         formData.append("file", file);
-        const res = await fetch(uploadApi, {
-          method: "POST",
-          credentials: "include",
-          body: formData,
-        });
+        let res: Response;
+        try {
+          res = await fetch(uploadApi, {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+        } catch (err) {
+          await discardObject();
+          throw err;
+        }
         if (!res.ok) {
           const err = await (res.json() as Promise<{ error?: string }>).catch(
             () => ({ error: res.statusText }),
           );
+          await discardObject();
           toast.error(`Upload failed: ${file.name}`, {
             description: err.error ?? res.statusText,
           });
           hasError = true;
           break;
         }
-        const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
-        const fullPath = dir + file.name;
         await repository.updateAutoMetadata([fullPath]);
       }
       if (!hasError) {
@@ -170,6 +192,7 @@ export function WorkspaceUploadPanel({
               if (v != null) setUploadType(v);
             }}
             items={uploadTypeOptions}
+            disabled={isUploading}
           >
             <SelectTrigger className="w-full" aria-label="Upload type">
               <SelectValue placeholder="Unspecified" />
@@ -191,20 +214,22 @@ export function WorkspaceUploadPanel({
           </span>
           <div
             role="button"
-            tabIndex={0}
+            tabIndex={isUploading ? -1 : 0}
+            aria-disabled={isUploading || undefined}
             className={cn(
               "flex min-h-30 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-muted/30 p-4 transition-colors",
-              "outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring",
+              "outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              isUploading ? "cursor-not-allowed opacity-50" : "hover:bg-muted/50",
               isDragActive && "bg-muted/50",
             )}
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={openFilePicker}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                fileInputRef.current?.click();
+                openFilePicker();
               }
             }}
           >
@@ -214,6 +239,7 @@ export function WorkspaceUploadPanel({
               multiple
               className="hidden"
               accept="*"
+              disabled={isUploading}
               onChange={onInputChange}
             />
             <span className="pointer-events-none inline-flex h-9 items-center justify-center rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground shadow-xs select-none">

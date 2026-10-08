@@ -204,7 +204,7 @@ describe("TaxIDSelector", () => {
   it("clears the displayed ID when its value is cleared", () => {
     server.use(
       http.get("*/api/services/taxonomy", () =>
-        HttpResponse.json({ response: { docs: [] } }),
+        HttpResponse.json([]),
       ),
     );
     const { rerender } = render(
@@ -225,7 +225,7 @@ describe("TaxIDSelector", () => {
   it("preserves a new query while clearing the previous selection", async () => {
     server.use(
       http.get("*/api/services/taxonomy", () =>
-        HttpResponse.json({ response: { docs: [] } }),
+        HttpResponse.json([]),
       ),
     );
     const user = userEvent.setup();
@@ -245,11 +245,7 @@ describe("DatabaseSelector", () => {
   it("clears the pending taxon when rerun data replaces the taxon list", async () => {
     server.use(
       http.get("*/api/services/taxonomy", () =>
-        HttpResponse.json({
-          response: {
-            docs: [{ taxon_id: 234, taxon_name: "Brucellaceae" }],
-          },
-        }),
+        HttpResponse.json([{ taxon_id: "234", taxon_name: "Brucellaceae" }]),
       ),
     );
     const user = userEvent.setup();

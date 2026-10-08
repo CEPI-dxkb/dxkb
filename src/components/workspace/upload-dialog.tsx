@@ -20,7 +20,19 @@ export function UploadDialog({
   const [isUploading, setIsUploading] = React.useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next, details) => {
+        // No closing mid-upload (Esc, the backdrop): the panel tracks the
+        // upload and unmounts with the dialog, so a reopened one could start
+        // a second upload alongside it.
+        if (!next && isUploading) {
+          details.cancel();
+          return;
+        }
+        onOpenChange(next);
+      }}
+    >
       <DialogContent className="sm:max-w-lg" showCloseButton={!isUploading}>
         <DialogTitle>Upload</DialogTitle>
         <WorkspaceUploadPanel

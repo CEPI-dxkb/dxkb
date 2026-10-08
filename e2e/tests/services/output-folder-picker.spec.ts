@@ -71,9 +71,38 @@ function workspaceTree(): Record<string, TupleItem[]> {
   };
 }
 
+const campaign = "Sequencing campaign 2026";
+const deepFolders = [
+  "Batch 01 paired-end reads",
+  "Lane group north",
+  "Instrument NovaSeq X",
+  "Flow cell A22",
+  "Sample sheet revision 3",
+  "Demultiplexed output",
+  "Quality-trimmed reads",
+  "Assembly candidates final",
+];
+
+/** The usual tree plus a chain of long-named folders nine levels below Home. */
+function deepWorkspaceTree(): Record<string, TupleItem[]> {
+  const tree = workspaceTree();
+  tree[home] = [...tree[home], folder(home, campaign)];
+  let parent = `${home}/${campaign}`;
+  for (const name of deepFolders) {
+    tree[parent] = [folder(parent, name)];
+    parent = `${parent}/${name}`;
+  }
+  tree[parent] = [];
+  return tree;
+}
+
 async function openBlast(
   page: Page,
-  options: { reflectUploads?: boolean; reflectFolderCreates?: boolean } = {},
+  options: {
+    pathItems?: Record<string, TupleItem[]>;
+    reflectUploads?: boolean;
+    reflectFolderCreates?: boolean;
+  } = {},
 ) {
   await applyBackendMocks(page, {
     overrides: [
@@ -376,6 +405,58 @@ test.describe("output folder picker: layout", () => {
     await picker.breadcrumb.getByRole("button", { name: "Home" }).click();
     await expect.poll(async () => picker.scrollLeft()).toBe(0);
   });
+
+  for (const { device, viewport } of [
+    { device: "desktop", viewport: { width: 1280, height: 720 } },
+    { device: "phone", viewport: { width: 375, height: 812 } },
+  ]) {
+    test(`keeps a deep path inside the footer, scrolled to the current folder (${device})`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      const { picker } = await openBlast(page, { pathItems: deepWorkspaceTree() });
+      await picker.open();
+      await picker.option("Home", campaign).click();
+      let column = campaign;
+      for (const name of deepFolders) {
+        await picker.option(column, name).click();
+        column = name;
+      }
+      await expect(picker.selectButton).toHaveAccessibleName(`Select “${column}”`);
+      await picker.settled();
+
+      const current = picker.breadcrumb.locator('[aria-current="location"]');
+      await expect(current).toHaveText(column);
+      const [dialog, trail, crumb, cancel, select] = await Promise.all([
+        picker.dialog.boundingBox(),
+        picker.breadcrumb.boundingBox(),
+        current.boundingBox(),
+        picker.cancelButton.boundingBox(),
+        picker.selectButton.boundingBox(),
+      ]);
+      expect(dialog && trail && crumb && cancel && select).toBeTruthy();
+      if (dialog && trail && crumb && cancel && select) {
+        expect(trail.x).toBeGreaterThanOrEqual(dialog.x);
+        expect(trail.x + trail.width).toBeLessThanOrEqual(dialog.x + dialog.width);
+        // The current folder is in view, within the trail and clear of the
+        // actions, however many folders come before it.
+        expect(crumb.x).toBeGreaterThanOrEqual(trail.x - 1);
+        expect(crumb.x + crumb.width).toBeLessThanOrEqual(trail.x + trail.width + 1);
+        for (const action of [cancel, select]) {
+          const overlaps =
+            crumb.x < action.x + action.width &&
+            action.x < crumb.x + crumb.width &&
+            crumb.y < action.y + action.height &&
+            action.y < crumb.y + crumb.height;
+          expect(overlaps).toBe(false);
+        }
+      }
+
+      // The start of the trail is still there to go back to.
+      await picker.breadcrumb.getByRole("button", { name: "Home" }).click();
+      await expect(current).toHaveText("Home");
+    });
+  }
 
   test("lines the close button up with the rest of the header", async ({
     page,

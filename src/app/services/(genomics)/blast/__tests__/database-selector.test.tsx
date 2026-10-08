@@ -54,7 +54,11 @@ function DatabaseSelectorHarness() {
 // it when the pointer highlights a suggestion.
 Element.prototype.scrollIntoView = vi.fn();
 
-function GenomeListHarness() {
+function GenomeListHarness({
+  rerunGenomeIds = ["55951.466"],
+}: {
+  rerunGenomeIds?: string[];
+}) {
   const form = useForm({
     defaultValues: {
       ...defaultBlastFormValues,
@@ -75,7 +79,7 @@ function GenomeListHarness() {
       <button
         type="button"
         onClick={() => {
-          form.setFieldValue("db_genome_list", ["55951.466"]);
+          form.setFieldValue("db_genome_list", rerunGenomeIds);
         }}
       >
         Apply rerun genomes
@@ -174,6 +178,43 @@ describe("DatabaseSelector genome list", () => {
       within(table).getByRole("cell", { name: "55951.466" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Selected 1/20")).toBeInTheDocument();
+  });
+
+  it("keeps looked-up names when a row is removed and the next lookup fails", async () => {
+    let lookups = 0;
+    server.use(
+      http.post("*/api/services/genome/by-ids", () => {
+        lookups += 1;
+        return lookups === 1
+          ? HttpResponse.json({ results: grapevineGenomes })
+          : HttpResponse.json(
+              { error: "Data API unavailable" },
+              { status: 503 },
+            );
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <GenomeListHarness rerunGenomeIds={["55951.466", "55951.1989"]} />,
+      { wrapper: createQueryClientWrapper() },
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Apply rerun genomes" }),
+    );
+    const table = screen.getByRole("table", { name: "Selected genomes" });
+    await user.click(
+      await within(table).findByRole("button", {
+        name: "Remove Grapevine leafroll-associated virus 3",
+      }),
+    );
+
+    expect(
+      within(table).getByRole("cell", {
+        name: "Grapevine leafroll-associated virus 3 GLRaV3-3203",
+      }),
+    ).toBeInTheDocument();
+    expect(lookups).toBe(1);
   });
 
   it("falls back to the genome ID when the name lookup fails", async () => {

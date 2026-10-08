@@ -120,6 +120,10 @@ export function playColumnTransition({
     snapshot !== null && snapshot.depth === depth && snapshot.place === place;
   if (sameDepth) return;
 
+  // Exit copies from a move this one interrupts sit where the columns were
+  // before it; left to finish, they fade over the new layout (going back in,
+  // over the very column that is fading in again).
+  overlay.replaceChildren();
   const running = runningScrolls.get(strip);
   if (running !== undefined) cancelAnimationFrame(running);
   runningScrolls.delete(strip);

@@ -205,10 +205,20 @@ function FolderColumnsBrowser({
       writable: path !== null && isWritable(path, item, siblings),
     });
 
-  const commit = commitStateFor(selectedPath, selectedItem, containing.items);
+  // The rows `canWriteTo` falls back on for the selected folder when its own
+  // row has no permission. Its listing is in its own workspace, so it comes
+  // first: in Favorites and Recently Used the containing rows are stubs from
+  // any workspace, and a stub has none when its workspace is not in `/`.
+  const selectedEvidence = contents.items.some((item) => item.permissions)
+    ? contents.items
+    : containing.items;
+  const evidenceFor = (path: string, siblings: WorkspaceItem[]) =>
+    path === selectedPath ? selectedEvidence : siblings;
+
+  const commit = commitStateFor(selectedPath, selectedItem, selectedEvidence);
   const canChange =
     selectedPath !== null &&
-    isWritable(selectedPath, selectedItem, containing.items);
+    isWritable(selectedPath, selectedItem, selectedEvidence);
 
   // --- focus -------------------------------------------------------------
 
@@ -357,7 +367,8 @@ function FolderColumnsBrowser({
 
   const commitRow = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
     const path = normalizePath(item.path);
-    if (commitStateFor(path, item, siblings).canCommit) onCommit(path);
+    if (commitStateFor(path, item, evidenceFor(path, siblings)).canCommit)
+      onCommit(path);
   };
 
   // --- new folder / upload ------------------------------------------------
@@ -389,8 +400,10 @@ function FolderColumnsBrowser({
     pendingFocusRef.current = { column, path };
   };
 
-  const isRowWritable = (item: WorkspaceItem, siblings: WorkspaceItem[]) =>
-    isWritable(normalizePath(item.path), item, siblings);
+  const isRowWritable = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
+    const path = normalizePath(item.path);
+    return isWritable(path, item, evidenceFor(path, siblings));
+  };
   const isRowUsable = (item: WorkspaceItem) =>
     isSelectable({ name: item.name, path: item.path });
 

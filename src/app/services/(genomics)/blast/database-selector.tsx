@@ -33,27 +33,35 @@ import type { BlastForm } from "./page";
  * are looked up, and shown as the bare ID if the lookup fails.
  */
 function GenomeListField({ form }: { form: BlastForm }) {
-  const [pickedNames, setPickedNames] = useState<Partial<Record<string, string>>>({});
+  const [knownNames, setKnownNames] = useState<Partial<Record<string, string>>>({});
   const genomeIds = useSelector(
     form.store,
     (state) => state.values.db_genome_list ?? [],
   );
 
-  const unnamedIds = genomeIds.filter((id) => !(id in pickedNames));
-  const { data: lookedUp = [] } = useQuery({
+  const unnamedIds = genomeIds.filter((id) => !(id in knownNames));
+  const { data: lookedUp } = useQuery({
     queryKey: ["blast-genome-names", unnamedIds],
     queryFn: ({ signal }) => fetchGenomesByIds(unnamedIds, { signal }),
     enabled: unnamedIds.length > 0,
     staleTime: Infinity,
   });
-  const lookedUpNames = new Map(
-    lookedUp.map((genome) => [genome.genome_id, genome.genome_name]),
-  );
+  // Keep each lookup's answer (an ID it did not find keeps its bare ID), so
+  // removing a row, which changes unnamedIds and so the query key, does not
+  // blank the names already resolved while a new lookup runs or after it fails.
+  const [keptLookup, setKeptLookup] = useState(lookedUp);
+  if (lookedUp && lookedUp !== keptLookup) {
+    setKeptLookup(lookedUp);
+    const found = new Map(
+      lookedUp.map((genome) => [genome.genome_id, genome.genome_name]),
+    );
+    setKnownNames((names) => ({
+      ...names,
+      ...Object.fromEntries(unnamedIds.map((id) => [id, found.get(id) ?? id])),
+    }));
+  }
 
-  const rows = genomeIds.map((id) => ({
-    id,
-    name: pickedNames[id] ?? lookedUpNames.get(id) ?? id,
-  }));
+  const rows = genomeIds.map((id) => ({ id, name: knownNames[id] ?? id }));
 
   return (
     <form.Field name="db_genome_list">
@@ -65,7 +73,7 @@ function GenomeListField({ form }: { form: BlastForm }) {
             selectedGenomeIds={genomeIds}
             maxSelections={blastMaxGenomes}
             onSelect={(genome) => {
-              setPickedNames((names) => ({
+              setKnownNames((names) => ({
                 ...names,
                 [genome.genome_id]: genome.genome_name,
               }));

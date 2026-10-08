@@ -499,6 +499,51 @@ describe("playColumnTransition", () => {
     expect(overlay.children).toHaveLength(0);
   });
 
+  it("clears an interrupted exit's copy when the next move starts", () => {
+    const { strip, content, overlay } = createStrip(800);
+    addColumn(content, "home:");
+    const alpha = addColumn(content, "home:/Alpha", rect(340, 50, 180, 400));
+    const inside = snapshotOf(strip, overlay, 1);
+    alpha.remove();
+    playColumnTransition({
+      strip,
+      content,
+      overlay,
+      snapshot: inside,
+      scrollLeft: 0,
+      place: "home",
+      depth: 0,
+    });
+    const ghost = overlay.children[0];
+
+    // A move within the column lets the exit play on.
+    playColumnTransition({
+      strip,
+      content,
+      overlay,
+      snapshot: snapshotOf(strip, overlay, 0),
+      scrollLeft: 0,
+      place: "home",
+      depth: 0,
+    });
+    expect([...overlay.children]).toEqual([ghost]);
+
+    // Going straight back in, the copy would fade over the returning column.
+    const outside = snapshotOf(strip, overlay, 0);
+    addColumn(content, "home:/Alpha", rect(340, 50, 180, 400));
+    playColumnTransition({
+      strip,
+      content,
+      overlay,
+      snapshot: outside,
+      scrollLeft: 0,
+      place: "home",
+      depth: 1,
+    });
+
+    expect(overlay.children).toHaveLength(0);
+  });
+
   it("animates a change of place at the same depth", () => {
     const { strip, content, overlay } = createStrip(800);
     const home = addColumn(content, "home:");

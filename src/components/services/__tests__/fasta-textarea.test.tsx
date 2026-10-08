@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 
 import { FastaTextarea } from "@/components/services/fasta-textarea";
 
@@ -62,6 +62,28 @@ describe("FastaTextarea status line", () => {
     expect(status).toHaveTextContent("FASTA sequence is required");
     expect(status).toHaveClass("text-destructive");
     expect(screen.getByRole("textbox")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("drops the valid border when a form field error accompanies valid FASTA", async () => {
+    const onValidationChange = vi.fn();
+    renderTextarea({
+      value: validProtein,
+      fieldError: "Too many sequences",
+      onValidationChange,
+    });
+
+    await waitFor(() => {
+      expect(onValidationChange).toHaveBeenLastCalledWith(
+        true,
+        expect.objectContaining({ valid: true }),
+      );
+    });
+    const status = screen.getByRole("status");
+    const textbox = screen.getByRole("textbox");
+    expect(textbox).not.toHaveClass("border-success");
+    expect(status).toHaveTextContent("Too many sequences");
+    expect(status).toHaveClass("text-destructive");
+    expect(textbox).toHaveAttribute("aria-invalid", "true");
   });
 
   it("prefers the FASTA format error over the form field error", async () => {

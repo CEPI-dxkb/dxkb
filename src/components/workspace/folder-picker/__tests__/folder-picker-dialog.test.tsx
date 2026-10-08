@@ -436,6 +436,72 @@ describe("WorkspaceFolderPickerDialog places", () => {
 
     expect(onSelect).toHaveBeenCalledWith(results);
   });
+  // `team-ws` and `locked-ws` are not in the `/` listing, so their favorites
+  // are stubs with no permission; their own listings carry it.
+  const reports = "/dave@bvbrc/team-ws/Reports";
+  const notes = "/erin@bvbrc/locked-ws/Notes";
+  function renderFavorites(folders: string[]) {
+    server.use(
+      http.post("*/api/services/workspace", () =>
+        HttpResponse.json({
+          jsonrpc: "2.0",
+          id: 1,
+          result: [[[["meta"], JSON.stringify({ folders })]]],
+        }),
+      ),
+    );
+    const child = (name: string, userPermission: string) => ({
+      name,
+      type: "folder" as const,
+      userPermission,
+      globalPermission: "n",
+    });
+    return renderPicker(
+      {},
+      makePickerRepository({
+        directories: {
+          ...defaultPickerDirectories,
+          "/bob@bvbrc/shared-ws/Results": [],
+          [reports]: [child("Q3", "w")],
+          [notes]: [child("Drafts", "r")],
+        },
+      }),
+    );
+  }
+
+  it("chooses a favorite whose permission only its own listing carries", async () => {
+    const { user, onSelect } = renderFavorites([reports]);
+    await findOption("Home", "Alpha");
+    await user.click(place("Favorites"));
+
+    await user.click(await findOption("Favorites", /^Reports/));
+    await findOption("Reports", "Q3");
+    // The exact name: no "(read-only)" once the listing has loaded.
+    const row = await findOption("Favorites", "Reports");
+    expect(selectButton()).toBeEnabled();
+    await user.dblClick(row);
+
+    expect(onSelect).toHaveBeenCalledWith(reports);
+  });
+
+  it("does not borrow another workspace's permission for a favorite", async () => {
+    const { user, onSelect } = renderFavorites([
+      "/bob@bvbrc/shared-ws/Results",
+      notes,
+    ]);
+    await findOption("Home", "Alpha");
+    await user.click(place("Favorites"));
+
+    await user.click(await findOption("Favorites", /^Notes/));
+    await findOption("Notes", /^Drafts/);
+    expect(
+      await findOption("Favorites", /^Notes\s*\(read-only\)$/),
+    ).toBeInTheDocument();
+    expect(selectButton()).toBeDisabled();
+    await user.dblClick(await findOption("Favorites", /^Notes/));
+
+    expect(onSelect).not.toHaveBeenCalled();
+  });
 });
 
 describe("WorkspaceFolderPickerDialog info pane", () => {

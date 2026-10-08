@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { knownUploadTypes } from "@/lib/services/workspace/types";
+import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-keys";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { toast } from "sonner";
 import { XIcon } from "lucide-react";
@@ -60,6 +62,7 @@ export function WorkspaceUploadPanel({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const repository = useWorkspaceRepository("authenticated");
+  const queryClient = useQueryClient();
 
   const addFiles = (newFiles: FileList | File[]) => {
     const list = Array.from(newFiles).filter((f) => f.name);
@@ -111,6 +114,7 @@ export function WorkspaceUploadPanel({
     if (!files.length || !targetPath.trim() || isUploading) return;
     setIsUploading(true);
     let hasError = false;
+    let uploadedCount = 0;
     try {
       for (const file of files) {
         const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
@@ -151,6 +155,7 @@ export function WorkspaceUploadPanel({
           hasError = true;
           break;
         }
+        uploadedCount += 1;
         await repository.updateAutoMetadata([fullPath]);
       }
       if (!hasError) {
@@ -164,6 +169,9 @@ export function WorkspaceUploadPanel({
       toast.error(message);
       hasError = true;
     }
+    // The files before the one that failed stay uploaded, and the panel stays
+    // open without onUploadComplete, so refresh the listings that show them.
+    if (hasError && uploadedCount > 0) invalidateWorkspace(queryClient);
     setIsUploading(false);
   };
 

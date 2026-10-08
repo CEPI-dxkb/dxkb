@@ -1,4 +1,6 @@
+import { File as NodeFile } from "node:buffer";
 import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -7,6 +9,8 @@ import { server } from "@/test-helpers/msw-server";
 import { UploadDialog } from "@/components/workspace/upload-dialog";
 import { WorkspaceRepositoryProvider } from "@/contexts/workspace-repository-context";
 import { InMemoryWorkspaceRepository } from "@/lib/services/workspace/adapters/in-memory-workspace-repository";
+import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
 
@@ -15,13 +19,29 @@ const targetPath = "/alice@bvbrc/home";
 function renderUploadDialog(
   repository = new InMemoryWorkspaceRepository(),
 ) {
+  const QueryWrapper = createQueryClientWrapper();
+  let listings = 0;
+  // Stands in for the folder listing behind the dialog.
+  function FolderListing() {
+    useQuery({
+      queryKey: workspaceQueryKeys.browser("alice@bvbrc", "home", ""),
+      queryFn: () => {
+        listings += 1;
+        return [];
+      },
+    });
+    return null;
+  }
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <WorkspaceRepositoryProvider
-        value={{ authenticated: repository, public: repository }}
-      >
-        {children}
-      </WorkspaceRepositoryProvider>
+      <QueryWrapper>
+        <WorkspaceRepositoryProvider
+          value={{ authenticated: repository, public: repository }}
+        >
+          <FolderListing />
+          {children}
+        </WorkspaceRepositoryProvider>
+      </QueryWrapper>
     );
   }
   const onOpenChange = vi.fn<(open: boolean) => void>();
@@ -35,16 +55,45 @@ function renderUploadDialog(
     />,
     { wrapper: Wrapper },
   );
-  return { repository, onOpenChange, onUploadComplete, user: userEvent.setup() };
+  return {
+    repository,
+    onOpenChange,
+    onUploadComplete,
+    listings: () => listings,
+    user: userEvent.setup(),
+  };
+}
+
+function chooseFiles(files: File[]) {
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!input) throw new Error("No file input");
+  fireEvent.change(input, { target: { files } });
 }
 
 function chooseFile(name: string) {
-  const input = document.querySelector<HTMLInputElement>('input[type="file"]');
-  if (!input) throw new Error("No file input");
-  fireEvent.change(input, {
-    target: { files: [new File(["ACGT"], name, { type: "text/plain" })] },
-  });
+  chooseFiles([new File(["ACGT"], name, { type: "text/plain" })]);
 }
+
+/**
+ * Node's fetch cannot send jsdom's File or FormData, so a test that needs an
+ * upload to succeed swaps in Node's own: its File, and its FormData, which
+ * jsdom's global hides but Node's Request still builds.
+ */
+async function stubNodeFormData() {
+  const form = await new Request("http://localhost", {
+    method: "POST",
+    body: new URLSearchParams(),
+  }).formData();
+  vi.stubGlobal("FormData", form.constructor);
+}
+
+function nodeFile(name: string) {
+  return new NodeFile(["ACGT"], name, { type: "text/plain" }) as unknown as File;
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("UploadDialog", () => {
   it("shows the target folder and waits for a file", () => {
@@ -55,8 +104,9 @@ describe("UploadDialog", () => {
     expect(screen.getByRole("button", { name: "Start Upload" })).toBeDisabled();
   });
 
-  // jsdom's File cannot be serialized by Node's fetch, so the multipart POST
-  // itself is out of reach here; this covers everything up to it.
+  // jsdom's File cannot be serialized by Node's fetch, so with it the
+  // multipart POST is out of reach; this covers everything up to it.
+  // (`stubNodeFormData` gets past it for tests that need the POST.)
   it("starts the upload in the target folder", async () => {
     const { repository, user } = renderUploadDialog();
 
@@ -82,7 +132,8 @@ describe("UploadDialog", () => {
     server.use(
       http.post("*/api/services/workspace/upload", () => HttpResponse.error()),
     );
-    const { repository, onUploadComplete, user } = renderUploadDialog();
+    const { repository, onUploadComplete, listings, user } =
+      renderUploadDialog();
 
     chooseFile("reads.fq");
     await user.click(screen.getByRole("button", { name: "Start Upload" }));
@@ -99,6 +150,46 @@ describe("UploadDialog", () => {
       expect(toast.error).toHaveBeenCalled();
     });
     expect(onUploadComplete).not.toHaveBeenCalled();
+    // Nothing reached the folder, so its listing is not fetched again.
+    await screen.findByRole("button", { name: "Start Upload" });
+    expect(listings()).toBe(1);
+  });
+
+  it("refreshes the listing when a file fails after earlier ones uploaded", async () => {
+    await stubNodeFormData();
+    let uploads = 0;
+    server.use(
+      http.post("*/api/services/workspace/upload", () => {
+        uploads += 1;
+        return uploads === 1
+          ? HttpResponse.json({})
+          : HttpResponse.json({ error: "Shock is unavailable" }, { status: 503 });
+      }),
+    );
+    const { repository, onUploadComplete, listings, user } =
+      renderUploadDialog();
+    await waitFor(() => {
+      expect(listings()).toBe(1);
+    });
+
+    chooseFiles([nodeFile("first.fq"), nodeFile("second.fq")]);
+    await user.click(screen.getByRole("button", { name: "Start Upload" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Upload failed: second.fq", {
+        description: "Shock is unavailable",
+      });
+    });
+    await waitFor(() => {
+      expect(listings()).toBe(2);
+    });
+    expect(onUploadComplete).not.toHaveBeenCalled();
+    expect(repository.calls).toContainEqual(
+      expect.objectContaining({
+        method: "delete",
+        paths: [`${targetPath}/second.fq`],
+      }),
+    );
   });
 
   it("deletes nothing when the entry itself cannot be created", async () => {

@@ -49,7 +49,9 @@ function GenomeListField({ form }: { form: BlastForm }) {
   // Keep each lookup's answer (an ID it did not find keeps its bare ID), so
   // removing a row, which changes unnamedIds and so the query key, does not
   // blank the names already resolved while a new lookup runs or after it fails.
-  const [keptLookup, setKeptLookup] = useState(lookedUp);
+  // It starts empty: a lookup already cached when the field mounts (a rerun
+  // opened again) must still fill knownNames.
+  const [keptLookup, setKeptLookup] = useState<typeof lookedUp>();
   if (lookedUp && lookedUp !== keptLookup) {
     setKeptLookup(lookedUp);
     const found = new Map(

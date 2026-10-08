@@ -55,15 +55,17 @@ function DatabaseSelectorHarness() {
 Element.prototype.scrollIntoView = vi.fn();
 
 function GenomeListHarness({
+  initialGenomeIds = [],
   rerunGenomeIds = ["55951.466"],
 }: {
+  initialGenomeIds?: string[];
   rerunGenomeIds?: string[];
 }) {
   const form = useForm({
     defaultValues: {
       ...defaultBlastFormValues,
       db_precomputed_database: "selGenome",
-      db_genome_list: [],
+      db_genome_list: initialGenomeIds,
     } as BlastFormData,
     validators: { onChange: completeFormSchema, onSubmit: completeFormSchema },
   });
@@ -178,6 +180,39 @@ describe("DatabaseSelector genome list", () => {
       within(table).getByRole("cell", { name: "55951.466" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Selected 1/20")).toBeInTheDocument();
+  });
+
+  it("shows the cached names when the field mounts with a rerun's IDs again", async () => {
+    let lookups = 0;
+    server.use(
+      http.post("*/api/services/genome/by-ids", () => {
+        lookups += 1;
+        return HttpResponse.json({ results: [grapevineGenomes[0]] });
+      }),
+    );
+    const user = userEvent.setup();
+    const wrapper = createQueryClientWrapper();
+    const { unmount } = render(<GenomeListHarness />, { wrapper });
+    await user.click(
+      screen.getByRole("button", { name: "Apply rerun genomes" }),
+    );
+    expect(
+      await screen.findByRole("cell", {
+        name: "Grapevine leafroll-associated virus 3",
+      }),
+    ).toBeInTheDocument();
+    unmount();
+
+    render(<GenomeListHarness initialGenomeIds={["55951.466"]} />, {
+      wrapper,
+    });
+
+    expect(
+      await screen.findByRole("cell", {
+        name: "Grapevine leafroll-associated virus 3",
+      }),
+    ).toBeInTheDocument();
+    expect(lookups).toBe(1);
   });
 
   it("keeps looked-up names when a row is removed and the next lookup fails", async () => {

@@ -1,6 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { WorkspaceRepositoryProvider } from "@/contexts/workspace-repository-context";
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
@@ -8,6 +7,7 @@ import { recentWorkspaceFoldersStorageKey } from "@/lib/recent-workspace-folders
 import { InMemoryWorkspaceRepository } from "@/lib/services/workspace/adapters/in-memory-workspace-repository";
 import type { PickerLocation } from "@/lib/services/workspace/picker-views";
 import { server } from "@/test-helpers/msw-server";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 
 const username = "alice@bvbrc";
 const home = "/alice@bvbrc/home";
@@ -27,18 +27,16 @@ function makeRepository(errors?: { listDirectory?: Error }) {
 }
 
 function makeWrapper(repository: InMemoryWorkspaceRepository) {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+  const QueryWrapper = createQueryClientWrapper();
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <QueryClientProvider client={queryClient}>
+      <QueryWrapper>
         <WorkspaceRepositoryProvider
           value={{ authenticated: repository, public: repository }}
         >
           {children}
         </WorkspaceRepositoryProvider>
-      </QueryClientProvider>
+      </QueryWrapper>
     );
   };
 }

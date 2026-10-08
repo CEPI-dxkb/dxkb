@@ -544,7 +544,7 @@ test.describe("output folder picker: motion", () => {
     await expect.poll(async () => picker.scrollLeft()).toBeGreaterThan(0);
     // Back out to Run 1 so the next step in needs the strip to scroll.
     await picker.option("Experiments", "Run 1").click();
-    await page.waitForTimeout(300);
+    await picker.settled();
     await picker.option("Experiments", "Run 1").focus();
 
     const goingIn = await picker.pressAndTrace("ArrowRight");
@@ -570,7 +570,7 @@ test.describe("output folder picker: motion", () => {
     expectMonotonic(goingOut.scrollWidth, -1);
     // The column that closed plays its exit on a copy, which is then removed.
     expect(goingOut.ghostsDuring).toBe(1);
-    expect(goingOut.ghostsAfter).toBe(0);
+    await expect(picker.exitCopies).toHaveCount(0);
   });
 
   test("leaves a scrolled strip where it is when moving within a column", async ({
@@ -579,7 +579,8 @@ test.describe("output folder picker: motion", () => {
     const { picker } = await openBlast(page);
     await openAtLaneA(picker);
     await expect.poll(async () => picker.scrollLeft()).toBeGreaterThan(0);
-    await page.waitForTimeout(300);
+    // Let the glide to Lane A end first, or its last frame moves the strip back.
+    await picker.settled();
     await picker.strip.evaluate((strip) => {
       strip.scrollLeft = 10;
     });
@@ -607,11 +608,18 @@ test.describe("output folder picker: motion", () => {
     expect(new Set(trace.scrollLeft).size).toBe(1);
     expect(trace.scrollLeft[0]).toBeGreaterThan(trace.before);
     expect(trace.ghostsDuring).toBe(0);
+    // The reduced-motion rule in globals.css cuts CSS transitions to 0.01ms,
+    // and WebKit lists one as running until it next draws, so only longer
+    // animations (the columns' fades are 180ms) count.
     const running = await picker.dialog.evaluate(
       (dialog) =>
         dialog
           .getAnimations({ subtree: true })
-          .filter((animation) => animation.playState === "running").length,
+          .filter(
+            (animation) =>
+              animation.playState === "running" &&
+              Number(animation.effect?.getTiming().duration) > 1,
+          ).length,
     );
     expect(running).toBe(0);
   });

@@ -8,9 +8,8 @@ export interface StripTrace {
   scrollLeft: number[];
   /** `scrollWidth`, rounded: the content width that sizes the scroll bar's thumb. */
   scrollWidth: number[];
-  /** Leaving-column copies on the overlay, right after the key and at the end. */
+  /** Leaving-column copies on the overlay, right after the key. */
   ghostsDuring: number;
-  ghostsAfter: number;
 }
 
 /**
@@ -30,6 +29,8 @@ export class FolderPickerDialog {
   readonly cancelButton: Locator;
   readonly closeButton: Locator;
   readonly showFilesButton: Locator;
+  /** Copies of leaving columns, playing their exit on the overlay after the strip. */
+  readonly exitCopies: Locator;
 
   constructor(page: Page, title = "Select an Output Folder") {
     this.page = page;
@@ -50,6 +51,7 @@ export class FolderPickerDialog {
     this.showFilesButton = this.dialog.getByRole("button", {
       name: /^(Show|Hide) files$/,
     });
+    this.exitCopies = this.strip.locator("xpath=following-sibling::*[1]/*");
   }
 
   async open(): Promise<void> {
@@ -60,8 +62,9 @@ export class FolderPickerDialog {
 
   /**
    * Wait for the dialog's finite animations (its zoom-in, a column fading in)
-   * to finish, so measurements see the final layout. Loading skeletons pulse
-   * forever, so infinite animations are left out.
+   * and the strip's scroll glide to finish, so measurements see the final
+   * layout. Loading skeletons pulse forever, so infinite animations are left
+   * out.
    */
   async settled(): Promise<void> {
     await this.dialog.evaluate(async (dialog) => {
@@ -74,6 +77,13 @@ export class FolderPickerDialog {
           )
           .map((animation) => animation.finished.catch(() => undefined)),
       );
+      // The glide sizes the strip's content inline until it ends.
+      const content = dialog.querySelector<HTMLElement>(
+        '[role="group"][aria-label="Folder columns"] > *',
+      );
+      while (content?.style.width) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
     });
   }
 
@@ -136,48 +146,91 @@ export class FolderPickerDialog {
   }
 
   /**
-   * Press `key` on the focused row and record the strip on every animation
-   * frame for `ms`. The key is dispatched inside the page; the first sample is
-   * taken once React has committed (its layout effect sets up the motion) but
-   * before the next frame paints.
+   * Press `key` on the focused row and record the strip once React has
+   * committed (its layout effect sets up the motion, before anything paints),
+   * then on each of `frames` animation frames.
+   *
+   * The frames are stepped in the page, 16ms at a time, rather than drawn:
+   * headless WebKit on Linux can take longer than the whole 180ms glide to
+   * draw one real frame of this dialog, too few to see the glide. For the
+   * trace, `requestAnimationFrame` callbacks wait for the next step and
+   * `performance.now` reads the stepped time; both are put back afterwards.
+   * The columns' fades run on the document timeline instead, so they are
+   * finished at the commit: left running in real time, they would fall out of
+   * step with the glide (a column still sliding in widens the strip after the
+   * glide ends).
    */
-  async pressAndTrace(key: string, ms = 360): Promise<StripTrace> {
+  async pressAndTrace(key: string, frames = 14): Promise<StripTrace> {
+    await this.settled();
     return this.strip.evaluate(
-      async (strip, { key, ms }) => {
+      async (strip, { key, frames }) => {
         const overlay = strip.nextElementSibling;
-        const frame = () =>
-          new Promise<void>((resolve) => {
-            requestAnimationFrame(() => {
-              resolve();
-            });
-          });
-        const before = Math.round(strip.scrollLeft);
-        const target = document.activeElement ?? strip;
-        target.dispatchEvent(
-          new KeyboardEvent("keydown", { key, bubbles: true }),
-        );
-        // React flushes a keydown's update in a microtask; a task later the
-        // commit and its layout effect have run.
-        await new Promise((resolve) => setTimeout(resolve, 0));
-        const scrollLeft = [Math.round(strip.scrollLeft)];
-        const scrollWidth = [Math.round(strip.scrollWidth)];
-        const ghostsDuring = overlay?.childElementCount ?? 0;
-        const start = performance.now();
-        while (performance.now() - start < ms) {
-          await frame();
-          scrollLeft.push(Math.round(strip.scrollLeft));
-          scrollWidth.push(Math.round(strip.scrollWidth));
-        }
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        return {
-          before,
-          scrollLeft,
-          scrollWidth,
-          ghostsDuring,
-          ghostsAfter: overlay?.childElementCount ?? 0,
+        const pending = new Map<number, FrameRequestCallback>();
+        let lastId = 0;
+        let now = performance.now();
+        const realRequestFrame = window.requestAnimationFrame.bind(window);
+        const realCancelFrame = window.cancelAnimationFrame.bind(window);
+        performance.now = () => now;
+        window.requestAnimationFrame = (callback) => {
+          lastId += 1;
+          pending.set(lastId, callback);
+          return lastId;
         };
+        window.cancelAnimationFrame = (id) => {
+          pending.delete(id);
+        };
+        try {
+          const before = Math.round(strip.scrollLeft);
+          const target = document.activeElement ?? strip;
+          target.dispatchEvent(
+            new KeyboardEvent("keydown", { key, bubbles: true }),
+          );
+          // React flushes a keydown's update in a microtask; a task later the
+          // commit and its layout effect have run.
+          await new Promise<void>((resolve) => {
+            const channel = new MessageChannel();
+            channel.port1.onmessage = () => {
+              resolve();
+            };
+            channel.port2.postMessage(null);
+          });
+          const trace = {
+            before,
+            scrollLeft: [Math.round(strip.scrollLeft)],
+            scrollWidth: [Math.round(strip.scrollWidth)],
+            ghostsDuring: overlay?.childElementCount ?? 0,
+          };
+          for (const element of [strip, overlay]) {
+            for (const fade of element?.getAnimations({ subtree: true }) ??
+              []) {
+              if (fade.effect?.getTiming().iterations !== Infinity) {
+                fade.finish();
+              }
+            }
+          }
+          for (let frame = 0; frame < frames; frame += 1) {
+            now += 16;
+            const due = [...pending.values()];
+            pending.clear();
+            for (const callback of due) callback(now);
+            // Let promise work queued by the frame run, as it would between
+            // real frames.
+            await Promise.resolve();
+            trace.scrollLeft.push(Math.round(strip.scrollLeft));
+            trace.scrollWidth.push(Math.round(strip.scrollWidth));
+          }
+          return trace;
+        } finally {
+          Reflect.deleteProperty(performance, "now");
+          window.requestAnimationFrame = realRequestFrame;
+          window.cancelAnimationFrame = realCancelFrame;
+          // Whatever the frames left waiting runs on real frames.
+          for (const callback of pending.values()) {
+            realRequestFrame(callback);
+          }
+        }
       },
-      { key, ms },
+      { key, frames },
     );
   }
 }

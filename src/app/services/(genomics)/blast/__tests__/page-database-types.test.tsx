@@ -90,6 +90,53 @@ describe("BLAST page database type transitions", () => {
     expect(databaseType()).toHaveTextContent("Genome sequences (NT)");
   }, 10_000);
 
+  it("shows no required error when a picker source is revisited", async () => {
+    const user = userEvent.setup();
+    render(<BlastServicePage />, { wrapper: Providers });
+    const requiredMessages = () => screen.queryAllByText(/is required/i);
+
+    await chooseOption(
+      user,
+      "Database Source",
+      /^Search within selected feature group$/i,
+    );
+    expect(requiredMessages()).toHaveLength(0);
+
+    await chooseOption(
+      user,
+      "Database Source",
+      /^Search within selected genome group$/i,
+    );
+    expect(requiredMessages()).toHaveLength(0);
+
+    // The return visit: before the picker was keyed by its source, the field
+    // that stayed mounted while the other source was chosen was validated by
+    // the clear, and its error showed again here.
+    await chooseOption(
+      user,
+      "Database Source",
+      /^Search within selected feature group$/i,
+    );
+    expect(requiredMessages()).toHaveLength(0);
+  }, 10_000);
+
+  it("shows no required error when an input source is revisited", async () => {
+    const user = userEvent.setup();
+    render(<BlastServicePage />, { wrapper: Providers });
+    const requiredMessages = () => screen.queryAllByText(/is required/i);
+
+    for (const name of [
+      /Select FASTA file/i,
+      /Feature group/i,
+      /Select FASTA file/i,
+      /Enter sequence/i,
+      /Feature group/i,
+    ]) {
+      await user.click(screen.getByRole("radio", { name }));
+      expect(requiredMessages()).toHaveLength(0);
+    }
+  }, 10_000);
+
   it("prefills a selected Taxon list from the Taxonomy service action", async () => {
     sessionStorage.setItem(
       "taxonomy-blast",

@@ -227,7 +227,7 @@ function WorkspaceObjectDropdown({
                 itemRefs.current[index] = element;
               }}
               className={cn(
-                "flex w-full cursor-pointer items-center justify-between p-2 text-left hover:bg-accent",
+                "group/option flex w-full cursor-pointer items-center justify-between p-2 text-left hover:bg-accent",
                 highlightedIndex === index && "bg-accent",
               )}
               onClick={() => {
@@ -241,7 +241,12 @@ function WorkspaceObjectDropdown({
                 <span className="block truncate text-sm font-medium">
                   {object.name}
                 </span>
-                <span className="block truncate text-xs text-muted-foreground">
+                <span
+                  className={cn(
+                    "block truncate text-xs text-muted-foreground group-hover/option:text-accent-foreground",
+                    highlightedIndex === index && "text-accent-foreground",
+                  )}
+                >
                   {cleanPath}
                 </span>
               </span>

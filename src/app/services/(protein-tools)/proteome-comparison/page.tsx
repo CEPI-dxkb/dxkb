@@ -6,7 +6,7 @@ import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, Plus } from "lucide-react";
 import {
@@ -27,6 +27,7 @@ import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -39,6 +40,7 @@ import {
   ServiceInput,
   ServiceNumberInput,
 } from "@/components/services/form-ui/service-input";
+import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
 import {
   ServiceLabel,
   ServiceSubLabel,
@@ -100,6 +102,7 @@ function useProteomeComparisonPage() {
     setSelectedCompFasta(null);
     setSelectedCompFeatureGroup(null);
     setSelectedCompGenomeGroup(null);
+    setIsLoadingGenomeGroup(false);
     setShowAdvancedParams(false);
   }
 
@@ -320,8 +323,11 @@ function useProteomeComparisonPage() {
         description: errorMessage,
         closeButton: true,
       });
+    } finally {
+      // The early returns above (empty group, over the limit, duplicate) left
+      // the "+" button on its spinner, so only a reload recovered it.
+      setIsLoadingGenomeGroup(false);
     }
-    setIsLoadingGenomeGroup(false);
   }
 
   function handleRemoveComparisonItem(itemId: string) {
@@ -406,7 +412,7 @@ function useProteomeComparisonPage() {
                     open={showAdvancedParams}
                     onOpenChange={setShowAdvancedParams}
                   >
-                    <ServiceCollapsibleTrigger className="text-sm font-medium">
+                    <ServiceCollapsibleTrigger>
                       Advanced Parameters (Optional)
                       <ChevronDown
                         className={`size-4 transition-transform ${showAdvancedParams ? "rotate-180 transform" : ""}`}
@@ -418,10 +424,11 @@ function useProteomeComparisonPage() {
                         <form.Field name="min_seq_cov">
                           {(field) => (
                             <FieldItem>
-                              <ServiceSubLabel>
+                              <ServiceFieldSubLabel field={field}>
                                 Minimum % Coverage
-                              </ServiceSubLabel>
+                              </ServiceFieldSubLabel>
                               <ServiceNumberInput
+                                id={field.name}
                                 name={field.name}
                                 value={field.state.value}
                                 min={10}
@@ -456,10 +463,11 @@ function useProteomeComparisonPage() {
                         <form.Field name="min_ident">
                           {(field) => (
                             <FieldItem>
-                              <ServiceSubLabel>
+                              <ServiceFieldSubLabel field={field}>
                                 Minimum % Identity
-                              </ServiceSubLabel>
+                              </ServiceFieldSubLabel>
                               <ServiceNumberInput
+                                id={field.name}
                                 name={field.name}
                                 value={field.state.value}
                                 min={10}
@@ -492,9 +500,9 @@ function useProteomeComparisonPage() {
                     sections={proteomeComparisonReferenceGenome.sections}
                   />
                 </RequiredFormCardTitle>
-                <CardDescription>
+                <ServiceCardDescription>
                   Select 1 reference genome from the following options
-                </CardDescription>
+                </ServiceCardDescription>
               </ServiceCardHeader>
 
               <ServiceCardContent>
@@ -596,10 +604,10 @@ function useProteomeComparisonPage() {
                   sections={proteomeComparisonComparisonGenomes.sections}
                 />
               </RequiredFormCardTitle>
-              <CardDescription>
+              <ServiceCardDescription>
                 Add up to {maxComparisonGenomes} genomes to compare (use plus
                 buttons to add)
-              </CardDescription>
+              </ServiceCardDescription>
             </ServiceCardHeader>
 
             <ServiceCardContent>

@@ -10,6 +10,7 @@ import React, {
 import { Button } from "@/components/ui/button";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { cn } from "@/lib/utils";
 import { Library } from "@/types/services";
 import { toast } from "sonner";
 import {
@@ -110,19 +111,26 @@ function SraInputView({
           onChange={onChange}
           onKeyDown={onKeyDown}
           disabled={disabled || isValidating}
+          aria-invalid={validationStatus === "invalid" || undefined}
+          variant={validationStatus === "valid" ? "valid" : "default"}
         />
-        {validationMessage && (
-          <p
-            className={`text-sm ${
-              isValidating ? "text-muted-foreground" : "text-destructive"
-            }`}
-          >
-            {validationMessage}
-          </p>
-        )}
-        {validationStatus === "valid" && !validationMessage && (
-          <p className="text-sm text-muted-foreground">Provided SRA is valid</p>
-        )}
+        {/* The message line is always rendered at one line's height, so the
+            card does not grow when a message first appears. It is always
+            mounted, so it is also a polite live region: a screen reader
+            announces the result when it arrives. */}
+        <p
+          role="status"
+          className={cn(
+            "min-h-5 text-sm",
+            validationStatus === "validating" && "text-muted-foreground",
+            validationStatus === "invalid" && "text-destructive",
+            validationStatus === "valid" && "text-success",
+          )}
+        >
+          {validationStatus === "valid"
+            ? "Provided SRA is valid"
+            : validationMessage}
+        </p>
       </div>
     </div>
   );

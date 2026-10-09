@@ -122,12 +122,14 @@ export function PrimerAdvancedSection({
         />
       </ServiceCollapsibleTrigger>
       <ServiceCollapsibleContent>
-        <div className="space-y-3 px-2 py-3">
+        <div className="service-card-content-grid">
           <form.Field name="PRIMER_NUM_RETURN">
             {(field) => (
-              <FieldItem>
+              <FieldItem className="md:col-span-2">
+                {/* `mb-0!`: a label beside its help icon would otherwise keep
+                    `mb-2` on top of the field's `gap-2` (16px to the input). */}
                 <div className="flex items-center gap-2">
-                  <ServiceFieldLabel field={field}>
+                  <ServiceFieldLabel field={field} className="mb-0!">
                     Number to Return
                   </ServiceFieldLabel>
                   <Help>
@@ -147,9 +149,9 @@ export function PrimerAdvancedSection({
               </FieldItem>
             )}
           </form.Field>
-          <div className="space-y-4">
+          <div className="space-y-2 md:col-span-2">
             <div className="flex items-center gap-2">
-              <ServiceLabel>
+              <ServiceLabel className="mb-0!">
                 Primer Tm ({"\u00B0"}C)
               </ServiceLabel>
               <Help>
@@ -163,9 +165,9 @@ export function PrimerAdvancedSection({
               columns="grid grid-cols-1 gap-3 sm:grid-cols-4"
             />
           </div>
-          <div className="space-y-4">
+          <div className="space-y-2 md:col-span-2">
             <div className="flex items-center gap-2">
-              <ServiceLabel>Primer GC%</ServiceLabel>
+              <ServiceLabel className="mb-0!">Primer GC%</ServiceLabel>
               <Help>
                 Specify acceptable GC content range for designed primers.
               </Help>
@@ -176,27 +178,23 @@ export function PrimerAdvancedSection({
               columns="grid grid-cols-1 gap-3 sm:grid-cols-3"
             />
           </div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {concentrationFields.map(({ label, name }) => (
-              <form.Field key={name} name={name}>
-                {(field) => (
-                  <FieldItem>
-                    <ServiceFieldLabel field={field}>
-                      {label}
-                    </ServiceFieldLabel>
-                    <ServiceInput
-                      id={field.name}
-                      value={field.state.value || ""}
-                      onChange={(event) => {
-                        field.handleChange(event.target.value || undefined);
-                      }}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-            ))}
-          </div>
+          {concentrationFields.map(({ label, name }) => (
+            <form.Field key={name} name={name}>
+              {(field) => (
+                <FieldItem>
+                  <ServiceFieldLabel field={field}>{label}</ServiceFieldLabel>
+                  <ServiceInput
+                    id={field.name}
+                    value={field.state.value || ""}
+                    onChange={(event) => {
+                      field.handleChange(event.target.value || undefined);
+                    }}
+                  />
+                  <FieldErrors field={field} />
+                </FieldItem>
+              )}
+            </form.Field>
+          ))}
         </div>
       </ServiceCollapsibleContent>
     </ServiceCollapsible>

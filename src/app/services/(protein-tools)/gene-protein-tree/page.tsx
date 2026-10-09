@@ -33,12 +33,12 @@ export default function GeneProteinTreePage() {
       />
       <form
         action={() => form.handleSubmit()}
-        className="grid grid-cols-1 gap-4 md:grid-cols-2"
+        className="grid grid-cols-1 items-start gap-4 md:grid-cols-2"
       >
         <GeneProteinTreeInput controller={controller} />
         <GeneProteinTreeParameters controller={controller} />
         <GeneProteinTreeMetadata controller={controller} />
-        <div className="service-form-controls col-span-2">
+        <div className="service-form-controls md:col-span-2">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset
           </Button>

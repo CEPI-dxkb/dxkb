@@ -2,7 +2,6 @@
 
 import { ArrowRight, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,6 +23,7 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import type { GeneProteinTreeController } from "./use-gene-protein-tree";
 
@@ -46,7 +46,7 @@ export function GeneProteinTreeMetadata({
     <ServiceCollapsible
       open={showAdvanced}
       onOpenChange={setShowAdvanced}
-      className="col-span-2"
+      className="md:col-span-2"
     >
       <ServiceCollapsibleTrigger>
         Metadata Options
@@ -55,11 +55,11 @@ export function GeneProteinTreeMetadata({
         />
       </ServiceCollapsibleTrigger>
       <ServiceCollapsibleContent>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="service-card-content-grid">
           <div className="space-y-4">
             <div>
-              <Label>Metadata Table Fields</Label>
-              <p className="pt-2 pb-4 text-sm text-muted-foreground">
+              <ServiceLabel>Metadata Table Fields</ServiceLabel>
+              <p className="pb-4 text-sm text-muted-foreground">
                 These fields will appear as options in the phyloxml
                 visualization
               </p>
@@ -105,10 +105,10 @@ export function GeneProteinTreeMetadata({
               </div>
             </div>
           </div>
-          <div>
-            <Table className="mt-2">
+          <div className="rounded-md border bg-background">
+            <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow variant="static">
                   <TableHead className="h-8 py-1">Field</TableHead>
                   <TableHead className="h-8 w-24 py-1 text-center">
                     Remove
@@ -117,11 +117,11 @@ export function GeneProteinTreeMetadata({
               </TableHeader>
               <TableBody>
                 {selectedMetadataFields.map((field) => (
-                  <TableRow key={field.id} className="h-8">
+                  <TableRow key={field.id} variant="static" className="h-8">
                     <TableCell className="py-1">{field.name}</TableCell>
                     <TableCell className="py-1 text-center">
                       <Button
-                        variant="ghost-destructive"
+                        variant="ghost-secondary"
                         size="icon"
                         aria-label="Remove metadata field"
                         onClick={() => {

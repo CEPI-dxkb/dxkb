@@ -48,6 +48,7 @@ export function FastqOutputCard({ page }: { page: Page }) {
           {(field) => (
             <FieldItem className="w-full">
               <OutputFolder
+                required
                 value={field.state.value}
                 onChange={field.handleChange}
               />
@@ -60,6 +61,7 @@ export function FastqOutputCard({ page }: { page: Page }) {
             <FieldItem className="w-full">
               <OutputFolder
                 variant="name"
+                required
                 value={field.state.value}
                 onChange={field.handleChange}
                 outputFolderPath={page.outputPath}
@@ -134,7 +136,7 @@ export function FastqPipelineCard({ page }: { page: Page }) {
             page.pipelineActions.map((action) => (
               <div
                 key={action.id}
-                className="flex items-center justify-between rounded-md border px-3 py-2"
+                className="flex items-center justify-between rounded-md border bg-background px-3 py-2"
               >
                 <div className="flex items-center gap-2">
                   <span
@@ -144,7 +146,7 @@ export function FastqPipelineCard({ page }: { page: Page }) {
                 </div>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   size="icon"
                   className="size-6"
                   aria-label={`Remove ${action.label} action`}
@@ -152,7 +154,7 @@ export function FastqPipelineCard({ page }: { page: Page }) {
                     page.handleRemovePipelineAction(action.id);
                   }}
                 >
-                  <X className="size-3" />
+                  <X className="size-4" />
                 </Button>
               </div>
             ))

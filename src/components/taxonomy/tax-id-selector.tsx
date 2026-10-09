@@ -13,6 +13,11 @@ interface TaxIDSelectorProps extends TaxonomySelectorProps {
   id?: string;
   apiServiceUrl?: string;
   queryFilter?: string;
+  /**
+   * Draws the error border for a failure the caller reports (a form field's
+   * error). Unlike `required`, it adds no message of its own.
+   */
+  invalid?: boolean;
 }
 
 async function searchTaxonById(
@@ -58,6 +63,7 @@ export function TaxIDSelector({
   required = false,
   disabled = false,
   className,
+  invalid = false,
   apiServiceUrl = "/api/services/taxonomy",
   queryFilter,
 }: TaxIDSelectorProps) {
@@ -179,7 +185,7 @@ export function TaxIDSelector({
               }, 200);
             }
           }}
-          variant={touched && !isValid ? "invalid" : "default"}
+          variant={invalid || (touched && !isValid) ? "invalid" : "default"}
           inset={!disabled ? "both" : value ? "aligned" : "none"}
           className="w-full"
           disabled={disabled}

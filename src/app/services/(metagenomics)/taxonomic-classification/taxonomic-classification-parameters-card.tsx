@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ServiceCardHeader } from "@/components/services/form-ui/service-card";
 import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
+import { ServiceInfoLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
@@ -157,26 +158,28 @@ export function ClassificationParametersCard({
             <form.Field name="sequence_type">
               {(field) => (
                 <FieldItem>
-                  <ServiceFieldLabel
+                  <ServiceInfoLabel
                     field={field}
                     id={`${field.name}-label`}
                     htmlFor={undefined}
+                    info={
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger aria-label="Help: select sequencing type for input reads">
+                            <HelpCircle className="service-card-tooltip-icon" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              Select the sequencing type according to your
+                              input reads
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    }
                   >
                     Sequencing Type
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger aria-label="Help: select sequencing type for input reads">
-                          <HelpCircle className="service-card-tooltip-icon ml-2" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            Select the sequencing type according to your input
-                            reads
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </ServiceFieldLabel>
+                  </ServiceInfoLabel>
                   <ServiceRadioGroup
                     aria-labelledby={`${field.name}-label`}
                     value={field.state.value}
@@ -209,13 +212,14 @@ export function ClassificationParametersCard({
               <form.Field name="analysis_type">
                 {(field) => (
                   <FieldItem>
-                    <ServiceFieldLabel field={field}>
+                    <ServiceInfoLabel
+                      field={field}
+                      info={
+                        <DialogInfoPopup {...taxonomyClassificationAnalysisType} />
+                      }
+                    >
                       Analysis Type
-                      <DialogInfoPopup
-                        {...taxonomyClassificationAnalysisType}
-                        className="ml-2"
-                      />
-                    </ServiceFieldLabel>
+                    </ServiceInfoLabel>
                     <OptionSelect
                       id={field.name}
                       items={analysisTypeOptions}
@@ -234,13 +238,14 @@ export function ClassificationParametersCard({
               <form.Field name="database">
                 {(field) => (
                   <FieldItem>
-                    <ServiceFieldLabel field={field}>
+                    <ServiceInfoLabel
+                      field={field}
+                      info={
+                        <DialogInfoPopup {...taxonomyClassificationDatabase} />
+                      }
+                    >
                       Database
-                      <DialogInfoPopup
-                        {...taxonomyClassificationDatabase}
-                        className="ml-2"
-                      />
-                    </ServiceFieldLabel>
+                    </ServiceInfoLabel>
                     <OptionSelect
                       id={field.name}
                       items={databaseOptions}
@@ -258,16 +263,19 @@ export function ClassificationParametersCard({
               <form.Field name="host_genome">
                 {(field) => (
                   <FieldItem>
-                    <ServiceFieldLabel field={field}>
+                    <ServiceInfoLabel
+                      field={field}
+                      info={
+                        <DialogInfoPopup
+                          title={taxonomyClassificationFilterHostReads.title}
+                          description={
+                            taxonomyClassificationFilterHostReads.description
+                          }
+                        />
+                      }
+                    >
                       Filter Host Reads
-                      <DialogInfoPopup
-                        title={taxonomyClassificationFilterHostReads.title}
-                        description={
-                          taxonomyClassificationFilterHostReads.description
-                        }
-                        className="ml-2"
-                      />
-                    </ServiceFieldLabel>
+                    </ServiceInfoLabel>
                     <OptionSelect
                       id={field.name}
                       items={hostGenomeOptions}
@@ -286,16 +294,19 @@ export function ClassificationParametersCard({
               <form.Field name="confidence_interval">
                 {(field) => (
                   <FieldItem>
-                    <ServiceFieldLabel field={field}>
+                    <ServiceInfoLabel
+                      field={field}
+                      info={
+                        <DialogInfoPopup
+                          title={taxonomyClassificatioConfidenceInterval.title}
+                          description={
+                            taxonomyClassificatioConfidenceInterval.description
+                          }
+                        />
+                      }
+                    >
                       Confidence Interval
-                      <DialogInfoPopup
-                        title={taxonomyClassificatioConfidenceInterval.title}
-                        description={
-                          taxonomyClassificatioConfidenceInterval.description
-                        }
-                        className="ml-2"
-                      />
-                    </ServiceFieldLabel>
+                    </ServiceInfoLabel>
                     <OptionSelect
                       id={field.name}
                       items={confidenceIntervalOptions}

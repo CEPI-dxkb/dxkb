@@ -2,7 +2,11 @@
 
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
-import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldErrors,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { useState, useEffect, useRef } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
@@ -30,7 +34,6 @@ import { useGenomeGroupOptions } from "@/hooks/services/use-genome-group-options
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -56,10 +59,58 @@ import {
 import * as MsaSnpAnalysis from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-schema";
 import * as MsaSnpAnalysisUtils from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 import { msaSnpAnalysisService } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-service";
+import { cn } from "@/lib/utils";
 
 import { msaSNPAnalysisAligners } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 
 const emptyGenomeGroups: string[] = [];
+
+/**
+ * A FASTA textarea with the one status line under it, as BLAST's
+ * `FastaTextarea` draws them: the border turns destructive (`aria-invalid`) or
+ * success (`valid`), and a single message names the problem or the valid
+ * count. `error` is the FASTA's own message, or the form's when the FASTA has
+ * none, so the "required" error does not stack under it. The line is always
+ * present, so the card does not resize as the state changes.
+ */
+function FastaTextareaStatus({
+  value,
+  onChange,
+  placeholder,
+  error,
+  validMessage,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  error: string | null;
+  validMessage: string | null;
+}) {
+  const hasError = Boolean(error);
+  return (
+    <div className="space-y-2">
+      <ServiceTextarea
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
+        placeholder={placeholder}
+        rows={10}
+        aria-invalid={hasError || undefined}
+        variant={!hasError && validMessage ? "valid" : undefined}
+      />
+      <p
+        role="status"
+        className={cn(
+          "min-h-5 text-sm",
+          hasError ? "text-destructive" : "text-success",
+        )}
+      >
+        {hasError ? error : validMessage}
+      </p>
+    </div>
+  );
+}
 
 function useMSAandSNPAnalysisPage() {
   const [_selectedFeatureGroupObject, setSelectedFeatureGroupObject] =
@@ -212,13 +263,27 @@ function useMSAandSNPAnalysisPage() {
   });
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
+  // Swap-clears must not touch or validate the field a choice swaps in, or it
+  // opens on "required" in production (BLAST's `untouched`; docs/architecture.md).
+  const untouched = { dontUpdateMeta: true, dontValidate: true };
+
   function handleFastaInputChange(
     value: string,
     hasReferenceOverride?: boolean,
+    programmatic = false,
   ) {
     setFastaInputText(value);
     if (!value.trim()) {
-      form.setFieldValue("fasta_keyboard_input", "");
+      // A re-check from the reference controls must not mark an untouched
+      // textarea touched, or "FASTA sequence input is required" shows before
+      // the user has typed. `dontUpdateMeta` alone is not enough:
+      // `setFieldValue` still validates a mounted field, and that marks it
+      // touched. Typing keeps the default, so clearing the textarea shows it.
+      form.setFieldValue(
+        "fasta_keyboard_input",
+        "",
+        programmatic ? untouched : undefined,
+      );
       setFastaValidationResult(null);
       return;
     }
@@ -249,6 +314,7 @@ function useMSAandSNPAnalysisPage() {
     handleFastaInputChange(
       fastaInputText,
       refType === "string" && value.trim() !== "",
+      true,
     );
     if (!value.trim()) {
       form.setFieldValue("ref_string", "");
@@ -315,7 +381,7 @@ function useMSAandSNPAnalysisPage() {
         if (changed) {
         setSelectedGenomeId("");
         if (form.state.values.ref_type === "genome_id") {
-          form.setFieldValue("ref_string", "");
+          form.setFieldValue("ref_string", "", untouched);
         }
       }
     } catch (error) {
@@ -438,7 +504,7 @@ function useMSAandSNPAnalysisPage() {
                       // Reset reference type to "none" when input status changes
                       if (previousStatus !== value) {
                         form.setFieldValue("ref_type", "none");
-                        form.setFieldValue("ref_string", "");
+                        form.setFieldValue("ref_string", "", untouched);
                         setSelectedFeatureId("");
                         setSelectedGenomeId("");
                         setReferenceFastaText("");
@@ -482,7 +548,7 @@ function useMSAandSNPAnalysisPage() {
                           // Only reset if the input type actually changed
                           if (previousInputType !== value) {
                             form.setFieldValue("ref_type", "none");
-                            form.setFieldValue("ref_string", "");
+                            form.setFieldValue("ref_string", "", untouched);
                             setSelectedFeatureId("");
                             setSelectedGenomeId("");
                             setReferenceFastaText("");
@@ -554,7 +620,11 @@ function useMSAandSNPAnalysisPage() {
                               if (changed) {
                                 setSelectedFeatureId("");
                                 if (refType === "feature_id") {
-                                  form.setFieldValue("ref_string", "");
+                                  form.setFieldValue(
+                                    "ref_string",
+                                    "",
+                                    untouched,
+                                  );
                                 }
                               }
                             }}
@@ -670,38 +740,25 @@ function useMSAandSNPAnalysisPage() {
 
                 {/* Input Sequence */}
                 {inputType === "input_sequence" && (
-                  <div className="space-y-2">
-                    <ServiceTextarea
-                      value={fastaInputText}
-                      onChange={(e) => {
-                        handleFastaInputChange(e.target.value);
-                      }}
-                      placeholder="Enter FASTA records of sequences to align"
-                      rows={10}
-                    />
-                    {fastaValidationResult && (
-                      <Alert
-                        variant={
-                          fastaValidationResult.valid
-                            ? "default"
-                            : "destructive"
+                  <form.Field name="fasta_keyboard_input">
+                    {(field) => (
+                      <FastaTextareaStatus
+                        value={fastaInputText}
+                        onChange={handleFastaInputChange}
+                        placeholder="Enter FASTA records of sequences to align"
+                        error={
+                          fastaValidationResult?.valid === false
+                            ? fastaValidationResult.message
+                            : fieldErrorMessage(field)
                         }
-                      >
-                        <AlertDescription>
-                          {fastaValidationResult.valid
+                        validMessage={
+                          fastaValidationResult?.valid
                             ? `✓ Valid FASTA with ${String(fastaValidationResult.numseq)} sequence${fastaValidationResult.numseq !== 1 ? "s" : ""}`
-                            : fastaValidationResult.message}
-                        </AlertDescription>
-                      </Alert>
+                            : null
+                        }
+                      />
                     )}
-                    <form.Field name="fasta_keyboard_input">
-                      {(field) => (
-                        <FieldItem>
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                  </div>
+                  </form.Field>
                 )}
               </div>
             ) : (
@@ -768,10 +825,11 @@ function useMSAandSNPAnalysisPage() {
                           fastaInputText,
                           value === "string" &&
                             referenceFastaText.trim() !== "",
+                          true,
                         );
                         // Clear ref_string when changing ref_type
                         if (value === "none" || value === "first") {
-                          form.setFieldValue("ref_string", "");
+                          form.setFieldValue("ref_string", "", untouched);
                           setSelectedFeatureId("");
                           setSelectedGenomeId("");
                           setReferenceFastaText("");
@@ -990,38 +1048,25 @@ function useMSAandSNPAnalysisPage() {
 
               {/* Input Reference Sequence */}
               {refType === "string" && (
-                <div className="space-y-2">
-                  <ServiceTextarea
-                    value={referenceFastaText}
-                    onChange={(e) => {
-                      handleReferenceFastaChange(e.target.value);
-                    }}
-                    placeholder="Enter a FASTA record of a reference sequence to align"
-                    rows={10}
-                  />
-                  {referenceFastaValidationResult && (
-                    <Alert
-                      variant={
-                        referenceFastaValidationResult.valid
-                          ? "default"
-                          : "destructive"
+                <form.Field name="ref_string">
+                  {(field) => (
+                    <FastaTextareaStatus
+                      value={referenceFastaText}
+                      onChange={handleReferenceFastaChange}
+                      placeholder="Enter a FASTA record of a reference sequence to align"
+                      error={
+                        referenceFastaValidationResult?.valid === false
+                          ? referenceFastaValidationResult.message
+                          : fieldErrorMessage(field)
                       }
-                    >
-                      <AlertDescription>
-                        {referenceFastaValidationResult.valid
+                      validMessage={
+                        referenceFastaValidationResult?.valid
                           ? `✓ Valid FASTA with ${String(referenceFastaValidationResult.numseq)} sequence`
-                          : referenceFastaValidationResult.message}
-                      </AlertDescription>
-                    </Alert>
+                          : null
+                      }
+                    />
                   )}
-                  <form.Field name="ref_string">
-                    {(field) => (
-                      <FieldItem>
-                        <FieldErrors field={field} />
-                      </FieldItem>
-                    )}
-                  </form.Field>
-                </div>
+                </form.Field>
               )}
             </div>
         </MsaReferenceSequenceCard>
@@ -1078,7 +1123,7 @@ function useMSAandSNPAnalysisPage() {
                   open={showStrategy}
                   onOpenChange={setShowStrategy}
                 >
-                  <ServiceCollapsibleTrigger className="text-sm font-medium">
+                  <ServiceCollapsibleTrigger>
                     Strategy Options
                     <ChevronDown
                       className={`size-4 transition-transform ${showStrategy ? "rotate-180 transform" : ""}`}
@@ -1097,7 +1142,7 @@ function useMSAandSNPAnalysisPage() {
                                   value as MsaSnpAnalysis.MsaSnpAnalysisFormData["strategy"],
                                 );
                             }}
-                            className="m-2 w-auto"
+                            className="w-auto"
                           >
                             {MsaSnpAnalysis.strategyOptions.map((option) => (
                               <div

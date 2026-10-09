@@ -1,7 +1,7 @@
 "use client";
 
 import { HelpCircle } from "lucide-react";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +11,7 @@ import {
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -41,9 +42,9 @@ export function SelectedLibrariesSection({
               </Tooltip>
             </TooltipProvider>
           </ServiceCardTitle>
-          <CardDescription>
+          <ServiceCardDescription>
             Place read files here using the arrow buttons.
-          </CardDescription>
+          </ServiceCardDescription>
         </ServiceCardHeader>
         <ServiceCardContent>
           <SelectedItemsTable

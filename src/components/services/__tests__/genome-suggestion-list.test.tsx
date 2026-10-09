@@ -50,6 +50,37 @@ describe("GenomeSuggestionList", () => {
     expect(screen.getByText(/83332\.12 • K-12/)).toBeVisible();
   });
 
+  it("gives the second line the accent foreground on a highlighted or hovered row", () => {
+    render(
+      <GenomeSuggestionList
+        suggestions={suggestions}
+        isLoading={false}
+        error={null}
+        emptyMessage={null}
+        highlightedIndex={1}
+        itemRefs={{ current: [] }}
+        onSelect={vi.fn()}
+        onHighlight={vi.fn()}
+      />,
+    );
+
+    // `muted-foreground` is under 3:1 on the accent fill, so the highlighted
+    // row swaps it out and every row opts in to doing the same on hover.
+    const highlightedLine = screen.getByText("224308.43");
+    expect(highlightedLine).toHaveClass("text-accent-foreground");
+    expect(highlightedLine).not.toHaveClass("text-muted-foreground");
+
+    const restingLine = screen.getByText(/83332\.12 • K-12/);
+    expect(restingLine).toHaveClass(
+      "text-muted-foreground",
+      "group-hover/suggestion:text-accent-foreground",
+    );
+    expect(restingLine).not.toHaveClass("text-accent-foreground");
+    expect(
+      screen.getByRole("button", { name: /Escherichia coli/i }),
+    ).toHaveClass("group/suggestion");
+  });
+
   it("keeps the highlight background when itemClassName sets its own", () => {
     render(
       <GenomeSuggestionList

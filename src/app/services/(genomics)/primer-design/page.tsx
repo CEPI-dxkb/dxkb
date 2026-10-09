@@ -27,13 +27,13 @@ export default function PrimerDesignServicePage() {
         tutorial="#"
         instructionalVideo="#"
       />
-      <form action={() => form.handleSubmit()} className="space-y-4">
+      <form action={() => form.handleSubmit()} className="service-form-section">
         <PrimerInputSection controller={controller}>
           <PrimerOptionsSection controller={controller} />
           <PrimerAdvancedSection controller={controller} />
         </PrimerInputSection>
         <PrimerOutputSection controller={controller} />
-        <div className="mt-3! flex flex-row justify-end gap-4">
+        <div className="service-form-controls">
           <Button type="button" variant="outline" onClick={handleReset}>
             Reset
           </Button>

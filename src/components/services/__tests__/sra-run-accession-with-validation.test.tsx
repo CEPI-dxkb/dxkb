@@ -499,6 +499,39 @@ describe("SraRunAccessionWithValidation", () => {
         screen.getByText("Validating is not a real result"),
       ).toHaveClass("text-destructive");
     });
+
+    it("marks the field invalid or valid with its message line always present", async () => {
+      respondWithRuns({ SRR100: ["SRR100"] });
+      const { container } = render(<Harness />);
+      // The message line is the field's sibling `<p>`; it exists, empty and one
+      // line tall, before any validation so the card never changes height.
+      const messageLine = () => {
+        const line = input().parentElement?.querySelector("p");
+        if (!line) throw new Error("message line is missing");
+        return line;
+      };
+      expect(container.querySelectorAll("p")).toHaveLength(1);
+      expect(messageLine()).toHaveTextContent("");
+      expect(messageLine()).toHaveClass("min-h-5");
+      expect(input()).not.toHaveAttribute("aria-invalid");
+      expect(input()).not.toHaveClass("border-success");
+
+      await typeAndSettleDebounce("abc");
+      expect(input()).toHaveAttribute("aria-invalid", "true");
+      expect(input()).not.toHaveClass("border-success");
+      expect(messageLine()).toHaveClass("min-h-5", "text-destructive");
+
+      await typeAndSettleDebounce("SRR100");
+      await waitFor(() => {
+        expect(screen.getByText("Provided SRA is valid")).toHaveClass(
+          "min-h-5",
+          "text-success",
+        );
+      });
+      expect(input()).not.toHaveAttribute("aria-invalid");
+      expect(input()).toHaveClass("border-success");
+      expect(container.querySelectorAll("p")).toHaveLength(1);
+    });
   });
 
   describe("stale responses", () => {

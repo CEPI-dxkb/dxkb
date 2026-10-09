@@ -1,4 +1,8 @@
-import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import {
+  FieldErrors,
+  FieldItem,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
 import {
   Select,
@@ -81,7 +85,7 @@ export function SarsGenomeParameters({
                     options={primerOptions}
                   />
                 </div>
-                <div className="w-full sm:w-32">
+                <div className="w-full sm:w-52">
                   <OptionField
                     form={form}
                     name="primer_version"
@@ -100,7 +104,7 @@ export function SarsGenomeParameters({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger aria-label="Help: select taxonomy name for SARS-CoV-2">
-                    <HelpCircle className="service-card-tooltip-icon ml-1 inline-block" />
+                    <HelpCircle className="service-card-tooltip-icon -my-0.5 ml-1 inline-block align-middle" />
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Select the taxonomy name for SARS-CoV-2</p>
@@ -145,13 +149,14 @@ export function SarsGenomeParameters({
                     includeViruses={false}
                     includeBacteria={false}
                     includeEukaryotes={false}
+                    invalid={fieldErrorMessage(field) !== null}
                   />
                   <FieldErrors field={field} />
                 </FieldItem>
               )}
             </form.Field>
           </div>
-          <div className="w-full space-y-2 sm:w-40">
+          <div className="w-full space-y-2 sm:w-52">
             <ServiceLabel>Taxonomy ID</ServiceLabel>
             <form.Field name="taxonomy_id">
               {(field) => (
@@ -180,6 +185,7 @@ export function SarsGenomeParameters({
                       }
                     }}
                     placeholder="NCBI Taxonomy ID"
+                    invalid={fieldErrorMessage(field) !== null}
                   />
                   <FieldErrors field={field} />
                 </FieldItem>
@@ -207,32 +213,38 @@ export function SarsGenomeParameters({
             </FieldItem>
           )}
         </form.Field>
-        <form.Field name="output_path">
-          {(field) => (
-            <FieldItem>
-              <OutputFolder
-                value={field.state.value}
-                onChange={field.handleChange}
-              />
-              <FieldErrors field={field} />
-            </FieldItem>
-          )}
-        </form.Field>
-        <form.Field name="output_file">
-          {(field) => (
-            <FieldItem>
-              <OutputFolder
-                variant="name"
-                value={field.state.value}
-                onChange={field.handleChange}
-                outputFolderPath={outputPath}
-                onValidationChange={onValidationChange}
-                disabled={true}
-              />
-              <FieldErrors field={field} />
-            </FieldItem>
-          )}
-        </form.Field>
+        <div className="service-card-row">
+          <div className="service-card-row-item">
+            <form.Field name="output_path">
+              {(field) => (
+                <FieldItem>
+                  <OutputFolder
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                  />
+                  <FieldErrors field={field} />
+                </FieldItem>
+              )}
+            </form.Field>
+          </div>
+          <div className="service-card-row-item">
+            <form.Field name="output_file">
+              {(field) => (
+                <FieldItem>
+                  <OutputFolder
+                    variant="name"
+                    value={field.state.value}
+                    onChange={field.handleChange}
+                    outputFolderPath={outputPath}
+                    onValidationChange={onValidationChange}
+                    disabled={true}
+                  />
+                  <FieldErrors field={field} />
+                </FieldItem>
+              )}
+            </form.Field>
+          </div>
+        </div>
       </ServiceCardContent>
     </Card>
   );

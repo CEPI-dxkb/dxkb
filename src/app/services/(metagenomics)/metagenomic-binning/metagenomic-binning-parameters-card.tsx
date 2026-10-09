@@ -8,9 +8,12 @@ import OutputFolder from "@/components/services/output-folder";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { NumberInput } from "@/components/ui/number-input";
 import { RadioGroupItem } from "@/components/ui/radio-group";
-import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import {
+  FieldErrors,
+  FieldItem,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { ServiceCardHeader } from "@/components/services/form-ui/service-card";
 import {
   ServiceCollapsible,
@@ -21,7 +24,10 @@ import {
   ServiceFieldLabel,
   ServiceFieldSubLabel,
 } from "@/components/services/form-ui/service-field";
-import { ServiceInput } from "@/components/services/form-ui/service-input";
+import {
+  ServiceInput,
+  ServiceNumberInput,
+} from "@/components/services/form-ui/service-input";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import {
   minContigCoverageMax,
@@ -213,71 +219,72 @@ export function BinningParametersCard({
               open={state.showAdvanced}
               onOpenChange={setState("showAdvanced")}
             >
-              <ServiceCollapsibleTrigger className="text-sm font-medium">
+              <ServiceCollapsibleTrigger>
                 Advanced Parameters
                 <ChevronDown
                   className={`size-4 transition-transform ${state.showAdvanced ? "rotate-180 transform" : ""}`}
                 />
               </ServiceCollapsibleTrigger>
               <ServiceCollapsibleContent>
-                <div className="mt-6 space-y-4">
-                  <div className="service-card-row">
-                    <form.Field name="min_contig_len">
-                      {(field) => (
-                        <FieldItem className="w-full">
-                          <ServiceFieldSubLabel field={field}>
-                            Minimum Contig Length
-                          </ServiceFieldSubLabel>
-                          <NumberInput
-                            id={field.name}
-                            name={field.name}
-                            value={field.state.value}
-                            min={minContigLengthMin}
-                            max={minContigLengthMax}
-                            stepper={10}
-                            onBlur={field.handleBlur}
-                            onValueChange={(value) => {
-                              if (value !== undefined)
-                                field.handleChange(value);
-                            }}
-                          />
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                    <form.Field name="min_contig_cov">
-                      {(field) => (
-                        <FieldItem className="w-full">
-                          <ServiceFieldSubLabel field={field}>
-                            Minimum Contig Coverage
-                          </ServiceFieldSubLabel>
-                          <NumberInput
-                            id={field.name}
-                            name={field.name}
-                            value={field.state.value}
-                            min={minContigCoverageMin}
-                            max={minContigCoverageMax}
-                            stepper={1}
-                            onBlur={field.handleBlur}
-                            onValueChange={(value) => {
-                              if (value !== undefined)
-                                field.handleChange(value);
-                            }}
-                          />
-                          <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                  </div>
+                <div className="service-card-content-grid">
+                  <form.Field name="min_contig_len">
+                    {(field) => (
+                      <FieldItem>
+                        <ServiceFieldLabel field={field}>
+                          Minimum Contig Length
+                        </ServiceFieldLabel>
+                        <ServiceNumberInput
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          min={minContigLengthMin}
+                          max={minContigLengthMax}
+                          stepper={10}
+                          aria-invalid={
+                            fieldErrorMessage(field) !== null || undefined
+                          }
+                          onBlur={field.handleBlur}
+                          onValueChange={(value) => {
+                            if (value !== undefined) field.handleChange(value);
+                          }}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                  <form.Field name="min_contig_cov">
+                    {(field) => (
+                      <FieldItem>
+                        <ServiceFieldLabel field={field}>
+                          Minimum Contig Coverage
+                        </ServiceFieldLabel>
+                        <ServiceNumberInput
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          min={minContigCoverageMin}
+                          max={minContigCoverageMax}
+                          stepper={1}
+                          aria-invalid={
+                            fieldErrorMessage(field) !== null || undefined
+                          }
+                          onBlur={field.handleBlur}
+                          onValueChange={(value) => {
+                            if (value !== undefined) field.handleChange(value);
+                          }}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
                   <form.Field name="disable_dangling">
                     {(field) => (
-                      <FieldItem className="flex items-center">
+                      <FieldItem className="flex items-center md:col-span-2">
                         <Checkbox
                           id="disable_dangling"
                           name="disable_dangling"
                           checked={field.state.value}
                           onCheckedChange={field.handleChange}
-                          className="mb-2"
                         />
                         <ServiceFieldSubLabel
                           field={field}

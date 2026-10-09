@@ -17,8 +17,9 @@ const inputVariants = cva(
         // Card-surface field with a primary outline (filter-bar keyword search).
         emphasis:
           "border-primary bg-card px-2 text-card-foreground dark:bg-card",
-        // Paths, ids and sequences.
-        mono: "font-mono text-sm",
+        // Paths, ids and sequences. A prose placeholder ("Sample ID") drops the
+        // mono face, as `.service-card-textarea` does for its placeholder.
+        mono: "font-mono text-sm placeholder:font-sans",
         // Trailing part of a joined control whose wrapper draws the outline
         // (search bar: type select + query input). `-lg` is the tall form, the
         // same height as `segment-start-lg` on SelectTrigger.
@@ -29,6 +30,10 @@ const inputVariants = cva(
         // Error border without the `aria-invalid` focus ring, for the service
         // pickers that must keep their border-only error look.
         invalid: "border-destructive",
+        // Success border for a value that passed validation (the SRA run
+        // accession), with the green focus ring Textarea's `valid` has. The
+        // error state stays on `aria-invalid`.
+        valid: "border-success focus-visible:ring-success/50",
       },
       // Horizontal padding that leaves room for icons laid over the field
       // (service-form pickers): a leading search icon (`start`), a leading

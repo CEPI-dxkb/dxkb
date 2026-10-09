@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
@@ -17,6 +16,7 @@ import {
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
 import {
   ServiceSelectContent,
   ServiceSelectTrigger,
@@ -51,7 +51,7 @@ export function ParametersSection({
           <form.Field name="reference_genome_id">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>Target Genome</RequiredFormLabel>
+                <ServiceRequiredLabel>Target Genome</ServiceRequiredLabel>
                 <SingleGenomeSelector
                   value={field.state.value}
                   onChange={field.handleChange}
@@ -64,7 +64,7 @@ export function ParametersSection({
           <form.Field name="mapper">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>Aligner</RequiredFormLabel>
+                <ServiceRequiredLabel>Aligner</ServiceRequiredLabel>
                 <Select
                   items={variationAnalysisMappers}
                   value={field.state.value}
@@ -92,7 +92,7 @@ export function ParametersSection({
           <form.Field name="caller">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>SNP Caller</RequiredFormLabel>
+                <ServiceRequiredLabel>SNP Caller</ServiceRequiredLabel>
                 <Select
                   items={variationAnalysisCallers}
                   value={field.state.value}

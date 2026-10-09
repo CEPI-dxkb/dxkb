@@ -255,7 +255,11 @@ export function DatabaseSelector({
         <ServiceRequiredLabel>
           {label}
         </ServiceRequiredLabel>
-        <form.Field name={name as keyof BlastFormData}>
+        {/* Keyed so each picker source gets its own field and picker, not one
+            live field that swaps `name` and carries the picker's state across.
+            The "required" error on a return visit is kept away by
+            changeDatabase's clears, which do not validate (see page.tsx). */}
+        <form.Field key={name} name={name as keyof BlastFormData}>
           {(field) => (
             <FieldItem>
               <WorkspaceObjectSelector

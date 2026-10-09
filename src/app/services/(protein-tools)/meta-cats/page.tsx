@@ -535,8 +535,10 @@ function useMetaCATSPage() {
                 active={inputType === "auto"}
                 className="space-y-4"
               >
-                  {/* Metadata Selection */}
-                  <div className="flex flex-wrap gap-4">
+                  {/* Metadata Selection. `items-start`, so the message under
+                      Year Ranges does not stretch the Metadata field and push
+                      its select down. */}
+                  <div className="flex flex-wrap items-start gap-4">
                     <form.Field name="metadata_group">
                       {(field) => (
                         <FieldItem className="min-w-48">
@@ -585,7 +587,7 @@ function useMetaCATSPage() {
 
                     {/* Year Ranges (only for collection_year) */}
                     {showYearRanges && (
-                      <div className="min-w-64 flex-1">
+                      <FieldItem className="min-w-64 flex-1">
                         <ServiceLabel>Year Ranges</ServiceLabel>
                         <ServiceInput
                           value={yearRangesInput}
@@ -593,10 +595,13 @@ function useMetaCATSPage() {
                             handleYearRangesChange(e.target.value);
                           }}
                           placeholder="1998,1999-2005,2006"
+                          aria-invalid={
+                            yearRangesValidation?.valid === false || undefined
+                          }
                         />
                         {yearRangesValidation && (
                           <p
-                            className={`mt-1 text-xs ${
+                            className={`text-xs ${
                               yearRangesValidation.valid
                                 ? "text-muted-foreground"
                                 : "text-destructive"
@@ -605,7 +610,7 @@ function useMetaCATSPage() {
                             {yearRangesValidation.message}
                           </p>
                         )}
-                      </div>
+                      </FieldItem>
                     )}
                   </div>
 
@@ -728,10 +733,10 @@ function useMetaCATSPage() {
                       </span>
                     </div>
 
-                    <div className="overflow-hidden rounded-md border">
-                      <Table variant="well">
+                    <div className="overflow-hidden rounded-md border bg-background">
+                      <Table>
                         <TableHeader>
-                          <TableRow>
+                          <TableRow variant="static">
                             <TableHead className="w-12">
                               <Checkbox
                                 id="select-all-meta-cats"
@@ -753,7 +758,7 @@ function useMetaCATSPage() {
                         </TableHeader>
                         <TableBody>
                           {autoGroups.length === 0 ? (
-                            <TableRow>
+                            <TableRow variant="static">
                               <TableCell
                                 colSpan={6}
                                 className="py-8 text-center"
@@ -766,7 +771,15 @@ function useMetaCATSPage() {
                             </TableRow>
                           ) : (
                             autoGroups.map((item) => (
-                              <TableRow key={item.id}>
+                              <TableRow
+                                key={item.id}
+                                selectionIndicator
+                                data-state={
+                                  selectedGridRows.has(item.id)
+                                    ? "selected"
+                                    : undefined
+                                }
+                              >
                                 <TableCell>
                                   <Checkbox
                                     id={`row-${item.id}-checkbox`}

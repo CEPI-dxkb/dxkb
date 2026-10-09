@@ -60,3 +60,26 @@ describe("TaxIDSelector search", () => {
     ).toBeVisible();
   });
 });
+
+describe("TaxIDSelector invalid", () => {
+  it("draws the error border for a caller-reported failure without adding a message", () => {
+    render(<TaxIDSelector invalid />, { wrapper: createQueryClientWrapper() });
+
+    expect(screen.getByRole("textbox")).toHaveClass("border-destructive");
+    expect(screen.queryByText("NCBI Tax ID is required.")).toBeNull();
+  });
+
+  it("keeps the default border until the required field is touched", async () => {
+    const user = userEvent.setup();
+    render(<TaxIDSelector required />, { wrapper: createQueryClientWrapper() });
+    const input = screen.getByRole("textbox");
+
+    expect(input).not.toHaveClass("border-destructive");
+
+    await user.click(input);
+    await user.tab();
+
+    expect(input).toHaveClass("border-destructive");
+    expect(screen.getByText("NCBI Tax ID is required.")).toBeVisible();
+  });
+});

@@ -80,8 +80,12 @@ export function PrimerOptionsSection({
       <form.Field name="PRIMER_PRODUCT_SIZE_RANGE">
         {(field) => (
           <FieldItem>
+            {/* A label and its help icon share a row that is not a direct child
+                of the field, so the label would keep `mb-2` on top of the
+                field's `gap-2` (16px to the input) and sit off the icon's
+                center. `mb-0!` beats the unlayered `.service-card-label`. */}
             <div className="flex items-center gap-2">
-              <ServiceFieldLabel field={field}>
+              <ServiceFieldLabel field={field} className="mb-0!">
                 Product Size Range (bp)
               </ServiceFieldLabel>
               <Help>
@@ -103,9 +107,9 @@ export function PrimerOptionsSection({
           </FieldItem>
         )}
       </form.Field>
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <ServiceLabel>Primer Size (bp)</ServiceLabel>
+          <ServiceLabel className="mb-0!">Primer Size (bp)</ServiceLabel>
           <Help>
             Specify minimum, optimum, and maximum primer lengths. Primer3 will
             not pick primers shorter than the minimum or longer than the
@@ -134,35 +138,33 @@ export function PrimerOptionsSection({
           ))}
         </div>
       </div>
-      <div className="space-y-3">
-        {regionFields.map(({ label, name, prefix, suffix, tooltip }) => (
-          <form.Field key={name} name={name}>
-            {(field) => (
-              <FieldItem>
-                <div className="flex items-center gap-2">
-                  <ServiceFieldLabel field={field}>
-                    {label}
-                  </ServiceFieldLabel>
-                  <Help>{tooltip}</Help>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span>{prefix}</span>
-                  <ServiceInput
-                    id={field.name}
-                    value={(field.state.value ?? []).join(" ")}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      field.handleChange(value ? value.split(/\s+/) : []);
-                    }}
-                  />
-                  <span>{suffix}</span>
-                </div>
-                <FieldErrors field={field} />
-              </FieldItem>
-            )}
-          </form.Field>
-        ))}
-      </div>
+      {regionFields.map(({ label, name, prefix, suffix, tooltip }) => (
+        <form.Field key={name} name={name}>
+          {(field) => (
+            <FieldItem>
+              <div className="flex items-center gap-2">
+                <ServiceFieldLabel field={field} className="mb-0!">
+                  {label}
+                </ServiceFieldLabel>
+                <Help>{tooltip}</Help>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 text-center">{prefix}</span>
+                <ServiceInput
+                  id={field.name}
+                  value={(field.state.value ?? []).join(" ")}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    field.handleChange(value ? value.split(/\s+/) : []);
+                  }}
+                />
+                <span className="w-3 text-center">{suffix}</span>
+              </div>
+              <FieldErrors field={field} />
+            </FieldItem>
+          )}
+        </form.Field>
+      ))}
     </>
   );
 }

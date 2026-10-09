@@ -17,6 +17,11 @@ interface TaxonNameSelectorProps extends TaxonomySelectorProps {
   setBacteriophage?: boolean;
   segmentWildcard?: boolean;
   highlightMatch?: "all" | "first" | "none";
+  /**
+   * Draws the error border for a failure the caller reports (a form field's
+   * error). Unlike `required`, it adds no message of its own.
+   */
+  invalid?: boolean;
 }
 
 const rankList = [
@@ -164,6 +169,7 @@ export function TaxonNameSelector({
   required = false,
   disabled = false,
   className,
+  invalid = false,
   apiServiceUrl = "/api/services/taxonomy",
   includeEukaryotes = false,
   includeBacteria = false,
@@ -282,7 +288,7 @@ export function TaxonNameSelector({
               setShowDropdown(false);
             }, 200);
           }}
-          variant={touched && !isValid ? "invalid" : "default"}
+          variant={invalid || (touched && !isValid) ? "invalid" : "default"}
           inset="both"
           className="w-full"
           disabled={disabled}

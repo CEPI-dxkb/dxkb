@@ -3,9 +3,8 @@ import { useSelector } from "@tanstack/react-store";
 import { Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { NumberInput } from "@/components/ui/number-input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,6 +16,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -25,6 +25,7 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import {
   genomeAlignmentAdvancedParameterOptions,
@@ -128,10 +129,10 @@ export function GenomeSelection({
             sections={genomeAlignmentSelectGenomes.sections}
           />
         </RequiredFormCardTitle>
-        <CardDescription>
+        <ServiceCardDescription>
           Add at least 2 and up to 20 genomes. The first genome selected becomes
           the reference (anchor) genome in the alignment.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent className="space-y-6">
         <GenomeNameSelector
@@ -276,76 +277,78 @@ export function AlignmentParameters({
               className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
             />
           </ServiceCollapsibleTrigger>
-          <ServiceCollapsibleContent className="space-y-6">
-            <form.Field name="manual_seed_weight">
-              {(field) => (
-                <FieldItem>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <ServiceLabel>
-                        Manually Set Seed Weight
-                      </ServiceLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Enable to specify the seed weight used by
-                        progressiveMauve.
-                      </p>
-                    </div>
-                    <Switch
-                      id="manual-seed-weight"
-                      checked={field.state.value}
-                      onCheckedChange={field.handleChange}
-                    />
-                  </div>
-                  <FieldErrors field={field} />
-                </FieldItem>
-              )}
-            </form.Field>
-            {manual && (
-              <form.Field name="seed_weight">
+          <ServiceCollapsibleContent>
+            <div className="service-card-content-grid">
+              <form.Field name="manual_seed_weight">
                 {(field) => (
                   <FieldItem>
-                    <div className="flex items-center justify-between">
-                      <ServiceLabel>Seed Weight</ServiceLabel>
-                      <span className="text-sm text-muted-foreground">
-                        {field.state.value ?? 15}
-                      </span>
-                    </div>
-                    <Slider
-                      aria-label="Seed weight"
-                      value={[field.state.value ?? 15]}
-                      min={3}
-                      max={21}
-                      step={1}
-                      onValueChange={(value) => {
-                        field.handleChange(
-                          (Array.isArray(value) ? value[0] : value) as number,
-                        );
-                      }}
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>3</span>
-                      <span>21</span>
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <ServiceLabel htmlFor="manual-seed-weight">
+                          Manually Set Seed Weight
+                        </ServiceLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Enable to specify the seed weight used by
+                          progressiveMauve.
+                        </p>
+                      </div>
+                      <Switch
+                        id="manual-seed-weight"
+                        checked={field.state.value}
+                        onCheckedChange={field.handleChange}
+                      />
                     </div>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
               </form.Field>
-            )}
-            <form.Field name="weight">
-              {(field) => (
-                <FieldItem>
-                  <ServiceLabel>Weight</ServiceLabel>
-                  <NumberInput
-                    value={field.state.value}
-                    onValueChange={field.handleChange}
-                    min={0}
-                    max={1000000}
-                    placeholder="Min pairwise LCB score"
-                  />
-                  <FieldErrors field={field} />
-                </FieldItem>
+              {manual && (
+                <form.Field name="seed_weight">
+                  {(field) => (
+                    <FieldItem>
+                      <div className="flex items-center justify-between">
+                        <ServiceLabel>Seed Weight</ServiceLabel>
+                        <span className="text-sm text-muted-foreground">
+                          {field.state.value ?? 15}
+                        </span>
+                      </div>
+                      <Slider
+                        aria-label="Seed weight"
+                        value={[field.state.value ?? 15]}
+                        min={3}
+                        max={21}
+                        step={1}
+                        onValueChange={(value) => {
+                          field.handleChange(
+                            (Array.isArray(value) ? value[0] : value) as number,
+                          );
+                        }}
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>3</span>
+                        <span>21</span>
+                      </div>
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
               )}
-            </form.Field>
+              <form.Field name="weight">
+                {(field) => (
+                  <FieldItem>
+                    <ServiceLabel>Weight</ServiceLabel>
+                    <ServiceNumberInput
+                      value={field.state.value}
+                      onValueChange={field.handleChange}
+                      min={0}
+                      max={1000000}
+                      placeholder="Min pairwise LCB score"
+                    />
+                    <FieldErrors field={field} />
+                  </FieldItem>
+                )}
+              </form.Field>
+            </div>
           </ServiceCollapsibleContent>
         </ServiceCollapsible>
       </ServiceCardContent>

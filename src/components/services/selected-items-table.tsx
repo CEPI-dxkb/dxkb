@@ -89,55 +89,55 @@ const SelectedItemsTable = ({
           )}
         </div>
       )}
-      <div
-        className={`overflow-auto rounded-md border bg-background/20 p-4 ${className}`}
-      >
-        <div className="h-full overflow-y-auto rounded-md border">
-          {items.length === 0 ? (
-            <div className="h-full bg-muted/50 p-4.5 text-center text-sm text-foreground">
-              {emptyMessage}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {items.map((item) => (
-                <div
-                  key={`${item.id}${item.type ?? ""}`}
-                  className="flex items-center justify-between bg-muted/50 px-4 py-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <div>
-                      <span className="text-sm">{item.name}</span>
-                      {(item.color || item.shape) && (
-                        <div className="ml-2 inline-flex items-center gap-2">
-                          {renderShape(item.color, item.shape)}
-                        </div>
-                      )}
-                      {item.type && (
-                        <div className="text-xs text-muted-foreground">
-                          {item.type}
-                        </div>
-                      )}
-                      {item.description && (
-                        <div className="text-xs text-muted-foreground">
-                          {item.description}
-                        </div>
-                      )}
-                    </div>
+      {/* One white box, as BLAST's selected-genomes table draws it: the rows
+          stripe on `even:bg-muted/50` (the `static-striped` TableRow fill) and
+          the empty message sits on the same white. The box takes the caller's
+          `className` (max height and scroll). */}
+      <div className={`overflow-auto rounded-md border bg-background ${className}`}>
+        {items.length === 0 ? (
+          <div className="py-1.5 text-center text-sm text-muted-foreground">
+            {emptyMessage}
+          </div>
+        ) : (
+          <div className="divide-y">
+            {items.map((item) => (
+              <div
+                key={`${item.id}${item.type ?? ""}`}
+                className="flex items-center justify-between bg-background px-4 py-2 even:bg-muted/50"
+              >
+                <div className="flex items-center gap-2">
+                  <div>
+                    <span className="text-sm">{item.name}</span>
+                    {(item.color || item.shape) && (
+                      <div className="ml-2 inline-flex items-center gap-2">
+                        {renderShape(item.color, item.shape)}
+                      </div>
+                    )}
+                    {item.type && (
+                      <div className="text-xs text-muted-foreground">
+                        {item.type}
+                      </div>
+                    )}
+                    {item.description && (
+                      <div className="text-xs text-muted-foreground">
+                        {item.description}
+                      </div>
+                    )}
                   </div>
-                  <Button
-                    variant="ghost-secondary"
-                    size="icon"
-                    className="size-6"
-                    aria-label="Remove item"
-                    onClick={() => { onRemove(item.id); }}
-                  >
-                    <X />
-                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <Button
+                  variant="ghost-secondary"
+                  size="icon"
+                  className="size-6"
+                  aria-label="Remove item"
+                  onClick={() => { onRemove(item.id); }}
+                >
+                  <X />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   );

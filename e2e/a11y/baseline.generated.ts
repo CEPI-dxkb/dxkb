@@ -15,8 +15,8 @@ const generatedBaseline: BaselineMap = {
       "aria-command-name": { maxNodes: 99, ticket: "DXKBCORE-133" },
       // Design-system color token values in some light-theme components do not meet
       // 4.5:1 contrast ratio. Tracked for a dedicated design-token audit pass.
-      // Ticket: DXKBCORE-174 — calibrated to observed max of 71 nodes (organisms-viruses).
-      "color-contrast": { maxNodes: 75, ticket: "DXKBCORE-174" },
+      // Ticket: DXKBCORE-174 — calibrated to observed max of 10 nodes (file-viewer/csv, deep tier) + 5 headroom.
+      "color-contrast": { maxNodes: 15, ticket: "DXKBCORE-174" },
       // SVG circular icons on organisms pages lack <title> / role="img".
       // Ticket: DXKBCORE-175 — calibrated to observed max of 48 nodes (organisms-bacteria).
       "svg-img-alt": { maxNodes: 50, ticket: "DXKBCORE-175" },
@@ -28,8 +28,8 @@ const generatedBaseline: BaselineMap = {
       "aria-command-name": { maxNodes: 99, ticket: "DXKBCORE-133" },
       // Dark-theme CSS variables produce insufficient contrast ratios across
       // multiple surfaces (navbar, tabs, badges, cards). Tracked for a
-      // dark-theme contrast audit. Ticket: DXKBCORE-174 — calibrated to observed max of 74 (taxonomy/brucella).
-      "color-contrast": { maxNodes: 80, ticket: "DXKBCORE-174" },
+      // dark-theme contrast audit. Ticket: DXKBCORE-174 — calibrated to observed max of 25 (updates) + 5 headroom.
+      "color-contrast": { maxNodes: 30, ticket: "DXKBCORE-174" },
       // SVG circular icons on organisms pages lack <title> / role="img" in dark theme too.
       // Ticket: DXKBCORE-175 — calibrated to observed max of 48 nodes (same as light).
       "svg-img-alt": { maxNodes: 50, ticket: "DXKBCORE-175" },

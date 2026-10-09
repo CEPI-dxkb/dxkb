@@ -9,7 +9,7 @@ import SraRunAccessionWithValidation from "@/components/services/sra-run-accessi
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FieldErrors } from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
   ServiceCardContent,
   ServiceCardHeader,
@@ -84,7 +84,11 @@ export function ClassificationInputCard({
                 }}
               />
             </div>
-            <div>
+            {/* A FieldItem, not a bare div: a sub-label that is a direct child
+                of a field container loses its own `mb-2` (globals.css), so
+                the grid's `gap-2` is the whole 8px to the input. A bare div
+                kept the margin and the input's `mt-1.5` on top: 14px. */}
+            <FieldItem>
               <ServiceSubLabel htmlFor="paired-sample-id">
                 Sample Identifier
               </ServiceSubLabel>
@@ -96,9 +100,8 @@ export function ClassificationInputCard({
                 }}
                 placeholder="Sample ID"
                 variant="mono"
-                className="mt-1.5"
               />
-            </div>
+            </FieldItem>
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -126,7 +129,7 @@ export function ClassificationInputCard({
                 );
               }}
             />
-            <div>
+            <FieldItem>
               <ServiceSubLabel htmlFor="single-sample-id">
                 Sample Identifier
               </ServiceSubLabel>
@@ -138,32 +141,35 @@ export function ClassificationInputCard({
                 }}
                 placeholder="Sample ID"
                 variant="mono"
-                className="mt-1.5"
               />
-            </div>
+            </FieldItem>
           </div>
-          <SraRunAccessionWithValidation
-            key={state.sraResetKey}
-            title="SRA Run Accession"
-            placeholder="SRR..."
-            selectedLibraries={selectedLibraries}
-            setSelectedLibraries={controller.handleSetSelectedLibraries}
-            allowDuplicates={false}
-          />
-          <div>
-            <ServiceSubLabel htmlFor="srr-sample-id">
-              Sample Identifier
-            </ServiceSubLabel>
-            <ServiceInput
-              id="srr-sample-id"
-              value={state.srrSampleId}
-              onChange={(event) => {
-                controller.handleSampleIdChange("srr", event.target.value);
-              }}
-              placeholder="Sample ID"
-              variant="mono"
-              className="mt-1.5"
+          {/* Grouped like the two libraries above (`space-y-4`, not the
+              card's `space-y-6`), so the sample identifier sits with the
+              accession it names. */}
+          <div className="space-y-4">
+            <SraRunAccessionWithValidation
+              key={state.sraResetKey}
+              title="SRA Run Accession"
+              placeholder="SRR..."
+              selectedLibraries={selectedLibraries}
+              setSelectedLibraries={controller.handleSetSelectedLibraries}
+              allowDuplicates={false}
             />
+            <FieldItem>
+              <ServiceSubLabel htmlFor="srr-sample-id">
+                Sample Identifier
+              </ServiceSubLabel>
+              <ServiceInput
+                id="srr-sample-id"
+                value={state.srrSampleId}
+                onChange={(event) => {
+                  controller.handleSampleIdChange("srr", event.target.value);
+                }}
+                placeholder="Sample ID"
+                variant="mono"
+              />
+            </FieldItem>
           </div>
           <form.Field name="paired_end_libs">
             {(field) => <FieldErrors field={field} />}

@@ -2,7 +2,7 @@
 
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import SelectedItemsTable from "@/components/services/selected-items-table";
@@ -11,6 +11,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
@@ -48,9 +49,9 @@ export function ViralGenomeTreeInput({
             sections={phylogeneticTreeInput.sections}
           />
         </RequiredFormCardTitle>
-        <CardDescription>
+        <ServiceCardDescription>
           Choose genome group or FASTA files for tree.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent>
         <div className="space-y-4">

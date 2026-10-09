@@ -5,7 +5,12 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        // A <button> darkens to the `primary-hover` token on hover (the token
+        // mixes the fill toward the foreground in light themes and toward the
+        // background in dark ones, so the label keeps its contrast: `primary/80`
+        // over the card drops violet-light to 3.03:1). The anchor rule stays.
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary-hover [a]:hover:bg-primary/80",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

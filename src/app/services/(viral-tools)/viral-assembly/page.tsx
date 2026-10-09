@@ -112,19 +112,19 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                           );
                       }}
                     >
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="paired" id="input-paired" />
                         <Label htmlFor="input-paired">
                           Paired Read Library
                         </Label>
                       </div>
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="single" id="input-single" />
                         <Label htmlFor="input-single">
                           Single Read Library
                         </Label>
                       </div>
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="srr_accession" id="input-sra" />
                         <Label htmlFor="input-sra">SRA Run Accession</Label>
                       </div>
@@ -274,36 +274,42 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                 </div>
               </div>
 
-              <form.Field name="output_path">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      value={field.state.value}
-                      onChange={(value) => {
-                        field.handleChange(value);
-                      }}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
+              <div className="service-card-row">
+                <div className="service-card-row-item">
+                  <form.Field name="output_path">
+                    {(field) => (
+                      <FieldItem>
+                        <OutputFolder
+                          value={field.state.value}
+                          onChange={(value) => {
+                            field.handleChange(value);
+                          }}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                </div>
 
-              <form.Field name="output_file">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      variant="name"
-                      value={field.state.value}
-                      onChange={(value) => {
-                        field.handleChange(value);
-                      }}
-                      outputFolderPath={outputPath}
-                      onValidationChange={setIsOutputNameValid}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
+                <div className="service-card-row-item">
+                  <form.Field name="output_file">
+                    {(field) => (
+                      <FieldItem>
+                        <OutputFolder
+                          variant="name"
+                          value={field.state.value}
+                          onChange={(value) => {
+                            field.handleChange(value);
+                          }}
+                          outputFolderPath={outputPath}
+                          onValidationChange={setIsOutputNameValid}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                </div>
+              </div>
             </ServiceCardContent>
           </Card>
         </div>

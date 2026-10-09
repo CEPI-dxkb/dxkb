@@ -2,7 +2,7 @@
 
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -20,6 +20,7 @@ import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-s
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
@@ -64,9 +65,9 @@ export function GeneProteinTreeInput({
           Input
           <DialogInfoPopup {...phylogeneticTreeInput} />
         </RequiredFormCardTitle>
-        <CardDescription>
+        <ServiceCardDescription>
           Choose fasta file or features for tree.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent>
         <div className="space-y-4">
@@ -190,60 +191,86 @@ function SequenceItemsTable({
   alphabet: GeneProteinTreeFormData["alphabet"];
   onRemove: (index: number) => void;
 }) {
+  const emptyMessage = (
+    <span className="text-muted-foreground">No items selected.</span>
+  );
   return (
-    <div className="max-h-84 overflow-y-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Selected file / feature group</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className="w-20 text-center">Remove</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sequences.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={3} className="text-center">
-                <span className="text-muted-foreground">No items selected.</span>
-              </TableCell>
+    // The container is this wrapper, not the scrolling box, so a scrollbar
+    // appearing inside the box does not flip the layout.
+    <div className="@container">
+      <div className="max-h-84 overflow-y-auto rounded-md border bg-background">
+        {/* `table-fixed` lets the path column take what the Type and Remove
+          columns leave and wrap (`wrap` cell), instead of widening the table
+          past the box and hiding Remove. Below 32rem the Type column would
+          squeeze the path (and its header) to a strip, so the type moves
+          under the path and the column is hidden. */}
+        <Table className="table-fixed">
+          <TableHeader>
+            <TableRow variant="static">
+              <TableHead>Selected file / feature group</TableHead>
+              <TableHead className="hidden w-48 @lg:table-cell">Type</TableHead>
+              <TableHead className="w-20 text-center">Remove</TableHead>
             </TableRow>
-          ) : (
-            sequences.map((sequence, index) => (
-              <TableRow key={`${sequence.type}:${sequence.filename}`}>
-                <TableCell>
-                  <div>
-                    {getDisplayName(
-                      sequence.filename.split("/").pop() || sequence.filename,
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {sequence.filename}
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {sequences.length === 0 ? (
+              <TableRow variant="static">
+                {/* A cell spanning a hidden column would add a column of its
+                  own, so the narrow and wide layouts each get their span. */}
+                <TableCell colSpan={2} className="text-center @lg:hidden">
+                  {emptyMessage}
                 </TableCell>
-                <TableCell>
-                  {getSequenceTypeLabel(sequence.type, alphabet)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remove selected sequence"
-                    onClick={() => {
-                      onRemove(index);
-                    }}
-                  >
-                    <X size={16} />
-                  </Button>
+                <TableCell
+                  colSpan={3}
+                  className="hidden text-center @lg:table-cell"
+                >
+                  {emptyMessage}
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <p className="px-3 py-2 text-xs text-muted-foreground">
-        No mixing of DNA and Protein FASTA files is allowed.
-      </p>
+            ) : (
+              sequences.map((sequence, index) => (
+                <TableRow
+                  key={`${sequence.type}:${sequence.filename}`}
+                  variant="static-striped"
+                >
+                  <TableCell variant="wrap">
+                    <div>
+                      {getDisplayName(
+                        sequence.filename.split("/").pop() || sequence.filename,
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {sequence.filename}
+                    </div>
+                    <div className="text-xs text-muted-foreground @lg:hidden">
+                      {getSequenceTypeLabel(sequence.type, alphabet)}
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden @lg:table-cell">
+                    {getSequenceTypeLabel(sequence.type, alphabet)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      type="button"
+                      variant="ghost-secondary"
+                      size="icon"
+                      aria-label="Remove selected sequence"
+                      onClick={() => {
+                        onRemove(index);
+                      }}
+                    >
+                      <X size={16} />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+          No mixing of DNA and Protein FASTA files is allowed.
+        </p>
+      </div>
     </div>
   );
 }

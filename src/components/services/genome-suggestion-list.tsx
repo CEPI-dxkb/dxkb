@@ -54,6 +54,7 @@ export function GenomeSuggestionList({
 
   return suggestions.map((genome, index) => {
     const disabled = isDisabled(genome);
+    const highlighted = highlightedIndex === index;
     return (
       <button
         key={genome.genome_id}
@@ -62,13 +63,13 @@ export function GenomeSuggestionList({
         }}
         type="button"
         className={cn(
-          "flex w-full flex-col items-start px-4 py-1 text-left hover:bg-accent",
+          "group/suggestion flex w-full flex-col items-start px-4 py-1 text-left hover:bg-accent",
           // Caller overrides come before the state classes so a caller-supplied
           // background (e.g. `bg-transparent`) cannot strip the keyboard
           // highlight via tailwind-merge's last-wins resolution.
           itemClassName,
           disabled && "cursor-not-allowed opacity-60",
-          highlightedIndex === index && "bg-accent",
+          highlighted && "bg-accent",
         )}
         aria-disabled={disabled || undefined}
         onClick={() => {
@@ -84,7 +85,15 @@ export function GenomeSuggestionList({
           )}
           <span className="truncate">{genome.genome_name}</span>
         </span>
-        <span className="text-xs text-muted-foreground">
+        {/* `muted-foreground` is 2-3:1 on the accent fill, so the second line
+            takes the accent's own foreground while the row is hovered or
+            highlighted. */}
+        <span
+          className={cn(
+            "text-xs text-muted-foreground group-hover/suggestion:text-accent-foreground",
+            highlighted && "text-accent-foreground",
+          )}
+        >
           {genome.genome_id}
           {genome.strain ? ` • ${genome.strain}` : ""}
         </span>

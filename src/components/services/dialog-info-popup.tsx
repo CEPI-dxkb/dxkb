@@ -50,7 +50,7 @@ export function DialogInfoPopup({
       <DialogContent className="sm:max-w-xl">
         <DialogHeader className="w-full">
           <DialogTitle size="lg">{title}</DialogTitle>
-          <DialogDescription className="overflow-x-auto break-all">
+          <DialogDescription className="overflow-x-auto wrap-break-word">
             {description}
           </DialogDescription>
         </DialogHeader>

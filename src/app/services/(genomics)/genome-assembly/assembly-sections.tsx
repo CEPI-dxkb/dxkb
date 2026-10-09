@@ -1,8 +1,7 @@
 import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -22,12 +21,10 @@ import OutputFolder from "@/components/services/output-folder";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import {
-  RequiredFormCardTitle,
-  RequiredFormLabel,
-} from "@/components/forms/required-form-components";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -36,11 +33,13 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
 import {
-  ServiceFieldLabel,
-  ServiceFieldSubLabel,
-} from "@/components/services/form-ui/service-field";
+  ServiceInput,
+  ServiceNumberInput,
+} from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
   genomeAssemblyParameters,
@@ -201,9 +200,9 @@ export function SelectedLibraries({
               </Tooltip>
             </TooltipProvider>
           </ServiceCardTitle>
-          <CardDescription>
+          <ServiceCardDescription>
             Place read files here using the arrow buttons.
-          </CardDescription>
+          </ServiceCardDescription>
         </ServiceCardHeader>
         <ServiceCardContent>
           <SelectedItemsTable
@@ -252,7 +251,7 @@ export function AssemblyParameters({
           <form.Field name="recipe">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>Assembly Strategy</RequiredFormLabel>
+                <ServiceRequiredLabel>Assembly Strategy</ServiceRequiredLabel>
                 <Select
                   items={genomeAssemblyRecipes}
                   value={field.state.value}
@@ -312,7 +311,7 @@ export function AssemblyParameters({
                     Estimated Genome Size
                   </ServiceFieldLabel>
                   <div className="flex items-center gap-2">
-                    <input
+                    <ServiceInput
                       id={field.name}
                       name={field.name}
                       aria-label="Estimated Genome Size"
@@ -327,7 +326,6 @@ export function AssemblyParameters({
                           );
                         }
                       }}
-                      className="service-card-input flex-1"
                       min={state.genomeSizeUnit === "M" ? 1 : 100}
                       max={state.genomeSizeUnit === "M" ? 10 : 10000}
                     />
@@ -413,9 +411,9 @@ function AdvancedOptions({
               <form.Field key={name} name={name}>
                 {(field) => (
                   <FieldItem className="flex flex-col items-start justify-between">
-                    <ServiceFieldSubLabel field={field}>
+                    <ServiceFieldLabel field={field}>
                       {label}
-                    </ServiceFieldSubLabel>
+                    </ServiceFieldLabel>
                     <Switch
                       id={field.name}
                       checked={field.state.value}
@@ -427,15 +425,13 @@ function AdvancedOptions({
             ))}
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="service-card-content-grid">
           {numbers.map(([name, label, min, max, stepper]) => (
             <form.Field key={name} name={name}>
               {(field) => (
                 <FieldItem>
-                  <ServiceFieldSubLabel field={field}>
-                    {label}
-                  </ServiceFieldSubLabel>
-                  <NumberInput
+                  <ServiceFieldLabel field={field}>{label}</ServiceFieldLabel>
+                  <ServiceNumberInput
                     id={field.name}
                     value={field.state.value}
                     onValueChange={field.handleChange}

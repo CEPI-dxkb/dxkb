@@ -20,6 +20,7 @@ export function WorkspaceObjectSelectorView({
   className,
   placeholder,
   validationError,
+  invalid = false,
   inputValue,
   searchQuery,
   objects,
@@ -73,6 +74,7 @@ export function WorkspaceObjectSelectorView({
                 ? `${resolvedListboxId}-option-${String(highlightedIndex)}`
                 : undefined
             }
+            aria-invalid={invalid || undefined}
             placeholder={placeholder}
             value={inputValue}
             onChange={onInputChange}
@@ -125,6 +127,7 @@ interface WorkspaceObjectSelectorViewProps {
   className?: string;
   placeholder: string;
   validationError: string | null;
+  invalid?: boolean;
   inputValue: string;
   searchQuery: string;
   objects: WorkspaceObject[];

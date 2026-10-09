@@ -114,8 +114,7 @@ export function GenomeSelection({
   const items = genomes.map((genome, index) => ({
     id: genome.genome_id,
     name: genome.genome_name,
-    description: genome.genome_id,
-    type: index === 0 ? "Reference Genome" : "Genome",
+    type: `${index === 0 ? "Reference Genome" : "Genome"} | ${genome.genome_id}`,
   }));
 
   return (
@@ -278,61 +277,70 @@ export function AlignmentParameters({
             />
           </ServiceCollapsibleTrigger>
           <ServiceCollapsibleContent>
+            {/* The seed weight toggle and its slider share the left column,
+                so enabling the slider grows that column instead of pushing
+                Weight onto a new row. Each label is a direct child of its
+                FieldItem (no `mb-2`), so "Manually Set Seed Weight" and
+                "Weight" sit on one line, and the switch row is the input's
+                `h-8` so the two controls share a midline. */}
             <div className="service-card-content-grid">
-              <form.Field name="manual_seed_weight">
-                {(field) => (
-                  <FieldItem>
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <ServiceLabel htmlFor="manual-seed-weight">
-                          Manually Set Seed Weight
-                        </ServiceLabel>
+              <div className="space-y-6">
+                <form.Field name="manual_seed_weight">
+                  {(field) => (
+                    <FieldItem>
+                      <ServiceLabel htmlFor="manual-seed-weight">
+                        Manually Set Seed Weight
+                      </ServiceLabel>
+                      <div className="flex min-h-8 items-center gap-3">
+                        <Switch
+                          id="manual-seed-weight"
+                          checked={field.state.value}
+                          onCheckedChange={field.handleChange}
+                        />
                         <p className="text-sm text-muted-foreground">
                           Enable to specify the seed weight used by
                           progressiveMauve.
                         </p>
                       </div>
-                      <Switch
-                        id="manual-seed-weight"
-                        checked={field.state.value}
-                        onCheckedChange={field.handleChange}
-                      />
-                    </div>
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-              {manual && (
-                <form.Field name="seed_weight">
-                  {(field) => (
-                    <FieldItem>
-                      <div className="flex items-center justify-between">
-                        <ServiceLabel>Seed Weight</ServiceLabel>
-                        <span className="text-sm text-muted-foreground">
-                          {field.state.value ?? 15}
-                        </span>
-                      </div>
-                      <Slider
-                        aria-label="Seed weight"
-                        value={[field.state.value ?? 15]}
-                        min={3}
-                        max={21}
-                        step={1}
-                        onValueChange={(value) => {
-                          field.handleChange(
-                            (Array.isArray(value) ? value[0] : value) as number,
-                          );
-                        }}
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>3</span>
-                        <span>21</span>
-                      </div>
                       <FieldErrors field={field} />
                     </FieldItem>
                   )}
                 </form.Field>
-              )}
+                {manual && (
+                  <form.Field name="seed_weight">
+                    {(field) => (
+                      // Two columns put the value on the label's row without
+                      // nesting the label (which would restore its `mb-2`);
+                      // `leading-none` matches the label's line box so their
+                      // text tops line up.
+                      <FieldItem className="grid-cols-2">
+                        <ServiceLabel>Seed Weight</ServiceLabel>
+                        <span className="justify-self-end text-sm leading-none text-muted-foreground">
+                          {field.state.value ?? 15}
+                        </span>
+                        <Slider
+                          className="col-span-2"
+                          aria-label="Seed weight"
+                          value={[field.state.value ?? 15]}
+                          min={3}
+                          max={21}
+                          step={1}
+                          onValueChange={(value) => {
+                            field.handleChange(
+                              (Array.isArray(value) ? value[0] : value) as number,
+                            );
+                          }}
+                        />
+                        <div className="col-span-2 flex justify-between text-xs text-muted-foreground">
+                          <span>3</span>
+                          <span>21</span>
+                        </div>
+                        <FieldErrors field={field} className="col-span-2" />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                )}
+              </div>
               <form.Field name="weight">
                 {(field) => (
                   <FieldItem>

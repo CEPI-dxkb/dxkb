@@ -65,7 +65,8 @@ export const defaultInfluenzaHaSubtypeFormValues: InfluenzaHaSubtypeFormData = {
   input_fasta_data: "",
   input_fasta_file: "",
   input_feature_group: "",
-  types: ["H1N1pdm"],
+  // No numbering scheme is chosen for the user, as in legacy.
+  types: [],
   output_path: "",
   output_file: "",
 };

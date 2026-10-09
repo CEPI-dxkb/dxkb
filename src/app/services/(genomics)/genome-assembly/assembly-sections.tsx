@@ -1,5 +1,4 @@
-import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronDown, HelpCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
@@ -39,6 +38,10 @@ import {
   ServiceNumberInput,
 } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import {
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
@@ -153,20 +156,13 @@ function ReadInput({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <ServiceLabel>{title}</ServiceLabel>
-        <div className="mx-4 h-px flex-1 bg-border" />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
+      <ServiceLibraryHeader title={title}>
+        <ServiceLibraryAddButton
           aria-label={`Add ${title.toLowerCase()} to selected libraries`}
           onClick={onAdd}
           disabled={disabled}
-        >
-          <ChevronRight size={16} />
-        </Button>
-      </div>
+        />
+      </ServiceLibraryHeader>
       <div className="space-y-3">{children}</div>
     </div>
   );

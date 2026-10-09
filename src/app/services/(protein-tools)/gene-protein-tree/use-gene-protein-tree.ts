@@ -9,34 +9,28 @@ import { normalizeToArray } from "@/lib/rerun-utility";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import {
+  availableMetadataFieldSections,
+  createMetadataField,
   defaultMetadataFields,
+  metadataFieldIdsFromJob,
+  type MetadataField,
+} from "@/lib/forms/genome-metadata-fields";
+import {
   type GeneProteinTreeFormData,
   defaultGeneProteinTreeFormValues,
   geneProteinTreeFormSchema,
   dnaModels,
   proteinModels,
   type SequenceItem,
-  getMetadataSelectOptions,
-  isMetadataLabel,
 } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
 import {
-  formatMetadataLabel,
   getSequenceTypeLabel,
   checkDuplicateSequence,
   checkSequenceLimit,
   createSequenceItem,
   removeSequenceAtIndex,
-  createMetadataField,
 } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-utils";
 import { geneProteinTreeService } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-service";
-
-export interface MetadataField {
-  id: string;
-  name: string;
-  selected: boolean;
-}
-
-const allMetadataOptions = getMetadataSelectOptions(formatMetadataLabel);
 
 export function useGeneProteinTree() {
   const [selectedFeatureGroupObject, setSelectedFeatureGroupObject] =
@@ -114,15 +108,11 @@ export function useGeneProteinTree() {
         );
         if (rerunSequences.length > 0)
           form.setFieldValue("sequences", rerunSequences);
-        const featureFields = normalizeToArray<string>(
-          rerunData.feature_metadata_fields,
-        );
-        const genomeFields = normalizeToArray<string>(
-          rerunData.genome_metadata_fields,
-        );
-        const fieldIds = [...featureFields, ...genomeFields];
+        const fieldIds = metadataFieldIdsFromJob(rerunData);
+        // Through updateMetadataFields, so the form's metadata_fields (what
+        // is submitted) follows the table.
         if (fieldIds.length > 0)
-          setMetadataFields(fieldIds.map(createMetadataField));
+          updateMetadataFields(fieldIds.map(createMetadataField));
       },
     },
   });
@@ -209,7 +199,7 @@ export function useGeneProteinTree() {
   }
 
   function handleMetadataSelection(value: string) {
-    setSelectedMetadataField(isMetadataLabel(value) ? "" : value);
+    setSelectedMetadataField(value);
   }
 
   function addMetadataField() {
@@ -224,6 +214,10 @@ export function useGeneProteinTree() {
       ]);
     setSelectedMetadataField("");
   }
+
+  const selectedMetadataFields = metadataFields.filter(
+    (field) => field.selected,
+  );
 
   function removeMetadataField(fieldId: string) {
     updateMetadataFields(
@@ -257,8 +251,11 @@ export function useGeneProteinTree() {
     handleMetadataSelection,
     addMetadataField,
     removeMetadataField,
-    availableMetadataOptions: allMetadataOptions,
-    selectedMetadataFields: metadataFields.filter((field) => field.selected),
+    // A field already in the table is not offered again.
+    metadataSections: availableMetadataFieldSections(
+      new Set(selectedMetadataFields.map((field) => field.id)),
+    ),
+    selectedMetadataFields,
     isOutputNameValid,
     setIsOutputNameValid,
     handleReset,

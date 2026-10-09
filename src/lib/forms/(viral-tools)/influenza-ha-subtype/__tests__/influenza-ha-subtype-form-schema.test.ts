@@ -8,12 +8,17 @@ const validPayload = {
   output_path: "/e2e-test-user@patricbrc.org/home",
   output_file: "ha-1",
   input_fasta_data: ">seq\nMKAILVVLL\n",
+  types: ["H1N1pdm"],
 };
 
 describe("influenzaHaSubtypeFormSchema", () => {
   it("safeParse succeeds for a filled-out happy-path payload", () => {
     const result = influenzaHaSubtypeFormSchema.safeParse(validPayload);
     expect(result.success).toBe(true);
+  });
+
+  it("chooses no numbering scheme by default, as legacy does", () => {
+    expect(defaultInfluenzaHaSubtypeFormValues.types).toEqual([]);
   });
 
   it("safeParse fails on the empty default payload", () => {

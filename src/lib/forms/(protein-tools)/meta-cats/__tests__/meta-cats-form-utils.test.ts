@@ -7,6 +7,7 @@ import {
   getYearGroupForValue,
   countUniqueGroups,
   getUniqueGroupNames,
+  groupNamesSourceText,
   transformMetaCatsParams,
   validateYearRanges,
   createGenomeIdMapFromFeatures,
@@ -248,6 +249,29 @@ describe("getUniqueGroupNames", () => {
     expect(result).toHaveLength(2);
     expect(result).toContain("A");
     expect(result).toContain("B");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupNamesSourceText
+// ---------------------------------------------------------------------------
+describe("groupNamesSourceText", () => {
+  it("names the chosen metadata by its label", () => {
+    expect(groupNamesSourceText("host_name")).toBe(
+      "Group names come from the Groups Grid, where each added feature is grouped by its genome's Host Name.",
+    );
+  });
+
+  it("mentions year ranges for Collection Year", () => {
+    expect(groupNamesSourceText("collection_year")).toBe(
+      "Group names come from the Groups Grid, where each added feature is grouped by its genome's Collection Year (or its year range, when Year Ranges are set).",
+    );
+  });
+
+  it("falls back to plain metadata for an unknown field", () => {
+    expect(groupNamesSourceText(undefined)).toContain(
+      "grouped by its genome's metadata.",
+    );
   });
 });
 

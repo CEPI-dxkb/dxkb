@@ -263,3 +263,33 @@ describe("NumberInput", () => {
     });
   });
 });
+
+describe("NumberInput stepper arrows", () => {
+  it("wraps the input and both arrows in one number-input slot", () => {
+    // globals.css hovers the whole field (border round the arrows too) from
+    // this slot, so the input and arrows must stay inside it.
+    const { container } = render(
+      <NumberInput aria-label="Iterations" defaultValue={2} min={0} max={4} />,
+    );
+    const slot = container.querySelector('[data-slot="number-input"]');
+
+    expect(slot).toContainElement(getInput("Iterations"));
+    expect(slot).toContainElement(
+      screen.getByRole("button", { name: "Increase value" }),
+    );
+    expect(slot).toContainElement(
+      screen.getByRole("button", { name: "Decrease value" }),
+    );
+  });
+
+  it("draws each arrow as a stepper button, disabled at its limit", () => {
+    render(<NumberInput aria-label="Iterations" value={4} min={0} max={4} />);
+    const up = screen.getByRole("button", { name: "Increase value" });
+    const down = screen.getByRole("button", { name: "Decrease value" });
+
+    expect(up).toHaveAttribute("data-variant", "stepper");
+    expect(down).toHaveAttribute("data-variant", "stepper");
+    expect(up).toBeDisabled();
+    expect(down).toBeEnabled();
+  });
+});

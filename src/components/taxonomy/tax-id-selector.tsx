@@ -29,7 +29,7 @@ async function searchTaxonById(
   const searchQuery = `taxon_id:${query.trim()}`;
   const params = new URLSearchParams();
   params.append("q", searchQuery);
-  params.append("fl", "taxon_id,taxon_name,lineage_names");
+  params.append("fl", "taxon_id,taxon_name");
   params.append("sort", "taxon_id asc");
 
   if (queryFilter) {
@@ -217,14 +217,8 @@ export function TaxIDSelector({
                   ? `No taxonomy found for ID: ${searchQuery}`
                   : "No results found"
               }
-              renderPrimary={(item) =>
-                `${String(item.taxon_id)} [${item.taxon_name}]`
-              }
-              renderSecondary={(item) =>
-                item.lineage_names?.length
-                  ? item.lineage_names.join(" > ")
-                  : null
-              }
+              renderPrimary={(item) => item.taxon_name}
+              renderSecondary={(item) => String(item.taxon_id)}
               onSelect={handleSelect}
             />
           </div>

@@ -260,6 +260,15 @@ export function TaxonNameSelector({
     setPrevValue(value || null);
     if (value && !showDropdown) {
       setSearchQuery(value.taxon_name);
+    } else if (
+      !value &&
+      prevValue &&
+      searchQuery === prevValue.taxon_name
+    ) {
+      // Cleared from outside (the Taxonomy ID box, a form reset): drop the
+      // stale name, as TaxIDSelector does. Text the user typed differs from
+      // the old name, so it stays.
+      setSearchQuery("");
     }
   }
 
@@ -320,12 +329,12 @@ export function TaxonNameSelector({
               renderPrimary={(item) =>
                 `[${item.taxon_rank || "unknown"}] ${item.taxon_name}`
               }
-              renderSecondary={(item) => (
-                <span className="flex items-center gap-2">
-                  <span>ID: {item.taxon_id}</span>
-                  {item.division && <span>• {item.division}</span>}
-                </span>
-              )}
+              // Plain text, so the dot has one space on each side (the flex
+              // gap put 8px before it and a 4px space after) and the line
+              // still truncates with an ellipsis.
+              renderSecondary={(item) =>
+                `ID: ${String(item.taxon_id)}${item.division ? ` • ${item.division}` : ""}`
+              }
               onSelect={handleSelect}
             />
           </div>

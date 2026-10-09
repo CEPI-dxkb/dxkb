@@ -7,7 +7,7 @@ import {
   FieldErrors,
   fieldErrorMessage,
 } from "@/components/ui/tanstack-form";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import { ServiceHeader } from "@/components/services/service-header";
@@ -25,10 +25,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ChevronDown } from "lucide-react";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { ServiceOutputFields } from "@/components/services/service-output-fields";
+import { FieldErrorDetails } from "@/components/services/field-error-details";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { WorkspaceObject } from "@/lib/services/workspace/types";
-import { validateGenomeGroup } from "./validate-genome-group";
+import { genomeGroupRejection, validateGenomeGroup } from "./validate-genome-group";
+import { checkFastaFile } from "./validate-fasta-file";
+import { usePickCheck } from "./use-pick-check";
+import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { useFeatureGroupOptions } from "@/hooks/services/use-feature-group-options";
 import { useGenomeGroupOptions } from "@/hooks/services/use-genome-group-options";
 import { JobParamsDialog } from "@/components/services/job-params-dialog";
@@ -64,6 +68,10 @@ import { cn } from "@/lib/utils";
 import { msaSNPAnalysisAligners } from "@/lib/forms/(protein-tools)/msa-snp-analysis/msa-snp-analysis-form-utils";
 
 const emptyGenomeGroups: string[] = [];
+const featureOptionsErrorTitle = "Failed to load features";
+const featureOptionsToastId = "msa-feature-options-error";
+const genomeOptionsErrorTitle = "Failed to fetch genome IDs";
+const genomeOptionsToastId = "msa-genome-options-error";
 
 /**
  * A FASTA textarea with the one status line under it, as BLAST's
@@ -113,17 +121,10 @@ function FastaTextareaStatus({
 }
 
 function useMSAandSNPAnalysisPage() {
-  const [_selectedFeatureGroupObject, setSelectedFeatureGroupObject] =
-    useState<WorkspaceObject | null>(null);
-  const [selectedFastaObject, setSelectedFastaObject] =
-    useState<WorkspaceObject | null>(null);
-  const [selectedAlignedFastaObject, setSelectedAlignedFastaObject] =
-    useState<WorkspaceObject | null>(null);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
   const [selectedGenomeId, setSelectedGenomeId] = useState<string>("");
   const [fastaInputText, setFastaInputText] = useState<string>("");
   const [referenceFastaText, setReferenceFastaText] = useState<string>("");
-  const [genomeIdDropdownOpen, setGenomeIdDropdownOpen] = useState(false);
   const [fastaValidationResult, setFastaValidationResult] = useState<{
     valid: boolean;
     message: string;
@@ -137,16 +138,14 @@ function useMSAandSNPAnalysisPage() {
     } | null>(null);
   const [showStrategy, setShowStrategy] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
-  const [isValidatingGenomeGroup, setIsValidatingGenomeGroup] = useState(false);
-  const genomeGroupValidationRequest = useRef(0);
+  const workspaceRepository = useWorkspaceRepository();
+  const genomeGroupCheck = usePickCheck();
+  const fastaFileCheck = usePickCheck();
 
   function handleReset() {
-    genomeGroupValidationRequest.current += 1;
-    setIsValidatingGenomeGroup(false);
+    genomeGroupCheck.cancel();
+    fastaFileCheck.cancel();
     form.reset(MsaSnpAnalysis.defaultMsaSnpAnalysisFormValues);
-    setSelectedFeatureGroupObject(null);
-    setSelectedFastaObject(null);
-    setSelectedAlignedFastaObject(null);
     setSelectedFeatureId("");
     setSelectedGenomeId("");
     setFastaInputText("");
@@ -154,7 +153,6 @@ function useMSAandSNPAnalysisPage() {
     setFastaValidationResult(null);
     setReferenceFastaValidationResult(null);
     setShowStrategy(false);
-    setGenomeIdDropdownOpen(false);
     // Clear feature group selection
     form.setFieldValue("feature_groups", "");
   }
@@ -334,106 +332,134 @@ function useMSAandSNPAnalysisPage() {
     form.setFieldValue("ref_string", valid ? validation.trimFasta : "");
   }
 
-  async function validateAndSelectGenomeGroup(
-    object: WorkspaceObject | null,
-  ) {
-    const inputValue = object?.path;
-    if (!inputValue) {
-      genomeGroupValidationRequest.current += 1;
-        setIsValidatingGenomeGroup(false);
+  /** Drops the reference picked from a group, when the group changes. */
+  function clearGroupReference(kind: "feature_id" | "genome_id") {
+    if (kind === "feature_id") setSelectedFeatureId("");
+    else setSelectedGenomeId("");
+    if (form.state.values.ref_type === kind) {
+      form.setFieldValue("ref_string", "", untouched);
+    }
+  }
+
+  /**
+   * A picked group enters the form only once it validates. Until then the
+   * form holds none, so neither Submit nor the Genome ID list can use the
+   * group picked before it, and a rejected group stays on screen in its
+   * error state, with its message under it.
+   */
+  function selectGenomeGroup(object: WorkspaceObject | null) {
+    const path = object?.path;
+    if (form.state.values.select_genomegroup?.[0] !== path) {
+      clearGroupReference("genome_id");
+    }
+    if (!path) {
+      // Typing in the selector drops the pick.
+      genomeGroupCheck.cancel();
+      form.setFieldValue("select_genomegroup", []);
       return;
     }
 
-    const request = ++genomeGroupValidationRequest.current;
-    setIsValidatingGenomeGroup(true);
-
-    try {
-      const validation = await validateGenomeGroup(inputValue, {
-        maxGenomes: MsaSnpAnalysis.maxGenomes,
-        maxGenomeLength: MsaSnpAnalysis.maxGenomeLength,
-      });
-      if (request !== genomeGroupValidationRequest.current) return;
-
-      if (validation.status !== "valid") {
-        if (validation.status === "empty") {
-          toast.error("Empty genome group", {
-            description: "The selected genome group is empty.",
-            closeButton: true,
+    form.setFieldValue("select_genomegroup", [], untouched);
+    void genomeGroupCheck.start(path, {
+      check: async () => {
+        try {
+          const validation = await validateGenomeGroup(path, {
+            maxGenomes: MsaSnpAnalysis.maxGenomes,
+            maxGenomeLength: MsaSnpAnalysis.maxGenomeLength,
           });
-        } else if (validation.status === "too-large") {
-          toast.error("Genome group too large", {
-            description: `The genome group has ${String(validation.genomeCount)} genomes, but the maximum is ${String(MsaSnpAnalysis.maxGenomes)}.`,
-            closeButton: true,
-          });
-        } else {
-          toast.error("Genome group validation failed", {
-            description: validation.message,
-            duration: 10000,
-            closeButton: true,
-          });
+          if (validation.status === "valid") return null;
+          return genomeGroupRejection(validation, MsaSnpAnalysis.maxGenomes);
+        } catch (error) {
+          console.error("Failed to validate genome group:", error);
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Failed to validate genome group";
+          return { title: "Could not validate the genome group", message };
         }
-        setIsValidatingGenomeGroup(false);
-        return;
-      }
+      },
+      onPass: () => {
+        form.setFieldValue("select_genomegroup", [path]);
+      },
+      onReject: () => {
+        form.setFieldValue("select_genomegroup", []);
+      },
+    });
+  }
 
-      const changed = form.state.values.select_genomegroup?.[0] !== inputValue;
-      form.setFieldValue("select_genomegroup", [inputValue]);
-        if (changed) {
-        setSelectedGenomeId("");
-        if (form.state.values.ref_type === "genome_id") {
-          form.setFieldValue("ref_string", "", untouched);
-        }
-      }
-    } catch (error) {
-      if (request !== genomeGroupValidationRequest.current) return;
-      console.error("Failed to validate genome group:", error);
-      toast.error("Validation error", {
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to validate genome group",
-        closeButton: true,
-      });
+  /**
+   * A picked unaligned FASTA file is read and checked as legacy checks it,
+   * and enters the form, as a group does, only once it passes. Aligned files
+   * go straight in: legacy checks only these.
+   */
+  function selectFastaFile(object: WorkspaceObject | null) {
+    if (!object?.path) {
+      fastaFileCheck.cancel();
+      form.setFieldValue("fasta_files", []);
+      return;
     }
 
-    if (request === genomeGroupValidationRequest.current) {
-      setIsValidatingGenomeGroup(false);
-    }
+    const file = MsaSnpAnalysisUtils.fastaFileFromObject(object, "feature");
+    form.setFieldValue("fasta_files", [], untouched);
+    void fastaFileCheck.start(file.file, {
+      check: () => checkFastaFile(workspaceRepository, file),
+      onPass: () => {
+        form.setFieldValue("fasta_files", [file]);
+      },
+      onReject: () => {
+        form.setFieldValue("fasta_files", []);
+      },
+    });
   }
 
   const {
     features: featureOptions,
     isLoading: isLoadingFeatures,
-    error: featureGroupError,
+    error: featureOptionsError,
   } = useFeatureGroupOptions(featureGroup, refType === "feature_id");
 
   const {
     options: genomeOptions,
     isLoading: isLoadingGenomes,
-    error: genomeGroupError,
+    error: genomeOptionsError,
   } = useGenomeGroupOptions(
     selectGenomegroup[0],
     refType === "genome_id" && selectGenomegroup.length > 0,
   );
 
-  // Surface fetch errors via toast
+  // A load error's toast stays until it is closed, or until the load
+  // succeeds; the field keeps its summary.
   useEffect(() => {
-    if (featureGroupError) {
-      toast.error("Failed to load features", {
-        description: featureGroupError,
+    if (featureOptionsError) {
+      toast.error(featureOptionsErrorTitle, {
+        id: featureOptionsToastId,
+        description: featureOptionsError,
         closeButton: true,
+        duration: Infinity,
       });
+    } else {
+      toast.dismiss(featureOptionsToastId);
     }
-  }, [featureGroupError]);
+  }, [featureOptionsError]);
 
   useEffect(() => {
-    if (genomeGroupError) {
-      toast.error("Failed to fetch genome IDs", {
-        description: genomeGroupError,
+    if (genomeOptionsError) {
+      toast.error(genomeOptionsErrorTitle, {
+        id: genomeOptionsToastId,
+        description: genomeOptionsError,
         closeButton: true,
+        duration: Infinity,
       });
+    } else {
+      toast.dismiss(genomeOptionsToastId);
     }
-  }, [genomeGroupError]);
+  }, [genomeOptionsError]);
+
+  const isValidatingGenomeGroup = genomeGroupCheck.isValidating;
+  const isCheckingShownPick =
+    inputStatus === "unaligned" &&
+    ((inputType === "input_genome_group" && genomeGroupCheck.isValidating) ||
+      (inputType === "input_fasta" && fastaFileCheck.isValidating));
 
   let availableRefTypes: MsaSnpAnalysis.MsaSnpAnalysisFormData["ref_type"][];
   if (inputStatus === "aligned") {
@@ -505,10 +531,14 @@ function useMSAandSNPAnalysisPage() {
                       if (previousStatus !== value) {
                         form.setFieldValue("ref_type", "none");
                         form.setFieldValue("ref_string", "", untouched);
+                        // Unaligned and aligned files share `fasta_files`;
+                        // one the other selector does not show must not be
+                        // submitted from it.
+                        form.setFieldValue("fasta_files", [], untouched);
+                        fastaFileCheck.cancel();
                         setSelectedFeatureId("");
                         setSelectedGenomeId("");
                         setReferenceFastaText("");
-                        setGenomeIdDropdownOpen(false);
                       }
                     }}
                   >
@@ -552,7 +582,6 @@ function useMSAandSNPAnalysisPage() {
                             setSelectedFeatureId("");
                             setSelectedGenomeId("");
                             setReferenceFastaText("");
-                            setGenomeIdDropdownOpen(false);
                           }
                         }}
                       >
@@ -608,27 +637,14 @@ function useMSAandSNPAnalysisPage() {
                             onSelectedObjectChange={(
                               object: WorkspaceObject | null,
                             ) => {
-                              if (!object || !object.path) {
-                                field.handleChange("");
-                                setSelectedFeatureGroupObject(null);
-                                return;
+                              const path = object?.path ?? "";
+                              if (field.state.value !== path) {
+                                clearGroupReference("feature_id");
                               }
-
-                              const changed = field.state.value !== object.path;
-                              field.handleChange(object.path);
-                              setSelectedFeatureGroupObject(object);
-                              if (changed) {
-                                setSelectedFeatureId("");
-                                if (refType === "feature_id") {
-                                  form.setFieldValue(
-                                    "ref_string",
-                                    "",
-                                    untouched,
-                                  );
-                                }
-                              }
+                              field.handleChange(path);
                             }}
                             value={field.state.value}
+                            invalid={fieldErrorMessage(field) !== null}
                           />
                           <FieldErrors field={field} />
                         </FieldItem>
@@ -665,77 +681,79 @@ function useMSAandSNPAnalysisPage() {
 
                 {/* Genome Group Input */}
                 {inputType === "input_genome_group" && (
-                  <div className="space-y-2">
-                    <WorkspaceObjectSelector
-                      preset="genomeGroup"
-                      placeholder="Select viral genome group"
-                      onSelectedObjectChange={(object) => {
-                        void validateAndSelectGenomeGroup(object);
-                      }}
-                      value={selectGenomegroup[0]}
-                    />
-                    {isValidatingGenomeGroup && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Spinner className="size-4" />
-                        <span>Validating genome group...</span>
-                      </div>
-                    )}
-                    <form.Field name="select_genomegroup">
-                      {(field) => (
+                  <form.Field name="select_genomegroup">
+                    {(field) => {
+                      const { rejection } = genomeGroupCheck;
+                      return (
                         <FieldItem>
-                          <FieldErrors field={field} />
+                          <WorkspaceObjectSelector
+                            preset="genomeGroup"
+                            placeholder="Select viral genome group"
+                            onSelectedObjectChange={selectGenomeGroup}
+                            value={
+                              genomeGroupCheck.state?.path ??
+                              selectGenomegroup[0]
+                            }
+                            invalid={
+                              rejection !== null ||
+                              fieldErrorMessage(field) !== null
+                            }
+                          />
+                          {isValidatingGenomeGroup && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Spinner className="size-4" />
+                              <span>Validating genome group...</span>
+                            </div>
+                          )}
+                          {rejection ? (
+                            <FieldErrorDetails
+                              summary={rejection.title}
+                              details={rejection.message}
+                            />
+                          ) : (
+                            <FieldErrors field={field} />
+                          )}
                         </FieldItem>
-                      )}
-                    </form.Field>
-                  </div>
+                      );
+                    }}
+                  </form.Field>
                 )}
 
                 {/* FASTA File Input */}
                 {inputType === "input_fasta" && (
-                  <div className="space-y-2">
-                    <WorkspaceObjectSelector
-                      preset="featureFasta"
-                      placeholder="Select FASTA file"
-                      onSelectedObjectChange={(
-                        object: WorkspaceObject | null,
-                      ) => {
-                        if (!object || !object.path) {
-                          setSelectedFastaObject(null);
-                          return;
-                        }
-
-                        const inputValue = object.path;
-
-                        // Determine file type - default to DNA, check path for protein indicators
-                        let type: MsaSnpAnalysis.FastaFileItem["type"] =
-                          "feature_dna_fasta";
-                        const pathLower = inputValue.toLowerCase();
-                        if (
-                          pathLower.includes("protein") ||
-                          pathLower.includes("aa") ||
-                          pathLower.includes("pep")
-                        ) {
-                          type = "feature_protein_fasta";
-                        }
-
-                        // Replace the existing file (only one file allowed)
-                        const newFile = MsaSnpAnalysisUtils.createFastaFileItem(
-                          inputValue,
-                          type,
-                        );
-                        form.setFieldValue("fasta_files", [newFile]);
-                        setSelectedFastaObject(null);
-                      }}
-                      value={selectedFastaObject?.path}
-                    />
-                    <form.Field name="fasta_files">
-                      {(field) => (
-                        <FieldItem>
+                  <form.Field name="fasta_files">
+                    {(field) => (
+                      <FieldItem>
+                        <WorkspaceObjectSelector
+                          preset="featureFasta"
+                          placeholder="Select FASTA file"
+                          onSelectedObjectChange={selectFastaFile}
+                          value={
+                            fastaFileCheck.state?.path ??
+                            field.state.value?.[0]?.file
+                          }
+                          invalid={
+                            fastaFileCheck.rejection !== null ||
+                            fieldErrorMessage(field) !== null
+                          }
+                        />
+                        {fastaFileCheck.isValidating && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner className="size-4" />
+                            <span>Checking FASTA file...</span>
+                          </div>
+                        )}
+                        {fastaFileCheck.rejection ? (
+                          <FieldErrorDetails
+                            summary={fastaFileCheck.rejection.title}
+                            details={fastaFileCheck.rejection.message}
+                          />
+                        ) : (
                           <FieldErrors field={field} />
-                        </FieldItem>
-                      )}
-                    </form.Field>
-                  </div>
+                        )}
+                      </FieldItem>
+                    )}
+                  </form.Field>
                 )}
 
                 {/* Input Sequence */}
@@ -762,49 +780,36 @@ function useMSAandSNPAnalysisPage() {
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
-                <ServiceLabel>Select an aligned FASTA file</ServiceLabel>
-                <WorkspaceObjectSelector
-                  preset="alignedFasta"
-                  placeholder="Select aligned FASTA file"
-                  onSelectedObjectChange={(object: WorkspaceObject | null) => {
-                    if (!object || !object.path) {
-                      setSelectedAlignedFastaObject(null);
-                      return;
-                    }
-
-                    const inputValue = object.path;
-
-                    // Determine file type - default to DNA, check path for protein indicators
-                    let type: MsaSnpAnalysis.FastaFileItem["type"] =
-                      "aligned_dna_fasta";
-                    const pathLower = inputValue.toLowerCase();
-                    if (
-                      pathLower.includes("protein") ||
-                      pathLower.includes("aa") ||
-                      pathLower.includes("pep")
-                    ) {
-                      type = "aligned_protein_fasta";
-                    }
-
-                    // Replace the existing file (only one file allowed)
-                    const newFile = MsaSnpAnalysisUtils.createFastaFileItem(
-                      inputValue,
-                      type,
-                    );
-                    form.setFieldValue("fasta_files", [newFile]);
-                    setSelectedAlignedFastaObject(null);
-                  }}
-                  value={selectedAlignedFastaObject?.path}
-                />
-                <form.Field name="fasta_files">
-                  {(field) => (
-                    <FieldItem>
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
-                </form.Field>
-              </div>
+              <form.Field name="fasta_files">
+                {(field) => (
+                  <FieldItem>
+                    <ServiceLabel>Select an aligned FASTA file</ServiceLabel>
+                    <WorkspaceObjectSelector
+                      preset="alignedFasta"
+                      placeholder="Select aligned FASTA file"
+                      onSelectedObjectChange={(
+                        object: WorkspaceObject | null,
+                      ) => {
+                        // Only one file allowed: a pick replaces it, and
+                        // typing over it drops it.
+                        field.handleChange(
+                          object?.path
+                            ? [
+                                MsaSnpAnalysisUtils.fastaFileFromObject(
+                                  object,
+                                  "aligned",
+                                ),
+                              ]
+                            : [],
+                        );
+                      }}
+                      value={field.state.value?.[0]?.file}
+                      invalid={fieldErrorMessage(field) !== null}
+                    />
+                    <FieldErrors field={field} />
+                  </FieldItem>
+                )}
+              </form.Field>
             )}
         </MsaSequenceSelectionCard>
 
@@ -833,10 +838,6 @@ function useMSAandSNPAnalysisPage() {
                           setSelectedFeatureId("");
                           setSelectedGenomeId("");
                           setReferenceFastaText("");
-                        }
-                        // Close genome ID dropdown if ref_type changes away from genome_id
-                        if (value !== "genome_id") {
-                          setGenomeIdDropdownOpen(false);
                         }
                       }}
                     >
@@ -884,166 +885,188 @@ function useMSAandSNPAnalysisPage() {
 
               {/* Feature ID Reference */}
               {refType === "feature_id" && (
-                <div className="space-y-2">
-                  <ServiceLabel>Feature ID</ServiceLabel>
-                  <Select
-                    value={selectedFeatureId}
-                    onValueChange={(value) => {
-                      if (value == null) return;
-                      setSelectedFeatureId(value);
-                      // Find the selected feature and use patric_id for ref_string
-                      const selectedFeature = featureOptions.find(
-                        (f) => f.feature_id === value,
-                      );
-                      const refValue =
-                        selectedFeature?.patric_id ||
-                        selectedFeature?.feature_id ||
-                        value;
-                      form.setFieldValue("ref_string", refValue);
-                    }}
-                    disabled={isLoadingFeatures}
-                  >
-                    <ServiceSelectTrigger aria-label="Select feature ID">
-                      <SelectValue
-                        placeholder={
-                          isLoadingFeatures
-                            ? "Loading features..."
-                            : featureOptions.length === 0
-                              ? "No features available"
-                              : "Select feature ID"
-                        }
-                      />
-                    </ServiceSelectTrigger>
-                    <SelectContent>
-                      {isLoadingFeatures ? (
-                        <div className="flex items-center justify-center p-4">
-                          <Spinner className="mr-2 size-4" />
-                          <span className="text-sm text-muted-foreground">
-                            Loading features...
-                          </span>
-                        </div>
-                      ) : featureOptions.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                          No features found in the selected feature group
-                        </div>
-                      ) : (
-                        <SelectGroup>
-                          {featureOptions.map((feature) => {
-                            const displayLabel = feature.patric_id
-                              ? `${feature.patric_id}${feature.product ? ` --- ${feature.product}` : ""}`
-                              : feature.feature_id;
-                            return (
-                              <SelectItem
-                                key={feature.feature_id}
-                                value={feature.feature_id}
-                              >
-                                {displayLabel}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectGroup>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {isLoadingFeatures && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Spinner className="size-4" />
-                      <span>Loading features from feature group...</span>
-                    </div>
-                  )}
-                  <form.Field name="ref_string">
-                    {(field) => (
+                <form.Field name="ref_string">
+                  {(field) => {
+                    const loadError = featureOptionsError;
+                    return (
                       <FieldItem>
-                        <FieldErrors field={field} />
+                        <ServiceLabel>Feature ID</ServiceLabel>
+                        <Select
+                          value={selectedFeatureId}
+                          onValueChange={(value) => {
+                            if (value == null) return;
+                            setSelectedFeatureId(value);
+                            // Find the selected feature and use patric_id for ref_string
+                            const selectedFeature = featureOptions.find(
+                              (f) => f.feature_id === value,
+                            );
+                            const refValue =
+                              selectedFeature?.patric_id ||
+                              selectedFeature?.feature_id ||
+                              value;
+                            form.setFieldValue("ref_string", refValue);
+                          }}
+                          disabled={isLoadingFeatures || !featureGroup}
+                        >
+                          <ServiceSelectTrigger
+                            aria-label="Select feature ID"
+                            aria-invalid={
+                              Boolean(loadError ?? fieldErrorMessage(field)) ||
+                              undefined
+                            }
+                          >
+                            <SelectValue
+                              placeholder={
+                                !featureGroup
+                                  ? "Select a feature group first"
+                                  : isLoadingFeatures
+                                    ? "Loading features..."
+                                    : featureOptions.length === 0
+                                      ? "No features available"
+                                      : "Select feature ID"
+                              }
+                            />
+                          </ServiceSelectTrigger>
+                          <SelectContent>
+                            {isLoadingFeatures ? (
+                              <div className="flex items-center justify-center p-4">
+                                <Spinner className="mr-2 size-4" />
+                                <span className="text-sm text-muted-foreground">
+                                  Loading features...
+                                </span>
+                              </div>
+                            ) : featureOptions.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">
+                                No features found in the selected feature group
+                              </div>
+                            ) : (
+                              <SelectGroup>
+                                {featureOptions.map((feature) => {
+                                  const displayLabel = feature.patric_id
+                                    ? `${feature.patric_id}${feature.product ? ` --- ${feature.product}` : ""}`
+                                    : feature.feature_id;
+                                  return (
+                                    <SelectItem
+                                      key={feature.feature_id}
+                                      value={feature.feature_id}
+                                    >
+                                      {displayLabel}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectGroup>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {isLoadingFeatures && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner className="size-4" />
+                            <span>Loading features from feature group...</span>
+                          </div>
+                        )}
+                        {loadError ? (
+                          <FieldErrorDetails
+                            summary={featureOptionsErrorTitle}
+                            details={loadError}
+                          />
+                        ) : (
+                          <FieldErrors field={field} />
+                        )}
                       </FieldItem>
-                    )}
-                  </form.Field>
-                </div>
+                    );
+                  }}
+                </form.Field>
               )}
 
               {/* Genome ID Reference */}
               {refType === "genome_id" && (
-                <div className="space-y-2">
-                  <ServiceLabel>Genome ID</ServiceLabel>
-                  <Select
-                    value={selectedGenomeId}
-                    open={genomeIdDropdownOpen}
-                    onOpenChange={(open) => {
-                      // Check if a valid genome group is selected before allowing dropdown to open
-                      if (open && selectGenomegroup.length === 0) {
-                        toast.error("Genome Group required", {
-                          description:
-                            "A valid Genome Group is needed before selecting a Genome ID",
-                          closeButton: true,
-                        });
-                        setGenomeIdDropdownOpen(false);
-                        return;
-                      }
-                      setGenomeIdDropdownOpen(open);
-                    }}
-                    onValueChange={(value) => {
-                      if (value == null) return;
-                      setSelectedGenomeId(value);
-                      form.setFieldValue("ref_string", value);
-                    }}
-                    disabled={isLoadingGenomes}
-                  >
-                    <ServiceSelectTrigger aria-label="Select genome ID">
-                      <SelectValue
-                        placeholder={
-                          isLoadingGenomes
-                            ? "Loading genomes..."
-                            : genomeOptions.length === 0
-                              ? "No genomes available"
-                              : "Select genome ID"
-                        }
-                      />
-                    </ServiceSelectTrigger>
-                    <SelectContent>
-                      {isLoadingGenomes ? (
-                        <div className="flex items-center justify-center p-4">
-                          <Spinner className="mr-2 size-4" />
-                          <span className="text-sm text-muted-foreground">
-                            Loading genomes...
-                          </span>
-                        </div>
-                      ) : genomeOptions.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-muted-foreground">
-                          No genomes found in the selected genome group
-                        </div>
-                      ) : (
-                        <SelectGroup>
-                          {genomeOptions.map((genome) => {
-                            const displayLabel = genome.genome_name
-                              ? `${genome.genome_id} -- ${genome.genome_name}`
-                              : genome.genome_id;
-                            return (
-                              <SelectItem
-                                key={genome.genome_id}
-                                value={genome.genome_id}
-                              >
-                                {displayLabel}
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectGroup>
-                      )}
-                    </SelectContent>
-                  </Select>
-                  {isLoadingGenomes && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Spinner className="size-4" />
-                      <span>Loading genomes from genome group...</span>
-                    </div>
-                  )}
-                  <form.Field name="ref_string">
-                    {(field) => (
+                <form.Field name="ref_string">
+                  {(field) => {
+                    const loadError = genomeOptionsError;
+                    // Only a group that passed validation is in the form.
+                    const hasGenomeGroup = selectGenomegroup.length > 0;
+                    return (
                       <FieldItem>
-                        <FieldErrors field={field} />
+                        <ServiceLabel>Genome ID</ServiceLabel>
+                        <Select
+                          value={selectedGenomeId}
+                          onValueChange={(value) => {
+                            if (value == null) return;
+                            setSelectedGenomeId(value);
+                            form.setFieldValue("ref_string", value);
+                          }}
+                          disabled={isLoadingGenomes || !hasGenomeGroup}
+                        >
+                          <ServiceSelectTrigger
+                            aria-label="Select genome ID"
+                            aria-invalid={
+                              Boolean(loadError ?? fieldErrorMessage(field)) ||
+                              undefined
+                            }
+                          >
+                            <SelectValue
+                              placeholder={
+                                !hasGenomeGroup
+                                  ? isValidatingGenomeGroup
+                                    ? "Validating genome group..."
+                                    : "Select a valid viral genome group first"
+                                  : isLoadingGenomes
+                                    ? "Loading genomes..."
+                                    : genomeOptions.length === 0
+                                      ? "No genomes available"
+                                      : "Select genome ID"
+                              }
+                            />
+                          </ServiceSelectTrigger>
+                          <SelectContent>
+                            {isLoadingGenomes ? (
+                              <div className="flex items-center justify-center p-4">
+                                <Spinner className="mr-2 size-4" />
+                                <span className="text-sm text-muted-foreground">
+                                  Loading genomes...
+                                </span>
+                              </div>
+                            ) : genomeOptions.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">
+                                No genomes found in the selected genome group
+                              </div>
+                            ) : (
+                              <SelectGroup>
+                                {genomeOptions.map((genome) => {
+                                  const displayLabel = genome.genome_name
+                                    ? `${genome.genome_id} -- ${genome.genome_name}`
+                                    : genome.genome_id;
+                                  return (
+                                    <SelectItem
+                                      key={genome.genome_id}
+                                      value={genome.genome_id}
+                                    >
+                                      {displayLabel}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectGroup>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {isLoadingGenomes && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Spinner className="size-4" />
+                            <span>Loading genomes from genome group...</span>
+                          </div>
+                        )}
+                        {loadError ? (
+                          <FieldErrorDetails
+                            summary={genomeOptionsErrorTitle}
+                            details={loadError}
+                          />
+                        ) : (
+                          <FieldErrors field={field} />
+                        )}
                       </FieldItem>
-                    )}
-                  </form.Field>
-                </div>
+                    );
+                  }}
+                </form.Field>
               )}
 
               {/* Input Reference Sequence */}
@@ -1074,6 +1097,9 @@ function useMSAandSNPAnalysisPage() {
         {/* Parameters */}
         <MsaParametersCard>
             <div className="space-y-4">
+              {/* Legacy hides the aligner for an aligned file, which App-MSA
+                  does not realign. */}
+              {inputStatus === "unaligned" && (
               <form.Field name="aligner">
                 {(field) => (
                   <FieldItem>
@@ -1116,6 +1142,7 @@ function useMSAandSNPAnalysisPage() {
                   </FieldItem>
                 )}
               </form.Field>
+              )}
 
               {/* Strategy Options (only for Mafft and unaligned) */}
               {aligner === "Mafft" && inputStatus === "unaligned" && (
@@ -1180,11 +1207,13 @@ function useMSAandSNPAnalysisPage() {
                           value: outputPathField.state.value,
                           onChange: outputPathField.handleChange,
                           errors: <FieldErrors field={outputPathField} />,
+                          invalid: fieldErrorMessage(outputPathField) !== null,
                         }}
                         outputName={{
                           value: outputNameField.state.value,
                           onChange: outputNameField.handleChange,
                           errors: <FieldErrors field={outputNameField} />,
+                          invalid: fieldErrorMessage(outputNameField) !== null,
                         }}
                         onOutputNameValidationChange={setIsOutputNameValid}
                       />
@@ -1202,7 +1231,12 @@ function useMSAandSNPAnalysisPage() {
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting || !canSubmit || !isOutputNameValid}
+            disabled={
+              isSubmitting ||
+              !canSubmit ||
+              !isOutputNameValid ||
+              isCheckingShownPick
+            }
           >
             {isSubmitting ? <Spinner /> : null}
             Submit

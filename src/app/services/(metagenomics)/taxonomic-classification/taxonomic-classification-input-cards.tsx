@@ -1,13 +1,11 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import type { TaxonomicClassificationController } from "./use-taxonomic-classification-controller";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
@@ -15,10 +13,11 @@ import {
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceSubLabel } from "@/components/services/form-ui/service-label";
 import {
-  ServiceLabel,
-  ServiceSubLabel,
-} from "@/components/services/form-ui/service-label";
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import { extractSampleIdFromPath } from "@/lib/forms/service-library-rules";
 import { taxonomyClassificationInput } from "@/lib/services/info/taxonomic-classification";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
@@ -45,20 +44,13 @@ export function ClassificationInputCard({
         </ServiceCardHeader>
         <ServiceCardContent className="space-y-6">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <ServiceLabel>Paired Read Library</ServiceLabel>
-              <div className="mx-4 h-px flex-1 bg-border" />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
+            <ServiceLibraryHeader title="Paired Read Library">
+              <ServiceLibraryAddButton
                 aria-label="Add paired read library"
                 onClick={controller.handlePairedLibraryAdd}
                 disabled={!state.pairedRead1 || !state.pairedRead2}
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+              />
+            </ServiceLibraryHeader>
             <div className="space-y-3">
               <WorkspaceObjectSelector
                 preset="reads"
@@ -104,20 +96,13 @@ export function ClassificationInputCard({
             </FieldItem>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <ServiceLabel>Single Read Library</ServiceLabel>
-              <div className="mx-4 h-px flex-1 bg-border" />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
+            <ServiceLibraryHeader title="Single Read Library">
+              <ServiceLibraryAddButton
                 aria-label="Add single read library"
                 onClick={controller.handleSingleLibraryAdd}
                 disabled={!state.singleRead}
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+              />
+            </ServiceLibraryHeader>
             <WorkspaceObjectSelector
               preset="reads"
               placeholder="Select READ FILE..."

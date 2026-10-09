@@ -38,6 +38,8 @@ interface OutputFolderProps {
   variant?: "default" | "name";
   outputFolderPath?: string;
   onValidationChange?: (valid: boolean) => void;
+  /** Draws the field in its error state, for an error shown beside it. */
+  invalid?: boolean;
 }
 
 function isSelectableOutputFolder(object: {
@@ -61,6 +63,7 @@ const OutputFolder = ({
   variant = "default",
   outputFolderPath = "",
   onValidationChange,
+  invalid = false,
 }: OutputFolderProps) => {
   const { user } = useAuth();
   const canBrowse = !!workspaceUsername(user);
@@ -119,6 +122,7 @@ const OutputFolder = ({
                 placeholder="Search for folders..."
                 value={value}
                 filter={isSelectableOutputFolder}
+                invalid={invalid}
                 onObjectSelect={(object) => {
                   onChange?.(object.path || "");
                 }}
@@ -155,7 +159,7 @@ const OutputFolder = ({
                 value={value}
                 onChange={(e) => onChange?.(e.target.value)}
                 disabled={disabled}
-                aria-invalid={validation.isInvalid}
+                aria-invalid={validation.isInvalid || invalid}
                 aria-label={resolvedTitle}
               />
             </div>

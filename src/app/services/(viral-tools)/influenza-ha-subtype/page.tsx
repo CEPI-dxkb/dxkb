@@ -266,7 +266,14 @@ export default function HASubtypeNumberingPage() {
                     <ServiceLabel>
                       Conversion Sequence Numbering Scheme
                     </ServiceLabel>
-                    <div className="grid max-h-55 grid-cols-2 gap-2 overflow-y-auto rounded-md border bg-background p-4 md:grid-cols-4">
+                    {/* No scheme is chosen by default, so "Select at least
+                        one" is a common error; the box shows it too. */}
+                    <div
+                      className={cn(
+                        "grid max-h-55 grid-cols-2 gap-2 overflow-y-auto rounded-md border bg-background p-4 md:grid-cols-4",
+                        fieldErrorMessage(field) && "border-destructive",
+                      )}
+                    >
                       {HaReferenceTypes.map((scheme) => (
                         <div
                           className="flex items-center gap-2"

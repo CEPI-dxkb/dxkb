@@ -79,13 +79,14 @@ vi.mock("@/components/services/selected-items-table", () => ({
     items,
     onRemove,
   }: {
-    items: { id: string; name: string }[];
+    items: { id: string; name: string; type?: string }[];
     onRemove?: (id: string) => void;
   }) => (
     <div>
       {items.map((item) => (
         <span key={item.id}>
           <span>{item.name}</span>
+          <span>{item.type}</span>
           <button type="button" onClick={() => onRemove?.(item.id)}>
             Remove {item.name}
           </button>
@@ -254,5 +255,59 @@ describe("GenomeAlignmentServicePage genome-count error", () => {
     // Removing the last one builds a new empty array: still a user action.
     await user.click(screen.getByRole("button", { name: "Remove Group genome" }));
     expect(await screen.findByText(countError)).toBeInTheDocument();
+  });
+});
+
+describe("GenomeAlignmentServicePage selected genome rows", () => {
+  beforeEach(() => {
+    mocks.fetchGenomeGroupMembers.mockReset();
+    mocks.fetchGenomesByIds.mockReset();
+  });
+
+  it("labels each row with its role and genome ID, separated by a bar", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([
+      groupGenome,
+      { genome_id: "group-genome-2", genome_name: "Second group genome" },
+    ]);
+    const user = userEvent.setup();
+
+    render(<GenomeAlignmentServicePage />);
+    await user.click(screen.getByRole("button", { name: "Select genome group" }));
+
+    // The first genome is the reference; the ID follows the role on its line.
+    expect(
+      await screen.findByText("Reference Genome | group-genome"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Genome | group-genome-2")).toBeInTheDocument();
+  });
+});
+
+describe("GenomeAlignmentServicePage advanced options layout", () => {
+  it("opens the seed weight slider under its toggle, leaving Weight in its own column", async () => {
+    const user = userEvent.setup();
+    render(<GenomeAlignmentServicePage />);
+    await user.click(screen.getByRole("button", { name: /Advanced Options/ }));
+
+    const toggle = screen.getByRole("switch", { name: "Manually Set Seed Weight" });
+    const weightLabel = screen.getByText("Weight", { selector: "label" });
+    const grid = toggle.closest(".service-card-content-grid");
+    const toggleColumn = [...(grid?.children ?? [])].find((column) =>
+      column.contains(toggle),
+    );
+    const weightColumnBefore = [...(grid?.children ?? [])].find((column) =>
+      column.contains(weightLabel),
+    );
+
+    await user.click(toggle);
+
+    const slider = screen.getByText("Seed Weight", { selector: "label" });
+    // The slider joins the toggle's column; Weight keeps the same grid cell
+    // (it used to be pushed onto a new row by the slider).
+    expect(toggleColumn).toContainElement(slider);
+    expect(toggleColumn).not.toContainElement(weightLabel);
+    expect(grid?.children).toHaveLength(2);
+    expect(
+      [...(grid?.children ?? [])].find((column) => column.contains(weightLabel)),
+    ).toBe(weightColumnBefore);
   });
 });

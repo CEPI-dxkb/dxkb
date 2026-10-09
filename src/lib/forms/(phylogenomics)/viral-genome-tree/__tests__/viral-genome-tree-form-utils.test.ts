@@ -1,36 +1,16 @@
 vi.mock("../viral-genome-tree-form-schema", () => ({
   maxSequences: 100,
-  getMetadataSelectOptions: (fn: (s: string) => string) => [
-    { value: "genome_name", label: fn("genome_name") },
-  ],
 }));
 
 import {
-  formatMetadataLabel,
   getDisplayName,
   getSequenceTypeLabel,
   checkDuplicateSequence,
   checkSequenceLimit,
   removeSequenceAtIndex,
   createSequenceItem,
-  createMetadataField,
-  isMetadataFieldSelected,
   transformViralGenomeTreeParams,
 } from "../viral-genome-tree-form-utils";
-
-describe("formatMetadataLabel", () => {
-  it("converts underscore-separated words to title case", () => {
-    expect(formatMetadataLabel("genome_name")).toBe("Genome Name");
-  });
-
-  it("handles single-word fields", () => {
-    expect(formatMetadataLabel("species")).toBe("Species");
-  });
-
-  it("handles multiple underscores", () => {
-    expect(formatMetadataLabel("host_common_name")).toBe("Host Common Name");
-  });
-});
 
 describe("getDisplayName", () => {
   it("returns short names unchanged", () => {
@@ -158,47 +138,6 @@ describe("createSequenceItem", () => {
       filename: "/path/seq.fasta",
       type: "aligned_dna_fasta",
     });
-  });
-});
-
-describe("createMetadataField", () => {
-  it("returns a field with id, name, and selected true", () => {
-    const field = createMetadataField("genome_name");
-
-    expect(field).toEqual({
-      id: "genome_name",
-      name: "Genome Name",
-      selected: true,
-    });
-  });
-
-  it("falls back to formatMetadataLabel for unknown field ids", () => {
-    const field = createMetadataField("unknown_field");
-
-    expect(field).toEqual({
-      id: "unknown_field",
-      name: "Unknown Field",
-      selected: true,
-    });
-  });
-});
-
-describe("isMetadataFieldSelected", () => {
-  const fields = [
-    { id: "genome_name", selected: true },
-    { id: "species", selected: false },
-  ];
-
-  it("returns true when the field exists and is selected", () => {
-    expect(isMetadataFieldSelected(fields, "genome_name")).toBe(true);
-  });
-
-  it("returns false when the field exists but is not selected", () => {
-    expect(isMetadataFieldSelected(fields, "species")).toBe(false);
-  });
-
-  it("returns false when the field does not exist", () => {
-    expect(isMetadataFieldSelected(fields, "strain")).toBe(false);
   });
 });
 

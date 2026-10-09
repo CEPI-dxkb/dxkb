@@ -234,7 +234,9 @@ describe("InMemoryWorkspaceRepository", () => {
   });
 
   it("rejects create overwrite and malformed append without mutating content", async () => {
-    const malformed = JSON.stringify({ id_list: { genome_id: "g1" } });
+    // A comma-separated string is a format older groups use and is read;
+    // a number is not.
+    const malformed = JSON.stringify({ id_list: { genome_id: 42 } });
     const repo = new InMemoryWorkspaceRepository({
       directories: {
         "/groups": [
@@ -302,5 +304,29 @@ describe("InMemoryWorkspaceRepository", () => {
       "Genome Groups",
       "My Project",
     ]);
+  });
+
+  it("reads a fixture's content, cut at a line end past maxBytes", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/user@bvbrc/home": [
+          {
+            name: "seqs.fa",
+            type: "feature_dna_fasta",
+            content: ">a\nACGT\n>b\nACGA\n",
+          },
+        ],
+      },
+    });
+
+    await expect(
+      repo.readTextStart("/user@bvbrc/home/seqs.fa", 100),
+    ).resolves.toEqual({ text: ">a\nACGT\n>b\nACGA\n", truncated: false });
+    await expect(
+      repo.readTextStart("/user@bvbrc/home/seqs.fa", 10),
+    ).resolves.toEqual({ text: ">a\nACGT\n", truncated: true });
+    await expect(
+      repo.readTextStart("/user@bvbrc/home/missing.fa", 10),
+    ).rejects.toBeInstanceOf(WorkspaceApiError);
   });
 });

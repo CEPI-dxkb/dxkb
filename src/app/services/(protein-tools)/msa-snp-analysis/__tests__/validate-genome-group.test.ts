@@ -1,7 +1,10 @@
 import { http, HttpResponse } from "msw";
 
 import { server } from "@/test-helpers/msw-server";
-import { validateGenomeGroup } from "../validate-genome-group";
+import {
+  genomeGroupRejection,
+  validateGenomeGroup,
+} from "../validate-genome-group";
 
 const options = { maxGenomes: 2, maxGenomeLength: 250000 };
 
@@ -62,10 +65,15 @@ describe("validateGenomeGroup", () => {
 
     const result = await validateGenomeGroup("/invalid", options);
 
-    expect(result.status).toBe("invalid");
-    expect(result.status === "invalid" && result.message).toContain(
-      "Invalid Superkingdom",
-    );
+    expect(result).toEqual({
+      status: "invalid",
+      // Alpha's heading, then one "- " line per error.
+      message: [
+        "This looks like an invalid genome group. The following errors were found:",
+        "- Invalid Superkingdom: only virus genomes are permitted",
+        "First occurrence for genome_id: 1.1",
+      ].join("\n"),
+    });
   });
 
   it("returns the validated genome count", async () => {
@@ -166,5 +174,29 @@ describe("validateGenomeGroup", () => {
     await expect(validateGenomeGroup("/broken", options)).rejects.toThrow(
       "Workspace unavailable",
     );
+  });
+});
+
+describe("genomeGroupRejection", () => {
+  it("names each way a group can fail, as the toast and the field show it", () => {
+    expect(genomeGroupRejection({ status: "empty" }, 5000)).toEqual({
+      title: "Empty genome group",
+      message: "The selected genome group is empty.",
+    });
+    expect(
+      genomeGroupRejection({ status: "too-large", genomeCount: 6000 }, 5000),
+    ).toEqual({
+      title: "Genome group too large",
+      message: "The genome group has 6000 genomes, but the maximum is 5000.",
+    });
+    expect(
+      genomeGroupRejection(
+        { status: "invalid", message: "Invalid Superkingdom" },
+        5000,
+      ),
+    ).toEqual({
+      title: "Genome group validation failed",
+      message: "Invalid Superkingdom",
+    });
   });
 });

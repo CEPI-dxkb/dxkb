@@ -26,6 +26,8 @@ interface WorkspaceObjectSelectorProps {
   preset?: WorkspaceSelectorPreset;
   value?: string;
   filter?: (object: WorkspaceObject) => boolean;
+  /** Draws the field in its error state (`aria-invalid`). */
+  invalid?: boolean;
 }
 
 function useWorkspaceObjectSelector({
@@ -40,6 +42,7 @@ function useWorkspaceObjectSelector({
   preset,
   value,
   filter,
+  invalid = false,
 }: WorkspaceObjectSelectorProps) {
   const { user } = useAuth();
   const [showDropdown, setShowDropdown] = React.useState(false);
@@ -280,12 +283,17 @@ function useWorkspaceObjectSelector({
         });
       }
     } else if (!value && valueChanged) {
-      // Clear display name and selected object when value is cleared
+      // Clear display name and selected object when value is cleared. Typing
+      // drops the selection first (`onInputChange`), so a parent that clears
+      // `value` in response must not also wipe the text being typed: only a
+      // clear from outside, with an object still selected (a form reset),
+      // empties the search box.
+      const clearedByTyping = selectedObjectRef.current === null;
       resolvedValueRef.current = undefined;
       queueMicrotask(() => {
         setDisplayName("");
         selectedObjectRef.current = null;
-        setSearchQuery("");
+        if (!clearedByTyping) setSearchQuery("");
       });
     }
   }, [value, objects, setSearchQuery]);
@@ -294,7 +302,10 @@ function useWorkspaceObjectSelector({
     if (!showDropdown || displayObjects.length === 0) {
       if (event.key === "Enter" && selectedObjectRef.current) {
         event.preventDefault();
-        onObjectSelect?.(selectedObjectRef.current);
+        // A caller without onObjectSelect already holds the pick as its value
+        // (direct commit): Enter has nothing to commit, so it must not clear it.
+        if (!onObjectSelect) return;
+        onObjectSelect(selectedObjectRef.current);
         setSearchQuery("");
         selectedObjectRef.current = null;
         onSelectedObjectChange?.(null);
@@ -345,6 +356,7 @@ function useWorkspaceObjectSelector({
       className={className}
       placeholder={placeholder}
       validationError={validationError}
+      invalid={invalid}
       inputValue={searchQuery || displayName || value || ""}
       searchQuery={searchQuery}
       objects={displayObjects}

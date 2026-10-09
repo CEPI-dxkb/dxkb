@@ -54,6 +54,14 @@ import {
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
+import { ServiceAutocompleteInput } from "@/components/services/form-ui/service-autocomplete";
+import {
+  Autocomplete,
+  AutocompleteContent,
+  AutocompleteEmpty,
+  AutocompleteItem,
+  AutocompleteList,
+} from "@/components/ui/autocomplete";
 import {
   metaCatsFormSchema,
   defaultMetaCatsFormValues,
@@ -66,6 +74,7 @@ import {
   getMetaCatsDisplayName,
   countUniqueGroups,
   getUniqueGroupNames,
+  groupNamesSourceText,
   validateYearRanges,
   createGenomeIdMapFromFeatures,
   buildMetaCatsAutoGroupsFromGenomes,
@@ -207,6 +216,9 @@ function useMetaCATSPage() {
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const uniqueGroupCount = countUniqueGroups(autoGroups);
+  // Features whose genome lacks the metadata sit in a blank group, which
+  // would be a blank suggestion.
+  const groupNameSuggestions = groupNames.filter((name) => name !== "");
   const showYearRanges = metadataGroup === "collection_year";
 
   function handleYearRangesChange(value: string) {
@@ -318,7 +330,8 @@ function useMetaCATSPage() {
   }
 
   function handleChangeGroup() {
-    if (!selectedGroupName || selectedGridRows.size === 0) {
+    const groupName = selectedGroupName.trim();
+    if (!groupName || selectedGridRows.size === 0) {
       toast.error("Select rows and enter a group name", { closeButton: true });
       return;
     }
@@ -327,14 +340,14 @@ function useMetaCATSPage() {
     const updatedAutoGroups = updateAutoGroupsGroupByRowIds(
       currentAutoGroups,
       selectedGridRows,
-      selectedGroupName,
+      groupName,
     );
 
     form.setFieldValue("auto_groups", updatedAutoGroups);
 
     // Update group names
     const newGroupNames = new Set(groupNames);
-    newGroupNames.add(selectedGroupName);
+    newGroupNames.add(groupName);
     setGroupNames(Array.from(newGroupNames));
 
     toast.success(`Changed group for ${String(selectedGridRows.size)} row(s)`, {
@@ -678,37 +691,75 @@ function useMetaCATSPage() {
                   <div className="space-y-2">
                     <ServiceLabel>Group Names</ServiceLabel>
                     <div className="flex gap-2">
-                      <Select
-                        items={groupNames.map((name) => ({
-                          value: name,
-                          label: name,
-                        }))}
+                      {/* Typed text is a group name too, as in legacy's
+                          combo box: Change group can move rows into a new
+                          group as well as an existing one. */}
+                      <Autocomplete
+                        items={groupNameSuggestions}
                         value={selectedGroupName}
-                        onValueChange={(value) => {
-                          setSelectedGroupName(value ?? "");
-                        }}
+                        onValueChange={setSelectedGroupName}
+                        openOnInputClick
                       >
-                        <ServiceSelectTrigger
+                        <ServiceAutocompleteInput
                           className="flex-1"
-                          aria-label="Select group name"
-                        >
-                          <SelectValue placeholder="Select or enter group name" />
-                        </ServiceSelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {groupNames.map((name) => (
-                              <SelectItem key={name} value={name}>
+                          aria-label="Group name"
+                          placeholder="Select or type a group name"
+                          triggerLabel="Show group names"
+                          onKeyDown={(event) => {
+                            // Enter picks a highlighted name; otherwise it
+                            // would submit the whole job.
+                            if (event.key === "Enter") event.preventDefault();
+                          }}
+                        />
+                        <AutocompleteContent>
+                          <AutocompleteEmpty>
+                            {autoGroups.length === 0 ? (
+                              <div className="space-y-1 p-3">
+                                <p className="font-medium">
+                                  No group names yet
+                                </p>
+                                <p className="text-muted-foreground">
+                                  {groupNamesSourceText(metadataGroup)} Select
+                                  a feature group above and click + to add its
+                                  features.
+                                </p>
+                                <p className="text-muted-foreground">
+                                  Then select rows in the grid, choose a name
+                                  here or type a new one, and click Change
+                                  group to move those rows into that group.
+                                </p>
+                              </div>
+                            ) : selectedGroupName.trim() === "" ? (
+                              <p className="p-3 text-muted-foreground">
+                                None of the features in the grid has a metadata
+                                value, so there are no group names to list.
+                                Type a name, select rows in the grid, and click
+                                Change group to group those rows under it.
+                              </p>
+                            ) : (
+                              <p className="p-3 text-muted-foreground">
+                                No group is named &ldquo;
+                                {selectedGroupName.trim()}&rdquo; yet. Change
+                                group moves the selected rows into a new group
+                                with this name.
+                              </p>
+                            )}
+                          </AutocompleteEmpty>
+                          <AutocompleteList>
+                            {(name: string) => (
+                              <AutocompleteItem key={name} value={name}>
                                 {name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+                              </AutocompleteItem>
+                            )}
+                          </AutocompleteList>
+                        </AutocompleteContent>
+                      </Autocomplete>
                       <Button
                         type="button"
                         onClick={handleChangeGroup}
                         disabled={
-                          selectedGridRows.size === 0 || !selectedGroupName
+                          selectedGridRows.size === 0 ||
+                          !selectedGroupName.trim()
                         }
                       >
                         Change group

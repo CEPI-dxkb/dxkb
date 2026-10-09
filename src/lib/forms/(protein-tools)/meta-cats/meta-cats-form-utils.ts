@@ -1,4 +1,8 @@
-import type { MetaCatsFormData, AutoGroupItem } from "./meta-cats-form-schema";
+import {
+  metadataOptions,
+  type MetaCatsFormData,
+  type AutoGroupItem,
+} from "./meta-cats-form-schema";
 
 export interface MetaCatsFeatureLike {
   genome_id?: string;
@@ -141,6 +145,24 @@ export function countUniqueGroups(autoGroups: AutoGroupItem[]): number {
 export function getUniqueGroupNames(autoGroups: AutoGroupItem[]): string[] {
   const uniqueGroups = new Set(autoGroups.map((item) => item.group));
   return Array.from(uniqueGroups);
+}
+
+/**
+ * Where the Group Names dropdown's names come from, for its empty state: the
+ * value of the chosen metadata on each grid feature's genome (or, for
+ * Collection Year with Year Ranges set, the range the year falls in).
+ */
+export function groupNamesSourceText(
+  metadataGroup: string | undefined,
+): string {
+  const label =
+    metadataOptions.find((option) => option.value === metadataGroup)?.label ??
+    "metadata";
+  const yearRange =
+    metadataGroup === "collection_year"
+      ? " (or its year range, when Year Ranges are set)"
+      : "";
+  return `Group names come from the Groups Grid, where each added feature is grouped by its genome's ${label}${yearRange}.`;
 }
 
 /**

@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   validateGenomeGroup: vi.fn(),
 }));
 
-vi.mock("../validate-genome-group", () => ({
+vi.mock("../validate-genome-group", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../validate-genome-group")>()),
   validateGenomeGroup: mocks.validateGenomeGroup,
 }));
 

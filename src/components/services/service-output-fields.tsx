@@ -8,6 +8,8 @@ export interface ServiceOutputFieldBinding {
   value: string;
   onChange: (value: string) => void;
   errors?: ReactNode;
+  /** Draws the field in its error state while `errors` shows a message. */
+  invalid?: boolean;
 }
 
 interface ServiceOutputFieldsProps {
@@ -32,6 +34,7 @@ export function ServiceOutputFields({
           required={required}
           value={outputPath.value}
           onChange={outputPath.onChange}
+          invalid={outputPath.invalid}
         />
         {outputPath.errors}
       </FieldItem>
@@ -43,6 +46,7 @@ export function ServiceOutputFields({
           onChange={outputName.onChange}
           outputFolderPath={outputPath.value}
           onValidationChange={onOutputNameValidationChange}
+          invalid={outputName.invalid}
         />
         {outputName.errors}
       </FieldItem>

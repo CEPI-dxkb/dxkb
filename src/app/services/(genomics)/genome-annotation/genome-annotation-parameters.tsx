@@ -8,7 +8,11 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
+import {
+  FieldErrors,
+  FieldItem,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import {
   Tooltip,
   TooltipContent,
@@ -179,11 +183,15 @@ export function GenomeAnnotationParameters({
                         : null
                     }
                     onChange={(item) => {
+                      // Typing an ID and picking a match fills the name, as
+                      // picking a name fills the ID; the two clear together.
+                      const name = item?.taxon_name || null;
                       field.handleChange(item ? String(item.taxon_id) : null);
+                      form.setFieldValue("scientific_name", name);
+                      updateOutputName(name, form.state.values.my_label);
                     }}
                     placeholder="NCBI Taxonomy ID"
-                    required
-                    disabled
+                    invalid={fieldErrorMessage(field) !== null}
                   />
                   <FieldErrors field={field} />
                 </FieldItem>

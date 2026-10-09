@@ -188,7 +188,9 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
     };
 
     return (
-      <div className="flex items-center">
+      // Local edit: `data-slot` lets the services layout hover the input and
+      // its stepper arrows as one field (see globals.css).
+      <div data-slot="number-input" className="flex items-center">
         <NumericFormat
           value={value}
           onValueChange={handleChange}
@@ -219,8 +221,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           <Button
             type="button"
             aria-label="Increase value"
-            className="h-4 rounded-l-none rounded-br-none border-b-[0.5px] border-l-0 border-input px-2 focus-visible:relative"
-            variant="outline"
+            className="h-4 rounded-l-none rounded-br-none border-b-[0.5px] border-l-0 px-2 focus-visible:relative"
+            variant="stepper"
             onMouseDown={() => {
               startContinuousChange("up");
             }}
@@ -233,8 +235,8 @@ export const NumberInput = forwardRef<HTMLInputElement, NumberInputProps>(
           <Button
             type="button"
             aria-label="Decrease value"
-            className="h-4 rounded-l-none rounded-tr-none border-t-[0.5px] border-l-0 border-input px-2 focus-visible:relative"
-            variant="outline"
+            className="h-4 rounded-l-none rounded-tr-none border-t-[0.5px] border-l-0 px-2 focus-visible:relative"
+            variant="stepper"
             onMouseDown={() => {
               startContinuousChange("down");
             }}

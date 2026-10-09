@@ -30,13 +30,15 @@ describe("TaxIDSelector search", () => {
 
     const input = screen.getByRole("textbox");
     await user.type(input, "562");
+    // The name on the first line, the ID under it, and no lineage.
     const suggestion = await screen.findByRole("button", {
-      name: /562 \[Escherichia coli\]/,
+      name: /Escherichia coli/,
     });
     expect(query).toBe("taxon_id:562");
+    expect(suggestion).toHaveTextContent(/^Escherichia coli562$/);
     expect(
-      screen.getByText("Bacteria > Escherichia > Escherichia coli"),
-    ).toBeVisible();
+      screen.queryByText("Bacteria > Escherichia > Escherichia coli"),
+    ).not.toBeInTheDocument();
 
     await user.click(suggestion);
 

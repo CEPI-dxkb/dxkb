@@ -14,7 +14,9 @@ import type {
   WorkspaceMetadata,
   WorkspaceReadOptions,
 } from "../domain";
+import { WorkspaceApiError } from "../domain";
 import { parseWorkspaceGetSingle } from "../helpers";
+import { buildEncodedSegmentPath, parsePathSegments } from "../path-utils";
 import {
   appendIdGroupContent,
   createIdGroupContent,
@@ -28,6 +30,7 @@ import type {
   UploadNodeRequest,
   UploadNodeResult,
   WorkspaceRepository,
+  WorkspaceTextStart,
 } from "../workspace-repository";
 import {
   parseDuResult,
@@ -308,6 +311,32 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
       params: [{ objects: paths }],
       baseUrl: this.baseUrl,
     });
+  }
+
+  async readTextStart(
+    path: string,
+    maxBytes: number,
+  ): Promise<WorkspaceTextStart> {
+    const response = await fetch(
+      `/api/workspace/preview/${buildEncodedSegmentPath(parsePathSegments(path))}?maxBytes=${String(maxBytes)}`,
+      { credentials: "include" },
+    );
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: unknown;
+      };
+      throw new WorkspaceApiError(
+        typeof body.error === "string" && body.error
+          ? body.error
+          : `HTTP error! status: ${String(response.status)}`,
+        "readTextStart",
+        body,
+      );
+    }
+    return {
+      text: await response.text(),
+      truncated: response.headers.get("X-Truncated") === "true",
+    };
   }
 
   async getArchiveUrl(input: ArchiveRequest): Promise<ArchiveResult> {

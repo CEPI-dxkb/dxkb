@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import SelectedItemsTable from "@/components/services/selected-items-table";
+import { SelectedSequencesTable } from "@/components/services/selected-sequences-table";
 import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
@@ -35,7 +35,7 @@ export function ViralGenomeTreeInput({
     handleAddGenomeGroup,
     handleAddSequence,
     removeSequence,
-    selectedItemsForTable,
+    selectedSequenceRows,
   } = controller;
 
   return (
@@ -90,15 +90,11 @@ export function ViralGenomeTreeInput({
           <form.Field name="sequences">
             {(field) => (
               <FieldItem>
-                <SelectedItemsTable
-                  title="Selected genome group / FASTA files"
-                  items={selectedItemsForTable}
-                  onRemove={(id) => {
-                    removeSequence(parseInt(id, 10));
-                  }}
-                  className="max-h-84 overflow-y-auto"
-                  allowDuplicates={false}
-                  description="Selected genome groups and FASTA files will be used to construct the phylogenetic tree."
+                <SelectedSequencesTable
+                  heading="Selected genome group / FASTA file"
+                  rows={selectedSequenceRows}
+                  onRemove={removeSequence}
+                  note="Selected genome groups and FASTA files will be used to construct the phylogenetic tree."
                 />
                 <FieldErrors field={field} />
               </FieldItem>

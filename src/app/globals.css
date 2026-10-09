@@ -29,6 +29,20 @@
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is([data-theme$="-dark"] *));
 
+/* `hover:` skips disabled controls. Once they receive the pointer (for the
+   not-allowed cursor, see `:disabled` in the base layer), a disabled button
+   would otherwise take its variant's hover fill and look clickable. Same
+   media query as Tailwind's own; `:where()` keeps the specificity of a
+   plain `:hover`, so the variant's order against `aria-*` / `data-*` states
+   does not change. */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover:where(:not(:disabled)) {
+      @slot;
+    }
+  }
+}
+
 /* From shadcn's tailwind.css, which src/components/ui/command.tsx expects. */
 @utility no-scrollbar {
   -ms-overflow-style: none;
@@ -36,6 +50,25 @@
 
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* `truncate` that cuts the start ("…/folder/file.fa"), for a path whose end
+   matters most. An RTL box puts the overflow and ellipsis on the left; the
+   left-to-right marks keep the path itself LTR (without them its leading "/"
+   moves to the end). They are generated content, so copying the text skips
+   them, and they stand in for a `bdi` child, which leaves a gap after the
+   ellipsis in WebKit. Text that fits stays on the left. */
+@utility truncate-start {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+
+  &::before,
+  &::after {
+    content: "\200E";
   }
 }
 
@@ -113,6 +146,13 @@
   --color-highlight: var(--highlight);
   --color-border: var(--border);
   --color-input: var(--input);
+  /* The fill of every disabled field (inputs, textareas, select triggers,
+     input groups), so a field you cannot edit reads the same everywhere.
+     Each theme sets a literal a step off both its card and its page: about
+     7% of the way to the foreground in light themes, 12% in dark ones
+     (where fields are darker than the card, so it sits above the card). A
+     literal rather than a color-mix(): see --color-primary-hover. */
+  --color-disabled: var(--disabled);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -168,6 +208,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(0.922 0 0);
   --input: oklch(0.952 0 0);
+  --disabled: oklch(0.94 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.72 0.17 37);
   --chart-2: oklch(0.46 0.14 267);
@@ -218,6 +259,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 10%);
+  --disabled: oklch(0.246 0 0);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.75 0.16 37);
   --chart-2: oklch(0.58 0.16 267);
@@ -260,6 +302,15 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+  }
+
+  /* Every disabled control shows the not-allowed cursor. The ui controls no
+     longer set `disabled:pointer-events-none`, which hid any cursor, since a
+     natively disabled control ignores clicks without it. In the base layer,
+     so a utility at a call site (a non-sortable column header's
+     `disabled:cursor-default`) still wins. */
+  :disabled {
+    cursor: not-allowed;
   }
 
   pre,
@@ -616,6 +667,18 @@
   @apply flex items-center gap-2 text-lg font-semibold;
 }
 
+/* A read-library header (ServiceLibraryHeader): the label, a rule to the
+   add button, and the button. The rule is a `foreground/25` tint rather than
+   --border, which stood about 1.1:1 off the services card and all but
+   vanished; a 1px line needs more weight than the collapsible's border. */
+.service-library-header {
+  @apply flex items-center gap-4;
+}
+
+.service-library-divider {
+  @apply bg-foreground/25 h-px flex-1;
+}
+
 /* A collapsible section (Advanced Options and the like) reads as a control
    rather than a field: its trigger is a full-width neutral bar, grayer than
    the card so it cannot pass for a white input, which deepens on hover; the
@@ -740,8 +803,10 @@
 /* A label that is a direct child of a field container already gets 8px
    from the container's `gap-2`, so its own `mb-2` doubled the space to 16px
    where every other label sits 8px above its field. Labels nested in a
-   header row (label plus tooltip) are not direct children and keep `mb-2`. */
-:is([data-slot="form-item"], .service-card-row-item, .service-card-content-col) > :is(.service-card-label, .service-card-sublabel) {
+   header row (label plus tooltip) are not direct children and keep `mb-2`.
+   A read-library header centers its label on the row (with the rule and the
+   add button), where the margin lifted the label 4px off their midline. */
+:is([data-slot="form-item"], .service-card-row-item, .service-card-content-col, .service-library-header) > :is(.service-card-label, .service-card-sublabel) {
   margin-bottom: 0;
 }
 
@@ -793,16 +858,25 @@
   border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
 }
 
-/* A disabled service field drops its white fill and shows the card's tint:
-   white is the tier of the fields you can edit. The unlayered white fill
-   beat the ui fields' `disabled:bg-input/50`, and their `disabled:opacity-50`
-   then faded the field into the card (1.05:1) and its value to 3.8:1. Full
-   opacity with muted-foreground text keeps the value readable (at least
-   4.5:1 on the card); the border and the not-allowed cursor stay. */
+/* A number input's stepper arrows are part of its field, so hovering any of
+   it (the input or an arrow) darkens the border all the way round, arrows
+   included; hovering the input alone used to stop the highlight at the
+   arrows' seam. Skipped while the input is focused, disabled or invalid,
+   which keep their own border, as above. */
+[data-slot="number-input"]:has(> .service-card-input):hover:not(:has(> .service-card-input:is(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive, .border-success)))
+  :is(.service-card-input, [data-slot="button"]) {
+  border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}
+
+/* A disabled service field drops its white fill (the tier of the fields you
+   can edit) for the shared --disabled fill, a step off the card, so it no
+   longer melts into the card as the transparent fill it had did. This rule
+   is unlayered because the white `bg-background` above is too. Full opacity
+   with muted-foreground text keeps the value readable; the border stays. */
 .service-card-input:disabled,
 .service-card-textarea:disabled,
 .service-card-select-trigger:disabled {
-  background-color: transparent;
+  background-color: var(--disabled);
   opacity: 1;
   color: var(--muted-foreground);
 }

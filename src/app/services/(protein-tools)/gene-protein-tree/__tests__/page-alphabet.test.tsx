@@ -77,9 +77,8 @@ describe("GeneProteinTree page — alphabet toggle filters incompatible sequence
 
     render(<GeneProteinTreePage />, { wrapper: Providers });
 
-    // SelectedItemsTable renders both mobile + desktop variants, so each filename basename
-    // appears multiple times. `getAllByText` keeps this resilient to that without coupling
-    // the assertion to viewport-specific rendering.
+    // Each basename is in its row twice (the name line and the path line), and the regexes
+    // overlap (/aligned\.fa/ also matches unaligned.fa), so `getAllByText` counts matches.
     await waitFor(() => {
       expect(screen.getAllByText(/group\.fa/).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/aligned\.fa/).length).toBeGreaterThan(0);
@@ -93,5 +92,19 @@ describe("GeneProteinTree page — alphabet toggle filters incompatible sequence
       expect(screen.queryByText(/unaligned\.fa/)).not.toBeInTheDocument();
     });
     expect(screen.getAllByText(/group\.fa/).length).toBeGreaterThan(0);
+  });
+
+  it("names the FASTA selectors after the chosen alphabet", async () => {
+    window.history.replaceState({}, "", "/");
+    render(<GeneProteinTreePage />, { wrapper: Providers });
+
+    expect(screen.getByText("DNA Aligned FASTA")).toBeInTheDocument();
+    expect(screen.getByText("DNA Unaligned FASTA")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: /^protein$/i }));
+
+    expect(await screen.findByText("Protein Aligned FASTA")).toBeInTheDocument();
+    expect(screen.getByText("Protein Unaligned FASTA")).toBeInTheDocument();
+    expect(screen.queryByText(/^DNA (Un)?aligned FASTA$/i)).not.toBeInTheDocument();
   });
 });

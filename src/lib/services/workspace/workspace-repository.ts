@@ -53,6 +53,13 @@ export interface AppendToIdGroupInput {
   ids: string[];
 }
 
+/** The start of a file's text, cut at a line end. */
+export interface WorkspaceTextStart {
+  text: string;
+  /** True when the file goes on past `text`. */
+  truncated: boolean;
+}
+
 export interface WorkspaceRepository {
   /** List objects under a directory path. */
   listDirectory(input: ListDirectoryInput): Promise<WorkspaceItem[]>;
@@ -107,6 +114,13 @@ export interface WorkspaceRepository {
 
   /** One-time archive URL for multi-path downloads. */
   getArchiveUrl(input: ArchiveRequest): Promise<ArchiveResult>;
+
+  /**
+   * The first `maxBytes` of a file's contents (all of it when it fits), cut
+   * at the last line end. Through `/api/workspace/preview`, which caps it at
+   * 10 MB.
+   */
+  readTextStart(path: string, maxBytes: number): Promise<WorkspaceTextStart>;
 
   /** Search objects by type/name for the object selector. */
   searchObjects(input: SearchWorkspaceObjectsInput): Promise<WorkspaceItem[]>;

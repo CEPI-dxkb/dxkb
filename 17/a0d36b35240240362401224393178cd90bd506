@@ -1,0 +1,27 @@
+src/lib/forms/(genomics)/genome-assembly/genome-assembly-form-utils.ts
+  s_ae47fe22540aec::t_ac54178824b36d 2,116-174
+src/app/services/(genomics)/genome-assembly/page.tsx
+  s_ae47fe22540aec::t_ea2d9e2547d448 185
+  s_ae47fe22540aec::t_76ffaf45452b55 21-23,52,93-100,182-184,186-188
+  s_ae47fe22540aec::t_0b5f2eb2a64842 20
+src/lib/forms/(genomics)/genome-assembly/__tests__/genome-assembly-form-utils.test.ts
+  s_ae47fe22540aec::t_c0c68ab983450b 6-7,190-268
+src/app/services/(genomics)/genome-assembly/__tests__/page-rerun.test.tsx
+  s_ae47fe22540aec::t_8b56d0316b5324 108-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17a0d36b35240240362401224393178cd90bd506",
+  "prompts": {},
+  "sessions": {
+    "s_ae47fe22540aec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03d79dbd-d0b4-4fb7-823c-0c0fe3c87eef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

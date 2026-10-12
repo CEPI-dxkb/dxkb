@@ -1,0 +1,27 @@
+e2e/tests/services/output-folder-picker.spec.ts
+  s_4b425d1cec40f5::t_b53a941a96b2e7 612
+e2e/pages/viral-genome-tree-page.ts
+  s_4b425d1cec40f5::t_4941225163b051 52-59,62-80
+src/app/globals.css
+  s_4b425d1cec40f5::t_5da88a784f731d 98-104,111-112
+e2e/tests/services/service-form-controls.spec.ts
+  s_4b425d1cec40f5::t_43cb783d895d6b 85-89,96,100-111,118-121,400-402,407-409
+e2e/a11y/theme.ts
+  s_4b425d1cec40f5::t_79a5e750e3bfd6 7-13,16,20-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "547c50f225eb482d4f61122c498be70906ee237a",
+  "prompts": {},
+  "sessions": {
+    "s_4b425d1cec40f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fd36d12-8bf8-4686-b3c6-450acbf39157",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

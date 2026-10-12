@@ -266,8 +266,9 @@ function matchesTargetType(item: WorkspaceItem, target: PickerTarget): boolean {
 }
 
 /**
- * Rows to show. By default: folders, plus files of the requested types, minus
- * hidden items. "Show all" lifts both filters. Folder-like items sort first.
+ * Rows to show of the items given. By default: folders, plus files of the
+ * requested types. "Show all" lifts that filter. Folder-like items sort first.
+ * Hidden items are `visiblePickerRows`'s call.
  */
 export function buildPickerItems({
   items,
@@ -284,9 +285,8 @@ export function buildPickerItems({
     ? items
     : items.filter(
         (item) =>
-          !item.name.startsWith(".") &&
-          (isPickerItemNavigable(item, target) ||
-            matchesTargetType(item, target)),
+          isPickerItemNavigable(item, target) ||
+          matchesTargetType(item, target),
       );
   if (keepOrder) return visible;
   return [...visible].sort((a, b) => {
@@ -298,9 +298,41 @@ export function buildPickerItems({
 }
 
 /**
+ * Whether the picker leaves a row out for being hidden (a dot name). Hidden
+ * items stay out, with one exception: picking files inside a job's hidden
+ * folder, a hidden folder holds outputs too (a Comprehensive Genome Analysis
+ * keeps its annotation in `.annotation`), so it shows, unless a job result
+ * listed beside it already opens it, which would list the folder twice.
+ */
+export function isHiddenPickerItem({
+  item,
+  location,
+  items,
+  target,
+}: {
+  item: WorkspaceItem;
+  location: PickerLocation;
+  /** The listing `item` is in. */
+  items: readonly WorkspaceItem[];
+  target: PickerTarget;
+}): boolean {
+  if (!item.name.startsWith(".")) return false;
+  const insideJobFolder =
+    target.kind === "object" &&
+    location.kind === "path" &&
+    pathSegments(location.path).some((segment) => segment.startsWith("."));
+  if (!insideJobFolder || !isFolder(item.type)) return true;
+  const path = normalizePath(item.path);
+  return items.some(
+    (other) =>
+      opensJobResult(other, target) && pickerRowKey(other, target) === path,
+  );
+}
+
+/**
  * Rows a picker column shows: folders (and, picking files, job results and
  * files of the requested types), plus every other file with `showAll`.
- * Hidden (dot) items never show.
+ * Hidden (dot) items show only as `isHiddenPickerItem` allows.
  */
 export function visiblePickerRows({
   location,
@@ -313,13 +345,15 @@ export function visiblePickerRows({
   target: PickerTarget;
   showAll: boolean;
 }): WorkspaceItem[] {
-  const rows = buildPickerItems({
-    items: filterListing({ location, items, target }),
+  const listed = filterListing({ location, items, target });
+  return buildPickerItems({
+    items: listed.filter(
+      (item) => !isHiddenPickerItem({ item, location, items: listed, target }),
+    ),
     target,
     showAll,
     keepOrder: location.kind === "list" && location.view === "recent",
   });
-  return showAll ? rows.filter((item) => !item.name.startsWith(".")) : rows;
 }
 
 /**

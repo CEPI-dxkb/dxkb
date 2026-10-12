@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { toast } from "sonner";
@@ -52,19 +52,49 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
   ),
 }));
 
+function groupResponse(count: number) {
+  const genomeIds = Array.from({ length: count }, (_, i) => `${String(i)}.1`);
+  return HttpResponse.json({
+    result: [
+      [[{ path: groupPath }, JSON.stringify({ id_list: { genome_id: genomeIds } })]],
+    ],
+  });
+}
+
 /** Answers the group's `Workspace.get` with a group of `count` genomes. */
 function serveGroup(count: number, gate?: Promise<void>) {
-  const genomeIds = Array.from({ length: count }, (_, i) => `${String(i)}.1`);
   server.use(
     http.post("*/api/services/workspace", async () => {
       await gate;
-      return HttpResponse.json({
-        result: [
-          [[{ path: groupPath }, JSON.stringify({ id_list: { genome_id: genomeIds } })]],
-        ],
-      });
+      return groupResponse(count);
     }),
   );
+}
+
+/**
+ * Answers successive group reads in order, each with its own group size once
+ * its gate opens, and records which reads have been answered.
+ */
+function serveGroupReads(reads: { count: number; gate: Promise<void> }[]) {
+  const answered: number[] = [];
+  let next = 0;
+  server.use(
+    http.post("*/api/services/workspace", async () => {
+      const index = next++;
+      await reads[index].gate;
+      answered.push(index);
+      return groupResponse(reads[index].count);
+    }),
+  );
+  return answered;
+}
+
+function openableGate() {
+  let open!: () => void;
+  const promise = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { promise, open };
 }
 
 async function pickGroupAndAdd(user: ReturnType<typeof userEvent.setup>) {
@@ -134,5 +164,56 @@ describe("ProteomeComparisonPage genome group add", () => {
     expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
 
     release();
+  });
+
+  it("drops a group read that a reset overtook", async () => {
+    const beforeReset = openableGate();
+    const afterReset = openableGate();
+    const answered = serveGroupReads([
+      { count: 2, gate: beforeReset.promise },
+      { count: 1, gate: afterReset.promise },
+    ]);
+    const user = userEvent.setup();
+    render(<ProteomeComparisonPage />);
+
+    await pickGroupAndAdd(user);
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+    await pickGroupAndAdd(user);
+    expect(await screen.findByRole("status", { name: "Loading" })).toBeVisible();
+
+    // The read started before the reset finishes while the new one is pending:
+    // it must not add its group to the new comparison, nor stop the spinner of
+    // the add started after the reset.
+    act(() => {
+      beforeReset.open();
+    });
+    await waitFor(() => {
+      expect(answered).toEqual([0]);
+    });
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(screen.queryByText("2 genome(s)")).toBeNull();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole("status", { name: "Loading" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Add genome group" }),
+    ).toBeDisabled();
+
+    act(() => {
+      afterReset.open();
+    });
+
+    expect(await screen.findByText("1 genome(s)")).toBeVisible();
+    expect(toast.success).toHaveBeenCalledTimes(1);
+    expect(toast.success).toHaveBeenCalledWith(
+      "Added genome group with 1 genome(s)",
+      expect.anything(),
+    );
+    expect(screen.queryByText("2 genome(s)")).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
+    });
   });
 });

@@ -81,6 +81,30 @@ describe("picking a file", () => {
     );
   });
 
+  it("opens a hidden output folder inside a job result", async () => {
+    // A Comprehensive Genome Analysis keeps its annotation in `.annotation`.
+    const repository = makeFilePickerRepository();
+    repository.addItem(`${home}/.Assembly1`, {
+      name: ".annotation",
+      type: "folder",
+    });
+    repository.addItem(`${home}/.Assembly1/.annotation`, {
+      name: "annotation.contigs.fasta",
+      type: "contigs",
+    });
+    const { user, onSelect } = pickContigs({}, repository);
+    await user.click(await findOption("Home", "Assembly1"));
+    await user.click(await findOption("Assembly1", ".annotation"));
+    expect(columnLabels()).toEqual(["Home", "Assembly1", "annotation"]);
+    await user.dblClick(
+      await findOption("annotation", /annotation\.contigs\.fasta/),
+    );
+    expect(onSelect).toHaveBeenCalledWith(
+      `${home}/.Assembly1/.annotation/annotation.contigs.fasta`,
+      expect.objectContaining({ type: "contigs" }),
+    );
+  });
+
   it("won't commit a folder, and says what to pick", async () => {
     const { user, onSelect } = pickContigs();
     await user.click(await findOption("Home", "Alpha"));

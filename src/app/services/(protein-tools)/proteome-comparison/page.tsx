@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
@@ -81,6 +81,10 @@ function useProteomeComparisonPage() {
     useState<WorkspaceObject | null>(null);
   const [isLoadingGenomeGroup, setIsLoadingGenomeGroup] = useState(false);
   const [isLoadingCompGenome, setIsLoadingCompGenome] = useState(false);
+  // Reset bumps this, so a genome or group read still in flight neither adds
+  // its item to the new comparison nor clears the spinner of an add the user
+  // starts after the reset.
+  const resetRevisionRef = useRef(0);
 
   // State for advanced parameters visibility
   const [showAdvancedParams, setShowAdvancedParams] = useState(false);
@@ -98,12 +102,14 @@ function useProteomeComparisonPage() {
 
   // Handle reset
   function handleReset() {
+    resetRevisionRef.current += 1;
     form.reset(defaultProteomeComparisonFormValues);
     setSelectedCompGenomeId("");
     setSelectedCompFasta(null);
     setSelectedCompFeatureGroup(null);
     setSelectedCompGenomeGroup(null);
     setIsLoadingGenomeGroup(false);
+    setIsLoadingCompGenome(false);
     setShowAdvancedParams(false);
   }
 
@@ -158,31 +164,32 @@ function useProteomeComparisonPage() {
       return;
     }
 
+    const resetRevision = resetRevisionRef.current;
     setIsLoadingCompGenome(true);
 
+    // Fall back to using the genome ID as the name
+    let genomeName = selectedCompGenomeId;
     try {
       // Fetch the genome name from the API
       const genomes = await fetchGenomesByIds([selectedCompGenomeId]);
-      const genomeName =
-        genomes.length > 0 ? genomes[0].genome_name : selectedCompGenomeId;
-
-      const newItem = createGenomeComparisonItem(
-        selectedCompGenomeId,
-        genomeName,
-      );
-
-      form.setFieldValue("comparison_items", [...currentItems, newItem]);
-      setSelectedCompGenomeId("");
+      if (genomes.length > 0) genomeName = genomes[0].genome_name;
     } catch (error) {
       console.error("Failed to fetch genome info:", error);
-      // Fall back to using the genome ID as the name
-      const newItem = createGenomeComparisonItem(
-        selectedCompGenomeId,
-        selectedCompGenomeId,
-      );
-      form.setFieldValue("comparison_items", [...currentItems, newItem]);
-      setSelectedCompGenomeId("");
     }
+
+    // A reset during the lookup already cleared the list and this spinner.
+    if (resetRevision !== resetRevisionRef.current) return;
+
+    const newItem = createGenomeComparisonItem(
+      selectedCompGenomeId,
+      genomeName,
+    );
+    // Read the list again: the other add buttons stay live during the lookup.
+    form.setFieldValue("comparison_items", [
+      ...form.state.values.comparison_items,
+      newItem,
+    ]);
+    setSelectedCompGenomeId("");
     setIsLoadingCompGenome(false);
   }
 
@@ -261,6 +268,7 @@ function useProteomeComparisonPage() {
       return;
     }
 
+    const resetRevision = resetRevisionRef.current;
     setIsLoadingGenomeGroup(true);
 
     try {
@@ -268,6 +276,9 @@ function useProteomeComparisonPage() {
       const genomeIds = await getGenomeIdsFromGroup(
         selectedCompGenomeGroup.path,
       );
+
+      // A reset during the read already cleared the list and this spinner.
+      if (resetRevision !== resetRevisionRef.current) return;
 
       if (genomeIds.length === 0) {
         toast.error("Empty genome group", {
@@ -317,6 +328,7 @@ function useProteomeComparisonPage() {
         },
       );
     } catch (error) {
+      if (resetRevision !== resetRevisionRef.current) return;
       console.error("Failed to add genome group:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to add genome group";
@@ -326,8 +338,11 @@ function useProteomeComparisonPage() {
       });
     } finally {
       // The early returns above (empty group, over the limit, duplicate) left
-      // the "+" button on its spinner, so only a reload recovered it.
-      setIsLoadingGenomeGroup(false);
+      // the "+" button on its spinner, so only a reload recovered it. After a
+      // reset the spinner belongs to whichever add started since, if any.
+      if (resetRevision === resetRevisionRef.current) {
+        setIsLoadingGenomeGroup(false);
+      }
     }
   }
 

@@ -8,6 +8,7 @@ import {
   folderStubItems,
   initialColumnChain,
   initialPickerSelection,
+  isHiddenPickerItem,
   isOwnPath,
   isPickerItemChoosable,
   isPickerItemInteractive,
@@ -315,13 +316,12 @@ describe("buildPickerItems", () => {
   const listing = [
     item(`${home}/zeta`, "folder"),
     item(`${home}/reads.fq`, "reads"),
-    item(`${home}/.hidden`, "folder"),
     item(`${home}/Alpha`, "folder"),
     item(`${home}/notes.txt`, "txt"),
     item(`${home}/job`, "job_result"),
   ];
 
-  it("shows only visible folders, sorted, when picking a folder", () => {
+  it("shows only folders, sorted, when picking a folder", () => {
     expect(
       buildPickerItems({
         items: listing,
@@ -348,7 +348,7 @@ describe("buildPickerItems", () => {
         target: { kind: "folder" },
         showAll: true,
       }).map((entry) => entry.name),
-    ).toEqual([".hidden", "Alpha", "job", "zeta", "notes.txt", "reads.fq"]);
+    ).toEqual(["Alpha", "job", "zeta", "notes.txt", "reads.fq"]);
   });
 
   it("sorts names without regard to case", () => {
@@ -551,6 +551,66 @@ describe("file-mode rows", () => {
     const mixed = pickerTargetFor(["contigs", "job_result"]);
     expect(isPickerItemChoosable(job, mixed)).toBe(true);
     expect(pickerRowKey(job, mixed)).toBe("/a@b/home/Assembly1");
+  });
+  it("browses a hidden output folder inside a job's folder, but no hidden file", () => {
+    const job = "/a@b/home/.CGA";
+    const outputs = [
+      row(".annotation", "folder", job),
+      row(".scratch.fasta", "contigs", job),
+      row("report.html", "html", job),
+    ];
+    for (const showAll of [false, true]) {
+      expect(
+        visiblePickerRows({
+          location: { kind: "path", path: job },
+          items: outputs,
+          target: contigs,
+          showAll,
+        }).map((r) => r.name),
+      ).toEqual(showAll ? [".annotation", "report.html"] : [".annotation"]);
+    }
+  });
+  it("lists a hidden folder a job result beside it opens only once, as the job", () => {
+    const job = "/a@b/home/.CGA";
+    expect(
+      visiblePickerRows({
+        location: { kind: "path", path: job },
+        items: [row("assembly", "job_result", job), row(".assembly", "folder", job)],
+        target: contigs,
+        showAll: true,
+      }).map((r) => r.name),
+    ).toEqual(["assembly"]);
+  });
+  it("keeps hidden folders out above job folders, and out of folder mode", () => {
+    expect(
+      visiblePickerRows({
+        location,
+        items: [row(".orphan", "folder"), row("Data", "folder")],
+        target: contigs,
+        showAll: true,
+      }).map((r) => r.name),
+    ).toEqual(["Data"]);
+    const job = "/a@b/home/.CGA";
+    expect(
+      visiblePickerRows({
+        location: { kind: "path", path: job },
+        items: [row(".annotation", "folder", job)],
+        target: folderOnly,
+        showAll: true,
+      }),
+    ).toEqual([]);
+  });
+  it("judges hidden rows the same way for the info pane", () => {
+    const job = "/a@b/home/.CGA";
+    const at = { kind: "path", path: job } as const;
+    const outputs = [
+      row(".annotation", "folder", job),
+      row("assembly", "job_result", job),
+      row(".assembly", "folder", job),
+    ];
+    const hidden = (entry: WorkspaceItem) =>
+      isHiddenPickerItem({ item: entry, location: at, items: outputs, target: contigs });
+    expect(outputs.map(hidden)).toEqual([false, false, true]);
   });
   it("lists read-only shared workspaces when picking files", () => {
     const shared = { kind: "list", view: "shared" } as const;

@@ -32,6 +32,7 @@ import {
 } from "@/lib/services/workspace/helpers";
 import { normalizePath } from "@/lib/services/workspace/mini-browser-items";
 import {
+  isHiddenPickerItem,
   lastSegment,
   pathSegments,
   pickerPathLabel,
@@ -136,8 +137,16 @@ export function FolderPickerInfo({
   const name = pickerPathLabel(path, homePath, target);
   const owner = formatOwner(item?.ownerId ?? pathSegments(path).at(0) ?? "");
   const created = item?.createdAt ? formatDate(item.createdAt) : null;
-  // Hidden (dot) items never show in the columns, so they don't count here.
-  const children = contents.items.filter((child) => !child.name.startsWith("."));
+  // Hidden items the columns leave out don't count here either.
+  const children = contents.items.filter(
+    (child) =>
+      !isHiddenPickerItem({
+        item: child,
+        location: { kind: "path", path },
+        items: contents.items,
+        target,
+      }),
+  );
   const folders = children.filter((child) => isFolder(child.type)).length;
   const files = children.length - folders;
 

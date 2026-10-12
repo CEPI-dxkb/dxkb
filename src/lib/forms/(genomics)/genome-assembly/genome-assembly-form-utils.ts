@@ -1,4 +1,5 @@
 import { GenomeAssemblyFormData } from "./genome-assembly-form-schema";
+import { rerunBooleanValue } from "@/lib/rerun-utility";
 
 export const genomeAssemblyRecipes = [
   { value: "auto", label: "Auto" },
@@ -111,4 +112,63 @@ export function calculateGenomeSize(
 ): number {
   const multiplier = genomeSizeUnit === "M" ? 1000000 : 1000;
   return expectedGenomeSize * multiplier;
+}
+
+export interface GenomeSizeDisplay {
+  count: number;
+  unit: "M" | "K";
+}
+
+/**
+ * How the Estimated Genome Size field shows a size in bases: whole megabases
+ * in M, anything else in K. The field holds whole numbers only, so a size that
+ * is not a whole kilobase rounds to the nearest one.
+ */
+export function genomeSizeDisplay(bases: number): GenomeSizeDisplay {
+  if (bases % 1000000 === 0) return { count: bases / 1000000, unit: "M" };
+  return { count: Math.round(bases / 1000), unit: "K" };
+}
+
+const rerunAdvancedNumberFields = [
+  "target_depth",
+  "racon_iter",
+  "pilon_iter",
+  "min_contig_len",
+  "min_contig_cov",
+] as const;
+
+const rerunAdvancedBooleanFields = ["trim", "normalize", "filtlong"] as const;
+
+function rerunNumber(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+/**
+ * The Advanced Options a job ran with, as form values. Job parameters can
+ * hold numbers as strings and flags as "true"/1, so both are read; an option
+ * the job did not set (or set to something unreadable) is left out, keeping
+ * the form's default. `genomeSize` is what the Estimated Genome Size field
+ * shows, and `values.genome_size` the bases that display stands for.
+ */
+export function rerunGenomeAssemblyAdvancedOptions(
+  data: Record<string, unknown>,
+): {
+  values: Partial<GenomeAssemblyFormData>;
+  genomeSize?: GenomeSizeDisplay;
+} {
+  const values: Partial<GenomeAssemblyFormData> = {};
+  for (const field of rerunAdvancedNumberFields) {
+    const value = rerunNumber(data[field]);
+    if (value !== undefined) values[field] = value;
+  }
+  for (const field of rerunAdvancedBooleanFields) {
+    if (data[field] != null) values[field] = rerunBooleanValue(data[field]);
+  }
+  const bases = rerunNumber(data.genome_size);
+  if (bases === undefined || bases <= 0) return { values };
+  const genomeSize = genomeSizeDisplay(bases);
+  values.genome_size = calculateGenomeSize(genomeSize.count, genomeSize.unit);
+  return { values, genomeSize };
 }

@@ -1,0 +1,30 @@
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  s_4b425d1cec40f5::t_0f001117c960a8 183-195,200
+src/app/services/(protein-tools)/msa-snp-analysis/validate-fasta-file.ts
+  s_4b425d1cec40f5::t_99f4b99b40ea73 33-34,40-48
+src/app/services/(protein-tools)/msa-snp-analysis/__tests__/validate-fasta-file.test.ts
+  s_4b425d1cec40f5::t_ec354810f09d38 65-76
+src/lib/forms/(protein-tools)/proteome-comparison/__tests__/proteome-comparison-form-schema.test.ts
+  s_4b425d1cec40f5::t_368b015544b866 59-90
+src/app/services/(protein-tools)/proteome-comparison/__tests__/page-genome-group.test.tsx
+  s_4b425d1cec40f5::t_6ace61972bfbb7 9,11,32,34-49,236-277
+  s_4b425d1cec40f5::t_9279833ab62e5a 278
+src/lib/forms/(protein-tools)/proteome-comparison/proteome-comparison-form-schema.ts
+  s_4b425d1cec40f5::t_6f1e905ae6a2fe 3-4,98-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07b2a9ca8243ad9bdb9719cbb829c3e782ce23d5",
+  "prompts": {},
+  "sessions": {
+    "s_4b425d1cec40f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fd36d12-8bf8-4686-b3c6-450acbf39157",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

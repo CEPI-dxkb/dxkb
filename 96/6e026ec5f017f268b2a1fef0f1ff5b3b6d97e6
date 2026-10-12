@@ -1,0 +1,61 @@
+src/lib/services/workspace/__tests__/picker-views.test.ts
+  s_5d9827e5dfba93::t_fdc0717273ebe9 544-554
+src/app/services/(protein-tools)/msa-snp-analysis/use-pick-check.ts
+  s_5d9827e5dfba93::t_22e91fa2a043c4 1,33-35,42-49
+  s_5d9827e5dfba93::t_86e18e4d4d1eba 50
+AGENTS.md
+  s_5d9827e5dfba93::t_52f9928b0c4068 64
+src/components/services/form-ui/service-add-button.tsx
+  s_5d9827e5dfba93::t_78ca40084f09d7 21-24,34-35
+src/components/services/form-ui/__tests__/service-library-header.test.tsx
+  s_5d9827e5dfba93::t_78ca40084f09d7 63,65-81
+  s_5d9827e5dfba93::t_3f1edd27b449c9 64
+src/lib/services/workspace/workspace-repository.ts
+  s_5d9827e5dfba93::t_a078823e7cb3e8 56-59,123-124
+src/components/ui/__tests__/disabled-state.test.tsx
+  s_5d9827e5dfba93::t_30233a5fc0cd91 136,145-147
+src/components/ui/checkbox.tsx
+  s_5d9827e5dfba93::t_f02f4aa47c0ea1 17,23
+e2e/tests/services/service-form-controls.spec.ts
+  s_5d9827e5dfba93::t_a054a6f6242c95 188,202-203
+src/app/services/(protein-tools)/msa-snp-analysis/__tests__/use-pick-check.test.ts
+  s_5d9827e5dfba93::t_36436f6a73d794 82-118
+src/components/services/form-ui/__tests__/service-add-button.test.tsx
+  s_5d9827e5dfba93::t_3799cac463f4b9 23,25-41
+  s_5d9827e5dfba93::t_3f1edd27b449c9 24
+src/lib/services/workspace/adapters/__tests__/in-memory-workspace-repository.test.ts
+  s_5d9827e5dfba93::t_e5ccd31aa5d97a 332-336,338-353
+  s_5d9827e5dfba93::t_e549ad8aa74335 337
+src/lib/services/workspace/adapters/in-memory-workspace-repository.ts
+  s_5d9827e5dfba93::t_e549ad8aa74335 548-552,555-556,558-560
+src/components/services/__tests__/sra-run-accession-with-validation.test.tsx
+  s_5d9827e5dfba93::t_2e3468033ddc8d 218-221
+src/components/services/sra-run-accession-with-validation.tsx
+  s_5d9827e5dfba93::t_c826416bb3e62f 50-54,124,411-412,415-420
+src/components/services/form-ui/service-library-header.tsx
+  s_5d9827e5dfba93::t_78ca40084f09d7 42-45,53-54
+src/lib/services/workspace/picker-views.ts
+  s_5d9827e5dfba93::t_fdc0717273ebe9 46-56,61,67,93,100
+src/app/services/(protein-tools)/msa-snp-analysis/__tests__/validate-fasta-file.test.ts
+  s_5d9827e5dfba93::t_eb5c1bc74be22f 53-64
+src/app/services/(protein-tools)/msa-snp-analysis/validate-fasta-file.ts
+  s_5d9827e5dfba93::t_40c6e67b88689d 12-21,31-33,39-40,42
+src/components/ui/radio-group.tsx
+  s_5d9827e5dfba93::t_f02f4aa47c0ea1 27-28,34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "966e026ec5f017f268b2a1fef0f1ff5b3b6d97e6",
+  "prompts": {},
+  "sessions": {
+    "s_5d9827e5dfba93": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f700dbb-4bfa-48d2-a5d3-e738b959df86",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

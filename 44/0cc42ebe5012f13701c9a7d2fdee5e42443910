@@ -1,0 +1,31 @@
+src/app/services/(protein-tools)/proteome-comparison/__tests__/page-genome-group.test.tsx
+  s_4b425d1cec40f5::t_42843b69aa32b0 1,55-63,69-86,89-97,168-218
+src/lib/services/workspace/__tests__/picker-views.test.ts
+  s_4b425d1cec40f5::t_8ed071ebc629e3 11,324,351,555-614
+src/components/workspace/folder-picker/__tests__/folder-picker-files.test.tsx
+  s_4b425d1cec40f5::t_8ed071ebc629e3 84-107
+src/components/workspace/folder-picker/folder-picker-preview.tsx
+  s_4b425d1cec40f5::t_d34739da8639d4 35,140-149
+docs/architecture.md
+  s_4b425d1cec40f5::t_6e3651ef762816 118
+src/lib/services/workspace/picker-views.ts
+  s_4b425d1cec40f5::t_9b018344efea2c 269-271,288-289,300-331,335,348-352
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  s_4b425d1cec40f5::t_fc41fefb371375 3,84-87,105,112,167,170-171,175,179-192,271,280-282,331,341-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "440cc42ebe5012f13701c9a7d2fdee5e42443910",
+  "prompts": {},
+  "sessions": {
+    "s_4b425d1cec40f5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1fd36d12-8bf8-4686-b3c6-450acbf39157",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

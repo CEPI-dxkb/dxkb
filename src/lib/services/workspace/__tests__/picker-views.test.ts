@@ -7,19 +7,31 @@ import {
   folderNameError,
   folderStubItems,
   initialColumnChain,
+  initialPickerSelection,
+  isHiddenPickerItem,
   isOwnPath,
+  isPickerItemChoosable,
+  isPickerItemInteractive,
   isPickerItemNavigable,
+  isSelectableOutputFolder,
   lastSegment,
   listingSourceFor,
   locationForView,
   pathSegments,
   pickerCommitState,
   pickerHomePath,
+  pickerPathLabel,
+  pickerRowKey,
+  pickerTargetFor,
+  pickerTitleFor,
+  pickerTypeLabel,
+  pickerTypeList,
+  pickerTypePhrase,
   pickerViewOptions,
   stubsNeedWorkspaces,
   viewForLocation,
   viewLabel,
-  visibleFolderRows,
+  visiblePickerRows,
 } from "../picker-views";
 
 const username = "alice@bvbrc";
@@ -39,6 +51,19 @@ function item(
     permissions,
   };
 }
+
+function row(name: string, type: string, parent = "/a@b/home"): WorkspaceItem {
+  return {
+    id: `${parent}/${name}`,
+    name,
+    path: `${parent}/${name}`,
+    type,
+    size: 1,
+  };
+}
+
+const contigs = { kind: "object", types: ["contigs"] } as const;
+const folderOnly = { kind: "folder" } as const;
 
 describe("locationForView", () => {
   it("maps Home to the user's home folder", () => {
@@ -291,13 +316,12 @@ describe("buildPickerItems", () => {
   const listing = [
     item(`${home}/zeta`, "folder"),
     item(`${home}/reads.fq`, "reads"),
-    item(`${home}/.hidden`, "folder"),
     item(`${home}/Alpha`, "folder"),
     item(`${home}/notes.txt`, "txt"),
     item(`${home}/job`, "job_result"),
   ];
 
-  it("shows only visible folders, sorted, when picking a folder", () => {
+  it("shows only folders, sorted, when picking a folder", () => {
     expect(
       buildPickerItems({
         items: listing,
@@ -314,7 +338,7 @@ describe("buildPickerItems", () => {
         target: { kind: "object", types: ["reads"] },
         showAll: false,
       }).map((entry) => entry.name),
-    ).toEqual(["Alpha", "zeta", "reads.fq"]);
+    ).toEqual(["Alpha", "job", "zeta", "reads.fq"]);
   });
 
   it("shows everything, folder-like items first, with show all", () => {
@@ -324,7 +348,7 @@ describe("buildPickerItems", () => {
         target: { kind: "folder" },
         showAll: true,
       }).map((entry) => entry.name),
-    ).toEqual([".hidden", "Alpha", "job", "zeta", "notes.txt", "reads.fq"]);
+    ).toEqual(["Alpha", "job", "zeta", "notes.txt", "reads.fq"]);
   });
 
   it("sorts names without regard to case", () => {
@@ -353,7 +377,7 @@ describe("buildPickerItems", () => {
   });
 });
 
-describe("visibleFolderRows", () => {
+describe("visiblePickerRows in folder mode", () => {
   const location = { kind: "path", path: home } as const;
   const listing = [
     item(`${home}/zeta`, "folder"),
@@ -365,23 +389,43 @@ describe("visibleFolderRows", () => {
 
   it("shows only visible folders by default", () => {
     expect(
-      visibleFolderRows(location, listing, false).map((entry) => entry.name),
+      visiblePickerRows({
+        location,
+        items: listing,
+        target: folderOnly,
+        showAll: false,
+      }).map((entry) => entry.name),
     ).toEqual(["Alpha", "zeta"]);
   });
 
   it("adds files with Show files, but never hidden items", () => {
     expect(
-      visibleFolderRows(location, listing, true).map((entry) => entry.name),
+      visiblePickerRows({
+        location,
+        items: listing,
+        target: folderOnly,
+        showAll: true,
+      }).map((entry) => entry.name),
     ).toEqual(["Alpha", "zeta", "reads.fq"]);
   });
 
   it("shows folder-like items such as job results only with Show files", () => {
     const withJob = [...listing, item(`${home}/job`, "job_result")];
     expect(
-      visibleFolderRows(location, withJob, false).map((entry) => entry.name),
+      visiblePickerRows({
+        location,
+        items: withJob,
+        target: folderOnly,
+        showAll: false,
+      }).map((entry) => entry.name),
     ).toEqual(["Alpha", "zeta"]);
     expect(
-      visibleFolderRows(location, withJob, true).map((entry) => entry.name),
+      visiblePickerRows({
+        location,
+        items: withJob,
+        target: folderOnly,
+        showAll: true,
+      }).map((entry) => entry.name),
     ).toEqual(["Alpha", "job", "zeta", "reads.fq"]);
   });
 
@@ -391,19 +435,301 @@ describe("visibleFolderRows", () => {
       item("/bob@bvbrc/readonly", "folder", { user: "r", global: "n" }),
     ];
     expect(
-      visibleFolderRows({ kind: "list", view: "shared" }, root, true).map(
-        (entry) => entry.path,
-      ),
+      visiblePickerRows({
+        location: { kind: "list", view: "shared" },
+        items: root,
+        target: folderOnly,
+        showAll: true,
+      }).map((entry) => entry.path),
     ).toEqual(["/bob@bvbrc/writable"]);
   });
 
   it("keeps Recently Used in the order it was used", () => {
     const recent = [item(`${home}/b`, "folder"), item(`${home}/a`, "folder")];
     expect(
-      visibleFolderRows({ kind: "list", view: "recent" }, recent, false).map(
-        (entry) => entry.name,
-      ),
+      visiblePickerRows({
+        location: { kind: "list", view: "recent" },
+        items: recent,
+        target: folderOnly,
+        showAll: false,
+      }).map((entry) => entry.name),
     ).toEqual(["b", "a"]);
+  });
+});
+
+describe("file-mode rows", () => {
+  const items = [
+    row("Assembly1", "job_result"),
+    row("Data", "folder"),
+    row("a.fasta", "contigs"),
+    row("notes.txt", "txt"),
+    row(".hidden.fasta", "contigs"),
+  ];
+  const location = { kind: "path", path: "/a@b/home" } as const;
+
+  it("shows folders, job results and matching files, folders first", () => {
+    expect(
+      visiblePickerRows({
+        location,
+        items,
+        target: contigs,
+        showAll: false,
+      }).map((r) => r.name),
+    ).toEqual(["Assembly1", "Data", "a.fasta"]);
+  });
+  it("shows the other files too with showAll, but never hidden ones", () => {
+    expect(
+      visiblePickerRows({
+        location,
+        items,
+        target: contigs,
+        showAll: true,
+      }).map((r) => r.name),
+    ).toEqual(["Assembly1", "Data", "a.fasta", "notes.txt"]);
+  });
+  it("keeps folder mode as it was", () => {
+    expect(
+      visiblePickerRows({
+        location,
+        items,
+        target: folderOnly,
+        showAll: false,
+      }).map((r) => r.name),
+    ).toEqual(["Data"]);
+  });
+  it("opens job results only when picking files", () => {
+    expect(isPickerItemNavigable(row("J", "job_result"), contigs)).toBe(true);
+    expect(isPickerItemNavigable(row("J", "job_result"), folderOnly)).toBe(
+      false,
+    );
+    expect(isPickerItemNavigable(row("J", "job_result"))).toBe(false);
+  });
+  it("chooses only files of the requested types", () => {
+    expect(isPickerItemChoosable(row("a.fasta", "contigs"), contigs)).toBe(
+      true,
+    );
+    expect(isPickerItemChoosable(row("n.txt", "txt"), contigs)).toBe(false);
+    expect(isPickerItemChoosable(row("D", "folder"), contigs)).toBe(false);
+    expect(isPickerItemChoosable(row("a.fasta", "contigs"), folderOnly)).toBe(
+      false,
+    );
+  });
+  it("matches types case-insensitively", () => {
+    expect(isPickerItemChoosable(row("a.fasta", "Contigs"), contigs)).toBe(
+      true,
+    );
+  });
+  it("takes a folder or a chosen file, not other files", () => {
+    expect(isPickerItemInteractive(row("D", "folder"), contigs)).toBe(true);
+    expect(isPickerItemInteractive(row("J", "job_result"), contigs)).toBe(true);
+    expect(isPickerItemInteractive(row("a.fasta", "contigs"), contigs)).toBe(
+      true,
+    );
+    expect(isPickerItemInteractive(row("n.txt", "txt"), contigs)).toBe(false);
+    expect(isPickerItemInteractive(row("a.fasta", "contigs"), folderOnly)).toBe(
+      false,
+    );
+  });
+  it("keys a job result by its hidden folder", () => {
+    expect(pickerRowKey(row("Assembly1", "job_result"), contigs)).toBe(
+      "/a@b/home/.Assembly1",
+    );
+    expect(pickerRowKey(row("Assembly1", "job_result"), folderOnly)).toBe(
+      "/a@b/home/Assembly1",
+    );
+    expect(pickerRowKey(row("Data", "folder"), contigs)).toBe(
+      "/a@b/home/Data",
+    );
+  });
+  it("chooses a job result, by its own path, when it is a requested type", () => {
+    const jobResults = pickerTargetFor(["job_result"]);
+    const job = row("Assembly1", "job_result");
+    expect(isPickerItemNavigable(job, jobResults)).toBe(false);
+    expect(isPickerItemChoosable(job, jobResults)).toBe(true);
+    expect(pickerRowKey(job, jobResults)).toBe("/a@b/home/Assembly1");
+    // Requested beside other types, it is still chosen rather than opened.
+    const mixed = pickerTargetFor(["contigs", "job_result"]);
+    expect(isPickerItemChoosable(job, mixed)).toBe(true);
+    expect(pickerRowKey(job, mixed)).toBe("/a@b/home/Assembly1");
+  });
+  it("browses a hidden output folder inside a job's folder, but no hidden file", () => {
+    const job = "/a@b/home/.CGA";
+    const outputs = [
+      row(".annotation", "folder", job),
+      row(".scratch.fasta", "contigs", job),
+      row("report.html", "html", job),
+    ];
+    for (const showAll of [false, true]) {
+      expect(
+        visiblePickerRows({
+          location: { kind: "path", path: job },
+          items: outputs,
+          target: contigs,
+          showAll,
+        }).map((r) => r.name),
+      ).toEqual(showAll ? [".annotation", "report.html"] : [".annotation"]);
+    }
+  });
+  it("lists a hidden folder a job result beside it opens only once, as the job", () => {
+    const job = "/a@b/home/.CGA";
+    expect(
+      visiblePickerRows({
+        location: { kind: "path", path: job },
+        items: [row("assembly", "job_result", job), row(".assembly", "folder", job)],
+        target: contigs,
+        showAll: true,
+      }).map((r) => r.name),
+    ).toEqual(["assembly"]);
+  });
+  it("keeps hidden folders out above job folders, and out of folder mode", () => {
+    expect(
+      visiblePickerRows({
+        location,
+        items: [row(".orphan", "folder"), row("Data", "folder")],
+        target: contigs,
+        showAll: true,
+      }).map((r) => r.name),
+    ).toEqual(["Data"]);
+    const job = "/a@b/home/.CGA";
+    expect(
+      visiblePickerRows({
+        location: { kind: "path", path: job },
+        items: [row(".annotation", "folder", job)],
+        target: folderOnly,
+        showAll: true,
+      }),
+    ).toEqual([]);
+  });
+  it("judges hidden rows the same way for the info pane", () => {
+    const job = "/a@b/home/.CGA";
+    const at = { kind: "path", path: job } as const;
+    const outputs = [
+      row(".annotation", "folder", job),
+      row("assembly", "job_result", job),
+      row(".assembly", "folder", job),
+    ];
+    const hidden = (entry: WorkspaceItem) =>
+      isHiddenPickerItem({ item: entry, location: at, items: outputs, target: contigs });
+    expect(outputs.map(hidden)).toEqual([false, false, true]);
+  });
+  it("lists read-only shared workspaces when picking files", () => {
+    const shared = { kind: "list", view: "shared" } as const;
+    const readOnly: WorkspaceItem = {
+      ...row("ws", "folder", "/bob@b"),
+      permissions: { user: "r", global: "n" },
+    };
+    expect(
+      visiblePickerRows({
+        location: shared,
+        items: [readOnly],
+        target: contigs,
+        showAll: false,
+      }),
+    ).toHaveLength(1);
+    expect(
+      visiblePickerRows({
+        location: shared,
+        items: [readOnly],
+        target: folderOnly,
+        showAll: false,
+      }),
+    ).toHaveLength(0);
+  });
+});
+
+describe("initialPickerSelection", () => {
+  it("opens a file's folder with the file selected", () => {
+    expect(
+      initialPickerSelection("/a@b/home/Data/a.fasta", "a@b", contigs),
+    ).toEqual({
+      view: "home",
+      chain: ["/a@b/home/Data"],
+      file: "/a@b/home/Data/a.fasta",
+    });
+  });
+  it("selects a file that sits in Home itself", () => {
+    expect(initialPickerSelection("/a@b/home/a.fasta", "a@b", contigs)).toEqual(
+      { view: "home", chain: [], file: "/a@b/home/a.fasta" },
+    );
+  });
+  it("walks into a job result's hidden folder", () => {
+    expect(
+      initialPickerSelection("/a@b/home/.Assembly1/c.fasta", "a@b", contigs),
+    ).toEqual({
+      view: "home",
+      chain: ["/a@b/home/.Assembly1"],
+      file: "/a@b/home/.Assembly1/c.fasta",
+    });
+  });
+  it("opens on Home with nothing for an empty or too-short value", () => {
+    expect(initialPickerSelection("", "a@b", contigs)).toEqual({
+      view: "home",
+      chain: [],
+      file: null,
+    });
+    expect(initialPickerSelection("/a@b/home", "a@b", contigs)).toEqual({
+      view: "home",
+      chain: [],
+      file: null,
+    });
+  });
+  it("leaves folder mode to initialColumnChain", () => {
+    expect(initialPickerSelection("/a@b/home/Data", "a@b", folderOnly)).toEqual(
+      { ...initialColumnChain("/a@b/home/Data", "a@b"), file: null },
+    );
+  });
+});
+
+describe("labels", () => {
+  it("names Home, and a job folder without its dot when picking files", () => {
+    expect(pickerPathLabel("/a@b/home", "/a@b/home", contigs)).toBe("Home");
+    expect(pickerPathLabel("/a@b/home/.Assembly1", "/a@b/home", contigs)).toBe(
+      "Assembly1",
+    );
+    expect(pickerPathLabel("/a@b/home/.x", "/a@b/home", folderOnly)).toBe(".x");
+  });
+  it("labels types from the upload types, or from the raw name", () => {
+    expect(pickerTypeLabel("contigs")).toBe("Contigs");
+    expect(pickerTypeLabel("genome_group")).toBe("Genome group");
+    expect(pickerTypeList(["contigs", "reads"])).toBe("Contigs or Reads");
+    expect(pickerTypeList(["contigs", "contigs"])).toBe("Contigs");
+  });
+});
+
+describe("what a picker of some types is called", () => {
+  const files = (...types: string[]) => ({ kind: "object" as const, types });
+
+  it("titles a folder picker, and a file picker by what it picks", () => {
+    expect(pickerTitleFor(folderOnly)).toBe("Select a Folder");
+    expect(pickerTitleFor(files("contigs"))).toBe("Select a File");
+    expect(pickerTitleFor(files("contigs", "reads"))).toBe("Select a File");
+  });
+
+  it("titles a picker of groups by the group", () => {
+    expect(pickerTitleFor(files("genome_group"))).toBe("Select a Genome Group");
+    expect(pickerTitleFor(files("feature_group"))).toBe("Select a Feature Group");
+    expect(pickerTitleFor(files("genome_group", "feature_group"))).toBe(
+      "Select a Genome or Feature Group",
+    );
+  });
+
+  it("calls a mix of groups and files a file picker", () => {
+    expect(pickerTitleFor(files("genome_group", "contigs"))).toBe(
+      "Select a File",
+    );
+  });
+
+  it("names the files of file types, and the groups of group types", () => {
+    expect(pickerTypePhrase(["contigs"])).toBe("Contigs files");
+    expect(pickerTypePhrase(["contigs", "reads"])).toBe("Contigs or Reads files");
+    expect(pickerTypePhrase(["aligned_dna_fasta"])).toBe("Aligned DNA FASTA files");
+    expect(pickerTypePhrase(["genome_group"])).toBe("genome groups");
+    expect(pickerTypePhrase(["genome_group", "feature_group"])).toBe(
+      "genome or feature groups",
+    );
+    expect(pickerTypePhrase(["genome_group", "contigs"])).toBe(
+      "Genome group or Contigs files",
+    );
   });
 });
 
@@ -603,7 +929,7 @@ describe("pickerCommitState", () => {
     });
   });
 
-  it("commits a writable folder or any selected file", () => {
+  it("commits a writable folder or a selected file of the right type", () => {
     expect(
       pickerCommitState({
         target: { kind: "folder" },
@@ -615,9 +941,113 @@ describe("pickerCommitState", () => {
       pickerCommitState({
         target: { kind: "object", types: ["reads"] },
         path: "/carol@bvbrc/public/r.fq",
+        item: item("/carol@bvbrc/public/r.fq", "reads"),
         writable: false,
       }),
     ).toEqual({ canCommit: true, reason: null });
+  });
+
+  it("asks for a file when an object target has no item", () => {
+    expect(
+      pickerCommitState({
+        target: { kind: "object", types: ["reads"] },
+        path: "/carol@bvbrc/public/r.fq",
+        writable: false,
+      }),
+    ).toEqual({ canCommit: false, reason: "Pick a file: Reads." });
+  });
+});
+
+describe("pickerCommitState for files", () => {
+  const path = "/a@b/home/a.fasta";
+  it("asks for a file while a folder is selected", () => {
+    expect(
+      pickerCommitState({
+        target: contigs,
+        path: "/a@b/home/Data",
+        item: row("Data", "folder"),
+        writable: true,
+      }),
+    ).toEqual({ canCommit: false, reason: "Pick a file: Contigs." });
+  });
+  it("lists every type to pick, whatever its label", () => {
+    const reasonFor = (...types: string[]) =>
+      pickerCommitState({
+        target: { kind: "object", types },
+        path: "/a@b/home/Data",
+        item: row("Data", "folder"),
+        writable: true,
+      }).reason;
+    expect(reasonFor("aligned_dna_fasta", "contigs")).toBe(
+      "Pick a file: Aligned DNA FASTA or Contigs.",
+    );
+    expect(reasonFor("embl")).toBe("Pick a file: EMBL.");
+  });
+  it("asks for a group, not a file, when the types are groups", () => {
+    const target = { kind: "object" as const, types: ["genome_group"] };
+    expect(
+      pickerCommitState({
+        target,
+        path: "/a@b/home/Data",
+        item: row("Data", "folder"),
+        writable: true,
+      }).reason,
+    ).toBe("Pick a genome group.");
+    expect(
+      pickerCommitState({
+        target,
+        path,
+        item: row("a.fasta", "txt"),
+        writable: true,
+      }).reason,
+    ).toBe("Only genome groups can be used here.");
+  });
+  it("refuses a file of another type", () => {
+    expect(
+      pickerCommitState({
+        target: contigs,
+        path,
+        item: row("a.fasta", "txt"),
+        writable: false,
+      }).reason,
+    ).toBe("Only Contigs files can be used here.");
+  });
+  it("commits a matching file without write access", () => {
+    expect(
+      pickerCommitState({
+        target: contigs,
+        path,
+        item: row("a.fasta", "contigs"),
+        writable: false,
+      }),
+    ).toEqual({ canCommit: true, reason: null });
+  });
+  it("applies isSelectable with the file's type", () => {
+    const isSelectable = vi.fn(() => false);
+    expect(
+      pickerCommitState({
+        target: contigs,
+        path,
+        item: row("a.fasta", "contigs"),
+        writable: true,
+        isSelectable,
+      }).reason,
+    ).toBe("This file can't be used here.");
+    expect(isSelectable).toHaveBeenCalledWith({
+      name: "a.fasta",
+      path,
+      type: "contigs",
+    });
+  });
+  it("can't commit before the file's row has loaded", () => {
+    expect(
+      pickerCommitState({
+        target: contigs,
+        path,
+        item: null,
+        writable: true,
+      }).canCommit,
+    ).toBe(false);
   });
 });
 
@@ -662,5 +1092,46 @@ describe("emptyListingMessage", () => {
     expect(emptyListingMessage({ kind: "list", view: "public" })).toBe(
       "No public workspaces.",
     );
+  });
+});
+
+describe("pickerTargetFor", () => {
+  it("picks a folder when every type is a folder type", () => {
+    expect(pickerTargetFor(["folder"])).toEqual({ kind: "folder" });
+  });
+  it("picks files otherwise", () => {
+    expect(pickerTargetFor(["contigs", "reads"])).toEqual({
+      kind: "object",
+      types: ["contigs", "reads"],
+    });
+  });
+  it("treats a job result as a file, not a folder", () => {
+    expect(pickerTargetFor(["job_result"]).kind).toBe("object");
+  });
+  it("picks files when no types are given", () => {
+    expect(pickerTargetFor([])).toEqual({ kind: "object", types: [] });
+  });
+});
+
+describe("isSelectableOutputFolder", () => {
+  it("accepts an ordinary folder", () => {
+    expect(
+      isSelectableOutputFolder({ name: "Run1", path: "/a@b/home/Run1" }),
+    ).toBe(true);
+  });
+  it("refuses a hidden folder", () => {
+    expect(isSelectableOutputFolder({ name: ".x", path: "/a@b/home/.x" })).toBe(
+      false,
+    );
+  });
+  it("refuses a folder inside a hidden folder", () => {
+    expect(
+      isSelectableOutputFolder({ name: "sub", path: "/a@b/home/.x/sub" }),
+    ).toBe(false);
+  });
+  it("accepts dots that don't start a segment", () => {
+    expect(
+      isSelectableOutputFolder({ name: "v1.2", path: "/a@b/home/v1.2" }),
+    ).toBe(true);
   });
 });

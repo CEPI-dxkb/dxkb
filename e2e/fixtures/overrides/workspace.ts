@@ -126,6 +126,37 @@ export function workspaceRpcOverride(
   };
 }
 
+/**
+ * `Workspace.get` returning `content` for `item` (the read a genome group's
+ * Add button makes, with `metadata_only: false`). List it before
+ * `buildWorkspaceOverrides(...)`, whose `Workspace.get` entries answer every
+ * path: the first match wins. Metadata-only reads of the same path (output
+ * name and path checks) still fall through to that bundle.
+ */
+export function workspaceObjectContentOverride(
+  item: TupleItem,
+  content: string,
+): JsonOverride {
+  const path = `${item.parentPath.replace(/\/+$/, "")}/${item.name}`;
+  return {
+    url: /\/api\/services\/workspace(?:$|\?)/,
+    method: "POST",
+    matchBody: (parsed) => {
+      const body = parsed as {
+        method?: string;
+        params?: [{ objects?: string[]; metadata_only?: boolean }];
+      } | null;
+      return (
+        body?.method === "Workspace.get" &&
+        body.params?.[0].metadata_only === false &&
+        body.params[0].objects?.length === 1 &&
+        body.params[0].objects[0] === path
+      );
+    },
+    body: buildBrowserRpcSuccess([[[workspaceTuple(item), content]]]),
+  };
+}
+
 interface BuildWorkspaceOverridesOptions {
   /** Directory path → tuples returned by Workspace.ls. Default: home populated with 3 items. */
   pathItems?: Record<string, TupleItem[]>;

@@ -1,6 +1,6 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import GenomeAlignmentServicePage from "../page";
 import type { GenomeSummary } from "@/lib/services/genome";
 
@@ -55,13 +55,22 @@ vi.mock("@/components/services/genome-name-selector", () => ({
 
 vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: ({
+    value,
     onObjectSelect,
+    onSelectedObjectChange,
   }: {
+    value?: string;
     onObjectSelect: (object: { id: string; name: string; path: string }) => void;
+    onSelectedObjectChange?: (
+      object: { id: string; name: string; path: string } | null,
+    ) => void;
   }) => (
     <>
       {/* Uncontrolled like the real selector's search text: only a remount clears it. */}
       <input aria-label="Search genome groups" />
+      <output aria-label="Genome group value">
+        {value === undefined ? "<no value prop>" : value}
+      </output>
       <button
         type="button"
         onClick={() => {
@@ -70,13 +79,19 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
       >
         Select genome group
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectedObjectChange?.({
+            id: "group",
+            name: "Test group",
+            path: "/groups/test",
+          });
+        }}
+      >
+        Stage genome group
+      </button>
     </>
-  ),
-}));
-
-vi.mock("@/components/services/selected-items-table", () => ({
-  default: ({ items }: { items: { id: string; name: string }[] }) => (
-    <div>{items.map((item) => <span key={item.id}>{item.name}</span>)}</div>
   ),
 }));
 
@@ -168,5 +183,155 @@ describe("GenomeAlignmentServicePage selection races", () => {
 
     expect(screen.getByText("Manual genome")).toBeInTheDocument();
     expect(screen.queryByText("Rerun genome")).not.toBeInTheDocument();
+  });
+
+  it("shows the staged group, and clears it once added", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([groupGenome]);
+    const user = userEvent.setup();
+    render(<GenomeAlignmentServicePage />);
+
+    await user.click(screen.getByRole("button", { name: "Stage genome group" }));
+    expect(screen.getByLabelText("Genome group value")).toHaveTextContent(
+      "/groups/test",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add genome group" }));
+    expect(screen.getByLabelText("Genome group value")).toHaveTextContent(/^$/);
+  });
+});
+
+// Rule 11: "Select at least two genomes" is a response to something the user
+// did, not to the empty form. These run the real page, field and schema.
+describe("GenomeAlignmentServicePage genome-count error", () => {
+  const countError = "Select at least two genomes";
+  const secondGroupGenome: GenomeSummary = {
+    genome_id: "group-genome-2",
+    genome_name: "Second group genome",
+  };
+
+  beforeEach(() => {
+    mocks.fetchGenomeGroupMembers.mockReset();
+    mocks.fetchGenomesByIds.mockReset();
+    mocks.runtimeConfig = undefined;
+  });
+
+  it("is not shown on first paint, nor when Strict Mode runs the sync twice", () => {
+    render(
+      <StrictMode>
+        <GenomeAlignmentServicePage />
+      </StrictMode>,
+    );
+
+    expect(screen.queryByText(countError)).not.toBeInTheDocument();
+  });
+
+  it("is shown after one genome is added and is not shown right after Reset", async () => {
+    const user = userEvent.setup();
+
+    render(<GenomeAlignmentServicePage />);
+    await user.click(screen.getByRole("button", { name: "Add individual genome" }));
+    expect(await screen.findByText(countError)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(screen.queryByText("Manual genome")).not.toBeInTheDocument();
+    expect(screen.queryByText(countError)).not.toBeInTheDocument();
+  });
+
+  it("is not shown right after Reset from a valid selection of two", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([groupGenome, secondGroupGenome]);
+    const user = userEvent.setup();
+
+    render(<GenomeAlignmentServicePage />);
+    await user.click(screen.getByRole("button", { name: "Select genome group" }));
+    expect(await screen.findByText("Second group genome")).toBeInTheDocument();
+    expect(screen.queryByText(countError)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(screen.queryByText("Second group genome")).not.toBeInTheDocument();
+    expect(screen.queryByText(countError)).not.toBeInTheDocument();
+  });
+
+  it("comes back when removing a genome drops the selection below two", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([groupGenome, secondGroupGenome]);
+    const user = userEvent.setup();
+
+    render(<GenomeAlignmentServicePage />);
+    await user.click(screen.getByRole("button", { name: "Select genome group" }));
+    expect(await screen.findByText("Second group genome")).toBeInTheDocument();
+    expect(screen.queryByText(countError)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Remove Second group genome" }));
+    expect(await screen.findByText(countError)).toBeInTheDocument();
+
+    // Removing the last one builds a new empty array: still a user action.
+    await user.click(screen.getByRole("button", { name: "Remove Group genome" }));
+    expect(await screen.findByText(countError)).toBeInTheDocument();
+  });
+});
+
+describe("GenomeAlignmentServicePage selected genome rows", () => {
+  beforeEach(() => {
+    mocks.fetchGenomeGroupMembers.mockReset();
+    mocks.fetchGenomesByIds.mockReset();
+  });
+
+  it("lists each genome with its ID in BLAST's table, tagging the first as the reference", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([
+      groupGenome,
+      { genome_id: "group-genome-2", genome_name: "Second group genome" },
+    ]);
+    const user = userEvent.setup();
+
+    render(<GenomeAlignmentServicePage />);
+    expect(
+      within(screen.getByRole("table", { name: "Selected genomes" })).getByRole(
+        "cell",
+        { name: "No genomes selected" },
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Select genome group" }));
+    await screen.findByText("Second group genome");
+
+    const rows = within(
+      screen.getByRole("table", { name: "Selected genomes" }),
+    ).getAllByRole("row");
+    // The header row, then one row per genome in selection order.
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "GenomeGenome IDRemove",
+      "Group genomeReferencegroup-genome",
+      "Second group genomegroup-genome-2",
+    ]);
+  });
+});
+
+describe("GenomeAlignmentServicePage advanced options layout", () => {
+  it("opens the seed weight slider under its toggle, leaving Weight in its own column", async () => {
+    const user = userEvent.setup();
+    render(<GenomeAlignmentServicePage />);
+    await user.click(screen.getByRole("button", { name: /Advanced Options/ }));
+
+    const toggle = screen.getByRole("switch", { name: "Manually Set Seed Weight" });
+    const weightLabel = screen.getByText("Weight", { selector: "label" });
+    const grid = toggle.closest(".service-card-content-grid");
+    const toggleColumn = [...(grid?.children ?? [])].find((column) =>
+      column.contains(toggle),
+    );
+    const weightColumnBefore = [...(grid?.children ?? [])].find((column) =>
+      column.contains(weightLabel),
+    );
+
+    await user.click(toggle);
+
+    const slider = screen.getByText("Seed Weight", { selector: "label" });
+    // The slider joins the toggle's column; Weight keeps the same grid cell
+    // (it used to be pushed onto a new row by the slider).
+    expect(toggleColumn).toContainElement(slider);
+    expect(toggleColumn).not.toContainElement(weightLabel);
+    expect(grid?.children).toHaveLength(2);
+    expect(
+      [...(grid?.children ?? [])].find((column) => column.contains(weightLabel)),
+    ).toBe(weightColumnBefore);
   });
 });

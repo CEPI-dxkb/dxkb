@@ -2,14 +2,6 @@ import type { ViralGenomeTreeFormData, ViralGenomeSequenceItem } from "./viral-g
 import * as ViralGenomeTreeSchema from "./viral-genome-tree-form-schema";
 
 // Utility functions
-export function formatMetadataLabel(field: string): string {
-  return field
-    .replace(/_/g, " ")
-    .split(" ")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
-}
-
 export function getDisplayName(name: string): string {
   const maxName = 36;
   if (name.length <= maxName) return name;
@@ -64,31 +56,6 @@ export function createSequenceItem(
   type: ViralGenomeSequenceItem["type"],
 ): ViralGenomeSequenceItem {
   return { filename, type };
-}
-
-/**
- * Create a metadata field object from a field ID
- */
-export function createMetadataField(fieldId: string): { id: string; name: string; selected: boolean } {
-  const allMetadataOptions = ViralGenomeTreeSchema.getMetadataSelectOptions(formatMetadataLabel);
-  const option = allMetadataOptions.find((opt) => opt.value === fieldId);
-  const name = option ? option.label : formatMetadataLabel(fieldId);
-
-  return {
-    id: fieldId,
-    name,
-    selected: true,
-  };
-}
-
-/**
- * Check if a metadata field is already selected
- */
-export function isMetadataFieldSelected(
-  metadataFields: { id: string; selected: boolean }[],
-  fieldId: string,
-): boolean {
-  return metadataFields.some((field) => field.id === fieldId && field.selected);
 }
 
 /**

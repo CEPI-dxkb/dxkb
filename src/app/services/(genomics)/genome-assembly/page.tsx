@@ -33,7 +33,7 @@ import {
 export interface AssemblyUiState {
   showAdvanced: boolean;
   genomeSizeUnit: "M" | "K";
-  expectedGenomeSize: number;
+  expectedGenomeSize: number | undefined;
   pairedRead1: string | null;
   pairedRead2: string | null;
   singleRead: string | null;
@@ -44,7 +44,7 @@ export type AssemblyAction =
   | { type: "reset" }
   | { type: "set-advanced"; value: boolean }
   | { type: "set-unit"; unit: "M" | "K" }
-  | { type: "set-genome-size"; value: number }
+  | { type: "set-genome-size"; value: number | undefined }
   | { type: "set-output-valid"; value: boolean }
   | {
       type: "set-read";
@@ -168,7 +168,6 @@ export default function GenomeAssemblyPage() {
       syncLibraries: setLibraries,
     },
   });
-  const recipe = useSelector(form.store, (value) => value.values.recipe);
   const outputPath = useSelector(
     form.store,
     (value) => value.values.output_path,
@@ -261,7 +260,6 @@ export default function GenomeAssemblyPage() {
             state={state}
             dispatch={dispatch}
             outputPath={outputPath}
-            showGenomeSize={recipe === "canu"}
           />
         </div>
         <SelectedLibraries

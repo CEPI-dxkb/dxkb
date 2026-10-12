@@ -8,6 +8,7 @@ import {
   maxViralValidationIdsPerRequest,
   validateViralGenomes,
   fetchGenomeGroupMembers,
+  formatInvalidGenomeGroupMessage,
 } from "@/lib/services/genome";
 import { server } from "@/test-helpers/msw-server";
 
@@ -260,6 +261,40 @@ describe("genome service", () => {
       expect(result).toEqual(["g1", "g2"]);
     });
 
+    it("splits a genome_id stored as one comma-separated string", async () => {
+      // How some older groups are stored; the legacy site reads them too.
+      const groupData = JSON.stringify({
+        name: "Haemophilus_influenzae_ampicillin_resistance",
+        id_list: { genome_id: "727.1572,727.1525, 727.1554,," },
+      });
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [[["metadata", groupData]]],
+          }),
+        ),
+      );
+
+      const result = await getGenomeIdsFromGroup("/user/string-group");
+
+      expect(result).toEqual(["727.1572", "727.1525", "727.1554"]);
+    });
+
+    it("returns empty array when genome_id is neither a list nor a string", async () => {
+      const groupData = JSON.stringify({ id_list: { genome_id: { a: 1 } } });
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [[["metadata", groupData]]],
+          }),
+        ),
+      );
+
+      const result = await getGenomeIdsFromGroup("/user/odd-group");
+
+      expect(result).toEqual([]);
+    });
+
     it("throws on HTTP error", async () => {
       server.use(
         http.post("/api/services/workspace", () =>
@@ -412,6 +447,47 @@ describe("genome service", () => {
       ]);
     });
 
+    it("throws the upstream message from the workspace proxy's error shape", async () => {
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json(
+            {
+              error: "BV-BRC API error: 500 Internal Server Error",
+              apiResponse: { code: -32603, message: "_ERROR_User lacks permission_ERROR_" },
+            },
+            { status: 500 },
+          ),
+        ),
+      );
+
+      await expect(fetchGenomeGroupMembers("/user/group")).rejects.toThrow(
+        /^User lacks permission$/,
+      );
+    });
+
+    it("looks up each id of a comma-separated genome_id string", async () => {
+      const groupData = JSON.stringify({
+        id_list: { genome_id: "727.1572,727.1525" },
+      });
+      let requestedIds: unknown;
+      server.use(
+        http.post("/api/services/workspace", () =>
+          HttpResponse.json({
+            result: [[["metadata", groupData]]],
+          }),
+        ),
+        http.post("/api/services/genome/by-ids", async ({ request }) => {
+          requestedIds = ((await request.json()) as { genome_ids: unknown })
+            .genome_ids;
+          return HttpResponse.json({ results: [] });
+        }),
+      );
+
+      await fetchGenomeGroupMembers("/user/string-group");
+
+      expect(requestedIds).toEqual(["727.1572", "727.1525"]);
+    });
+
     it("throws when workspace response entry is null", async () => {
       server.use(
         http.post("/api/services/workspace", () =>
@@ -432,6 +508,33 @@ describe("genome service", () => {
       const result = await fetchGenomeGroupMembers("/user/aborted");
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("formatInvalidGenomeGroupMessage", () => {
+    it("lists each error under alpha's heading", () => {
+      expect(
+        formatInvalidGenomeGroupMessage({
+          kingdom_error:
+            "Invalid Superkingdom: only virus genomes are permitted\nFirst occurrence for genome_id: 727.1572",
+          contigs_error:
+            "Error: only 1 contig is permitted\nFirst occurrence for genome_id: 727.1525",
+        }),
+      ).toBe(
+        [
+          "This looks like an invalid genome group. The following errors were found:",
+          "- Invalid Superkingdom: only virus genomes are permitted",
+          "First occurrence for genome_id: 727.1572",
+          "- Error: only 1 contig is permitted",
+          "First occurrence for genome_id: 727.1525",
+        ].join("\n"),
+      );
+    });
+
+    it("explains what a valid group needs when no error was named", () => {
+      expect(formatInvalidGenomeGroupMessage({})).toBe(
+        "Invalid genome group. Please check that all genomes are viruses with single contigs.",
+      );
     });
   });
 
@@ -469,8 +572,10 @@ describe("genome service", () => {
       const result = await validateViralGenomes(["g1"]);
 
       expect(result.allValid).toBe(false);
-      expect(result.errors.kingdom_error).toContain("Invalid Superkingdom");
-      expect(result.errors.kingdom_error).toContain("g1");
+      // Alpha's wording, with its `<br>` as a line break.
+      expect(result.errors.kingdom_error).toBe(
+        "Invalid Superkingdom: only virus genomes are permitted\nFirst occurrence for genome_id: g1",
+      );
     });
 
     it("detects contigs_error for multi-contig genomes", async () => {
@@ -491,10 +596,9 @@ describe("genome service", () => {
       const result = await validateViralGenomes(["g1"]);
 
       expect(result.allValid).toBe(false);
-      expect(result.errors.contigs_error).toContain(
-        "only 1 contig is permitted",
+      expect(result.errors.contigs_error).toBe(
+        "Error: only 1 contig is permitted\nFirst occurrence for genome_id: g1",
       );
-      expect(result.errors.contigs_error).toContain("g1");
     });
 
     it("detects genomelength_error for genomes exceeding max length", async () => {
@@ -515,10 +619,9 @@ describe("genome service", () => {
       const result = await validateViralGenomes(["g1"]);
 
       expect(result.allValid).toBe(false);
-      expect(result.errors.genomelength_error).toContain(
-        "exceeds maximum length",
+      expect(result.errors.genomelength_error).toBe(
+        "Error: genome exceeds maximum length 250000\nFirst occurrence for genome_id: g1",
       );
-      expect(result.errors.genomelength_error).toContain("g1");
     });
 
     it("rejects incomplete validation results", async () => {

@@ -22,6 +22,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
+  --disabled: oklch(0.912 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.45 0.12 247);
   --chart-2: oklch(0.67 0.16 129);
@@ -41,6 +42,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Keep last: see --color-primary-hover in globals.css;
+     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--foreground));
 }
 
 [data-theme='bvbrc-dark'] {
@@ -68,6 +72,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --disabled: oklch(0.348 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.58 0.13 247);
   --chart-2: oklch(0.73 0.16 129);
@@ -89,4 +94,7 @@
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
+  /* Keep last: see --color-primary-hover in globals.css;
+     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));
 }

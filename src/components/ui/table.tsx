@@ -18,16 +18,9 @@ const tableVariants = cva("w-full caption-bottom text-sm", {
       // Dense data grids.
       xs: "text-xs",
     },
-    variant: {
-      default: "",
-      // The muted surface of a table inside a bordered, rounded box; the box
-      // draws the frame, so the table adds none of its own.
-      well: "bg-muted",
-    },
   },
   defaultVariants: {
     size: "default",
-    variant: "default",
   },
 })
 
@@ -126,6 +119,10 @@ const tableCellVariants = cva(
           "border bg-background group-hover:bg-muted group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_15%,var(--color-background))] group-data-[state=selected]:group-hover:bg-[color-mix(in_srgb,var(--color-muted)_50%,var(--color-background))] dark:group-data-[state=selected]:bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-background))] dark:group-data-[state=selected]:group-hover:bg-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-background))]",
         // Identifiers and sequences.
         code: "font-mono text-xs",
+        // A cell whose text may be one long unbroken string (a workspace
+        // path): it wraps anywhere instead of widening the table. A call site
+        // cannot add this itself, since `whitespace-*` is typography.
+        wrap: "break-all whitespace-normal",
       },
     },
     defaultVariants: {
@@ -145,13 +142,12 @@ function Table({
   className,
   disableScrollWrapper,
   size,
-  variant,
   ...props
 }: TableProps) {
   const tableEl = (
     <table
       data-slot="table"
-      className={cn(tableVariants({ size, variant }), className)}
+      className={cn(tableVariants({ size }), className)}
       {...props}
     />
   );

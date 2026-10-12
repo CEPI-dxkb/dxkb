@@ -1,12 +1,17 @@
 "use client";
 
 import { useInfluenzaHaSubtypePage } from "./use-influenza-ha-subtype-page";
-import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldErrors,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
 
 import { ServiceHeader } from "@/components/services/service-header";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
@@ -43,6 +48,8 @@ export default function HASubtypeNumberingPage() {
     watchedTypeSet,
     inputSource,
     fastaValidationMessage,
+    validatedFasta,
+    fastaSequenceCount,
     validateFastaData,
     handleReset,
     setIsOutputNameValid,
@@ -60,11 +67,17 @@ export default function HASubtypeNumberingPage() {
             The HA Subtype Numbering Conversion service allows you to renumber
             Influenza HA sequences according to a cross-subtype numbering scheme
             proposed by Burke and Smith in{" "}
+            {/* `inline!`: the header's link rule is inline-flex, which sets a
+                link that wraps onto its own block and strands the "." after
+                it; the rule is unlayered, so only `!` beats it. `underline`:
+                the link sits in running text at about 1:1 against it, so
+                color alone does not mark it (WCAG 1.4.1), and the header
+                rule underlines only on hover. */}
             <a
               href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4100033/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary underline"
+              className="inline! underline"
             >
               Burke DF, Smith DJ (2014). A recommended numbering scheme for
               influenza A HA subtypes. PLoS One 9:e112302
@@ -146,28 +159,51 @@ export default function HASubtypeNumberingPage() {
 
               {inputSource === "fasta_data" && (
                 <form.Field name="input_fasta_data">
-                  {(field) => (
-                    <FieldItem>
-                      <ServiceTextarea
-                        placeholder="Enter one or more protein sequences in FASTA format."
-                        className="min-h-44"
-                        value={field.state.value}
-                        onChange={(e) => {
-                          field.handleChange(e.target.value);
-                        }}
-                        onBlur={() => {
-                          field.handleBlur();
-                          validateFastaData();
-                        }}
-                      />
-                      {fastaValidationMessage ? (
-                        <p className="text-sm text-destructive">
-                          {fastaValidationMessage}
+                  {(field) => {
+                    // The FASTA's own message, or the form's when the FASTA has
+                    // none, so the "required" error does not stack under it.
+                    const error =
+                      fastaValidationMessage || fieldErrorMessage(field);
+                    const hasError = Boolean(error);
+                    // The valid cue holds only for the text that passed.
+                    const isValidated =
+                      !hasError &&
+                      validatedFasta !== "" &&
+                      field.state.value === validatedFasta;
+                    return (
+                      <FieldItem>
+                        <ServiceTextarea
+                          placeholder="Enter one or more protein sequences in FASTA format."
+                          value={field.state.value}
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            validateFastaData();
+                          }}
+                          aria-invalid={hasError || undefined}
+                          variant={isValidated ? "valid" : undefined}
+                        />
+                        {/* One line, always present, as under BLAST's
+                            textarea: the error, the valid count, or nothing,
+                            in a reserved height so the card does not resize. */}
+                        <p
+                          role="status"
+                          className={cn(
+                            "min-h-5 text-sm",
+                            hasError ? "text-destructive" : "text-success",
+                          )}
+                        >
+                          {hasError
+                            ? error
+                            : isValidated && fastaSequenceCount > 0
+                              ? `✓ Valid FASTA with ${String(fastaSequenceCount)} sequence${fastaSequenceCount !== 1 ? "s" : ""}`
+                              : ""}
                         </p>
-                      ) : null}
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
+                      </FieldItem>
+                    );
+                  }}
                 </form.Field>
               )}
 
@@ -230,7 +266,14 @@ export default function HASubtypeNumberingPage() {
                     <ServiceLabel>
                       Conversion Sequence Numbering Scheme
                     </ServiceLabel>
-                    <div className="grid max-h-55 grid-cols-2 gap-2 overflow-y-auto rounded-md border bg-muted/50 p-4 md:grid-cols-4">
+                    {/* No scheme is chosen by default, so "Select at least
+                        one" is a common error; the box shows it too. */}
+                    <div
+                      className={cn(
+                        "grid grid-cols-2 gap-2 rounded-md border bg-background p-4 md:grid-cols-4",
+                        fieldErrorMessage(field) && "border-destructive",
+                      )}
+                    >
                       {HaReferenceTypes.map((scheme) => (
                         <div
                           className="flex items-center gap-2"
@@ -266,6 +309,7 @@ export default function HASubtypeNumberingPage() {
                 {(field) => (
                   <FieldItem className="w-full">
                     <OutputFolder
+                      required
                       value={field.state.value}
                       onChange={(value) => {
                         field.handleChange(value);
@@ -281,6 +325,7 @@ export default function HASubtypeNumberingPage() {
                   <FieldItem className="w-full">
                     <OutputFolder
                       variant="name"
+                      required
                       value={field.state.value}
                       onChange={(value) => {
                         field.handleChange(value);

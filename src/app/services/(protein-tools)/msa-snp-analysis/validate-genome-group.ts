@@ -1,4 +1,5 @@
 import {
+  formatInvalidGenomeGroupMessage,
   getGenomeIdsFromGroup,
   validateViralGenomes,
 } from "@/lib/services/genome";
@@ -8,6 +9,27 @@ export type GenomeGroupValidationResult =
   | { status: "empty" }
   | { status: "too-large"; genomeCount: number }
   | { status: "invalid"; message: string };
+
+/** The toast title and the field's message for a group that did not pass. */
+export function genomeGroupRejection(
+  result: Exclude<GenomeGroupValidationResult, { status: "valid" }>,
+  maxGenomes: number,
+): { title: string; message: string } {
+  switch (result.status) {
+    case "empty":
+      return {
+        title: "Empty genome group",
+        message: "The selected genome group is empty.",
+      };
+    case "too-large":
+      return {
+        title: "Genome group too large",
+        message: `The genome group has ${String(result.genomeCount)} genomes, but the maximum is ${String(maxGenomes)}.`,
+      };
+    case "invalid":
+      return { title: "Genome group validation failed", message: result.message };
+  }
+}
 
 interface ValidateGenomeGroupOptions {
   maxGenomes: number;
@@ -30,13 +52,9 @@ export async function validateGenomeGroup(
 
   const validation = await validateViralGenomes(genomeIds, { maxGenomeLength });
   if (!validation.allValid) {
-    const errors = Object.values(validation.errors).filter(Boolean);
     return {
       status: "invalid",
-      message:
-        errors.length > 0
-          ? errors.join("\n")
-          : "Invalid genome group. Please check that all genomes are viruses with single contigs.",
+      message: formatInvalidGenomeGroupMessage(validation.errors),
     };
   }
 

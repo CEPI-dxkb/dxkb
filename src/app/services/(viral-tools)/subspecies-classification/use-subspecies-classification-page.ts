@@ -11,6 +11,10 @@ import { subspeciesClassificationService } from "@/lib/forms/(viral-tools)/subsp
 
 export function useSubspeciesClassificationPage() {
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
+  // The text that last passed `validateFasta` on blur, or "" while none has.
+  // The textarea shows its valid border only while its value still equals it,
+  // so the cue goes as soon as the text changes, as the error does.
+  const [validatedFasta, setValidatedFasta] = useState("");
   const form = useForm({
     defaultValues: defaultSubspeciesClassificationFormValues,
     validators: { onChange: subspeciesClassificationFormSchema },
@@ -28,8 +32,12 @@ export function useSubspeciesClassificationPage() {
 
   function handleFastaBlur() {
     const value = form.state.values.input_fasta_data ?? "";
-    if (!value.trim()) return;
+    if (!value.trim()) {
+      setValidatedFasta("");
+      return;
+    }
     const result = validateFasta(value, "dna");
+    setValidatedFasta(result.valid ? result.trimFasta : "");
     const error = getFastaErrorMessage(result, "Subspecies Classification");
     form.setFieldMeta("input_fasta_data", (previous) => ({
       ...previous,
@@ -46,6 +54,7 @@ export function useSubspeciesClassificationPage() {
   function handleReset() {
     form.reset(defaultSubspeciesClassificationFormValues);
     setIsOutputNameValid(true);
+    setValidatedFasta("");
   }
   const runtime = useServiceRuntime({
     definition: subspeciesClassificationService,
@@ -56,6 +65,7 @@ export function useSubspeciesClassificationPage() {
     form,
     outputPath,
     inputSource,
+    validatedFasta,
     handleFastaBlur,
     handleReset,
     setIsOutputNameValid,

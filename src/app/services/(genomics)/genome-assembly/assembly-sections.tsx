@@ -1,8 +1,7 @@
-import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { useId } from "react";
+import { ChevronDown, HelpCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { NumberInput } from "@/components/ui/number-input";
 import {
   Select,
   SelectContent,
@@ -22,12 +21,10 @@ import OutputFolder from "@/components/services/output-folder";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import {
-  RequiredFormCardTitle,
-  RequiredFormLabel,
-} from "@/components/forms/required-form-components";
+import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -36,14 +33,20 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-input";
 import {
-  ServiceFieldLabel,
-  ServiceFieldSubLabel,
-} from "@/components/services/form-ui/service-field";
-import { ServiceLabel } from "@/components/services/form-ui/service-label";
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
+import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
+  genomeAssemblyGenomeParameters,
   genomeAssemblyParameters,
+  genomeAssemblyPolishing,
+  genomeAssemblyReadProcessing,
+  genomeAssemblyThresholds,
   readInputFileInfo,
 } from "@/lib/services/info/genome-assembly";
 import {
@@ -51,7 +54,7 @@ import {
   genomeAssemblyRecipes,
   genomeSizeUnitOptions,
 } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-form-utils";
-import type { Library } from "@/types/services";
+import type { Library, ServiceInfoPopup } from "@/types/services";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { AssemblyAction, AssemblyForm, AssemblyUiState } from "./page";
 
@@ -92,6 +95,7 @@ export function AssemblyInputs({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE 1..."
+            value={state.pairedRead1 ?? ""}
             onObjectSelect={(object: WorkspaceObject) => {
               dispatch({
                 type: "set-read",
@@ -103,6 +107,7 @@ export function AssemblyInputs({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE 2..."
+            value={state.pairedRead2 ?? ""}
             onObjectSelect={(object: WorkspaceObject) => {
               dispatch({
                 type: "set-read",
@@ -120,6 +125,7 @@ export function AssemblyInputs({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE..."
+            value={state.singleRead ?? ""}
             onObjectSelect={(object: WorkspaceObject) => {
               dispatch({
                 type: "set-read",
@@ -154,20 +160,13 @@ function ReadInput({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <ServiceLabel>{title}</ServiceLabel>
-        <div className="mx-4 h-px flex-1 bg-border" />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
+      <ServiceLibraryHeader title={title}>
+        <ServiceLibraryAddButton
           aria-label={`Add ${title.toLowerCase()} to selected libraries`}
           onClick={onAdd}
           disabled={disabled}
-        >
-          <ChevronRight size={16} />
-        </Button>
-      </div>
+        />
+      </ServiceLibraryHeader>
       <div className="space-y-3">{children}</div>
     </div>
   );
@@ -201,9 +200,9 @@ export function SelectedLibraries({
               </Tooltip>
             </TooltipProvider>
           </ServiceCardTitle>
-          <CardDescription>
+          <ServiceCardDescription>
             Place read files here using the arrow buttons.
-          </CardDescription>
+          </ServiceCardDescription>
         </ServiceCardHeader>
         <ServiceCardContent>
           <SelectedItemsTable
@@ -226,14 +225,12 @@ interface ParametersProps {
   state: AssemblyUiState;
   dispatch: React.Dispatch<AssemblyAction>;
   outputPath: string;
-  showGenomeSize: boolean;
 }
 export function AssemblyParameters({
   form,
   state,
   dispatch,
   outputPath,
-  showGenomeSize,
 }: ParametersProps) {
   return (
     <Card>
@@ -252,7 +249,7 @@ export function AssemblyParameters({
           <form.Field name="recipe">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>Assembly Strategy</RequiredFormLabel>
+                <ServiceRequiredLabel>Assembly Strategy</ServiceRequiredLabel>
                 <Select
                   items={genomeAssemblyRecipes}
                   value={field.state.value}
@@ -304,68 +301,10 @@ export function AssemblyParameters({
               </FieldItem>
             )}
           </form.Field>
-          {showGenomeSize && (
-            <form.Field name="genome_size">
-              {(field) => (
-                <FieldItem>
-                  <ServiceFieldLabel field={field}>
-                    Estimated Genome Size
-                  </ServiceFieldLabel>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id={field.name}
-                      name={field.name}
-                      aria-label="Estimated Genome Size"
-                      type="number"
-                      value={state.expectedGenomeSize}
-                      onChange={(event) => {
-                        const value = event.currentTarget.valueAsNumber;
-                        if (Number.isFinite(value)) {
-                          dispatch({ type: "set-genome-size", value });
-                          field.handleChange(
-                            calculateGenomeSize(value, state.genomeSizeUnit),
-                          );
-                        }
-                      }}
-                      className="service-card-input flex-1"
-                      min={state.genomeSizeUnit === "M" ? 1 : 100}
-                      max={state.genomeSizeUnit === "M" ? 10 : 10000}
-                    />
-                    <span className="text-lg">&times;</span>
-                    <Select
-                      items={genomeSizeUnitOptions}
-                      value={state.genomeSizeUnit}
-                      onValueChange={(unit) => {
-                        if (unit) {
-                          dispatch({ type: "set-unit", unit });
-                          field.handleChange(unit === "M" ? 5000000 : 500000);
-                        }
-                      }}
-                    >
-                      <ServiceSelectTrigger
-                        aria-label="Genome size unit"
-                        className="w-20"
-                      >
-                        <SelectValue />
-                      </ServiceSelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {genomeSizeUnitOptions.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <FieldErrors field={field} />
-                </FieldItem>
-              )}
-            </form.Field>
-          )}
           <AdvancedOptions
             form={form}
+            state={state}
+            dispatch={dispatch}
             open={state.showAdvanced}
             setOpen={(value) => {
               dispatch({ type: "set-advanced", value });
@@ -378,10 +317,14 @@ export function AssemblyParameters({
 }
 function AdvancedOptions({
   form,
+  state,
+  dispatch,
   open,
   setOpen,
 }: {
   form: AssemblyForm;
+  state: AssemblyUiState;
+  dispatch: React.Dispatch<AssemblyAction>;
   open: boolean;
   setOpen: (value: boolean) => void;
 }) {
@@ -389,13 +332,6 @@ function AdvancedOptions({
     ["normalize", "Normalize Illumina Reads"],
     ["trim", "Trim Short Reads"],
     ["filtlong", "Filter Long Reads"],
-  ] as const;
-  const numbers = [
-    ["target_depth", "Target Genome Coverage", 100, 500, 50],
-    ["racon_iter", "Racon Iterations", 0, 4, 1],
-    ["pilon_iter", "Pilon Iterations", 0, 4, 1],
-    ["min_contig_len", "Min. contig length", 100, 100000, 10],
-    ["min_contig_cov", "Min. contig coverage", 0, 100000, 5],
   ] as const;
   return (
     <ServiceCollapsible open={open} onOpenChange={setOpen}>
@@ -405,51 +341,229 @@ function AdvancedOptions({
           className={`size-4 transition-transform ${open ? "rotate-180 transform" : ""}`}
         />
       </ServiceCollapsibleTrigger>
+      {/* The four groups of BV-BRC's Assembly2 form, in its order. */}
       <ServiceCollapsibleContent>
-        <div className="space-y-4">
-          <ServiceLabel>Read Processing</ServiceLabel>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {switches.map(([name, label]) => (
-              <form.Field key={name} name={name}>
-                {(field) => (
-                  <FieldItem className="flex flex-col items-start justify-between">
-                    <ServiceFieldSubLabel field={field}>
-                      {label}
-                    </ServiceFieldSubLabel>
-                    <Switch
-                      id={field.name}
-                      checked={field.state.value}
-                      onCheckedChange={field.handleChange}
-                    />
-                  </FieldItem>
-                )}
-              </form.Field>
-            ))}
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {numbers.map(([name, label, min, max, stepper]) => (
-            <form.Field key={name} name={name}>
-              {(field) => (
-                <FieldItem>
-                  <ServiceFieldSubLabel field={field}>
-                    {label}
-                  </ServiceFieldSubLabel>
-                  <NumberInput
-                    id={field.name}
-                    value={field.state.value}
-                    onValueChange={field.handleChange}
-                    min={min}
-                    max={max}
-                    stepper={stepper}
-                  />
-                  <FieldErrors field={field} />
-                </FieldItem>
-              )}
-            </form.Field>
-          ))}
+        <div className="space-y-6">
+          <AdvancedSection info={genomeAssemblyReadProcessing}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {switches.map(([name, label]) => (
+                <form.Field key={name} name={name}>
+                  {(field) => (
+                    <FieldItem className="flex flex-col items-start justify-between">
+                      <ServiceFieldLabel field={field}>
+                        {label}
+                      </ServiceFieldLabel>
+                      <Switch
+                        id={field.name}
+                        checked={field.state.value}
+                        onCheckedChange={field.handleChange}
+                      />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              ))}
+            </div>
+          </AdvancedSection>
+          <AdvancedSection info={genomeAssemblyGenomeParameters}>
+            <div className="service-card-content-grid">
+              <GenomeSizeField form={form} state={state} dispatch={dispatch} />
+              <AdvancedNumberField
+                form={form}
+                name="target_depth"
+                label="Target Genome Coverage"
+                min={100}
+                max={500}
+                stepper={50}
+              />
+            </div>
+          </AdvancedSection>
+          <AdvancedSection info={genomeAssemblyPolishing}>
+            <div className="service-card-content-grid">
+              <AdvancedNumberField
+                form={form}
+                name="racon_iter"
+                label="Racon Iterations"
+                min={0}
+                max={4}
+                stepper={1}
+              />
+              <AdvancedNumberField
+                form={form}
+                name="pilon_iter"
+                label="Pilon Iterations"
+                min={0}
+                max={4}
+                stepper={1}
+              />
+            </div>
+          </AdvancedSection>
+          <AdvancedSection info={genomeAssemblyThresholds}>
+            <div className="service-card-content-grid">
+              <AdvancedNumberField
+                form={form}
+                name="min_contig_len"
+                label="Min. contig length"
+                min={100}
+                max={100000}
+                stepper={10}
+              />
+              <AdvancedNumberField
+                form={form}
+                name="min_contig_cov"
+                label="Min. contig coverage"
+                min={0}
+                max={100000}
+                stepper={5}
+              />
+            </div>
+          </AdvancedSection>
         </div>
       </ServiceCollapsibleContent>
     </ServiceCollapsible>
+  );
+}
+
+/**
+ * One titled group of Advanced Options, its info popup beside the title. The
+ * title sits a size above the field labels so the groups read apart; it is not
+ * a heading element, because the card titles above it are not headings either
+ * and an `h3` here would skip levels.
+ */
+function AdvancedSection({
+  info,
+  children,
+}: {
+  info: ServiceInfoPopup;
+  children: React.ReactNode;
+}) {
+  const titleId = useId();
+  return (
+    <div role="group" aria-labelledby={titleId} className="space-y-2">
+      <div className="flex items-center gap-1">
+        <span id={titleId} className="text-base font-semibold">
+          {info.title}
+        </span>
+        <DialogInfoPopup
+          title={info.title}
+          description={info.description}
+          sections={info.sections}
+        />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function AdvancedNumberField({
+  form,
+  name,
+  label,
+  min,
+  max,
+  stepper,
+}: {
+  form: AssemblyForm;
+  name:
+    | "target_depth"
+    | "racon_iter"
+    | "pilon_iter"
+    | "min_contig_len"
+    | "min_contig_cov";
+  label: string;
+  min: number;
+  max: number;
+  stepper: number;
+}) {
+  return (
+    <form.Field name={name}>
+      {(field) => (
+        <FieldItem>
+          <ServiceFieldLabel field={field}>{label}</ServiceFieldLabel>
+          <ServiceNumberInput
+            id={field.name}
+            value={field.state.value}
+            onValueChange={field.handleChange}
+            min={min}
+            max={max}
+            stepper={stepper}
+          />
+          <FieldErrors field={field} />
+        </FieldItem>
+      )}
+    </form.Field>
+  );
+}
+
+/**
+ * Estimated Genome Size, as BV-BRC's Assembly2 form asks for it under Genome
+ * Parameters: a count in megabases or kilobases. The page state holds the
+ * count and unit; the form holds `genome_size` in bases. Switching the unit
+ * resets the count to that unit's default (5 M or 500 K), as BV-BRC does.
+ */
+function GenomeSizeField({
+  form,
+  state,
+  dispatch,
+}: {
+  form: AssemblyForm;
+  state: AssemblyUiState;
+  dispatch: React.Dispatch<AssemblyAction>;
+}) {
+  const megabases = state.genomeSizeUnit === "M";
+  return (
+    <form.Field name="genome_size">
+      {(field) => (
+        <FieldItem>
+          <ServiceFieldLabel field={field}>
+            Estimated Genome Size
+          </ServiceFieldLabel>
+          <div className="flex items-center gap-2">
+            <ServiceNumberInput
+              id={field.name}
+              value={state.expectedGenomeSize}
+              onValueChange={(value) => {
+                dispatch({ type: "set-genome-size", value });
+                field.handleChange(
+                  value === undefined
+                    ? undefined
+                    : calculateGenomeSize(value, state.genomeSizeUnit),
+                );
+              }}
+              min={megabases ? 1 : 100}
+              max={megabases ? 10 : 10000}
+              stepper={megabases ? 1 : 100}
+            />
+            <Select
+              items={genomeSizeUnitOptions}
+              value={state.genomeSizeUnit}
+              onValueChange={(unit) => {
+                if (unit) {
+                  dispatch({ type: "set-unit", unit });
+                  field.handleChange(unit === "M" ? 5000000 : 500000);
+                }
+              }}
+            >
+              <ServiceSelectTrigger
+                aria-label="Genome size unit"
+                className="w-20"
+              >
+                <SelectValue />
+              </ServiceSelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {genomeSizeUnitOptions.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <span aria-hidden="true">&times;</span>
+          </div>
+          <FieldErrors field={field} />
+        </FieldItem>
+      )}
+    </form.Field>
   );
 }

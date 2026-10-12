@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useHotkey } from "@tanstack/react-hotkeys";
-import { ChevronDown, Search, Loader2, Plus } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { Button } from "@/components/ui/button";
 import { GenomeSuggestionList } from "@/components/services/genome-suggestion-list";
@@ -253,22 +254,14 @@ export function GenomeNameSelector({
               </div>
             )}
         </div>
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
+        <ServiceAddButton
           aria-label="Add genome"
-          disabled={selectionDisabled || isLoading}
+          disabled={selectionDisabled}
+          pending={isLoading}
           onClick={() => {
             void handleManualAdd();
           }}
-        >
-          {isLoading ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Plus className="size-4" />
-          )}
-        </Button>
+        />
       </div>
       {helperText && (
         <p className="text-xs text-muted-foreground">{helperText}</p>

@@ -53,10 +53,12 @@ function ControlledSelectionTable({
   onGenomeSelect,
   onActiveRowChange,
   onRowSelectionChange,
+  crossPageSelection,
 }: {
   onGenomeSelect?: (id: string | null) => void;
   onActiveRowChange?: (id: string | null) => void;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
+  crossPageSelection?: boolean;
 }) {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const handleRowSelectionChange = (selection: RowSelectionState) => {
@@ -74,6 +76,7 @@ function ControlledSelectionTable({
       onRowSelectionChange={handleRowSelectionChange}
       onGenomeSelect={onGenomeSelect}
       onActiveRowChange={onActiveRowChange}
+      crossPageSelection={crossPageSelection}
     />
   );
 }
@@ -84,6 +87,47 @@ beforeAll(() => {
     unobserve = vi.fn();
     disconnect = vi.fn();
   };
+});
+
+describe("DataTable cross-page selection", () => {
+  it("offers every result across pages once the page is selected", async () => {
+    const user = userEvent.setup();
+    render(<ControlledSelectionTable />);
+
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select all rows on this page" }),
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Select all 4 results across all pages",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the page selection alone when the owner turns it off", async () => {
+    const user = userEvent.setup();
+    const onRowSelectionChange = vi.fn();
+    render(
+      <ControlledSelectionTable
+        crossPageSelection={false}
+        onRowSelectionChange={onRowSelectionChange}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select all rows on this page" }),
+    );
+
+    expect(onRowSelectionChange).toHaveBeenLastCalledWith({
+      "100.1": true,
+      "100.2": true,
+      "100.3": true,
+      "100.4": true,
+    });
+    expect(screen.queryByText(/across all pages/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/results on this page are selected/)).not.toBeInTheDocument();
+  });
 });
 
 describe("DataTable shared view seams", () => {

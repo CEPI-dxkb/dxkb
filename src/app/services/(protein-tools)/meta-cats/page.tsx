@@ -18,16 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Plus } from "lucide-react";
+import type { RowSelectionState } from "@tanstack/react-table";
+import { Trash2 } from "lucide-react";
 import {
   metaCATSInfo,
   metaCATSParameters,
@@ -51,9 +43,18 @@ import {
   ServiceInput,
   ServiceNumberInput,
 } from "@/components/services/form-ui/service-input";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
+import { ServiceAutocompleteInput } from "@/components/services/form-ui/service-autocomplete";
+import {
+  Autocomplete,
+  AutocompleteContent,
+  AutocompleteEmpty,
+  AutocompleteItem,
+  AutocompleteList,
+} from "@/components/ui/autocomplete";
 import {
   metaCatsFormSchema,
   defaultMetaCatsFormValues,
@@ -63,18 +64,21 @@ import {
   type MetaCatsFormData,
 } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-form-schema";
 import {
-  getMetaCatsDisplayName,
   countUniqueGroups,
   getUniqueGroupNames,
+  groupNamesSourceText,
   validateYearRanges,
   createGenomeIdMapFromFeatures,
   buildMetaCatsAutoGroupsFromGenomes,
   removeAutoGroupsByRowIds,
   updateAutoGroupsGroupByRowIds,
+  metaCatsGenomeFields,
+  selectedAutoGroupRowIds,
 } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-form-utils";
 import { metaCatsService } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-service";
 import { fetchFeaturesFromGroup } from "@/lib/services/feature";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
+import { MetaCatsGroupsGrid } from "./meta-cats-groups-grid";
 import { MetaCatsInputSection } from "./meta-cats-input-sections";
 
 const emptyAutoGroups: NonNullable<MetaCatsFormData["auto_groups"]> = [];
@@ -85,9 +89,8 @@ function useMetaCATSPage() {
   const [selectedAutoFeatureGroupObject, setSelectedAutoFeatureGroupObject] =
     useState<WorkspaceObject | null>(null);
   const [isLoadingAutoGroup, setIsLoadingAutoGroup] = useState(false);
-  const [selectedGridRows, setSelectedGridRows] = useState<Set<string>>(
-    new Set(),
-  );
+  // Keyed by BRC ID (patric_id), as the Groups Grid selects rows.
+  const [gridSelection, setGridSelection] = useState<RowSelectionState>({});
   const [groupNames, setGroupNames] = useState<string[]>([]);
   const [selectedGroupName, setSelectedGroupName] = useState<string>("");
   const [yearRangesInput, setYearRangesInput] = useState<string>("");
@@ -123,7 +126,7 @@ function useMetaCATSPage() {
     setSelectedFeatureGroupObject(null);
     setSelectedAlignmentFileObject(null);
     setSelectedGroupFileObject(null);
-    setSelectedGridRows(new Set());
+    setGridSelection({});
     setGroupNames([]);
     setSelectedGroupName("");
     setYearRangesInput("");
@@ -207,6 +210,13 @@ function useMetaCATSPage() {
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const uniqueGroupCount = countUniqueGroups(autoGroups);
+  const selectedRowCount = selectedAutoGroupRowIds(
+    autoGroups,
+    gridSelection,
+  ).size;
+  // Features whose genome lacks the metadata sit in a blank group, which
+  // would be a blank suggestion.
+  const groupNameSuggestions = groupNames.filter((name) => name !== "");
   const showYearRanges = metadataGroup === "collection_year";
 
   function handleYearRangesChange(value: string) {
@@ -252,8 +262,11 @@ function useMetaCATSPage() {
       const genomeIdMap = createGenomeIdMapFromFeatures(features);
       const genomeIds = Array.from(genomeIdMap.keys());
 
-      // Fetch genome metadata
-      const genomes = await fetchGenomesByIds(genomeIds);
+      // Fetch genome metadata: the field rows are grouped by, and the
+      // grid's Genbank Accession.
+      const genomes = await fetchGenomesByIds(genomeIds, {
+        fields: metaCatsGenomeFields(currentMetadataGroup),
+      });
 
       const currentAutoGroups = form.state.values.auto_groups || [];
 
@@ -298,65 +311,56 @@ function useMetaCATSPage() {
   }
 
   function handleDeleteSelectedRows() {
-    if (selectedGridRows.size === 0) return;
-
     const currentAutoGroups = form.state.values.auto_groups || [];
+    const selectedRowIds = selectedAutoGroupRowIds(
+      currentAutoGroups,
+      gridSelection,
+    );
+    if (selectedRowIds.size === 0) return;
+
     const updatedAutoGroups = removeAutoGroupsByRowIds(
       currentAutoGroups,
-      selectedGridRows,
+      selectedRowIds,
     );
     form.setFieldValue("auto_groups", updatedAutoGroups);
 
     // Update group names
     const remainingGroupNames = getUniqueGroupNames(updatedAutoGroups);
     setGroupNames(remainingGroupNames);
-    setSelectedGridRows(new Set());
+    setGridSelection({});
 
-    toast.success(`Deleted ${String(selectedGridRows.size)} row(s)`, {
+    toast.success(`Deleted ${String(selectedRowIds.size)} row(s)`, {
       closeButton: true,
     });
   }
 
   function handleChangeGroup() {
-    if (!selectedGroupName || selectedGridRows.size === 0) {
+    const groupName = selectedGroupName.trim();
+    const currentAutoGroups = form.state.values.auto_groups || [];
+    const selectedRowIds = selectedAutoGroupRowIds(
+      currentAutoGroups,
+      gridSelection,
+    );
+    if (!groupName || selectedRowIds.size === 0) {
       toast.error("Select rows and enter a group name", { closeButton: true });
       return;
     }
 
-    const currentAutoGroups = form.state.values.auto_groups || [];
     const updatedAutoGroups = updateAutoGroupsGroupByRowIds(
       currentAutoGroups,
-      selectedGridRows,
-      selectedGroupName,
+      selectedRowIds,
+      groupName,
     );
 
     form.setFieldValue("auto_groups", updatedAutoGroups);
 
     // Update group names
     const newGroupNames = new Set(groupNames);
-    newGroupNames.add(selectedGroupName);
+    newGroupNames.add(groupName);
     setGroupNames(Array.from(newGroupNames));
 
-    toast.success(`Changed group for ${String(selectedGridRows.size)} row(s)`, {
+    toast.success(`Changed group for ${String(selectedRowIds.size)} row(s)`, {
       closeButton: true,
-    });
-  }
-
-  function handleSelectAllRows(checked: boolean) {
-    setSelectedGridRows(
-      checked ? new Set(autoGroups.map((item) => item.id)) : new Set(),
-    );
-  }
-
-  function handleRowSelect(id: string) {
-    setSelectedGridRows((previousRows) => {
-      const nextRows = new Set(previousRows);
-      if (nextRows.has(id)) {
-        nextRows.delete(id);
-      } else {
-        nextRows.add(id);
-      }
-      return nextRows;
     });
   }
 
@@ -535,8 +539,10 @@ function useMetaCATSPage() {
                 active={inputType === "auto"}
                 className="space-y-4"
               >
-                  {/* Metadata Selection */}
-                  <div className="flex flex-wrap gap-4">
+                  {/* Metadata Selection. `items-start`, so the message under
+                      Year Ranges does not stretch the Metadata field and push
+                      its select down. */}
+                  <div className="flex flex-wrap items-start gap-4">
                     <form.Field name="metadata_group">
                       {(field) => (
                         <FieldItem className="min-w-48">
@@ -585,7 +591,7 @@ function useMetaCATSPage() {
 
                     {/* Year Ranges (only for collection_year) */}
                     {showYearRanges && (
-                      <div className="min-w-64 flex-1">
+                      <FieldItem className="min-w-64 flex-1">
                         <ServiceLabel>Year Ranges</ServiceLabel>
                         <ServiceInput
                           value={yearRangesInput}
@@ -593,10 +599,13 @@ function useMetaCATSPage() {
                             handleYearRangesChange(e.target.value);
                           }}
                           placeholder="1998,1999-2005,2006"
+                          aria-invalid={
+                            yearRangesValidation?.valid === false || undefined
+                          }
                         />
                         {yearRangesValidation && (
                           <p
-                            className={`mt-1 text-xs ${
+                            className={`text-xs ${
                               yearRangesValidation.valid
                                 ? "text-muted-foreground"
                                 : "text-destructive"
@@ -605,7 +614,7 @@ function useMetaCATSPage() {
                             {yearRangesValidation.message}
                           </p>
                         )}
-                      </div>
+                      </FieldItem>
                     )}
                   </div>
 
@@ -623,24 +632,14 @@ function useMetaCATSPage() {
                         }}
                         value={selectedAutoFeatureGroupObject?.path}
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
+                      <ServiceAddButton
                         aria-label="Add feature group"
                         onClick={() => {
                           void handleAddAutoFeatureGroup();
                         }}
-                        disabled={
-                          !selectedAutoFeatureGroupObject || isLoadingAutoGroup
-                        }
-                      >
-                        {isLoadingAutoGroup ? (
-                          <Spinner className="size-4" />
-                        ) : (
-                          <Plus className="size-4" />
-                        )}
-                      </Button>
+                        disabled={!selectedAutoFeatureGroupObject}
+                        pending={isLoadingAutoGroup}
+                      />
                     </div>
                   </div>
 
@@ -673,37 +672,74 @@ function useMetaCATSPage() {
                   <div className="space-y-2">
                     <ServiceLabel>Group Names</ServiceLabel>
                     <div className="flex gap-2">
-                      <Select
-                        items={groupNames.map((name) => ({
-                          value: name,
-                          label: name,
-                        }))}
+                      {/* Typed text is a group name too, as in legacy's
+                          combo box: Change group can move rows into a new
+                          group as well as an existing one. */}
+                      <Autocomplete
+                        items={groupNameSuggestions}
                         value={selectedGroupName}
-                        onValueChange={(value) => {
-                          setSelectedGroupName(value ?? "");
-                        }}
+                        onValueChange={setSelectedGroupName}
+                        openOnInputClick
                       >
-                        <ServiceSelectTrigger
+                        <ServiceAutocompleteInput
                           className="flex-1"
-                          aria-label="Select group name"
-                        >
-                          <SelectValue placeholder="Select or enter group name" />
-                        </ServiceSelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {groupNames.map((name) => (
-                              <SelectItem key={name} value={name}>
+                          aria-label="Group name"
+                          placeholder="Select or type a group name"
+                          triggerLabel="Show group names"
+                          onKeyDown={(event) => {
+                            // Enter picks a highlighted name; otherwise it
+                            // would submit the whole job.
+                            if (event.key === "Enter") event.preventDefault();
+                          }}
+                        />
+                        <AutocompleteContent>
+                          <AutocompleteEmpty>
+                            {autoGroups.length === 0 ? (
+                              <div className="space-y-1 p-3">
+                                <p className="font-medium">
+                                  No group names yet
+                                </p>
+                                <p className="text-muted-foreground">
+                                  {groupNamesSourceText(metadataGroup)} Select
+                                  a feature group above and click + to add its
+                                  features.
+                                </p>
+                                <p className="text-muted-foreground">
+                                  Then select rows in the grid, choose a name
+                                  here or type a new one, and click Change
+                                  group to move those rows into that group.
+                                </p>
+                              </div>
+                            ) : selectedGroupName.trim() === "" ? (
+                              <p className="p-3 text-muted-foreground">
+                                None of the features in the grid has a metadata
+                                value, so there are no group names to list.
+                                Type a name, select rows in the grid, and click
+                                Change group to group those rows under it.
+                              </p>
+                            ) : (
+                              <p className="p-3 text-muted-foreground">
+                                No group is named &ldquo;
+                                {selectedGroupName.trim()}&rdquo; yet. Change
+                                group moves the selected rows into a new group
+                                with this name.
+                              </p>
+                            )}
+                          </AutocompleteEmpty>
+                          <AutocompleteList>
+                            {(name: string) => (
+                              <AutocompleteItem key={name} value={name}>
                                 {name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
+                              </AutocompleteItem>
+                            )}
+                          </AutocompleteList>
+                        </AutocompleteContent>
+                      </Autocomplete>
                       <Button
                         type="button"
                         onClick={handleChangeGroup}
                         disabled={
-                          selectedGridRows.size === 0 || !selectedGroupName
+                          selectedRowCount === 0 || !selectedGroupName.trim()
                         }
                       >
                         Change group
@@ -728,83 +764,19 @@ function useMetaCATSPage() {
                       </span>
                     </div>
 
-                    <div className="overflow-hidden rounded-md border">
-                      <Table variant="well">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-12">
-                              <Checkbox
-                                id="select-all-meta-cats"
-                                name="select-all-meta-cats"
-                                aria-label="Select all"
-                                checked={
-                                  selectedGridRows.size === autoGroups.length &&
-                                  autoGroups.length > 0
-                                }
-                                onCheckedChange={handleSelectAllRows}
-                              />
-                            </TableHead>
-                            <TableHead>Patric ID</TableHead>
-                            <TableHead>Strain</TableHead>
-                            <TableHead>Metadata</TableHead>
-                            <TableHead>Group</TableHead>
-                            <TableHead>Genome ID</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {autoGroups.length === 0 ? (
-                            <TableRow>
-                              <TableCell
-                                colSpan={6}
-                                className="py-8 text-center"
-                              >
-                                <span className="text-muted-foreground">
-                                  No features added. Select a feature group and
-                                  click + to add.
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            autoGroups.map((item) => (
-                              <TableRow key={item.id}>
-                                <TableCell>
-                                  <Checkbox
-                                    id={`row-${item.id}-checkbox`}
-                                    name={`row-${item.id}-checkbox`}
-                                    aria-label={`Select ${item.patric_id}`}
-                                    checked={selectedGridRows.has(item.id)}
-                                    onCheckedChange={() => {
-                                      handleRowSelect(item.id);
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell variant="code">
-                                  {getMetaCatsDisplayName(item.patric_id, 24)}
-                                </TableCell>
-                                <TableCell>{item.strain || "-"}</TableCell>
-                                <TableCell>{item.metadata || "-"}</TableCell>
-                                <TableCell>{item.group || "-"}</TableCell>
-                                <TableCell variant="code">
-                                  {item.genome_id}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
+                    <MetaCatsGroupsGrid
+                      rows={autoGroups}
+                      rowSelection={gridSelection}
+                      onRowSelectionChange={setGridSelection}
+                    />
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {autoGroups.length} item(s), {selectedGridRows.size}{" "}
-                        selected
-                      </span>
+                    <div className="flex justify-end">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleDeleteSelectedRows}
-                        disabled={selectedGridRows.size === 0}
+                        disabled={selectedRowCount === 0}
                       >
                         <Trash2 className="mr-2 size-4" />
                         Delete Rows
@@ -839,16 +811,11 @@ function useMetaCATSPage() {
                           value={selectedFeatureGroupObject?.path}
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
+                      <ServiceAddButton
                         aria-label="Add feature group"
                         onClick={handleAddFeatureGroup}
                         disabled={!selectedFeatureGroupObject}
-                      >
-                        <Plus className="size-4" />
-                      </Button>
+                      />
                     </div>
                   </div>
 

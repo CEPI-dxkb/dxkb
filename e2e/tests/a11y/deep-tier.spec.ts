@@ -92,32 +92,74 @@ test.describe("a11y deep tier: service forms", () => {
     });
   });
 
-  test("genome-assembly: file-picker dialog open", async ({ page }) => {
+  /**
+   * Genome Assembly with READ FILE 1's picker open in file mode on
+   * Home → Inputs, with the other files shown.
+   */
+  async function openReadFilePicker(
+    page: Parameters<typeof applyBackendMocks>[0],
+  ) {
+    const inputs = `${e2eHomePath}/Inputs`;
     await applyBackendMocks(page, {
       overrides: [
         ...authSessionOverrides,
-        ...workspacePopulatedOverrides,
+        ...buildWorkspaceOverrides({
+          pathItems: {
+            [e2eHomePath]: [
+              { name: "Inputs", type: "folder", parentPath: e2eHomePath },
+            ],
+            [inputs]: [
+              {
+                name: "sample_R1.fq",
+                type: "reads",
+                parentPath: inputs,
+                size: 2048,
+              },
+              { name: "notes.txt", type: "txt", parentPath: inputs, size: 120 },
+            ],
+          },
+        }),
         ...a11yBackendOverrides,
       ],
     });
     await page.goto("/services/genome-assembly");
     await page.waitForLoadState("networkidle");
+    // READ FILE 1's Browse, the first file field on the form.
+    const picker = new FolderPickerDialog(page, "Select a File", {
+      browseButton: page
+        .getByRole("button", { name: "Browse workspace files" })
+        .first(),
+    });
+    await picker.open();
+    await picker.option("Home", "Inputs").click();
+    await picker.showFilesButton.click();
+    await expect(picker.fileOption("Inputs", "notes.txt")).toBeVisible();
+    return picker;
+  }
 
-    // Open the output folder picker (labeled "Output Folder" or similar).
-    const folderButton = page
-      .getByRole("button", { name: /output folder|select folder|browse/i })
-      .first();
-    if (await folderButton.isVisible()) {
-      await folderButton.click();
-      await page
-        .getByRole("dialog")
-        .waitFor({ state: "visible", timeout: 5_000 });
-    } else {
-      test.skip();
-    }
+  test("genome-assembly: file-picker dialog open", async ({ page }) => {
+    await openReadFilePicker(page);
+    await awaitSettled(page);
 
     await forEachTheme(page, async (theme) => {
       await assertNoBlocking(page, "genome-assembly/file-picker-open", theme);
+    });
+  });
+
+  test("genome-assembly: file-picker file info", async ({ page }) => {
+    const picker = await openReadFilePicker(page);
+    await picker.fileOption("Inputs", "sample_R1.fq").click();
+    await expect(
+      picker.dialog.getByText("You can use this file here."),
+    ).toBeVisible();
+    await awaitSettled(page);
+
+    await forEachTheme(page, async (theme) => {
+      await assertNoBlocking(
+        page,
+        "genome-assembly/file-picker-file-info",
+        theme,
+      );
     });
   });
 });

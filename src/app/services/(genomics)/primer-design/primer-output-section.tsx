@@ -17,11 +17,11 @@ export function PrimerOutputSection({
 }) {
   const { form, outputPath, setIsOutputNameValid } = controller;
   return (
-    <Card className="gap-0">
-      <ServiceCardHeader className="pb-1">
+    <Card>
+      <ServiceCardHeader>
         <ServiceCardTitle>Output</ServiceCardTitle>
       </ServiceCardHeader>
-      <ServiceCardContent className="space-y-3 pt-1">
+      <ServiceCardContent>
         <form.Field name="output_path">
           {(field) => (
             <FieldItem>

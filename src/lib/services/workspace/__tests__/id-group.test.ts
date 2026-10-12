@@ -68,6 +68,15 @@ describe("parseIdGroupContent", () => {
     );
   });
 
+  it("reads a field stored as one comma-separated string as a list", () => {
+    // How some older groups are stored; the legacy site reads them too.
+    expect(
+      parseIdGroupContent(
+        '{"name":"Set","id_list":{"genome_id":"727.1572, 727.1525,,727.1572"}}',
+      ),
+    ).toEqual({ name: "Set", id_list: { genome_id: ["727.1572", "727.1525"] } });
+  });
+
   it("rejects an id_list field that is not a string array", () => {
     expect(() =>
       parseIdGroupContent('{"id_list":{"genome_id":[1.1]}}'),

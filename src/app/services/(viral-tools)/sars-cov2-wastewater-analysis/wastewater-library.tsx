@@ -1,6 +1,5 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -8,7 +7,6 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronRight } from "lucide-react";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
@@ -20,6 +18,10 @@ import {
 } from "@/components/services/form-ui/service-card";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import {
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { sarsCov2WastewaterAnalysisInputLib } from "@/lib/services/info/sars-cov2-wastewater-analysis";
 import { primerOptions } from "@/lib/forms/(viral-tools)/sars-cov2-wastewater-analysis/sars-cov2-wastewater-analysis-form-schema";
@@ -189,9 +191,9 @@ export function WastewaterLibrary({
           />
         </div>
         <div className="space-y-2">
-          <ServiceLabel>Sample Date (optional)</ServiceLabel>
+          <ServiceLabel>Sample Date</ServiceLabel>
           <ServiceInput
-            placeholder="MM/DD/YYYY"
+            placeholder="MM/DD/YYYY (Optional)"
             value={page.currentSampleDate}
             onChange={(event) => {
               page.setCurrentSampleDate(event.target.value);
@@ -222,20 +224,13 @@ function ReadInput({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <ServiceLabel>{label}</ServiceLabel>
-        <div className="mx-4 h-px flex-1 bg-border" />
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
+      <ServiceLibraryHeader title={label}>
+        <ServiceLibraryAddButton
           aria-label={`Add ${label.toLowerCase()}`}
           onClick={onAdd}
           disabled={disabled}
-        >
-          <ChevronRight size={16} />
-        </Button>
-      </div>
+        />
+      </ServiceLibraryHeader>
       {children}
     </div>
   );

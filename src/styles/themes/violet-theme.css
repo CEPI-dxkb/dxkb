@@ -22,6 +22,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
+  --disabled: oklch(0.94 0.001 286);
   --ring: oklch(0.606 0.25 292.717);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -41,6 +42,9 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.606 0.25 292.717);
+  /* Keep last: see --color-primary-hover in globals.css;
+     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--foreground));
 }
 
 [data-theme='violet-dark'] {
@@ -67,6 +71,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --disabled: oklch(0.242 0.004 286);
   --ring: oklch(0.541 0.281 293.009);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -86,4 +91,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.541 0.281 293.009);
+  /* Keep last: see --color-primary-hover in globals.css;
+     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));
 }

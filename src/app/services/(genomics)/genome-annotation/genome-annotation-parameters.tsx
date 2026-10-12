@@ -11,7 +11,7 @@ import {
 import {
   FieldErrors,
   FieldItem,
-  FieldLabel,
+  fieldErrorMessage,
 } from "@/components/ui/tanstack-form";
 import {
   Tooltip,
@@ -19,7 +19,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RequiredFormLabel } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
@@ -30,7 +29,9 @@ import {
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceRequiredLabel } from "@/components/services/form-ui/service-required-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { genomeAnnotationParameters } from "@/lib/services/info/genome-annotation";
 import {
@@ -76,7 +77,7 @@ export function GenomeAnnotationParameters({
           <form.Field name="contigs">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>Contigs</RequiredFormLabel>
+                <ServiceRequiredLabel>Contigs</ServiceRequiredLabel>
                 <WorkspaceObjectSelector
                   preset="contigs"
                   placeholder="Select or Upload Contigs to your workspace for Annotation"
@@ -92,7 +93,7 @@ export function GenomeAnnotationParameters({
           <form.Field name="recipe">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>Annotation Recipe</RequiredFormLabel>
+                <ServiceRequiredLabel>Annotation Recipe</ServiceRequiredLabel>
                 <Select
                   items={genomeAnnotationRecipes}
                   value={field.state.value}
@@ -123,7 +124,7 @@ export function GenomeAnnotationParameters({
             <form.Field name="scientific_name">
               {(field) => (
                 <FieldItem className="sm:w-9/12">
-                  <RequiredFormLabel>
+                  <ServiceRequiredLabel>
                     Taxonomy Name
                     <TooltipProvider>
                       <Tooltip>
@@ -138,7 +139,7 @@ export function GenomeAnnotationParameters({
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  </RequiredFormLabel>
+                  </ServiceRequiredLabel>
                   <TaxonNameSelector
                     value={
                       field.state.value
@@ -168,7 +169,9 @@ export function GenomeAnnotationParameters({
             <form.Field name="taxonomy_id">
               {(field) => (
                 <FieldItem className="sm:w-3/12">
-                  <FieldLabel field={field}>Taxonomy ID</FieldLabel>
+                  <ServiceFieldLabel field={field}>
+                    Taxonomy ID
+                  </ServiceFieldLabel>
                   <TaxIDSelector
                     id={field.name}
                     value={
@@ -180,11 +183,15 @@ export function GenomeAnnotationParameters({
                         : null
                     }
                     onChange={(item) => {
+                      // Typing an ID and picking a match fills the name, as
+                      // picking a name fills the ID; the two clear together.
+                      const name = item?.taxon_name || null;
                       field.handleChange(item ? String(item.taxon_id) : null);
+                      form.setFieldValue("scientific_name", name);
+                      updateOutputName(name, form.state.values.my_label);
                     }}
                     placeholder="NCBI Taxonomy ID"
-                    required
-                    disabled
+                    invalid={fieldErrorMessage(field) !== null}
                   />
                   <FieldErrors field={field} />
                 </FieldItem>
@@ -194,7 +201,7 @@ export function GenomeAnnotationParameters({
           <form.Field name="my_label">
             {(field) => (
               <FieldItem>
-                <RequiredFormLabel>My Label</RequiredFormLabel>
+                <ServiceRequiredLabel>My Label</ServiceRequiredLabel>
                 <ServiceInput
                   placeholder="My identifier123"
                   value={field.state.value}

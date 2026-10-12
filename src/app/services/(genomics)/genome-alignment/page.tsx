@@ -22,6 +22,10 @@ import {
   GenomeSelection,
 } from "./genome-alignment-sections";
 
+// The empty selection, as one array that is never mutated: the initial state
+// and what Reset restores. The effect below compares against it by identity.
+const noGenomes: GenomeSummary[] = [];
+
 function useGenomeAlignmentForm(
   submit: (value: GenomeAlignmentFormData) => Promise<void>,
 ) {
@@ -34,7 +38,7 @@ function useGenomeAlignmentForm(
 export type GenomeAlignmentForm = ReturnType<typeof useGenomeAlignmentForm>;
 
 export default function GenomeAlignmentServicePage() {
-  const [genomes, setGenomes] = useState<GenomeSummary[]>([]);
+  const [genomes, setGenomes] = useState<GenomeSummary[]>(noGenomes);
   const genomesRef = useRef(genomes);
   const selectionRevisionRef = useRef(0);
   const groupRequestRevisionRef = useRef(0);
@@ -48,9 +52,23 @@ export default function GenomeAlignmentServicePage() {
   );
   const form = useGenomeAlignmentForm((value) => submitRef.current(value));
   useEffect(() => {
+    // Syncing the empty selection (on mount, and after Reset) only copies it
+    // into the field. It must not mark the field touched or validate it, or
+    // "Select at least two genomes" shows before the user has done anything
+    // (or right after Reset, which has just cleared it). `dontUpdateMeta`
+    // alone is not enough: `setFieldValue` still validates a mounted field,
+    // and that marks it touched. Comparing against the shared empty array,
+    // rather than flipping a flag on the first run, keeps this true when
+    // Strict Mode runs the effect twice on mount. Removing the last genome
+    // builds a new empty array, so that path still validates.
+    const untouched =
+      genomes === noGenomes
+        ? { dontUpdateMeta: true, dontValidate: true }
+        : undefined;
     form.setFieldValue(
       "genome_ids",
       genomes.map((genome) => genome.genome_id),
+      untouched,
     );
   }, [genomes, form]);
   const replaceGenomes = (nextGenomes: GenomeSummary[]) => {
@@ -100,7 +118,7 @@ export default function GenomeAlignmentServicePage() {
   const reset = () => {
     groupRequestRevisionRef.current += 1;
     form.reset(defaultGenomeAlignmentFormValues);
-    replaceGenomes([]);
+    replaceGenomes(noGenomes);
     setShowAdvanced(false);
     setSelectionResetKey((key) => key + 1);
   };

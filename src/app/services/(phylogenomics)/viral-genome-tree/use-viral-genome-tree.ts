@@ -4,9 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { toast } from "sonner";
+import type { SelectedSequenceRow } from "@/components/services/selected-sequences-table";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
+import {
+  availableMetadataFieldSections,
+  createMetadataField,
+  defaultMetadataFields,
+  metadataFieldIdsFromJob,
+  type MetadataField,
+} from "@/lib/forms/genome-metadata-fields";
 import { normalizeToArray } from "@/lib/rerun-utility";
 import {
+  formatInvalidGenomeGroupMessage,
   getGenomeIdsFromGroup,
   validateViralGenomes,
 } from "@/lib/services/genome";
@@ -15,12 +24,6 @@ import * as ViralGenomeTree from "@/lib/forms/(phylogenomics)/viral-genome-tree/
 import * as ViralGenomeTreeUtils from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-form-utils";
 import { viralGenomeTreeService } from "@/lib/forms/(phylogenomics)/viral-genome-tree/viral-genome-tree-service";
 
-export interface MetadataField {
-  id: string;
-  name: string;
-  selected: boolean;
-}
-
 export function useViralGenomeTree() {
   const [selectedGenomeGroupObject, setSelectedGenomeGroupObject] =
     useState<WorkspaceObject | null>(null);
@@ -28,9 +31,8 @@ export function useViralGenomeTree() {
     useState<WorkspaceObject | null>(null);
   const [selectedUnalignedFastaObject, setSelectedUnalignedFastaObject] =
     useState<WorkspaceObject | null>(null);
-  const [metadataFields, setMetadataFields] = useState<MetadataField[]>(
-    ViralGenomeTree.defaultMetadataFields as MetadataField[],
-  );
+  const [metadataFields, setMetadataFields] =
+    useState<MetadataField[]>(defaultMetadataFields);
   const [selectedMetadataField, setSelectedMetadataField] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isOutputNameValid, setIsOutputNameValid] = useState(true);
@@ -60,7 +62,7 @@ export function useViralGenomeTree() {
     setSelectedGenomeGroupObject(null);
     setSelectedAlignedFastaObject(null);
     setSelectedUnalignedFastaObject(null);
-    setMetadataFields(ViralGenomeTree.defaultMetadataFields);
+    setMetadataFields(defaultMetadataFields);
     setSelectedMetadataField("");
     setShowAdvanced(false);
   }
@@ -90,13 +92,9 @@ export function useViralGenomeTree() {
         if (rerunSequences.length > 0) {
           rerunForm.setFieldValue("sequences", rerunSequences);
         }
-        const fieldIds = normalizeToArray<string>(
-          rerunData.genome_metadata_fields,
-        );
+        const fieldIds = metadataFieldIdsFromJob(rerunData);
         if (fieldIds.length > 0) {
-          setMetadataFields(
-            fieldIds.map(ViralGenomeTreeUtils.createMetadataField),
-          );
+          setMetadataFields(fieldIds.map(createMetadataField));
         }
       },
     },
@@ -109,19 +107,8 @@ export function useViralGenomeTree() {
     },
     new Set(),
   );
-  const availableMetadataOptions = ViralGenomeTree.getMetadataSelectOptions(
-    ViralGenomeTreeUtils.formatMetadataLabel,
-  ).filter(
-    (option) => option.isLabel || !selectedMetadataIds.has(option.value),
-  );
-  const selectableMetadataOptions = availableMetadataOptions.reduce<
-    { value: string; label: string }[]
-  >((options, field) => {
-    if (!field.isLabel) {
-      options.push({ value: field.value, label: field.label });
-    }
-    return options;
-  }, []);
+  // A field already in the table is not offered again.
+  const metadataSections = availableMetadataFieldSections(selectedMetadataIds);
   const selectedMetadataFields = metadataFields.filter(
     (field) => field.selected,
   );
@@ -175,12 +162,8 @@ export function useViralGenomeTree() {
       });
       if (request !== genomeGroupRequest.current) return;
       if (!validation.allValid) {
-        const errors = Object.values(validation.errors).filter(Boolean);
         toast.error("Genome group validation failed", {
-          description:
-            errors.length > 0
-              ? errors.join("\n")
-              : "Invalid genome group. Please check that all genomes are viruses with single contigs.",
+          description: formatInvalidGenomeGroupMessage(validation.errors),
           duration: 10000,
           closeButton: true,
         });
@@ -291,16 +274,14 @@ export function useViralGenomeTree() {
   }
 
   function handleMetadataSelection(value: string) {
-    setSelectedMetadataField(
-      ViralGenomeTree.isMetadataLabel(value) ? "" : value,
-    );
+    setSelectedMetadataField(value);
   }
 
   function addMetadataField() {
     if (!selectedMetadataField) return;
     if (!selectedMetadataIds.has(selectedMetadataField)) {
       setMetadataFields((fields) => [
-        ViralGenomeTreeUtils.createMetadataField(selectedMetadataField),
+        createMetadataField(selectedMetadataField),
         ...fields,
       ]);
     }
@@ -315,14 +296,16 @@ export function useViralGenomeTree() {
     );
   }
 
-  const selectedItemsForTable = sequences.map((sequence, index) => ({
-    id: String(index),
-    name: ViralGenomeTreeUtils.getDisplayName(
-      sequence.filename.split("/").pop() || sequence.filename,
-    ),
-    type: ViralGenomeTreeUtils.getSequenceTypeLabel(sequence.type),
-    description: sequence.filename,
-  }));
+  const selectedSequenceRows: SelectedSequenceRow[] = sequences.map(
+    (sequence) => ({
+      id: `${sequence.type}:${sequence.filename}`,
+      name: ViralGenomeTreeUtils.getDisplayName(
+        sequence.filename.split("/").pop() || sequence.filename,
+      ),
+      path: sequence.filename,
+      typeLabel: ViralGenomeTreeUtils.getSequenceTypeLabel(sequence.type),
+    }),
+  );
 
   return {
     form,
@@ -339,15 +322,14 @@ export function useViralGenomeTree() {
     handleAddGenomeGroup,
     handleAddSequence,
     removeSequence,
-    selectedItemsForTable,
+    selectedSequenceRows,
     showAdvanced,
     setShowAdvanced,
     selectedMetadataField,
     handleMetadataSelection,
     addMetadataField,
     removeMetadataField,
-    availableMetadataOptions,
-    selectableMetadataOptions,
+    metadataSections,
     selectedMetadataFields,
     handleReset,
     isSubmitting: runtime.isSubmitting,

@@ -393,6 +393,8 @@ export interface DataTableProps {
   resource: string;
   idField?: string;
   errorMessage?: string;
+  /** Shown in place of rows when there are none (and no error). */
+  emptyMessage?: string;
   onSelectionChange?: (rows: Record<string, unknown>[]) => void;
   onGenomeSelect?: (id: string | null) => void;
   selectedIds?: string[];
@@ -432,6 +434,12 @@ export interface DataTableProps {
   onRowSelectionChange?: (selection: RowSelectionState) => void;
 
   // Cross-page selection
+  /**
+   * Offer "Select all N results across all pages" once a page is fully
+   * selected (default). Turn it off when the owner holds every row and the
+   * selection is just the rows checked, page by page.
+   */
+  crossPageSelection?: boolean;
   isAllPagesSelected?: boolean;
   onAllPagesSelectionChange?: (selected: boolean) => void;
   totalSelectedCount?: number;
@@ -463,6 +471,7 @@ function useDataTableContent(
     resource,
     idField: explicitIdField,
     errorMessage,
+    emptyMessage,
     onSelectionChange,
     onGenomeSelect,
     selectedIds,
@@ -479,6 +488,7 @@ function useDataTableContent(
     onColumnWidthsCommit,
     rowSelection: controlledRowSelection,
     onRowSelectionChange,
+    crossPageSelection = true,
     isAllPagesSelected = false,
     onAllPagesSelectionChange,
     totalSelectedCount,
@@ -849,29 +859,33 @@ function useDataTableContent(
     <div className="relative flex min-h-0 w-full flex-1 flex-col items-center overflow-hidden border-0 text-xs">
       {/* This is the main container. Full width and content centered. */}
       {/* Banner for selecting all results across pages */}
-      {!isAllPagesSelected && table.getIsAllPageRowsSelected() && (
-        <div className="mb-2 flex w-full items-center justify-between border border-info/20 bg-info/5 px-4 py-2">
-          <span className="text-info">
-            All {data.length} results on this page are selected.
-          </span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAllPagesSelectionChange?.(true);
-            }}
-            className="cursor-pointer font-semibold text-info underline hover:text-foreground"
-          >
-            Select all {totalItems} results across all pages
-          </button>
-        </div>
-      )}
-      {isAllPagesSelected && (
+      {crossPageSelection &&
+        !isAllPagesSelected &&
+        table.getIsAllPageRowsSelected() && (
+          <div className="mb-2 flex w-full items-center justify-between border border-info/20 bg-info/5 px-4 py-2">
+            <span className="text-info">
+              All {data.length} results on this page are selected.
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onAllPagesSelectionChange?.(true);
+              }}
+              className="cursor-pointer font-semibold text-info underline hover:text-foreground"
+            >
+              Select all {totalItems} results across all pages
+            </button>
+          </div>
+        )}
+      {crossPageSelection && isAllPagesSelected && (
         <div className="mb-2 w-full border border-info/30 bg-info/10 px-4 py-2">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-info">
               All {totalItems} results are selected across all pages.
             </span>
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -940,6 +954,7 @@ function useDataTableContent(
                 onGenomeSelect={onGenomeSelect}
                 onActiveRowChange={onActiveRowChange}
                 errorMessage={errorMessage}
+                emptyMessage={emptyMessage}
                 isLoading={isLoading}
                 skeletonRowCount={skeletonRowCount}
               />
@@ -974,6 +989,7 @@ interface DataTableBodyProps {
   onGenomeSelect?: (id: string | null) => void;
   onActiveRowChange?: (id: string | null) => void;
   errorMessage?: string;
+  emptyMessage?: string;
   isLoading?: boolean;
   skeletonRowCount?: number;
 }
@@ -991,6 +1007,7 @@ function DataTableBody({
   onGenomeSelect,
   onActiveRowChange,
   errorMessage,
+  emptyMessage = "No results",
   isLoading = false,
   skeletonRowCount = 20,
 }: DataTableBodyProps) {
@@ -1054,7 +1071,7 @@ function DataTableBody({
             {errorMessage ? (
               <span className="text-destructive">{errorMessage}</span>
             ) : (
-              <span className="text-muted-foreground">No results</span>
+              <span className="text-muted-foreground">{emptyMessage}</span>
             )}
           </TableCell>
         </TableRow>

@@ -29,6 +29,7 @@ import type {
   UploadNodeRequest,
   UploadNodeResult,
   WorkspaceRepository,
+  WorkspaceTextStart,
 } from "../workspace-repository";
 
 type CallRecord =
@@ -46,6 +47,7 @@ type CallRecord =
   | { method: "updateObjectType"; path: string; newType: string }
   | { method: "updateAutoMetadata"; paths: string[] }
   | { method: "getDownloadUrls"; paths: string[] }
+  | { method: "readTextStart"; path: string; maxBytes: number }
   | { method: "getArchiveUrl"; input: ArchiveRequest }
   | { method: "searchObjects"; input: SearchWorkspaceObjectsInput }
   | { method: "diskUsage"; paths: string[]; recursive: boolean };
@@ -519,6 +521,45 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
             `https://shock.test/dl/${normalize(path)}`,
           ],
       );
+    });
+  }
+
+  /** A fixture's string `content`, cut as the preview route cuts a file. */
+  readTextStart(path: string, maxBytes: number): Promise<WorkspaceTextStart> {
+    return this.run(() => {
+      this.calls.push({ method: "readTextStart", path, maxBytes });
+      this.throwIfConfigured("readTextStart");
+      const normalized = normalize(path);
+      const parent = normalize(
+        normalized.slice(0, normalized.lastIndexOf("/")) || "/",
+      );
+      const name = normalized.split("/").filter(Boolean).pop() ?? "";
+      const fixture = (this.directories[parent] ?? []).find(
+        (item) => item.name === name,
+      );
+      if (!fixture) {
+        throw new WorkspaceApiError(
+          `File not found: ${normalized}`,
+          "readTextStart",
+          undefined,
+        );
+      }
+      const content = typeof fixture.content === "string" ? fixture.content : "";
+      // The route counts UTF-8 bytes, not UTF-16 code units, and a cut with
+      // no line end in it can split a character, which `response.text()`
+      // decodes as U+FFFD; `TextDecoder` does the same.
+      const bytes = new TextEncoder().encode(content);
+      if (bytes.length <= maxBytes) {
+        return { text: content, truncated: false };
+      }
+      const start = bytes.subarray(0, maxBytes);
+      const lineEnd = start.lastIndexOf(0x0a);
+      return {
+        text: new TextDecoder().decode(
+          lineEnd > 0 ? start.subarray(0, lineEnd + 1) : start,
+        ),
+        truncated: true,
+      };
     });
   }
 

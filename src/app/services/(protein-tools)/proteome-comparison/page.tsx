@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useServiceRuntime } from "@/hooks/services/use-service-runtime";
 import { useForm } from "@tanstack/react-form";
 import { useSelector } from "@tanstack/react-store";
 import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   proteomeComparisonInfo,
   proteomeComparisonParameters,
@@ -27,6 +27,7 @@ import { Spinner } from "@/components/ui/spinner";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -39,6 +40,8 @@ import {
   ServiceInput,
   ServiceNumberInput,
 } from "@/components/services/form-ui/service-input";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
+import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
 import {
   ServiceLabel,
   ServiceSubLabel,
@@ -78,6 +81,10 @@ function useProteomeComparisonPage() {
     useState<WorkspaceObject | null>(null);
   const [isLoadingGenomeGroup, setIsLoadingGenomeGroup] = useState(false);
   const [isLoadingCompGenome, setIsLoadingCompGenome] = useState(false);
+  // Reset bumps this, so a genome or group read still in flight neither adds
+  // its item to the new comparison nor clears the spinner of an add the user
+  // starts after the reset.
+  const resetRevisionRef = useRef(0);
 
   // State for advanced parameters visibility
   const [showAdvancedParams, setShowAdvancedParams] = useState(false);
@@ -95,11 +102,14 @@ function useProteomeComparisonPage() {
 
   // Handle reset
   function handleReset() {
+    resetRevisionRef.current += 1;
     form.reset(defaultProteomeComparisonFormValues);
     setSelectedCompGenomeId("");
     setSelectedCompFasta(null);
     setSelectedCompFeatureGroup(null);
     setSelectedCompGenomeGroup(null);
+    setIsLoadingGenomeGroup(false);
+    setIsLoadingCompGenome(false);
     setShowAdvancedParams(false);
   }
 
@@ -154,32 +164,41 @@ function useProteomeComparisonPage() {
       return;
     }
 
+    const resetRevision = resetRevisionRef.current;
     setIsLoadingCompGenome(true);
 
+    // Fall back to using the genome ID as the name
+    let genomeName = selectedCompGenomeId;
     try {
       // Fetch the genome name from the API
       const genomes = await fetchGenomesByIds([selectedCompGenomeId]);
-      const genomeName =
-        genomes.length > 0 ? genomes[0].genome_name : selectedCompGenomeId;
-
-      const newItem = createGenomeComparisonItem(
-        selectedCompGenomeId,
-        genomeName,
-      );
-
-      form.setFieldValue("comparison_items", [...currentItems, newItem]);
-      setSelectedCompGenomeId("");
+      if (genomes.length > 0) genomeName = genomes[0].genome_name;
     } catch (error) {
       console.error("Failed to fetch genome info:", error);
-      // Fall back to using the genome ID as the name
-      const newItem = createGenomeComparisonItem(
-        selectedCompGenomeId,
-        selectedCompGenomeId,
-      );
-      form.setFieldValue("comparison_items", [...currentItems, newItem]);
-      setSelectedCompGenomeId("");
     }
+
+    // A reset during the lookup already cleared the list and this spinner.
+    if (resetRevision !== resetRevisionRef.current) return;
+
     setIsLoadingCompGenome(false);
+
+    // Read the list again: the other add buttons stay live during the lookup,
+    // so a FASTA file or a genome group may have taken the last slots.
+    const latestItems = form.state.values.comparison_items;
+    if (countTotalComparisonGenomes(latestItems) >= maxComparisonGenomes) {
+      toast.error("Maximum genomes reached", {
+        description: `Maximum of ${String(maxComparisonGenomes)} comparison genomes allowed.`,
+        closeButton: true,
+      });
+      return;
+    }
+
+    const newItem = createGenomeComparisonItem(
+      selectedCompGenomeId,
+      genomeName,
+    );
+    form.setFieldValue("comparison_items", [...latestItems, newItem]);
+    setSelectedCompGenomeId("");
   }
 
   function handleAddCompFasta() {
@@ -257,6 +276,7 @@ function useProteomeComparisonPage() {
       return;
     }
 
+    const resetRevision = resetRevisionRef.current;
     setIsLoadingGenomeGroup(true);
 
     try {
@@ -264,6 +284,9 @@ function useProteomeComparisonPage() {
       const genomeIds = await getGenomeIdsFromGroup(
         selectedCompGenomeGroup.path,
       );
+
+      // A reset during the read already cleared the list and this spinner.
+      if (resetRevision !== resetRevisionRef.current) return;
 
       if (genomeIds.length === 0) {
         toast.error("Empty genome group", {
@@ -313,6 +336,7 @@ function useProteomeComparisonPage() {
         },
       );
     } catch (error) {
+      if (resetRevision !== resetRevisionRef.current) return;
       console.error("Failed to add genome group:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to add genome group";
@@ -320,8 +344,14 @@ function useProteomeComparisonPage() {
         description: errorMessage,
         closeButton: true,
       });
+    } finally {
+      // The early returns above (empty group, over the limit, duplicate) left
+      // the "+" button on its spinner, so only a reload recovered it. After a
+      // reset the spinner belongs to whichever add started since, if any.
+      if (resetRevision === resetRevisionRef.current) {
+        setIsLoadingGenomeGroup(false);
+      }
     }
-    setIsLoadingGenomeGroup(false);
   }
 
   function handleRemoveComparisonItem(itemId: string) {
@@ -406,7 +436,7 @@ function useProteomeComparisonPage() {
                     open={showAdvancedParams}
                     onOpenChange={setShowAdvancedParams}
                   >
-                    <ServiceCollapsibleTrigger className="text-sm font-medium">
+                    <ServiceCollapsibleTrigger>
                       Advanced Parameters (Optional)
                       <ChevronDown
                         className={`size-4 transition-transform ${showAdvancedParams ? "rotate-180 transform" : ""}`}
@@ -418,10 +448,11 @@ function useProteomeComparisonPage() {
                         <form.Field name="min_seq_cov">
                           {(field) => (
                             <FieldItem>
-                              <ServiceSubLabel>
+                              <ServiceFieldSubLabel field={field}>
                                 Minimum % Coverage
-                              </ServiceSubLabel>
+                              </ServiceFieldSubLabel>
                               <ServiceNumberInput
+                                id={field.name}
                                 name={field.name}
                                 value={field.state.value}
                                 min={10}
@@ -456,10 +487,11 @@ function useProteomeComparisonPage() {
                         <form.Field name="min_ident">
                           {(field) => (
                             <FieldItem>
-                              <ServiceSubLabel>
+                              <ServiceFieldSubLabel field={field}>
                                 Minimum % Identity
-                              </ServiceSubLabel>
+                              </ServiceFieldSubLabel>
                               <ServiceNumberInput
+                                id={field.name}
                                 name={field.name}
                                 value={field.state.value}
                                 min={10}
@@ -492,9 +524,9 @@ function useProteomeComparisonPage() {
                     sections={proteomeComparisonReferenceGenome.sections}
                   />
                 </RequiredFormCardTitle>
-                <CardDescription>
+                <ServiceCardDescription>
                   Select 1 reference genome from the following options
-                </CardDescription>
+                </ServiceCardDescription>
               </ServiceCardHeader>
 
               <ServiceCardContent>
@@ -596,10 +628,10 @@ function useProteomeComparisonPage() {
                   sections={proteomeComparisonComparisonGenomes.sections}
                 />
               </RequiredFormCardTitle>
-              <CardDescription>
+              <ServiceCardDescription>
                 Add up to {maxComparisonGenomes} genomes to compare (use plus
                 buttons to add)
-              </CardDescription>
+              </ServiceCardDescription>
             </ServiceCardHeader>
 
             <ServiceCardContent>
@@ -617,26 +649,17 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add genome"
                       onClick={() => {
                         void handleAddCompGenome();
                       }}
                       disabled={
                         !selectedCompGenomeId ||
-                        totalGenomeCount >= maxComparisonGenomes ||
-                        isLoadingCompGenome
+                        totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      {isLoadingCompGenome ? (
-                        <Spinner className="size-4" />
-                      ) : (
-                        <Plus className="size-4" />
-                      )}
-                    </Button>
+                      pending={isLoadingCompGenome}
+                    />
                   </div>
                 </div>
 
@@ -656,19 +679,14 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add protein FASTA file"
                       onClick={handleAddCompFasta}
                       disabled={
                         !selectedCompFasta ||
                         totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      <Plus className="size-4" />
-                    </Button>
+                    />
                   </div>
                 </div>
 
@@ -688,19 +706,14 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add feature group"
                       onClick={handleAddCompFeatureGroup}
                       disabled={
                         !selectedCompFeatureGroup ||
                         totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      <Plus className="size-4" />
-                    </Button>
+                    />
                   </div>
                 </div>
 
@@ -720,26 +733,17 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add genome group"
                       onClick={() => {
                         void handleAddCompGenomeGroup();
                       }}
                       disabled={
                         !selectedCompGenomeGroup ||
-                        totalGenomeCount >= maxComparisonGenomes ||
-                        isLoadingGenomeGroup
+                        totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      {isLoadingGenomeGroup ? (
-                        <Spinner className="size-4" />
-                      ) : (
-                        <Plus className="size-4" />
-                      )}
-                    </Button>
+                      pending={isLoadingGenomeGroup}
+                    />
                   </div>
                 </div>
 

@@ -1,25 +1,25 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import {
+  ServiceCardContent,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
-import {
-  ServiceFieldLabel,
-  ServiceFieldSubLabel,
-} from "@/components/services/form-ui/service-field";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
 import {
   ServiceInput,
   ServiceTextarea,
 } from "@/components/services/form-ui/service-input";
-import { ServiceSubLabel } from "@/components/services/form-ui/service-label";
+import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { markerLabels } from "@/lib/forms/(genomics)/primer-design/primer-design-form-utils";
 import { primerDesignInputSequence } from "@/lib/services/info/primer-design";
 import type { PrimerDesignController } from "./use-primer-design-form";
@@ -45,8 +45,8 @@ export function PrimerInputSection({
   } = controller;
 
   return (
-    <Card className="gap-0">
-      <ServiceCardHeader className="pb-1">
+    <Card>
+      <ServiceCardHeader>
         <ServiceCardTitle>
           Input Sequence
           <DialogInfoPopup
@@ -56,20 +56,30 @@ export function PrimerInputSection({
           />
         </ServiceCardTitle>
       </ServiceCardHeader>
-      <CardContent className="space-y-3 pt-1">
-        <Tabs
+      <ServiceCardContent>
+        <ServiceRadioGroup
           value={inputType}
-          onValueChange={handleInputTypeChange}
-          className="w-full"
+          onValueChange={(value) => {
+            if (typeof value === "string") handleInputTypeChange(value);
+          }}
         >
-          <TabsList>
-            <TabsTrigger value="sequence_text">Paste Sequence</TabsTrigger>
-            <TabsTrigger value="workplace_fasta">Workspace FASTA</TabsTrigger>
-          </TabsList>
-          <TabsContent value="sequence_text">
+          <div className="flex items-center gap-3">
+            <RadioGroupItem value="sequence_text" id="inputTypeSequenceText" />
+            <Label htmlFor="inputTypeSequenceText">Paste Sequence</Label>
+          </div>
+          <div className="flex items-center gap-3">
+            <RadioGroupItem
+              value="workspace_fasta"
+              id="inputTypeWorkspaceFasta"
+            />
+            <Label htmlFor="inputTypeWorkspaceFasta">Workspace FASTA</Label>
+          </div>
+        </ServiceRadioGroup>
+        {inputType === "sequence_text" ? (
+          <>
             <form.Field name="SEQUENCE_ID">
               {(field) => (
-                <FieldItem className="mb-3">
+                <FieldItem>
                   <ServiceFieldLabel field={field}>
                     Sequence Identifier
                   </ServiceFieldLabel>
@@ -90,7 +100,7 @@ export function PrimerInputSection({
             </form.Field>
             <form.Field name="sequence_input">
               {(field) => (
-                <FieldItem className="mb-3">
+                <FieldItem>
                   <ServiceFieldLabel field={field}>
                     Paste Sequence
                   </ServiceFieldLabel>
@@ -120,7 +130,7 @@ export function PrimerInputSection({
               )}
             </form.Field>
             <div className="space-y-2">
-              <ServiceSubLabel>Mark Selected Region</ServiceSubLabel>
+              <ServiceLabel>Mark Selected Region</ServiceLabel>
               <div className="flex flex-wrap gap-2">
                 {(
                   Object.keys(markerLabels) as (keyof typeof markerLabels)[]
@@ -145,37 +155,34 @@ export function PrimerInputSection({
                 </Button>
               </div>
             </div>
-          </TabsContent>
-          <TabsContent value="workplace_fasta" className="mt-0">
-            <form.Field name="sequence_input">
-              {(field) => (
-                <FieldItem>
-                  <ServiceFieldLabel field={field}>
-                    FASTA File
-                  </ServiceFieldLabel>
-                  <WorkspaceObjectSelector
-                    id={field.name}
-                    preset="featureDnaFasta"
-                    placeholder="Select FASTA file from workspace"
-                    value={field.state.value}
-                    onObjectSelect={handleWorkspaceSelection}
-                    onSelectedObjectChange={handleSelectedWorkspaceObjectChange}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Note: only the first FASTA record will be used.
-                  </p>
-                  <FieldErrors field={field} />
-                </FieldItem>
-              )}
-            </form.Field>
-          </TabsContent>
-        </Tabs>
+          </>
+        ) : (
+          <form.Field name="sequence_input">
+            {(field) => (
+              <FieldItem>
+                <ServiceFieldLabel field={field}>FASTA File</ServiceFieldLabel>
+                <WorkspaceObjectSelector
+                  id={field.name}
+                  preset="featureDnaFasta"
+                  placeholder="Select FASTA file from workspace"
+                  value={field.state.value}
+                  onObjectSelect={handleWorkspaceSelection}
+                  onSelectedObjectChange={handleSelectedWorkspaceObjectChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Note: only the first FASTA record will be used.
+                </p>
+                <FieldErrors field={field} />
+              </FieldItem>
+            )}
+          </form.Field>
+        )}
         <form.Field name="PRIMER_PICK_INTERNAL_OLIGO">
           {(field) => (
             <FieldItem className="flex flex-row items-center">
-              <ServiceFieldSubLabel field={field}>
+              <ServiceFieldLabel field={field}>
                 Pick Internal Oligo
-              </ServiceFieldSubLabel>
+              </ServiceFieldLabel>
               <Switch
                 id={field.name}
                 checked={Boolean(field.state.value)}
@@ -186,7 +193,7 @@ export function PrimerInputSection({
           )}
         </form.Field>
         {children}
-      </CardContent>
+      </ServiceCardContent>
     </Card>
   );
 }

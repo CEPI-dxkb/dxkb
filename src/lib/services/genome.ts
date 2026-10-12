@@ -1,4 +1,5 @@
 import { apiCall, apiGet } from "@/lib/api/client";
+import { splitIdList } from "@/lib/services/workspace/id-group";
 
 export interface GenomeSummary {
   genome_id: string;
@@ -38,9 +39,14 @@ export async function fetchGenomeSuggestions(
   }
 }
 
+/**
+ * Looks genomes up by ID. `fields` adds genome fields to the default
+ * summary (name, strain, owner, ...); the route drops any that are not plain
+ * field names.
+ */
 export async function fetchGenomesByIds(
   genomeIds: string[],
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; fields?: string[] } = {},
 ): Promise<GenomeSummary[]> {
   if (genomeIds.length === 0) return [];
 
@@ -49,7 +55,9 @@ export async function fetchGenomesByIds(
   try {
     const data = await apiCall<{ results: GenomeSummary[] }>(
       "/api/services/genome/by-ids",
-      { genome_ids: uniqueIds },
+      options.fields?.length
+        ? { genome_ids: uniqueIds, fields: options.fields }
+        : { genome_ids: uniqueIds },
       { signal: options.signal },
     );
     return Array.isArray(data.results) ? data.results : [];
@@ -88,52 +96,8 @@ export async function getGenomeIdsFromGroup(
   }
 
   try {
-    const response = await fetch("/api/services/workspace", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        method: "Workspace.get",
-        params: [
-          {
-            objects: [path],
-            metadata_only: false,
-          },
-        ],
-      }),
-      signal: options.signal,
-    });
-
-    if (!response.ok) {
-      const errorBody = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      const message = errorBody.error || "Failed to load genome group";
-      throw new Error(message);
-    }
-
-    const data = (await response.json()) as unknown;
-    const entry = extractWorkspaceGetEntry(data);
-
-    if (!entry) {
-      throw new Error("Invalid workspace response for genome group");
-    }
-
-    const rawData: unknown = Array.isArray(entry)
-      ? entry[1]
-      : ((entry as { data?: unknown }).data ?? null);
-    const decoded = decodeGroupData(rawData) as {
-      id_list?: { genome_id?: string[] };
-    } | null;
-
-    if (!decoded?.id_list?.genome_id) {
-      return [];
-    }
-
-    return decoded.id_list.genome_id.filter(
-      (id: unknown) => typeof id === "string",
+    return genomeIdsFromGroupContent(
+      await fetchGroupContent(path, options.signal),
     );
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -142,6 +106,97 @@ export async function getGenomeIdsFromGroup(
 
     throw error;
   }
+}
+
+/**
+ * The text of a failed workspace call: the upstream message the proxy passes
+ * on as `apiResponse` (or a JSON-RPC `error`), without BV-BRC's `_ERROR_`
+ * markers, before the proxy's own summary ("BV-BRC API error: 500 ...").
+ */
+function workspaceErrorMessage(body: unknown): string | null {
+  const { apiResponse, error } = (body ?? {}) as {
+    apiResponse?: { message?: unknown };
+    error?: unknown;
+  };
+  const candidates = [
+    apiResponse?.message,
+    (error as { message?: unknown } | null | undefined)?.message,
+    error,
+  ];
+  const message = candidates.find(
+    (value): value is string => typeof value === "string" && value.trim() !== "",
+  );
+  return message ? message.replace(/^_ERROR_|_ERROR_$/g, "").trim() : null;
+}
+
+/**
+ * Reads a group's stored content through the workspace proxy. Every failure
+ * becomes an Error worth showing: the backend's own message when it sent one,
+ * otherwise "Invalid workspace response for genome group" for a body that is
+ * not a usable `Workspace.get` result (null, empty, HTML, no entry).
+ */
+async function fetchGroupContent(
+  path: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  const response = await fetch("/api/services/workspace", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      method: "Workspace.get",
+      params: [
+        {
+          objects: [path],
+          metadata_only: false,
+        },
+      ],
+    }),
+    signal,
+  });
+
+  const data: unknown = await response.json().catch(() => null);
+  // An abort while the body streams is still an abort, not a bad response.
+  signal?.throwIfAborted();
+
+  const rpcError = (data as { error?: unknown } | null)?.error;
+  if (!response.ok || (rpcError !== undefined && rpcError !== null)) {
+    throw new Error(
+      workspaceErrorMessage(data) ?? "Failed to load genome group",
+    );
+  }
+
+  const entry = extractWorkspaceGetEntry(data);
+
+  if (!entry) {
+    throw new Error("Invalid workspace response for genome group");
+  }
+
+  const rawData: unknown = Array.isArray(entry)
+    ? entry[1]
+    : ((entry as { data?: unknown }).data ?? null);
+  return decodeGroupData(rawData);
+}
+
+/**
+ * The genome ids of a decoded group. `id_list.genome_id` is normally a string
+ * array, but some older groups store one comma-separated string.
+ */
+function genomeIdsFromGroupContent(content: unknown): string[] {
+  const ids = (content as { id_list?: { genome_id?: unknown } } | null)
+    ?.id_list?.genome_id;
+
+  if (Array.isArray(ids)) {
+    return ids.filter((id): id is string => typeof id === "string");
+  }
+
+  if (typeof ids === "string") {
+    return splitIdList(ids);
+  }
+
+  return [];
 }
 
 function decodeGroupData(raw: unknown): unknown {
@@ -208,8 +263,8 @@ function decodeGroupData(raw: unknown): unknown {
 }
 
 function extractWorkspaceGetEntry(responseData: unknown): unknown {
-  const data = responseData as { result?: unknown[] };
-  const container = data.result?.[0];
+  const result = (responseData as { result?: unknown } | null)?.result;
+  const container: unknown = Array.isArray(result) ? result[0] : null;
 
   if (!container) {
     return null;
@@ -257,6 +312,16 @@ export interface ViralGenomeValidationResult {
   contigs?: number | null;
 }
 
+function isViralGenomeValidationResult(
+  value: unknown,
+): value is ViralGenomeValidationResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { genome_id?: unknown }).genome_id === "string"
+  );
+}
+
 export interface ViralGenomeValidationErrors {
   duplicate_error?: string;
   kingdom_error?: string;
@@ -265,6 +330,29 @@ export interface ViralGenomeValidationErrors {
   missing_superkingdom?: string;
   missing_genomes_error?: string;
   missing_metadata_error?: string;
+}
+
+/**
+ * The message for a genome group that fails viral validation, worded as on
+ * the legacy site: its heading, then one "- " line per error (alpha's `<br>`
+ * breaks are `\n`, which the app's toast descriptions keep). Alpha's MSA page
+ * says "This is an invalid genome group"; every other tree page uses this
+ * heading, so the site uses it throughout.
+ */
+export function formatInvalidGenomeGroupMessage(
+  errors: ViralGenomeValidationErrors,
+): string {
+  const messages = Object.values(errors).filter(
+    (error): error is string => Boolean(error),
+  );
+  if (messages.length === 0) {
+    return "Invalid genome group. Please check that all genomes are viruses with single contigs.";
+  }
+
+  return [
+    "This looks like an invalid genome group. The following errors were found:",
+    ...messages.map((error) => `- ${error}`),
+  ].join("\n");
 }
 
 /**
@@ -298,7 +386,10 @@ export async function validateViralGenomes(
     );
     const batches = await Promise.all(
       Array.from({ length: batchCount }, (_, index) =>
-        apiCall<{ results: ViralGenomeValidationResult[] }>(
+        // `apiCall` gives undefined for an empty body, so nothing about the
+        // response is assumed: a missing list or entry counts as missing
+        // metadata below, not a TypeError.
+        apiCall<{ results?: unknown } | null | undefined>(
           "/api/services/genome/validate-viral",
           {
             genome_ids: uniqueIds.slice(
@@ -310,9 +401,11 @@ export async function validateViralGenomes(
         ),
       ),
     );
-    const results: ViralGenomeValidationResult[] = batches.flatMap((batch) =>
-      Array.isArray(batch.results) ? batch.results : [],
-    );
+    const results = batches
+      .flatMap((batch): unknown[] =>
+        Array.isArray(batch?.results) ? batch.results : [],
+      )
+      .filter(isViralGenomeValidationResult);
 
     const errors: ViralGenomeValidationErrors = {};
     let allValid = true;
@@ -335,7 +428,7 @@ export async function validateViralGenomes(
       if (genome.superkingdom !== "Viruses") {
         allValid = false;
         if (!errors.kingdom_error) {
-          errors.kingdom_error = `Invalid Superkingdom: only virus genomes are permitted. First occurrence for genome_id: ${genome.genome_id}`;
+          errors.kingdom_error = `Invalid Superkingdom: only virus genomes are permitted\nFirst occurrence for genome_id: ${genome.genome_id}`;
         }
       }
 
@@ -348,14 +441,14 @@ export async function validateViralGenomes(
         if (genome.contigs > 1) {
           allValid = false;
           if (!errors.contigs_error) {
-            errors.contigs_error = `Error: only 1 contig is permitted. First occurrence for genome_id: ${genome.genome_id}`;
+            errors.contigs_error = `Error: only 1 contig is permitted\nFirst occurrence for genome_id: ${genome.genome_id}`;
           }
         }
 
         if (genome.genome_length > maxGenomeLength) {
           allValid = false;
           if (!errors.genomelength_error) {
-            errors.genomelength_error = `Error: genome exceeds maximum length ${String(maxGenomeLength)}. First occurrence for genome_id: ${genome.genome_id}`;
+            errors.genomelength_error = `Error: genome exceeds maximum length ${String(maxGenomeLength)}\nFirst occurrence for genome_id: ${genome.genome_id}`;
           }
         }
       }
@@ -379,54 +472,9 @@ export async function fetchGenomeGroupMembers(
   }
 
   try {
-    const response = await fetch("/api/services/workspace", {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        method: "Workspace.get",
-        params: [
-          {
-            objects: [path],
-            metadata_only: false,
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      const message = errorBody.error || "Failed to load genome group";
-      throw new Error(message);
-    }
-
-    const data = (await response.json()) as unknown;
-    const entry = extractWorkspaceGetEntry(data);
-
-    if (!entry) {
-      throw new Error("Invalid workspace response for genome group");
-    }
-
-    const rawData: unknown = Array.isArray(entry)
-      ? entry[1]
-      : ((entry as { data?: unknown }).data ?? null);
-    const decoded = decodeGroupData(rawData) as {
-      id_list?: { genome_id?: string[] };
-    } | null;
-
-    if (!decoded?.id_list?.genome_id) {
-      return [];
-    }
-
-    const genomeIds: string[] = decoded.id_list.genome_id.filter(
-      (id: unknown) => typeof id === "string",
+    return await fetchGenomesByIds(
+      genomeIdsFromGroupContent(await fetchGroupContent(path)),
     );
-
-    return await fetchGenomesByIds(genomeIds);
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       return [];

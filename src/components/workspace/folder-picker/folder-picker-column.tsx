@@ -23,13 +23,15 @@ import {
 import { useWorkspacePickerListing } from "@/hooks/services/workspace/use-workspace-picker-listing";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 import { formatFileSize, formatOwner } from "@/lib/services/workspace/helpers";
-import { normalizePath } from "@/lib/services/workspace/mini-browser-items";
 import {
   emptyListingMessage,
   folderNameError,
+  isPickerItemInteractive,
   isPickerItemNavigable,
-  visibleFolderRows,
+  pickerRowKey,
+  visiblePickerRows,
   type PickerLocation,
+  type PickerTarget,
 } from "@/lib/services/workspace/picker-views";
 import { cn } from "@/lib/utils";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
@@ -48,6 +50,8 @@ interface FolderPickerColumnProps {
   location: PickerLocation;
   label: string;
   username: string;
+  /** What the picker chooses; picking files, files are rows too. */
+  target: PickerTarget;
   showFiles: boolean;
   onShowFiles: () => void;
   width: number;
@@ -70,6 +74,11 @@ interface FolderPickerColumnProps {
   onExitToParent: (index: number) => void;
   onCommit: (item: WorkspaceItem, siblings: WorkspaceItem[]) => void;
   focusRow: (index: number, path: string) => void;
+  /**
+   * Called once this column has loaded without its selected row: the folder
+   * is gone (a stale value, or deleted elsewhere).
+   */
+  onSelectionMissing: (index: number) => void;
 }
 
 export function FolderPickerColumn({
@@ -78,6 +87,7 @@ export function FolderPickerColumn({
   location,
   label,
   username,
+  target,
   showFiles,
   onShowFiles,
   width,
@@ -96,26 +106,48 @@ export function FolderPickerColumn({
   onExitToParent,
   onCommit,
   focusRow,
+  onSelectionMissing,
 }: FolderPickerColumnProps) {
   const listing = useWorkspacePickerListing({ location, username });
+  const selectionMissing =
+    !listing.isLoading &&
+    !listing.error &&
+    selectedPath !== null &&
+    !listing.items.some((item) => pickerRowKey(item, target) === selectedPath);
+  useEffect(() => {
+    if (selectionMissing) onSelectionMissing(index);
+  }, [selectionMissing, index, onSelectionMissing]);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  const rows = visibleFolderRows(location, listing.items, showFiles);
-  const navRows = rows.filter(isPickerItemNavigable);
-  const navPaths = navRows.map((row) => normalizePath(row.path));
+  const rows = visiblePickerRows({
+    location,
+    items: listing.items,
+    target,
+    showAll: showFiles,
+  });
+  /** Rows the keyboard moves over: folders, and files the picker can choose. */
+  const interactiveRows = rows.filter((item) =>
+    isPickerItemInteractive(item, target),
+  );
+  const interactivePaths = interactiveRows.map((row) =>
+    pickerRowKey(row, target),
+  );
   const tabStopPath = hasTabStop
-    ? selectedPath && navPaths.includes(selectedPath)
+    ? selectedPath && interactivePaths.includes(selectedPath)
       ? selectedPath
-      : (navPaths.at(0) ?? null)
+      : (interactivePaths.at(0) ?? null)
     : null;
   // Files this directory holds but the column hides. (List views also drop
   // rows on purpose, e.g. read-only shares; those don't count.)
   const hiddenFileCount =
     location.kind === "path" && !showFiles
       ? listing.items.filter(
-          (item) => !isPickerItemNavigable(item) && !item.name.startsWith("."),
+          (item) =>
+            !isPickerItemInteractive(item, target) &&
+            !item.name.startsWith("."),
         ).length
       : 0;
+  const isPickingFiles = target.kind === "object";
 
   // Keep the selected row in view when the column (re)loads or the selection
   // moves. Only this column scrolls: `scrollIntoView` would also scroll the
@@ -139,21 +171,21 @@ export function FolderPickerColumn({
     event: KeyboardEvent<HTMLDivElement>,
     item: WorkspaceItem,
   ) => {
-    const path = normalizePath(item.path);
-    const position = navPaths.indexOf(path);
+    const path = pickerRowKey(item, target);
+    const position = interactivePaths.indexOf(path);
     // A focused row that is not selected yet (nothing picked in this column)
     // gets selected by the first arrow press instead of being skipped.
     const step = path === selectedPath ? 1 : 0;
     const moveTo = (nextIndex: number) => {
-      const next = navRows.at(nextIndex);
+      const next = interactiveRows.at(nextIndex);
       if (!next) return;
-      focusRow(index, normalizePath(next.path));
+      focusRow(index, pickerRowKey(next, target));
       onSelect(index, next);
     };
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        moveTo(Math.min(position + step, navRows.length - 1));
+        moveTo(Math.min(position + step, interactiveRows.length - 1));
         break;
       case "ArrowUp":
         event.preventDefault();
@@ -165,7 +197,7 @@ export function FolderPickerColumn({
         break;
       case "End":
         event.preventDefault();
-        moveTo(navRows.length - 1);
+        moveTo(interactiveRows.length - 1);
         break;
       case "ArrowRight":
         event.preventDefault();
@@ -177,7 +209,13 @@ export function FolderPickerColumn({
         break;
       case "Enter":
         event.preventDefault();
-        onCommit(item, listing.items);
+        // Picking files, Enter opens a folder (choosing it is not an option)
+        // and chooses a file.
+        if (isPickingFiles && isPickerItemNavigable(item, target)) {
+          onEnterChild(index, item);
+        } else {
+          onCommit(item, listing.items);
+        }
         break;
       case " ":
         event.preventDefault();
@@ -206,7 +244,7 @@ export function FolderPickerColumn({
           {label}
         </span>
         {!listing.isLoading && !listing.error ? (
-          <span className="tabular-nums">{navRows.length}</span>
+          <span className="tabular-nums">{interactiveRows.length}</span>
         ) : null}
       </div>
       <div
@@ -230,13 +268,18 @@ export function FolderPickerColumn({
             <div className="flex h-full flex-col items-center justify-center gap-1 px-4 text-center text-xs text-muted-foreground">
               {hiddenFileCount > 0 ? (
                 <>
-                  <p>No folders here.</p>
+                  <p>
+                    {isPickingFiles
+                      ? "No matching files here."
+                      : "No folders here."}
+                  </p>
                   <button
                     type="button"
                     onClick={onShowFiles}
                     className="text-2xs text-link underline-offset-4 hover:underline"
                   >
-                    Show {hiddenFileCount}{" "}
+                    Show {hiddenFileCount}
+                    {isPickingFiles ? " other " : " "}
                     {hiddenFileCount === 1 ? "file" : "files"}
                   </button>
                 </>
@@ -252,9 +295,10 @@ export function FolderPickerColumn({
             className="flex flex-col gap-px"
           >
             {rows.map((item) => {
-              const path = normalizePath(item.path);
-              const navigable = isPickerItemNavigable(item);
-              const isSelected = navigable && path === selectedPath;
+              const key = pickerRowKey(item, target);
+              const navigable = isPickerItemNavigable(item, target);
+              const interactive = isPickerItemInteractive(item, target);
+              const isSelected = interactive && key === selectedPath;
               const isActive = isSelected && isCurrent;
               const writable = isRowWritable(item, listing.items);
               const usable = isRowUsable(item);
@@ -263,30 +307,30 @@ export function FolderPickerColumn({
                   key={item.id}
                   role="option"
                   aria-selected={isSelected}
-                  aria-disabled={navigable ? undefined : true}
+                  aria-disabled={interactive ? undefined : true}
                   tabIndex={
-                    navigable ? (path === tabStopPath ? 0 : -1) : undefined
+                    interactive ? (key === tabStopPath ? 0 : -1) : undefined
                   }
                   data-picker-row=""
                   data-picker-col={index}
-                  data-picker-path={path}
+                  data-picker-path={key}
                   title={item.path}
                   onClick={
-                    navigable
+                    interactive
                       ? () => {
                           onSelect(index, item);
                         }
                       : undefined
                   }
                   onDoubleClick={
-                    navigable
+                    interactive
                       ? () => {
                           onCommit(item, listing.items);
                         }
                       : undefined
                   }
                   onKeyDown={
-                    navigable
+                    interactive
                       ? (event) => {
                           handleKeyDown(event, item);
                         }
@@ -294,9 +338,9 @@ export function FolderPickerColumn({
                   }
                   className={cn(
                     "flex h-7 shrink-0 items-center gap-2 rounded-md px-2 text-sm outline-none select-none focus-visible:ring-2 focus-visible:ring-ring",
-                    !navigable && "text-muted-foreground",
-                    navigable && !isSelected && "hover:bg-muted/70",
-                    navigable &&
+                    !interactive && "text-muted-foreground",
+                    interactive && !isSelected && "hover:bg-muted/70",
+                    interactive &&
                       !isSelected &&
                       !usable &&
                       "text-muted-foreground",
@@ -327,7 +371,7 @@ export function FolderPickerColumn({
                       {formatFileSize(item.size)}
                     </span>
                   ) : null}
-                  {navigable && !writable ? (
+                  {target.kind === "folder" && navigable && !writable ? (
                     <>
                       <Lock
                         aria-hidden

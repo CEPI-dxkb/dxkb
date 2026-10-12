@@ -11,6 +11,7 @@ export {
   mockWorkspaceLsResult,
   mockListPermissionsResult,
   mockWorkspaceGetContent,
+  workspaceObjectContentOverride,
   e2eUsername,
   e2eHomePath,
   type TupleItem,

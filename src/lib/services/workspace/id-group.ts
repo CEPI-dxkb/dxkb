@@ -13,6 +13,17 @@ function uniqueIds(ids: readonly string[]): string[] {
   return [...new Set(ids)];
 }
 
+/**
+ * The ids of a field stored as one comma-separated string
+ * ("727.1572,727.1525"), as some older groups are; the legacy site reads them.
+ */
+export function splitIdList(value: string): string[] {
+  return value
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 export function createIdGroupContent(
   name: string,
   idField: string,
@@ -54,7 +65,9 @@ export function parseIdGroupContent(raw: unknown): IdGroupContent {
   }
 
   const idList: IdList = {};
-  for (const [field, ids] of Object.entries(parsed.id_list)) {
+  for (const [field, value] of Object.entries(parsed.id_list)) {
+    // Saved back as a list, so an append also upgrades the stored format.
+    const ids = typeof value === "string" ? splitIdList(value) : value;
     if (!Array.isArray(ids) || ids.some((id) => typeof id !== "string")) {
       throw new Error(
         `Workspace ID group id_list.${field} must be a string array`,

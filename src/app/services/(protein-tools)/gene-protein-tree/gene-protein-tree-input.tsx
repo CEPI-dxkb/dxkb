@@ -1,35 +1,25 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
+import { SelectedSequencesTable } from "@/components/services/selected-sequences-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import type { WorkspaceSelectorPreset } from "@/components/workspace/workspace-selector-presets";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { phylogeneticTreeInput } from "@/lib/services/info/phylogenetic-tree";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
-import type {
-  GeneProteinTreeFormData,
-  SequenceItem,
-} from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
+import type { GeneProteinTreeFormData } from "@/lib/forms/(protein-tools)/gene-protein-tree/gene-protein-tree-form-schema";
 import {
   getDisplayName,
   getSequenceTypeLabel,
@@ -64,9 +54,9 @@ export function GeneProteinTreeInput({
           Input
           <DialogInfoPopup {...phylogeneticTreeInput} />
         </RequiredFormCardTitle>
-        <CardDescription>
+        <ServiceCardDescription>
           Choose fasta file or features for tree.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent>
         <div className="space-y-4">
@@ -106,7 +96,7 @@ export function GeneProteinTreeInput({
             disabled={!selectedFeatureGroupObject}
           />
           <SequenceSelector
-            label="DNA/Protein Aligned FASTA"
+            label={`${alphabet} Aligned FASTA`}
             preset={alignedFastaPreset}
             value={selectedAlignedFastaObject?.path}
             onChange={setSelectedAlignedFastaObject}
@@ -117,7 +107,7 @@ export function GeneProteinTreeInput({
             disabled={!selectedAlignedFastaObject}
           />
           <SequenceSelector
-            label="DNA/Protein Unaligned FASTA"
+            label={`${alphabet} Unaligned FASTA`}
             preset={unalignedFastaPreset}
             value={selectedUnalignedFastaObject?.path}
             onChange={setSelectedUnalignedFastaObject}
@@ -127,10 +117,18 @@ export function GeneProteinTreeInput({
             ariaLabel="Add unaligned FASTA sequence"
             disabled={!selectedUnalignedFastaObject}
           />
-          <SequenceItemsTable
-            sequences={sequences}
-            alphabet={alphabet}
+          <SelectedSequencesTable
+            heading="Selected file / feature group"
+            rows={sequences.map((sequence) => ({
+              id: `${sequence.type}:${sequence.filename}`,
+              name: getDisplayName(
+                sequence.filename.split("/").pop() || sequence.filename,
+              ),
+              path: sequence.filename,
+              typeLabel: getSequenceTypeLabel(sequence.type, alphabet),
+            }))}
             onRemove={removeSequence}
+            note="No mixing of DNA and Protein FASTA files is allowed."
           />
         </div>
       </ServiceCardContent>
@@ -166,84 +164,12 @@ function SequenceSelector({
           value={value}
           className="flex-1"
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
+        <ServiceAddButton
           aria-label={ariaLabel}
           onClick={onAdd}
           disabled={disabled}
-        >
-          <Plus size={16} />
-        </Button>
+        />
       </div>
-    </div>
-  );
-}
-
-function SequenceItemsTable({
-  sequences,
-  alphabet,
-  onRemove,
-}: {
-  sequences: SequenceItem[];
-  alphabet: GeneProteinTreeFormData["alphabet"];
-  onRemove: (index: number) => void;
-}) {
-  return (
-    <div className="max-h-84 overflow-y-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Selected file / feature group</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className="w-20 text-center">Remove</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sequences.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={3} className="text-center">
-                <span className="text-muted-foreground">No items selected.</span>
-              </TableCell>
-            </TableRow>
-          ) : (
-            sequences.map((sequence, index) => (
-              <TableRow key={`${sequence.type}:${sequence.filename}`}>
-                <TableCell>
-                  <div>
-                    {getDisplayName(
-                      sequence.filename.split("/").pop() || sequence.filename,
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {sequence.filename}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {getSequenceTypeLabel(sequence.type, alphabet)}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remove selected sequence"
-                    onClick={() => {
-                      onRemove(index);
-                    }}
-                  >
-                    <X size={16} />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <p className="px-3 py-2 text-xs text-muted-foreground">
-        No mixing of DNA and Protein FASTA files is allowed.
-      </p>
     </div>
   );
 }

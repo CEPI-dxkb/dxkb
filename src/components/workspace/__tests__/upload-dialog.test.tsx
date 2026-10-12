@@ -192,6 +192,24 @@ describe("UploadDialog", () => {
     );
   });
 
+  it("reports each uploaded file's path and type once all are in", async () => {
+    await stubNodeFormData();
+    server.use(
+      http.post("*/api/services/workspace/upload", () => HttpResponse.json({})),
+    );
+    const { onUploadComplete, user } = renderUploadDialog();
+
+    chooseFiles([nodeFile("first.fq"), nodeFile("second.fq")]);
+    await user.click(screen.getByRole("button", { name: "Start Upload" }));
+
+    await waitFor(() => {
+      expect(onUploadComplete).toHaveBeenCalledWith([
+        { path: `${targetPath}/first.fq`, type: "unspecified" },
+        { path: `${targetPath}/second.fq`, type: "unspecified" },
+      ]);
+    });
+  });
+
   it("deletes nothing when the entry itself cannot be created", async () => {
     // e.g. a file of that name is already there: it must survive.
     const { repository, user } = renderUploadDialog(

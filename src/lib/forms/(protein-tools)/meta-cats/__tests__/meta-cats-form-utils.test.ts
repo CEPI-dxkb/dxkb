@@ -1,18 +1,20 @@
 vi.mock("./meta-cats-form-schema", () => ({}));
 
 import {
-  getMetaCatsDisplayName,
   parseYearRanges,
   getYearGroupLabels,
   getYearGroupForValue,
   countUniqueGroups,
   getUniqueGroupNames,
+  groupNamesSourceText,
   transformMetaCatsParams,
   validateYearRanges,
   createGenomeIdMapFromFeatures,
   buildMetaCatsAutoGroupsFromGenomes,
   removeAutoGroupsByRowIds,
   updateAutoGroupsGroupByRowIds,
+  selectedAutoGroupRowIds,
+  sortMetaCatsAutoGroups,
 } from "../meta-cats-form-utils";
 
 interface AutoGroupItem {
@@ -37,49 +39,6 @@ function makeAutoGroupItem(overrides: Partial<AutoGroupItem> = {}): AutoGroupIte
     ...overrides,
   };
 }
-
-// ---------------------------------------------------------------------------
-// getMetaCatsDisplayName
-// ---------------------------------------------------------------------------
-describe("getMetaCatsDisplayName", () => {
-  it("returns '-' for undefined", () => {
-    expect(getMetaCatsDisplayName(undefined)).toBe("-");
-  });
-
-  it("returns '-' for empty string", () => {
-    expect(getMetaCatsDisplayName("")).toBe("-");
-  });
-
-  it("returns the name unchanged when within maxLength", () => {
-    expect(getMetaCatsDisplayName("short")).toBe("short");
-  });
-
-  it("returns the name unchanged when exactly maxLength", () => {
-    const name = "a".repeat(36);
-    expect(getMetaCatsDisplayName(name)).toBe(name);
-  });
-
-  it("truncates with '...' in the middle when exceeding maxLength", () => {
-    const name = "a".repeat(50);
-    const result = getMetaCatsDisplayName(name);
-    expect(result).toContain("...");
-    expect(result.length).toBeLessThan(50);
-  });
-
-  it("respects a custom maxLength", () => {
-    const name = "abcdefghijklmnopqrst"; // 20 chars
-    const result = getMetaCatsDisplayName(name, 10);
-    expect(result).toContain("...");
-    expect(result.length).toBeLessThanOrEqual(13); // half(3) + 3 + half(3)
-  });
-
-  it("keeps start and end of the original name", () => {
-    const name = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEF"; // 42 chars
-    const result = getMetaCatsDisplayName(name, 20);
-    expect(result.startsWith("ABCDEFGH")).toBe(true);
-    expect(result.endsWith("0ABCDEF")).toBe(true);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // parseYearRanges
@@ -248,6 +207,29 @@ describe("getUniqueGroupNames", () => {
     expect(result).toHaveLength(2);
     expect(result).toContain("A");
     expect(result).toContain("B");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupNamesSourceText
+// ---------------------------------------------------------------------------
+describe("groupNamesSourceText", () => {
+  it("names the chosen metadata by its label", () => {
+    expect(groupNamesSourceText("host_name")).toBe(
+      "Group names come from the Groups Grid, where each added feature is grouped by its genome's Host Name.",
+    );
+  });
+
+  it("mentions year ranges for Collection Year", () => {
+    expect(groupNamesSourceText("collection_year")).toBe(
+      "Group names come from the Groups Grid, where each added feature is grouped by its genome's Collection Year (or its year range, when Year Ranges are set).",
+    );
+  });
+
+  it("falls back to plain metadata for an unknown field", () => {
+    expect(groupNamesSourceText(undefined)).toContain(
+      "grouped by its genome's metadata.",
+    );
   });
 });
 
@@ -496,6 +478,34 @@ describe("buildMetaCatsAutoGroupsFromGenomes", () => {
     expect(nextGroupNames).toContain("Human");
   });
 
+  it("carries each genome's GenBank accessions onto its rows", () => {
+    const genomes = [
+      { genome_id: "g1", host_name: "Human", genbank_accessions: "UEWB00000000" },
+      { genome_id: "g2", host_name: "Human", genbank_accessions: ["CP1", "CP2"] },
+      { genome_id: "g3", host_name: "Human" },
+    ];
+    const genomeIdMap = new Map([
+      ["g1", ["p1"]],
+      ["g2", ["p2"]],
+      ["g3", ["p3"]],
+    ]);
+
+    const { newAutoGroups } = buildMetaCatsAutoGroupsFromGenomes({
+      genomes,
+      genomeIdMap,
+      metadataGroup: "host_name",
+      existingAutoGroups: [],
+      existingGroupNames: [],
+      createId,
+    });
+
+    expect(newAutoGroups.map((item) => item.genbank_accessions)).toEqual([
+      "UEWB00000000",
+      "CP1, CP2",
+      "",
+    ]);
+  });
+
   it("deduplicates by patric_id against existing auto groups", () => {
     const genomes = [{ genome_id: "g1", host_name: "Human" }];
     const genomeIdMap = new Map([["g1", ["p1", "p2"]]]);
@@ -668,5 +678,58 @@ describe("updateAutoGroupsGroupByRowIds", () => {
     const result = updateAutoGroupsGroupByRowIds(items, new Set(["1"]), "B");
     expect(items[0].group).toBe("A");
     expect(result[0].group).toBe("B");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// selectedAutoGroupRowIds
+// ---------------------------------------------------------------------------
+describe("selectedAutoGroupRowIds", () => {
+  it("maps the grid's BRC ID selection to the rows' own ids", () => {
+    const items = [
+      makeAutoGroupItem({ id: "1", patric_id: "fig|1.peg.1" }),
+      makeAutoGroupItem({ id: "2", patric_id: "fig|1.peg.2" }),
+      makeAutoGroupItem({ id: "3", patric_id: "fig|1.peg.3" }),
+    ];
+    expect(
+      selectedAutoGroupRowIds(items, {
+        "fig|1.peg.1": true,
+        "fig|1.peg.3": true,
+        "fig|gone": true,
+      }),
+    ).toEqual(new Set(["1", "3"]));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// sortMetaCatsAutoGroups
+// ---------------------------------------------------------------------------
+describe("sortMetaCatsAutoGroups", () => {
+  const items = [
+    makeAutoGroupItem({ id: "1", genome_id: "729.10", strain: "B" }),
+    makeAutoGroupItem({ id: "2", genome_id: "729.9", strain: "" }),
+    makeAutoGroupItem({ id: "3", genome_id: "727.1551", strain: "A" }),
+  ];
+
+  it("keeps the grid's order when nothing is sorted", () => {
+    expect(sortMetaCatsAutoGroups(items, [])).toBe(items);
+  });
+
+  it("sorts numbers inside IDs numerically, in either direction", () => {
+    const ascending = sortMetaCatsAutoGroups(items, [
+      { id: "genome_id", desc: false },
+    ]);
+    expect(ascending.map((item) => item.id)).toEqual(["3", "2", "1"]);
+    const descending = sortMetaCatsAutoGroups(items, [
+      { id: "genome_id", desc: true },
+    ]);
+    expect(descending.map((item) => item.id)).toEqual(["1", "2", "3"]);
+  });
+
+  it("puts empty values last in either direction", () => {
+    for (const desc of [false, true]) {
+      const sorted = sortMetaCatsAutoGroups(items, [{ id: "strain", desc }]);
+      expect(sorted[sorted.length - 1].id).toBe("2");
+    }
   });
 });

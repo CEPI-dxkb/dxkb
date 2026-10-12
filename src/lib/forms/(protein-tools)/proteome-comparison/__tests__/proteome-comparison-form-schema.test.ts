@@ -56,4 +56,36 @@ describe("proteomeComparisonFormSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("counts each genome of a genome group against the limit", () => {
+    const group = (genomeCount: number) => ({
+      id: "group-1",
+      name: "Group",
+      path: "/e2e-test-user@patricbrc.org/home/Genome Groups/Group",
+      type: "genome_group" as const,
+      genome_ids: Array.from(
+        { length: genomeCount },
+        (_, i) => `${String(i)}.1`,
+      ),
+    });
+
+    // One genome plus a group of eight is the full nine; one more is over,
+    // although the list holds only two rows.
+    expect(
+      proteomeComparisonFormSchema.safeParse({
+        ...validPayload,
+        comparison_items: [...validPayload.comparison_items, group(8)],
+      }).success,
+    ).toBe(true);
+    const result = proteomeComparisonFormSchema.safeParse({
+      ...validPayload,
+      comparison_items: [...validPayload.comparison_items, group(9)],
+    });
+    expect(result.error?.issues).toContainEqual(
+      expect.objectContaining({
+        path: ["comparison_items"],
+        message: "Maximum 9 comparison genomes allowed",
+      }),
+    );
+  });
 });

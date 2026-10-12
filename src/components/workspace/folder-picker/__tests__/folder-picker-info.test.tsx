@@ -70,6 +70,40 @@ describe("FolderPickerInfo with no folder selected", () => {
   });
 });
 
+describe("FolderPickerInfo with no folder selected, picking files", () => {
+  const fileTarget: Props["target"] = { kind: "object", types: ["contigs"] };
+
+  it("says Shared includes read-only workspaces, which files can be picked from", () => {
+    renderInfo({ target: fileTarget, place: "shared", path: null });
+
+    expect(
+      screen.getByText(
+        "Workspaces other people shared with you, including read-only ones.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/where you can write/)).not.toBeInTheDocument();
+  });
+
+  it("says files can be picked from Public, not that it is for saving elsewhere", () => {
+    renderInfo({ target: fileTarget, place: "public", path: null });
+
+    expect(
+      screen.getByText("Public workspaces you can browse and pick files from."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/save elsewhere/)).not.toBeInTheDocument();
+  });
+
+  it.each<[PickerView, string]>([
+    ["home", "Your home folder."],
+    ["favorites", "Folders you starred in the workspace browser."],
+    ["recent", "Folders you used recently, newest first."],
+  ])("keeps the folder-mode hint for %s", (place, hint) => {
+    renderInfo({ target: fileTarget, place, path: null });
+
+    expect(screen.getByText(hint)).toBeInTheDocument();
+  });
+});
+
 describe("FolderPickerInfo with a folder selected", () => {
   it("names the folder and shows its full path", () => {
     renderInfo({ path: `${home}/Experiments/Run 1` });

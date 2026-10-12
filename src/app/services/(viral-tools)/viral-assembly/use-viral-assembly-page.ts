@@ -38,6 +38,11 @@ export function useViralAssemblyPage() {
     isOutputNameValid: true,
   });
   const inputType = useSelector(form.store, (value) => value.values.input_type);
+  const strategy = useSelector(form.store, (value) => value.values.strategy);
+  const referenceType = useSelector(
+    form.store,
+    (value) => value.values.reference_type,
+  );
   const outputPath = useSelector(
     form.store,
     (value) => value.values.output_path,
@@ -140,7 +145,8 @@ export function useViralAssemblyPage() {
           Record<string, string> | undefined;
         const single = data.single_end_lib as
           Record<string, string> | undefined;
-        const srr = data.srr_id as string | undefined;
+        // Legacy sends sra_id; DXKB used to send srr_id. The app takes both.
+        const srr = (data.sra_id ?? data.srr_id) as string | undefined;
         if (paired?.read1 && paired.read2) {
           rerunForm.setFieldValue("input_type", "paired");
           setState("pairedRead1")(paired.read1);
@@ -163,6 +169,8 @@ export function useViralAssemblyPage() {
     ...selection,
     form,
     inputType,
+    strategy,
+    referenceType,
     outputPath,
     handleReset,
     setPairedRead1: setState("pairedRead1"),

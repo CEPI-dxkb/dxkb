@@ -1,6 +1,5 @@
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,7 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ChevronRight, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import SelectedItemsTable from "@/components/services/selected-items-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
@@ -26,10 +25,11 @@ import {
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { ServiceSubLabel } from "@/components/services/form-ui/service-label";
 import {
-  ServiceLabel,
-  ServiceSubLabel,
-} from "@/components/services/form-ui/service-label";
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import { readInputFileInfo } from "@/lib/services/info/sars-cov2-genome-analysis";
 import { getLibraryTypeLabel } from "@/lib/forms/shared-schemas";
@@ -79,20 +79,13 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
           </ServiceCardHeader>
           <ServiceCardContent className="space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <ServiceLabel>Paired Read Library</ServiceLabel>
-                <div className="mx-4 h-px flex-1 bg-border" />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
+              <ServiceLibraryHeader title="Paired Read Library">
+                <ServiceLibraryAddButton
                   aria-label="Add paired read library"
                   onClick={page.handlePairedLibraryAdd}
                   disabled={!page.pairedRead1 || !page.pairedRead2}
-                >
-                  <ChevronRight size={16} />
-                </Button>
-              </div>
+                />
+              </ServiceLibraryHeader>
               <div className="space-y-3">
                 <WorkspaceObjectSelector
                   preset="reads"
@@ -118,20 +111,13 @@ export function SarsGenomeReadInputs({ page }: { page: SarsGenomePage }) {
                 onChange={page.setPairedPlatform}
               />
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <ServiceLabel>Single Read Library</ServiceLabel>
-                  <div className="mx-4 h-px flex-1 bg-border" />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
+                <ServiceLibraryHeader title="Single Read Library">
+                  <ServiceLibraryAddButton
                     aria-label="Add single read library"
                     onClick={page.handleSingleLibraryAdd}
                     disabled={!page.singleRead}
-                  >
-                    <ChevronRight size={16} />
-                  </Button>
-                </div>
+                  />
+                </ServiceLibraryHeader>
                 <WorkspaceObjectSelector
                   preset="reads"
                   placeholder="Select READ FILE..."

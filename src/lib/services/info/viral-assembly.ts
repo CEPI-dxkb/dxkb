@@ -44,12 +44,17 @@ export const viralAssemblyParameters: ServiceInfoPopup = {
     {
       header: "Assembly Strategy",
       description:
-        "IRMA (Iterative Refinement Meta-Assembler) is used to assemble viral genomes from the selected reference database.",
+        "IRMA (Iterative Refinement Meta-Assembler) assembles viral genomes using the selected reference database. Reference Guided Assembly assembles the reads against a reference you provide.",
     },
     {
       header: "Reference Database",
       description:
-        "Select the virus reference (e.g. FLU, CoV, RSV, EBOLA) used for assembly.",
+        "For IRMA, select the module for the virus and the sequencing data (e.g. Influenza A & B, SARS-CoV-2 & MERS-CoV, RSV A & B groups).",
+    },
+    {
+      header: "Reference",
+      description:
+        "For Reference Guided Assembly, enter one or more GenBank accessions separated by commas (e.g. NC_045512.2,MN908947.3), or select a DNA FASTA or contigs file from your workspace.",
     },
     {
       header: "Output Folder",

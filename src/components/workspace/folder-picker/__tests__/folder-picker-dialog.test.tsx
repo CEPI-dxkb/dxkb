@@ -139,7 +139,7 @@ describe("WorkspaceFolderPickerDialog choosing a folder", () => {
     await user.click(selectButton());
 
     expect(onSelect).toHaveBeenCalledTimes(1);
-    expect(onSelect).toHaveBeenCalledWith(home);
+    expect(onSelect).toHaveBeenCalledWith(home, null);
     expect(onOpenChange).toHaveBeenCalledWith(false);
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -155,7 +155,10 @@ describe("WorkspaceFolderPickerDialog choosing a folder", () => {
     expect(selectButton()).toHaveAccessibleName("Select “Experiments”");
 
     await user.click(selectButton());
-    expect(onSelect).toHaveBeenCalledWith(`${home}/Experiments`);
+    expect(onSelect).toHaveBeenCalledWith(
+      `${home}/Experiments`,
+      expect.anything(),
+    );
   });
 
   it("commits a folder on double click", async () => {
@@ -163,7 +166,7 @@ describe("WorkspaceFolderPickerDialog choosing a folder", () => {
 
     await user.dblClick(await findOption("Home", "Alpha"));
 
-    expect(onSelect).toHaveBeenCalledWith(`${home}/Alpha`);
+    expect(onSelect).toHaveBeenCalledWith(`${home}/Alpha`, expect.anything());
   });
 
   it("does not commit a read-only folder on double click", async () => {
@@ -368,7 +371,10 @@ describe("WorkspaceFolderPickerDialog places", () => {
     await user.click(within(column).getByRole("option", { name: "Experiments" }));
     await user.click(selectButton());
 
-    expect(onSelect).toHaveBeenCalledWith(`${home}/Experiments`);
+    expect(onSelect).toHaveBeenCalledWith(
+      `${home}/Experiments`,
+      expect.anything(),
+    );
   });
 
   it("lists favorite folders", async () => {
@@ -434,7 +440,7 @@ describe("WorkspaceFolderPickerDialog places", () => {
     expect(screen.getByRole("button", { name: "Upload here" })).toBeEnabled();
     await user.click(selectButton());
 
-    expect(onSelect).toHaveBeenCalledWith(results);
+    expect(onSelect).toHaveBeenCalledWith(results, expect.anything());
   });
   // `team-ws` and `locked-ws` are not in the `/` listing, so their favorites
   // are stubs with no permission; their own listings carry it.
@@ -481,7 +487,7 @@ describe("WorkspaceFolderPickerDialog places", () => {
     expect(selectButton()).toBeEnabled();
     await user.dblClick(row);
 
-    expect(onSelect).toHaveBeenCalledWith(reports);
+    expect(onSelect).toHaveBeenCalledWith(reports, expect.anything());
   });
 
   it("does not borrow another workspace's permission for a favorite", async () => {
@@ -666,5 +672,47 @@ describe("WorkspaceFolderPickerDialog Show files and widths", () => {
 
     await user.dblClick(handle);
     expect(handle).toHaveAttribute("aria-valuenow", "320");
+  });
+});
+
+describe("a value that no longer exists", () => {
+  it("opens at the deepest folder that still exists", async () => {
+    renderPicker({ initialPath: `${home}/Experiments/Gone/Deeper` });
+    await waitFor(() => {
+      expect(breadcrumbLabels()).toEqual(["Home", "Experiments"]);
+    });
+    expect(columnLabels()).toEqual(["Home", "Experiments"]);
+    expect(await findOption("Home", "Experiments")).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(selectButton()).toHaveAccessibleName("Select “Experiments”");
+  });
+
+  it("opens on the place itself when its first folder is gone", async () => {
+    renderPicker({ initialPath: `${home}/Gone` });
+    await waitFor(() => {
+      expect(breadcrumbLabels()).toEqual(["Home"]);
+    });
+    expect(selectButton()).toHaveAccessibleName("Select “Home”");
+  });
+
+  it("moves focus to the folder it opened at", async () => {
+    renderPicker({ initialPath: `${home}/Experiments/Gone` });
+    const experiments = await findOption("Home", "Experiments");
+    await waitFor(() => {
+      expect(experiments).toHaveFocus();
+    });
+  });
+
+  it("can't choose a folder until the column that lists it has loaded", async () => {
+    const repository = makePickerRepository();
+    const gate = repository.holdListing(home);
+    renderPicker({ initialPath: `${home}/Experiments` }, repository);
+    expect(selectButton()).toBeDisabled();
+    gate.release();
+    await waitFor(() => {
+      expect(selectButton()).toBeEnabled();
+    });
   });
 });

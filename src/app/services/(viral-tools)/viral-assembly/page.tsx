@@ -1,7 +1,11 @@
 "use client";
 
 import { useViralAssemblyPage } from "./use-viral-assembly-page";
-import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldErrors,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -26,6 +30,8 @@ import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceFieldLabel } from "@/components/services/form-ui/service-field";
+import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
@@ -39,6 +45,8 @@ import {
 import {
   strategyOptions,
   moduleOptions,
+  referenceTypeOptions,
+  referenceTypeSchema,
   type ViralAssemblyFormData,
 } from "@/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-schema";
 
@@ -56,6 +64,8 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
     sraDefaultValue,
     sraResetKey,
     inputType,
+    strategy,
+    referenceType,
     outputPath,
     selectedLibraries,
     setLibraries,
@@ -112,19 +122,19 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                           );
                       }}
                     >
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="paired" id="input-paired" />
                         <Label htmlFor="input-paired">
                           Paired Read Library
                         </Label>
                       </div>
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="single" id="input-single" />
                         <Label htmlFor="input-single">
                           Single Read Library
                         </Label>
                       </div>
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="srr_accession" id="input-sra" />
                         <Label htmlFor="input-sra">SRA Run Accession</Label>
                       </div>
@@ -242,68 +252,171 @@ const ViralAssemblyPage = function ViralAssemblyPage() {
                     )}
                   </form.Field>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <ServiceLabel>Reference Database</ServiceLabel>
-                  <form.Field name="module">
+                {strategy === "irma" ? (
+                  <div className="flex-1 space-y-2">
+                    <ServiceLabel>Reference Database</ServiceLabel>
+                    <form.Field name="module">
+                      {(field) => (
+                        <FieldItem>
+                          <Select
+                            items={moduleOptions}
+                            value={field.state.value}
+                            onValueChange={(value) => {
+                              if (value != null) field.handleChange(value);
+                            }}
+                          >
+                            <ServiceSelectTrigger
+                              aria-label="Reference Database"
+                              aria-describedby="module-description"
+                            >
+                              <SelectValue placeholder="Select" />
+                            </ServiceSelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {moduleOptions.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                          <p
+                            id="module-description"
+                            className="text-xs text-muted-foreground"
+                          >
+                            {
+                              moduleOptions.find(
+                                (opt) => opt.value === field.state.value,
+                              )?.description
+                            }
+                          </p>
+                          <FieldErrors field={field} />
+                        </FieldItem>
+                      )}
+                    </form.Field>
+                  </div>
+                ) : (
+                  <form.Field name="reference_type">
                     {(field) => (
-                      <FieldItem>
-                        <Select
-                          items={moduleOptions}
+                      <FieldItem className="flex-1">
+                        {/* A radio group is not a labelable element. */}
+                        <ServiceFieldLabel
+                          field={field}
+                          id={`${field.name}-label`}
+                          htmlFor={undefined}
+                        >
+                          Reference
+                        </ServiceFieldLabel>
+                        <ServiceRadioGroup
+                          aria-labelledby={`${field.name}-label`}
                           value={field.state.value}
                           onValueChange={(value) => {
-                            if (value != null) field.handleChange(value);
+                            const parsed = referenceTypeSchema.safeParse(value);
+                            if (parsed.success) field.handleChange(parsed.data);
                           }}
                         >
-                          <ServiceSelectTrigger aria-label="Reference Database">
-                            <SelectValue placeholder="Select" />
-                          </ServiceSelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {moduleOptions.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
+                          {referenceTypeOptions.map((opt) => (
+                            <div
+                              key={opt.value}
+                              className="service-radio-group-item"
+                            >
+                              <RadioGroupItem
+                                value={opt.value}
+                                id={`reference-type-${opt.value}`}
+                              />
+                              <Label htmlFor={`reference-type-${opt.value}`}>
+                                {opt.label}
+                              </Label>
+                            </div>
+                          ))}
+                        </ServiceRadioGroup>
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                )}
+              </div>
+
+              {strategy === "reference_guided" && referenceType === "genbank" ? (
+                <form.Field name="reference_genbank_accession">
+                  {(field) => (
+                    <FieldItem>
+                      <ServiceFieldLabel field={field}>Accession</ServiceFieldLabel>
+                      <ServiceInput
+                        id={field.name}
+                        name={field.name}
+                        value={field.state.value}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => {
+                          field.handleChange(event.target.value);
+                        }}
+                        placeholder="e.g. NC_045512.2 or NC_045512.2,MN908947.3"
+                        aria-invalid={fieldErrorMessage(field) !== null || undefined}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              ) : null}
+
+              {strategy === "reference_guided" && referenceType === "fasta" ? (
+                <form.Field name="reference_fasta_file">
+                  {(field) => (
+                    <FieldItem>
+                      <ServiceFieldLabel field={field}>FASTA File</ServiceFieldLabel>
+                      <WorkspaceObjectSelector
+                        id={field.name}
+                        preset="featureDnaFastaOrContigs"
+                        placeholder="Select a FASTA file..."
+                        value={field.state.value}
+                        invalid={fieldErrorMessage(field) !== null}
+                        onObjectSelect={(object: WorkspaceObject) => {
+                          field.handleChange(object.path);
+                        }}
+                      />
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+              ) : null}
+
+              <div className="service-card-row">
+                <div className="service-card-row-item">
+                  <form.Field name="output_path">
+                    {(field) => (
+                      <FieldItem>
+                        <OutputFolder
+                          value={field.state.value}
+                          onChange={(value) => {
+                            field.handleChange(value);
+                          }}
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                </div>
+
+                <div className="service-card-row-item">
+                  <form.Field name="output_file">
+                    {(field) => (
+                      <FieldItem>
+                        <OutputFolder
+                          variant="name"
+                          value={field.state.value}
+                          onChange={(value) => {
+                            field.handleChange(value);
+                          }}
+                          outputFolderPath={outputPath}
+                          onValidationChange={setIsOutputNameValid}
+                        />
                         <FieldErrors field={field} />
                       </FieldItem>
                     )}
                   </form.Field>
                 </div>
               </div>
-
-              <form.Field name="output_path">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      value={field.state.value}
-                      onChange={(value) => {
-                        field.handleChange(value);
-                      }}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
-
-              <form.Field name="output_file">
-                {(field) => (
-                  <FieldItem>
-                    <OutputFolder
-                      variant="name"
-                      value={field.state.value}
-                      onChange={(value) => {
-                        field.handleChange(value);
-                      }}
-                      outputFolderPath={outputPath}
-                      onValidationChange={setIsOutputNameValid}
-                    />
-                    <FieldErrors field={field} />
-                  </FieldItem>
-                )}
-              </form.Field>
             </ServiceCardContent>
           </Card>
         </div>

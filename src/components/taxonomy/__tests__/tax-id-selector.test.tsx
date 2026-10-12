@@ -30,13 +30,15 @@ describe("TaxIDSelector search", () => {
 
     const input = screen.getByRole("textbox");
     await user.type(input, "562");
+    // The name on the first line, the ID under it, and no lineage.
     const suggestion = await screen.findByRole("button", {
-      name: /562 \[Escherichia coli\]/,
+      name: /Escherichia coli/,
     });
     expect(query).toBe("taxon_id:562");
+    expect(suggestion).toHaveTextContent(/^Escherichia coli562$/);
     expect(
-      screen.getByText("Bacteria > Escherichia > Escherichia coli"),
-    ).toBeVisible();
+      screen.queryByText("Bacteria > Escherichia > Escherichia coli"),
+    ).not.toBeInTheDocument();
 
     await user.click(suggestion);
 
@@ -58,5 +60,28 @@ describe("TaxIDSelector search", () => {
     expect(
       await screen.findByText("No taxonomy found for ID: 999999999"),
     ).toBeVisible();
+  });
+});
+
+describe("TaxIDSelector invalid", () => {
+  it("draws the error border for a caller-reported failure without adding a message", () => {
+    render(<TaxIDSelector invalid />, { wrapper: createQueryClientWrapper() });
+
+    expect(screen.getByRole("textbox")).toHaveClass("border-destructive");
+    expect(screen.queryByText("NCBI Tax ID is required.")).toBeNull();
+  });
+
+  it("keeps the default border until the required field is touched", async () => {
+    const user = userEvent.setup();
+    render(<TaxIDSelector required />, { wrapper: createQueryClientWrapper() });
+    const input = screen.getByRole("textbox");
+
+    expect(input).not.toHaveClass("border-destructive");
+
+    await user.click(input);
+    await user.tab();
+
+    expect(input).toHaveClass("border-destructive");
+    expect(screen.getByText("NCBI Tax ID is required.")).toBeVisible();
   });
 });

@@ -16,6 +16,7 @@ import {
   checkFastaFileLimit,
   removeFastaFileAtIndex,
   createFastaFileItem,
+  fastaFileFromObject,
   validateSequenceFasta,
   transformMsaSnpAnalysisParams,
 } from "../msa-snp-analysis-form-utils";
@@ -183,6 +184,35 @@ describe("createFastaFileItem", () => {
   it("creates a file item with a DNA type", () => {
     const item = createFastaFileItem("/workspace/dna.fasta", "feature_dna_fasta");
     expect(item).toEqual({ file: "/workspace/dna.fasta", type: "feature_dna_fasta" });
+  });
+});
+
+describe("fastaFileFromObject", () => {
+  it("types a file by its workspace type, not its path", () => {
+    expect(
+      fastaFileFromObject(
+        { path: "/ws/aa/genes.fasta", type: "feature_dna_fasta" },
+        "feature",
+      ),
+    ).toEqual({ file: "/ws/aa/genes.fasta", type: "feature_dna_fasta" });
+    expect(
+      fastaFileFromObject(
+        { path: "/ws/genes.fna", type: "feature_protein_fasta" },
+        "feature",
+      ).type,
+    ).toBe("feature_protein_fasta");
+    expect(
+      fastaFileFromObject(
+        { path: "/ws/aln.afa", type: "aligned_protein_fasta" },
+        "aligned",
+      ).type,
+    ).toBe("aligned_protein_fasta");
+    expect(
+      fastaFileFromObject(
+        { path: "/ws/protein.afa", type: "aligned_dna_fasta" },
+        "aligned",
+      ).type,
+    ).toBe("aligned_dna_fasta");
   });
 });
 
@@ -377,6 +407,20 @@ describe("transformMsaSnpAnalysisParams", () => {
       { file: "/workspace/aligned.fasta", type: "aligned_protein_fasta" },
     ]);
     expect(result).not.toHaveProperty("input_type");
+  });
+
+  it("names no aligner or strategy for an aligned file, which is not realigned", () => {
+    const result = transformMsaSnpAnalysisParams({
+      ...baseData,
+      input_status: "aligned",
+      input_type: undefined,
+      aligner: "Mafft",
+      strategy: "auto",
+      fasta_files: [{ file: "/workspace/aligned.fasta", type: "aligned_dna_fasta" }],
+    });
+    expect(result).not.toHaveProperty("aligner");
+    expect(result).not.toHaveProperty("strategy");
+    expect(result).not.toHaveProperty("strategy_settings");
   });
 
   // -- Reference --

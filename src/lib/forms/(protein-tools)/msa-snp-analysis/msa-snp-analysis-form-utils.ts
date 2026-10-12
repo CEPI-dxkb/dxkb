@@ -64,6 +64,22 @@ export function createFastaFileItem(
 }
 
 /**
+ * The `fasta_files` item for a picked workspace file, typed by its workspace
+ * type as legacy MSA does. The picker offers only the kind's two types, so
+ * anything but protein is DNA.
+ */
+export function fastaFileFromObject(
+  { path, type }: { path: string; type: string },
+  kind: "feature" | "aligned",
+): FastaFileItem {
+  const isProtein = type === `${kind}_protein_fasta`;
+  return createFastaFileItem(
+    path,
+    `${kind}_${isProtein ? "protein" : "dna"}_fasta`,
+  );
+}
+
+/**
  * Validate FASTA text input for sequences
  * Returns validation result with minimum sequence count check
  */
@@ -106,13 +122,20 @@ export function transformMsaSnpAnalysisParams(
 ): Record<string, unknown> {
   const params: Record<string, unknown> = {
     input_status: data.input_status,
-    aligner: data.aligner,
     output_path: data.output_path,
     output_file: data.output_file.trim(),
   };
 
   // Add input type and related fields for unaligned sequences
   if (data.input_status === "unaligned" && data.input_type) {
+    // An aligned file is not realigned (App-MSA skips the aligner), so only
+    // unaligned input names one, as in legacy, where the field is hidden.
+    params.aligner = data.aligner;
+    if (data.aligner === "Mafft" && data.strategy) {
+      // Legacy API expects both strategy and strategy_settings
+      params.strategy = data.strategy;
+      params.strategy_settings = data.strategy;
+    }
     // Map new internal values to legacy API parameter names
     if (data.input_type === "input_feature_group") {
       params.input_type = "input_group";
@@ -153,12 +176,6 @@ export function transformMsaSnpAnalysisParams(
   params.ref_type = data.ref_type;
   if (data.ref_string && data.ref_string.trim() !== "") {
     params.ref_string = data.ref_string.trim();
-  }
-
-  // Add strategy only for Mafft (legacy API expects both strategy and strategy_settings)
-  if (data.aligner === "Mafft" && data.strategy) {
-    params.strategy = data.strategy;
-    params.strategy_settings = data.strategy;
   }
 
   // Set alphabet if not already set (for aligned sequences or when auto-detected)

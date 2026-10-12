@@ -1,24 +1,23 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
 import type { TaxonomicClassificationController } from "./use-taxonomic-classification-controller";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { SelectedLibrariesCard } from "@/components/services/selected-libraries-card";
 import SraRunAccessionWithValidation from "@/components/services/sra-run-accession-with-validation";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FieldErrors } from "@/components/ui/tanstack-form";
+import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
+import { ServiceSubLabel } from "@/components/services/form-ui/service-label";
 import {
-  ServiceLabel,
-  ServiceSubLabel,
-} from "@/components/services/form-ui/service-label";
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import { extractSampleIdFromPath } from "@/lib/forms/service-library-rules";
 import { taxonomyClassificationInput } from "@/lib/services/info/taxonomic-classification";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
@@ -45,20 +44,13 @@ export function ClassificationInputCard({
         </ServiceCardHeader>
         <ServiceCardContent className="space-y-6">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <ServiceLabel>Paired Read Library</ServiceLabel>
-              <div className="mx-4 h-px flex-1 bg-border" />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
+            <ServiceLibraryHeader title="Paired Read Library">
+              <ServiceLibraryAddButton
                 aria-label="Add paired read library"
                 onClick={controller.handlePairedLibraryAdd}
                 disabled={!state.pairedRead1 || !state.pairedRead2}
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+              />
+            </ServiceLibraryHeader>
             <div className="space-y-3">
               <WorkspaceObjectSelector
                 preset="reads"
@@ -84,7 +76,11 @@ export function ClassificationInputCard({
                 }}
               />
             </div>
-            <div>
+            {/* A FieldItem, not a bare div: a sub-label that is a direct child
+                of a field container loses its own `mb-2` (globals.css), so
+                the grid's `gap-2` is the whole 8px to the input. A bare div
+                kept the margin and the input's `mt-1.5` on top: 14px. */}
+            <FieldItem>
               <ServiceSubLabel htmlFor="paired-sample-id">
                 Sample Identifier
               </ServiceSubLabel>
@@ -96,25 +92,17 @@ export function ClassificationInputCard({
                 }}
                 placeholder="Sample ID"
                 variant="mono"
-                className="mt-1.5"
               />
-            </div>
+            </FieldItem>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <ServiceLabel>Single Read Library</ServiceLabel>
-              <div className="mx-4 h-px flex-1 bg-border" />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
+            <ServiceLibraryHeader title="Single Read Library">
+              <ServiceLibraryAddButton
                 aria-label="Add single read library"
                 onClick={controller.handleSingleLibraryAdd}
                 disabled={!state.singleRead}
-              >
-                <ChevronRight size={16} />
-              </Button>
-            </div>
+              />
+            </ServiceLibraryHeader>
             <WorkspaceObjectSelector
               preset="reads"
               placeholder="Select READ FILE..."
@@ -126,7 +114,7 @@ export function ClassificationInputCard({
                 );
               }}
             />
-            <div>
+            <FieldItem>
               <ServiceSubLabel htmlFor="single-sample-id">
                 Sample Identifier
               </ServiceSubLabel>
@@ -138,32 +126,35 @@ export function ClassificationInputCard({
                 }}
                 placeholder="Sample ID"
                 variant="mono"
-                className="mt-1.5"
               />
-            </div>
+            </FieldItem>
           </div>
-          <SraRunAccessionWithValidation
-            key={state.sraResetKey}
-            title="SRA Run Accession"
-            placeholder="SRR..."
-            selectedLibraries={selectedLibraries}
-            setSelectedLibraries={controller.handleSetSelectedLibraries}
-            allowDuplicates={false}
-          />
-          <div>
-            <ServiceSubLabel htmlFor="srr-sample-id">
-              Sample Identifier
-            </ServiceSubLabel>
-            <ServiceInput
-              id="srr-sample-id"
-              value={state.srrSampleId}
-              onChange={(event) => {
-                controller.handleSampleIdChange("srr", event.target.value);
-              }}
-              placeholder="Sample ID"
-              variant="mono"
-              className="mt-1.5"
+          {/* Grouped like the two libraries above (`space-y-4`, not the
+              card's `space-y-6`), so the sample identifier sits with the
+              accession it names. */}
+          <div className="space-y-4">
+            <SraRunAccessionWithValidation
+              key={state.sraResetKey}
+              title="SRA Run Accession"
+              placeholder="SRR..."
+              selectedLibraries={selectedLibraries}
+              setSelectedLibraries={controller.handleSetSelectedLibraries}
+              allowDuplicates={false}
             />
+            <FieldItem>
+              <ServiceSubLabel htmlFor="srr-sample-id">
+                Sample Identifier
+              </ServiceSubLabel>
+              <ServiceInput
+                id="srr-sample-id"
+                value={state.srrSampleId}
+                onChange={(event) => {
+                  controller.handleSampleIdChange("srr", event.target.value);
+                }}
+                placeholder="Sample ID"
+                variant="mono"
+              />
+            </FieldItem>
           </div>
           <form.Field name="paired_end_libs">
             {(field) => <FieldErrors field={field} />}

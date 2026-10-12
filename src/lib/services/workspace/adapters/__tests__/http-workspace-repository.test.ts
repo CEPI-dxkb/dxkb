@@ -439,6 +439,71 @@ describe("HttpWorkspaceRepository", () => {
     );
   });
 
+  it("saves a group stored as a comma-separated id string back as a list", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    server.use(
+      http.post("/api/services/workspace", async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>;
+        bodies.push(body);
+        if (body.method === "Workspace.get") {
+          return HttpResponse.json({
+            result: [
+              [
+                [
+                  [
+                    "old",
+                    "genome_group",
+                    "/groups/",
+                    "",
+                    "id",
+                    "owner",
+                    0,
+                    {},
+                    {},
+                  ],
+                  JSON.stringify({
+                    name: "old",
+                    id_list: { genome_id: "727.1572,727.1525" },
+                  }),
+                ],
+              ],
+            ],
+          });
+        }
+        return HttpResponse.json({ id: 1, jsonrpc: "2.0" });
+      }),
+    );
+
+    await repository.appendToIdGroup({
+      path: "/groups/old",
+      idField: "genome_id",
+      ids: ["727.1525", "727.1554"],
+    });
+
+    expect(bodies[1]).toEqual(
+      expect.objectContaining({
+        method: "Workspace.create",
+        params: [
+          expect.objectContaining({
+            objects: [
+              [
+                "/groups/old",
+                "genome_group",
+                {},
+                JSON.stringify({
+                  name: "old",
+                  id_list: {
+                    genome_id: ["727.1572", "727.1525", "727.1554"],
+                  },
+                }),
+              ],
+            ],
+          }),
+        ],
+      }),
+    );
+  });
+
   it("refuses to overwrite an ID group with malformed content", async () => {
     const methods: unknown[] = [];
     server.use(
@@ -494,5 +559,52 @@ describe("HttpWorkspaceRepository", () => {
         ids: ["g1"],
       }),
     ).rejects.toMatchObject({ message: "Group exists", code: -32603 });
+  });
+
+  it("reads the start of a file through the preview route", async () => {
+    let requested: URL | undefined;
+    server.use(
+      http.get("/api/workspace/preview/*", ({ request }) => {
+        requested = new URL(request.url);
+        return new HttpResponse(">a\nACGT\n", {
+          headers: { "X-Truncated": "true" },
+        });
+      }),
+    );
+
+    await expect(
+      repository.readTextStart("/user@bvbrc/home/My Files/seqs.fa", 1024),
+    ).resolves.toEqual({ text: ">a\nACGT\n", truncated: true });
+    expect(requested?.pathname).toBe(
+      "/api/workspace/preview/user@bvbrc/home/My%20Files/seqs.fa",
+    );
+    expect(requested?.searchParams.get("maxBytes")).toBe("1024");
+  });
+
+  it("reports a whole file as not truncated", async () => {
+    server.use(
+      http.get("/api/workspace/preview/*", () => new HttpResponse(">a\nAC\n")),
+    );
+
+    await expect(
+      repository.readTextStart("/user@bvbrc/home/seqs.fa", 1024),
+    ).resolves.toEqual({ text: ">a\nAC\n", truncated: false });
+  });
+
+  it("keeps the preview route's error message", async () => {
+    server.use(
+      http.get("/api/workspace/preview/*", () =>
+        HttpResponse.json(
+          { error: "Failed to fetch file content from storage" },
+          { status: 502 },
+        ),
+      ),
+    );
+
+    const read = repository.readTextStart("/user@bvbrc/home/seqs.fa", 1024);
+    await expect(read).rejects.toBeInstanceOf(WorkspaceApiError);
+    await expect(read).rejects.toThrow(
+      "Failed to fetch file content from storage",
+    );
   });
 });

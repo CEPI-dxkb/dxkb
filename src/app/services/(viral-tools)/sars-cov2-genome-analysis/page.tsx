@@ -231,11 +231,11 @@ export default function SarsCov2GenomeAnalysisPage() {
                           );
                       }}
                     >
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="reads" id="start-reads" />
                         <Label htmlFor="start-reads">Read File</Label>
                       </div>
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem value="contigs" id="start-contigs" />
                         <Label htmlFor="start-contigs">Assembled Contigs</Label>
                       </div>

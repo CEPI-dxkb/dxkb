@@ -1,4 +1,10 @@
-import type { MetaCatsFormData, AutoGroupItem } from "./meta-cats-form-schema";
+import type { RowSelectionState, SortingState } from "@tanstack/react-table";
+import type { DataTableColumn } from "@/components/shared/data-table";
+import {
+  metadataOptions,
+  type MetaCatsFormData,
+  type AutoGroupItem,
+} from "./meta-cats-form-schema";
 
 export interface MetaCatsFeatureLike {
   genome_id?: string;
@@ -11,13 +17,27 @@ export interface MetaCatsGenomeLike extends Record<string, unknown> {
 }
 
 /**
- * Get display name for a path (truncated if too long)
+ * The Groups Grid's columns, as BV-BRC's Meta-CATS grid lists them
+ * (MetaCATSStore.js). BRC ID is the feature's `patric_id`, which also keys the
+ * grid's selection.
  */
-export function getMetaCatsDisplayName(name: string | undefined, maxLength = 36): string {
-  if (!name) return "-";
-  if (name.length <= maxLength) return name;
-  const half = Math.floor(maxLength / 2) - 2;
-  return `${name.slice(0, half)}...${name.slice(name.length - half)}`;
+export const metaCatsGroupsGridColumns: DataTableColumn[] = [
+  { id: "genbank_accessions", label: "Genbank Accession" },
+  { id: "strain", label: "Strain" },
+  { id: "metadata", label: "Metadata" },
+  { id: "group", label: "Group" },
+  { id: "patric_id", label: "BRC ID" },
+  { id: "genome_id", label: "Genome ID" },
+];
+
+export const metaCatsGroupsGridPageSize = 200;
+
+/**
+ * Genome fields to look up beyond the default summary (which has `strain`):
+ * the grid's Genbank Accession, plus the metadata field rows are grouped by.
+ */
+export function metaCatsGenomeFields(metadataGroup: string): string[] {
+  return ["genbank_accessions", metadataGroup];
 }
 
 /**
@@ -144,6 +164,24 @@ export function getUniqueGroupNames(autoGroups: AutoGroupItem[]): string[] {
 }
 
 /**
+ * Where the Group Names dropdown's names come from, for its empty state: the
+ * value of the chosen metadata on each grid feature's genome (or, for
+ * Collection Year with Year Ranges set, the range the year falls in).
+ */
+export function groupNamesSourceText(
+  metadataGroup: string | undefined,
+): string {
+  const label =
+    metadataOptions.find((option) => option.value === metadataGroup)?.label ??
+    "metadata";
+  const yearRange =
+    metadataGroup === "collection_year"
+      ? " (or its year range, when Year Ranges are set)"
+      : "";
+  return `Group names come from the Groups Grid, where each added feature is grouped by its genome's ${label}${yearRange}.`;
+}
+
+/**
  * Transform MetaCATS form data to API parameters
  */
 export function transformMetaCatsParams(
@@ -242,6 +280,13 @@ export function createGenomeIdMapFromFeatures(
   return genomeIdMap;
 }
 
+/** A genome's GenBank accessions as one string (Solr may return a list). */
+function genbankAccessions(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(String).join(", ");
+  return "";
+}
+
 export function buildMetaCatsAutoGroupsFromGenomes(args: {
   genomes: MetaCatsGenomeLike[];
   genomeIdMap: Map<string, string[]>;
@@ -298,7 +343,7 @@ export function buildMetaCatsAutoGroupsFromGenomes(args: {
           metadata: metadataStr,
           group: groupValue,
           genome_id: genome.genome_id,
-          genbank_accessions: "",
+          genbank_accessions: genbankAccessions(genome.genbank_accessions),
           strain: typeof genome.strain === "string" ? genome.strain : "",
         });
         existingPatricIds.add(patricId);
@@ -326,4 +371,47 @@ export function updateAutoGroupsGroupByRowIds(
   return autoGroups.map((item) =>
     selectedRowIds.has(item.id) ? { ...item, group: groupName } : item,
   );
+}
+
+/**
+ * The grid selects rows by BRC ID (`patric_id`); the delete and change-group
+ * helpers work on each row's own `id`.
+ */
+export function selectedAutoGroupRowIds(
+  autoGroups: AutoGroupItem[],
+  selection: RowSelectionState,
+): Set<string> {
+  return new Set(
+    autoGroups
+      .filter((item) => item.patric_id in selection)
+      .map((item) => item.id),
+  );
+}
+
+const naturalOrder = new Intl.Collator(undefined, {
+  numeric: true,
+  sensitivity: "base",
+});
+
+/**
+ * The Groups Grid sorts in the browser: it holds every row, and DataTable
+ * leaves sorting to its owner. Numbers inside values compare numerically
+ * (729.9 before 729.10), and empty values stay last in either direction.
+ */
+export function sortMetaCatsAutoGroups(
+  autoGroups: AutoGroupItem[],
+  sorting: SortingState,
+): AutoGroupItem[] {
+  if (sorting.length === 0) return autoGroups;
+  const sort = sorting[0];
+  const key = sort.id as keyof AutoGroupItem;
+  const direction = sort.desc ? -1 : 1;
+  return [...autoGroups].sort((a, b) => {
+    const left = a[key] ?? "";
+    const right = b[key] ?? "";
+    if (left === "" || right === "") {
+      return left === right ? 0 : left === "" ? 1 : -1;
+    }
+    return naturalOrder.compare(left, right) * direction;
+  });
 }

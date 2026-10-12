@@ -332,7 +332,7 @@ describe("DatabaseSelector", () => {
     const input = screen.getByPlaceholderText("NCBI Taxonomy ID...");
     await user.type(input, "234");
     await user.click(
-      await screen.findByRole("button", { name: "234 [Brucellaceae]" }),
+      await screen.findByRole("button", { name: /Brucellaceae/ }),
     );
     expect(input).toHaveValue("234");
 

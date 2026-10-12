@@ -12,9 +12,37 @@ export interface StripTrace {
   ghostsDuring: number;
 }
 
+export interface FolderPickerDialogOptions {
+  /** The button that opens the picker; defaults to the Output Folder's Browse. */
+  browseButton?: Locator;
+}
+
+/**
+ * The Browse buttons of the workspace selectors whose input has this
+ * placeholder, in page order. Several fields can share one ("Optional"), so
+ * callers pick with `.nth(i)`. Visible ones only, so React's hidden staged
+ * copy of a streamed selector cannot shift the order.
+ */
+export function browseButtonFor(page: Page, placeholder: string): Locator {
+  return page
+    .locator("[data-workspace-selector]")
+    .filter({ has: page.getByPlaceholder(placeholder, { exact: true }) })
+    .getByRole("button", { name: /^Browse workspace (folders|files)$/ })
+    .filter({ visible: true });
+}
+
+/** The inputs of those same selectors, in the same order (visible ones only). */
+export function selectorInputFor(page: Page, placeholder: string): Locator {
+  return page
+    .locator("[data-workspace-selector]")
+    .getByPlaceholder(placeholder, { exact: true })
+    .filter({ visible: true });
+}
+
 /**
  * Page object for the workspace folder picker (`WorkspaceFolderPickerDialog`),
- * opened from a service form's Output Folder field. Rows, columns and panes are
+ * opened from the Browse button of a service form's workspace field: the
+ * Output Folder, or a file field. Rows, columns and panes are
  * reached by role and accessible name; the strip's scroll state is read in the
  * page, frame by frame, because that is where the motion lives.
  */
@@ -32,24 +60,29 @@ export class FolderPickerDialog {
   /** Copies of leaving columns, playing their exit on the overlay after the strip. */
   readonly exitCopies: Locator;
 
-  constructor(page: Page, title = "Select an Output Folder") {
+  constructor(
+    page: Page,
+    title = "Select an Output Folder",
+    options: FolderPickerDialogOptions = {},
+  ) {
     this.page = page;
-    this.browseButton = page.getByRole("button", {
-      name: "Browse workspace folders",
-    });
+    this.browseButton =
+      options.browseButton ??
+      page.getByRole("button", { name: "Browse workspace folders" });
     this.dialog = page.getByRole("dialog", { name: title });
     this.places = this.dialog.getByRole("navigation", { name: "Places" });
     this.strip = this.dialog.getByRole("group", { name: "Folder columns" });
     this.breadcrumb = this.dialog.getByRole("navigation", {
-      name: "Selected folder",
+      name: /^Selected (folder|file)$/,
     });
     this.selectButton = this.dialog.getByRole("button", {
       name: /^Select( “.*”)?$/,
     });
     this.cancelButton = this.dialog.getByRole("button", { name: "Cancel" });
     this.closeButton = this.dialog.getByRole("button", { name: "Close" });
+    // "Show files" when picking a folder, "Show other files" when picking a file.
     this.showFilesButton = this.dialog.getByRole("button", {
-      name: /^(Show|Hide) files$/,
+      name: /^(Show|Hide) (other )?files$/,
     });
     this.exitCopies = this.strip.locator("xpath=following-sibling::*[1]/*");
   }
@@ -102,6 +135,16 @@ export class FolderPickerDialog {
       name,
       exact: typeof name === "string",
     });
+  }
+
+  /**
+   * A file's row, found by its name alone: a file row's accessible name also
+   * carries the size shown beside the name.
+   */
+  fileOption(column: string, name: string): Locator {
+    return this.column(column)
+      .getByRole("option")
+      .filter({ has: this.page.getByText(name, { exact: true }) });
   }
 
   /** The whole column at a position, header and rows. */

@@ -1,7 +1,5 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
@@ -11,7 +9,10 @@ import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
-import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import {
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import { readInputFileInfo } from "@/lib/services/info/variation-analysis";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import type { VariationAnalysisController } from "./use-variation-analysis-form";
@@ -48,24 +49,18 @@ export function LibraryInputSection({
       </ServiceCardHeader>
       <ServiceCardContent className="space-y-6">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <ServiceLabel>Paired Read Library</ServiceLabel>
-            <div className="mx-4 h-px flex-1 bg-border" />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
+          <ServiceLibraryHeader title="Paired Read Library">
+            <ServiceLibraryAddButton
               aria-label="Add paired read library"
               onClick={handlePairedLibraryAdd}
               disabled={!pairedRead1 || !pairedRead2}
-            >
-              <ChevronRight size={16} />
-            </Button>
-          </div>
+            />
+          </ServiceLibraryHeader>
           <div className="space-y-3">
             <WorkspaceObjectSelector
               preset="reads"
               placeholder="Select READ FILE 1..."
+              value={pairedRead1 ?? ""}
               onObjectSelect={(object: WorkspaceObject) =>
                 { setPairedRead1(object.path); }
               }
@@ -73,6 +68,7 @@ export function LibraryInputSection({
             <WorkspaceObjectSelector
               preset="reads"
               placeholder="Select READ FILE 2..."
+              value={pairedRead2 ?? ""}
               onObjectSelect={(object: WorkspaceObject) =>
                 { setPairedRead2(object.path); }
               }
@@ -80,23 +76,17 @@ export function LibraryInputSection({
           </div>
         </div>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <ServiceLabel>Single Read Library</ServiceLabel>
-            <div className="mx-4 h-px flex-1 bg-border" />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
+          <ServiceLibraryHeader title="Single Read Library">
+            <ServiceLibraryAddButton
               aria-label="Add single read library"
               onClick={handleSingleLibraryAdd}
               disabled={!singleRead}
-            >
-              <ChevronRight size={16} />
-            </Button>
-          </div>
+            />
+          </ServiceLibraryHeader>
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE..."
+            value={singleRead ?? ""}
             onObjectSelect={(object: WorkspaceObject) =>
               { setSingleRead(object.path); }
             }

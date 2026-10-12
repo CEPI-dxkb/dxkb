@@ -1,18 +1,17 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
-import SelectedItemsTable from "@/components/services/selected-items-table";
-import { Spinner } from "@/components/ui/spinner";
+import { SelectedSequencesTable } from "@/components/services/selected-sequences-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { phylogeneticTreeInput } from "@/lib/services/info/phylogenetic-tree";
 import type { ViralGenomeTreeController } from "./use-viral-genome-tree";
@@ -34,7 +33,7 @@ export function ViralGenomeTreeInput({
     handleAddGenomeGroup,
     handleAddSequence,
     removeSequence,
-    selectedItemsForTable,
+    selectedSequenceRows,
   } = controller;
 
   return (
@@ -48,9 +47,9 @@ export function ViralGenomeTreeInput({
             sections={phylogeneticTreeInput.sections}
           />
         </RequiredFormCardTitle>
-        <CardDescription>
+        <ServiceCardDescription>
           Choose genome group or FASTA files for tree.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent>
         <div className="space-y-4">
@@ -89,15 +88,10 @@ export function ViralGenomeTreeInput({
           <form.Field name="sequences">
             {(field) => (
               <FieldItem>
-                <SelectedItemsTable
-                  title="Selected genome group / FASTA files"
-                  items={selectedItemsForTable}
-                  onRemove={(id) => {
-                    removeSequence(parseInt(id, 10));
-                  }}
-                  className="max-h-84 overflow-y-auto"
-                  allowDuplicates={false}
-                  description="Selected genome groups and FASTA files will be used to construct the phylogenetic tree."
+                <SelectedSequencesTable
+                  heading="Selected genome group / FASTA file"
+                  rows={selectedSequenceRows}
+                  onRemove={removeSequence}
                 />
                 <FieldErrors field={field} />
               </FieldItem>
@@ -139,16 +133,12 @@ function SequenceSelector({
           value={value}
           className="flex-1"
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
+        <ServiceAddButton
           aria-label={ariaLabel}
           onClick={onAdd}
           disabled={disabled}
-        >
-          {loading ? <Spinner className="size-4" /> : <Plus size={16} />}
-        </Button>
+          pending={loading}
+        />
       </div>
     </div>
   );

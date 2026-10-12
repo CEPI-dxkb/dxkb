@@ -8,14 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { TaxIDSelector } from "@/components/taxonomy/tax-id-selector";
 import { GenomeNameSelector } from "@/components/services/genome-name-selector";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { SelectedGenomesTable } from "@/components/services/selected-genomes-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import type { BlastFormData } from "@/lib/forms/(genomics)/blast/blast-form-schema";
 import { blastMaxGenomes } from "@/lib/forms/(genomics)/blast/blast-form-utils";
@@ -82,52 +75,12 @@ function GenomeListField({ form }: { form: BlastForm }) {
               field.handleChange([...genomeIds, genome.genome_id]);
             }}
           />
-          <div className="max-h-84 overflow-y-auto rounded-md border bg-background">
-            <Table aria-label="Selected genomes">
-              <TableHeader>
-                <TableRow variant="static">
-                  <TableHead className="h-8">Genome</TableHead>
-                  <TableHead className="h-8">Genome ID</TableHead>
-                  <TableHead className="h-8 w-20 text-center">Remove</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow variant="static">
-                    <TableCell colSpan={3} className="py-1.5 text-center">
-                      <span className="text-muted-foreground">
-                        No genomes selected
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row) => (
-                    <TableRow key={row.id} variant="static-striped">
-                      <TableCell className="py-1">{row.name}</TableCell>
-                      <TableCell variant="code" className="py-1">
-                        {row.id}
-                      </TableCell>
-                      <TableCell className="py-1 text-center">
-                        <Button
-                          type="button"
-                          variant="ghost-secondary"
-                          size="icon-xs"
-                          aria-label={`Remove ${row.name}`}
-                          onClick={() => {
-                            field.handleChange(
-                              genomeIds.filter((value) => value !== row.id),
-                            );
-                          }}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+          <SelectedGenomesTable
+            rows={rows}
+            onRemove={(id) => {
+              field.handleChange(genomeIds.filter((value) => value !== id));
+            }}
+          />
           <FieldErrors field={field} />
         </FieldItem>
       )}
@@ -238,7 +191,13 @@ export function DatabaseSelector({
       </div>
     );
   }
-  const config =
+  type DatabaseObjectField =
+    "db_genome_group" | "db_feature_group" | "db_fasta_file";
+  const config: [
+    name: DatabaseObjectField,
+    label: string,
+    objectPreset: WorkspaceSelectorPreset,
+  ] | null =
     database === "selGroup"
       ? ["db_genome_group", "Select a genome group", "genomeGroup"]
       : database === "selFeatureGroup"
@@ -248,19 +207,24 @@ export function DatabaseSelector({
           : null;
   if (!config) return null;
   const [name, label, objectPreset] = config;
-  const placeholder = typeof label === "string" ? `${label}...` : "Select...";
+  const placeholder = `${label}...`;
   return (
     <div className="service-card-row">
       <div className="service-card-row-item">
         <ServiceRequiredLabel>
           {label}
         </ServiceRequiredLabel>
-        <form.Field name={name as keyof BlastFormData}>
+        {/* Keyed so each picker source gets its own field and picker, not one
+            live field that swaps `name` and carries the picker's state across.
+            The "required" error on a return visit is kept away by
+            changeDatabase's clears, which do not validate (see page.tsx). */}
+        <form.Field key={name} name={name}>
           {(field) => (
             <FieldItem>
               <WorkspaceObjectSelector
                 preset={objectPreset}
                 placeholder={placeholder}
+                value={field.state.value ?? ""}
                 onObjectSelect={(object: WorkspaceObject) => {
                   field.handleChange(object.path);
                 }}

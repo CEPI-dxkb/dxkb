@@ -4,6 +4,10 @@ export { ForgotPasswordPage } from "./forgot-password-page";
 export { SignUpPage } from "./sign-up-page";
 export { WorkspacePage } from "./workspace-page";
 export { ServiceFormPage } from "./service-form-page";
+export {
+  ViralGenomeTreePage,
+  type ViralGenomeTreeInput,
+} from "./viral-genome-tree-page";
 export { JobsListPage } from "./jobs-list-page";
 export { SettingsPage } from "./settings-page";
 export { TaxonInteractionsPage } from "./taxon-interactions-page";
@@ -22,4 +26,9 @@ export { LegacySearchPage } from "./legacy-search-page";
 export { ArchaeopteryxPage } from "./archaeopteryx-page";
 export { PanelSplit } from "./panel-split";
 export { ViewNavRail } from "./view-nav-rail";
-export { FolderPickerDialog } from "./folder-picker-dialog";
+export {
+  FolderPickerDialog,
+  browseButtonFor,
+  selectorInputFor,
+  type FolderPickerDialogOptions,
+} from "./folder-picker-dialog";

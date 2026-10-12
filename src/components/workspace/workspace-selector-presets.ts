@@ -5,22 +5,12 @@
 
 import type { ValidWorkspaceObjectTypes } from "@/lib/services/workspace/types";
 
-export const workspaceSelectorPresets: Record<
-  string,
-  ValidWorkspaceObjectTypes[]
-> = {
+export const workspaceSelectorPresets = {
   reads: ["reads"],
   folder: ["folder"],
   unspecified: ["unspecified"],
   tsv: ["tsv"],
   contigs: ["contigs"],
-  fasta: [
-    "contigs",
-    "aligned_dna_fasta",
-    "aligned_protein_fasta",
-    "feature_dna_fasta",
-    "feature_protein_fasta",
-  ],
   geneSetFasta: [
     "aligned_dna_fasta",
     "aligned_protein_fasta",
@@ -32,6 +22,11 @@ export const workspaceSelectorPresets: Record<
   alignedDnaFastaOrContigs: ["aligned_dna_fasta", "contigs"],
   alignedFasta: ["aligned_protein_fasta", "aligned_dna_fasta"],
   featureFasta: ["feature_protein_fasta", "feature_dna_fasta"],
+  featureFastaOrContigs: [
+    "feature_protein_fasta",
+    "feature_dna_fasta",
+    "contigs",
+  ],
   featureDnaFasta: ["feature_dna_fasta"],
   featureDnaFastaOrContigs: ["feature_dna_fasta", "contigs"],
   featureProteinFasta: ["feature_protein_fasta"],
@@ -39,12 +34,12 @@ export const workspaceSelectorPresets: Record<
   contigsOrReads: ["contigs", "reads"],
   genomeGroup: ["genome_group"],
   featureGroup: ["feature_group"],
-};
+} as const satisfies Record<string, readonly ValidWorkspaceObjectTypes[]>;
 
 export type WorkspaceSelectorPreset = keyof typeof workspaceSelectorPresets;
 
 export function resolveSelectorPreset(
   preset: WorkspaceSelectorPreset,
-): ValidWorkspaceObjectTypes[] {
-  return workspaceSelectorPresets[preset] ?? [];
+): readonly ValidWorkspaceObjectTypes[] {
+  return workspaceSelectorPresets[preset];
 }

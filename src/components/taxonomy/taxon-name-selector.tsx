@@ -17,6 +17,11 @@ interface TaxonNameSelectorProps extends TaxonomySelectorProps {
   setBacteriophage?: boolean;
   segmentWildcard?: boolean;
   highlightMatch?: "all" | "first" | "none";
+  /**
+   * Draws the error border for a failure the caller reports (a form field's
+   * error). Unlike `required`, it adds no message of its own.
+   */
+  invalid?: boolean;
 }
 
 const rankList = [
@@ -164,6 +169,7 @@ export function TaxonNameSelector({
   required = false,
   disabled = false,
   className,
+  invalid = false,
   apiServiceUrl = "/api/services/taxonomy",
   includeEukaryotes = false,
   includeBacteria = false,
@@ -254,6 +260,15 @@ export function TaxonNameSelector({
     setPrevValue(value || null);
     if (value && !showDropdown) {
       setSearchQuery(value.taxon_name);
+    } else if (
+      !value &&
+      prevValue &&
+      searchQuery === prevValue.taxon_name
+    ) {
+      // Cleared from outside (the Taxonomy ID box, a form reset): drop the
+      // stale name, as TaxIDSelector does. Text the user typed differs from
+      // the old name, so it stays.
+      setSearchQuery("");
     }
   }
 
@@ -282,7 +297,7 @@ export function TaxonNameSelector({
               setShowDropdown(false);
             }, 200);
           }}
-          variant={touched && !isValid ? "invalid" : "default"}
+          variant={invalid || (touched && !isValid) ? "invalid" : "default"}
           inset="both"
           className="w-full"
           disabled={disabled}
@@ -314,12 +329,12 @@ export function TaxonNameSelector({
               renderPrimary={(item) =>
                 `[${item.taxon_rank || "unknown"}] ${item.taxon_name}`
               }
-              renderSecondary={(item) => (
-                <span className="flex items-center gap-2">
-                  <span>ID: {item.taxon_id}</span>
-                  {item.division && <span>• {item.division}</span>}
-                </span>
-              )}
+              // Plain text, so the dot has one space on each side (the flex
+              // gap put 8px before it and a 4px space after) and the line
+              // still truncates with an ellipsis.
+              renderSecondary={(item) =>
+                `ID: ${String(item.taxon_id)}${item.division ? ` • ${item.division}` : ""}`
+              }
               onSelect={handleSelect}
             />
           </div>

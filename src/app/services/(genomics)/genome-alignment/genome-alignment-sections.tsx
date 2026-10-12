@@ -1,22 +1,21 @@
 import { useState, type RefObject } from "react";
 import { useSelector } from "@tanstack/react-store";
-import { Plus, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
-import { NumberInput } from "@/components/ui/number-input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { GenomeNameSelector } from "@/components/services/genome-name-selector";
 import OutputFolder from "@/components/services/output-folder";
-import SelectedItemsTable from "@/components/services/selected-items-table";
+import { SelectedGenomesTable } from "@/components/services/selected-genomes-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
   ServiceCardContent,
+  ServiceCardDescription,
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
@@ -25,6 +24,8 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
+import { ServiceNumberInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import {
   genomeAlignmentAdvancedParameterOptions,
@@ -110,11 +111,9 @@ export function GenomeSelection({
           setIsFetchingGroup(false);
       });
   };
-  const items = genomes.map((genome, index) => ({
+  const rows = genomes.map((genome) => ({
     id: genome.genome_id,
     name: genome.genome_name,
-    description: genome.genome_id,
-    type: index === 0 ? "Reference Genome" : "Genome",
   }));
 
   return (
@@ -128,10 +127,10 @@ export function GenomeSelection({
             sections={genomeAlignmentSelectGenomes.sections}
           />
         </RequiredFormCardTitle>
-        <CardDescription>
+        <ServiceCardDescription>
           Add at least 2 and up to 20 genomes. The first genome selected becomes
           the reference (anchor) genome in the alignment.
-        </CardDescription>
+        </ServiceCardDescription>
       </ServiceCardHeader>
       <ServiceCardContent className="space-y-6">
         <GenomeNameSelector
@@ -147,14 +146,12 @@ export function GenomeSelection({
               <WorkspaceObjectSelector
                 preset="genomeGroup"
                 placeholder="Select a genome group from your workspace"
+                value={group?.path ?? ""}
                 onObjectSelect={(object) => void addGroup(object)}
                 onSelectedObjectChange={setGroup}
               />
             </div>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
+            <ServiceAddButton
               aria-label="Add genome group"
               disabled={!group}
               onClick={() => {
@@ -163,9 +160,7 @@ export function GenomeSelection({
                   setGroup(null);
                 }
               }}
-            >
-              <Plus className="size-4" />
-            </Button>
+            />
           </div>
           {isFetchingGroup ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -182,17 +177,19 @@ export function GenomeSelection({
           {(field) => (
             <FieldItem>
               <div>
-                <SelectedItemsTable
-                  title="Selected Genomes"
-                  description="Remove genomes as needed. The first entry is treated as the reference genome."
-                  items={items}
+                <ServiceLabel>Selected Genomes</ServiceLabel>
+                <p className="service-card-sublabel">
+                  Remove genomes as needed. The first entry is treated as the
+                  reference genome.
+                </p>
+                <SelectedGenomesTable
+                  rows={rows}
+                  markFirstAsReference
                   onRemove={(id) => {
                     replaceGenomes(
                       genomesRef.current.filter((item) => item.genome_id !== id),
                     );
                   }}
-                  emptyMessage="No genomes selected"
-                  className="max-h-84 overflow-y-auto"
                 />
                 {genomes.length < 2 && (
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -276,76 +273,87 @@ export function AlignmentParameters({
               className={`size-4 transition-transform ${showAdvanced ? "rotate-180 transform" : ""}`}
             />
           </ServiceCollapsibleTrigger>
-          <ServiceCollapsibleContent className="space-y-6">
-            <form.Field name="manual_seed_weight">
-              {(field) => (
-                <FieldItem>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <ServiceLabel>
+          <ServiceCollapsibleContent>
+            {/* The seed weight toggle and its slider share the left column,
+                so enabling the slider grows that column instead of pushing
+                Weight onto a new row. Each label is a direct child of its
+                FieldItem (no `mb-2`), so "Manually Set Seed Weight" and
+                "Weight" sit on one line, and the switch row is the input's
+                `h-8` so the two controls share a midline. */}
+            <div className="service-card-content-grid">
+              <div className="space-y-6">
+                <form.Field name="manual_seed_weight">
+                  {(field) => (
+                    <FieldItem>
+                      <ServiceLabel htmlFor="manual-seed-weight">
                         Manually Set Seed Weight
                       </ServiceLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Enable to specify the seed weight used by
-                        progressiveMauve.
-                      </p>
-                    </div>
-                    <Switch
-                      id="manual-seed-weight"
-                      checked={field.state.value}
-                      onCheckedChange={field.handleChange}
-                    />
-                  </div>
-                  <FieldErrors field={field} />
-                </FieldItem>
-              )}
-            </form.Field>
-            {manual && (
-              <form.Field name="seed_weight">
+                      <div className="flex min-h-8 items-center gap-3">
+                        <Switch
+                          id="manual-seed-weight"
+                          checked={field.state.value}
+                          onCheckedChange={field.handleChange}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          Enable to specify the seed weight used by
+                          progressiveMauve.
+                        </p>
+                      </div>
+                      <FieldErrors field={field} />
+                    </FieldItem>
+                  )}
+                </form.Field>
+                {manual && (
+                  <form.Field name="seed_weight">
+                    {(field) => (
+                      // Two columns put the value on the label's row without
+                      // nesting the label (which would restore its `mb-2`);
+                      // `leading-none` matches the label's line box so their
+                      // text tops line up.
+                      <FieldItem className="grid-cols-2">
+                        <ServiceLabel>Seed Weight</ServiceLabel>
+                        <span className="justify-self-end text-sm leading-none text-muted-foreground">
+                          {field.state.value ?? 15}
+                        </span>
+                        <Slider
+                          className="col-span-2"
+                          aria-label="Seed weight"
+                          value={[field.state.value ?? 15]}
+                          min={3}
+                          max={21}
+                          step={1}
+                          onValueChange={(value) => {
+                            field.handleChange(
+                              (Array.isArray(value) ? value[0] : value) as number,
+                            );
+                          }}
+                        />
+                        <div className="col-span-2 flex justify-between text-xs text-muted-foreground">
+                          <span>3</span>
+                          <span>21</span>
+                        </div>
+                        <FieldErrors field={field} className="col-span-2" />
+                      </FieldItem>
+                    )}
+                  </form.Field>
+                )}
+              </div>
+              <form.Field name="weight">
                 {(field) => (
                   <FieldItem>
-                    <div className="flex items-center justify-between">
-                      <ServiceLabel>Seed Weight</ServiceLabel>
-                      <span className="text-sm text-muted-foreground">
-                        {field.state.value ?? 15}
-                      </span>
-                    </div>
-                    <Slider
-                      aria-label="Seed weight"
-                      value={[field.state.value ?? 15]}
-                      min={3}
-                      max={21}
-                      step={1}
-                      onValueChange={(value) => {
-                        field.handleChange(
-                          (Array.isArray(value) ? value[0] : value) as number,
-                        );
-                      }}
+                    <ServiceLabel>Weight</ServiceLabel>
+                    <ServiceNumberInput
+                      value={field.state.value}
+                      onValueChange={field.handleChange}
+                      min={0}
+                      max={1000000}
+                      placeholder="Min pairwise LCB score"
                     />
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>3</span>
-                      <span>21</span>
-                    </div>
                     <FieldErrors field={field} />
                   </FieldItem>
                 )}
               </form.Field>
-            )}
-            <form.Field name="weight">
-              {(field) => (
-                <FieldItem>
-                  <ServiceLabel>Weight</ServiceLabel>
-                  <NumberInput
-                    value={field.state.value}
-                    onValueChange={field.handleChange}
-                    min={0}
-                    max={1000000}
-                    placeholder="Min pairwise LCB score"
-                  />
-                  <FieldErrors field={field} />
-                </FieldItem>
-              )}
-            </form.Field>
+            </div>
           </ServiceCollapsibleContent>
         </ServiceCollapsible>
       </ServiceCardContent>

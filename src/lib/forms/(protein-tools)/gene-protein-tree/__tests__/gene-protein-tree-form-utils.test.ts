@@ -1,37 +1,16 @@
 vi.mock("../gene-protein-tree-form-schema", () => ({
   maxSequences: 100,
-  getMetadataSelectOptions: (fn: (s: string) => string) => [
-    { value: "genome_name", label: fn("genome_name") },
-    { value: "species", label: fn("species") },
-  ],
 }));
 
 import {
-  formatMetadataLabel,
   getDisplayName,
   getSequenceTypeLabel,
   checkDuplicateSequence,
   checkSequenceLimit,
   removeSequenceAtIndex,
   createSequenceItem,
-  createMetadataField,
-  isMetadataFieldSelected,
   transformGeneProteinTreeParams,
 } from "../gene-protein-tree-form-utils";
-
-describe("formatMetadataLabel", () => {
-  it("converts underscore-separated words to title case", () => {
-    expect(formatMetadataLabel("genome_name")).toBe("Genome Name");
-  });
-
-  it("handles single-word fields", () => {
-    expect(formatMetadataLabel("species")).toBe("Species");
-  });
-
-  it("handles multiple underscores", () => {
-    expect(formatMetadataLabel("host_common_name")).toBe("Host Common Name");
-  });
-});
 
 describe("getDisplayName", () => {
   it("returns short names unchanged", () => {
@@ -176,47 +155,6 @@ describe("createSequenceItem", () => {
   });
 });
 
-describe("createMetadataField", () => {
-  it("returns a field with id, name, and selected true", () => {
-    const field = createMetadataField("genome_name");
-
-    expect(field).toEqual({
-      id: "genome_name",
-      name: "Genome Name",
-      selected: true,
-    });
-  });
-
-  it("falls back to formatMetadataLabel for unknown field ids", () => {
-    const field = createMetadataField("unknown_field");
-
-    expect(field).toEqual({
-      id: "unknown_field",
-      name: "Unknown Field",
-      selected: true,
-    });
-  });
-});
-
-describe("isMetadataFieldSelected", () => {
-  const fields = [
-    { id: "genome_name", selected: true },
-    { id: "species", selected: false },
-  ];
-
-  it("returns true when the field exists and is selected", () => {
-    expect(isMetadataFieldSelected(fields, "genome_name")).toBe(true);
-  });
-
-  it("returns false when the field exists but is not selected", () => {
-    expect(isMetadataFieldSelected(fields, "species")).toBe(false);
-  });
-
-  it("returns false when the field does not exist", () => {
-    expect(isMetadataFieldSelected(fields, "strain")).toBe(false);
-  });
-});
-
 describe("transformGeneProteinTreeParams", () => {
   const baseFormData = {
     alphabet: "DNA" as const,
@@ -257,21 +195,19 @@ describe("transformGeneProteinTreeParams", () => {
     ]);
   });
 
-  it("splits metadata into genome_metadata_fields for genome-related fields", () => {
-    const result = transformGeneProteinTreeParams(baseFormData);
-
-    expect(result.genome_metadata_fields).toEqual(["genome_name", "species"]);
-  });
-
-  it("places non-genome fields into feature_metadata_fields", () => {
-    const data = {
+  it("sends every metadata field as a genome field and leaves the gene fields to the app", () => {
+    const result = transformGeneProteinTreeParams({
       ...baseFormData,
-      metadata_fields: ["genome_name", "gene_id"],
-    };
-    const result = transformGeneProteinTreeParams(data);
+      // Fields outside the frequent list used to go out as feature fields.
+      metadata_fields: ["genome_name", "taxon_id", "host_name"],
+    });
 
-    expect(result.genome_metadata_fields).toEqual(["genome_name"]);
-    expect(result.feature_metadata_fields).toEqual(["gene_id"]);
+    expect(result.genome_metadata_fields).toEqual([
+      "genome_name",
+      "taxon_id",
+      "host_name",
+    ]);
+    expect(result).not.toHaveProperty("feature_metadata_fields");
   });
 
   it("omits metadata keys when no metadata fields are provided", () => {

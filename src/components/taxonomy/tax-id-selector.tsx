@@ -13,6 +13,11 @@ interface TaxIDSelectorProps extends TaxonomySelectorProps {
   id?: string;
   apiServiceUrl?: string;
   queryFilter?: string;
+  /**
+   * Draws the error border for a failure the caller reports (a form field's
+   * error). Unlike `required`, it adds no message of its own.
+   */
+  invalid?: boolean;
 }
 
 async function searchTaxonById(
@@ -24,7 +29,7 @@ async function searchTaxonById(
   const searchQuery = `taxon_id:${query.trim()}`;
   const params = new URLSearchParams();
   params.append("q", searchQuery);
-  params.append("fl", "taxon_id,taxon_name,lineage_names");
+  params.append("fl", "taxon_id,taxon_name");
   params.append("sort", "taxon_id asc");
 
   if (queryFilter) {
@@ -58,6 +63,7 @@ export function TaxIDSelector({
   required = false,
   disabled = false,
   className,
+  invalid = false,
   apiServiceUrl = "/api/services/taxonomy",
   queryFilter,
 }: TaxIDSelectorProps) {
@@ -179,7 +185,7 @@ export function TaxIDSelector({
               }, 200);
             }
           }}
-          variant={touched && !isValid ? "invalid" : "default"}
+          variant={invalid || (touched && !isValid) ? "invalid" : "default"}
           inset={!disabled ? "both" : value ? "aligned" : "none"}
           className="w-full"
           disabled={disabled}
@@ -211,14 +217,8 @@ export function TaxIDSelector({
                   ? `No taxonomy found for ID: ${searchQuery}`
                   : "No results found"
               }
-              renderPrimary={(item) =>
-                `${String(item.taxon_id)} [${item.taxon_name}]`
-              }
-              renderSecondary={(item) =>
-                item.lineage_names?.length
-                  ? item.lineage_names.join(" > ")
-                  : null
-              }
+              renderPrimary={(item) => item.taxon_name}
+              renderSecondary={(item) => String(item.taxon_id)}
               onSelect={handleSelect}
             />
           </div>

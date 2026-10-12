@@ -29,6 +29,20 @@
 @plugin "tailwindcss-animate";
 @custom-variant dark (&:is([data-theme$="-dark"] *));
 
+/* `hover:` skips disabled controls. Once they receive the pointer (for the
+   not-allowed cursor, see `:disabled` in the base layer), a disabled button
+   would otherwise take its variant's hover fill and look clickable. Same
+   media query as Tailwind's own; `:where()` keeps the specificity of a
+   plain `:hover`, so the variant's order against `aria-*` / `data-*` states
+   does not change. */
+@custom-variant hover {
+  @media (hover: hover) {
+    &:hover:where(:not(:disabled)) {
+      @slot;
+    }
+  }
+}
+
 /* From shadcn's tailwind.css, which src/components/ui/command.tsx expects. */
 @utility no-scrollbar {
   -ms-overflow-style: none;
@@ -36,6 +50,25 @@
 
   &::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* `truncate` that cuts the start ("…/folder/file.fa"), for a path whose end
+   matters most. An RTL box puts the overflow and ellipsis on the left; the
+   left-to-right marks keep the path itself LTR (without them its leading "/"
+   moves to the end). They are generated content, so copying the text skips
+   them, and they stand in for a `bdi` child, which leaves a gap after the
+   ellipsis in WebKit. Text that fits stays on the left. */
+@utility truncate-start {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+
+  &::before,
+  &::after {
+    content: "\200E";
   }
 }
 
@@ -62,13 +95,21 @@
     opacity 160ms ease;
 }
 
+/* Transitions get no time at all rather than a token 0.01ms. Every element's
+   `transition-property` starts as `all`, so any nonzero duration here turned a
+   transition on for every property of every element: one theme switch started
+   about 6000 of them, and until the browser next drew, getComputedStyle (and
+   with it axe) still read the old theme's colors. CI's WebKit took over a
+   second to get there. Animations keep their 0.01ms, so `animationend` still
+   fires; one runs only where an `animation-name` is set. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
 }
@@ -82,6 +123,17 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  /* The hover fill of a primary surface (the default Button). Each theme
+     pulls --primary 15% toward its foreground (light) or background (dark),
+     so the fill darkens on hover and primary-foreground keeps its contrast,
+     where primary/80 would lighten it (3.03:1 in violet-light). Each theme
+     block declares --primary-hover last: Tailwind nests an
+     `@supports (color: color-mix(...))` after a color-mix() of var()s, and
+     the build then splits the block there and drops the `lab()` values of
+     every declaration after the split, leaving only their sRGB hex
+     fallbacks. src/__tests__/theme-token-order.test.ts enforces the order
+     in all six blocks. */
+  --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -102,6 +154,13 @@
   --color-highlight: var(--highlight);
   --color-border: var(--border);
   --color-input: var(--input);
+  /* The fill of every disabled field (inputs, textareas, select triggers,
+     input groups), so a field you cannot edit reads the same everywhere.
+     Each theme sets a literal a step off both its card and its page: about
+     7% of the way to the foreground in light themes, 12% in dark ones
+     (where fields are darker than the card, so it sits above the card). A
+     literal rather than a color-mix(): see --color-primary-hover. */
+  --color-disabled: var(--disabled);
   --color-ring: var(--ring);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -157,6 +216,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(0.922 0 0);
   --input: oklch(0.952 0 0);
+  --disabled: oklch(0.94 0 0);
   --ring: oklch(0.708 0 0);
   --chart-1: oklch(0.72 0.17 37);
   --chart-2: oklch(0.46 0.14 267);
@@ -176,6 +236,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* Keep last: see --color-primary-hover in globals.css;
+     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--foreground));
 }
 
 [data-theme="dxkb-dark"] {
@@ -204,6 +267,7 @@
   --highlight: oklch(0.828 0.189 84.429);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 10%);
+  --disabled: oklch(0.246 0 0);
   --ring: oklch(0.556 0 0);
   --chart-1: oklch(0.75 0.16 37);
   --chart-2: oklch(0.58 0.16 267);
@@ -223,6 +287,9 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Keep last: see --color-primary-hover in globals.css;
+     src/__tests__/theme-token-order.test.ts fails if anything follows it. */
+  --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));
 }
 
 /* The interaction graph's canvas surface (sigma-canvas.tsx), tinted like the
@@ -243,6 +310,15 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+  }
+
+  /* Every disabled control shows the not-allowed cursor. The ui controls no
+     longer set `disabled:pointer-events-none`, which hid any cursor, since a
+     natively disabled control ignores clicks without it. In the base layer,
+     so a utility at a call site (a non-sortable column header's
+     `disabled:cursor-default`) still wins. */
+  :disabled {
+    cursor: not-allowed;
   }
 
   pre,
@@ -470,8 +546,11 @@
    The light themes' muted-foreground, link, destructive and warning text
    only just clears 4.5:1 on white, so on the tinted surfaces each is pulled
    a quarter of the way to the foreground (at least 4.68:1 on the page in
-   every light theme). The values are derived here, on the theme element,
-   because a custom property cannot mix its own value where it is redefined. */
+   every light theme). Success text is lighter still (2.65-2.93:1 on the
+   card), so it is pulled 40% of the way: 5.04-6.87:1 on the card, and the
+   valid field border (`border-success`) clears 3:1 with it. The values are
+   derived here, on the theme element, because a custom property cannot mix
+   its own value where it is redefined. */
 [data-theme] {
   --service-page: color-mix(in oklab, var(--foreground) 10%, var(--background));
   --service-card: color-mix(in oklab, var(--foreground) 4%, var(--background));
@@ -479,6 +558,7 @@
   --service-link: color-mix(in oklab, var(--link) 75%, var(--foreground));
   --service-destructive: color-mix(in oklab, var(--destructive) 75%, var(--foreground));
   --service-warning: color-mix(in oklab, var(--warning) 75%, var(--foreground));
+  --service-success: color-mix(in oklab, var(--success) 60%, var(--foreground));
 }
 
 [data-theme$="-light"] .service-surface {
@@ -488,10 +568,27 @@
   --link: var(--service-link);
   --destructive: var(--service-destructive);
   --warning: var(--service-warning);
+  --success: var(--service-success);
+}
+
+/* bvbrc-light's --background is a gray (oklch .9612), so its "white" fields
+   were gray and stood only 1.08:1 off the card. Inside the services layout
+   the fields' tier is white, as in the other light themes (1.21:1). The page
+   and card tiers do not move, because --service-page and --service-card are
+   derived on the theme element from the theme's own gray. */
+[data-theme="bvbrc-light"] .service-surface {
+  --background: oklch(1 0 0);
 }
 
 [data-theme$="-dark"] .service-surface {
   background-color: var(--background);
+}
+
+/* bvbrc-dark's --card equals its --background, so page, card and field were
+   one flat color. Its card takes the same 4% foreground tint as the light
+   themes' cards and so steps 1.10:1 above the page, as dxkb-dark's does. */
+[data-theme="bvbrc-dark"] .service-surface {
+  --card: var(--service-card);
 }
 
 .service-container {
@@ -546,12 +643,28 @@
   @apply grid grid-cols-1 gap-4 md:grid-cols-2;
 }
 
+/* A radio sits 12px before its label, as BLAST's radios do. `gap` rather
+   than `space-x-2`: the margin stacked on a call site's own `gap-2` (16px)
+   and alone gave 8px. */
 .service-radio-group-item {
-  @apply flex items-center justify-start space-x-2;
+  @apply flex items-center justify-start gap-3;
 }
 
 .service-radio-group-item label {
   @apply cursor-pointer;
+}
+
+/* The label of an enabled radio or checkbox shows the pointer, as the control
+   does: clicking either one toggles it, but a <label> has the default cursor
+   and the call sites (BLAST, similar-genome-finder, metagenomic-binning, ...)
+   left it that way. Base UI renders a control as a <span role> followed by a
+   hidden <input>, and the label is a later sibling of both, hence `~`. A
+   disabled control's label keeps the default cursor. No service page wraps a
+   control in its label. */
+.service-surface
+  :is([data-slot="radio-group-item"], [data-slot="checkbox"]):not([data-disabled], [aria-disabled="true"])
+  ~ label {
+  cursor: pointer;
 }
 
 .service-form-section {
@@ -560,6 +673,18 @@
 
 .service-form-section-header {
   @apply flex items-center gap-2 text-lg font-semibold;
+}
+
+/* A read-library header (ServiceLibraryHeader): the label, a rule to the
+   add button, and the button. The rule is a `foreground/25` tint rather than
+   --border, which stood about 1.1:1 off the services card and all but
+   vanished; a 1px line needs more weight than the collapsible's border. */
+.service-library-header {
+  @apply flex items-center gap-4;
+}
+
+.service-library-divider {
+  @apply bg-foreground/25 h-px flex-1;
 }
 
 /* A collapsible section (Advanced Options and the like) reads as a control
@@ -590,24 +715,37 @@
   @apply w-full space-y-4 p-4;
 }
 
+/* The bar's fill is a 6% foreground tint rather than `bg-muted/60`: muted
+   equals the card in violet-light and bvbrc-dark (1.00 and 1.01:1), where
+   the tint keeps at least 1.12:1 in every theme. `text-sm` is set here, not
+   inherited from a Card, so the free-standing triggers (viral-genome-tree,
+   gene-protein-tree) are 14px and 44px tall like the rest instead of 16/48. */
 .service-collapsible-trigger {
-  @apply bg-muted/60 hover:bg-foreground/10 focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-1 rounded-md px-4 py-3 font-medium transition-colors outline-none focus-visible:ring-3 data-panel-open:rounded-b-none;
+  @apply bg-foreground/6 hover:bg-foreground/10 focus-visible:ring-ring/50 flex w-full cursor-pointer items-center gap-1 rounded-md px-4 py-3 text-sm font-medium transition-colors outline-none focus-visible:ring-3 data-panel-open:rounded-b-none;
 }
 
 .service-card-content {
   @apply h-full space-y-6;
 }
 
+/* Cells align to the top, so an error message grows only its own cell
+   instead of stretching the row and pushing the neighbour's input down. No
+   side inset: the labels line up with the collapsible trigger's text and
+   with the panels that do not use the grid. */
 .service-card-content-grid {
-  @apply grid grid-cols-1 gap-4 px-2 md:grid-cols-2;
+  @apply grid grid-cols-1 items-start gap-4 md:grid-cols-2;
 }
 
 .service-card-content-grid-item {
   @apply space-y-0;
 }
 
+/* Side by side, the fields align to the top, so an error under one no
+   longer stretches its sibling and pushes that field's input down. Only from
+   `sm:`, because in the stacked column `items-start` would shrink a child
+   that lacks `w-full` to its content width. */
 .service-card-row {
-  @apply flex w-full flex-col gap-4 sm:flex-row md:gap-6;
+  @apply flex w-full flex-col gap-4 sm:flex-row sm:items-start md:gap-6;
 }
 
 .service-card-row-item {
@@ -627,10 +765,6 @@
    field, while the typed value keeps the full foreground. */
 .service-card-input {
   @apply bg-background placeholder:text-foreground/75 w-full flex-1 text-sm transition-all duration-300;
-}
-
-.service-card-num-input {
-  @apply bg-background placeholder:text-foreground/75 transition-all duration-300;
 }
 
 .service-card-input-search {
@@ -653,12 +787,47 @@
   @apply mb-2 block text-sm font-medium;
 }
 
+/* ServiceRequiredLabel: the label text and its "*" marker 4px apart.
+   `.service-card-label`'s unlayered `block` overrode Label's `flex`, so the
+   `required` variant's `gap-1` no longer applied and the marker touched the
+   text. This rule comes after it, so it wins at the same specificity. */
+.service-card-label-required {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
 .service-card-sublabel {
   @apply text-foreground/70 mb-2 block text-sm font-normal;
 }
 
+/* An invalid field's sub-label turns red, as its label does. The unlayered
+   `text-foreground/70` above beat FieldLabel's
+   `data-[error=true]:text-destructive` utility. */
+.service-card-sublabel[data-error="true"] {
+  color: var(--destructive);
+}
+
+/* A label that is a direct child of a field container already gets 8px
+   from the container's `gap-2`, so its own `mb-2` doubled the space to 16px
+   where every other label sits 8px above its field. Labels nested in a
+   header row (label plus tooltip) are not direct children and keep `mb-2`.
+   A read-library header centers its label on the row (with the rule and the
+   add button), where the margin lifted the label 4px off their midline. */
+:is([data-slot="form-item"], .service-card-row-item, .service-card-content-col, .service-library-header) > :is(.service-card-label, .service-card-sublabel) {
+  margin-bottom: 0;
+}
+
+/* The "?" help icon is muted at rest and takes the full foreground on hover
+   (its own, or its trigger button's when the icon sits inside one), so it
+   reads as interactive, as the fields around it do. */
 .service-card-tooltip-icon {
-  @apply text-muted-foreground h-4 w-4;
+  @apply text-muted-foreground h-4 w-4 transition-colors;
+}
+
+.service-card-tooltip-icon:hover,
+[data-slot="tooltip-trigger"]:hover > .service-card-tooltip-icon {
+  color: var(--foreground);
 }
 
 /* Transitions name the color and ring properties only. `transition-all`
@@ -676,8 +845,14 @@
   white-space: pre-wrap;
 }
 
+/* No width here: ServiceSelectTrigger adds `w-full min-w-0` as utilities.
+   An unlayered `w-full` beat every call-site width (the genome-size unit's
+   `w-20` grew to 584px and squeezed its input to 0px), while a utility lets
+   tailwind-merge keep the call site's. `min-w-0` lets the trigger shrink in
+   a narrow column, so a long value line-clamps and the chip stays inside
+   the card. */
 .service-card-select-trigger {
-  @apply bg-background data-placeholder:text-foreground/75 w-full transition-all duration-300;
+  @apply bg-background data-placeholder:text-foreground/75 transition-all duration-300;
 }
 
 /* Hovering a service field darkens its border and keeps its white fill.
@@ -685,11 +860,43 @@
    tint (see .service-surface), and the gray fill the hover used to take
    made the hovered field blend into the card. Focused, invalid, valid and
    disabled fields keep their own border color. */
-.service-card-input:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive),
-.service-card-num-input:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive),
+.service-card-input:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive, .border-success),
 .service-card-textarea:hover:not(:focus-visible, :disabled, [aria-invalid="true"], .border-success),
 .service-card-select-trigger:hover:not(:focus-visible, :disabled, [aria-invalid="true"]) {
   border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}
+
+/* A number input's stepper arrows are part of its field, so hovering any of
+   it (the input or an arrow) darkens the border all the way round, arrows
+   included; hovering the input alone used to stop the highlight at the
+   arrows' seam. Skipped while the input is focused, disabled or invalid,
+   which keep their own border, as above. */
+[data-slot="number-input"]:has(> .service-card-input):hover:not(:has(> .service-card-input:is(:focus-visible, :disabled, [aria-invalid="true"], .border-destructive, .border-success)))
+  :is(.service-card-input, [data-slot="button"]) {
+  border-color: color-mix(in oklab, var(--muted-foreground) 70%, transparent);
+}
+
+/* A disabled service field drops its white fill (the tier of the fields you
+   can edit) for the shared --disabled fill, a step off the card, so it no
+   longer melts into the card as the transparent fill it had did. This rule
+   is unlayered because the white `bg-background` above is too. Full opacity
+   with muted-foreground text keeps the value readable; the border stays. */
+.service-card-input:disabled,
+.service-card-textarea:disabled,
+.service-card-select-trigger:disabled {
+  background-color: var(--disabled);
+  opacity: 1;
+  color: var(--muted-foreground);
+}
+
+/* A disabled select's chevron chip (the trigger's `aria-hidden` span; the
+   plain chevron is an svg) goes muted too. With the trigger at full opacity,
+   the primary chip kept its active look (solid primary in the dark themes)
+   and still deepened on hover; this unlayered rule also beats the chip's
+   `group-hover` utilities, so it no longer reacts. */
+.service-card-select-trigger:disabled > span[aria-hidden="true"] {
+  background-color: color-mix(in oklab, var(--muted-foreground) 15%, transparent);
+  color: var(--muted-foreground);
 }
 
 /* Outline buttons (Reset, the folder browser) hover the same way in the

@@ -5,6 +5,7 @@ import {
   buildJobsOverrides,
   buildWorkspaceOverrides,
   e2eHomePath as home,
+  emptyBackendFallbackOverrides,
   e2eUsername,
   journeyOverrides,
   type TupleItem,
@@ -608,7 +609,7 @@ test.describe("output folder picker: motion", () => {
     expect(new Set(trace.scrollLeft).size).toBe(1);
     expect(trace.scrollLeft[0]).toBeGreaterThan(trace.before);
     expect(trace.ghostsDuring).toBe(0);
-    // The reduced-motion rule in globals.css cuts CSS transitions to 0.01ms,
+    // The reduced-motion rule in globals.css cuts CSS animations to 0.01ms,
     // and WebKit lists one as running until it next draws, so only longer
     // animations (the columns' fades are 180ms) count.
     const running = await picker.dialog.evaluate(
@@ -623,4 +624,56 @@ test.describe("output folder picker: motion", () => {
     );
     expect(running).toBe(0);
   });
+});
+
+/** Every service with an Output Folder; similar-genome-finder has none. */
+const outputFolderServices = [
+  "blast",
+  "genome-alignment",
+  "genome-annotation",
+  "genome-assembly",
+  "primer-design",
+  "variation-analysis",
+  "metagenomic-binning",
+  "metagenomic-read-mapping",
+  "taxonomic-classification",
+  "viral-genome-tree",
+  "gene-protein-tree",
+  "meta-cats",
+  "msa-snp-analysis",
+  "proteome-comparison",
+  "fastq-utilities",
+  "influenza-ha-subtype",
+  "sars-cov2-genome-analysis",
+  "sars-cov2-wastewater-analysis",
+  "subspecies-classification",
+  "viral-assembly",
+] as const;
+
+test.describe("output folder picker: every service", () => {
+  for (const slug of outputFolderServices) {
+    test(`${slug}: Browse fills the Output Folder`, async ({ page }) => {
+      await applyBackendMocks(page, {
+        overrides: [
+          ...authSessionOverrides,
+          ...buildWorkspaceOverrides({ pathItems: workspaceTree() }),
+          ...buildJobsOverrides(),
+          ...journeyOverrides,
+          // Lookups a form makes on load (SARS-CoV-2's taxonomy query) get
+          // empty answers.
+          ...emptyBackendFallbackOverrides,
+        ],
+      });
+      await page.goto(`/services/${slug}`);
+      const picker = new FolderPickerDialog(page);
+      await expect(picker.browseButton).toHaveCount(1);
+      await picker.open();
+      await picker.option("Home", "Experiments").dblclick();
+      await expect(picker.dialog).toBeHidden();
+      await expect(page.getByPlaceholder("Search for folders...")).toHaveValue(
+        "Experiments",
+      );
+      await expect(picker.browseButton).toBeFocused();
+    });
+  }
 });

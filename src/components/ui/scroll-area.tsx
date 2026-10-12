@@ -28,6 +28,10 @@ function ScrollArea({
   );
 }
 
+// Local edit (keep when regenerating with `shadcn add --overwrite`): the
+// orientation variants key on `data-[orientation=...]`. Base UI sets
+// `data-orientation` and no `data-horizontal`/`data-vertical`, so upstream's
+// `data-vertical:w-2.5` never matched and the scrollbar was 2px wide.
 function ScrollBar({
   className,
   orientation = "vertical",
@@ -39,7 +43,7 @@ function ScrollBar({
       data-orientation={orientation}
       orientation={orientation}
       className={cn(
-        "flex touch-none p-px transition-colors select-none data-horizontal:h-2.5 data-horizontal:flex-col data-horizontal:border-t data-horizontal:border-t-transparent data-vertical:h-full data-vertical:w-2.5 data-vertical:border-l data-vertical:border-l-transparent",
+        "flex touch-none p-px transition-colors select-none data-[orientation=horizontal]:h-2.5 data-[orientation=horizontal]:flex-col data-[orientation=horizontal]:border-t data-[orientation=horizontal]:border-t-transparent data-[orientation=vertical]:h-full data-[orientation=vertical]:w-2.5 data-[orientation=vertical]:border-l data-[orientation=vertical]:border-l-transparent",
         className
       )}
       {...props}

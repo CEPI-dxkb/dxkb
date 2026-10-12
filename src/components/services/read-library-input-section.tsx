@@ -1,9 +1,10 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import {
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 
 interface ReadLibraryInputSectionProps {
@@ -30,20 +31,13 @@ export function ReadLibraryInputSection({
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <ServiceLabel>Paired Read Library</ServiceLabel>
-          <div className="mx-4 h-px flex-1 bg-border" />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
+        <ServiceLibraryHeader title="Paired Read Library">
+          <ServiceLibraryAddButton
             aria-label="Add paired read library"
             onClick={onAddPairedLibrary}
             disabled={!pairedRead1 || !pairedRead2}
-          >
-            <ChevronRight size={16} />
-          </Button>
-        </div>
+          />
+        </ServiceLibraryHeader>
         <div className="space-y-3">
           <WorkspaceObjectSelector
             preset="reads"
@@ -64,20 +58,13 @@ export function ReadLibraryInputSection({
         </div>
       </div>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <ServiceLabel>Single Read Library</ServiceLabel>
-          <div className="mx-4 h-px flex-1 bg-border" />
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
+        <ServiceLibraryHeader title="Single Read Library">
+          <ServiceLibraryAddButton
             aria-label="Add single read library"
             onClick={onAddSingleLibrary}
             disabled={!singleRead}
-          >
-            <ChevronRight size={16} />
-          </Button>
-        </div>
+          />
+        </ServiceLibraryHeader>
         <WorkspaceObjectSelector
           preset="reads"
           placeholder="Select READ FILE..."

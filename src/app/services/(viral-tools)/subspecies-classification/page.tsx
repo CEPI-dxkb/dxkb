@@ -2,11 +2,14 @@
 
 import { Fragment } from "react";
 import { useSubspeciesClassificationPage } from "./use-subspecies-classification-page";
-import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
+import {
+  FieldItem,
+  FieldErrors,
+  fieldErrorMessage,
+} from "@/components/ui/tanstack-form";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -29,6 +32,7 @@ import {
   ServiceCardHeader,
   ServiceCardTitle,
 } from "@/components/services/form-ui/service-card";
+import { ServiceTextarea } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
@@ -59,6 +63,7 @@ export default function SubspeciesClassificationPage() {
     form,
     outputPath,
     inputSource,
+    validatedFasta,
     handleFastaBlur,
     handleReset,
     setIsOutputNameValid,
@@ -147,7 +152,7 @@ export default function SubspeciesClassificationPage() {
                         }
                       }}
                     >
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem
                           value="fasta_data"
                           id="subspecies-fasta-data"
@@ -156,7 +161,7 @@ export default function SubspeciesClassificationPage() {
                           Enter sequence
                         </Label>
                       </div>
-                      <div className="service-radio-group-item flex items-center gap-2">
+                      <div className="service-radio-group-item">
                         <RadioGroupItem
                           value="fasta_file"
                           id="subspecies-fasta-file"
@@ -173,24 +178,34 @@ export default function SubspeciesClassificationPage() {
 
               {inputSource === "fasta_data" && (
                 <form.Field name="input_fasta_data">
-                  {(field) => (
-                    <FieldItem className="mt-4">
-                      <Textarea
-                        placeholder="Enter one or more query nucleotide or protein sequences to search. Requires FASTA format."
-                        variant="mono-xs"
-                        className="min-h-44"
-                        value={field.state.value ?? ""}
-                        onChange={(e) => {
-                          field.handleChange(e.target.value);
-                        }}
-                        onBlur={() => {
-                          field.handleBlur();
-                          handleFastaBlur();
-                        }}
-                      />
-                      <FieldErrors field={field} />
-                    </FieldItem>
-                  )}
+                  {(field) => {
+                    const value = field.state.value ?? "";
+                    const hasError = Boolean(fieldErrorMessage(field));
+                    return (
+                      <FieldItem className="mt-4">
+                        <ServiceTextarea
+                          placeholder="Enter one or more query nucleotide or protein sequences to search. Requires FASTA format."
+                          value={value}
+                          onChange={(e) => {
+                            field.handleChange(e.target.value);
+                          }}
+                          onBlur={() => {
+                            field.handleBlur();
+                            handleFastaBlur();
+                          }}
+                          aria-invalid={hasError || undefined}
+                          variant={
+                            !hasError &&
+                            validatedFasta !== "" &&
+                            value === validatedFasta
+                              ? "valid"
+                              : undefined
+                          }
+                        />
+                        <FieldErrors field={field} />
+                      </FieldItem>
+                    );
+                  }}
                 </form.Field>
               )}
 
@@ -199,7 +214,7 @@ export default function SubspeciesClassificationPage() {
                   {(field) => (
                     <FieldItem className="mt-4">
                       <WorkspaceObjectSelector
-                        preset="fasta"
+                        preset="featureFastaOrContigs"
                         placeholder="Select or upload FASTA file to your workspace."
                         value={field.state.value ?? ""}
                         onObjectSelect={(object: WorkspaceObject) => {

@@ -7,9 +7,12 @@ import React, {
   useEffectEvent,
   useLayoutEffect,
 } from "react";
-import { Button } from "@/components/ui/button";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
-import { ServiceLabel } from "@/components/services/form-ui/service-label";
+import {
+  ServiceLibraryAddButton,
+  ServiceLibraryHeader,
+} from "@/components/services/form-ui/service-library-header";
+import { cn } from "@/lib/utils";
 import { Library } from "@/types/services";
 import { toast } from "sonner";
 import {
@@ -18,7 +21,6 @@ import {
   type SraValidationResult,
 } from "@/lib/services/sra-validation";
 
-import { ChevronRight, Loader2 } from "lucide-react";
 
 const validationDebounceMs = 500;
 
@@ -36,7 +38,7 @@ interface SraRunAccessionWithValidationProps {
   addButton?: React.ReactNode;
   /** Whether to show the label. Defaults to true. */
   showLabel?: boolean;
-  /** Whether to show the ChevronRight add button. Defaults to true. When false, add via Enter key. */
+  /** Whether to show the add button. Defaults to true. When false, add via Enter key. */
   showAddButton?: boolean;
   /** Pre-populate the accession input (e.g. for rerun). */
   defaultValue?: string;
@@ -45,7 +47,11 @@ interface SraRunAccessionWithValidationProps {
 interface SraInputViewProps {
   showLabel: boolean;
   showAddButton: boolean;
-  validationStatus: "idle" | "validating" | "invalid" | "valid";
+  /**
+   * `unverified`: the backend timed out on NCBI, so the accession is accepted
+   * as a run, but its message is a warning, not an error.
+   */
+  validationStatus: "idle" | "validating" | "invalid" | "unverified" | "valid";
   title: string;
   placeholder: string;
   label?: React.ReactNode;
@@ -81,27 +87,19 @@ function SraInputView({
   return (
     <div className="space-y-2">
       {showHeader && (
-        <div className="flex items-center justify-between">
-          {showLabel &&
-            (label ?? <ServiceLabel>{title}</ServiceLabel>)}
-          <div className="mx-4 h-px flex-1 bg-border" />
+        <ServiceLibraryHeader
+          title={showLabel ? (label ?? title) : undefined}
+        >
           {showAddButton &&
             (addButton ?? (
-              <Button
-                variant="outline"
-                size="icon"
+              <ServiceLibraryAddButton
                 aria-label="Add SRA run accession to selected libraries"
                 onClick={onAdd}
-                disabled={!accession.trim() || disabled || isValidating}
-              >
-                {isValidating ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ChevronRight size={16} />
-                )}
-              </Button>
+                disabled={!accession.trim() || disabled}
+                pending={isValidating}
+              />
             ))}
-        </div>
+        </ServiceLibraryHeader>
       )}
       <div className="space-y-2">
         <ServiceInput
@@ -110,19 +108,27 @@ function SraInputView({
           onChange={onChange}
           onKeyDown={onKeyDown}
           disabled={disabled || isValidating}
+          aria-invalid={validationStatus === "invalid" || undefined}
+          variant={validationStatus === "valid" ? "valid" : "default"}
         />
-        {validationMessage && (
-          <p
-            className={`text-sm ${
-              isValidating ? "text-muted-foreground" : "text-destructive"
-            }`}
-          >
-            {validationMessage}
-          </p>
-        )}
-        {validationStatus === "valid" && !validationMessage && (
-          <p className="text-sm text-muted-foreground">Provided SRA is valid</p>
-        )}
+        {/* The message line is always rendered at one line's height, so the
+            card does not grow when a message first appears. It is always
+            mounted, so it is also a polite live region: a screen reader
+            announces the result when it arrives. */}
+        <p
+          role="status"
+          className={cn(
+            "min-h-5 text-sm",
+            validationStatus === "validating" && "text-muted-foreground",
+            validationStatus === "invalid" && "text-destructive",
+            validationStatus === "unverified" && "text-warning",
+            validationStatus === "valid" && "text-success",
+          )}
+        >
+          {validationStatus === "valid"
+            ? "Provided SRA is valid"
+            : validationMessage}
+        </p>
       </div>
     </div>
   );
@@ -402,12 +408,16 @@ const SraRunAccessionWithValidation = ({
     }
   };
 
+  // An accepted accession can still carry a message (a timeout's), so
+  // acceptance is checked before the message is read as a failure.
   const validationStatus = isValidating
     ? "validating"
-    : validationMessage
-      ? "invalid"
-      : isValidSra
-        ? "valid"
+    : isValidSra
+      ? validationMessage
+        ? "unverified"
+        : "valid"
+      : validationMessage
+        ? "invalid"
         : "idle";
 
   return (

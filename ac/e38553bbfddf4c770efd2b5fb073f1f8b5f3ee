@@ -1,0 +1,243 @@
+src/components/workspace/__tests__/upload-dialog.test.tsx
+  s_ad55ed2e81b791::t_03c633ef86b2c9 195-212
+src/components/workspace/workspace-selector-presets.ts
+  s_ad55ed2e81b791::t_ddd888b38b5829 8,37,43-44
+  s_ad55ed2e81b791::t_cd408760994358 25-29
+src/app/services/(viral-tools)/subspecies-classification/page.tsx
+  s_ad55ed2e81b791::t_d975ef45d4ead1 217
+src/lib/forms/(genomics)/primer-design/__tests__/primer-design-form-schema.test.ts
+  s_ad55ed2e81b791::t_382536a5aacc78 42-69
+e2e/tests/a11y/deep-tier.spec.ts
+  s_ad55ed2e81b791::t_5e59f7ec576d71 95-102,106-121,127-138,140-142,148-163
+  s_ad55ed2e81b791::t_5e3e7d029b032d 164
+src/app/services/(genomics)/primer-design/primer-input-section.tsx
+  s_ad55ed2e81b791::t_70a6e800ce09c2 72
+src/app/services/(utilities)/fastq-utilities/fastq-parameters.tsx
+  s_d7ffab2be21a7c::t_79ab9b6f47f921 11,20,116,123
+src/app/services/(genomics)/variation-analysis/library-input-section.tsx
+  s_ad55ed2e81b791::t_d54a589cc4895e 63,71,89
+src/app/services/(protein-tools)/gene-protein-tree/gene-protein-tree-input.tsx
+  s_d7ffab2be21a7c::t_e4188b841db4a4 17,167,171
+src/app/services/(viral-tools)/viral-assembly/__tests__/page-rerun.test.tsx
+  s_ad55ed2e81b791::t_1382270051c988 1-196
+src/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-schema.ts
+  s_ad55ed2e81b791::t_567a95e767a7a2 6-7,10,15,19-20,26-30,32-36,40,45-140,143-179,199-201,228-247,261-263
+src/app/services/(genomics)/genome-alignment/__tests__/page-selection-races.test.tsx
+  s_ad55ed2e81b791::t_18b7457631b7d8 58,60,62,64-66,71-73,82-92
+  s_ad55ed2e81b791::t_ccf331c340013d 209-222
+  s_ad55ed2e81b791::t_c0f06a8ebd72c6 93
+src/components/workspace/__tests__/workspace-object-selector-browse.test.tsx
+  s_ad55ed2e81b791::t_f0e8abc5b2febb 230-249
+  s_ad55ed2e81b791::t_6e8c2c4c8ea74d 1-6,8-146
+  s_ad55ed2e81b791::t_15919989a8daef 257-259,279,281
+  s_ad55ed2e81b791::t_de170fa304296e 280,282,291-292,295-299,301,304-306,308-310
+  s_ad55ed2e81b791::t_55713a86827eb1 293-294,300,302-303,307
+  s_ad55ed2e81b791::t_e53a08cb2da348 7
+  s_ad55ed2e81b791::t_5877d4870acc75 147-229,250-256,260-278,283-290,311-323
+src/lib/forms/(viral-tools)/viral-assembly/__tests__/viral-assembly-form-utils.test.ts
+  s_ad55ed2e81b791::t_ed02ed2be7c777 13,15,71-73,84-85,139,148-149,171,217-222,226-234,236-249,251-261,263-279,281-347,358-365
+  s_ad55ed2e81b791::t_7d967ed11da7e1 80,146,167,181
+  s_ad55ed2e81b791::t_2647b1703b4cd8 223-225
+  s_ad55ed2e81b791::t_45913d53af8a0e 235,250,262,280,348-357
+src/app/services/(protein-tools)/meta-cats/page.tsx
+  s_d7ffab2be21a7c::t_efb7604f75dc9a 30,54,645,650-652,897,901
+src/components/services/output-folder.tsx
+  s_ad55ed2e81b791::t_b5c7031dedbb4b 3,16,18,103-106,108-114
+  s_ad55ed2e81b791::t_e70e037c6fb4ab 107
+src/app/services/(genomics)/genome-assembly/assembly-sections.tsx
+  s_ad55ed2e81b791::t_d54a589cc4895e 97,109,127
+AGENTS.md
+  s_ad55ed2e81b791::t_90c0fb19bb5e68 98
+  s_d7ffab2be21a7c::t_f41c9d913b29c8 63
+src/lib/forms/(viral-tools)/viral-assembly/__tests__/viral-assembly-form-schema.test.ts
+  s_ad55ed2e81b791::t_f1e7bbf18b2c45 4-7,54-179
+src/app/services/(genomics)/genome-assembly/__tests__/assembly-inputs-values.test.tsx
+  s_ad55ed2e81b791::t_664ca90516fb24 1-57
+src/components/workspace/folder-picker/__tests__/folder-picker-dialog.test.tsx
+  s_ad55ed2e81b791::t_3c568540af7ad6 142,158-161,169,374-377,443,490
+  s_ad55ed2e81b791::t_cbb972d6d78a35 677-718
+src/components/workspace/folder-picker/folder-picker-breadcrumb.tsx
+  s_ad55ed2e81b791::t_ae64b90e68c30b 17-18
+  s_ad55ed2e81b791::t_eba994243e8ffa 5,26-27,33-36,54,101
+src/app/services/(viral-tools)/viral-assembly/page.tsx
+  s_ad55ed2e81b791::t_45913d53af8a0e 268-271,284-287
+  s_ad55ed2e81b791::t_71e224435b0fa7 4-8,33-34,48-49,67-68,255-267,272-283,288-300,302-312,315-316,319-333,338,341-382
+  s_ad55ed2e81b791::t_4e4700a751b82d 383
+src/app/services/(protein-tools)/proteome-comparison/page.tsx
+  s_d7ffab2be21a7c::t_efb7604f75dc9a 11,43,629,636,638-639,659,666,686,693,713,720,722-723
+src/lib/services/workspace/picker-views.ts
+  s_ad55ed2e81b791::t_d0c6529e4a35f6 14,17,40-41,44-95,279-280,292-294,296-306,308-310,313-365,476,482-483,488-489,497-500,502-511
+  s_ad55ed2e81b791::t_ad0ae0bb22c230 366,525-544
+  s_ad55ed2e81b791::t_8f5767ddb96fa6 368-402,490-496,501,524
+  s_ad55ed2e81b791::t_79dacc9a7cf819 367
+e2e/tests/services/output-folder-picker.spec.ts
+  s_ad55ed2e81b791::t_dbfe556378e9a8 8,662-664
+  s_ad55ed2e81b791::t_dcded8a2f79193 628-661,665-679
+src/app/services/(phylogenomics)/viral-genome-tree/viral-genome-tree-input.tsx
+  s_d7ffab2be21a7c::t_e4188b841db4a4 14,137,141-142
+src/components/workspace/folder-picker/__tests__/folder-picker-breadcrumb.test.tsx
+  s_ad55ed2e81b791::t_eba994243e8ffa 14-15
+src/components/workspace/__tests__/workspace-selector-presets.test.ts
+  s_ad55ed2e81b791::t_8d9d1dc9c9f720 1-13
+src/components/workspace/folder-picker/folder-picker-dialog.tsx
+  s_ad55ed2e81b791::t_787e66c2feab99 247-249,429,433,444-446,448-455,681,814
+  s_ad55ed2e81b791::t_ee846d40a52905 46-47,53-54,58,61,64,74-78,122-123,136,151-153,157-161,175-182,193,195-198,212,214,229,231,263,265,267,350,354-355,357,362-369,374-375,379-381,386-391,393-400,402-403,413,418-420,422,425,430-432,434-443,447,457,492,498-503,512,514,533-539,636,638,650-652,661,729-733,739,753,756-758,763,767-768,771,797-799,866,868-869,884,943
+  s_ad55ed2e81b791::t_1b71fb7a09863a 166-169,171,250-256,258-259,478,482,724,727,740-742,745-752,754-755,759-762,773
+  s_ad55ed2e81b791::t_96d9143d8cdf82 726,874
+  s_ad55ed2e81b791::t_187197696946b3 55-56,513,887
+  s_ad55ed2e81b791::t_aa759c8d6d15e7 130,459,816-818,867,950-951
+src/lib/forms/(genomics)/primer-design/primer-design-form-schema.ts
+  s_ad55ed2e81b791::t_70a6e800ce09c2 17,59
+src/components/settings/__tests__/preferences-form.test.tsx
+  s_ad55ed2e81b791::t_029e9ea67e38a0 1-84,90-91
+  s_ad55ed2e81b791::t_221713012ffecb 85-89
+src/components/services/form-ui/__tests__/service-add-button.test.tsx
+  s_d7ffab2be21a7c::t_832149bd87de35 1-55
+src/components/services/genome-name-selector.tsx
+  s_d7ffab2be21a7c::t_43e7d7c49cec80 5-6
+  s_d7ffab2be21a7c::t_813cf2e6407a0f 257,259-260,264
+src/lib/services/workspace/__tests__/picker-views.test.ts
+  s_ad55ed2e81b791::t_bdd4b6b7c612f6 10,12-13,22-23,26-27,33,54-66,341,861,873-885
+  s_ad55ed2e81b791::t_c2ce208e63c1dc 25,28,628-664,886,900-932
+  s_ad55ed2e81b791::t_6ab0d2487c74fb 15,24,980,1026-1066
+  s_ad55ed2e81b791::t_b47c1c047b2da2 380,392-397,403-408,415-420,423-428,438-443,450-455,460-627,887-899,933-949,954-979
+src/app/services/(genomics)/blast/__tests__/database-selector-values.test.tsx
+  s_ad55ed2e81b791::t_664ca90516fb24 1-63
+src/app/services/(viral-tools)/viral-assembly/__tests__/page-reference-guided.test.tsx
+  s_ad55ed2e81b791::t_45913d53af8a0e 54-57,83
+  s_ad55ed2e81b791::t_dcd190437c671e 1-53,58-82,84-136
+e2e/tests/services/workspace-file-picker.spec.ts
+  s_ad55ed2e81b791::t_9a889601b76c98 413,416-422
+  s_ad55ed2e81b791::t_25be5f42ada369 482-483,485-487
+  s_ad55ed2e81b791::t_300b76655da399 265-268
+  s_ad55ed2e81b791::t_9a9a35f09f2847 279,281,285-286,290
+  s_ad55ed2e81b791::t_d3870e81fecd3d 264,269-278,300-305,307-309
+  s_ad55ed2e81b791::t_ff6b4f23ed6cf7 1-116,126-128,130,141-148,152-164,167-170,176-256,258-263,287-289,291-299,306,310-315,320,327-330,332-358,360-361,363-391,393-412,414-415,423-481,484,488-518
+  s_ad55ed2e81b791::t_fe3809660f48bd 117-125,129,131-140,149-151
+  s_ad55ed2e81b791::t_cdff4d0de63b3c 316-319,321-326
+  s_ad55ed2e81b791::t_54123489a211a3 392
+  s_ad55ed2e81b791::t_fc8ef430b5cfd9 171-175,280,282-284
+  s_ad55ed2e81b791::t_981c1f84b9150c 359,362
+  s_ad55ed2e81b791::t_a35e993860b04d 165-166,257
+  s_ad55ed2e81b791::t_633cdce8cd53a9 331
+e2e/a11y/scan-keys.ts
+  s_ad55ed2e81b791::t_e97bde417cfc00 42
+src/components/workspace/folder-picker/__tests__/folder-picker-keyboard.test.tsx
+  s_ad55ed2e81b791::t_3c568540af7ad6 131-134
+src/components/workspace/folder-picker/folder-picker-preview.tsx
+  s_ad55ed2e81b791::t_0523b23ca5919c 5-8,14,25,28-33,37-38,40,43-46,48,74-75,90,122,125-126,133-136,179,181-189,192-193,196-207,226-296,331-332,335,344,383
+  s_ad55ed2e81b791::t_96d9143d8cdf82 327-328,341,351
+  s_ad55ed2e81b791::t_84302aed381baa 59-68,103,115
+  s_ad55ed2e81b791::t_86e8c019ae07a8 180
+  s_ad55ed2e81b791::t_e382f024716521 297
+src/components/workspace/upload-panel.tsx
+  s_ad55ed2e81b791::t_f1214ed4240350 34-35,37-38,52,58-60,124,167,173
+src/lib/forms/(genomics)/primer-design/__tests__/primer-design-form-utils.test.ts
+  s_ad55ed2e81b791::t_382536a5aacc78 29,183,186,191,292-307
+  s_ad55ed2e81b791::t_f5e69de40bbdc1 308
+src/components/workspace/__tests__/selection-to-group-dialog-browse.test.tsx
+  s_ad55ed2e81b791::t_62a0a3d3abe58a 45,52
+  s_ad55ed2e81b791::t_f5b94ab69c9482 1-27,29-31,33-44,46-51,53-54,58-62
+  s_ad55ed2e81b791::t_29091ff1f8688c 28,32,55-57
+src/app/services/(genomics)/primer-design/__tests__/page-rerun.test.tsx
+  s_ad55ed2e81b791::t_6612018893389d 1-88
+src/components/workspace/__tests__/workspace-object-selector.test.tsx
+  s_ad55ed2e81b791::t_6c13a299b376d6 142
+src/components/workspace/folder-picker/__tests__/folder-picker-files.test.tsx
+  s_ad55ed2e81b791::t_62a0a3d3abe58a 88
+  s_ad55ed2e81b791::t_417e72fc9f2662 1-38,46-87,89-108,133-248,270-284,286-288,290-291,294-302
+  s_ad55ed2e81b791::t_03db708cd7c976 109-124,285,289,292-293
+  s_ad55ed2e81b791::t_7ae22d38653528 125-132
+  s_ad55ed2e81b791::t_a8aee2d992c607 249-269
+  s_ad55ed2e81b791::t_fa21949cd1c05c 39-45
+docs/architecture.md
+  s_ad55ed2e81b791::t_4d7d4fc58c3c7a 119-120
+  s_d7ffab2be21a7c::t_f41c9d913b29c8 189
+  s_ad55ed2e81b791::t_90c0fb19bb5e68 109,118,195
+src/lib/forms/(genomics)/primer-design/primer-design-form-utils.ts
+  s_ad55ed2e81b791::t_70a6e800ce09c2 263-274,286
+e2e/pages/folder-picker-dialog.ts
+  s_ad55ed2e81b791::t_4d7d4fc58c3c7a 23-24,30-31,34,38-39,44-45
+  s_ad55ed2e81b791::t_95db40b2d0af7f 15-22,25-29,32-33,35-37,40-41,63-67,69-71
+  s_ad55ed2e81b791::t_2f6db8f3f9a0d3 83,85
+  s_ad55ed2e81b791::t_8f39433744d083 76
+  s_ad55ed2e81b791::t_7ec5bf11b98ec0 140-149
+src/components/settings/preferences-form.tsx
+  s_ad55ed2e81b791::t_5a0b055f1656db 80
+  s_ad55ed2e81b791::t_98b37ccf69e0c3 21,81
+src/app/services/(viral-tools)/viral-assembly/use-viral-assembly-page.ts
+  s_ad55ed2e81b791::t_71e224435b0fa7 41-45,148-149,172-173
+src/app/services/(genomics)/primer-design/use-primer-design-form.ts
+  s_ad55ed2e81b791::t_2dccdedd5e4b4e 16,66,164,171,179,183,199-200,204
+src/components/workspace/folder-picker/__tests__/fixtures/picker-harness.tsx
+  s_ad55ed2e81b791::t_8826f925bb0dd9 98-111
+  s_ad55ed2e81b791::t_25dff089d05a21 145-148
+  s_ad55ed2e81b791::t_fa9fe5d8d10dc1 222-239,272
+  s_ad55ed2e81b791::t_1350b57fb79f95 202-221
+  s_ad55ed2e81b791::t_08c6660118a27e 304,306
+src/components/workspace/folder-picker/__tests__/folder-picker-files-upload.test.tsx
+  s_ad55ed2e81b791::t_079df22f71e0cb 1,3-57,67-71,73-74,76-95,145
+  s_ad55ed2e81b791::t_0ddd7fb92d8689 2,58-66,72,75,96-144
+src/lib/forms/(viral-tools)/viral-assembly/viral-assembly-form-utils.ts
+  s_ad55ed2e81b791::t_45913d53af8a0e 166-171
+  s_ad55ed2e81b791::t_82a929148ebbf8 1-6,76-78,84-100,120,126-165,172-173
+  s_ad55ed2e81b791::t_f78c3ed37888fc 174
+src/components/services/form-ui/service-add-button.tsx
+  s_d7ffab2be21a7c::t_832cfeb18b86ea 1-36
+e2e/README.md
+  s_ad55ed2e81b791::t_2dc438baf2fafd 47
+  s_ad55ed2e81b791::t_4d7d4fc58c3c7a 120
+e2e/pages/index.ts
+  s_ad55ed2e81b791::t_95db40b2d0af7f 29-34
+src/app/services/(genomics)/blast/database-selector.tsx
+  s_ad55ed2e81b791::t_d54a589cc4895e 241-247,257,268,274
+src/components/workspace/workspace-object-selector.tsx
+  s_ad55ed2e81b791::t_866ab409f20755 15-17,35-39,55-57,104-109,121,157-160,162-168,170-172,174-177,180-182,398,453-455,458-463
+  s_ad55ed2e81b791::t_69fbdbd4887875 18,83,173,178-179,438,440-443,452,456
+  s_ad55ed2e81b791::t_92f0d49f4495d4 399-437,439,444-451
+  s_ad55ed2e81b791::t_dfda63db778b72 169
+  s_ad55ed2e81b791::t_187197696946b3 457
+  s_ad55ed2e81b791::t_22b146bebe8afb 161
+src/components/workspace/folder-picker/folder-picker-column.tsx
+  s_ad55ed2e81b791::t_dd235ee85072f8 29,31-32,34,53-54,90,116,122-134,136,138,145-147,150,174-175,180,182,188,200,212-218,247,271-275,281-282,298-301,310,312,316,319,326,333,341-343,374
+  s_ad55ed2e81b791::t_787e66c2feab99 77-81,109,112-115,117-119
+src/components/services/tree-metadata-options.tsx
+  s_d7ffab2be21a7c::t_79ab9b6f47f921 26,112-113,117
+src/app/services/(genomics)/variation-analysis/__tests__/library-input-section-values.test.tsx
+  s_ad55ed2e81b791::t_664ca90516fb24 1-64
+src/app/services/(genomics)/genome-alignment/genome-alignment-sections.tsx
+  s_d7ffab2be21a7c::t_16b00bbcce9646 3,27,155,164
+  s_ad55ed2e81b791::t_d54a589cc4895e 150
+src/components/workspace/folder-picker/__tests__/folder-picker-info.test.tsx
+  s_ad55ed2e81b791::t_62b62b78f58f2d 73-106
+src/components/workspace/workspace-object-selector-view.tsx
+  s_ad55ed2e81b791::t_e6bcf125a05ac7 11-17,49-50,63-66,94,103,127-139,176-178
+src/lib/forms/(viral-tools)/viral-assembly/viral-assembly-service.ts
+  s_ad55ed2e81b791::t_82a929148ebbf8 7-10,19-33
+src/lib/services/info/viral-assembly.ts
+  s_ad55ed2e81b791::t_a35e993860b04d 47,52-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ace38553bbfddf4c770efd2b5fb073f1f8b5f3ee",
+  "prompts": {},
+  "sessions": {
+    "s_ad55ed2e81b791": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a99d4e8b-8d88-4896-a683-ed679a455cb0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_d7ffab2be21a7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21307f0c-0cf4-4aa8-9663-a6f2d390e08b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

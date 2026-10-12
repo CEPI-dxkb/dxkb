@@ -329,4 +329,26 @@ describe("InMemoryWorkspaceRepository", () => {
       repo.readTextStart("/user@bvbrc/home/missing.fa", 10),
     ).rejects.toBeInstanceOf(WorkspaceApiError);
   });
+
+  it("counts maxBytes in UTF-8 bytes, as the preview route does", async () => {
+    const repo = new InMemoryWorkspaceRepository({
+      directories: {
+        "/user@bvbrc/home": [
+          // "é" is 1 UTF-16 code unit but 2 UTF-8 bytes: 9 units, 15 bytes.
+          { name: "lines.txt", type: "txt", content: "é\né\néééé\n" },
+          { name: "line.txt", type: "txt", content: "ééé" },
+        ],
+      },
+    });
+
+    await expect(
+      repo.readTextStart("/user@bvbrc/home/lines.txt", 10),
+    ).resolves.toEqual({ text: "é\né\n", truncated: true });
+    await expect(
+      repo.readTextStart("/user@bvbrc/home/lines.txt", 15),
+    ).resolves.toEqual({ text: "é\né\néééé\n", truncated: false });
+    await expect(
+      repo.readTextStart("/user@bvbrc/home/line.txt", 3),
+    ).resolves.toEqual({ text: "é�", truncated: true });
+  });
 });

@@ -60,6 +60,25 @@ describe("ServiceLibraryAddButton", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("never submits its form, even when a spread smuggles in type=submit", async () => {
+    const onSubmit = vi.fn((event: React.SyntheticEvent) => {
+      event.preventDefault();
+    });
+    const user = userEvent.setup();
+    // `type` is not in the props type; an untyped spread can still carry it.
+    const untyped = { type: "submit" } as object;
+    render(
+      <form onSubmit={onSubmit}>
+        <ServiceLibraryAddButton aria-label="Add paired read library" {...untyped} />
+      </form>,
+    );
+
+    const button = screen.getByRole("button", { name: "Add paired read library" });
+    expect(button).toHaveAttribute("type", "button");
+    await user.click(button);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("stays visible but inert while disabled", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();

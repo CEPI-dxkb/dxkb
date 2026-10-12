@@ -185,7 +185,7 @@ test.describe("service form controls", () => {
     expect(await style(submit, "background-color")).toBe(restingFill);
   });
 
-  test("a disabled radio and its label show the not-allowed cursor; an enabled one does not", async ({
+  test("a disabled radio dims and, with its label, shows the not-allowed cursor; an enabled one does neither", async ({
     page,
   }) => {
     const form = new ServiceFormPage(page, "Metagenomic Binning");
@@ -199,6 +199,8 @@ test.describe("service form controls", () => {
 
     await metaspades.hover({ force: true });
     expect(await style(metaspades, "cursor")).toBe("not-allowed");
+    expect(await style(metaspades, "opacity")).toBe("0.5");
+    expect(await style(megahit, "opacity")).toBe("1");
     expect(
       await style(page.getByText("MetaSPAdes", { exact: true }), "cursor"),
     ).toBe("not-allowed");

@@ -9,9 +9,16 @@ import type { PickRejection } from "./use-pick-check";
 /** The most of a file read to check it: the preview route's cap. */
 export const fastaFileCheckBytes = 10 * 1024 * 1024;
 
-/** The text without a last header line, whose sequence a cut left out. */
-function withoutTrailingHeader(text: string): string {
-  const lines = text.trimEnd().split("\n");
+/**
+ * A file's start without what the cut may have left incomplete: the line it
+ * ends inside (when no line end fits, the read stops mid-line), then a last
+ * header, whose sequence it left out.
+ */
+function completeLines(text: string): string {
+  const lines = text.split("\n");
+  // After a cut at a line end this is the empty string past it.
+  lines.pop();
+  while (lines.length > 0 && !lines[lines.length - 1].trim()) lines.pop();
   if (lines[lines.length - 1]?.startsWith(">")) lines.pop();
   return lines.join("\n");
 }
@@ -21,14 +28,18 @@ function withoutTrailingHeader(text: string): string {
  * picked file (`MSA.js` `validate`): valid records for the file's type, with
  * no size limit and no ">record_1" prefix added, and at least
  * `minSequences` of them. A `truncated` text is the file's start, so its
- * records are checked, but a count below the minimum proves nothing.
+ * complete records are checked, but a count below the minimum proves
+ * nothing, and neither does a start with no complete record in it (a first
+ * sequence on one line longer than the read).
  */
 export function fastaFileProblem(
   text: string,
   { protein, truncated }: { protein: boolean; truncated: boolean },
 ): string | null {
+  const checked = truncated ? completeLines(text) : text;
+  if (truncated && !checked.trim()) return null;
   const result = validateFasta(
-    truncated ? withoutTrailingHeader(text) : text,
+    checked,
     protein ? "aa" : "dna",
     { replace: false, ignoreMaxFastaTextLimit: true },
   );

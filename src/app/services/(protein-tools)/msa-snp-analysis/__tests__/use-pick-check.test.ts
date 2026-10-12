@@ -79,6 +79,43 @@ describe("usePickCheck", () => {
     expect(toast.error).not.toHaveBeenCalled();
   });
 
+  it("drops a running check's result when the page unmounts", async () => {
+    const { result, unmount } = renderHook(() => usePickCheck());
+    const check = deferred();
+    const handlers = { onPass: vi.fn(), onReject: vi.fn() };
+
+    let run: Promise<void> = Promise.resolve();
+    act(() => {
+      run = result.current.start("/a", {
+        check: () => check.promise,
+        ...handlers,
+      });
+    });
+    unmount();
+    check.resolve({ title: "Bad", message: "A is bad" });
+    await run;
+
+    expect(handlers.onReject).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("dismisses a rejection's toast when the page unmounts", async () => {
+    const { result, unmount } = renderHook(() => usePickCheck());
+
+    await act(() =>
+      result.current.start("/a", {
+        check: () => Promise.resolve({ title: "Bad", message: "A is bad" }),
+        onPass: vi.fn(),
+        onReject: vi.fn(),
+      }),
+    );
+    const [, options] = vi.mocked(toast.error).mock.calls[0];
+    vi.mocked(toast.dismiss).mockClear();
+
+    unmount();
+    expect(toast.dismiss).toHaveBeenCalledWith(options?.id);
+  });
+
   it("keeps a rejection's toast until it is closed or the pick changes", async () => {
     const { result } = renderHook(() => usePickCheck());
     const rejection = { title: "Invalid FASTA file", message: "Too short" };

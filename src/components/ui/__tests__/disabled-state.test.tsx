@@ -133,7 +133,7 @@ describe("disabled controls receive the pointer, for the not-allowed cursor", ()
       "checkbox",
     ],
   ] as const)(
-    "%s shows the cursor on its span and on the label beside it",
+    "%s shows the cursor and dims on its span, and the label beside it shows the cursor",
     (_name, ui, role) => {
       render(ui());
       const control = screen.getByRole(role, { name: "Choice" });
@@ -142,6 +142,9 @@ describe("disabled controls receive the pointer, for the not-allowed cursor", ()
       expect(control).toHaveAttribute("data-disabled");
       expect(classes(control)).toContain("data-disabled:cursor-not-allowed");
       expect(classes(control)).not.toContain("disabled:cursor-not-allowed");
+      // Dimmed the same way, or it stays fully opaque.
+      expect(classes(control)).toContain("data-disabled:opacity-50");
+      expect(classes(control)).not.toContain("disabled:opacity-50");
       // The control is the label's `peer`.
       expect(classes(control)).toContain("peer");
       expect(classes(screen.getByText("Choice"))).toContain(

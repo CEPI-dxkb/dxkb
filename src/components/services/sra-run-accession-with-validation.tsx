@@ -47,7 +47,11 @@ interface SraRunAccessionWithValidationProps {
 interface SraInputViewProps {
   showLabel: boolean;
   showAddButton: boolean;
-  validationStatus: "idle" | "validating" | "invalid" | "valid";
+  /**
+   * `unverified`: the backend timed out on NCBI, so the accession is accepted
+   * as a run, but its message is a warning, not an error.
+   */
+  validationStatus: "idle" | "validating" | "invalid" | "unverified" | "valid";
   title: string;
   placeholder: string;
   label?: React.ReactNode;
@@ -117,6 +121,7 @@ function SraInputView({
             "min-h-5 text-sm",
             validationStatus === "validating" && "text-muted-foreground",
             validationStatus === "invalid" && "text-destructive",
+            validationStatus === "unverified" && "text-warning",
             validationStatus === "valid" && "text-success",
           )}
         >
@@ -403,12 +408,16 @@ const SraRunAccessionWithValidation = ({
     }
   };
 
+  // An accepted accession can still carry a message (a timeout's), so
+  // acceptance is checked before the message is read as a failure.
   const validationStatus = isValidating
     ? "validating"
-    : validationMessage
-      ? "invalid"
-      : isValidSra
-        ? "valid"
+    : isValidSra
+      ? validationMessage
+        ? "unverified"
+        : "valid"
+      : validationMessage
+        ? "invalid"
         : "idle";
 
   return (

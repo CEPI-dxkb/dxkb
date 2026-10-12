@@ -50,6 +50,18 @@ describe("fastaFileProblem", () => {
       "Invalid nucleotide letters on line 4.",
     );
   });
+
+  it("finds nothing wrong in a start that holds no complete record", () => {
+    const start = { protein: false, truncated: true };
+    // A first sequence on one line longer than the read: only its header fits.
+    expect(fastaFileProblem(">a\n", start)).toBeNull();
+    // No line end fits, so the read stops inside the header.
+    expect(fastaFileProblem(">a very long hea", start)).toBeNull();
+    // Or inside the first sequence line, which is dropped with the header.
+    expect(fastaFileProblem(">a\nACGTAC", start)).toBeNull();
+    // A line the read ends inside is not checked, so its cut is no error.
+    expect(fastaFileProblem(">a\nACGT\n>b\nAC", start)).toBeNull();
+  });
 });
 
 describe("checkFastaFile", () => {

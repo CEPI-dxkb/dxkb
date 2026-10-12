@@ -545,13 +545,19 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         );
       }
       const content = typeof fixture.content === "string" ? fixture.content : "";
-      if (content.length <= maxBytes) {
+      // The route counts UTF-8 bytes, not UTF-16 code units, and a cut with
+      // no line end in it can split a character, which `response.text()`
+      // decodes as U+FFFD; `TextDecoder` does the same.
+      const bytes = new TextEncoder().encode(content);
+      if (bytes.length <= maxBytes) {
         return { text: content, truncated: false };
       }
-      const start = content.slice(0, maxBytes);
-      const lineEnd = start.lastIndexOf("\n");
+      const start = bytes.subarray(0, maxBytes);
+      const lineEnd = start.lastIndexOf(0x0a);
       return {
-        text: lineEnd > 0 ? start.slice(0, lineEnd + 1) : start,
+        text: new TextDecoder().decode(
+          lineEnd > 0 ? start.subarray(0, lineEnd + 1) : start,
+        ),
         truncated: true,
       };
     });

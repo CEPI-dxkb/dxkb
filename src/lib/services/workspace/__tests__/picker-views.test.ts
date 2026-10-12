@@ -541,6 +541,17 @@ describe("file-mode rows", () => {
       "/a@b/home/Data",
     );
   });
+  it("chooses a job result, by its own path, when it is a requested type", () => {
+    const jobResults = pickerTargetFor(["job_result"]);
+    const job = row("Assembly1", "job_result");
+    expect(isPickerItemNavigable(job, jobResults)).toBe(false);
+    expect(isPickerItemChoosable(job, jobResults)).toBe(true);
+    expect(pickerRowKey(job, jobResults)).toBe("/a@b/home/Assembly1");
+    // Requested beside other types, it is still chosen rather than opened.
+    const mixed = pickerTargetFor(["contigs", "job_result"]);
+    expect(isPickerItemChoosable(job, mixed)).toBe(true);
+    expect(pickerRowKey(job, mixed)).toBe("/a@b/home/Assembly1");
+  });
   it("lists read-only shared workspaces when picking files", () => {
     const shared = { kind: "list", view: "shared" } as const;
     const readOnly: WorkspaceItem = {

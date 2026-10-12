@@ -18,17 +18,21 @@ export function ServiceAddButton({
   pending = false,
   disabled,
   ...props
-}: Omit<React.ComponentProps<typeof Button>, "children" | "variant" | "size"> & {
+}: Omit<
+  React.ComponentProps<typeof Button>,
+  "children" | "variant" | "size" | "type"
+> & {
   icon?: LucideIcon;
   pending?: boolean;
 }) {
   return (
     <Button
-      type="button"
       variant="soft"
       size="icon"
       disabled={disabled || pending}
       {...props}
+      // After the spread: an add action never submits the form around it.
+      type="button"
     >
       {pending ? <Spinner /> : <Icon />}
     </Button>

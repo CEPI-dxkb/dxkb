@@ -43,19 +43,28 @@ export type PickerSelectablePredicate = (object: {
 
 const folderTarget: PickerTarget = { kind: "folder" };
 
-function isJobResult(item: WorkspaceItem): boolean {
-  return normalizeWorkspaceObjectType(item.type) === "job_result";
+/**
+ * Picking files, a job result is opened (through its hidden folder, where its
+ * outputs live) unless it is itself a requested type, when it is a file to
+ * choose like any other.
+ */
+function opensJobResult(item: WorkspaceItem, target: PickerTarget): boolean {
+  return (
+    target.kind === "object" &&
+    normalizeWorkspaceObjectType(item.type) === "job_result" &&
+    !matchesTargetType(item, target)
+  );
 }
 
 /**
  * Rows the picker opens as a column: folders, and, picking files, job
- * results (listed through their hidden folder, where their outputs live).
+ * results that are not themselves a requested type.
  */
 export function isPickerItemNavigable(
   item: WorkspaceItem,
   target: PickerTarget = folderTarget,
 ): boolean {
-  return isFolder(item.type) || (target.kind === "object" && isJobResult(item));
+  return isFolder(item.type) || opensJobResult(item, target);
 }
 
 /** A file the picker can choose: picking files, one of the requested types. */
@@ -81,14 +90,14 @@ export function isPickerItemInteractive(
 
 /**
  * The path a row stands for in the selection: its own, except a job result
- * when picking files, which stands for its hidden folder (`/a/J` -> `/a/.J`).
+ * the picker opens, which stands for its hidden folder (`/a/J` -> `/a/.J`).
  */
 export function pickerRowKey(
   item: WorkspaceItem,
   target: PickerTarget = folderTarget,
 ): string {
   const path = normalizePath(item.path);
-  return target.kind === "object" && isJobResult(item)
+  return opensJobResult(item, target)
     ? getJobResultDotPath({ path, name: item.name })
     : path;
 }

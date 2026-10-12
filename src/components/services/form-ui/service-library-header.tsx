@@ -39,15 +39,19 @@ export function ServiceLibraryAddButton({
   pending = false,
   disabled,
   ...props
-}: Omit<React.ComponentProps<typeof Button>, "children" | "variant" | "size"> & {
+}: Omit<
+  React.ComponentProps<typeof Button>,
+  "children" | "variant" | "size" | "type"
+> & {
   pending?: boolean;
 }) {
   return (
     <Button
-      type="button"
       variant="soft"
       disabled={disabled || pending}
       {...props}
+      // After the spread: an add action never submits the form around it.
+      type="button"
     >
       Add
       {pending ? (

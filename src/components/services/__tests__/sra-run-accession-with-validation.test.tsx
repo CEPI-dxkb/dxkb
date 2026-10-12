@@ -215,6 +215,10 @@ describe("SraRunAccessionWithValidation", () => {
     await waitFor(() => {
       expect(screen.getByText("Timeout exceeded.")).toBeInTheDocument();
     });
+    // Accepted, so its message is a warning and the field is not invalid.
+    expect(screen.getByText("Timeout exceeded.")).toHaveClass("text-warning");
+    expect(input()).not.toHaveAttribute("aria-invalid");
+    expect(input()).not.toHaveClass("border-success");
 
     fireEvent.click(addButton());
     await waitFor(() => {

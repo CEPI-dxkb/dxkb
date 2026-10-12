@@ -20,6 +20,25 @@ describe("ServiceAddButton", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 
+  it("never submits its form, even when a spread smuggles in type=submit", async () => {
+    const onSubmit = vi.fn((event: React.SyntheticEvent) => {
+      event.preventDefault();
+    });
+    const user = userEvent.setup();
+    // `type` is not in the props type; an untyped spread can still carry it.
+    const untyped = { type: "submit" } as object;
+    render(
+      <form onSubmit={onSubmit}>
+        <ServiceAddButton aria-label="Add genome" {...untyped} />
+      </form>,
+    );
+
+    const button = screen.getByRole("button", { name: "Add genome" });
+    expect(button).toHaveAttribute("type", "button");
+    await user.click(button);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it("takes another glyph through icon", () => {
     render(<ServiceAddButton icon={ArrowRight} aria-label="Add metadata field" />);
 

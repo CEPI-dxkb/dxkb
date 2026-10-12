@@ -53,7 +53,10 @@ export interface AppendToIdGroupInput {
   ids: string[];
 }
 
-/** The start of a file's text, cut at a line end. */
+/**
+ * The start of a file's text, cut at its last line end; when no line end
+ * fits, the bytes as read, ending mid-line.
+ */
 export interface WorkspaceTextStart {
   text: string;
   /** True when the file goes on past `text`. */
@@ -117,8 +120,8 @@ export interface WorkspaceRepository {
 
   /**
    * The first `maxBytes` of a file's contents (all of it when it fits), cut
-   * at the last line end. Through `/api/workspace/preview`, which caps it at
-   * 10 MB.
+   * at the last line end in them, or, when there is none, ending mid-line.
+   * Through `/api/workspace/preview`, which caps it at 10 MB.
    */
   readTextStart(path: string, maxBytes: number): Promise<WorkspaceTextStart>;
 

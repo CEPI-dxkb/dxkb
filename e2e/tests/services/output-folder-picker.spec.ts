@@ -609,7 +609,7 @@ test.describe("output folder picker: motion", () => {
     expect(new Set(trace.scrollLeft).size).toBe(1);
     expect(trace.scrollLeft[0]).toBeGreaterThan(trace.before);
     expect(trace.ghostsDuring).toBe(0);
-    // The reduced-motion rule in globals.css cuts CSS transitions to 0.01ms,
+    // The reduced-motion rule in globals.css cuts CSS animations to 0.01ms,
     // and WebKit lists one as running until it next draws, so only longer
     // animations (the columns' fades are 180ms) count.
     const running = await picker.dialog.evaluate(

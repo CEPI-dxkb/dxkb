@@ -49,8 +49,35 @@ export class ViralGenomeTreePage {
     this.toasts = page.locator("[data-sonner-toast]");
   }
 
+  /**
+   * Open the form and wait until its selectors have hydrated. The heading is
+   * server-rendered, so it shows before React attaches the inputs' handlers,
+   * and a search typed in that window is lost: the input shows the text, but
+   * React never saw it, so no suggestions open (seen in CI's WebKit, which
+   * filled 180ms after the heading showed). React attaches a hydrated
+   * element's props as `__reactProps$<id>`.
+   */
   async goto(): Promise<void> {
     await this.form.goto("/services/viral-genome-tree");
+    const selectors = Object.keys(viralGenomeTreeInputs).map((input) =>
+      this.selector(input as ViralGenomeTreeInput),
+    );
+    for (const selector of selectors) {
+      await expect
+        .poll(
+          () =>
+            selector.evaluate((input) =>
+              Object.entries(input).some(
+                ([key, props]) =>
+                  key.startsWith("__reactProps$") &&
+                  typeof (props as { onChange?: unknown }).onChange ===
+                    "function",
+              ),
+            ),
+          { message: "the Input card's selectors did not hydrate" },
+        )
+        .toBe(true);
+    }
   }
 
   /** The label and the row holding its selector and Add button. */

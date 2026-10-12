@@ -95,13 +95,21 @@
     opacity 160ms ease;
 }
 
+/* Transitions get no time at all rather than a token 0.01ms. Every element's
+   `transition-property` starts as `all`, so any nonzero duration here turned a
+   transition on for every property of every element: one theme switch started
+   about 6000 of them, and until the browser next drew, getComputedStyle (and
+   with it axe) still read the old theme's colors. CI's WebKit took over a
+   second to get there. Animations keep their 0.01ms, so `animationend` still
+   fires; one runs only where an `animation-name` is set. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
     scroll-behavior: auto !important;
   }
 }

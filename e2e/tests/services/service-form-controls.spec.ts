@@ -82,34 +82,43 @@ async function unhover(page: Page): Promise<void> {
 }
 
 /**
- * Where a one-line text box's first and last characters land, against the
- * box's own edges, and how wide its font draws "…". Characters cut off keep
- * their layout positions in Chromium; WebKit reports them at the ellipsis.
+ * Where a one-line text box's first drawn and last characters land, against
+ * the box's own edges, and how wide its font draws "…" and the glyph just
+ * before the first drawn one. Characters cut off keep their layout positions
+ * in Chromium, past the box's left edge; WebKit reports them as empty boxes
+ * where the drawn text starts.
  */
 function textEdges(locator: Locator) {
   return locator.evaluate((element) => {
     const box = element.getBoundingClientRect();
     const context = document.createElement("canvas").getContext("2d");
     if (context) context.font = getComputedStyle(element).font;
+    const measure = (text: string) => context?.measureText(text).width ?? 0;
     const node = document
       .createTreeWalker(element, NodeFilter.SHOW_TEXT)
       .nextNode() as Text;
-    const range = document.createRange();
-    range.setStart(node, 0);
-    range.setEnd(node, 1);
-    const first = range.getBoundingClientRect();
-    range.setStart(node, node.length - 1);
-    range.setEnd(node, node.length);
-    const last = range.getBoundingClientRect();
+    const charBox = (index: number) => {
+      const range = document.createRange();
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      return range.getBoundingClientRect();
+    };
+    let first = 0;
+    while (first < node.length - 1) {
+      const rect = charBox(first);
+      if (rect.width > 0 && rect.left >= box.left - 0.5) break;
+      first += 1;
+    }
     return {
       left: box.left,
       right: box.right,
       height: box.height,
       lineHeight: parseFloat(getComputedStyle(element).lineHeight),
       overflows: element.scrollWidth > element.clientWidth,
-      ellipsis: context?.measureText("…").width ?? 0,
-      firstLeft: first.left,
-      lastRight: last.right,
+      ellipsis: measure("…"),
+      hiddenGlyph: first > 0 ? measure(node.data[first - 1]) : 0,
+      firstLeft: charBox(first).left,
+      lastRight: charBox(node.length - 1).right,
     };
   });
 }
@@ -388,12 +397,16 @@ test.describe("service form controls", () => {
 
     // The long path overflows yet its file name ends flush with the box, so
     // the start is what is cut. Nothing but the ellipsis comes before the
-    // text (a `bdi` child left a gap there in WebKit).
+    // text (a `bdi` child left a gap there in WebKit), give or take the room
+    // too narrow for the next glyph: WebKit cuts whole glyphs and leaves that
+    // room at the box's edge, before the ellipsis (4px in CI's Linux build).
     const cut = await textEdges(long);
     expect(cut.height).toBeLessThanOrEqual(cut.lineHeight + 1);
     expect(cut.overflows).toBe(true);
     expect(Math.abs(cut.lastRight - cut.right)).toBeLessThanOrEqual(1);
-    expect(cut.firstLeft - cut.left).toBeLessThanOrEqual(cut.ellipsis + 2);
+    expect(cut.firstLeft - cut.left - cut.ellipsis).toBeLessThan(
+      cut.hiddenGlyph + 1,
+    );
 
     // A path that fits starts at the left edge, its leading "/" first.
     const whole = await textEdges(short);

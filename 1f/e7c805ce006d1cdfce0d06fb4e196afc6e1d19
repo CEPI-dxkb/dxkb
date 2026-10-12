@@ -1,0 +1,75 @@
+src/app/api/services/genome/by-ids/route.ts
+  s_ae47fe22540aec::t_05f7997c254135 8-34,53
+src/app/services/(genomics)/genome-alignment/genome-alignment-sections.tsx
+  s_ae47fe22540aec::t_25c7897d251c84 13,114,180-187
+src/app/services/(genomics)/genome-assembly/page.tsx
+  s_ae47fe22540aec::t_45297ed34f8109 36,47
+src/components/shared/data-table.tsx
+  s_ae47fe22540aec::t_b584ab39e1451a 396-397,474,888,957,992,1010,1074
+  s_ae47fe22540aec::t_e360f7324e895c 865-880
+  s_ae47fe22540aec::t_b240bb4c6f83c9 437-442,491,862-864,881
+src/lib/forms/(protein-tools)/meta-cats/__tests__/meta-cats-form-utils.test.ts
+  s_ae47fe22540aec::t_d27b1ae9b51d77 16-17,481-508,683-735
+src/app/services/(protein-tools)/meta-cats/page.tsx
+  s_ae47fe22540aec::t_78785062c36283 21,75-76,81,92-93,129,213-216,265-269,315-320,323,330,332,339-344,351,362,742,767-771,773,779
+src/app/services/(genomics)/genome-assembly/__tests__/page-advanced-options.test.tsx
+  s_ae47fe22540aec::t_ad8225bea36e8f 113-114
+  s_ae47fe22540aec::t_50b891651a484c 1-112,115-123
+src/app/services/(protein-tools)/meta-cats/__tests__/page-group-names.test.tsx
+  s_ae47fe22540aec::t_494622a8da01b6 1,10-32,97-100,102,112-114,117-118,121-122,124,140,182,245-303
+  s_ae47fe22540aec::t_ac169fa33b41a1 80-88,304
+src/app/api/services/genome/by-ids/__tests__/route.test.ts
+  s_ae47fe22540aec::t_4b606b2da56293 82-127
+src/app/services/(protein-tools)/meta-cats/meta-cats-groups-grid.tsx
+  s_ae47fe22540aec::t_b584ab39e1451a 96
+  s_ae47fe22540aec::t_b240bb4c6f83c9 71-72
+  s_ae47fe22540aec::t_2959e6675709db 1-50,52-70,73-95,97-100
+  s_ae47fe22540aec::t_84ee3ccbe4d6fa 51
+src/app/services/(genomics)/blast/database-selector.tsx
+  s_ae47fe22540aec::t_732f7b35497582 11,78-83
+src/lib/services/info/genome-assembly.ts
+  s_ae47fe22540aec::t_f0cac26d7d711e 92-157
+src/components/shared/__tests__/data-table-rendering.test.tsx
+  s_ae47fe22540aec::t_9e2dc258260ca8 56,61,79,92-130
+  s_ae47fe22540aec::t_c3f7b5ff2512ea 131-132
+src/components/services/__tests__/single-genome-selector.test.tsx
+  s_ae47fe22540aec::t_7a142ba41d8c92 1-71,78-79
+  s_ae47fe22540aec::t_1faae1fbefe733 72-77
+src/components/services/single-genome-selector.tsx
+  s_ae47fe22540aec::t_1faae1fbefe733 80-90
+  s_ae47fe22540aec::t_4db0d2e8165916 278
+src/app/services/(viral-tools)/influenza-ha-subtype/page.tsx
+  s_ae47fe22540aec::t_c66f6e344833d6 273
+src/lib/forms/(protein-tools)/meta-cats/meta-cats-form-utils.ts
+  s_ae47fe22540aec::t_2959e6675709db 35-40
+  s_ae47fe22540aec::t_b2b9b7f73a4443 1-2,20-22,24-34,283-289,346,375-385,387-404,407-417
+  s_ae47fe22540aec::t_84ee3ccbe4d6fa 386,405-406
+src/components/services/selected-genomes-table.tsx
+  s_ae47fe22540aec::t_1ef1e33509a9cb 1-93
+src/app/services/(genomics)/genome-assembly/assembly-sections.tsx
+  s_ae47fe22540aec::t_c98c321a432b18 1,45,47-49,57,425-426,431-440,446-493
+  s_ae47fe22540aec::t_45297ed34f8109 37,494-569
+  s_ae47fe22540aec::t_2d2c731f8670a9 347-419
+  s_ae47fe22540aec::t_54bc1a9e596003 427-430,441-445
+  s_ae47fe22540aec::t_d36ba2e76bab42 306-307,320-321,326-327,344,346
+src/lib/services/genome.ts
+  s_ae47fe22540aec::t_05f7997c254135 42-46,49,58-60
+src/app/services/(genomics)/genome-alignment/__tests__/page-selection-races.test.tsx
+  s_ae47fe22540aec::t_01e468f427c81c 1,280,289-292,294-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fe7c805ce006d1cdfce0d06fb4e196afc6e1d19",
+  "prompts": {},
+  "sessions": {
+    "s_ae47fe22540aec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "03d79dbd-d0b4-4fb7-823c-0c0fe3c87eef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

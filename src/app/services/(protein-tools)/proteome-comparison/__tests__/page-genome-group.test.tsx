@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import ProteomeComparisonPage from "../page";
 import { server } from "@/test-helpers/msw-server";
 
-const { groupPath } = vi.hoisted(() => ({
+const { groupPath, genomeId } = vi.hoisted(() => ({
   groupPath: "/user@bvbrc/home/big-group",
+  genomeId: "83332.12",
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
@@ -28,8 +29,24 @@ vi.mock("@/components/services/output-folder", () => ({
   default: () => null,
 }));
 
+// A button per genome selector, named by its placeholder, that picks one genome.
 vi.mock("@/components/services/single-genome-selector", () => ({
-  SingleGenomeSelector: () => null,
+  SingleGenomeSelector: ({
+    placeholder,
+    onChange,
+  }: {
+    placeholder?: string;
+    onChange: (genomeId: string) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => {
+        onChange(genomeId);
+      }}
+    >
+      Pick {placeholder}
+    </button>
+  ),
 }));
 
 // A button per picker; picking the genome group is the only one a test drives.
@@ -215,5 +232,48 @@ describe("ProteomeComparisonPage genome group add", () => {
     await waitFor(() => {
       expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
     });
+  });
+
+  it("refuses a genome whose lookup ends after a group filled the list", async () => {
+    const lookup = openableGate();
+    let looked = false;
+    server.use(
+      http.post("*/api/services/genome/by-ids", async () => {
+        await lookup.promise;
+        looked = true;
+        return HttpResponse.json({
+          results: [{ genome_id: genomeId, genome_name: "Late genome" }],
+        });
+      }),
+    );
+    serveGroup(9);
+    const user = userEvent.setup();
+    render(<ProteomeComparisonPage />);
+
+    await user.click(screen.getByRole("button", { name: "Pick Select genome" }));
+    await user.click(screen.getByRole("button", { name: "Add genome" }));
+    expect(await screen.findByRole("status", { name: "Loading" })).toBeVisible();
+
+    // The group takes all nine slots while the genome's name is still loading.
+    await pickGroupAndAdd(user);
+    expect(await screen.findByText("9 genome(s)")).toBeVisible();
+
+    act(() => {
+      lookup.open();
+    });
+    await waitFor(() => {
+      expect(looked).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Maximum genomes reached",
+        expect.objectContaining({
+          description: "Maximum of 9 comparison genomes allowed.",
+        }),
+      );
+    });
+    expect(screen.queryByText("Late genome")).toBeNull();
+    expect(screen.queryByRole("status", { name: "Loading" })).toBeNull();
   });
 });

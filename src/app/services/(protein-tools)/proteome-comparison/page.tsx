@@ -180,17 +180,25 @@ function useProteomeComparisonPage() {
     // A reset during the lookup already cleared the list and this spinner.
     if (resetRevision !== resetRevisionRef.current) return;
 
+    setIsLoadingCompGenome(false);
+
+    // Read the list again: the other add buttons stay live during the lookup,
+    // so a FASTA file or a genome group may have taken the last slots.
+    const latestItems = form.state.values.comparison_items;
+    if (countTotalComparisonGenomes(latestItems) >= maxComparisonGenomes) {
+      toast.error("Maximum genomes reached", {
+        description: `Maximum of ${String(maxComparisonGenomes)} comparison genomes allowed.`,
+        closeButton: true,
+      });
+      return;
+    }
+
     const newItem = createGenomeComparisonItem(
       selectedCompGenomeId,
       genomeName,
     );
-    // Read the list again: the other add buttons stay live during the lookup.
-    form.setFieldValue("comparison_items", [
-      ...form.state.values.comparison_items,
-      newItem,
-    ]);
+    form.setFieldValue("comparison_items", [...latestItems, newItem]);
     setSelectedCompGenomeId("");
-    setIsLoadingCompGenome(false);
   }
 
   function handleAddCompFasta() {

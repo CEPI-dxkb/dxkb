@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { countTotalComparisonGenomes } from "./proteome-comparison-form-utils";
+
 // Constants
 export const maxComparisonGenomes = 9;
 export const minComparisonGenomes = 1;
@@ -93,8 +95,10 @@ export const proteomeComparisonFormSchema = z
       });
     }
 
-    // Validate max comparison items
-    if (data.comparison_items.length > maxComparisonGenomes) {
+    // Validate max comparison genomes; a genome group counts each of its genomes
+    if (
+      countTotalComparisonGenomes(data.comparison_items) > maxComparisonGenomes
+    ) {
       ctx.addIssue({
         code: "custom",
         message: `Maximum ${String(maxComparisonGenomes)} comparison genomes allowed`,

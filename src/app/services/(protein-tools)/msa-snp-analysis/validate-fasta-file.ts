@@ -30,14 +30,22 @@ function completeLines(text: string): string {
  * `minSequences` of them. A `truncated` text is the file's start, so its
  * complete records are checked, but a count below the minimum proves
  * nothing, and neither does a start with no complete record in it (a first
- * sequence on one line longer than the read).
+ * sequence on one line longer than the read), as long as it opens with a
+ * header: one that does not is no FASTA file at all.
  */
 export function fastaFileProblem(
   text: string,
   { protein, truncated }: { protein: boolean; truncated: boolean },
 ): string | null {
-  const checked = truncated ? completeLines(text) : text;
-  if (truncated && !checked.trim()) return null;
+  let checked = text;
+  if (truncated) {
+    checked = completeLines(text);
+    if (!checked.trim()) {
+      if (/^\s*>/.test(text)) return null;
+      // The whole start, so the check below names its missing header.
+      checked = text;
+    }
+  }
   const result = validateFasta(
     checked,
     protein ? "aa" : "dna",

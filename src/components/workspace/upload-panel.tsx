@@ -31,8 +31,11 @@ const uploadTypeOptions = Object.entries(knownUploadTypes).map(
 
 export interface WorkspaceUploadPanelProps {
   targetPath: string;
+  /** The upload type to start with; defaults to "unspecified". */
+  initialUploadType?: string;
   onCancel: () => void;
-  onUploadComplete: () => void;
+  /** Called once every file is in, with each one's path and upload type. */
+  onUploadComplete: (uploaded: { path: string; type: string }[]) => void;
   /** Reports when an upload starts and ends, e.g. to hide a close button. */
   onUploadingChange?: (uploading: boolean) => void;
   cancelLabel?: string;
@@ -46,12 +49,15 @@ export interface WorkspaceUploadPanelProps {
  */
 export function WorkspaceUploadPanel({
   targetPath,
+  initialUploadType,
   onCancel,
   onUploadComplete,
   onUploadingChange,
   cancelLabel = "Cancel",
 }: WorkspaceUploadPanelProps) {
-  const [uploadType, setUploadType] = React.useState<string>("unspecified");
+  const [uploadType, setUploadType] = React.useState<string>(
+    initialUploadType ?? "unspecified",
+  );
   const [files, setFiles] = React.useState<File[]>([]);
   const [isUploading, setIsUploadingState] = React.useState(false);
   const setIsUploading = (value: boolean) => {
@@ -115,6 +121,7 @@ export function WorkspaceUploadPanel({
     setIsUploading(true);
     let hasError = false;
     let uploadedCount = 0;
+    const uploaded: { path: string; type: string }[] = [];
     try {
       for (const file of files) {
         const dir = targetPath.endsWith("/") ? targetPath : targetPath + "/";
@@ -157,12 +164,13 @@ export function WorkspaceUploadPanel({
         }
         uploadedCount += 1;
         await repository.updateAutoMetadata([fullPath]);
+        uploaded.push({ path: fullPath, type: uploadType });
       }
       if (!hasError) {
         toast.success("Upload complete", {
           description: `${String(files.length)} file(s) uploaded.`,
         });
-        onUploadComplete();
+        onUploadComplete(uploaded);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";

@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, X } from "lucide-react";
+import { X } from "lucide-react";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import OutputFolder from "@/components/services/output-folder";
 import { SingleGenomeSelector } from "@/components/services/single-genome-selector";
@@ -17,6 +17,7 @@ import {
   ServiceCardContent,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
@@ -112,19 +113,14 @@ export function FastqPipelineCard({ page }: { page: Page }) {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
+            <ServiceAddButton
               aria-label="Add pipeline action"
               onClick={page.handleAddPipelineAction}
               disabled={
                 !page.selectedAction ||
                 page.pipelineActions.length >= maxPipelineActions
               }
-            >
-              <Plus className="size-4" />
-            </Button>
+            />
           </div>
         </div>
         <div className="mt-4 space-y-2">

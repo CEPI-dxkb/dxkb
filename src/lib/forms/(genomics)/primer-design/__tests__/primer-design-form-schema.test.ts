@@ -39,6 +39,34 @@ describe("primerDesignFormSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("accepts a workspace FASTA and requires its path", () => {
+    const workspace = {
+      ...validPayload,
+      input_type: "workspace_fasta",
+      sequence_input: "/e2e-test-user@patricbrc.org/home/gene.fna",
+    };
+    expect(primerDesignFormSchema.safeParse(workspace).success).toBe(true);
+
+    const result = primerDesignFormSchema.safeParse({
+      ...workspace,
+      sequence_input: " ",
+    });
+    expect(result.error?.issues).toEqual([
+      expect.objectContaining({
+        message: "Select a FASTA file from the workspace",
+        path: ["sequence_input"],
+      }),
+    ]);
+  });
+
+  it("rejects the app spec's misspelled workplace_fasta", () => {
+    const result = primerDesignFormSchema.safeParse({
+      ...validPayload,
+      input_type: "workplace_fasta",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("safeParse rejects more than one included region pair", () => {
     const result = primerDesignFormSchema.safeParse({
       ...validPayload,

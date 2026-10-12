@@ -55,13 +55,22 @@ vi.mock("@/components/services/genome-name-selector", () => ({
 
 vi.mock("@/components/workspace/workspace-object-selector", () => ({
   WorkspaceObjectSelector: ({
+    value,
     onObjectSelect,
+    onSelectedObjectChange,
   }: {
+    value?: string;
     onObjectSelect: (object: { id: string; name: string; path: string }) => void;
+    onSelectedObjectChange?: (
+      object: { id: string; name: string; path: string } | null,
+    ) => void;
   }) => (
     <>
       {/* Uncontrolled like the real selector's search text: only a remount clears it. */}
       <input aria-label="Search genome groups" />
+      <output aria-label="Genome group value">
+        {value === undefined ? "<no value prop>" : value}
+      </output>
       <button
         type="button"
         onClick={() => {
@@ -69,6 +78,18 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
         }}
       >
         Select genome group
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectedObjectChange?.({
+            id: "group",
+            name: "Test group",
+            path: "/groups/test",
+          });
+        }}
+      >
+        Stage genome group
       </button>
     </>
   ),
@@ -184,6 +205,20 @@ describe("GenomeAlignmentServicePage selection races", () => {
 
     expect(screen.getByText("Manual genome")).toBeInTheDocument();
     expect(screen.queryByText("Rerun genome")).not.toBeInTheDocument();
+  });
+
+  it("shows the staged group, and clears it once added", async () => {
+    mocks.fetchGenomeGroupMembers.mockResolvedValue([groupGenome]);
+    const user = userEvent.setup();
+    render(<GenomeAlignmentServicePage />);
+
+    await user.click(screen.getByRole("button", { name: "Stage genome group" }));
+    expect(screen.getByLabelText("Genome group value")).toHaveTextContent(
+      "/groups/test",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Add genome group" }));
+    expect(screen.getByLabelText("Genome group value")).toHaveTextContent(/^$/);
   });
 });
 

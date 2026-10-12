@@ -60,6 +60,7 @@ export function LibraryInputSection({
             <WorkspaceObjectSelector
               preset="reads"
               placeholder="Select READ FILE 1..."
+              value={pairedRead1 ?? ""}
               onObjectSelect={(object: WorkspaceObject) =>
                 { setPairedRead1(object.path); }
               }
@@ -67,6 +68,7 @@ export function LibraryInputSection({
             <WorkspaceObjectSelector
               preset="reads"
               placeholder="Select READ FILE 2..."
+              value={pairedRead2 ?? ""}
               onObjectSelect={(object: WorkspaceObject) =>
                 { setPairedRead2(object.path); }
               }
@@ -84,6 +86,7 @@ export function LibraryInputSection({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE..."
+            value={singleRead ?? ""}
             onObjectSelect={(object: WorkspaceObject) =>
               { setSingleRead(object.path); }
             }

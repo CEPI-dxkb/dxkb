@@ -13,6 +13,7 @@ import {
 import {
   primerAdvancedFields,
   primerArrayFields,
+  primerDesignRerunInputType,
   primerScalarFields,
   stripPrimerMarkers,
   validatePrimerDesignSequence,
@@ -62,7 +63,7 @@ export function usePrimerDesignForm() {
   );
   const canSubmit = useSelector(form.store, (state) => state.canSubmit);
   const sequenceValidation =
-    inputType === "workplace_fasta" || !sequenceInput
+    inputType === "workspace_fasta" || !sequenceInput
       ? null
       : validatePrimerDesignSequence(sequenceInput);
 
@@ -160,14 +161,14 @@ export function usePrimerDesignForm() {
     if (form.state.values.input_type === "sequence_text") {
       sequenceTextValueRef.current = currentValue;
       sequenceTextIdRef.current = form.state.values.SEQUENCE_ID || "";
-    } else if (form.state.values.input_type === "workplace_fasta") {
+    } else if (form.state.values.input_type === "workspace_fasta") {
       workspaceFastaValueRef.current = currentValue;
     }
     form.setFieldValue("input_type", nextType);
     if (nextType === "sequence_text") {
       form.setFieldValue("sequence_input", sequenceTextValueRef.current);
       form.setFieldValue("SEQUENCE_ID", sequenceTextIdRef.current);
-    } else if (nextType === "workplace_fasta") {
+    } else if (nextType === "workspace_fasta") {
       restoreWorkspaceFasta();
     }
   }
@@ -175,11 +176,11 @@ export function usePrimerDesignForm() {
   function handleWorkspaceSelection(object: WorkspaceObject) {
     const path = object.path || "";
     form.setFieldValue("sequence_input", path);
-    if (inputType === "workplace_fasta") workspaceFastaValueRef.current = path;
+    if (inputType === "workspace_fasta") workspaceFastaValueRef.current = path;
   }
 
   function handleSelectedWorkspaceObjectChange(object: WorkspaceObject | null) {
-    if (isRestoringValueRef.current || inputType !== "workplace_fasta") return;
+    if (isRestoringValueRef.current || inputType !== "workspace_fasta") return;
     if (object) {
       const path = object.path || "";
       form.setFieldValue("sequence_input", path);
@@ -195,14 +196,12 @@ export function usePrimerDesignForm() {
     form,
     rerun: {
       onApply: (data, targetForm) => {
-        const type = data.input_type as PrimerDesignFormData["input_type"];
-        if (type === "sequence_text" || type === "workplace_fasta") {
-          targetForm.setFieldValue("input_type", type);
-        }
+        const type = primerDesignRerunInputType(data.input_type);
+        if (type) targetForm.setFieldValue("input_type", type);
         const sequence =
           typeof data.sequence_input === "string" ? data.sequence_input : "";
         targetForm.setFieldValue("sequence_input", sequence);
-        if (type === "workplace_fasta") {
+        if (type === "workspace_fasta") {
           isRestoringValueRef.current = true;
           workspaceFastaValueRef.current = sequence;
           setTimeout(() => (isRestoringValueRef.current = false), 200);

@@ -1,8 +1,7 @@
 import { useState, type RefObject } from "react";
 import { useSelector } from "@tanstack/react-store";
-import { Plus, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { Slider } from "@/components/ui/slider";
@@ -25,6 +24,7 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceNumberInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import {
@@ -147,14 +147,12 @@ export function GenomeSelection({
               <WorkspaceObjectSelector
                 preset="genomeGroup"
                 placeholder="Select a genome group from your workspace"
+                value={group?.path ?? ""}
                 onObjectSelect={(object) => void addGroup(object)}
                 onSelectedObjectChange={setGroup}
               />
             </div>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
+            <ServiceAddButton
               aria-label="Add genome group"
               disabled={!group}
               onClick={() => {
@@ -163,9 +161,7 @@ export function GenomeSelection({
                   setGroup(null);
                 }
               }}
-            >
-              <Plus className="size-4" />
-            </Button>
+            />
           </div>
           {isFetchingGroup ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 
 import {
   Tooltip,
@@ -8,17 +8,14 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { Button } from "@/components/ui/button";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
-import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog";
 import { useOutputNameValidation } from "@/hooks/services/use-output-name-validation";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { Spinner } from "@/components/ui/spinner";
-import { useAuth } from "@/lib/auth/provider";
-import { workspaceUsername } from "@/lib/services/workspace/path-utils";
+import { isSelectableOutputFolder } from "@/lib/services/workspace/picker-views";
 
-import { FolderOpen, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 
 const nameTakenMessage =
   "An object with this name already exists in the selected folder.";
@@ -42,16 +39,6 @@ interface OutputFolderProps {
   invalid?: boolean;
 }
 
-function isSelectableOutputFolder(object: {
-  name: string;
-  path: string;
-}): boolean {
-  const hasHiddenPathSegment = object.path
-    .split("/")
-    .some((segment) => segment.startsWith("."));
-  return !object.name.startsWith(".") && !hasHiddenPathSegment;
-}
-
 const OutputFolder = ({
   title = true,
   required = false,
@@ -65,9 +52,6 @@ const OutputFolder = ({
   onValidationChange,
   invalid = false,
 }: OutputFolderProps) => {
-  const { user } = useAuth();
-  const canBrowse = !!workspaceUsername(user);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const needsValidation =
     variant === "name" && !!outputFolderPath.trim() && !!value.trim();
   const validation = useOutputNameValidation({
@@ -116,41 +100,18 @@ const OutputFolder = ({
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
           {variant === "default" && (
-            <>
-              <WorkspaceObjectSelector
-                preset="folder"
-                placeholder="Search for folders..."
-                value={value}
-                filter={isSelectableOutputFolder}
-                invalid={invalid}
-                onObjectSelect={(object) => {
-                  onChange?.(object.path || "");
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="Browse workspace folders"
-                title="Browse workspace folders"
-                disabled={disabled || !canBrowse}
-                onClick={() => {
-                  setPickerOpen(true);
-                }}
-              >
-                <FolderOpen />
-              </Button>
-              <WorkspaceFolderPickerDialog
-                open={pickerOpen}
-                onOpenChange={setPickerOpen}
-                title="Select an Output Folder"
-                initialPath={value}
-                isSelectable={isSelectableOutputFolder}
-                onSelect={(path) => {
-                  onChange?.(path);
-                }}
-              />
-            </>
+            <WorkspaceObjectSelector
+              preset="folder"
+              placeholder="Search for folders..."
+              value={value}
+              filter={isSelectableOutputFolder}
+              invalid={invalid}
+              browseTitle="Select an Output Folder"
+              disabled={disabled}
+              onObjectSelect={(object) => {
+                onChange?.(object.path || "");
+              }}
+            />
           )}
           {variant === "name" && (
             <div className="flex flex-1 items-center gap-2">

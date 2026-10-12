@@ -12,6 +12,10 @@ import {
 } from "./workspace-selector-presets";
 import { useAuth } from "@/lib/auth/provider";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
+import { WorkspaceFolderPickerDialog } from "@/components/workspace/folder-picker/folder-picker-dialog";
+import { toWorkspaceObject, type WorkspaceItem } from "@/lib/services/workspace/domain";
+import { lastSegment, pickerTargetFor } from "@/lib/services/workspace/picker-views";
+import { isFolderType } from "@/lib/services/workspace/utils";
 
 interface WorkspaceObjectSelectorProps {
   id?: string;
@@ -28,6 +32,11 @@ interface WorkspaceObjectSelectorProps {
   filter?: (object: WorkspaceObject) => boolean;
   /** Draws the field in its error state (`aria-invalid`). */
   invalid?: boolean;
+  /** Offers a Browse button that opens the workspace picker. Defaults to true. */
+  browse?: boolean;
+  /** Title of the picker that Browse opens. */
+  browseTitle?: string;
+  disabled?: boolean;
 }
 
 function useWorkspaceObjectSelector({
@@ -43,6 +52,9 @@ function useWorkspaceObjectSelector({
   value,
   filter,
   invalid = false,
+  browse = true,
+  browseTitle,
+  disabled = false,
 }: WorkspaceObjectSelectorProps) {
   const { user } = useAuth();
   const [showDropdown, setShowDropdown] = React.useState(false);
@@ -68,7 +80,7 @@ function useWorkspaceObjectSelector({
 
   // Effective types come from either the preset or the explicit `types` prop.
   const effectiveTypes: ValidWorkspaceObjectTypes[] | undefined = preset
-    ? resolveSelectorPreset(preset)
+    ? [...resolveSelectorPreset(preset)]
     : types
       ? Array.isArray(types)
         ? types
@@ -89,6 +101,12 @@ function useWorkspaceObjectSelector({
       ? `Invalid upload type(s): ${validatedTypes.invalid.join(", ")}. Valid types include: unspecified, aligned_dna_fasta, reads, contigs, etc.`
       : null;
   const resolvedTypes = validatedTypes?.valid;
+  const username = workspaceUsername(user);
+  const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+  const pickerTarget =
+    browse && resolvedTypes && resolvedTypes.length > 0
+      ? pickerTargetFor(resolvedTypes)
+      : null;
 
   // Use the repository-backed object search hook
   const {
@@ -100,7 +118,7 @@ function useWorkspaceObjectSelector({
     setSearchQuery,
     search,
   } = useWorkspaceObjectSearch({
-    username: workspaceUsername(user),
+    username,
     path,
     types: resolvedTypes,
   });
@@ -135,6 +153,32 @@ function useWorkspaceObjectSelector({
       onSelectedObjectChange?.(null);
     }
   };
+
+  /** The picker's choice goes the same way as a clicked suggestion. */
+  const handleBrowseSelect = (path: string, item: WorkspaceItem | null) => {
+    handleObjectClick(
+      item
+        ? { ...toWorkspaceObject(item), path }
+        : {
+            id: path,
+            name: lastSegment(path),
+            path,
+            type: "folder",
+            isDirectory: true,
+          },
+      !onSelectedObjectChange,
+    );
+  };
+  const isBrowseSelectable = filter
+    ? (object: { name: string; path: string; type?: string }) =>
+        filter({
+          id: object.path,
+          name: object.name,
+          path: object.path,
+          type: object.type ?? "folder",
+          isDirectory: isFolderType(object.type ?? "folder"),
+        })
+    : undefined;
 
   const handleManualDropdownToggle = () => {
     setShowDropdown(!showDropdown);
@@ -351,44 +395,72 @@ function useWorkspaceObjectSelector({
   };
 
   return (
-    <WorkspaceObjectSelectorView
-      id={id}
-      className={className}
-      placeholder={placeholder}
-      validationError={validationError}
-      invalid={invalid}
-      inputValue={searchQuery || displayName || value || ""}
-      searchQuery={searchQuery}
-      objects={displayObjects}
-      loading={loading}
-      error={error}
-      showDropdown={showDropdown}
-      highlightedIndex={highlightedIndex}
-      dropdownLayout={{
-        ...dropdownPosition,
-        rect: dropdownRect,
-      }}
-      inputRef={inputRef}
-      inputElementRef={inputElementRef}
-      dropdownRef={dropdownRef}
-      itemRefs={itemRefs}
-      onInputChange={(event) => {
-        handleSearchChange(event.target.value);
-        selectedObjectRef.current = null;
-        setDisplayName("");
-        onSelectedObjectChange?.(null);
-        setHighlightedIndex(-1);
-      }}
-      onInputFocus={() => {
-        if (searchQuery.length > 0 || isManualTrigger) setShowDropdown(true);
-      }}
-      onInputKeyDown={handleInputKeyDown}
-      onToggleDropdown={handleManualDropdownToggle}
-      onObjectClick={(object) => {
-        handleObjectClick(object, !onSelectedObjectChange);
-      }}
-      onObjectHighlight={setHighlightedIndex}
-    />
+    <>
+      <WorkspaceObjectSelectorView
+        id={id}
+        className={className}
+        placeholder={placeholder}
+        validationError={validationError}
+        invalid={invalid}
+        inputValue={searchQuery || displayName || value || ""}
+        searchQuery={searchQuery}
+        objects={displayObjects}
+        loading={loading}
+        error={error}
+        showDropdown={showDropdown}
+        highlightedIndex={highlightedIndex}
+        dropdownLayout={{
+          ...dropdownPosition,
+          rect: dropdownRect,
+        }}
+        inputRef={inputRef}
+        inputElementRef={inputElementRef}
+        dropdownRef={dropdownRef}
+        itemRefs={itemRefs}
+        onInputChange={(event) => {
+          handleSearchChange(event.target.value);
+          selectedObjectRef.current = null;
+          setDisplayName("");
+          onSelectedObjectChange?.(null);
+          setHighlightedIndex(-1);
+        }}
+        onInputFocus={() => {
+          if (searchQuery.length > 0 || isManualTrigger) setShowDropdown(true);
+        }}
+        onInputKeyDown={handleInputKeyDown}
+        onToggleDropdown={handleManualDropdownToggle}
+        onObjectClick={(object) => {
+          handleObjectClick(object, !onSelectedObjectChange);
+        }}
+        onObjectHighlight={setHighlightedIndex}
+        disabled={disabled}
+        browse={
+          pickerTarget
+            ? {
+                label:
+                  pickerTarget.kind === "folder"
+                    ? "Browse workspace folders"
+                    : "Browse workspace files",
+                disabled: disabled || !username,
+                onClick: () => {
+                  setIsPickerOpen(true);
+                },
+              }
+            : null
+        }
+      />
+      {pickerTarget ? (
+        <WorkspaceFolderPickerDialog
+          open={isPickerOpen}
+          onOpenChange={setIsPickerOpen}
+          target={pickerTarget}
+          title={browseTitle}
+          initialPath={value ?? ""}
+          isSelectable={isBrowseSelectable}
+          onSelect={handleBrowseSelect}
+        />
+      ) : null}
+    </>
   );
 }
 

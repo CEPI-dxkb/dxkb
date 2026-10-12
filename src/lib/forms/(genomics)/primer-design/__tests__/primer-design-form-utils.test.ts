@@ -26,6 +26,7 @@ import {
   validatePrimerDesignSequence,
   transformPrimerDesignParams,
   resetPrimerDesignValues,
+  primerDesignRerunInputType,
 } from "../primer-design-form-utils";
 
 describe("sanitizePrimerDesignSequence", () => {
@@ -179,14 +180,15 @@ describe("transformPrimerDesignParams", () => {
     expect(result.SEQUENCE_ID).toBe("seq_001");
   });
 
-  it("handles workplace_fasta input_type by trimming the path", () => {
+  it("sends a workspace FASTA as workspace_fasta with the trimmed path", () => {
     const data = {
       ...baseFormData,
-      input_type: "workplace_fasta" as const,
+      input_type: "workspace_fasta" as const,
       sequence_input: " /ws/file.fasta ",
     };
     const result = transformPrimerDesignParams(data);
 
+    expect(result.input_type).toBe("workspace_fasta");
     expect(result.sequence_input).toBe("/ws/file.fasta");
     expect(result).not.toHaveProperty("SEQUENCE_ID");
   });
@@ -285,5 +287,22 @@ describe("resetPrimerDesignValues", () => {
         output_file: "",
       }),
     );
+  });
+});
+
+describe("primerDesignRerunInputType", () => {
+  it("opens both spellings of a workspace FASTA job as workspace_fasta", () => {
+    expect(primerDesignRerunInputType("workspace_fasta")).toBe(
+      "workspace_fasta",
+    );
+    expect(primerDesignRerunInputType("workplace_fasta")).toBe(
+      "workspace_fasta",
+    );
+  });
+
+  it("keeps sequence_text and ignores anything else", () => {
+    expect(primerDesignRerunInputType("sequence_text")).toBe("sequence_text");
+    expect(primerDesignRerunInputType("database_id")).toBeUndefined();
+    expect(primerDesignRerunInputType(undefined)).toBeUndefined();
   });
 });

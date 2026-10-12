@@ -1,7 +1,5 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroupItem } from "@/components/ui/radio-group";
@@ -16,6 +14,7 @@ import {
   ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { phylogeneticTreeInput } from "@/lib/services/info/phylogenetic-tree";
@@ -165,16 +164,11 @@ function SequenceSelector({
           value={value}
           className="flex-1"
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
+        <ServiceAddButton
           aria-label={ariaLabel}
           onClick={onAdd}
           disabled={disabled}
-        >
-          <Plus size={16} />
-        </Button>
+        />
       </div>
     </div>
   );

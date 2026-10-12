@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   metaCATSInfo,
   metaCATSParameters,
@@ -51,6 +51,7 @@ import {
   ServiceInput,
   ServiceNumberInput,
 } from "@/components/services/form-ui/service-input";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceRadioGroup } from "@/components/services/form-ui/service-radio-group";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
@@ -641,24 +642,14 @@ function useMetaCATSPage() {
                         }}
                         value={selectedAutoFeatureGroupObject?.path}
                       />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
+                      <ServiceAddButton
                         aria-label="Add feature group"
                         onClick={() => {
                           void handleAddAutoFeatureGroup();
                         }}
-                        disabled={
-                          !selectedAutoFeatureGroupObject || isLoadingAutoGroup
-                        }
-                      >
-                        {isLoadingAutoGroup ? (
-                          <Spinner className="size-4" />
-                        ) : (
-                          <Plus className="size-4" />
-                        )}
-                      </Button>
+                        disabled={!selectedAutoFeatureGroupObject}
+                        pending={isLoadingAutoGroup}
+                      />
                     </div>
                   </div>
 
@@ -903,16 +894,11 @@ function useMetaCATSPage() {
                           value={selectedFeatureGroupObject?.path}
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
+                      <ServiceAddButton
                         aria-label="Add feature group"
                         onClick={handleAddFeatureGroup}
                         disabled={!selectedFeatureGroupObject}
-                      >
-                        <Plus className="size-4" />
-                      </Button>
+                      />
                     </div>
                   </div>
 

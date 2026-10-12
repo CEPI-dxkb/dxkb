@@ -18,6 +18,7 @@ import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object
 
 import { useAuthActions } from "@/lib/auth/provider";
 import type { UserProfile } from "@/lib/auth/types";
+import { isSelectableOutputFolder } from "@/lib/services/workspace/picker-views";
 
 interface PreferencesFormProps {
   profile: UserProfile;
@@ -76,6 +77,8 @@ export function PreferencesForm({ profile }: PreferencesFormProps) {
                   preset="folder"
                   placeholder="Select a default output folder..."
                   value={defaultJobFolder}
+                  filter={isSelectableOutputFolder}
+                  browseTitle="Select a Default Output Folder"
                   onObjectSelect={(object) => {
                     setDefaultJobFolder(object.path || "");
                   }}

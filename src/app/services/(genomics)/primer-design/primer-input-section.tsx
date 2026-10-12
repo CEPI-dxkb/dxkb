@@ -69,7 +69,7 @@ export function PrimerInputSection({
           </div>
           <div className="flex items-center gap-3">
             <RadioGroupItem
-              value="workplace_fasta"
+              value="workspace_fasta"
               id="inputTypeWorkspaceFasta"
             />
             <Label htmlFor="inputTypeWorkspaceFasta">Workspace FASTA</Label>

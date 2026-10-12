@@ -94,6 +94,7 @@ export function AssemblyInputs({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE 1..."
+            value={state.pairedRead1 ?? ""}
             onObjectSelect={(object: WorkspaceObject) => {
               dispatch({
                 type: "set-read",
@@ -105,6 +106,7 @@ export function AssemblyInputs({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE 2..."
+            value={state.pairedRead2 ?? ""}
             onObjectSelect={(object: WorkspaceObject) => {
               dispatch({
                 type: "set-read",
@@ -122,6 +124,7 @@ export function AssemblyInputs({
           <WorkspaceObjectSelector
             preset="reads"
             placeholder="Select READ FILE..."
+            value={state.singleRead ?? ""}
             onObjectSelect={(object: WorkspaceObject) => {
               dispatch({
                 type: "set-read",

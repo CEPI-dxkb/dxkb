@@ -260,6 +260,18 @@ export function validatePrimerDesignSequence(
   };
 }
 
+// The app spec lists "workplace_fasta", but App-PrimerDesign.pl only reads a
+// workspace file for "workspace_fasta" and fails on anything else. DXKB used to
+// send the misspelling, so reruns of those jobs open as a workspace FASTA.
+export function primerDesignRerunInputType(
+  value: unknown,
+): PrimerDesignFormData["input_type"] | undefined {
+  if (value === "workspace_fasta" || value === "workplace_fasta") {
+    return "workspace_fasta";
+  }
+  return value === "sequence_text" ? value : undefined;
+}
+
 export function transformPrimerDesignParams(data: PrimerDesignFormData) {
   const params: Record<string, unknown> = {
     output_path: data.output_path.trim(),
@@ -271,7 +283,7 @@ export function transformPrimerDesignParams(data: PrimerDesignFormData) {
     params.PRIMER_PICK_INTERNAL_OLIGO = data.PRIMER_PICK_INTERNAL_OLIGO;
   }
 
-  if (data.input_type === "workplace_fasta") {
+  if (data.input_type === "workspace_fasta") {
     params.sequence_input = data.sequence_input.trim();
   } else if (data.input_type === "sequence_text") {
     const sanitized = data.sequence_input

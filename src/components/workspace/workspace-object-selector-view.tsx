@@ -8,7 +8,13 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, ChevronDown, Loader2, Search } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronDown,
+  FolderOpen,
+  Loader2,
+  Search,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ServiceInput } from "@/components/services/form-ui/service-input";
@@ -40,6 +46,8 @@ export function WorkspaceObjectSelectorView({
   onToggleDropdown,
   onObjectClick,
   onObjectHighlight,
+  disabled = false,
+  browse = null,
 }: WorkspaceObjectSelectorViewProps) {
   const generatedListboxId = useId();
   const resolvedListboxId = listboxId ?? generatedListboxId;
@@ -52,7 +60,10 @@ export function WorkspaceObjectSelectorView({
     highlightedIndex < objects.length;
 
   return (
-    <div className={className ? `relative ${className}` : "relative w-full"}>
+    <div
+      data-workspace-selector=""
+      className={className ? `relative ${className}` : "relative w-full"}
+    >
       {validationError && (
         <Alert variant="destructive" className="mb-2">
           <AlertCircle className="size-4" />
@@ -80,6 +91,7 @@ export function WorkspaceObjectSelectorView({
             onChange={onInputChange}
             onFocus={onInputFocus}
             onKeyDown={onInputKeyDown}
+            disabled={disabled}
             inset="both"
             className="w-full"
           />
@@ -88,6 +100,7 @@ export function WorkspaceObjectSelectorView({
             variant="soft"
             aria-label={showDropdown ? "Hide suggestions" : "Show suggestions"}
             aria-expanded={showDropdown}
+            disabled={disabled}
             onClick={onToggleDropdown}
             className="absolute top-1/2 right-3 size-4 -translate-y-1/2"
           >
@@ -111,6 +124,19 @@ export function WorkspaceObjectSelectorView({
             />
           )}
         </div>
+        {browse ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={browse.label}
+            title={browse.label}
+            disabled={browse.disabled}
+            onClick={browse.onClick}
+          >
+            <FolderOpen />
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -147,6 +173,9 @@ interface WorkspaceObjectSelectorViewProps {
   onToggleDropdown: () => void;
   onObjectClick: (object: WorkspaceObject) => void;
   onObjectHighlight: (index: number) => void;
+  disabled?: boolean;
+  /** The Browse button after the input; absent or null hides it. */
+  browse?: { label: string; disabled: boolean; onClick: () => void } | null;
 }
 
 function WorkspaceObjectDropdown({

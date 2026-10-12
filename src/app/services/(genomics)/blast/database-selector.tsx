@@ -238,7 +238,13 @@ export function DatabaseSelector({
       </div>
     );
   }
-  const config =
+  type DatabaseObjectField =
+    "db_genome_group" | "db_feature_group" | "db_fasta_file";
+  const config: [
+    name: DatabaseObjectField,
+    label: string,
+    objectPreset: WorkspaceSelectorPreset,
+  ] | null =
     database === "selGroup"
       ? ["db_genome_group", "Select a genome group", "genomeGroup"]
       : database === "selFeatureGroup"
@@ -248,7 +254,7 @@ export function DatabaseSelector({
           : null;
   if (!config) return null;
   const [name, label, objectPreset] = config;
-  const placeholder = typeof label === "string" ? `${label}...` : "Select...";
+  const placeholder = `${label}...`;
   return (
     <div className="service-card-row">
       <div className="service-card-row-item">
@@ -259,12 +265,13 @@ export function DatabaseSelector({
             live field that swaps `name` and carries the picker's state across.
             The "required" error on a return visit is kept away by
             changeDatabase's clears, which do not validate (see page.tsx). */}
-        <form.Field key={name} name={name as keyof BlastFormData}>
+        <form.Field key={name} name={name}>
           {(field) => (
             <FieldItem>
               <WorkspaceObjectSelector
                 preset={objectPreset}
                 placeholder={placeholder}
+                value={field.state.value ?? ""}
                 onObjectSelect={(object: WorkspaceObject) => {
                   field.handleChange(object.path);
                 }}

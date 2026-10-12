@@ -128,7 +128,10 @@ describe("WorkspaceFolderPickerDialog arrow keys", () => {
 
     await user.keyboard("{ArrowRight}{Enter}");
     await waitFor(() => {
-      expect(onSelect).toHaveBeenCalledWith(`${home}/Experiments/Run1`);
+      expect(onSelect).toHaveBeenCalledWith(
+        `${home}/Experiments/Run1`,
+        expect.anything(),
+      );
     });
   });
 

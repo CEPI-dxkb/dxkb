@@ -139,7 +139,7 @@ describe("WorkspaceObjectSelector", () => {
       <WorkspaceObjectSelector
         placeholder="Select group"
         onObjectSelect={onObjectSelect}
-        onSelectedObjectChange={() => {}}
+        onSelectedObjectChange={vi.fn()}
       />,
       { wrapper: Providers },
     );

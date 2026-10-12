@@ -43,18 +43,25 @@ import {
 } from "@/lib/services/workspace/path-utils";
 import {
   canWriteTo,
-  initialColumnChain,
+  initialPickerSelection,
+  isPickerItemInteractive,
   isPickerItemNavigable,
   lastSegment,
   locationForView,
   pickerCommitState,
   pickerHomePath,
+  pickerPathLabel,
+  pickerRowKey,
+  pickerTitleFor,
+  pickerTypePhrase,
   viewLabel,
-  visibleFolderRows,
+  visiblePickerRows,
   type PickerLocation,
   type PickerSelectablePredicate,
+  type PickerTarget,
   type PickerView,
 } from "@/lib/services/workspace/picker-views";
+import { knownUploadTypes } from "@/lib/services/workspace/types";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { cn } from "@/lib/utils";
 import { FolderPickerBreadcrumb } from "./folder-picker-breadcrumb";
@@ -64,7 +71,11 @@ import {
   playColumnTransition,
   type ColumnsSnapshot,
 } from "./folder-picker-motion";
-import { FolderPickerInfo, FolderPickerUpload } from "./folder-picker-preview";
+import {
+  FilePickerInfo,
+  FolderPickerInfo,
+  FolderPickerUpload,
+} from "./folder-picker-preview";
 import { PaneResizeHandle } from "./folder-picker-resize-handle";
 import {
   columnWidthLimitsFor,
@@ -108,18 +119,21 @@ interface PickerLayout {
 
 interface FolderColumnsBrowserProps {
   layout: PickerLayout;
+  /** What the picker chooses: a folder, or a file of some types. */
+  target: PickerTarget;
   initialPath: string;
   title: string;
   isSelectable: PickerSelectablePredicate;
   stripRef: RefObject<HTMLDivElement | null>;
   isUploading: boolean;
   onUploadingChange: (uploading: boolean) => void;
-  onCommit: (path: string) => void;
+  onCommit: (path: string, item: WorkspaceItem | null) => void;
   onCancel: () => void;
 }
 
 function FolderColumnsBrowser({
   layout,
+  target,
   initialPath,
   title,
   isSelectable,
@@ -134,28 +148,38 @@ function FolderColumnsBrowser({
   const repository = useWorkspaceRepository("authenticated");
   const queryClient = useQueryClient();
 
-  const [initial] = useState(() => initialColumnChain(initialPath, username));
+  const [initial] = useState(() =>
+    initialPickerSelection(initialPath, username, target),
+  );
   const [place, setPlace] = useState<PickerView>(initial.view);
   /** chain[i] is the folder selected in column i; column i + 1 lists it. */
   const [chain, setChain] = useState<string[]>(initial.chain);
+  /**
+   * Picking files, the selected file. It sits in the last column (the one
+   * listing `chain.at(-1)`), which it never opens.
+   */
+  const [file, setFile] = useState<string | null>(initial.file);
   const { showFiles, onShowFilesChange } = layout;
   const [isNaming, setIsNaming] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   // Bumped whenever the new-folder field opens or closes, which every
-  // navigation does, so a creation that finishes after the user moved on can
-  // tell and leave the picker alone.
-  const namingRevisionRef = useRef(0);
+  // navigation does (and opening the upload form), so work that finishes
+  // after the user moved on (a folder creation, the refresh after an upload)
+  // can tell and leave the picker alone.
+  const revisionRef = useRef(0);
   const setNaming = (naming: boolean) => {
-    namingRevisionRef.current += 1;
+    revisionRef.current += 1;
     setIsNaming(naming);
   };
   const pendingFocusRef = useRef<PendingFocus | null>(
-    initial.chain.length > 0
-      ? {
-          column: initial.chain.length - 1,
-          path: initial.chain.at(-1) ?? null,
-        }
-      : { column: 0, path: null },
+    initial.file
+      ? { column: initial.chain.length, path: initial.file }
+      : initial.chain.length > 0
+        ? {
+            column: initial.chain.length - 1,
+            path: initial.chain.at(-1) ?? null,
+          }
+        : { column: 0, path: null },
   );
 
   const homePath = pickerHomePath(username);
@@ -166,9 +190,12 @@ function FolderColumnsBrowser({
   };
   const lastIndex = chain.length;
   /** Column holding the selected row; -1 when the selection is the root. */
-  const currentIndex = chain.length - 1;
+  const currentIndex = file ? lastIndex : chain.length - 1;
   const selectedPath =
-    chain.at(-1) ?? (rootLocation.kind === "path" ? rootLocation.path : null);
+    file ??
+    chain.at(-1) ??
+    (rootLocation.kind === "path" ? rootLocation.path : null);
+  const labelFor = (path: string) => pickerPathLabel(path, homePath, target);
   const lastLocation = columnLocation(lastIndex);
 
   // Cached reads shared with the columns: the selected folder's own column
@@ -182,9 +209,9 @@ function FolderColumnsBrowser({
     username,
   });
   const selectedItem =
-    chain.length > 0
+    currentIndex >= 0
       ? (containing.items.find(
-          (item) => normalizePath(item.path) === selectedPath,
+          (item) => pickerRowKey(item, target) === selectedPath,
         ) ?? null)
       : null;
 
@@ -199,8 +226,9 @@ function FolderColumnsBrowser({
     siblings: WorkspaceItem[],
   ) =>
     pickerCommitState({
-      target: folderTarget,
+      target,
       path,
+      item,
       isSelectable,
       writable: path !== null && isWritable(path, item, siblings),
     });
@@ -216,17 +244,27 @@ function FolderColumnsBrowser({
     path === selectedPath ? selectedEvidence : siblings;
 
   const commit = commitStateFor(selectedPath, selectedItem, selectedEvidence);
+  // Until the column listing the selection has loaded, the folder may still
+  // turn out to be gone.
+  const canCommitNow = commit.canCommit && !containing.isLoading;
+  // The folder the info pane describes and Upload saves into: the selection,
+  // or, with a file selected, the folder holding it. Until the file's row has
+  // loaded the pane shows that folder, never the file as if it were one.
+  const folderPath = file
+    ? (chain.at(-1) ??
+      (rootLocation.kind === "path" ? rootLocation.path : null))
+    : selectedPath;
   const canChange =
-    selectedPath !== null &&
-    isWritable(selectedPath, selectedItem, selectedEvidence);
+    folderPath !== null &&
+    isWritable(folderPath, file ? null : selectedItem, selectedEvidence);
 
   // --- focus -------------------------------------------------------------
 
-  const findRow = (target: PendingFocus) =>
+  const findRow = (pending: PendingFocus) =>
     stripRef.current?.querySelector<HTMLElement>(
-      target.path === null
+      pending.path === null
         ? tabStopSelector
-        : rowSelector(target.column, target.path),
+        : rowSelector(pending.column, pending.path),
     ) ?? null;
 
   // `preventScroll`: focusing a row would scroll the strip sideways on its own
@@ -309,41 +347,60 @@ function FolderColumnsBrowser({
     pendingFocusRef.current = null;
     setPlace(view);
     setChain([]);
+    setFile(null);
     closePanes();
   };
 
+  // A folder opens in the next column; a file is selected in its own column
+  // and opens nothing.
   const selectAt = (column: number, item: WorkspaceItem) => {
-    if (!isPickerItemNavigable(item)) return;
+    if (!isPickerItemInteractive(item, target)) return;
     // Keyboard moves focus before selecting, so nothing is left pending here;
     // a stale request must not pull focus back after the user moved on.
     pendingFocusRef.current = null;
     prepareTransition();
-    setChain([...chain.slice(0, column), normalizePath(item.path)]);
+    const key = pickerRowKey(item, target);
+    if (isPickerItemNavigable(item, target)) {
+      setChain([...chain.slice(0, column), key]);
+      setFile(null);
+    } else {
+      setChain(chain.slice(0, column));
+      setFile(key);
+    }
     closePanes();
   };
 
   const enterChild = (column: number, item: WorkspaceItem) => {
-    if (!isPickerItemNavigable(item)) return;
-    const path = normalizePath(item.path);
-    if (chain.at(column) !== path) {
+    if (!isPickerItemNavigable(item, target)) return;
+    if (chain.at(column) !== pickerRowKey(item, target)) {
       selectAt(column, item);
       return;
     }
-    const deeper = chain.at(column + 1);
+    // The row already selected in the next column: a folder, or the file.
+    const deeper =
+      chain.at(column + 1) ?? (column + 1 === chain.length ? file : null);
     if (deeper) {
       focusRow(column + 1, deeper);
       return;
     }
-    const first = visibleFolderRows(
-      lastLocation,
-      contents.items,
-      showFiles,
-    ).find(isPickerItemNavigable);
+    const first = visiblePickerRows({
+      location: lastLocation,
+      items: contents.items,
+      target,
+      showAll: showFiles,
+    }).find((row) => isPickerItemInteractive(row, target));
     if (!first) return;
-    const firstPath = normalizePath(first.path);
+    const firstKey = pickerRowKey(first, target);
+    if (!isPickerItemNavigable(first, target)) {
+      // A file: select it where it is, opening nothing.
+      focusRow(column + 1, firstKey);
+      setFile(firstKey);
+      closePanes();
+      return;
+    }
     prepareTransition();
-    focusRow(column + 1, firstPath);
-    setChain([...chain, firstPath]);
+    focusRow(column + 1, firstKey);
+    setChain([...chain, firstKey]);
     closePanes();
   };
 
@@ -353,22 +410,53 @@ function FolderColumnsBrowser({
     prepareTransition();
     focusRow(column - 1, parentPath);
     setChain(chain.slice(0, column));
+    setFile(null);
     closePanes();
   };
 
   const jumpTo = (depth: number) => {
-    const target = depth > 0 ? chain.at(depth - 1) : undefined;
+    // Past the last folder is the file's own crumb, already selected.
+    if (depth > chain.length) return;
+    const folder = depth > 0 ? chain.at(depth - 1) : undefined;
     prepareTransition();
-    if (target) focusRow(depth - 1, target);
+    if (folder) focusRow(depth - 1, folder);
     else pendingFocusRef.current = { column: 0, path: null };
     setChain(chain.slice(0, depth));
+    setFile(null);
     closePanes();
   };
 
+  // The selection always exists: a column that loads without its selected
+  // row ends the chain at the column's own folder (a file that is gone
+  // leaves its folder selected). Focus follows only if it was still on its
+  // way to a row that turned out to be gone.
+  const handleSelectionMissing = (column: number) => {
+    if (file && column === chain.length) {
+      setFile(null);
+      if (pendingFocusRef.current) {
+        const last = chain.at(-1);
+        pendingFocusRef.current = last
+          ? { column: chain.length - 1, path: last }
+          : { column: 0, path: null };
+      }
+      return;
+    }
+    if (chain.length <= column) return;
+    const kept = chain.slice(0, column);
+    setChain(kept);
+    setFile(null);
+    if (pendingFocusRef.current) {
+      const last = kept.at(-1);
+      pendingFocusRef.current = last
+        ? { column: kept.length - 1, path: last }
+        : { column: 0, path: null };
+    }
+  };
+
   const commitRow = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
-    const path = normalizePath(item.path);
+    const path = pickerRowKey(item, target);
     if (commitStateFor(path, item, evidenceFor(path, siblings)).canCommit)
-      onCommit(path);
+      onCommit(path, item);
   };
 
   // --- new folder / upload ------------------------------------------------
@@ -387,11 +475,11 @@ function FolderColumnsBrowser({
   const handleCreate = async (name: string) => {
     if (!selectedPath) return;
     const column = lastIndex;
-    const revision = namingRevisionRef.current;
+    const revision = revisionRef.current;
     const path = await createFolder.mutateAsync({ parent: selectedPath, name });
     // The user navigated or closed the field meanwhile: the folder is in its
     // listing, but the selection, the field and focus are theirs now.
-    if (namingRevisionRef.current !== revision) return;
+    if (revisionRef.current !== revision) return;
     // Select it, opening its empty column. Nothing has moved since the field
     // opened, so this render's chain is still current.
     prepareTransition();
@@ -401,18 +489,18 @@ function FolderColumnsBrowser({
   };
 
   const isRowWritable = (item: WorkspaceItem, siblings: WorkspaceItem[]) => {
-    const path = normalizePath(item.path);
+    const path = pickerRowKey(item, target);
     return isWritable(path, item, evidenceFor(path, siblings));
   };
   const isRowUsable = (item: WorkspaceItem) =>
     isSelectable({ name: item.name, path: item.path });
 
-  const selectedName =
-    selectedPath === homePath
-      ? "Home"
-      : selectedPath
-        ? lastSegment(selectedPath)
-        : "";
+  const selectedName = file
+    ? lastSegment(file)
+    : selectedPath
+      ? labelFor(selectedPath)
+      : "";
+  const isPickingFiles = target.kind === "object";
 
   return (
     <>
@@ -421,8 +509,9 @@ function FolderColumnsBrowser({
           <div className="flex min-w-0 flex-col gap-1.5">
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              Click a folder to open it. Double-click it, or press Enter, to
-              choose it.
+              {target.kind === "object"
+                ? `Click a folder to open it. Double-click a file, or press Enter, to choose it. Accepts ${pickerTypePhrase(target.types)}.`
+                : "Click a folder to open it. Double-click it, or press Enter, to choose it."}
             </DialogDescription>
           </div>
           <div className="flex shrink-0 items-center gap-4">
@@ -441,7 +530,13 @@ function FolderColumnsBrowser({
               ) : (
                 <Eye data-icon="inline-start" />
               )}
-              {showFiles ? "Hide files" : "Show files"}
+              {isPickingFiles
+                ? showFiles
+                  ? "Hide other files"
+                  : "Show other files"
+                : showFiles
+                  ? "Hide files"
+                  : "Show files"}
             </Button>
             {/* In the header row rather than the dialog's own corner button,
                 which sits 8px higher than the rest of the row. Disabled, not
@@ -538,14 +633,9 @@ function FolderColumnsBrowser({
                     transitionKey={`${place}:${parent ?? ""}`}
                     index={index}
                     location={columnLocation(index)}
-                    label={
-                      parent
-                        ? parent === homePath
-                          ? "Home"
-                          : lastSegment(parent)
-                        : viewLabel(place)
-                    }
+                    label={parent ? labelFor(parent) : viewLabel(place)}
                     username={username}
+                    target={target}
                     showFiles={showFiles}
                     onShowFiles={() => {
                       onShowFilesChange(true);
@@ -557,7 +647,9 @@ function FolderColumnsBrowser({
                     onResize={(width) => {
                       layout.onColumnWidthChange(index, width);
                     }}
-                    selectedPath={chain.at(index) ?? null}
+                    selectedPath={
+                      index < chain.length ? (chain.at(index) ?? null) : file
+                    }
                     isCurrent={index === currentIndex}
                     hasTabStop={index === Math.max(currentIndex, 0)}
                     folderVariant={columnFolderVariant(index, place)}
@@ -566,7 +658,7 @@ function FolderColumnsBrowser({
                     }
                     inert={isUploading}
                     newFolder={
-                      isLast && isNaming
+                      isLast && isNaming && target.kind === "folder"
                         ? {
                             onCreate: handleCreate,
                             onCancel: () => {
@@ -586,6 +678,7 @@ function FolderColumnsBrowser({
                     onExitToParent={exitToParent}
                     onCommit={commitRow}
                     focusRow={focusRow}
+                    onSelectionMissing={handleSelectionMissing}
                   />
                 );
               })}
@@ -628,28 +721,56 @@ function FolderColumnsBrowser({
             onResize={layout.onPreviewWidthChange}
             className="hidden md:block"
           />
-          {isUploadOpen && selectedPath ? (
+          {isUploadOpen && folderPath ? (
             <FolderPickerUpload
-              targetPath={selectedPath}
+              target={target}
+              targetPath={folderPath}
               homePath={homePath}
+              initialUploadType={
+                target.kind === "object"
+                  ? target.types.find((type) => type in knownUploadTypes)
+                  : undefined
+              }
               isUploading={isUploading}
               onBack={() => {
                 setIsUploadOpen(false);
                 pendingFocusRef.current = { column: 0, path: null };
               }}
-              onComplete={() => {
-                void queryClient.invalidateQueries({
-                  queryKey: workspaceQueryKeys.all,
-                });
+              onComplete={(uploaded) => {
+                // Closed at once: the panel keeps its files, so left open
+                // while the listings refresh it would offer the same upload
+                // again.
                 setIsUploadOpen(false);
                 pendingFocusRef.current = { column: 0, path: null };
+                const only = uploaded.length === 1 ? uploaded[0] : undefined;
+                const pick =
+                  target.kind === "object" &&
+                  only &&
+                  target.types.includes(only.type)
+                    ? only.path
+                    : null;
+                const revision = revisionRef.current;
+                void (async () => {
+                  // Awaited, so the file is in its column's listing when it
+                  // is selected; otherwise it would be dropped as gone.
+                  await queryClient.invalidateQueries({
+                    queryKey: workspaceQueryKeys.all,
+                  });
+                  // The user moved on meanwhile: the selection is theirs.
+                  if (!pick || revisionRef.current !== revision) return;
+                  setFile(pick);
+                  pendingFocusRef.current = { column: lastIndex, path: pick };
+                })();
               }}
               onUploadingChange={onUploadingChange}
             />
+          ) : file && selectedItem ? (
+            <FilePickerInfo item={selectedItem} place={place} commit={commit} />
           ) : (
             <FolderPickerInfo
+              target={target}
               place={place}
-              path={selectedPath}
+              path={folderPath}
               homePath={homePath}
               item={selectedItem}
               contents={contents}
@@ -673,8 +794,9 @@ function FolderColumnsBrowser({
       <DialogFooter className="sm:items-center sm:justify-between">
         <FolderPickerBreadcrumb
           place={place}
-          chain={chain}
-          homePath={homePath}
+          chain={file ? [...chain, file] : chain}
+          label={labelFor}
+          navLabel={isPickingFiles ? "Selected file" : "Selected folder"}
           disabled={isUploading}
           onJump={jumpTo}
         />
@@ -689,9 +811,11 @@ function FolderColumnsBrowser({
           </Button>
           <Button
             type="button"
-            disabled={!commit.canCommit || isUploading}
+            disabled={!canCommitNow || isUploading}
             onClick={() => {
-              if (selectedPath && commit.canCommit) onCommit(selectedPath);
+              if (selectedPath && canCommitNow) {
+                onCommit(selectedPath, selectedItem);
+              }
             }}
           >
             {selectedPath ? (
@@ -739,12 +863,15 @@ function Kbd({ children }: { children: string }) {
 export interface WorkspaceFolderPickerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Called with the chosen folder; the dialog then closes. */
-  onSelect: (path: string) => void;
+  /** Called with the chosen path and its row (null for a place's own folder, e.g. Home; the file's row when picking files). The dialog then closes. */
+  onSelect: (path: string, item: WorkspaceItem | null) => void;
+  /** What to choose: a folder (the default), or a file of some types. */
+  target?: PickerTarget;
   /** Current value; the picker opens with it selected. Defaults to Home. */
   initialPath?: string;
   /** Extra rule on top of "a folder you can write to", e.g. no hidden folders. */
   isSelectable?: PickerSelectablePredicate;
+  /** Defaults to what the target picks: "Select a Folder", "Select a File", … */
   title?: string;
 }
 
@@ -754,9 +881,10 @@ export function WorkspaceFolderPickerDialog({
   open,
   onOpenChange,
   onSelect,
+  target = folderTarget,
   initialPath = "",
   isSelectable = anyFolder,
-  title = "Select a Folder",
+  title = pickerTitleFor(target),
 }: WorkspaceFolderPickerDialogProps) {
   const [isUploading, setIsUploading] = useState(false);
   const stripRef = useRef<HTMLDivElement>(null);
@@ -812,14 +940,15 @@ export function WorkspaceFolderPickerDialog({
       >
         <FolderColumnsBrowser
           layout={layout}
+          target={target}
           initialPath={initialPath}
           title={title}
           isSelectable={isSelectable}
           stripRef={stripRef}
           isUploading={isUploading}
           onUploadingChange={setIsUploading}
-          onCommit={(path) => {
-            onSelect(path);
+          onCommit={(path, item) => {
+            onSelect(path, item);
             close();
           }}
           onCancel={close}

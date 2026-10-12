@@ -8,7 +8,7 @@ import { FieldItem, FieldErrors } from "@/components/ui/tanstack-form";
 import { ServiceHeader } from "@/components/services/service-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   proteomeComparisonInfo,
   proteomeComparisonParameters,
@@ -40,6 +40,7 @@ import {
   ServiceInput,
   ServiceNumberInput,
 } from "@/components/services/form-ui/service-input";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceFieldSubLabel } from "@/components/services/form-ui/service-field";
 import {
   ServiceLabel,
@@ -625,26 +626,17 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add genome"
                       onClick={() => {
                         void handleAddCompGenome();
                       }}
                       disabled={
                         !selectedCompGenomeId ||
-                        totalGenomeCount >= maxComparisonGenomes ||
-                        isLoadingCompGenome
+                        totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      {isLoadingCompGenome ? (
-                        <Spinner className="size-4" />
-                      ) : (
-                        <Plus className="size-4" />
-                      )}
-                    </Button>
+                      pending={isLoadingCompGenome}
+                    />
                   </div>
                 </div>
 
@@ -664,19 +656,14 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add protein FASTA file"
                       onClick={handleAddCompFasta}
                       disabled={
                         !selectedCompFasta ||
                         totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      <Plus className="size-4" />
-                    </Button>
+                    />
                   </div>
                 </div>
 
@@ -696,19 +683,14 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add feature group"
                       onClick={handleAddCompFeatureGroup}
                       disabled={
                         !selectedCompFeatureGroup ||
                         totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      <Plus className="size-4" />
-                    </Button>
+                    />
                   </div>
                 </div>
 
@@ -728,26 +710,17 @@ function useProteomeComparisonPage() {
                         }}
                       />
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
+                    <ServiceAddButton
                       aria-label="Add genome group"
                       onClick={() => {
                         void handleAddCompGenomeGroup();
                       }}
                       disabled={
                         !selectedCompGenomeGroup ||
-                        totalGenomeCount >= maxComparisonGenomes ||
-                        isLoadingGenomeGroup
+                        totalGenomeCount >= maxComparisonGenomes
                       }
-                    >
-                      {isLoadingGenomeGroup ? (
-                        <Spinner className="size-4" />
-                      ) : (
-                        <Plus className="size-4" />
-                      )}
-                    </Button>
+                      pending={isLoadingGenomeGroup}
+                    />
                   </div>
                 </div>
 

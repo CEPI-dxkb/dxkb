@@ -23,6 +23,7 @@ import {
   ServiceCollapsibleContent,
   ServiceCollapsibleTrigger,
 } from "@/components/services/form-ui/service-collapsible";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { ServiceSelectTrigger } from "@/components/services/form-ui/service-select";
 import {
@@ -108,15 +109,12 @@ export function TreeMetadataOptions({
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  size="icon"
-                  variant="outline"
+                <ServiceAddButton
+                  icon={ArrowRight}
                   aria-label="Add metadata field"
                   onClick={onAdd}
                   disabled={!selectedField}
-                >
-                  <ArrowRight className="size-4" />
-                </Button>
+                />
               </div>
             </div>
           </div>

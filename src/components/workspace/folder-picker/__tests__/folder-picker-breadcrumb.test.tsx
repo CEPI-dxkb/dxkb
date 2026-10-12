@@ -11,7 +11,8 @@ function renderBreadcrumb(overrides: Partial<Props> = {}) {
   const props: Props = {
     place: "home",
     chain: [],
-    homePath: home,
+    label: (p) => (p === home ? "Home" : (p.split("/").pop() ?? "")),
+    navLabel: "Selected folder",
     disabled: false,
     onJump: vi.fn(),
     ...overrides,

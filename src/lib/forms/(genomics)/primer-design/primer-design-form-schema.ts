@@ -14,7 +14,7 @@ export const primerDesignFormSchema = z
         error: "Output name cannot contain slashes",
       }),
     output_path: z.string().prefault(""),
-    input_type: z.enum(["sequence_text", "workplace_fasta", "database_id"]),
+    input_type: z.enum(["sequence_text", "workspace_fasta", "database_id"]),
     sequence_input: z.string().prefault(""),
     SEQUENCE_ID: z.string().prefault("").optional(),
     SEQUENCE_TARGET: nonEmptyTokens.optional(),
@@ -56,7 +56,7 @@ export const primerDesignFormSchema = z
       }
     }
 
-    if (data.input_type === "workplace_fasta") {
+    if (data.input_type === "workspace_fasta") {
       if (!data.sequence_input.trim()) {
         ctx.addIssue({
           code: "custom",

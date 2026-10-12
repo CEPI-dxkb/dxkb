@@ -95,6 +95,20 @@ export class PickerTestRepository extends InMemoryWorkspaceRepository {
   private listingFailures = new Map<string, Error>();
   private createFolderGate: Gate | null = null;
   private uploadGate: Gate | null = null;
+  private addedItems = new Map<string, WorkspaceItem[]>();
+
+  /** Lists `item` in `parentPath` from the next listing on, as an upload would. */
+  addItem(
+    parentPath: string,
+    item: Pick<WorkspaceItem, "name" | "type"> & Partial<WorkspaceItem>,
+  ) {
+    const path = `${parentPath}/${item.name}`;
+    const added = { id: path, path, size: 0, ...item };
+    this.addedItems.set(parentPath, [
+      ...(this.addedItems.get(parentPath) ?? []),
+      added,
+    ]);
+  }
 
   /** Every listing of `path` waits until the gate is released. */
   holdListing(path: string): Gate {
@@ -128,7 +142,10 @@ export class PickerTestRepository extends InMemoryWorkspaceRepository {
     const failure = this.listingFailures.get(input.path);
     if (failure) throw failure;
     if (input.path === "/") return this.rootItems;
-    return super.listDirectory(input);
+    return [
+      ...(await super.listDirectory(input)),
+      ...(this.addedItems.get(input.path) ?? []),
+    ];
   }
 
   override async createFolder(path: string): Promise<void> {
@@ -182,6 +199,44 @@ export function makePickerRepository(
   });
 }
 
+/** The default tree plus what file mode needs: a job result, files of several types, public data. */
+export const filePickerDirectories: InMemoryFixtures["directories"] = {
+  ...defaultPickerDirectories,
+  [pickerHome]: [
+    ...(defaultPickerDirectories[pickerHome] ?? []),
+    { name: "Assembly1", type: "job_result" },
+    { name: "draft.fasta", type: "contigs", size: 4096 },
+    { name: "notes.txt", type: "txt", size: 10 },
+  ],
+  [`${pickerHome}/.Assembly1`]: [
+    { name: "Assembly1_contigs.fasta", type: "contigs", size: 8192 },
+    { name: "report.html", type: "html", size: 300 },
+  ],
+  "/carol@bvbrc/public-ws/data": [{ name: "lab.fasta", type: "contigs" }],
+};
+
+export function makeFilePickerRepository(): PickerTestRepository {
+  return makePickerRepository({ directories: filePickerDirectories });
+}
+
+/** Query client plus the given repository, for rendering anything that opens the picker. */
+export function pickerRepositoryWrapper(
+  repository: PickerTestRepository = makePickerRepository(),
+) {
+  const QueryWrapper = createQueryClientWrapper();
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryWrapper>
+        <WorkspaceRepositoryProvider
+          value={{ authenticated: repository, public: repository }}
+        >
+          {children}
+        </WorkspaceRepositoryProvider>
+      </QueryWrapper>
+    );
+  };
+}
+
 type PickerProps = ComponentProps<typeof WorkspaceFolderPickerDialog>;
 type HostProps = Omit<PickerProps, "open">;
 
@@ -214,18 +269,7 @@ export function renderPicker(
   overrides: Partial<HostProps> = {},
   repository: PickerTestRepository = makePickerRepository(),
 ) {
-  const QueryWrapper = createQueryClientWrapper();
-  function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <QueryWrapper>
-        <WorkspaceRepositoryProvider
-          value={{ authenticated: repository, public: repository }}
-        >
-          {children}
-        </WorkspaceRepositoryProvider>
-      </QueryWrapper>
-    );
-  }
+  const Wrapper = pickerRepositoryWrapper(repository);
   const props: HostProps = {
     onOpenChange: vi.fn(),
     onSelect: vi.fn(),
@@ -257,8 +301,9 @@ export function selectButton() {
   return screen.getByRole("button", { name: /^Select( “.*”)?$/ });
 }
 
+/** The footer's breadcrumb: "Selected folder", or "Selected file" when picking files. */
 export function breadcrumb() {
-  return screen.getByRole("navigation", { name: "Selected folder" });
+  return screen.getByRole("navigation", { name: /^Selected (folder|file)$/ });
 }
 
 export function breadcrumbLabels() {

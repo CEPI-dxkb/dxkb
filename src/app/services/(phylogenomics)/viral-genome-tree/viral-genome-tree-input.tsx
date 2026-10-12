@@ -1,12 +1,9 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldErrors, FieldItem } from "@/components/ui/tanstack-form";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { SelectedSequencesTable } from "@/components/services/selected-sequences-table";
-import { Spinner } from "@/components/ui/spinner";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
@@ -14,6 +11,7 @@ import {
   ServiceCardDescription,
   ServiceCardHeader,
 } from "@/components/services/form-ui/service-card";
+import { ServiceAddButton } from "@/components/services/form-ui/service-add-button";
 import { ServiceLabel } from "@/components/services/form-ui/service-label";
 import { phylogeneticTreeInput } from "@/lib/services/info/phylogenetic-tree";
 import type { ViralGenomeTreeController } from "./use-viral-genome-tree";
@@ -136,16 +134,12 @@ function SequenceSelector({
           value={value}
           className="flex-1"
         />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
+        <ServiceAddButton
           aria-label={ariaLabel}
           onClick={onAdd}
           disabled={disabled}
-        >
-          {loading ? <Spinner className="size-4" /> : <Plus size={16} />}
-        </Button>
+          pending={loading}
+        />
       </div>
     </div>
   );

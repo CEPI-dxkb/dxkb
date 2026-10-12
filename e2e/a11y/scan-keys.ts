@@ -39,6 +39,7 @@ export const nonRouteScanKeys: readonly string[] = [
   // Interaction states scanned by deep-tier.spec.ts.
   "genome-assembly/validation-errors",
   "genome-assembly/file-picker-open",
+  "genome-assembly/file-picker-file-info",
   "blast/folder-picker-open",
   "blast/folder-picker-new-folder",
   "blast/folder-picker-upload",

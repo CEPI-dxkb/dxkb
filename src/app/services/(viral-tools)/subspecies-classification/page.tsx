@@ -214,7 +214,7 @@ export default function SubspeciesClassificationPage() {
                   {(field) => (
                     <FieldItem className="mt-4">
                       <WorkspaceObjectSelector
-                        preset="fasta"
+                        preset="featureFastaOrContigs"
                         placeholder="Select or upload FASTA file to your workspace."
                         value={field.state.value ?? ""}
                         onObjectSelect={(object: WorkspaceObject) => {

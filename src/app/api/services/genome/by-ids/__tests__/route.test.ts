@@ -79,6 +79,52 @@ describe("POST /api/services/genome/by-ids", () => {
     expect(capturedUrl).toContain("in(genome_id,(123.45,67.89))");
   });
 
+  it("adds the requested extra fields to the select, once each", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const req = mockNextRequest({
+      method: "POST",
+      body: {
+        genome_ids: ["1.1"],
+        fields: ["genbank_accessions", "host_name", "strain"],
+      },
+    });
+    await POST(req, {});
+
+    expect(decodeURIComponent(capturedUrl ?? "")).toContain(
+      "select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom,genbank_accessions,host_name)",
+    );
+  });
+
+  it("drops extra field names that are not plain field identifiers", async () => {
+    let capturedUrl: string | undefined;
+    server.use(
+      http.get("http://mock-api/genome/", ({ request }) => {
+        capturedUrl = request.url;
+        return HttpResponse.json([]);
+      }),
+    );
+
+    const req = mockNextRequest({
+      method: "POST",
+      body: {
+        genome_ids: ["1.1"],
+        fields: ["host_name)&limit(25000", "a,b", 7, "isolation_country"],
+      },
+    });
+    await POST(req, {});
+
+    expect(decodeURIComponent(capturedUrl ?? "")).toContain(
+      "select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom,isolation_country)&",
+    );
+  });
+
   it("sets limit to Math.min(ids.length, 100)", async () => {
     let capturedUrl: string | undefined;
     server.use(

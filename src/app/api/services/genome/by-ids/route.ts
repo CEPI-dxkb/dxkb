@@ -5,6 +5,33 @@ import { buildGenomeInClause } from "../utils";
 
 interface GenomeByIdsBody {
   genome_ids?: unknown;
+  fields?: unknown;
+}
+
+const defaultFields = [
+  "genome_id",
+  "genome_name",
+  "public",
+  "owner",
+  "reference_genome",
+  "strain",
+  "superkingdom",
+];
+
+/**
+ * The select list: the default fields plus any extra ones the caller asks for
+ * (Meta-CATS needs `genbank_accessions` and the metadata it groups by). Only
+ * plain field identifiers pass, so a name cannot close `select(` and append
+ * its own RQL.
+ */
+function selectFields(extra: unknown): string[] {
+  const requested = Array.isArray(extra)
+    ? extra.filter(
+        (field): field is string =>
+          typeof field === "string" && /^[a-z0-9_]+$/.test(field),
+      )
+    : [];
+  return [...new Set([...defaultFields, ...requested])];
 }
 
 export const POST = withAuth(async (request: NextRequest, { token }) => {
@@ -23,7 +50,7 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     return NextResponse.json({ results: [] });
   }
 
-  const queryString = `?in(genome_id,(${inClause}))&select(genome_id,genome_name,public,owner,reference_genome,strain,superkingdom)&limit(${String(Math.min(genomeIds.length, 100))})`;
+  const queryString = `?in(genome_id,(${inClause}))&select(${selectFields(body.fields).join(",")})&limit(${String(Math.min(genomeIds.length, 100))})`;
   const url = `${getRequiredEnv("NEXT_PUBLIC_DATA_API")}/genome/${queryString}`;
 
   const response = await fetch(url, {

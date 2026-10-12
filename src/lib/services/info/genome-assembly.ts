@@ -89,3 +89,69 @@ export const genomeAssemblyParameters: ServiceInfoPopup = {
     },
   ],
 };
+
+// Advanced Options sections, worded as BV-BRC's Genome Assembly quick
+// reference ("Advanced Parameters") describes them.
+export const genomeAssemblyReadProcessing: ServiceInfoPopup = {
+  title: "Read Processing",
+  sections: [
+    {
+      header: "Normalize Illumina Reads",
+      description:
+        "Apply BBNorm to reduce depth variation along genome, down-sampling peaks of dense coverage to approximately the target coverage parameter.",
+    },
+    {
+      header: "Trim Short Reads",
+      description:
+        "Trim reads using TrimGalore to remove any recognized Illumina adapters and low-quality 5’ ends.",
+    },
+    {
+      header: "Filter Long Reads",
+      description:
+        "Use FiltLong to down-sample Nanopore or PacBio reads to the target size (= target genome coverage * estimated genome size).",
+    },
+  ],
+};
+
+export const genomeAssemblyGenomeParameters: ServiceInfoPopup = {
+  title: "Genome Parameters",
+  sections: [
+    {
+      header: "Estimated Genome Size",
+      description:
+        "Your estimate of how large the genome will be once assembled in either megabases (M) or kilobases (K). It is used to down-sample (BBNorm or FilterLong) to the desired target genome coverage. It is also used as a parameter to Flye or Canu if either is selected as the assembler. It is ignored for metagenome methods.",
+    },
+    {
+      header: "Target Genome Coverage",
+      description:
+        "This is the target depth of reads mapped to the genome. 200X coverage is usually very good for assembling individual genomes. It is ignored for metagenome analyses.",
+    },
+  ],
+};
+
+export const genomeAssemblyPolishing: ServiceInfoPopup = {
+  title: "Assembly Polishing",
+  sections: [
+    {
+      header: "Racon and Pilon Iterations",
+      description:
+        "Correct assembly errors (or “polish”) using racon and/or Pilon. Both racon and Pilon take the contigs and the reads mapped to those contigs, and look for discrepancies between the assembly and the majority of the reads. Where there is a discrepancy, racon or pilon will correct the assembly if the majority of the reads call for that. Racon is for long reads (PacBio or Nanopore) and Pilon is for Illumina reads. Once the assembly has been polished, it is still possible to do another iteration to further improve the assembly, but with less improvement each round. Two rounds tend to approach saturation.",
+    },
+  ],
+};
+
+export const genomeAssemblyThresholds: ServiceInfoPopup = {
+  title: "Assembly Thresholds",
+  sections: [
+    {
+      header: "Minimum Contig Length",
+      description:
+        "Filter out contigs shorter than this value from the final assembly.",
+    },
+    {
+      header: "Minimum Contig Coverage",
+      description:
+        "Filter out contigs with read depth lower than this value in final assembly.",
+    },
+  ],
+};

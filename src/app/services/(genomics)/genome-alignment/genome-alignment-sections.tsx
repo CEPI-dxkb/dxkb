@@ -10,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { DialogInfoPopup } from "@/components/services/dialog-info-popup";
 import { GenomeNameSelector } from "@/components/services/genome-name-selector";
 import OutputFolder from "@/components/services/output-folder";
-import SelectedItemsTable from "@/components/services/selected-items-table";
+import { SelectedGenomesTable } from "@/components/services/selected-genomes-table";
 import { WorkspaceObjectSelector } from "@/components/workspace/workspace-object-selector";
 import { RequiredFormCardTitle } from "@/components/forms/required-form-components";
 import {
@@ -111,10 +111,9 @@ export function GenomeSelection({
           setIsFetchingGroup(false);
       });
   };
-  const items = genomes.map((genome, index) => ({
+  const rows = genomes.map((genome) => ({
     id: genome.genome_id,
     name: genome.genome_name,
-    type: `${index === 0 ? "Reference Genome" : "Genome"} | ${genome.genome_id}`,
   }));
 
   return (
@@ -178,17 +177,19 @@ export function GenomeSelection({
           {(field) => (
             <FieldItem>
               <div>
-                <SelectedItemsTable
-                  title="Selected Genomes"
-                  description="Remove genomes as needed. The first entry is treated as the reference genome."
-                  items={items}
+                <ServiceLabel>Selected Genomes</ServiceLabel>
+                <p className="service-card-sublabel">
+                  Remove genomes as needed. The first entry is treated as the
+                  reference genome.
+                </p>
+                <SelectedGenomesTable
+                  rows={rows}
+                  markFirstAsReference
                   onRemove={(id) => {
                     replaceGenomes(
                       genomesRef.current.filter((item) => item.genome_id !== id),
                     );
                   }}
-                  emptyMessage="No genomes selected"
-                  className="max-h-84 overflow-y-auto"
                 />
                 {genomes.length < 2 && (
                   <p className="mt-2 text-xs text-muted-foreground">

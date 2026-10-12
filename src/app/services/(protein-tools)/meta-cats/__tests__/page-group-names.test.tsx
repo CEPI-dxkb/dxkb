@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import type { ReactNode } from "react";
@@ -6,6 +6,29 @@ import type { ReactNode } from "react";
 import { server } from "@/test-helpers/msw-server";
 
 import MetaCATSPage from "../page";
+
+// jsdom lays nothing out, so the grid's virtualizer would render no rows.
+vi.mock("@tanstack/react-virtual", () => ({
+  useVirtualizer: ({
+    count,
+    estimateSize,
+  }: {
+    count: number;
+    estimateSize: () => number;
+  }) => ({
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, index) => ({
+        index,
+        start: index * estimateSize(),
+        size: estimateSize(),
+        end: (index + 1) * estimateSize(),
+        key: index,
+        lane: 0,
+      })),
+    getTotalSize: () => count * estimateSize(),
+    measure: vi.fn(),
+  }),
+}));
 
 vi.mock("@/hooks/services/use-service-runtime", () => ({
   useServiceRuntime: () => ({ isSubmitting: false, jobParamsDialogProps: {} }),
@@ -54,6 +77,15 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
   ),
 }));
 
+// The grid sizes its columns to its container, which jsdom cannot observe.
+beforeAll(() => {
+  global.ResizeObserver = class ResizeObserver {
+    observe = vi.fn();
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+  };
+});
+
 function groupNameField() {
   return screen.getByRole("combobox", { name: "Group name" });
 }
@@ -62,8 +94,12 @@ async function openGroupNames(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "Show group names" }));
 }
 
-/** Serves one feature group whose two genomes have these host names. */
+/**
+ * Serves one feature group whose two genomes have these host names. Returns
+ * the genome lookups' request bodies.
+ */
 function serveFeatureGroup(hostNames: [string | undefined, string | undefined]) {
+  const genomeRequests: unknown[] = [];
   server.use(
     http.post("*/api/services/feature/from-group", () =>
       HttpResponse.json({
@@ -73,15 +109,19 @@ function serveFeatureGroup(hostNames: [string | undefined, string | undefined]) 
         ],
       }),
     ),
-    http.post("*/api/services/genome/by-ids", () =>
-      HttpResponse.json({
+    http.post("*/api/services/genome/by-ids", async ({ request }) => {
+      genomeRequests.push(await request.json());
+      return HttpResponse.json({
         results: hostNames.map((hostName, index) => ({
           genome_id: `11320.${String(index + 1)}`,
+          genbank_accessions: `CY00000${String(index + 1)}`,
+          strain: `Strain ${String(index + 1)}`,
           ...(hostName === undefined ? {} : { host_name: hostName }),
         })),
-      }),
-    ),
+      });
+    }),
   );
+  return genomeRequests;
 }
 
 async function addFeatureGroup(user: ReturnType<typeof userEvent.setup>) {
@@ -97,7 +137,7 @@ async function addFeatureGroup(user: ReturnType<typeof userEvent.setup>) {
 
 function groupCell(patricId: string) {
   const row = screen.getByText(patricId).closest("tr");
-  // Patric ID, Strain, Metadata, Group: the group is the row's fifth cell.
+  // Select, Genbank Accession, Strain, Metadata, Group: the fifth cell.
   return row?.children[4];
 }
 
@@ -139,7 +179,7 @@ describe("META-Cats Group Names field", () => {
     await addFeatureGroup(user);
 
     await user.click(
-      screen.getByRole("checkbox", { name: "Select fig|11320.1.peg.1" }),
+      screen.getByRole("checkbox", { name: "Select row fig|11320.1.peg.1" }),
     );
     await user.type(groupNameField(), "  Mammal ");
     expect(
@@ -200,5 +240,65 @@ describe("META-Cats Group Names field", () => {
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(groupNameField()).toHaveValue("Mammal");
+  });
+});
+
+describe("META-Cats Groups Grid", () => {
+  it("lists BV-BRC's columns, filled from the feature's genome", async () => {
+    const genomeRequests = serveFeatureGroup(["Human", "Swine"]);
+    const user = userEvent.setup();
+    render(<MetaCATSPage />);
+    await addFeatureGroup(user);
+
+    // The lookup asks for the grouping metadata and the accession.
+    expect(genomeRequests).toEqual([
+      expect.objectContaining({
+        fields: ["genbank_accessions", "host_name"],
+      }),
+    ]);
+    const grid = screen.getByRole("table");
+    expect(
+      within(grid)
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent)
+        .slice(1),
+    ).toEqual([
+      "Genbank Accession",
+      "Strain",
+      "Metadata",
+      "Group",
+      "BRC ID",
+      "Genome ID",
+    ]);
+    const row = screen.getByText("fig|11320.1.peg.1").closest("tr");
+    expect(
+      [...(row?.children ?? [])].slice(1).map((cell) => cell.textContent),
+    ).toEqual([
+      "CY000001",
+      "Strain 1",
+      "Human",
+      "Human",
+      "fig|11320.1.peg.1",
+      "11320.1",
+    ]);
+    expect(screen.getByText("Showing 1-2 of 2 results")).toBeVisible();
+  });
+
+  it("deletes the rows selected in the grid", async () => {
+    serveFeatureGroup(["Human", "Swine"]);
+    const user = userEvent.setup();
+    render(<MetaCATSPage />);
+    await addFeatureGroup(user);
+
+    const deleteRows = screen.getByRole("button", { name: "Delete Rows" });
+    expect(deleteRows).toBeDisabled();
+    await user.click(
+      screen.getByRole("checkbox", { name: "Select row fig|11320.2.peg.1" }),
+    );
+    await user.click(deleteRows);
+
+    expect(screen.queryByText("fig|11320.2.peg.1")).not.toBeInTheDocument();
+    expect(screen.getByText("fig|11320.1.peg.1")).toBeVisible();
+    expect(deleteRows).toBeDisabled();
   });
 });

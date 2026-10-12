@@ -77,6 +77,17 @@ function useSingleGenomeSelector({
     },
   });
 
+  // A list open when the field is disabled closes with it, and stays closed
+  // when the field is enabled again.
+  const [wasDisabled, setWasDisabled] = useState(disabled);
+  if (disabled !== wasDisabled) {
+    setWasDisabled(disabled);
+    if (disabled) {
+      setShowDropdown(false);
+      setIsManualTrigger(false);
+    }
+  }
+
   // Sync query with value prop; resolve genome ID -> name via fetchGenomesByIds.
   const syncValue = useEffectEvent((nextValue: string) => {
     if (!nextValue) {
@@ -264,6 +275,7 @@ function useSingleGenomeSelector({
           type="button"
           variant="soft"
           onClick={handleManualDropdownToggle}
+          disabled={disabled}
           className="absolute top-1/2 right-3 size-4 -translate-y-1/2"
           aria-label="Toggle dropdown"
         >

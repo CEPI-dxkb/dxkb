@@ -18,15 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
+import type { RowSelectionState } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import {
   metaCATSInfo,
@@ -72,7 +64,6 @@ import {
   type MetaCatsFormData,
 } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-form-schema";
 import {
-  getMetaCatsDisplayName,
   countUniqueGroups,
   getUniqueGroupNames,
   groupNamesSourceText,
@@ -81,10 +72,13 @@ import {
   buildMetaCatsAutoGroupsFromGenomes,
   removeAutoGroupsByRowIds,
   updateAutoGroupsGroupByRowIds,
+  metaCatsGenomeFields,
+  selectedAutoGroupRowIds,
 } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-form-utils";
 import { metaCatsService } from "@/lib/forms/(protein-tools)/meta-cats/meta-cats-service";
 import { fetchFeaturesFromGroup } from "@/lib/services/feature";
 import { fetchGenomesByIds, type GenomeSummary } from "@/lib/services/genome";
+import { MetaCatsGroupsGrid } from "./meta-cats-groups-grid";
 import { MetaCatsInputSection } from "./meta-cats-input-sections";
 
 const emptyAutoGroups: NonNullable<MetaCatsFormData["auto_groups"]> = [];
@@ -95,9 +89,8 @@ function useMetaCATSPage() {
   const [selectedAutoFeatureGroupObject, setSelectedAutoFeatureGroupObject] =
     useState<WorkspaceObject | null>(null);
   const [isLoadingAutoGroup, setIsLoadingAutoGroup] = useState(false);
-  const [selectedGridRows, setSelectedGridRows] = useState<Set<string>>(
-    new Set(),
-  );
+  // Keyed by BRC ID (patric_id), as the Groups Grid selects rows.
+  const [gridSelection, setGridSelection] = useState<RowSelectionState>({});
   const [groupNames, setGroupNames] = useState<string[]>([]);
   const [selectedGroupName, setSelectedGroupName] = useState<string>("");
   const [yearRangesInput, setYearRangesInput] = useState<string>("");
@@ -133,7 +126,7 @@ function useMetaCATSPage() {
     setSelectedFeatureGroupObject(null);
     setSelectedAlignmentFileObject(null);
     setSelectedGroupFileObject(null);
-    setSelectedGridRows(new Set());
+    setGridSelection({});
     setGroupNames([]);
     setSelectedGroupName("");
     setYearRangesInput("");
@@ -217,6 +210,10 @@ function useMetaCATSPage() {
   const { isSubmitting, jobParamsDialogProps } = runtime;
 
   const uniqueGroupCount = countUniqueGroups(autoGroups);
+  const selectedRowCount = selectedAutoGroupRowIds(
+    autoGroups,
+    gridSelection,
+  ).size;
   // Features whose genome lacks the metadata sit in a blank group, which
   // would be a blank suggestion.
   const groupNameSuggestions = groupNames.filter((name) => name !== "");
@@ -265,8 +262,11 @@ function useMetaCATSPage() {
       const genomeIdMap = createGenomeIdMapFromFeatures(features);
       const genomeIds = Array.from(genomeIdMap.keys());
 
-      // Fetch genome metadata
-      const genomes = await fetchGenomesByIds(genomeIds);
+      // Fetch genome metadata: the field rows are grouped by, and the
+      // grid's Genbank Accession.
+      const genomes = await fetchGenomesByIds(genomeIds, {
+        fields: metaCatsGenomeFields(currentMetadataGroup),
+      });
 
       const currentAutoGroups = form.state.values.auto_groups || [];
 
@@ -311,36 +311,44 @@ function useMetaCATSPage() {
   }
 
   function handleDeleteSelectedRows() {
-    if (selectedGridRows.size === 0) return;
-
     const currentAutoGroups = form.state.values.auto_groups || [];
+    const selectedRowIds = selectedAutoGroupRowIds(
+      currentAutoGroups,
+      gridSelection,
+    );
+    if (selectedRowIds.size === 0) return;
+
     const updatedAutoGroups = removeAutoGroupsByRowIds(
       currentAutoGroups,
-      selectedGridRows,
+      selectedRowIds,
     );
     form.setFieldValue("auto_groups", updatedAutoGroups);
 
     // Update group names
     const remainingGroupNames = getUniqueGroupNames(updatedAutoGroups);
     setGroupNames(remainingGroupNames);
-    setSelectedGridRows(new Set());
+    setGridSelection({});
 
-    toast.success(`Deleted ${String(selectedGridRows.size)} row(s)`, {
+    toast.success(`Deleted ${String(selectedRowIds.size)} row(s)`, {
       closeButton: true,
     });
   }
 
   function handleChangeGroup() {
     const groupName = selectedGroupName.trim();
-    if (!groupName || selectedGridRows.size === 0) {
+    const currentAutoGroups = form.state.values.auto_groups || [];
+    const selectedRowIds = selectedAutoGroupRowIds(
+      currentAutoGroups,
+      gridSelection,
+    );
+    if (!groupName || selectedRowIds.size === 0) {
       toast.error("Select rows and enter a group name", { closeButton: true });
       return;
     }
 
-    const currentAutoGroups = form.state.values.auto_groups || [];
     const updatedAutoGroups = updateAutoGroupsGroupByRowIds(
       currentAutoGroups,
-      selectedGridRows,
+      selectedRowIds,
       groupName,
     );
 
@@ -351,26 +359,8 @@ function useMetaCATSPage() {
     newGroupNames.add(groupName);
     setGroupNames(Array.from(newGroupNames));
 
-    toast.success(`Changed group for ${String(selectedGridRows.size)} row(s)`, {
+    toast.success(`Changed group for ${String(selectedRowIds.size)} row(s)`, {
       closeButton: true,
-    });
-  }
-
-  function handleSelectAllRows(checked: boolean) {
-    setSelectedGridRows(
-      checked ? new Set(autoGroups.map((item) => item.id)) : new Set(),
-    );
-  }
-
-  function handleRowSelect(id: string) {
-    setSelectedGridRows((previousRows) => {
-      const nextRows = new Set(previousRows);
-      if (nextRows.has(id)) {
-        nextRows.delete(id);
-      } else {
-        nextRows.add(id);
-      }
-      return nextRows;
     });
   }
 
@@ -749,8 +739,7 @@ function useMetaCATSPage() {
                         type="button"
                         onClick={handleChangeGroup}
                         disabled={
-                          selectedGridRows.size === 0 ||
-                          !selectedGroupName.trim()
+                          selectedRowCount === 0 || !selectedGroupName.trim()
                         }
                       >
                         Change group
@@ -775,91 +764,19 @@ function useMetaCATSPage() {
                       </span>
                     </div>
 
-                    <div className="overflow-hidden rounded-md border bg-background">
-                      <Table>
-                        <TableHeader>
-                          <TableRow variant="static">
-                            <TableHead className="w-12">
-                              <Checkbox
-                                id="select-all-meta-cats"
-                                name="select-all-meta-cats"
-                                aria-label="Select all"
-                                checked={
-                                  selectedGridRows.size === autoGroups.length &&
-                                  autoGroups.length > 0
-                                }
-                                onCheckedChange={handleSelectAllRows}
-                              />
-                            </TableHead>
-                            <TableHead>Patric ID</TableHead>
-                            <TableHead>Strain</TableHead>
-                            <TableHead>Metadata</TableHead>
-                            <TableHead>Group</TableHead>
-                            <TableHead>Genome ID</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {autoGroups.length === 0 ? (
-                            <TableRow variant="static">
-                              <TableCell
-                                colSpan={6}
-                                className="py-8 text-center"
-                              >
-                                <span className="text-muted-foreground">
-                                  No features added. Select a feature group and
-                                  click + to add.
-                                </span>
-                              </TableCell>
-                            </TableRow>
-                          ) : (
-                            autoGroups.map((item) => (
-                              <TableRow
-                                key={item.id}
-                                selectionIndicator
-                                data-state={
-                                  selectedGridRows.has(item.id)
-                                    ? "selected"
-                                    : undefined
-                                }
-                              >
-                                <TableCell>
-                                  <Checkbox
-                                    id={`row-${item.id}-checkbox`}
-                                    name={`row-${item.id}-checkbox`}
-                                    aria-label={`Select ${item.patric_id}`}
-                                    checked={selectedGridRows.has(item.id)}
-                                    onCheckedChange={() => {
-                                      handleRowSelect(item.id);
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell variant="code">
-                                  {getMetaCatsDisplayName(item.patric_id, 24)}
-                                </TableCell>
-                                <TableCell>{item.strain || "-"}</TableCell>
-                                <TableCell>{item.metadata || "-"}</TableCell>
-                                <TableCell>{item.group || "-"}</TableCell>
-                                <TableCell variant="code">
-                                  {item.genome_id}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
+                    <MetaCatsGroupsGrid
+                      rows={autoGroups}
+                      rowSelection={gridSelection}
+                      onRowSelectionChange={setGridSelection}
+                    />
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {autoGroups.length} item(s), {selectedGridRows.size}{" "}
-                        selected
-                      </span>
+                    <div className="flex justify-end">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleDeleteSelectedRows}
-                        disabled={selectedGridRows.size === 0}
+                        disabled={selectedRowCount === 0}
                       >
                         <Trash2 className="mr-2 size-4" />
                         Delete Rows

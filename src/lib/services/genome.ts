@@ -39,9 +39,14 @@ export async function fetchGenomeSuggestions(
   }
 }
 
+/**
+ * Looks genomes up by ID. `fields` adds genome fields to the default
+ * summary (name, strain, owner, ...); the route drops any that are not plain
+ * field names.
+ */
 export async function fetchGenomesByIds(
   genomeIds: string[],
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; fields?: string[] } = {},
 ): Promise<GenomeSummary[]> {
   if (genomeIds.length === 0) return [];
 
@@ -50,7 +55,9 @@ export async function fetchGenomesByIds(
   try {
     const data = await apiCall<{ results: GenomeSummary[] }>(
       "/api/services/genome/by-ids",
-      { genome_ids: uniqueIds },
+      options.fields?.length
+        ? { genome_ids: uniqueIds, fields: options.fields }
+        : { genome_ids: uniqueIds },
       { signal: options.signal },
     );
     return Array.isArray(data.results) ? data.results : [];

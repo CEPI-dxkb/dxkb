@@ -92,7 +92,6 @@ export function ViralGenomeTreeInput({
                   heading="Selected genome group / FASTA file"
                   rows={selectedSequenceRows}
                   onRemove={removeSequence}
-                  note="Selected genome groups and FASTA files will be used to construct the phylogenetic tree."
                 />
                 <FieldErrors field={field} />
               </FieldItem>

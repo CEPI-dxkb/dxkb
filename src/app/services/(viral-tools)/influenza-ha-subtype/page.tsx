@@ -270,7 +270,7 @@ export default function HASubtypeNumberingPage() {
                         one" is a common error; the box shows it too. */}
                     <div
                       className={cn(
-                        "grid max-h-55 grid-cols-2 gap-2 overflow-y-auto rounded-md border bg-background p-4 md:grid-cols-4",
+                        "grid grid-cols-2 gap-2 rounded-md border bg-background p-4 md:grid-cols-4",
                         fieldErrorMessage(field) && "border-destructive",
                       )}
                     >

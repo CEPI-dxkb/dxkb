@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode, type ReactNode } from "react";
 import GenomeAlignmentServicePage from "../page";
@@ -92,28 +92,6 @@ vi.mock("@/components/workspace/workspace-object-selector", () => ({
         Stage genome group
       </button>
     </>
-  ),
-}));
-
-vi.mock("@/components/services/selected-items-table", () => ({
-  default: ({
-    items,
-    onRemove,
-  }: {
-    items: { id: string; name: string; type?: string }[];
-    onRemove?: (id: string) => void;
-  }) => (
-    <div>
-      {items.map((item) => (
-        <span key={item.id}>
-          <span>{item.name}</span>
-          <span>{item.type}</span>
-          <button type="button" onClick={() => onRemove?.(item.id)}>
-            Remove {item.name}
-          </button>
-        </span>
-      ))}
-    </div>
   ),
 }));
 
@@ -299,7 +277,7 @@ describe("GenomeAlignmentServicePage selected genome rows", () => {
     mocks.fetchGenomesByIds.mockReset();
   });
 
-  it("labels each row with its role and genome ID, separated by a bar", async () => {
+  it("lists each genome with its ID in BLAST's table, tagging the first as the reference", async () => {
     mocks.fetchGenomeGroupMembers.mockResolvedValue([
       groupGenome,
       { genome_id: "group-genome-2", genome_name: "Second group genome" },
@@ -307,13 +285,24 @@ describe("GenomeAlignmentServicePage selected genome rows", () => {
     const user = userEvent.setup();
 
     render(<GenomeAlignmentServicePage />);
-    await user.click(screen.getByRole("button", { name: "Select genome group" }));
-
-    // The first genome is the reference; the ID follows the role on its line.
     expect(
-      await screen.findByText("Reference Genome | group-genome"),
+      within(screen.getByRole("table", { name: "Selected genomes" })).getByRole(
+        "cell",
+        { name: "No genomes selected" },
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Genome | group-genome-2")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Select genome group" }));
+    await screen.findByText("Second group genome");
+
+    const rows = within(
+      screen.getByRole("table", { name: "Selected genomes" }),
+    ).getAllByRole("row");
+    // The header row, then one row per genome in selection order.
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "GenomeGenome IDRemove",
+      "Group genomeReferencegroup-genome",
+      "Second group genomegroup-genome-2",
+    ]);
   });
 });
 

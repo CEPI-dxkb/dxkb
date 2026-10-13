@@ -24,8 +24,8 @@ import {
  * renders a tab group — it lists the routed type as its one resource. Overview,
  * Phylogeny, Specialty Genes, Pathways, and Subsystems used to sit here with no
  * destination at all and resolved to a literal fallback screen; they are out
- * until something implements them. Their descriptors stay in `search-info.ts`
- * because the all-data-types result page still queries them.
+ * until something implements them, and `/search?type=` with one of them is the
+ * "no search view" state.
  *
  * It lives beside the descriptors rather than in `typesearch.tsx` so that
  * `search-type-routing.test.ts` — which asserts every visible entry resolves to

@@ -282,7 +282,7 @@ Two paths, depending on what the agent needs to do.
 
 **`viewer-3d.spec.ts`** — drives `/viewer/structure/<path>`, mocks `/api/workspace/view/...` with a minimal one-atom PDB, and asserts the page chrome + Mol* container render. The full WebGL canvas-paint assertion is gated on Mol*'s own runtime probe — if Mol* surfaces "WebGL does not seem to be available" (e.g. headless Chromium without GPU), the paint test self-skips. Firefox and WebKit are skipped wholesale because their headless WebGL stacks are unreliable.
 
-**`search-keyboard.spec.ts`** — covers two complementary keyboard surfaces. The navbar `SearchBar` journey: type → Enter → routed to `/search?q=...&searchtype=everything`, empty submission stays put, clipboard paste fills the input (Chromium only; Firefox / WebKit headless clipboard permissions are unreliable). The global `<CommandPalette>` mounted in the root layout: `Cmd/Ctrl+K` opens the dialog, ArrowDown + Enter routes to a navigation item, typing a query + Enter routes to `/search`, Esc closes, and clipboard paste fills the palette input.
+**`search-keyboard.spec.ts`** — covers two complementary keyboard surfaces. The navbar `SearchBar` journey: type → Enter → routed to `/search?type=everything&q=...` and its results heading renders, empty submission stays put, clipboard paste fills the input (Chromium only; Firefox / WebKit headless clipboard permissions are unreliable). The global `<CommandPalette>` mounted in the root layout: `Cmd/Ctrl+K` opens the dialog, ArrowDown + Enter routes to a navigation item, typing a query + Enter routes to `/search`, Esc closes, and clipboard paste fills the palette input.
 
 ## When to add a Playwright test vs a Vitest test
 

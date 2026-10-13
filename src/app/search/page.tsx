@@ -69,7 +69,8 @@ export default async function GlobalSearch({
     case "redirect":
       return redirect(target.href);
     case "allTypes":
-      return <SearchResults query={query} />;
+      // Keyed by the search, so a new one starts unfolded and scrolled up.
+      return <SearchResults key={query} query={query} />;
     case "typeSearch":
       return <TypeSearch q={query} searchtype={target.searchtype} />;
     case "prompt":

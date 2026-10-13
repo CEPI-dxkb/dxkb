@@ -460,17 +460,12 @@ test.describe("a11y deep tier: search", () => {
       "genome",
       "strain",
       "genome_feature",
-      "sp_gene",
       "protein_feature",
       "epitope",
       "protein_structure",
-      "pathway",
-      "subsystem",
       "surveillance",
       "serology",
       "experiment",
-      "antibiotics",
-      "genome_sequence",
     ].map((type) => [
       type,
       {

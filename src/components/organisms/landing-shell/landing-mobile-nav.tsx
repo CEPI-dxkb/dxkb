@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 interface LandingMobileNavProps<Key extends string = OrganismViewKey> {
   items: readonly OrganismLandingNavItem<Key>[];
   activeView: Key;
+  /** The pill's and the sheet's heading. */
+  title?: string;
   onChange: (view: Key) => void;
 }
 
@@ -33,6 +35,7 @@ interface LandingMobileNavProps<Key extends string = OrganismViewKey> {
 export function LandingMobileNav<Key extends string>({
   items,
   activeView,
+  title = "Views",
   onChange,
 }: LandingMobileNavProps<Key>) {
   const [open, setOpen] = useState(false);
@@ -63,7 +66,7 @@ export function LandingMobileNav<Key extends string>({
               // Explicit name: the pill animates to opacity-0 on scroll-down,
               // where axe treats the visible text as absent — the label keeps
               // the trigger named for assistive tech in every state.
-              aria-label={`Views: ${active.label}`}
+              aria-label={`${title}: ${active.label}`}
               {...triggerProps}
             >
               <LayoutGrid
@@ -71,7 +74,7 @@ export function LandingMobileNav<Key extends string>({
                 className="size-4 text-background/60"
               />
               <span className="text-3xs font-bold tracking-widest text-background/50 uppercase">
-                Views
+                {title}
               </span>
               <span className="font-semibold">{active.label}</span>
               <ChevronUp
@@ -88,7 +91,7 @@ export function LandingMobileNav<Key extends string>({
             scroll within the sheet's max height. */}
         <div className="flex min-h-0 flex-col">
           <div className="px-4 pt-4 pb-2">
-            <SheetTitle variant="label">Views</SheetTitle>
+            <SheetTitle variant="label">{title}</SheetTitle>
           </div>
           <div className="grid grid-cols-4 gap-1.5 overflow-y-auto p-3 pb-8">
             {items.map((item) => {
@@ -122,6 +125,11 @@ export function LandingMobileNav<Key extends string>({
                   <span className="text-3xs leading-tight font-medium">
                     {item.label}
                   </span>
+                  {item.count !== undefined && (
+                    <span className="text-3xs leading-tight tabular-nums opacity-70">
+                      {item.count}
+                    </span>
+                  )}
                 </button>
               );
             })}

@@ -32,6 +32,19 @@ describe("LandingMobileNav", () => {
     expect(screen.getByRole("button", { name: "Views: Overview" })).toBeInTheDocument();
   });
 
+  it("takes its own heading and shows item counts", async () => {
+    render(
+      <LandingMobileNav
+        items={[{ key: "overview", label: "Genomes", icon: <Dna />, count: "12" }]}
+        activeView="overview"
+        title="Data types"
+        onChange={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Data types: Genomes" }));
+    expect(screen.getByRole("dialog", { name: "Data types" })).toHaveTextContent("Genomes12");
+  });
+
   it("opens the sheet with all view options on trigger click", async () => {
     render(<LandingMobileNav items={items} activeView="overview" onChange={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Views: Overview" }));

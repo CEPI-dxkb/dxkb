@@ -1,0 +1,96 @@
+src/components/organisms/landing-shell/__tests__/landing-nav.test.tsx
+  s_42fa61c9f80c2f::t_28ae72063a40e8 62-100
+src/components/search/all-types/search-results-header.tsx
+  s_42fa61c9f80c2f::t_bb9964581280e6 18,117,123-124,127-132
+  s_42fa61c9f80c2f::t_33e1b6892260de 8,99,101
+  s_42fa61c9f80c2f::t_58838ecc51445b 1-7,9-17,19-98,100,102-116,118-122,125-126,133-150
+src/constants/search-info.ts
+  s_42fa61c9f80c2f::t_ba77b8cb6b4957 197-200
+  s_42fa61c9f80c2f::t_3cb605b36c0092 110,121,132,143,151,159
+src/components/organisms/landing-shell/landing-mobile-nav.tsx
+  s_42fa61c9f80c2f::t_53834628d05008 23-24,38,69,77,94,128-132
+src/components/search/all-types/__tests__/use-section-nav.test.tsx
+  s_42fa61c9f80c2f::t_977a7406788999 70-73,82-84
+  s_42fa61c9f80c2f::t_a46d9b49b79e4b 1-11,13,20-21,23-68,74-81,85-109,118,123-139,141-153
+  s_42fa61c9f80c2f::t_7f1acc288efa09 69
+  s_42fa61c9f80c2f::t_845ce92d0d27ed 12,14-19,22,110-117,119-122
+  s_42fa61c9f80c2f::t_3a5f1e66b76695 140
+src/components/organisms/types.ts
+  s_42fa61c9f80c2f::t_53834628d05008 44-45
+src/components/ui/table.tsx
+  s_42fa61c9f80c2f::t_9b187ddea41fec 64-70
+src/constants/search-info.test.ts
+  s_42fa61c9f80c2f::t_c2a9e2910589c3 9-27
+src/lib/search/__tests__/all-types-search.test.ts
+  s_42fa61c9f80c2f::t_977a7406788999 126-127
+  s_42fa61c9f80c2f::t_b9cbbcf90972dd 1-125,128-215
+e2e/tests/search-keyboard.spec.ts
+  s_42fa61c9f80c2f::t_5f1f14e8cbcad1 14,18-19,70,72
+src/components/search/all-types/type-results-card.tsx
+  s_42fa61c9f80c2f::t_9b187ddea41fec 182-186,218
+  s_42fa61c9f80c2f::t_33e1b6892260de 21,145-150,153
+  s_42fa61c9f80c2f::t_5824003b24711a 1-20,22-56,61-64,66-98,101-111,113-119,121-144,151-152,154-159,161-162,164-166,168-170,172-176,199,211,215-216,219-238
+  s_42fa61c9f80c2f::t_d6c4de61e5b1af 57-60,65,99-100,112,177-179,213-214,217
+  s_42fa61c9f80c2f::t_e0f93c75cf3c12 120,160,163,167,171
+  s_42fa61c9f80c2f::t_2a887f2f0c4e4b 180-181,187-198,200-210,212
+docs/architecture.md
+  s_42fa61c9f80c2f::t_1036ebc8de0d99 166
+  s_42fa61c9f80c2f::t_dda86934d5fdec 165
+src/app/all-term-search-results.tsx
+  s_42fa61c9f80c2f::t_bb9964581280e6 93-94,176,250-252,272,283
+  s_42fa61c9f80c2f::t_fbe564561bfc96 171-173
+  s_42fa61c9f80c2f::t_8be4049387f74a 39-41,44,50
+  s_42fa61c9f80c2f::t_4ea10ad20e3db8 5,9-12,14-17,19-26,28-32,60-63,67-69,72-74,76-79,82-88,91-92,95,99,102-107,109-119,121,123-130,132-142,144,148,150-159,163-170,174-175,177-195,197-217,223-225,227-237,255,257,265,270,282,287,289
+  s_42fa61c9f80c2f::t_cf6b6227df04d0 36-38,43,45-49,51-57,262-264,276-281
+  s_42fa61c9f80c2f::t_968b7bc2838bad 261,267-269,271,273
+  s_42fa61c9f80c2f::t_e39aeb4263d1d0 239-241
+  s_42fa61c9f80c2f::t_b52fc7f1fd3cce 33,64-66,89-90,96-98,145-147,149,244-246,248-249,253,256,258-260,266,274,284-286,288
+  s_42fa61c9f80c2f::t_f98ab387ace866 3,8,242,275
+  s_42fa61c9f80c2f::t_c7efe7685f3afe 218-222,226
+  s_42fa61c9f80c2f::t_31c8f69f93289c 238
+  s_42fa61c9f80c2f::t_696931ee45f9f3 243
+e2e/README.md
+  s_42fa61c9f80c2f::t_96e021560834f1 285
+src/lib/search/all-types-search.ts
+  s_42fa61c9f80c2f::t_48672b59b29419 31-35,499
+  s_42fa61c9f80c2f::t_87049df9418a26 1-30,36-498,500-507
+src/components/organisms/landing-shell/landing-nav.tsx
+  s_42fa61c9f80c2f::t_53834628d05008 22-25,35-36,60,70,94-98,152-158
+src/app/search/page.tsx
+  s_42fa61c9f80c2f::t_54571220fee640 72
+  s_42fa61c9f80c2f::t_f98ab387ace866 73
+src/components/organisms/landing-shell/__tests__/landing-mobile-nav.test.tsx
+  s_42fa61c9f80c2f::t_28ae72063a40e8 35-47
+src/constants/search-menu.tsx
+  s_42fa61c9f80c2f::t_591948f480dc16 27-28
+src/app/__tests__/all-term-search-results.test.tsx
+  s_42fa61c9f80c2f::t_33e1b6892260de 75-78
+  s_42fa61c9f80c2f::t_bb9964581280e6 1-7,487-504
+  s_42fa61c9f80c2f::t_f98ab387ace866 12-14,471,511
+  s_42fa61c9f80c2f::t_977a7406788999 124-127,135-137
+  s_42fa61c9f80c2f::t_98b8e33b2c64be 8,10,18-21,25-74,79-107,122,128-131,134,138-139,141-161,165,170-175,177-179,181-182,184-188,190-192,194-195,198-199,201,203-204,206-229,252-254,257-258,260,266-271,273,275-278,280-281,283,285-288,291,294,298,300-305,308-309,335-352,355-364,367-368,370,414-423,425-437,439-456,458-465,468-470,473,505-506,508-510,519,521
+  s_42fa61c9f80c2f::t_fbe564561bfc96 108-120,176,180,196-197,200,202,205
+  s_42fa61c9f80c2f::t_7f1acc288efa09 123
+  s_42fa61c9f80c2f::t_24b2a14fb3143a 140,162,164,166,353-354,365-366,369,371-400,402-413
+  s_42fa61c9f80c2f::t_845ce92d0d27ed 467,472,474-486,507,512-518,520,522
+  s_42fa61c9f80c2f::t_26c9716d6062ab 11
+src/components/search/all-types/use-section-nav.ts
+  s_42fa61c9f80c2f::t_4d3cfc1a25bcfb 21-22,31,35,37-38,50,66-70,100,104,110-113
+  s_42fa61c9f80c2f::t_c0df9e66d54bdb 1-20,23-30,32-34,36,39-49,51-65,71-99,101-103,105-109,114-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45713bac92f1112c3dabfe9bf330d10a210f0c37",
+  "prompts": {},
+  "sessions": {
+    "s_42fa61c9f80c2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "11ffc695-32c4-46c7-aaf8-187d40852990",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

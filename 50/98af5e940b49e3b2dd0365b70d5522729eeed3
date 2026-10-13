@@ -1,0 +1,123 @@
+src/lib/search/__tests__/all-types-search.test.ts
+  s_e259469af42b16::t_dbef453d0e95cf 41,65,70-72
+  s_e259469af42b16::t_8a169024b8115f 73-74
+src/app/api/e2e-mock/[...path]/__tests__/route.test.ts
+  s_e259469af42b16::t_5b9652968ae6da 193-221
+src/components/views/resource-filter-bar.tsx
+  s_bf03cfef26357b::t_a82838c55c3173 247
+src/lib/strain-view/server.ts
+  s_e259469af42b16::t_e73f4dbea2c253 1-14
+src/app/(views)/strain/[strainId]/strain-overview.tsx
+  s_e259469af42b16::t_d16f1f1fff4123 2,39
+  s_e259469af42b16::t_0ead810c5359cf 1,3-38,40-125
+src/lib/strain-view/tabs.ts
+  s_e259469af42b16::t_4016dbd1d68e4b 1-5
+e2e/pages/strain-page.ts
+  s_e259469af42b16::t_24b664b30036d6 1-47
+src/constants/search-info.test.ts
+  s_bf03cfef26357b::t_21e6bee9133eaf 10
+src/lib/ui-preferences/definitions.ts
+  s_bf03cfef26357b::t_5982e2b243f3c3 34
+src/components/shared/__tests__/data-table-rendering.test.tsx
+  s_bf03cfef26357b::t_a82838c55c3173 960-962
+src/app/(views)/strain/[strainId]/page.tsx
+  s_e259469af42b16::t_0f7917705695d5 1-47
+src/lib/views/hrefs.ts
+  s_e259469af42b16::t_816b382b7e14b0 129-147
+src/app/(views)/experiment/[experimentId]/experiment-overview.tsx
+  s_e259469af42b16::t_f56e0cfc7ab514 5
+src/lib/data-api/server-repository.ts
+  s_e259469af42b16::t_4b53275f14531e 31-32,35,42
+  s_e259469af42b16::t_ba2f3ba50bf1ab 22
+e2e/tests/strain-view.spec.ts
+  s_e259469af42b16::t_9dd2c22f3e6c03 1-2,4-10,13-17,19-30,32-34,36-38,40-42,45-52,60-61,63-65
+  s_e259469af42b16::t_afff725b1e017d 3,11-12,18,31,35,39,43-44,53-59,62
+src/components/shared/use-data-table-download.ts
+  s_bf03cfef26357b::t_a82838c55c3173 91-92
+src/lib/data-api/__tests__/validation.test.ts
+  s_bf03cfef26357b::t_a82838c55c3173 78-79
+e2e/a11y/routes.ts
+  s_e259469af42b16::t_8de229455cd9d6 410-415
+  s_e259469af42b16::t_a7816d30506231 409
+e2e/pages/index.ts
+  s_e259469af42b16::t_592e7144caeac5 20
+docs/architecture.md
+  s_bf03cfef26357b::t_734002f77f1d0b 165,229,236
+  s_e259469af42b16::t_ba2f3ba50bf1ab 78,149
+e2e/tests/organisms/taxon-list-data.spec.ts
+  s_bf03cfef26357b::t_a82838c55c3173 45,477
+src/app/search/page.tsx
+  s_bf03cfef26357b::t_3b8fab69b1469f 23-26,86
+src/lib/strain-view/profile.ts
+  s_e259469af42b16::t_5794455a69e437 2,23-24
+src/constants/datafields/types.ts
+  s_bf03cfef26357b::t_a82838c55c3173 5-6
+src/app/(views)/__tests__/scaffold-routes.test.tsx
+  s_e259469af42b16::t_a6b6d1d1054db6 64
+src/app/(views)/strain/[strainId]/__tests__/page.test.tsx
+  s_e259469af42b16::t_9efee99244c647 1-112
+src/lib/strain-view/schema.ts
+  s_e259469af42b16::t_5e7ca6aefa1b6c 9-27,31-35
+src/lib/strain-view/index.ts
+  s_e259469af42b16::t_5794455a69e437 6
+src/components/views/overview-link-list-field.tsx
+  s_e259469af42b16::t_b61b1804da3625 1-44
+src/lib/strain-view/__tests__/strain-view.test.ts
+  s_e259469af42b16::t_b74dc96e822443 4,35,38-41,62-65
+  s_e259469af42b16::t_fa64eb07be6dd1 66-67
+src/app/(views)/strain/not-found.tsx
+  s_e259469af42b16::t_b089357339303d 1-18
+src/hooks/views/use-resource-collection.ts
+  s_bf03cfef26357b::t_a82838c55c3173 127
+src/lib/search/all-types-search.ts
+  s_e259469af42b16::t_be7501a1afbf5a 23-24,270-273,276,285,287
+e2e/fixtures/overrides/catchall.ts
+  s_e259469af42b16::t_e602e718cc9803 318-338
+src/app/(views)/strain/[strainId]/strain-member.tsx
+  s_e259469af42b16::t_524ba1059ffa85 1-77
+src/components/views/index.ts
+  s_e259469af42b16::t_f56e0cfc7ab514 8
+src/app/search/__tests__/page.test.tsx
+  s_bf03cfef26357b::t_3b8fab69b1469f 126,133-136,152
+src/lib/__tests__/view-server-lookups.test.ts
+  s_e259469af42b16::t_86cf9b910f06e2 16,134-150
+  s_e259469af42b16::t_8e66938845b25a 151-152
+src/app/api/e2e-mock/[...path]/route.ts
+  s_e259469af42b16::t_5b9652968ae6da 16,267-274
+  s_e259469af42b16::t_aa4b2c8f5202f8 275-277
+e2e/fixtures/overrides/index.ts
+  s_e259469af42b16::t_e602e718cc9803 38
+src/app/search/__tests__/search-type-routing.test.ts
+  s_bf03cfef26357b::t_8ffb0d3ea79081 62,230-241
+src/app/(views)/strain/[strainId]/__tests__/strain-overview.test.tsx
+  s_e259469af42b16::t_309382c7701442 1-112
+src/components/organisms/landing-shell/landing-nav.tsx
+  s_bf03cfef26357b::t_136f536d6e28c6 126-129
+src/lib/views/__tests__/hrefs.test.ts
+  s_e259469af42b16::t_b74dc96e822443 18-19,87-97
+  s_e259469af42b16::t_11f0d0e36deba8 98-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5098af5e940b49e3b2dd0365b70d5522729eeed3",
+  "prompts": {},
+  "sessions": {
+    "s_bf03cfef26357b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3447f69-9175-4586-99fc-f0110b686c1a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_e259469af42b16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c084fc8b-9599-4a9e-94cf-38be45ac4d98",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

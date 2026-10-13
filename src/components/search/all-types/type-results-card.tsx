@@ -2,7 +2,6 @@ import Link from "next/link";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 import {
   Activity,
-  ArrowRight,
   Binary,
   ChevronDown,
   ChevronRight,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -138,19 +136,18 @@ export function TypeResultsCard({
         >
           {searchTypeIcon(type.id)}
         </span>
-        <h2 className="text-sm font-semibold">{type.label}</h2>
-        <span className="text-xs text-muted-foreground tabular-nums">
+        {/* The type's own list, searched for the same keyword. */}
+        <h2 className="text-sm font-semibold">
+          <Link
+            href={type.listHref}
+            className="text-link hover:underline focus-visible:underline focus-visible:outline-none"
+          >
+            {type.label}
+          </Link>
+        </h2>
+        <span className="text-xs text-foreground/80 tabular-nums">
           ({formatCount(type.count)})
         </span>
-        <Link
-          href={type.listHref}
-          className={cn(
-            buttonVariants({ variant: "link", size: "inline" }),
-            "ml-auto h-auto",
-          )}
-        >
-          Open {type.label} view <ArrowRight />
-        </Link>
       </div>
       {open ? (
         <>

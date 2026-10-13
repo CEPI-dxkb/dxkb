@@ -183,7 +183,7 @@ describe("SearchResults", () => {
     );
     expect(rail().getByLabelText("Epitopes: No matches")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open Genomes view" }),
+      screen.getByRole("link", { name: "Genomes" }),
     ).toHaveAttribute("href", "/genome?keyword=influenza");
   });
 
@@ -257,7 +257,7 @@ describe("SearchResults", () => {
       renderResults(query);
 
       expect(
-        await screen.findByRole("link", { name: "Open Features view" }),
+        await screen.findByRole("link", { name: "Features" }),
       ).toHaveAttribute("href", expectedHref);
       expect(payload.genome_feature?.query.split("&")[0]).toBe(expectedRql);
     },

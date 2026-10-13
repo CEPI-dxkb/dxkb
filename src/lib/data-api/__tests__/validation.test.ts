@@ -75,10 +75,8 @@ describe("data API contracts", () => {
     );
   });
 
-  it("registers AMR phenotypes so the legacy Search list has a validated boundary", () => {
-    // genome_amr reaches the Data API gateway from `/search?type=genome_amr`,
-    // the one surviving legacy list besides genome_sequence. Without a registry
-    // entry the gateway 404s it and that route cannot load a single row.
+  it("registers AMR phenotypes with a validated boundary", () => {
+    // Without a registry entry the gateway 404s `/api/data/genome_amr`.
     expect(resourceRegistry.genome_amr.idField).toBe("id");
     expect(resourceRegistry.genome_amr.fields.antibiotic.facet).toBe(true);
     expect(resourceRegistry.genome_amr.fields.resistant_phenotype.facet).toBe(

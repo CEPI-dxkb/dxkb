@@ -190,6 +190,35 @@ describe("api/e2e-mock catch-all — enabled", () => {
     });
   });
 
+  it("returns the strain fixture for the matching exact member", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/strain/?eq(id,strain-backend-901)",
+      }),
+      ctx(["data", "strain"]),
+    );
+
+    await expect(resp.json()).resolves.toMatchObject({
+      response: {
+        numFound: 1,
+        docs: [{ id: "strain-backend-901", strain: "A/California/04/2009" }],
+      },
+    });
+  });
+
+  it("returns zero strains for an unmatched exact member", async () => {
+    const resp = await GET(
+      mockNextRequest({
+        url: "http://localhost:3020/api/e2e-mock/data/strain/?eq(id,missing-strain)",
+      }),
+      ctx(["data", "strain"]),
+    );
+
+    await expect(resp.json()).resolves.toEqual({
+      response: { numFound: 0, docs: [] },
+    });
+  });
+
   it("filters ambiguous surveillance fixtures by pathogen test type", async () => {
     const unfilteredResp = await GET(
       mockNextRequest({

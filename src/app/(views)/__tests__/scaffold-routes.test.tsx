@@ -61,7 +61,7 @@ it("genome singular renders for a dotted id", async () => {
   ).toBeInTheDocument();
 });
 
-it("strain list parses canonical state without creating a member route", async () => {
+it("strain list parses canonical state", async () => {
   render(
     await StrainListPage({
       searchParams: Promise.resolve({

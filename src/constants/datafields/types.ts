@@ -2,8 +2,8 @@
  * Shape of a single data-field definition used across the `datafields/*` files.
  *
  * `field` is the canonical column identifier read by consumers
- * (`Object.values(fields).map((f) => f.field)` in `list-data.tsx` and
- * `info-panel.tsx`). It is intentionally distinct from the object key in some
+ * (`Object.values(fields).map((f) => f.field)` in `info-panel.tsx`). It is
+ * intentionally distinct from the object key in some
  * entries — e.g. keys that cannot start with a digit (`s_1_pb2` → `1_pb2`) or
  * use short aliases (`m_value` → `measurement_value`). Do NOT derive `field`
  * from the key; the key is decorative and never read.

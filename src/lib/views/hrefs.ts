@@ -126,6 +126,25 @@ export function epitopeHref(epitopeId: number | string): string {
   return `/epitope/${encodePathSegment(String(epitopeId))}`;
 }
 
+/** Return a navigable Strain record ID from an API row, if present. */
+export function strainIdFromRow(
+  row: Record<string, unknown> | null,
+): string | null {
+  const strainId = row?.id;
+  return typeof strainId === "string" || typeof strainId === "number"
+    ? String(strainId)
+    : null;
+}
+
+/**
+ * Internal Strain member route. Keyed by the record `id`, not the strain name:
+ * names are phrase-matched (`A/China` also matches `A/China/27/2017`) and
+ * carry `/`, so only the ID addresses one record.
+ */
+export function strainHref(strainId: number | string): string {
+  return `/strain/${encodePathSegment(String(strainId))}`;
+}
+
 /** Return a canonical Experiment ID from an API row, if present. */
 export function experimentIdFromRow(
   row: Record<string, unknown> | null,

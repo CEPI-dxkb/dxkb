@@ -123,7 +123,10 @@ export function LandingNav<Key extends string>({
                   onClick={() => {
                     /* no-op: button is disabled */
                   }}
-                  className="pointer-events-none cursor-not-allowed justify-start opacity-50"
+                  // w-full: the focusable wrapper span is the flex item, so
+                  // without it the button shrinks to its content and the
+                  // count sits beside the label instead of at the right.
+                  className="pointer-events-none w-full cursor-not-allowed justify-start opacity-50"
                 >
                   {buttonContent}
                 </Button>

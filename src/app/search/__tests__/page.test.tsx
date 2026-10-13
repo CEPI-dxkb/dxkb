@@ -7,15 +7,6 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
-vi.mock("@/app/search/typesearch", () => ({
-  TypeSearch: ({ q, searchtype }: { q: string; searchtype: string }) => (
-    <div
-      data-testid="type-search"
-      data-query={q}
-      data-search-type={searchtype}
-    />
-  ),
-}));
 vi.mock("@/app/all-term-search-results", () => ({
   SearchResults: ({ query }: { query: string }) => (
     <div data-testid="all-results" data-query={query} />
@@ -132,17 +123,17 @@ describe("legacy search route", () => {
   });
 
   it.each(["genome_sequence", "genome_amr"])(
-    "still renders the legacy type search for %s",
+    "offers the all-types results for the removed %s search",
     async (type) => {
       render(
         await GlobalSearch({
           searchParams: Promise.resolve({ type, q: "Escherichia" }),
         }),
       );
-      expect(screen.getByTestId("type-search")).toHaveAttribute(
-        "data-search-type",
-        type,
-      );
+      expect(screen.getByText(/no search view for/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /search all data types/i }),
+      ).toHaveAttribute("href", "/search?type=everything&q=Escherichia");
       expect(mocks.redirect).not.toHaveBeenCalled();
     },
   );
@@ -155,17 +146,15 @@ describe("legacy search route", () => {
   it.each([
     ["unsupported", { type: "pathway", q: "---" }],
     ["everything", { type: "everything", q: " / + " }],
-    ["legacy list", { type: "genome_sequence", q: "---" }],
     ["canonical", { type: "genome", q: "---" }],
     // Terms nothing would be searched for: an operator alone, empty quotes.
     ["operator-only", { type: "everything", q: "OR" }],
-    ["empty-quote", { type: "genome_sequence", q: '""' }],
+    ["empty-quote", { type: "everything", q: '""' }],
   ])("prompts for normalized-empty %s searches", async (_label, params) => {
     render(await GlobalSearch({ searchParams: Promise.resolve(params) }));
 
     expect(screen.getByText(/enter a search term/i)).toBeInTheDocument();
     expect(screen.queryByTestId("all-results")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("type-search")).not.toBeInTheDocument();
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 

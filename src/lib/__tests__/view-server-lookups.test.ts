@@ -13,6 +13,7 @@ import { getEpitope } from "@/lib/epitope-view/server";
 import { getExperiment } from "@/lib/experiment-view/server";
 import { getFeature } from "@/lib/feature-view/server";
 import { getGenome } from "@/lib/genome-view/server";
+import { getStrain } from "@/lib/strain-view/server";
 
 const dataApiOrigin = "https://data.example";
 
@@ -128,6 +129,25 @@ const lookupCases: LookupCase[] = [
     // `experimentRecordSchema` declares only the identifier and taxonomy
     // fields, so a numeric `study_name` reaches the view schema.
     malformedRow: { exp_id: "1234", study_name: 42 },
+    malformedLayer: "view",
+  },
+  {
+    name: "getStrain",
+    resource: "strain",
+    id: "018372aa-097b-4373-892b-c9930b825955",
+    lookup: getStrain,
+    validRow: {
+      id: "018372aa-097b-4373-892b-c9930b825955",
+      strain: "A/China",
+    },
+    expected: {
+      id: "018372aa-097b-4373-892b-c9930b825955",
+      strain: "A/China",
+    },
+    empty: null,
+    // `strainRecordSchema` declares only the identifier, name, accession and
+    // taxonomy fields, so a numeric `subtype` reaches the view schema.
+    malformedRow: { id: "strain-1", subtype: 42 },
     malformedLayer: "view",
   },
 ];

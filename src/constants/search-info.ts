@@ -14,7 +14,6 @@ export interface SearchType {
   id: string;
   typeTitle: string;
   route: SearchRoute;
-  tabs?: Readonly<Record<string, string>>;
   pickerOrder?: number;
   allTermOrder?: number;
 }
@@ -49,7 +48,6 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "taxonomy",
     typeTitle: "Taxa",
     route: { status: "canonical", segment: viewRegistry.taxonomy.segment },
-    tabs: { taxonomy: "Taxa" },
     pickerOrder: 9,
     allTermOrder: 0,
   },
@@ -57,27 +55,13 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "genome",
     typeTitle: "Genomes",
     route: { status: "canonical", segment: viewRegistry.genome.segment },
-    tabs: { genome: "Genomes" },
     pickerOrder: 1,
     allTermOrder: 1,
-  },
-  {
-    id: "genome_amr",
-    typeTitle: "AMR Phenotypes",
-    route: { status: "legacy" },
-    tabs: { genome_amr: "AMR Phenotypes" },
-  },
-  {
-    id: "genome_sequence",
-    typeTitle: "Genomic Sequences",
-    route: { status: "legacy" },
-    tabs: { genome_sequence: "Sequences" },
   },
   {
     id: "strain",
     typeTitle: "Strains",
     route: { status: "canonical", segment: viewRegistry.strain.segment },
-    tabs: { strain: "Strains" },
     pickerOrder: 2,
     allTermOrder: 2,
   },
@@ -85,7 +69,6 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "genome_feature",
     typeTitle: "Features",
     route: { status: "canonical", segment: viewRegistry.feature.segment },
-    tabs: { genome_feature: "Features" },
     pickerOrder: 3,
     allTermOrder: 3,
   },
@@ -105,7 +88,6 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry["domains-and-motifs"].segment,
     },
-    tabs: { protein_feature: "Domains and Motifs" },
     pickerOrder: 4,
     allTermOrder: 4,
   },
@@ -116,7 +98,6 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry.epitope.segment,
     },
-    tabs: { epitope: "Epitopes" },
     pickerOrder: 5,
     allTermOrder: 5,
   },
@@ -127,7 +108,6 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry["protein-structure"].segment,
     },
-    tabs: { protein_structure: "Protein Structures" },
     pickerOrder: 6,
     allTermOrder: 6,
   },
@@ -138,7 +118,6 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry.surveillance.segment,
     },
-    tabs: { surveillance: "Surveillance" },
     pickerOrder: 7,
     allTermOrder: 7,
   },
@@ -146,7 +125,6 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "serology",
     typeTitle: "Serology",
     route: { status: "canonical", segment: viewRegistry.serology.segment },
-    tabs: { serology: "Serology" },
     pickerOrder: 8,
     allTermOrder: 8,
   },
@@ -154,7 +132,6 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "experiment",
     typeTitle: "Experiments",
     route: { status: "canonical", segment: viewRegistry.experiment.segment },
-    tabs: { experiment: "Experiments" },
     pickerOrder: 10,
     allTermOrder: 9,
   },

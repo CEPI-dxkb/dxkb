@@ -20,6 +20,8 @@ import {
   proteinStructureHref,
   serologyHref,
   serologyIdFromRow,
+  strainHref,
+  strainIdFromRow,
   surveillanceHref,
   surveillanceIdFromRow,
   taxonomyHref,
@@ -265,10 +267,13 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
         href: genomeId ? genomeHref(genomeId) : null,
       };
     }
-    case "strain":
+    case "strain": {
+      // The record ID, not the strain name: legacy links the name as a
+      // phrase, which opens every strain sharing that prefix.
+      const strainId = strainIdFromRow(doc);
       return {
         ...base,
-        key: text(doc.id) || base.key,
+        key: strainId ?? base.key,
         title: text(doc.strain),
         context: join([text(doc.species), text(doc.host_name)]),
         facts: facts([
@@ -277,8 +282,9 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
           ["Status", text(doc.status)],
         ]),
         id: first(doc.genbank_accessions),
-        href: null,
+        href: strainId ? strainHref(strainId) : null,
       };
+    }
     case "genome_feature": {
       // A Feature doc has no `id`, and the top features can share a genome.
       const featureId = featureIdFromRow(doc);

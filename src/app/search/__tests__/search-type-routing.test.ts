@@ -3,8 +3,6 @@ import {
   searchTypes,
   type SearchType,
 } from "@/constants/search-info";
-import { searchTypeMenuItems } from "@/constants/search-menu";
-import { isDataResource } from "@/lib/data-api";
 import {
   parseTaxonomyCollectionState,
   taxonomyCollectionOptions,
@@ -41,17 +39,6 @@ function redirectParams(
 }
 
 describe("legacy search routing contract", () => {
-  it.each(searchTypeMenuItems.map((item) => item.key))(
-    "resolves the %s menu item to a destination instead of a fallback",
-    (key) => {
-      const target = resolveLegacySearch(
-        { type: key, q: "influenza" },
-        "influenza",
-      );
-      expect(["redirect", "typeSearch"]).toContain(target.kind);
-    },
-  );
-
   it.each(canonicalDescriptors)(
     "redirects the canonical $id descriptor to its own segment",
     (descriptor: SearchType) => {
@@ -68,18 +55,11 @@ describe("legacy search routing contract", () => {
     },
   );
 
-  it.each(["overview", "phylogeny", "sp_gene", "pathway", "subsystem"])(
-    "keeps the destination-less %s entry out of the type menu",
-    (key) => {
-      expect(searchTypeMenuItems.map((item) => item.key)).not.toContain(key);
-    },
-  );
-
   it.each(searchTypes.map((descriptor) => descriptor.id))(
     "resolves the %s entry of the navbar type picker to a destination",
     (id) => {
       const target = resolveLegacySearch({ type: id, q: "influenza" }, "influenza");
-      expect(["redirect", "allTypes", "typeSearch"]).toContain(target.kind);
+      expect(["redirect", "allTypes"]).toContain(target.kind);
     },
   );
 
@@ -247,16 +227,18 @@ describe("legacy search routing contract", () => {
     });
   });
 
-  it.each(["genome_sequence", "genome_amr"])(
-    "keeps %s on the legacy type search",
-    (type) => {
-      expect(resolveLegacySearch({ type, q: "influenza" }, "influenza")).toEqual(
-        { kind: "typeSearch", searchtype: type },
-      );
-    },
-  );
-
-  it.each(["sp_gene", "pathway", "subsystem", "antibiotics", "not_a_type"])(
+  // Sequences and AMR Phenotypes had the old legacy list as their only search
+  // view; DXKB searches neither, so their legacy URLs get the same panel as
+  // every other type with no view.
+  it.each([
+    "genome_sequence",
+    "genome_amr",
+    "sp_gene",
+    "pathway",
+    "subsystem",
+    "antibiotics",
+    "not_a_type",
+  ])(
     "reports %s as unsupported rather than rendering an unrelated type",
     (type) => {
       expect(resolveLegacySearch({ type, q: "influenza" }, "influenza")).toEqual({
@@ -265,25 +247,4 @@ describe("legacy search routing contract", () => {
       });
     },
   );
-
-  // `TypeSearch` no longer resolves a tab group: it treats the routed type as
-  // the resource it lists, reads it through the Data API gateway, and renders
-  // exactly one table. Both halves of that are invariants of the descriptors
-  // rather than of the component, so they are asserted here — this is what
-  // replaced the component's `?? "genome"` fallbacks, which quietly rendered
-  // the Genome tab group under another type's name.
-  it("gives every type that reaches the legacy list one tab named after a registered resource", () => {
-    const listed = searchDescriptors.filter(
-      (descriptor) =>
-        resolveLegacySearch({ type: descriptor.id }, "").kind === "typeSearch",
-    );
-    expect(listed.map((descriptor) => descriptor.id)).toEqual([
-      "genome_amr",
-      "genome_sequence",
-    ]);
-    for (const descriptor of listed) {
-      expect(Object.keys(descriptor.tabs ?? {})).toEqual([descriptor.id]);
-      expect(isDataResource(descriptor.id)).toBe(true);
-    }
-  });
 });

@@ -1,6 +1,7 @@
 import {
   genomeIdsFromStrains,
   isStrainAccessionField,
+  isStrainId,
   parseStrainCollectionState,
   strainAccessionUrlTemplate,
   strainCollectionProfile,
@@ -31,10 +32,13 @@ describe("Strain view contracts", () => {
     );
   });
 
-  it("uses backend id and remains list-only", () => {
+  it("uses backend id and links the strain name to its member route", () => {
     expect(strainCollectionProfile.idField).toBe("id");
     expect(strainCollectionProfile.basePredicate).toBe("eq(id,*)");
-    expect(strainCollectionProfile.rowHref).toBeUndefined();
+    expect(
+      strainCollectionProfile.rowHref?.({ id: "strain/1", strain: "A/China" }),
+    ).toBe("/strain/strain%2F1");
+    expect(strainCollectionProfile.rowLinkField).toBe("strain");
     expect(strainCollectionProfile.detailFields).toContain("genome_ids");
     expect(strainCollectionProfile.guideUrl).toContain("strains.html");
   });
@@ -53,6 +57,12 @@ describe("Strain view contracts", () => {
         (column) => column.id === "genome_ids",
       )?.valueHref,
     ).toBe("/genome/{value}");
+  });
+
+  it("accepts any non-empty record ID up to the shared length limit", () => {
+    expect(isStrainId("018372aa-097b-4373-892b-c9930b825955")).toBe(true);
+    expect(isStrainId("")).toBe(false);
+    expect(isStrainId("x".repeat(1_001))).toBe(false);
   });
 
   it("shares the NCBI accession policy with detail-only segment fields", () => {

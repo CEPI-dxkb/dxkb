@@ -35,6 +35,7 @@ export {
   proteinStructureScenarioOverrides,
   proteinFeatureScenarioOverrides,
   strainScenarioOverrides,
+  strainAllTypesSearchOverrides,
   serologyScenarioOverrides,
   surveillanceScenarioOverrides,
   epitopeAssayScenarioOverrides,

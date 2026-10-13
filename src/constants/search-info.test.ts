@@ -7,8 +7,7 @@ import {
 
 describe("search descriptors", () => {
   // The all-data-types page shows only what DXKB has a view for: a type with
-  // no list (Genomic Sequences, which only the legacy list reaches) would be a
-  // count that links nowhere.
+  // no list would be a count that links nowhere.
   it("searches only types with a DXKB list view on the all-data-types page", () => {
     expect(allTermSearchTypes.map((descriptor) => descriptor.id)).toEqual([
       "taxonomy",

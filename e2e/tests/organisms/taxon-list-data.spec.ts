@@ -42,7 +42,7 @@ const strainApi500: JsonOverride = {
 
 // Taxon 11520 = Influenza A virus (Orthomyxoviridae). hasStrains predicate requires
 // "Orthomyxoviridae" in lineage_names — bacteria like taxon 234 (Brucella) evaluate
-// false and the Strains tab is disabled, so the ListData component never mounts.
+// false and the Strains tab is disabled, so its collection never mounts.
 const influenzaTaxonId = "11520";
 
 test.describe("taxon strains actions", () => {
@@ -474,10 +474,7 @@ test.describe("taxon domains-and-motifs: Download Selected sends POST not GET", 
 //
 // The quoting now happens in exactly one place for every view: `serializeValue`
 // in src/lib/data-api/rql.ts, which the gateway applies to a structural filter
-// (this tab, via ResourceFilterBar) and to a raw `rql` string alike (the legacy
-// /search list, whose `buildRql` deliberately sends values unquoted). This tab
-// is the ResourceFilterBar side; filter-utils.test.ts pairs the legacy side
-// with the same serializer.
+// (this tab, via ResourceFilterBar) and to a raw `rql` string alike.
 const epitopeGateway = /\/api\/data\/epitope(?:\?|$)/;
 
 function buildEpitopeRows(count: number, epitopeType: string) {

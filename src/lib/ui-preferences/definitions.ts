@@ -31,9 +31,7 @@ export interface UiPreferences {
   workspaceShowHiddenFiles: boolean;
   /** Workspace file list sort; applies in every folder. */
   workspaceSort: WorkspaceSortConfig;
-  /** Left type rail on /search. Its own key: a different rail from the view rail. */
-  searchNavCollapsed: boolean;
-  /** Show/Hide Filters on every collection and search filter bar. */
+  /** Show/Hide Filters on every collection filter bar. */
   facetPanelOpen: boolean;
 }
 
@@ -100,11 +98,6 @@ export const uiPreferenceDefinitions: {
       direction: z.enum(["asc", "desc"]),
     }),
     defaultValue: { field: "name", direction: "asc" },
-  },
-  searchNavCollapsed: {
-    cookieName: "dxkb-search-nav-collapsed",
-    schema: z.boolean(),
-    defaultValue: false,
   },
   facetPanelOpen: {
     cookieName: "dxkb-facet-panel-open",

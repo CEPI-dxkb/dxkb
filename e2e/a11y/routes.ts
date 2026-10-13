@@ -407,6 +407,13 @@ export const routes: RouteEntry[] = [
     mobile: true,
   },
   {
+    name: "strain",
+    path: "/strain/strain-backend-901",
+    pages: ["(views)/strain/[strainId]/page.tsx"],
+    unauthenticated: true,
+    mobile: true,
+  },
+  {
     name: "surveillance",
     path: "/surveillance/sample%2F1?pathogen_test_type=RAT%2Fantigen",
     pages: ["(views)/surveillance/[sampleId]/page.tsx"],

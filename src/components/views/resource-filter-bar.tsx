@@ -244,7 +244,7 @@ export function ResourceFilterBar({
   );
 }
 
-/** Placeholder for one facet column; the sizes match `FacetPanel`'s. */
+/** Placeholder for one facet column. */
 function FacetColumnSkeleton() {
   return (
     <div aria-hidden="true" className="shrink-0">

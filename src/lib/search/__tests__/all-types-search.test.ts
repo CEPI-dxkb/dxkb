@@ -38,7 +38,7 @@ describe("fetchTypeMatches", () => {
 });
 
 describe("describeRows", () => {
-  it("describes a Strain by its own species, host and segments", () => {
+  it("describes a Strain by its own species, host and segments, linking its record", () => {
     expect(
       describeRows("strain", [
         {
@@ -62,9 +62,14 @@ describe("describeRows", () => {
           { label: "Segments", value: "8 segments" },
         ],
         id: "CY000001",
-        href: null,
+        href: "/strain/s1",
       },
     ]);
+  });
+
+  it("leaves a Strain without a record ID unlinked", () => {
+    const [row] = describeRows("strain", [{ strain: "A/China" }]);
+    expect(row).toMatchObject({ key: "strain-0", href: null });
   });
 
   it("describes a Domain or Motif by its InterPro entry", () => {

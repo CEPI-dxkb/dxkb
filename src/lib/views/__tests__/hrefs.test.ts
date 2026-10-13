@@ -15,6 +15,8 @@ import {
   proteinStructureHref,
   serologyHref,
   serologyIdFromRow,
+  strainHref,
+  strainIdFromRow,
   surveillanceHref,
   surveillanceIdFromRow,
   taxonomyHref,
@@ -79,6 +81,20 @@ describe("Serology hrefs", () => {
     expect(serologyHref("sample/1", "ELISA/IgG test")).toBe(
       "/serology/sample%2F1?test_type=ELISA/IgG+test",
     );
+  });
+});
+
+describe("Strain hrefs", () => {
+  it("addresses the record ID, not the slash-bearing strain name", () => {
+    expect(
+      strainIdFromRow({
+        id: "018372aa-097b-4373-892b-c9930b825955",
+        strain: "A/China",
+      }),
+    ).toBe("018372aa-097b-4373-892b-c9930b825955");
+    expect(strainIdFromRow({ strain: "A/China" })).toBeNull();
+    expect(strainIdFromRow(null)).toBeNull();
+    expect(strainHref("strain/1")).toBe("/strain/strain%2F1");
   });
 });
 

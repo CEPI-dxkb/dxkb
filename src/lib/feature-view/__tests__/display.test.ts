@@ -29,6 +29,24 @@ describe("featureDisplayName", () => {
   it("uses the internal key only when nothing public is present", () => {
     expect(featureDisplayName({ feature_id: featureId })).toBe(featureId);
   });
+
+  it("skips blank identifiers", () => {
+    expect(
+      featureDisplayName({
+        feature_id: featureId,
+        patric_id: "",
+        refseq_locus_tag: "BME_RS00080",
+      }),
+    ).toBe("BME_RS00080");
+    expect(
+      featureDisplayName({
+        feature_id: featureId,
+        patric_id: " ",
+        refseq_locus_tag: "",
+        protein_id: "",
+      }),
+    ).toBe(featureId);
+  });
 });
 
 describe("featureFastaTypes", () => {

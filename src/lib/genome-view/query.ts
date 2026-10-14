@@ -1,5 +1,11 @@
-import { keywordClauses, parseRql, validateRql } from "@/lib/data-api";
+import {
+  keywordClauses,
+  parseRql,
+  serializeRql,
+  validateRql,
+} from "@/lib/data-api";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
+import { DataApiValidationError } from "@/lib/data-api/resources";
 import type { RqlExpression } from "@/lib/data-api/rql";
 import type { GenomeQueryScope } from "@/lib/services/organisms/genome-scope";
 import {
@@ -147,6 +153,21 @@ export type GenomeTaxonScope =
 // The one genome field Epitope, Surveillance and Serology records share with it.
 const taxonScopeFields: ReadonlySet<string> = new Set(["taxon_lineage_ids"]);
 
+/**
+ * A query built from validated clauses, parsed again; `undefined` when it no
+ * longer fits the parser's limits. Each clause passed on its own, but wrapping
+ * one in `and(...)` adds a nesting level, and serializing a value can lengthen
+ * it (a space becomes `%20`), so the result can be too deep or too long.
+ */
+function parseValidatedRql(rql: string): RqlExpression | undefined {
+  try {
+    return parseRql("genome", rql);
+  } catch (error) {
+    if (error instanceof DataApiValidationError) return undefined;
+    throw error;
+  }
+}
+
 function namesOnlyTaxonFields(expression: RqlExpression): boolean {
   switch (expression.operator) {
     case "keyword":
@@ -178,7 +199,8 @@ function namesOnlyTaxonFields(expression: RqlExpression): boolean {
  * - `{ supported: true }`: unscoped, so the tab lists its whole collection;
  * - `{ supported: true, rql }`: keyword and taxon clauses, in the order
  *   `genomeRelatedScope` builds them;
- * - `{ supported: false }`: the scope names a genome-only field.
+ * - `{ supported: false }`: the scope names a genome-only field, or is too
+ *   deep or too long to parse.
  */
 export function genomeTaxonScope(state: CollectionState): GenomeTaxonScope {
   const clauses = [
@@ -189,19 +211,103 @@ export function genomeTaxonScope(state: CollectionState): GenomeTaxonScope {
   ].filter((clause): clause is string => Boolean(clause));
   if (clauses.length === 0) return { supported: true };
   const rql = rqlAnd(...clauses);
-  return namesOnlyTaxonFields(parseRql("genome", rql))
+  const expression = parseValidatedRql(rql);
+  return expression && namesOnlyTaxonFields(expression)
     ? { supported: true, rql }
     : { supported: false };
 }
 
+// The operands of an expression's `and`s, nested ones flattened.
+function conjuncts(expression: RqlExpression): RqlExpression[] {
+  return expression.operator === "and"
+    ? expression.operands.flatMap(conjuncts)
+    : [expression];
+}
+
+function namesOnlyKeywords(expression: RqlExpression): boolean {
+  switch (expression.operator) {
+    case "keyword":
+      return true;
+    case "and":
+    case "or":
+      return expression.operands.every(namesOnlyKeywords);
+    case "not":
+      return namesOnlyKeywords(expression.operand);
+    default:
+      return false;
+  }
+}
+
+/**
+ * An explicit `rql` split into its genome-field and keyword clauses. Only its
+ * top-level conjuncts move, so the two parts ANDed back together match the same
+ * genomes; a conjunct that mixes keywords with genome fields under `or` or
+ * `not` cannot be split without changing that, so it stays a field clause.
+ */
+function splitRqlKeywords(expression: RqlExpression): {
+  fields: string[];
+  keywords: string[];
+} {
+  const serialize = (part: RqlExpression) => serializeRql("genome", part);
+  const parts = conjuncts(expression);
+  const keywordParts = parts.filter(namesOnlyKeywords);
+  if (keywordParts.length === 0)
+    return { fields: [serialize(expression)], keywords: [] };
+  return {
+    fields: parts
+      .filter((part) => !namesOnlyKeywords(part))
+      .map(serialize),
+    keywords: keywordParts.map(serialize),
+  };
+}
+
+/**
+ * Whether an explicit `rql` asks for private genomes (`public=false`), as the
+ * My Genomes filter does: some clause on `public` matches them, read through
+ * the `not`s around it. `eq(public,*)` and `in(public,(true,false))` count, as
+ * the filter's `public=true&public=false` does.
+ */
+function selectsPrivateGenomes(
+  expression: RqlExpression,
+  negated = false,
+): boolean {
+  switch (expression.operator) {
+    case "keyword":
+    case "genome":
+      return false;
+    case "and":
+    case "or":
+      return expression.operands.some((operand) =>
+        selectsPrivateGenomes(operand, negated),
+      );
+    case "not":
+      return selectsPrivateGenomes(expression.operand, !negated);
+    case "in":
+      return (
+        expression.field === "public" &&
+        expression.values.includes(false) !== negated
+      );
+    default: {
+      if (expression.field !== "public") return false;
+      const matchesPrivate =
+        expression.operator === "eq"
+          ? expression.value === false || expression.value === "*"
+          : expression.operator === "ne" && expression.value === true;
+      return matchesPrivate !== negated;
+    }
+  }
+}
+
 /**
  * The genomes the Overview tab summarizes: those the Genomes tab lists, so its
- * keyword and refinement clauses and its genome-field clauses (friendly filters,
- * `rql`, or the recent-genomes default of the bare list), kept apart for the
- * collections that join to genomes (`genomeLinkedScopeClauses`). `undefined`
- * for a list that includes private genomes (My Genomes, `public=false`): the
- * overview's requests are public reads, so its charts would be empty for
- * exactly the genomes the list shows.
+ * keyword and refinement clauses (including those of an explicit `rql`) and its
+ * genome-field clauses (friendly filters, `rql`, or the recent-genomes default
+ * of the bare list), kept apart for the collections that join to genomes
+ * (`genomeLinkedScopeClauses`). `undefined` for a list that includes private
+ * genomes (My Genomes, `public=false`, or an `rql` that asks for them, which
+ * replaces that filter): the overview's requests are public reads, so its
+ * charts would be empty for exactly the genomes the list shows. An `rql` too
+ * long to parse again stays one genome-field clause, unchecked.
  */
 export function genomeOverviewScope(
   state: CollectionState,
@@ -211,14 +317,20 @@ export function genomeOverviewScope(
     state.filters.public.includes("false")
   )
     return undefined;
+  const expression = state.rql ? parseValidatedRql(state.rql) : undefined;
+  if (expression && selectsPrivateGenomes(expression)) return undefined;
+  const explicit = expression
+    ? splitRqlKeywords(expression)
+    : { fields: [state.rql], keywords: [] };
   const keywords = [
     ...keywordClauses(state.keyword ?? "", "exact"),
     ...keywordClauses(state.refine ?? "", "exact"),
+    ...explicit.keywords,
   ];
   const fields = [
     genomeBaseRql(state),
     genomeStructuralRql(state),
-    state.rql,
+    ...explicit.fields,
   ].filter((clause): clause is string => Boolean(clause));
   return {
     ...(fields.length > 0 && { fieldRql: rqlAnd(...fields) }),

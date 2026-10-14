@@ -4,7 +4,7 @@ import {
   type FastaRequest,
   type FastaResource,
 } from "./fasta";
-import { maxExportRows } from "./types";
+import { maxExportRows, maxRequestBytes } from "./types";
 import type {
   CollectionRequest,
   CollectionResult,
@@ -28,8 +28,45 @@ export class DataRepositoryError extends Error {
   }
 }
 
-const maxExportRetries = 3;
+const maxRateLimitRetries = 3;
 const defaultRetryDelayMs = 1_000;
+
+const encoder = new TextEncoder();
+
+function jsonBytes(value: unknown): number {
+  return encoder.encode(JSON.stringify(value)).length;
+}
+
+/**
+ * The FASTA route's request bodies for `request`, in order: at most
+ * `maxFastaIds` ids each, and at most `maxRequestBytes` serialized. Long ids
+ * reach the byte cap first (a feature id runs to 60-odd characters, and the
+ * route admits up to 1,000), so counting ids alone would draw a 413. Repeats
+ * are dropped first: the route drops them within one request, but an id whose
+ * repeats fell in different batches would be in the file twice.
+ */
+function fastaBodies(request: FastaRequest): string[] {
+  const emptyBytes = jsonBytes({ type: request.type, ids: [] });
+  const batches: string[][] = [];
+  let batch: string[] = [];
+  let bytes = emptyBytes;
+  for (const id of new Set(request.ids)) {
+    const idBytes = jsonBytes(id);
+    if (
+      batch.length === maxFastaIds ||
+      (batch.length > 0 && bytes + 1 + idBytes > maxRequestBytes)
+    ) {
+      batches.push(batch);
+      batch = [];
+      bytes = emptyBytes;
+    }
+    // A comma before every id but the first.
+    bytes += idBytes + (batch.length > 0 ? 1 : 0);
+    batch.push(id);
+  }
+  if (batch.length > 0) batches.push(batch);
+  return batches.map((ids) => JSON.stringify({ type: request.type, ids }));
+}
 
 function retryDelay(response: Response): number | undefined {
   const header = response.headers.get("Retry-After");
@@ -63,6 +100,34 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
     }, ms);
     signal.addEventListener("abort", onAbort, { once: true });
   });
+}
+
+/**
+ * `attempt`, retried when the gateway answers 429: after its `Retry-After`, or
+ * an exponential backoff without one, up to `maxRateLimitRetries` times. Any
+ * other error, and the last 429, is thrown as it came.
+ */
+async function retryRateLimited<T>(
+  attempt: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  let retries = 0;
+  for (;;) {
+    try {
+      return await attempt();
+    } catch (error) {
+      if (!(error instanceof DataRepositoryError) || error.status !== 429) {
+        throw error;
+      }
+      if (retries >= maxRateLimitRetries) {
+        throw error;
+      }
+      const delay =
+        error.retryAfterMs ?? defaultRetryDelayMs * Math.pow(2, retries);
+      retries += 1;
+      await wait(delay, signal);
+    }
+  }
 }
 
 /** The gateway's `{error, code}` body as a `DataRepositoryError`. */
@@ -153,10 +218,9 @@ export class DataRepository {
     request: Omit<ExportRequest, "operation" | "limit" | "offset">,
     signal?: AbortSignal,
   ): Promise<RowsResult<T>> {
-    let retries = 0;
-    for (;;) {
-      try {
-        return await this.export<T>(
+    return retryRateLimited(
+      () =>
+        this.export<T>(
           resource,
           {
             ...request,
@@ -164,28 +228,19 @@ export class DataRepository {
             offset: 0,
           },
           signal,
-        );
-      } catch (error) {
-        if (!(error instanceof DataRepositoryError) || error.status !== 429) {
-          throw error;
-        }
-        if (retries >= maxExportRetries) {
-          throw error;
-        }
-        const delay =
-          error.retryAfterMs ?? defaultRetryDelayMs * Math.pow(2, retries);
-        retries += 1;
-        await wait(delay, signal);
-      }
-    }
+        ),
+      signal,
+    );
   }
 
   /**
-   * FASTA for any number of ids, as one file. Lists longer than
-   * `maxFastaIds` go out as consecutive requests (sequential, so a large
-   * selection cannot burst through the route's rate limit) and are joined
-   * record-aligned. An empty `Blob` means nothing matched or no record had a
-   * sequence of this type; the caller decides how to say so.
+   * FASTA for any number of ids, as one file. Lists longer than one request
+   * holds (`fastaBodies`) go out as consecutive requests (sequential, so a
+   * large selection cannot burst through the route's rate limit) and are
+   * joined record-aligned. A batch the rate limit refuses is retried after its
+   * `Retry-After`, so the batches already fetched are not lost. An empty
+   * `Blob` means nothing matched or no record had a sequence of this type; the
+   * caller decides how to say so.
    */
   async fasta(
     resource: FastaResource,
@@ -193,19 +248,18 @@ export class DataRepository {
     signal?: AbortSignal,
   ): Promise<Blob> {
     const parts: string[] = [];
-    for (let start = 0; start < request.ids.length; start += maxFastaIds) {
-      const response = await fetch(`${this.basePath}/${resource}/fasta`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: request.type,
-          ids: request.ids.slice(start, start + maxFastaIds),
-        }),
-        signal,
-      });
-      if (!response.ok) throw await responseError(response);
-      const text = await response.text();
+    for (const body of fastaBodies(request)) {
+      const text = await retryRateLimited(async () => {
+        const response = await fetch(`${this.basePath}/${resource}/fasta`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body,
+          signal,
+        });
+        if (!response.ok) throw await responseError(response);
+        return response.text();
+      }, signal);
       // A part that does not end in a newline would glue its last sequence
       // line onto the next part's first `>` header.
       if (text) parts.push(text.endsWith("\n") ? text : `${text}\n`);

@@ -12,13 +12,12 @@ import { validateRql } from "./rql";
 import { maxExportRows } from "./types";
 import type { DataApiRequest, DataResource, DataSort } from "./types";
 
-export { maxExportRows } from "./types";
+export { maxExportRows, maxRequestBytes } from "./types";
 
 export const pageSize = 200;
 export const maxSelectedRows = 500;
 export const maxFields = 200;
 export const maxIdentifierLength = 1_000;
-export const maxRequestBytes = 32_000;
 
 const fieldListSchema = z.array(z.string().min(1).max(128)).max(maxFields);
 const sortSchema = z.object({

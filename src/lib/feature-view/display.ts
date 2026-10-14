@@ -5,14 +5,14 @@ import type { FeatureViewRecord } from "./schema";
  * The identifier a person recognizes a feature by. `feature_id`
  * (`PATRIC.644340.17.JAEUGC010000001.CDS.12314.12580.rev`) is the Solr key —
  * it addresses the page but is never how a user names a gene — so it is the
- * last resort, for a record that carries none of the public identifiers.
+ * last resort, for a record that carries none of the public identifiers. A
+ * blank identifier counts as absent, or it would title the page with nothing.
  */
 export function featureDisplayName(feature: FeatureViewRecord): string {
   return (
-    feature.patric_id ??
-    feature.refseq_locus_tag ??
-    feature.protein_id ??
-    feature.feature_id
+    [feature.patric_id, feature.refseq_locus_tag, feature.protein_id].find(
+      (id): id is string => Boolean(id?.trim()),
+    ) ?? feature.feature_id
   );
 }
 

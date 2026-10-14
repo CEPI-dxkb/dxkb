@@ -504,8 +504,11 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   reason rather than listing more than the Genomes tab covers.
   `?tab=overview` renders the Taxonomy page's genome sections (map, reference genomes,
   metadata distributions, and AMR when the genomes have AMR records) for the Genomes
-  tab's effective query (`genomeOverviewRql`), server-side and only on that tab. Its
-  requests are public reads, so a list with `public=false` disables it.
+  tab's effective query (`genomeOverviewScope`), server-side and only on that tab. The
+  scope keeps keyword clauses, an explicit `rql`'s top-level ones included, apart from
+  genome-field clauses, because AMR joins the latter through `genome(...)` and rejects a
+  `keyword(...)` inside it. Its requests are public reads, so a list with `public=false`,
+  or an `rql` that selects private genomes, disables it.
   `/feature` has no implicit genome scope: its old recent-genome `genome()` join was a
   cross-collection Solr join costing 40–120 s per keyword query. It does select legacy
   FeatureList's removable `annotation=PATRIC` default (§2.8), and while that default is

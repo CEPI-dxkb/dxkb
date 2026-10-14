@@ -1,6 +1,12 @@
 import type { z } from "zod";
 
 export const maxExportRows = 10_000;
+/**
+ * The largest request body (and, on GET, URL) the `/api/data` routes admit, in
+ * bytes. Here rather than in `./validation` so the browser client can size its
+ * requests without bundling the validators.
+ */
+export const maxRequestBytes = 32_000;
 
 export const dataResources = [
   "taxonomy",

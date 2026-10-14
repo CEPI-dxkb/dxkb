@@ -448,6 +448,17 @@ describe("genomeTaxonScope", () => {
       supported: false,
     });
   });
+
+  it("is unsupported when the combined query is too deep to parse", () => {
+    let rql = "eq(taxon_lineage_ids,561)";
+    for (let level = 0; level < 12; level++) rql = `not(${rql})`;
+    const state = parseGenomeCollectionState({ rql });
+    // The rql alone parses, and names only the taxon lineage.
+    expect(genomeTaxonScope(state)).toEqual({ supported: true, rql });
+    expect(genomeTaxonScope({ ...state, keyword: "coli" })).toEqual({
+      supported: false,
+    });
+  });
 });
 
 describe("genomeOverviewScope", () => {
@@ -487,9 +498,69 @@ describe("genomeOverviewScope", () => {
     });
   });
 
+  it("keeps the keyword clauses of an explicit rql apart", () => {
+    expect(genomeOverviewScope({ ...bare, rql: "keyword(coli)" })).toEqual({
+      keywordRql: "keyword(coli)",
+    });
+    expect(
+      genomeOverviewScope({
+        ...bare,
+        keyword: "pseudomonas",
+        rql: "and(and(eq(genome_status,Complete),keyword(coli)),or(keyword(a),not(keyword(b))))",
+      }),
+    ).toEqual({
+      fieldRql: "eq(genome_status,Complete)",
+      keywordRql:
+        "and(keyword(pseudomonas),keyword(coli),or(keyword(a),not(keyword(b))))",
+    });
+  });
+
+  it("keeps a clause mixing keywords and genome fields whole", () => {
+    // Splitting `or` or `not` would change which genomes match.
+    const rql = "or(keyword(coli),eq(genome_status,Complete))";
+    expect(genomeOverviewScope({ ...bare, rql })).toEqual({ fieldRql: rql });
+    expect(
+      genomeOverviewScope({
+        ...bare,
+        rql: `and(${rql},keyword(salmonella))`,
+      }),
+    ).toEqual({ fieldRql: rql, keywordRql: "keyword(salmonella)" });
+  });
+
   it("is unavailable for a list that includes private genomes", () => {
     expect(
       genomeOverviewScope({ ...bare, filters: { public: ["false"] } }),
     ).toBeUndefined();
+  });
+
+  it.each([
+    "eq(public,false)",
+    "eq(public,*)",
+    "ne(public,true)",
+    "in(public,(true,false))",
+    "not(eq(public,true))",
+    "not(ne(public,*))",
+    "and(eq(genome_status,Complete),or(keyword(coli),eq(public,false)))",
+  ])("is unavailable for an rql that selects private genomes: %s", (rql) => {
+    expect(genomeOverviewScope({ ...bare, rql })).toBeUndefined();
+  });
+
+  it.each([
+    "eq(public,true)",
+    "ne(public,false)",
+    "in(public,(true))",
+    "not(eq(public,false))",
+    "not(in(public,(true,false)))",
+  ])("stays available for an rql of public genomes: %s", (rql) => {
+    expect(genomeOverviewScope({ ...bare, rql })).toEqual({ fieldRql: rql });
+  });
+
+  it("keeps an rql whole when validation grew it past the parse limit", () => {
+    // Each space serializes as `%20`, so this validates to over 8,000 characters.
+    const state = parseGenomeCollectionState({
+      rql: `eq(genome_name,${"a b ".repeat(1100).trim()})`,
+    });
+    expect(state.rql?.length).toBeGreaterThan(8000);
+    expect(genomeOverviewScope(state)).toEqual({ fieldRql: state.rql });
   });
 });

@@ -1,605 +1,291 @@
 "use client";
 
-import React, { Suspense } from "react";
-import Link from "next/link";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  timeZone: "UTC",
-});
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Dna, Bug, Microscope, Activity, Database } from "lucide-react";
 import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
+import Footer from "@/components/footers/footer";
+import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
+import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
+import { LandingNavSkeleton } from "@/components/organisms/landing-shell/landing-nav-skeleton";
+import { SearchResultsHeader } from "@/components/search/all-types/search-results-header";
 import {
-  getResourceDefinition,
-  isDataResource,
-  keywordClauses,
-} from "@/lib/data-api";
-import { keywordQuery } from "@/lib/data-api/keyword-terms";
-import ResultsOverview from "@/components/search/results-overview";
+  TypeResultsCard,
+  moveResultFocus,
+  searchTypeIcon,
+} from "@/components/search/all-types/type-results-card";
 import {
-  allTermSearchTypes,
-  labelsBySearchType,
-  searchHref,
-} from "@/constants/search-info";
+  sectionAnchorId,
+  useSectionNav,
+} from "@/components/search/all-types/use-section-nav";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import {
-  epitopeHref,
-  epitopeIdFromRow,
-  experimentHref,
-  experimentIdFromRow,
-  featureHref,
-  featureIdFromRow,
-  genomeHref,
-  proteinStructureHref,
-  serologyHref,
-  serologyIdFromRow,
-  surveillanceHref,
-  surveillanceIdFromRow,
-  taxonomyHref,
-} from "@/lib/views/hrefs";
-import { isTaxonId } from "@/lib/taxonomy-view";
-import { rqlAnd } from "@/lib/views/rql";
-
-const bvbrcAPI = "https://p3.theseed.org/services/data_api/";
-
-interface BVBRCAPIResponse {
-  result: {
-    response: {
-      docs: unknown[];
-      numFound: number;
-      maxScore: number;
-      numFoundExact: boolean;
-    };
-  };
-}
-
-type SearchResults = Record<string, BVBRCAPIResponse>;
-
-const allTermSearchTypesById = new Map(
-  allTermSearchTypes.map((searchType) => [searchType.id, searchType]),
-);
-
-function getSearchResultsHref(dataType: string, query: string): string | null {
-  const searchType = allTermSearchTypesById.get(dataType);
-  return searchType?.route.status === "canonical"
-    ? searchHref(searchType, query)
-    : null;
-}
+  allTypesSearchQueryOptions,
+  formatCompact,
+  formatCount,
+  toAllTypesResults,
+} from "@/lib/search/all-types-search";
+import { cn } from "@/lib/utils";
 
 /**
- * The counts for `keyword` (normalized text, as the links carry it), each
- * built as the exact lists build their `?keyword=` (`keywordClauses`), so a
- * count is the total the list it links to shows.
+ * A concave corner in the page's color, under one bottom corner of the pinned
+ * header: a card scrolled under the header is cut by its straight lower edge,
+ * and these round the cut to the cards' own radius (`--radius`, `rounded-lg`),
+ * the curve of the header above. They reach 4 units past the card's edge to
+ * cover its side shadow along the curve. Over the gap between cards they match
+ * the page and do not show.
  */
-async function fetchSearchResults(keyword: string): Promise<SearchResults> {
-  const searchPayload: Record<string, unknown> = {};
-  const processedQuery = rqlAnd(...keywordClauses(keyword, "exact"));
-
-  allTermSearchTypes.forEach(({ id: searchType }) => {
-    let typeQuery = processedQuery;
-    switch (searchType) {
-      case "genome_feature":
-        typeQuery += "&ne(annotation,brc1)&ne(feature_type,source)";
-        break;
-      case "taxonomy":
-        typeQuery += "&gt(genomes,1)";
-        break;
-    }
-
-    typeQuery +=
-      searchType === "genome_feature"
-        ? "&limit(3)&sort(+annotation,-score)"
-        : "&limit(3)&sort(-score)";
-    // A whole Genome Sequence doc carries the full `sequence`: three preview
-    // rows can be whole chromosomes, 99% of a 12 MB response.
-    if (searchType === "genome_sequence")
-      typeQuery +=
-        "&select(sequence_id,genome_id,genome_name,accession,description)";
-
-    searchPayload[searchType] = {
-      dataType: searchType,
-      accept: "application/solr+json",
-      query: typeQuery,
-    };
-  });
-
-  const response = await fetch(bvbrcAPI + "query/", {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(searchPayload),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Search request failed with status ${String(response.status)}`,
-    );
-  }
-
-  return (await response.json()) as SearchResults;
-}
-
-/** The ID fields of the search types the data layer has no resource for. */
-const legacyTypeIdFields: Partial<Record<string, string>> = {
-  antibiotics: "pubchem_cid",
-  pathway: "id",
-  sp_gene: "id",
-  subsystem: "id",
-};
-
-/**
- * A result row's React key: its type's own ID (the resource's `idField`),
- * never a field rows share. A Feature doc has no `id`, and the preview's three
- * features can come from one genome ("kinase" returns two of 2993654.5's).
- */
-function documentKey(
-  doc: Record<string, unknown>,
-  dataType: string,
-  index: number,
-): string {
-  const idField =
-    legacyTypeIdFields[dataType] ??
-    (isDataResource(dataType) ? getResourceDefinition(dataType).idField : "id");
-  const id = doc[idField];
-  return typeof id === "string" || typeof id === "number"
-    ? String(id)
-    : `row-${String(index)}`;
-}
-
-// Helper function to get the appropriate icon for each data type
-function getDataTypeIcon(dataType: string) {
-  switch (dataType) {
-    case "genome":
-      return <Dna className="size-5" />;
-    case "genome_feature":
-      return <Bug className="size-5" />;
-    case "surveillance":
-      return <Activity className="size-5" />;
-    case "genome_sequence":
-      return <Database className="size-5" />;
-    default:
-      return <Microscope className="size-5" />;
-  }
-}
-
-// Helper to render unknown as React node
-function R(x: unknown): React.ReactNode {
-  return x as React.ReactNode;
-}
-
-// Helper function to format the content based on data type
-function getFormattedContent(doc: Record<string, unknown>, dataType: string) {
-  switch (dataType) {
-    case "antibiotics":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.antibiotic_name)}</h3>
-          <div className="search-result-metadata">
-            <p
-              dangerouslySetInnerHTML={{
-                __html: String(
-                  (Array.isArray(doc.description)
-                    ? doc.description[0]
-                    : doc.description) ?? "",
-                ),
-              }}
-              className="search-result-description"
-            />
-          </div>
-        </>
-      );
-    case "epitope":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.epitope_id)} | {R(doc.epitope_sequence)}
-          </h3>
-          <div className="search-result-metadata">
-            <p>{R(doc.protein_name)}</p>
-            <p>{R(doc.organism)}</p>
-          </div>
-        </>
-      );
-    case "experiment":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.exp_name)} | {R(doc.exp_id)}
-          </h3>
-          <div className="search-result-description">
-            <p>{R(doc.exp_description)}</p>
-          </div>
-        </>
-      );
-    case "genome":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.genome_name)}</h3>
-          <div className="search-result-metadata">
-            <p>
-              Genome ID: {R(doc.genome_id)} | {R(doc.contigs)} Contigs
-            </p>
-            <p>
-              SEQUENCED:{" "}
-              {doc.completion_date != null
-                ? dateFormatter.format(new Date(doc.completion_date as string))
-                : ""}{" "}
-              {doc.sequencing_centers
-                ? `by ${Array.isArray(doc.sequencing_centers) ? (doc.sequencing_centers as string[]).join(", ") : (doc.sequencing_centers as string)}`
-                : ""}
-            </p>
-            {doc.collection_date != null && (
-              <p>COLLECTED: {R(doc.collection_date)}</p>
-            )}
-            {doc.host_name != null && <p>HOST: {R(doc.host_name)}</p>}
-            {Array.isArray(doc.comments) &&
-              doc.comments.map((comment: unknown) => (
-                <p key={String(comment)} className="mt-2 italic">
-                  {R(comment)}
-                </p>
-              ))}
-          </div>
-        </>
-      );
-    case "genome_feature":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.product) || R(doc.feature_type)}{" "}
-            {doc.gene != null && ` | ${doc.gene as string}`}
-          </h3>
-          <div className="search-result-metadata">
-            <p>{R(doc.genome_name)}</p>
-            <p>
-              {R(doc.annotation)} | {R(doc.feature_type)} | {R(doc.patric_id)}
-            </p>
-          </div>
-        </>
-      );
-    case "genome_sequence":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.genome_name)}</h3>
-          <div className="search-result-description">
-            <p>
-              {" "}
-              {R(doc.accession)} | {R(doc.description)}{" "}
-            </p>
-          </div>
-        </>
-      );
-    case "pathway":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.pathway_name)}</h3>
-          <div className="search-result-metadata">
-            <p>
-              {R(doc.product)} | {R(doc.patric_id)}
-            </p>
-            <p>{R(doc.genome_name)}</p>
-          </div>
-        </>
-      );
-    case "protein_feature":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.source)} | {R(doc.description)}
-          </h3>
-          <div className="search-result-metadata">
-            <p>{R(doc.genome_name)}</p>
-            <p>
-              {R(doc.patric_id)} | {R(doc.refseq_locus_tag)}
-            </p>
-          </div>
-        </>
-      );
-    case "protein_structure":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.pdb_id)} | {R(doc.title)}
-          </h3>
-          <div className="search-result-metadata">
-            {Array.isArray(doc.organism_name) &&
-              doc.organism_name.map((name: unknown) => (
-                <p key={String(name)}>{R(name)}</p>
-              ))}
-          </div>
-        </>
-      );
-    case "serology":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.sample_identifier)} | {R(doc.host_identifier)}
-          </h3>
-          <div className="search-result-metadata">
-            <p>
-              {R(doc.host_common_name)} | {R(doc.collection_country)} |{" "}
-              {R(doc.host_health)}
-            </p>
-          </div>
-        </>
-      );
-    case "sp_gene":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.product)}</h3>
-          <div className="search-result-metadata">
-            <p>{R(doc.genome_name)}</p>
-            <p>
-              {R(doc.patric_id)} | {R(doc.source)} | {R(doc.evidence)}
-            </p>
-          </div>
-        </>
-      );
-    case "strain":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.strain)}</h3>
-          <div className="search-result-metadata">
-            <p>{R(doc.species)}</p>
-          </div>
-        </>
-      );
-    case "subsystem":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.subsystem_name)}</h3>
-          <div className="search-result-metadata">
-            <p>
-              {R(doc.product)} | {R(doc.patric_id)}
-            </p>
-            <p>{R(doc.genome_name)}</p>
-          </div>
-        </>
-      );
-    case "surveillance":
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.sample_identifier)} | {R(doc.host_identifier)}
-          </h3>
-          <div className="search-result-metadata">
-            <p>
-              ENV | {R(doc.collection_country)} |{" "}
-              {doc.collection_date != null
-                ? new Date(doc.collection_date as string | number).getFullYear()
-                : ""}
-            </p>
-          </div>
-        </>
-      );
-    case "taxonomy":
-      return (
-        <>
-          <h3 className="search-result-header">{R(doc.taxon_name)}</h3>
-          <div className="search-result-metadata">
-            <p>{R(doc.genomes)} Genomes</p>
-            <p>Taxon ID: {R(doc.taxon_id)}</p>
-          </div>
-        </>
-      );
-    default:
-      return (
-        <>
-          <h3 className="search-result-header">
-            {R(doc.name) || R(doc.id) || "Untitled"}
-          </h3>
-          {doc.description != null && (
-            <p className="search-result-description">{R(doc.description)}</p>
-          )}
-        </>
-      );
-  }
-}
-
-function SearchResultsContent({ query }: { query: string }) {
-  // The text as the links write it (`searchHref`), legacy's normalization.
-  const keyword = normalizeLegacyKeyword(query);
-  const {
-    data: searchResults = {},
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["all-term-search-results", keyword],
-    queryFn: () => fetchSearchResults(keyword),
-    // Text without terms (blank, `""`, a lone `OR`, only syntax) is no search:
-    // it would build an empty and(), which the Data API rejects.
-    enabled: keywordQuery(keyword).length > 0,
-    retry: false,
-    staleTime: 0,
-  });
-
-  // Filter out empty results and sort by numFound
-  const validResults = Object.entries(searchResults)
-    .filter(([_, data]) => data.result.response.numFound > 0)
-    .sort(
-      ([_, a], [__, b]) =>
-        b.result.response.numFound - a.result.response.numFound,
-    );
-
-  // Add this before the return statement
-
+function HeaderFillet({ side }: { side: "left" | "right" }) {
+  const corner = "M-4 0H10A10 10 0 0 0 0 10H-4Z";
   return (
-    <div className="container mx-auto px-4 py-8">
-      {isLoading ? (
-        <div className="py-20 text-center">
-          <p className="text-muted-foreground">Loading results...</p>
-        </div>
-      ) : isError ? (
-        <div className="py-20 text-center" role="alert">
-          <h2 className="mb-4 text-2xl font-medium">Search unavailable</h2>
-          <p className="text-muted-foreground">
-            Search results could not be loaded. Please try again.
-          </p>
-        </div>
-      ) : validResults.length === 0 ? (
-        <>
-          <ResultsOverview
-            isLoading={isLoading}
-            searchResults={searchResults}
-            labelsByType={labelsBySearchType}
-          />
-          <div className="py-20 text-center">
-            <h2 className="mb-4 text-2xl font-medium">No results found</h2>
-            <p className="text-muted-foreground">
-              Try different search terms or filters
-            </p>
-          </div>
-        </>
-      ) : (
-        <>
-          <ResultsOverview
-            isLoading={isLoading}
-            searchResults={searchResults}
-            labelsByType={labelsBySearchType}
-          />
-
-          <div className="space-y-8">
-            {validResults.map(([dataType, data]) => {
-              const docs = data.result.response.docs;
-              const numFound = data.result.response.numFound;
-              const searchResultsHref = getSearchResultsHref(
-                dataType,
-                keyword,
-              );
-
-              if (numFound === 0) return null;
-
-              return (
-                <Card
-                  key={dataType}
-                  variant="raised"
-                  className="gap-0 px-4 py-0"
-                >
-                  <CardHeader className="flex flex-row items-center justify-between border-b p-6">
-                    <div className="flex items-center gap-2">
-                      {getDataTypeIcon(dataType)}
-                      <CardTitle variant="section">
-                        <span className="capitalize">
-                          {searchResultsHref ? (
-                            <Link href={searchResultsHref}>
-                              {labelsBySearchType[dataType]}
-                            </Link>
-                          ) : (
-                            labelsBySearchType[dataType]
-                          )}
-                        </span>
-                      </CardTitle>
-                    </div>
-                    <Badge variant="count" className="h-8 max-w-fit min-w-8">
-                      {numFound}
-                    </Badge>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="divide-y">
-                      {docs.map((docUnknown, index) => {
-                        const doc = docUnknown as Record<string, unknown>;
-                        const genomeId =
-                          typeof doc.genome_id === "string" ||
-                          typeof doc.genome_id === "number"
-                            ? doc.genome_id
-                            : null;
-                        const featureId = featureIdFromRow(doc);
-                        const epitopeId = epitopeIdFromRow(doc);
-                        const experimentId = experimentIdFromRow(doc);
-                        const surveillanceId = surveillanceIdFromRow(doc);
-                        const serologyId = serologyIdFromRow(doc);
-                        const testType =
-                          typeof doc.test_type === "string"
-                            ? doc.test_type
-                            : undefined;
-                        const pathogenTestTypes = Array.isArray(
-                          doc.pathogen_test_type,
-                        )
-                          ? doc.pathogen_test_type.filter(
-                              (value): value is string =>
-                                typeof value === "string",
-                            )
-                          : typeof doc.pathogen_test_type === "string"
-                            ? [doc.pathogen_test_type]
-                            : [];
-                        const taxonId =
-                          typeof doc.taxon_id === "string" ||
-                          typeof doc.taxon_id === "number"
-                            ? doc.taxon_id
-                            : null;
-                        const content = getFormattedContent(doc, dataType);
-                        const href =
-                          dataType === "taxonomy" && isTaxonId(String(taxonId))
-                            ? taxonomyHref(String(taxonId))
-                            : dataType === "genome" && genomeId != null
-                            ? genomeHref(genomeId)
-                            : dataType === "genome_feature" && featureId
-                              ? featureHref(featureId)
-                              : dataType === "epitope" && epitopeId
-                                ? epitopeHref(epitopeId)
-                                : dataType === "experiment" && experimentId
-                                  ? experimentHref(experimentId)
-                                : dataType === "protein_structure" &&
-                                    (typeof doc.pdb_id === "string" ||
-                                      typeof doc.pdb_id === "number")
-                                  ? proteinStructureHref(doc.pdb_id)
-                                  : dataType === "surveillance" && surveillanceId
-                                    ? surveillanceHref(
-                                        surveillanceId,
-                                        pathogenTestTypes.length === 1
-                                          ? pathogenTestTypes[0]
-                                          : undefined,
-                                      )
-                                    : dataType === "serology" && serologyId
-                                      ? serologyHref(serologyId, testType)
-                                      : null;
-                        return (
-                          <div
-                            key={documentKey(doc, dataType, index)}
-                            className="py-6"
-                          >
-                            {href ? (
-                              <Link href={href} className="block">
-                                {content}
-                              </Link>
-                            ) : (
-                              content
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </>
+    <svg
+      aria-hidden
+      viewBox="0 0 10 10"
+      className={cn(
+        "pointer-events-none absolute top-full size-(--radius) overflow-visible",
+        side === "left" ? "left-2" : "right-2 -scale-x-100",
       )}
-    </div>
+    >
+      <path d={corner} className="fill-background" />
+      <path d={corner} className="fill-muted/30" />
+    </svg>
   );
 }
 
 interface SearchResultsProps {
-  query: string; // 👈 required
+  /** The search text (`q`). */
+  query: string;
+  /**
+   * Keep the header at the top while the results scroll under it, until the
+   * site footer at the page's end pushes it up. With `false` the header
+   * scrolls away with the results; the Data types rail stays pinned either way.
+   */
+  pinnedHeader?: boolean;
 }
 
-export function SearchResults({ query }: SearchResultsProps) {
-  return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto px-4 py-8">
-          Loading search results...
-        </div>
+/**
+ * The all-data-types results (`/search?type=everything&q=…`): a Data types rail
+ * that jumps to each type, a header with the best-matching taxon, and one
+ * foldable card per type with matches.
+ */
+export function SearchResults({
+  query,
+  pinnedHeader = true,
+}: SearchResultsProps) {
+  // The text as the links write it (`searchHref`), legacy's normalization.
+  const keyword = normalizeLegacyKeyword(query);
+  const { data, isLoading, error } = useQuery(
+    allTypesSearchQueryOptions(keyword),
+  );
+  const { types, total, bestMatch } = toAllTypesResults(data, keyword);
+  const found = types.filter((type) => type.count > 0);
+  const ready = !isLoading && !error;
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const { collapsed, toggle } = useViewNavCollapsed();
+  const [closed, setClosed] = useState<ReadonlySet<string>>(new Set());
+  // Results are scrolled under the pinned header.
+  const [scrolled, setScrolled] = useState(false);
+  const nav = useSectionNav({
+    ref: scrollRef,
+    topInset: pinnedHeader ? headerRef : undefined,
+    offset: pinnedHeader ? 0 : 16,
+    ids: ready ? found.map((type) => type.id) : [],
+  });
+
+  const setOpen = (id: string, open: boolean) => {
+    const next = new Set(closed);
+    if (open) next.delete(id);
+    else next.add(id);
+    setClosed(next);
+  };
+
+  // A folded type opens first, and is scrolled to once it has laid out.
+  const select = (id: string) => {
+    if (!closed.has(id)) {
+      nav.select(id);
+      return;
+    }
+    setOpen(id, true);
+    requestAnimationFrame(() => {
+      nav.select(id);
+    });
+  };
+
+  const allClosed = found.length > 0 && found.every((type) => closed.has(type.id));
+
+  const navItems = types.map((type) => ({
+    key: type.id,
+    label: type.label,
+    icon: searchTypeIcon(type.id),
+    count: formatCompact(type.count),
+    enabled: type.count > 0,
+    disabledReason: type.count > 0 ? undefined : "No matches",
+  }));
+
+  const mobileNav =
+    ready && found.length > 0 ? (
+      <div className="lg:hidden">
+        <LandingMobileNav
+          items={navItems}
+          activeView={nav.active ?? ""}
+          title="Data types"
+          onChange={select}
+        />
+      </div>
+    ) : null;
+
+  const rail = isLoading ? (
+    <div className="hidden pt-4 lg:block">
+      <LandingNavSkeleton />
+    </div>
+  ) : error ? null : (
+    <div className="hidden pt-4 lg:block">
+      <LandingNav
+        items={navItems}
+        activeView={nav.active ?? ""}
+        ariaLabel="Data types"
+        title="Data types"
+        toggleLabel="data type navigation"
+        collapsed={collapsed}
+        onChange={select}
+        onCollapseToggle={toggle}
+      />
+    </div>
+  );
+
+  const header = (
+    <SearchResultsHeader
+      keyword={keyword}
+      summary={
+        isLoading
+          ? "Searching every DXKB data type…"
+          : error
+            ? "Search unavailable"
+            : found.length === 0
+              ? "No records in any DXKB data type"
+              : `${formatCount(total)} records across ${String(found.length)} data type${found.length === 1 ? "" : "s"}`
       }
+      bestMatch={ready ? bestMatch : null}
+      raised={pinnedHeader && scrolled}
+      actions={
+        ready && found.length > 0 ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setClosed(
+                allClosed ? new Set() : new Set(found.map((type) => type.id)),
+              );
+            }}
+          >
+            {allClosed ? <ChevronsUpDown /> : <ChevronsDownUp />}
+            {allClosed ? "Expand all" : "Collapse all"}
+          </Button>
+        ) : null
+      }
+    />
+  );
+
+  const results = isLoading ? (
+    Array.from({ length: 3 }, (_, index) => (
+      <Skeleton key={index} className="h-64 w-full rounded-lg" />
+    ))
+  ) : error ? (
+    <Alert variant="destructive">
+      <AlertTitle>Search results could not be loaded</AlertTitle>
+      <AlertDescription>{error.message}</AlertDescription>
+    </Alert>
+  ) : found.length === 0 ? (
+    <Card variant="raised" className="px-6 py-12">
+      <div className="text-center">
+        <h2 className="text-lg font-semibold">No results found</h2>
+        <p className="text-sm text-muted-foreground">
+          No DXKB data type matches &ldquo;{keyword}&rdquo;. Try different
+          search terms.
+        </p>
+      </div>
+    </Card>
+  ) : (
+    found.map((type) => (
+      // The scroll target, outlined for a moment when the rail jumps to it:
+      // inside its edge, which can sit right under the pinned header, and on
+      // an overlay, which paints over the table's positioned scroll area (an
+      // outline on the target itself paints under it, and under its header
+      // row's fill).
+      <div
+        key={type.id}
+        id={sectionAnchorId(type.id)}
+        className="relative rounded-lg after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:outline-2 after:-outline-offset-2 after:outline-transparent after:transition-colors after:duration-500 data-flash:after:outline-secondary"
+      >
+        <TypeResultsCard
+          type={type}
+          open={!closed.has(type.id)}
+          onOpenChange={(open) => {
+            setOpen(type.id, open);
+          }}
+        />
+      </div>
+    ))
+  );
+
+  // Rendered here, not passed in by the (server) page: passed in as a
+  // server-rendered element, it made the React DevTools extension log "The
+  // children should not have changed if we pass in the same set" on every load.
+  const footer = <Footer />;
+
+  // One scroll area, the footer spanning its end. `relative` keeps the
+  // footer's absolutely positioned parts inside it; outside, they would
+  // stretch the page past the viewport.
+  return (
+    <div
+      ref={scrollRef}
+      onScroll={(event) => {
+        setScrolled(event.currentTarget.scrollTop > 0);
+      }}
+      className="scrollbar-themed relative flex min-h-0 flex-1 flex-col overflow-y-auto bg-muted/30"
     >
-      <SearchResultsContent query={query} />
-    </Suspense>
+      {mobileNav}
+      <div className="flex w-full flex-1 gap-3 px-2 pb-8 sm:px-3 lg:px-4">
+        {rail}
+        <div className="min-w-0 flex-1">
+          {/* Pinned, it is opaque in the page's own color (the page's tint
+              over the body background), so results scroll out of sight
+              under it, and 8px wider than the column on each side, so their
+              shadows do too. Its 6px foot is the gap left above a section
+              jumped to; at rest the results' own 6px margin doubles it to the
+              12px between cards. */}
+          <div
+            ref={headerRef}
+            className={cn(
+              pinnedHeader && "sticky top-0 z-10 -mx-2 bg-background",
+            )}
+          >
+            <div
+              className={cn("pt-4 pb-1.5", pinnedHeader && "bg-muted/30 px-2")}
+            >
+              {header}
+            </div>
+            {pinnedHeader && scrolled ? (
+              <>
+                <HeaderFillet side="left" />
+                <HeaderFillet side="right" />
+              </>
+            ) : null}
+          </div>
+          <div className="mt-1.5 space-y-3" onKeyDown={moveResultFocus}>
+            {results}
+          </div>
+        </div>
+      </div>
+      {footer}
+    </div>
   );
 }

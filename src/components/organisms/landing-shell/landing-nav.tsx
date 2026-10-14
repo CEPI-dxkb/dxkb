@@ -19,6 +19,10 @@ interface LandingNavProps<Key extends string = OrganismViewKey> {
   items: readonly OrganismLandingNavItem<Key>[];
   activeView: Key;
   ariaLabel?: string;
+  /** The rail's heading. */
+  title?: string;
+  /** What the collapse button names: "Collapse view navigation". */
+  toggleLabel?: string;
   collapsed: boolean;
   onChange: (view: Key) => void;
   onCollapseToggle: () => void;
@@ -28,6 +32,8 @@ export function LandingNav<Key extends string>({
   items,
   activeView,
   ariaLabel = "Organism views",
+  title = "Views",
+  toggleLabel = "view navigation",
   collapsed,
   onChange,
   onCollapseToggle,
@@ -51,7 +57,7 @@ export function LandingNav<Key extends string>({
       <div className="flex items-center justify-between gap-2 p-2.5">
         {!collapsed && (
           <h2 className="truncate pl-2 text-sm font-semibold text-muted-foreground">
-            Views
+            {title}
           </h2>
         )}
         <Tooltip>
@@ -61,11 +67,7 @@ export function LandingNav<Key extends string>({
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label={
-                  collapsed
-                    ? "Expand view navigation"
-                    : "Collapse view navigation"
-                }
+                aria-label={`${collapsed ? "Expand" : "Collapse"} ${toggleLabel}`}
                 onClick={onCollapseToggle}
                 className={collapsed ? "mx-auto" : "ml-auto"}
               >
@@ -89,6 +91,11 @@ export function LandingNav<Key extends string>({
                 {item.icon}
               </span>
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {!collapsed && item.count !== undefined && (
+                <span className="ml-auto text-xs font-normal tabular-nums opacity-70">
+                  {item.count}
+                </span>
+              )}
             </>
           );
 
@@ -116,7 +123,10 @@ export function LandingNav<Key extends string>({
                   onClick={() => {
                     /* no-op: button is disabled */
                   }}
-                  className="pointer-events-none cursor-not-allowed justify-start opacity-50"
+                  // w-full: the focusable wrapper span is the flex item, so
+                  // without it the button shrinks to its content and the
+                  // count sits beside the label instead of at the right.
+                  className="pointer-events-none w-full cursor-not-allowed justify-start opacity-50"
                 >
                   {buttonContent}
                 </Button>
@@ -142,7 +152,13 @@ export function LandingNav<Key extends string>({
               variant={isActive ? "secondary" : "ghost"}
               size="nav"
               aria-current={isActive ? "page" : undefined}
-              title={collapsed ? item.label : undefined}
+              title={
+                collapsed
+                  ? item.count === undefined
+                    ? item.label
+                    : `${item.label} (${item.count})`
+                  : undefined
+              }
               onClick={() => {
                 onChange(item.key);
               }}

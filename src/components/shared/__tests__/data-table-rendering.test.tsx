@@ -957,9 +957,9 @@ describe("DataTable download all: local fallback when onDownloadAll is not suppl
 
   // Regression: this fallback interpolated `format` into the filename but
   // always joined on "," and always quoted strings, so "Download (TXT)"
-  // produced a comma-delimited, CSV-quoted file named .txt. Both sibling
-  // serializers (views/resource-export.ts, services/list-data-utils.ts) use a
-  // tab for TXT and emit bare values, and both strip embedded tabs.
+  // produced a comma-delimited, CSV-quoted file named .txt. The sibling
+  // serializer (views/resource-export.ts) uses a tab for TXT, emits bare
+  // values, and strips embedded tabs.
   function captureLocalDownload() {
     let blob: Blob | undefined;
     let filename: string | undefined;

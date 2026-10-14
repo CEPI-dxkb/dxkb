@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { TypeSearch } from "@/app/search/typesearch";
 import { SearchResults } from "@/app/all-term-search-results";
 import { normalizeLegacyKeyword } from "@/app/search/legacy-keyword-normalization";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
@@ -21,9 +20,10 @@ function SearchPrompt() {
 }
 
 /**
- * A legacy `type=` value this app has no view for (Specialty Genes, Pathways,
- * Subsystems, Antibiotics, or a typo). The all-data-types results are the only
- * honest destination we can offer for the phrase that was searched.
+ * A legacy `type=` value this app has no view for (Sequences, AMR Phenotypes,
+ * Specialty Genes, Pathways, Subsystems, Antibiotics, or a typo). The
+ * all-data-types results are the only honest destination we can offer for the
+ * phrase that was searched.
  */
 function UnsupportedSearchType({
   searchtype,
@@ -69,9 +69,8 @@ export default async function GlobalSearch({
     case "redirect":
       return redirect(target.href);
     case "allTypes":
-      return <SearchResults query={query} />;
-    case "typeSearch":
-      return <TypeSearch q={query} searchtype={target.searchtype} />;
+      // Keyed by the search, so a new one starts unfolded and scrolled up.
+      return <SearchResults key={query} query={query} />;
     case "prompt":
       return <SearchPrompt />;
     case "unsupported":
@@ -84,7 +83,7 @@ export default async function GlobalSearch({
     default: {
       // The whole point of this module is that the branch table is total, and
       // neither `noImplicitReturns` nor an explicit return type is in force
-      // here — so a sixth target kind would otherwise compile and return
+      // here — so a fifth target kind would otherwise compile and return
       // `undefined` from a page component.
       const unhandled: never = target;
       throw new Error(`Unhandled search target: ${JSON.stringify(unhandled)}`);

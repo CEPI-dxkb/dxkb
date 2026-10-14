@@ -14,7 +14,6 @@ export interface SearchType {
   id: string;
   typeTitle: string;
   route: SearchRoute;
-  tabs?: Readonly<Record<string, string>>;
   pickerOrder?: number;
   allTermOrder?: number;
 }
@@ -49,7 +48,6 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "taxonomy",
     typeTitle: "Taxa",
     route: { status: "canonical", segment: viewRegistry.taxonomy.segment },
-    tabs: { taxonomy: "Taxa" },
     pickerOrder: 9,
     allTermOrder: 0,
   },
@@ -57,28 +55,13 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "genome",
     typeTitle: "Genomes",
     route: { status: "canonical", segment: viewRegistry.genome.segment },
-    tabs: { genome: "Genomes" },
     pickerOrder: 1,
     allTermOrder: 1,
-  },
-  {
-    id: "genome_amr",
-    typeTitle: "AMR Phenotypes",
-    route: { status: "legacy" },
-    tabs: { genome_amr: "AMR Phenotypes" },
-  },
-  {
-    id: "genome_sequence",
-    typeTitle: "Genomic Sequences",
-    route: { status: "legacy" },
-    tabs: { genome_sequence: "Sequences" },
-    allTermOrder: 14,
   },
   {
     id: "strain",
     typeTitle: "Strains",
     route: { status: "canonical", segment: viewRegistry.strain.segment },
-    tabs: { strain: "Strains" },
     pickerOrder: 2,
     allTermOrder: 2,
   },
@@ -86,7 +69,6 @@ export const searchDescriptors: readonly SearchType[] = [
     id: "genome_feature",
     typeTitle: "Features",
     route: { status: "canonical", segment: viewRegistry.feature.segment },
-    tabs: { genome_feature: "Features" },
     pickerOrder: 3,
     allTermOrder: 3,
   },
@@ -100,21 +82,14 @@ export const searchDescriptors: readonly SearchType[] = [
     },
   },
   {
-    id: "sp_gene",
-    typeTitle: "Specialty Genes",
-    route: { status: "legacy" },
-    allTermOrder: 4,
-  },
-  {
     id: "protein_feature",
     typeTitle: "Domains and Motifs",
     route: {
       status: "canonical",
       segment: viewRegistry["domains-and-motifs"].segment,
     },
-    tabs: { protein_feature: "Domains and Motifs" },
     pickerOrder: 4,
-    allTermOrder: 5,
+    allTermOrder: 4,
   },
   {
     id: "epitope",
@@ -123,9 +98,8 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry.epitope.segment,
     },
-    tabs: { epitope: "Epitopes" },
     pickerOrder: 5,
-    allTermOrder: 6,
+    allTermOrder: 5,
   },
   {
     id: "protein_structure",
@@ -134,21 +108,8 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry["protein-structure"].segment,
     },
-    tabs: { protein_structure: "Protein Structures" },
     pickerOrder: 6,
-    allTermOrder: 7,
-  },
-  {
-    id: "pathway",
-    typeTitle: "Pathways",
-    route: { status: "legacy" },
-    allTermOrder: 8,
-  },
-  {
-    id: "subsystem",
-    typeTitle: "Subsystems",
-    route: { status: "legacy" },
-    allTermOrder: 9,
+    allTermOrder: 6,
   },
   {
     id: "surveillance",
@@ -157,31 +118,22 @@ export const searchDescriptors: readonly SearchType[] = [
       status: "canonical",
       segment: viewRegistry.surveillance.segment,
     },
-    tabs: { surveillance: "Surveillance" },
     pickerOrder: 7,
-    allTermOrder: 10,
+    allTermOrder: 7,
   },
   {
     id: "serology",
     typeTitle: "Serology",
     route: { status: "canonical", segment: viewRegistry.serology.segment },
-    tabs: { serology: "Serology" },
     pickerOrder: 8,
-    allTermOrder: 11,
+    allTermOrder: 8,
   },
   {
     id: "experiment",
     typeTitle: "Experiments",
     route: { status: "canonical", segment: viewRegistry.experiment.segment },
-    tabs: { experiment: "Experiments" },
     pickerOrder: 10,
-    allTermOrder: 12,
-  },
-  {
-    id: "antibiotics",
-    typeTitle: "Antibiotics",
-    route: { status: "legacy" },
-    allTermOrder: 13,
+    allTermOrder: 9,
   },
 ];
 
@@ -219,14 +171,10 @@ export const searchTypes = searchDescriptors
   .filter((descriptor) => descriptor.pickerOrder !== undefined)
   .toSorted((a, b) => (a.pickerOrder ?? 0) - (b.pickerOrder ?? 0));
 
+/**
+ * The types the all-data-types page (`/search?type=everything`) searches, in
+ * its order: only types with a DXKB list view, so every count links to one.
+ */
 export const allTermSearchTypes = searchDescriptors
   .filter((descriptor) => descriptor.allTermOrder !== undefined)
   .toSorted((a, b) => (a.allTermOrder ?? 0) - (b.allTermOrder ?? 0));
-
-export const labelsBySearchType: Readonly<Record<string, string>> =
-  Object.fromEntries(
-    allTermSearchTypes.map((descriptor) => [
-      descriptor.id,
-      descriptor.typeTitle,
-    ]),
-  );

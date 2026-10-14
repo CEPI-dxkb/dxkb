@@ -18,6 +18,10 @@ import {
 } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-form-schema";
 import { genomeAssemblyService } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-service";
 import {
+  rerunGenomeAssemblyAdvancedOptions,
+  type GenomeSizeDisplay,
+} from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-form-utils";
+import {
   buildBaseLibraryItem,
   getPairedLibraryName,
   getSingleLibraryName,
@@ -45,6 +49,7 @@ export type AssemblyAction =
   | { type: "set-advanced"; value: boolean }
   | { type: "set-unit"; unit: "M" | "K" }
   | { type: "set-genome-size"; value: number | undefined }
+  | { type: "restore-genome-size"; size: GenomeSizeDisplay }
   | { type: "set-output-valid"; value: boolean }
   | {
       type: "set-read";
@@ -85,6 +90,14 @@ function uiReducer(
       return state.expectedGenomeSize === action.value
         ? state
         : { ...state, expectedGenomeSize: action.value };
+    // A rerun sets the count and its unit together; "set-unit" would reset
+    // the count to the unit's default.
+    case "restore-genome-size":
+      return {
+        ...state,
+        genomeSizeUnit: action.size.unit,
+        expectedGenomeSize: action.size.count,
+      };
     case "set-output-valid":
       return state.isOutputNameValid === action.value
         ? state
@@ -166,6 +179,13 @@ export default function GenomeAssemblyPage() {
             ? { platform: library.platform || "infer" }
             : {},
       syncLibraries: setLibraries,
+      onApply: (data, targetForm) => {
+        const { values, genomeSize } = rerunGenomeAssemblyAdvancedOptions(data);
+        for (const [name, value] of Object.entries(values)) {
+          targetForm.setFieldValue(name as keyof typeof values, value);
+        }
+        if (genomeSize) dispatch({ type: "restore-genome-size", size: genomeSize });
+      },
     },
   });
   const outputPath = useSelector(

@@ -515,26 +515,6 @@
   @apply bg-secondary/20;
 }
 
-.search-results-card-title {
-  @apply text-secondary font-semibold hover:cursor-pointer hover:underline;
-}
-
-.search-result-header {
-  @apply text-foreground w-fit font-medium hover:cursor-pointer hover:underline;
-}
-
-.search-result-description p {
-  @apply text-muted-foreground line-clamp-3 lg:line-clamp-6;
-}
-
-.search-result-description a {
-  @apply text-foreground hover:cursor-pointer hover:underline;
-}
-
-.search-result-metadata p {
-  @apply text-muted-foreground mt-2 space-y-1 text-sm;
-}
-
 /* The services layout's main area stacks three surfaces, darkest to
    lightest, so every control stands out from what it sits on: the page, the
    section cards, then the fields (`--background`, which the service-card-*

@@ -522,6 +522,10 @@ function GenomeSizeField({
               id={field.name}
               value={state.expectedGenomeSize}
               onValueChange={(value) => {
+                // NumericFormat also reports the count the page set (a rerun
+                // or unit switch). The form already holds those bases, and a
+                // rerun's may not be a whole kilobase, so leave it alone.
+                if (value === state.expectedGenomeSize) return;
                 dispatch({ type: "set-genome-size", value });
                 field.handleChange(
                   value === undefined

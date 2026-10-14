@@ -88,8 +88,8 @@ async function downloadDataTable({
     return;
   }
 
-  // Matches the sibling serializers in `views/resource-export.ts` and
-  // `services/list-data-utils.ts`: CSV is comma-delimited, TXT is tab-delimited.
+  // Matches the sibling serializer in `views/resource-export.ts`: CSV is
+  // comma-delimited, TXT is tab-delimited.
   // This block used to join on "," for both, so a ".txt" download was a CSV.
   const separator = format === "csv" ? "," : "\t";
   const headers = exportColumns.map(

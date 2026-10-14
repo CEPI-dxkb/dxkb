@@ -1,4 +1,5 @@
 import type { ResourceCollectionProfile } from "@/components/views";
+import { strainHref } from "@/lib/views/hrefs";
 import { strainMetadata } from "./fields";
 import { strainStructuralRql } from "./query";
 import type { StrainViewRecord } from "./schema";
@@ -19,4 +20,6 @@ export const strainCollectionProfile: ResourceCollectionProfile<StrainViewRecord
     facets: strainFacets,
     guideUrl:
       "https://www.bv-brc.org/docs/quick_references/organisms_taxon/strains.html",
+    rowHref: (row) => strainHref(row.id),
+    rowLinkField: "strain",
   };

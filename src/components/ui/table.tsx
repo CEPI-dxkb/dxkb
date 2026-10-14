@@ -61,6 +61,13 @@ const tableRowVariants = cva(
         // stay still too.
         "static-striped":
           "even:bg-muted/50 hover:bg-transparent even:hover:bg-muted/50",
+        // The last row shown above rows collapsed with `visibility: collapse`
+        // (laid out, so they still size the columns, but not shown). Only
+        // the body's last child drops its rule, and the rule this row shares
+        // with a collapsed one is half painted (0.5px, shown or not by where
+        // the table falls on the pixel grid), so whatever follows the table
+        // draws the line instead.
+        "last-shown": "border-b-0",
       },
     },
     defaultVariants: {

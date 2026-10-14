@@ -13,6 +13,7 @@ import {
   genomeRecord,
   proteinStructureRecords,
   serologyRecord,
+  strainRecords,
   surveillanceRecord,
   taxonomyRecord,
   virusesSummaryRecord,
@@ -260,6 +261,17 @@ function maybeSolrCount(
           ? [experimentRecord]
           : []
         : [experimentRecord];
+    if (request.headers.get("accept") === "application/json") return docs;
+    return buildLoopbackSolrEnvelope(docs);
+  }
+  if (core === "strain") {
+    // The Strain member page looks one record up by `id`; the collection
+    // itself is served browser-side (`strainScenarioOverrides`).
+    const strainId = equalsValue(query, "id");
+    const docs =
+      strainId && strainId !== "*"
+        ? strainRecords.filter((record) => record.id === strainId)
+        : strainRecords;
     if (request.headers.get("accept") === "application/json") return docs;
     return buildLoopbackSolrEnvelope(docs);
   }

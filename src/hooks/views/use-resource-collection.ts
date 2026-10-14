@@ -124,8 +124,7 @@ export function useResourceCollection<Row extends ResourceRow>({
     ...collectionQueryOptions(repository, resource, facetRequest),
     enabled: facetFields.length > 0,
     // Counts change with the scope only and are the slow part of a read, so a
-    // remount inside this window (a tab switch and back) reuses them. The same
-    // window as the search list's `FacetPanel`.
+    // remount inside this window (a tab switch and back) reuses them.
     staleTime: 30_000,
   });
   const total = query.data?.total ?? 0;

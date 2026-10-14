@@ -11,14 +11,12 @@ import {
 //   toggles open, arrow keys navigate, Enter routes, Esc closes).
 
 // p3.theseed.org/services/data_api/query/ — bulk multi-type Solr query fired by SearchResults on mount.
-// Returns zero hits for every type so the page renders the ResultsOverview card without errors.
+// Returns zero hits for every type so the page renders its "No results found" state without errors.
 // Both describe blocks navigate to /search, so this mock has to be in scope for both.
 const emptyDataApiResponse = Object.fromEntries(
   [
-    "taxonomy", "genome", "strain", "genome_feature", "sp_gene",
-    "protein_feature", "epitope", "protein_structure", "pathway",
-    "subsystem", "surveillance", "serology", "experiment",
-    "antibiotics", "genome_sequence",
+    "taxonomy", "genome", "strain", "genome_feature", "protein_feature",
+    "epitope", "protein_structure", "surveillance", "serology", "experiment",
   ].map((type) => [
     type,
     { result: { response: { docs: [], numFound: 0, maxScore: 0, numFoundExact: true } } },
@@ -68,11 +66,10 @@ test.describe("global search (keyboard journey)", () => {
     // Beyond URL navigation, the /search page must actually render its results
     // region. A regression that breaks SearchResults rendering would still pass
     // the URL-only assertion above; this guards against that.
-    // CardTitle renders as a <div data-slot="card-title">, not a <h*> element,
-    // so we target the text directly.
     await expect(
-      page.locator('[data-slot="card-title"]', { hasText: /search results/i }),
+      page.getByRole("heading", { level: 1, name: /results for influenza/i }),
     ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("No results found")).toBeVisible();
   });
 
   test("empty query submission does not navigate", async ({ page }) => {

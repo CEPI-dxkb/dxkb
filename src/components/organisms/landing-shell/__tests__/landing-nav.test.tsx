@@ -59,6 +59,45 @@ describe("LandingNav", () => {
     expect(screen.getByTitle("Overview")).toBeInTheDocument();
   });
 
+  it("takes its own heading, collapse label and item counts", () => {
+    const counted: OrganismLandingNavItem[] = [
+      { key: "overview", label: "Genomes", icon: <Dna />, count: "2.2M" },
+    ];
+    const { rerender } = render(
+      <LandingNav
+        items={counted}
+        activeView="overview"
+        title="Data types"
+        toggleLabel="data type navigation"
+        collapsed={false}
+        onChange={vi.fn()}
+        onCollapseToggle={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Data types" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse data type navigation" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Genomes/ })).toHaveTextContent("2.2M");
+
+    rerender(
+      <LandingNav
+        items={counted}
+        activeView="overview"
+        title="Data types"
+        toggleLabel="data type navigation"
+        collapsed
+        onChange={vi.fn()}
+        onCollapseToggle={vi.fn()}
+      />,
+    );
+    expect(screen.getByTitle("Genomes (2.2M)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Expand data type navigation" }),
+    ).toBeInTheDocument();
+  });
+
   it("does not crash when navigator is undefined (SSR-safe initializer)", () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
     // jsdom defines `navigator` as a configurable getter; we can delete it

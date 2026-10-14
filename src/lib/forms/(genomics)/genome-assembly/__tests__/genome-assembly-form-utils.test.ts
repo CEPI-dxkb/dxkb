@@ -3,6 +3,8 @@ vi.mock("./genome-assembly-form-schema", () => ({}));
 import {
   transformGenomeAssemblyParams,
   calculateGenomeSize,
+  genomeSizeDisplay,
+  rerunGenomeAssemblyAdvancedOptions,
 } from "@/lib/forms/(genomics)/genome-assembly/genome-assembly-form-utils";
 
 describe("transformGenomeAssemblyParams", () => {
@@ -183,5 +185,86 @@ describe("calculateGenomeSize", () => {
   it("returns 0 when expected genome size is 0", () => {
     expect(calculateGenomeSize(0, "M")).toBe(0);
     expect(calculateGenomeSize(0, "K")).toBe(0);
+  });
+});
+
+describe("genomeSizeDisplay", () => {
+  it("shows whole megabases in M", () => {
+    expect(genomeSizeDisplay(5000000)).toEqual({ count: 5, unit: "M" });
+  });
+
+  it("shows anything else in K, rounded to the kilobase the field can hold", () => {
+    expect(genomeSizeDisplay(500000)).toEqual({ count: 500, unit: "K" });
+    expect(genomeSizeDisplay(4641652)).toEqual({ count: 4642, unit: "K" });
+  });
+});
+
+describe("rerunGenomeAssemblyAdvancedOptions", () => {
+  it("restores every advanced option the job ran with", () => {
+    expect(
+      rerunGenomeAssemblyAdvancedOptions({
+        genome_size: 4600000,
+        target_depth: 250,
+        trim: false,
+        normalize: true,
+        filtlong: false,
+        racon_iter: 3,
+        pilon_iter: 1,
+        min_contig_len: 500,
+        min_contig_cov: 10,
+      }),
+    ).toEqual({
+      values: {
+        genome_size: 4600000,
+        target_depth: 250,
+        trim: false,
+        normalize: true,
+        filtlong: false,
+        racon_iter: 3,
+        pilon_iter: 1,
+        min_contig_len: 500,
+        min_contig_cov: 10,
+      },
+      genomeSize: { count: 4600, unit: "K" },
+    });
+  });
+
+  it("reads the strings and flags job parameters can arrive as", () => {
+    const { values } = rerunGenomeAssemblyAdvancedOptions({
+      target_depth: "300",
+      trim: "false",
+      normalize: "true",
+      filtlong: 1,
+      racon_iter: "0",
+    });
+    expect(values).toEqual({
+      target_depth: 300,
+      trim: false,
+      normalize: true,
+      filtlong: true,
+      racon_iter: 0,
+    });
+  });
+
+  it("keeps the job's genome size and rounds only what the field shows", () => {
+    expect(
+      rerunGenomeAssemblyAdvancedOptions({ genome_size: "4641652" }),
+    ).toEqual({
+      values: { genome_size: 4641652 },
+      genomeSize: { count: 4642, unit: "K" },
+    });
+  });
+
+  it("leaves out options the job did not set or set to nonsense", () => {
+    expect(
+      rerunGenomeAssemblyAdvancedOptions({
+        output_file: "x",
+        genome_size: 0,
+        target_depth: "lots",
+        min_contig_len: null,
+        racon_iter: "",
+        pilon_iter: "  ",
+      }),
+    ).toEqual({ values: {} });
   });
 });

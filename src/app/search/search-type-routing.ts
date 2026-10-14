@@ -34,8 +34,6 @@ export type LegacySearchTarget =
   | { kind: "redirect"; href: string }
   /** The all-data-types result page (legacy `type=everything`, and Overview). */
   | { kind: "allTypes" }
-  /** The surviving legacy list UI, for types with no canonical view yet. */
-  | { kind: "typeSearch"; searchtype: string }
   /** Overview with nothing to search for. */
   | { kind: "prompt" }
   /** A named type with no destination in this app. */
@@ -175,20 +173,6 @@ function canonicalRedirectHref(
   return `/${route.segment}${destination.size ? `?${toQueryString(destination)}` : ""}`;
 }
 
-/**
- * Legacy types that still render `TypeSearch`: a descriptor with no canonical
- * route that owns a `tabs` group. Derived rather than listed, so marking a
- * descriptor canonical is by itself enough to redirect it.
- *
- * `tabs` is read here purely as the marker separating a supported legacy list
- * from an unsupported type — this is its only non-test reader, and the legacy
- * list no longer renders a tab strip of its own. A legacy descriptor without
- * `tabs` resolves to the explicit "no search view for this type" panel.
- */
-function rendersTypeSearch(descriptor: SearchType): boolean {
-  return descriptor.route.status === "legacy" && descriptor.tabs !== undefined;
-}
-
 /** The descriptor a legacy `type` value resolves through, if any. */
 export function legacySearchDescriptor(
   searchtype: string,
@@ -226,9 +210,6 @@ export function resolveLegacySearch(
         searchtype,
       ),
     };
-  }
-  if (descriptor && rendersTypeSearch(descriptor)) {
-    return { kind: "typeSearch", searchtype };
   }
   return { kind: "unsupported", searchtype };
 }

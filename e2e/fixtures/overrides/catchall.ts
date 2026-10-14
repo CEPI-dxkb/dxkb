@@ -315,6 +315,27 @@ export const strainScenarioOverrides: JsonOverride[] = [
   },
 ];
 
+/**
+ * The all-data-types search's one bulk Data API query
+ * (`p3.theseed.org/services/data_api/query/`), answered with Strain matches
+ * only; the page counts every type it gets no answer for as zero. Both strain
+ * records share the name `A/California/04/2009`, so only their record IDs tell
+ * the two result links apart.
+ */
+export const strainAllTypesSearchOverrides: JsonOverride[] = [
+  {
+    url: /theseed\.org\/services\/data_api\/query/,
+    method: "POST",
+    body: {
+      strain: {
+        result: {
+          response: { docs: strainRows, numFound: strainRows.length },
+        },
+      },
+    },
+  },
+];
+
 export const serologyScenarioOverrides: JsonOverride[] = [
   {
     url: /\/api\/e2e-mock\/data\/serology\/(?:\?|$)/,

@@ -41,6 +41,8 @@ export interface OrganismLandingNavItem<Key extends string = OrganismViewKey> {
   icon: ReactNode;
   enabled?: boolean;
   disabledReason?: string;
+  /** Shown at the item's end (Global Search's matches per data type). */
+  count?: string;
 }
 
 export interface OrganismLandingConfig {

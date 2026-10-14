@@ -1,0 +1,153 @@
+docs/architecture.md
+  s_98e7c036934d4f::t_773170b34c9e99 154
+src/lib/genome-view/query.ts
+  s_98e7c036934d4f::t_6c80e8b2edd2d6 102-104
+  s_98e7c036934d4f::t_82d555c7d54a42 4,199-204,206-208,214-226
+  s_98e7c036934d4f::t_235b0bb046cba0 101,114-118
+  s_98e7c036934d4f::t_d86451808feff9 1,3,142-194
+  s_98e7c036934d4f::t_2128335a695e33 195-198,205,227
+  s_98e7c036934d4f::t_21826ceff56ea4 209-213
+src/lib/services/organisms/taxonomic-distribution.ts
+  s_98e7c036934d4f::t_f6e8a30864322d 1,11,19,24
+src/lib/services/organisms/utils.ts
+  s_98e7c036934d4f::t_f6e8a30864322d 4,200,202,205,210,215
+  s_98e7c036934d4f::t_33172bf7ce98b7 3,207,212,217
+src/app/(views)/genome/page.tsx
+  s_98e7c036934d4f::t_82d555c7d54a42 6,24,26-27
+  s_98e7c036934d4f::t_b955e0a88b3cba 3,5,7-8,10,19-20,22-23,25,28,31-35
+src/components/organisms/metadata-distributions/__tests__/metadata-distributions.test.tsx
+  s_98e7c036934d4f::t_5af5241b80a61f 191-199,201-206,208-224,226-237
+  s_98e7c036934d4f::t_1b8c5429ab1fb0 200,207,225
+src/components/views/resource-child-collection.tsx
+  s_98e7c036934d4f::t_5285898b5d8adf 5,7-8,10-14,49-93,116-118,120,123,181,194-195
+src/components/organisms/reference-genomes/reference-genomes.tsx
+  s_98e7c036934d4f::t_2dcdfc61c15b56 1-4,9-10
+src/app/(views)/taxonomy/taxonomy-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,16
+src/app/(views)/genome/genome-list-overview.tsx
+  s_98e7c036934d4f::t_c8199d240e4417 1-2,4-23,29-30,32-38
+  s_98e7c036934d4f::t_82d555c7d54a42 3,24-28,31
+src/lib/services/organisms/__tests__/amr-distribution.test.ts
+  s_98e7c036934d4f::t_1b8c5429ab1fb0 59-70,79,81-82
+  s_98e7c036934d4f::t_d032cfdea0be68 71-78,80,83-84
+src/components/organisms/taxon-views/overview.tsx
+  s_98e7c036934d4f::t_5df8bb4df90fa1 1,5,10,23-31,33-50,52-57,59-63,65-81,83-88,90-94,96-126
+src/app/(views)/genome/__tests__/page.test.tsx
+  s_98e7c036934d4f::t_1b8c5429ab1fb0 24-25,57,68-71
+  s_98e7c036934d4f::t_c4ac21e605a12a 8,15-23,26,47-56,58-67,72-84
+  s_98e7c036934d4f::t_cb04fbde7a94e0 85
+src/lib/genome-view/__tests__/genome-view.test.ts
+  s_98e7c036934d4f::t_1b8c5429ab1fb0 16,453,457-466,468-477,479-480,482-484,487,492
+  s_98e7c036934d4f::t_d032cfdea0be68 20,399-452,454-456,467,478,488-491,493-495
+  s_98e7c036934d4f::t_b0960903646f98 481,485-486
+src/app/(views)/feature/feature-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,22
+src/lib/services/organisms/__tests__/utils.test.ts
+  s_98e7c036934d4f::t_daff346c97c244 119,121-127
+  s_98e7c036934d4f::t_1b8c5429ab1fb0 96-99,103,109,112,115
+  s_98e7c036934d4f::t_d032cfdea0be68 95,100-102,104-108,110-111,113-114,116-118,120,128-131
+src/lib/services/organisms/amr-distribution.ts
+  s_98e7c036934d4f::t_f6e8a30864322d 15,48,55
+  s_98e7c036934d4f::t_82d555c7d54a42 1,18-20
+docs/url-schema/2026-06-16-url-schema-design.md
+  s_98e7c036934d4f::t_773170b34c9e99 475-476,496-508
+src/lib/services/organisms/genome-scope.ts
+  s_98e7c036934d4f::t_f1fc0dff0fe086 1,14,17,25-27,34-36,51-56,58
+  s_98e7c036934d4f::t_665a2bac1a290f 2-13,15-16,18-24,28-33,37-50,57
+AGENTS.md
+  s_98e7c036934d4f::t_5d765ca211cd53 97
+src/app/(views)/serology/[sampleId]/serology-member.tsx
+  s_98e7c036934d4f::t_d25025b5ee6b80 2,48
+src/components/organisms/geo-distribution/geo-distribution.tsx
+  s_98e7c036934d4f::t_2dcdfc61c15b56 1-5,11,13,15-17,19-25
+src/app/(views)/experiment/experiment-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,26-27
+src/lib/services/organisms/geo-distribution.ts
+  s_98e7c036934d4f::t_f6e8a30864322d 6,22-23,33-34,39,41,55-56,96,112-113,117-121,125
+src/app/(views)/experiment/[experimentId]/experiment-member.tsx
+  s_98e7c036934d4f::t_d25025b5ee6b80 3,14-15
+src/lib/taxon-view/tab-policy.tsx
+  s_98e7c036934d4f::t_0274d4455e86e1 4,24-27
+src/app/(views)/genome/[genomeId]/genome-member.tsx
+  s_98e7c036934d4f::t_0274d4455e86e1 3,73-81
+src/lib/views/child-collection-state.ts
+  s_98e7c036934d4f::t_0b366f664b5f9d 24,29,31,33
+src/lib/views/child-resources.ts
+  s_98e7c036934d4f::t_1e644a8c6b195c 93-100
+  s_98e7c036934d4f::t_db486864d694c3 92
+src/app/(views)/serology/serology-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,19
+src/app/(views)/epitope/epitope-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,16
+src/app/(views)/strain/[strainId]/strain-member.tsx
+  s_98e7c036934d4f::t_d25025b5ee6b80 2-3,70
+src/app/(views)/surveillance/[sampleId]/surveillance-member.tsx
+  s_98e7c036934d4f::t_d25025b5ee6b80 2,58
+src/components/search/all-types/type-results-card.tsx
+  s_98e7c036934d4f::t_0274d4455e86e1 3,7,24,26-35,39
+src/components/organisms/shared/genome-scope-props.ts
+  s_98e7c036934d4f::t_82d555c7d54a42 1-4,11-12,15
+  s_98e7c036934d4f::t_7c560059902115 5-10,13-14,16
+src/components/views/__tests__/view-icons.test.tsx
+  s_98e7c036934d4f::t_e543139646dd00 1-74
+src/app/(views)/domains-and-motifs/domains-and-motifs-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,25
+docs/geo-distribution-map-react-guide.md
+  s_98e7c036934d4f::t_a63dd346255970 100-101
+src/app/(views)/surveillance/surveillance-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,22
+src/components/organisms/geo-distribution/choropleth-svg.tsx
+  s_98e7c036934d4f::t_73230ddf972edb 63
+  s_98e7c036934d4f::t_c3bba01232f35a 61-62,64-67,131-149,209
+src/lib/data-api/__tests__/rql.test.ts
+  s_98e7c036934d4f::t_03605b772c93ae 75-82
+  s_98e7c036934d4f::t_113ff25cd7d3ab 72-74,83-93
+src/app/(views)/protein-structure/protein-structure-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,22
+src/lib/services/organisms/metadata-facets.ts
+  s_98e7c036934d4f::t_f6e8a30864322d 1,12,18,26,36
+src/components/organisms/metadata-distributions/metadata-distributions.tsx
+  s_98e7c036934d4f::t_2dcdfc61c15b56 6-9,11,30,33-40,69-70,72,78-79,81,97,102,107-108,172
+src/lib/data-api/rql.ts
+  s_98e7c036934d4f::t_eb9b3864ddc638 29-41,86,180,182-184,186,191,340,342-344,346,349
+src/components/views/__tests__/resource-child-collection.test.tsx
+  s_98e7c036934d4f::t_b38a9e486d57f9 690-734
+src/app/(views)/genome/__tests__/genome-collection.test.tsx
+  s_98e7c036934d4f::t_ae79e3d6f73d83 110,122,124-125,149,169-170,211-215,222-336
+  s_98e7c036934d4f::t_c4ac21e605a12a 121,148,171-210
+  s_98e7c036934d4f::t_21826ceff56ea4 13-18,216-221
+  s_98e7c036934d4f::t_03b5536fba57d9 337
+src/app/(views)/strain/strain-collection.tsx
+  s_98e7c036934d4f::t_e8f6b1de5d5189 3,16
+src/components/views/view-icons.tsx
+  s_98e7c036934d4f::t_acb466b599357e 1-59
+src/app/(views)/genome/genome-collection.tsx
+  s_98e7c036934d4f::t_b955e0a88b3cba 4,96,108,111-112,118-135,137-138,161-163,209-233,259,262
+  s_98e7c036934d4f::t_0274d4455e86e1 11,44-49,51-53,56-58,60-62
+  s_98e7c036934d4f::t_82d555c7d54a42 16,117
+  s_98e7c036934d4f::t_5423d218ebb653 12,15,17-21,27,63-72,74,76-78,80,82-84,86,88-95,97-104,116
+src/app/(views)/epitope/[epitopeId]/epitope-member.tsx
+  s_98e7c036934d4f::t_d25025b5ee6b80 3-4,20-21
+src/components/organisms/shared/default-nav-items.tsx
+  s_98e7c036934d4f::t_0274d4455e86e1 4,18,22,29,36,40-41,45-61
+src/lib/services/organisms/reference-genomes.ts
+  s_98e7c036934d4f::t_f6e8a30864322d 1,17,22
+src/app/(views)/feature/[featureId]/feature-member.tsx
+  s_98e7c036934d4f::t_0274d4455e86e1 3,25-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cc77ed7121562784f214c2924b1240ce60167223",
+  "prompts": {},
+  "sessions": {
+    "s_98e7c036934d4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b92cda24-4074-4eb6-903b-e9db97454a9e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

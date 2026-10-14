@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { DataApiError } from "@/lib/data-api/repository";
+import { createQueryClientWrapper } from "@/test-helpers/react";
 
 const mocks = vi.hoisted(() => ({
   getFeature: vi.fn(),
@@ -101,6 +102,61 @@ describe("Feature member route", () => {
         searchParams: Promise.resolve({}),
       }),
     ).toMatchObject({ title: `${feature.patric_id} | Feature` });
+  });
+
+  it("offers the feature's sequence downloads in the header", async () => {
+    mocks.getFeature.mockResolvedValue({
+      feature: { ...feature, na_length: 100, aa_length: 33 },
+      usedAlternateId: false,
+    });
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+      { wrapper: createQueryClientWrapper() },
+    );
+    expect(
+      screen.getByRole("button", { name: "DNA FASTA" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Protein FASTA" }),
+    ).toBeInTheDocument();
+  });
+
+  it("offers no download for a record with no sequence", async () => {
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(
+      screen.queryByRole("button", { name: /FASTA/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names a feature without a BRC ID by a public identifier, not its key", async () => {
+    const { patric_id: _omitted, ...withoutBrcId } = feature;
+    mocks.getFeature.mockResolvedValue({
+      feature: { ...withoutBrcId, refseq_locus_tag: "MERS_RS00005" },
+      usedAlternateId: false,
+    });
+    render(
+      await FeaturePage({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "MERS_RS00005" }),
+    ).toBeInTheDocument();
+    expect(
+      await generateMetadata({
+        params: Promise.resolve({ featureId: feature.feature_id }),
+        searchParams: Promise.resolve({}),
+      }),
+    ).toMatchObject({ title: "MERS_RS00005 | Feature" });
   });
 
   it("resolves one identifier from both entry points for a percent-bearing ID", async () => {

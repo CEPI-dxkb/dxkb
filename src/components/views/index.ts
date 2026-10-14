@@ -1,6 +1,7 @@
 export * from "./entity-view-shell";
 export * from "./epitope-resource-collection";
 export * from "./experiment-resource-collection";
+export * from "./fasta-download-buttons";
 export * from "./feature-resource-collection";
 export * from "./genome-resource-collection";
 export * from "./overview-card";

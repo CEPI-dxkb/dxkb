@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  fastaAcceptTypes,
+  type FastaRequest,
+  type FastaResource,
+} from "./fasta";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
 import { eq, keywordClauses, serializeRql } from "./rql";
 import type {
@@ -436,6 +441,43 @@ export class ServerDataRepository {
     return headers;
   }
 
+  /**
+   * FASTA for the given ids, as the upstream's own response stream so a
+   * multi-megabase contig is never buffered on this server. The ids go in a
+   * POST body (`in(idField,(…))`, escaped by `serializeRql`) for the same
+   * reason {@link rows} sends them that way: a GET URL cannot carry 500 of
+   * them.
+   *
+   * An id that matches nothing simply contributes no record, and a feature
+   * with no translation contributes no protein record, so the stream can be
+   * empty on success. Deciding what an empty download means is the caller's
+   * call — `DataRepository.fasta()` reports it, this layer does not.
+   *
+   * `request` must already have passed `validateFastaRequest`.
+   */
+  async fasta(
+    resource: FastaResource,
+    request: FastaRequest,
+    signal?: AbortSignal,
+  ): Promise<ReadableStream<Uint8Array> | null> {
+    const definition = getResourceDefinition(resource);
+    const predicate = serializeRql(resource, {
+      operator: "in",
+      field: definition.idField,
+      values: request.ids,
+    });
+    const response = await this.send(
+      this.url(resource),
+      0,
+      request.ids.length,
+      signal,
+      fastaAcceptTypes[request.type],
+      "POST",
+      predicate,
+    );
+    return response.body;
+  }
+
   private url(resource: DataResource): URL {
     const base = this.options.baseUrl.replace(/\/$/, "");
     return new URL(`${base}/${resource}/`);
@@ -471,6 +513,34 @@ export class ServerDataRepository {
     method = "GET",
     body?: string,
   ): Promise<{ payload: unknown; headers: Headers }> {
+    const response = await this.send(
+      url,
+      start,
+      end,
+      signal,
+      accept,
+      method,
+      body,
+    );
+    const payload: unknown = await response.json().catch(() => null);
+    return { payload, headers: response.headers };
+  }
+
+  /**
+   * One upstream round trip: the HTTPS-with-token guard, the Range and auth
+   * headers, and the upstream error mapping. Returns the response only when it
+   * succeeded, with its body unread, so a JSON read and a FASTA stream share
+   * every rule up to the point where they consume the body differently.
+   */
+  private async send(
+    url: URL,
+    start: number,
+    end: number,
+    signal: AbortSignal | undefined,
+    accept: string,
+    method = "GET",
+    body?: string,
+  ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
         "Authenticated data service requests require HTTPS.",
@@ -497,8 +567,8 @@ export class ServerDataRepository {
         ? { revalidate: this.options.revalidate }
         : undefined,
     });
-    const payload: unknown = await response.json().catch(() => null);
     if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => null);
       const message = upstreamMessage(payload, response.status);
       const serviceUnavailable =
         response.status === 503 ||
@@ -531,7 +601,7 @@ export class ServerDataRepository {
         code,
       );
     }
-    return { payload, headers: response.headers };
+    return response;
   }
 
   private parseRows(

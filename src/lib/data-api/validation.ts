@@ -1,4 +1,12 @@
 import { z } from "zod";
+import {
+  fastaSequenceTypes,
+  fastaTypeLabels,
+  maxFastaIds,
+  supportsFastaType,
+  type FastaRequest,
+  type FastaResource,
+} from "./fasta";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
 import { validateRql } from "./rql";
 import { maxExportRows } from "./types";
@@ -114,4 +122,38 @@ export function validateDataApiRequest(
   if ("rql" in request && request.rql)
     request.rql = validateRql(resource, request.rql);
   return request;
+}
+
+const fastaRequestSchema = z.object({
+  type: z.enum(fastaSequenceTypes),
+  ids: z
+    .array(z.string().min(1).max(maxIdentifierLength))
+    .min(1, "Choose at least one record to download.")
+    .max(
+      maxFastaIds,
+      `FASTA downloads are limited to ${maxFastaIds.toLocaleString()} records per request.`,
+    ),
+});
+
+/**
+ * Body of `POST /api/data/[resource]/fasta`. Duplicate ids are dropped, so the
+ * upstream `in(...)` clause (and the file) names each record once.
+ */
+export function validateFastaRequest(
+  resource: FastaResource,
+  value: unknown,
+): FastaRequest {
+  const parsed = fastaRequestSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new DataApiValidationError(
+      parsed.error.issues[0]?.message ?? "Invalid FASTA request.",
+    );
+  }
+  const { type, ids } = parsed.data;
+  if (!supportsFastaType(resource, type)) {
+    throw new DataApiValidationError(
+      `${fastaTypeLabels[type]} FASTA is not available for ${resource}.`,
+    );
+  }
+  return { type, ids: [...new Set(ids)] };
 }

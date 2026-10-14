@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
 import {
   DataApiValidationError,
   isDataResource,
@@ -8,6 +7,12 @@ import {
   dataApiErrorResponse,
   dataApiNotConfiguredMessage,
 } from "@/lib/data-api/route-errors";
+import {
+  declaresOversizedBody,
+  oversizedBodyResponse,
+  rateLimitedResponse,
+  readCappedBody,
+} from "@/lib/data-api/route-guards";
 import {
   anonymousMemberRevalidateSeconds,
   readScopeForOperation,
@@ -22,54 +27,14 @@ import {
 const rateLimitMax = 120;
 const rateLimitWindowMs = 60_000;
 
-/**
- * Single response contract for every oversized-body rejection path (a
- * declared Content-Length over the cap, or the byte-capped read below hitting
- * the cap while streaming a chunked or understated-length body). All three
- * paths used to diverge: some returned 413, one threw a validation error that
- * turned into 400. One shape now, one status, for equivalent input.
- */
-function oversizedBodyResponse(): NextResponse {
-  return NextResponse.json(
-    { error: "Request body is too large.", code: "invalid_request" },
-    { status: 413 },
-  );
-}
-
-/**
- * Reads `request`'s body up to `maxBytes`, tracking the running byte count as
- * chunks arrive instead of buffering the whole stream and measuring it
- * afterwards. Returns the decoded text on success, or `null` as soon as the
- * running total exceeds `maxBytes` — the reader is cancelled at that point,
- * so a chunked or understated-Content-Length body that lies about its size
- * is never fully consumed.
- */
-async function readCappedBody(
-  request: NextRequest,
-  maxBytes: number,
-): Promise<string | null> {
-  const stream = request.body;
-  if (!stream) return "";
-  const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
-  }
-  const combined = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    combined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return new TextDecoder().decode(combined);
+function limited(request: NextRequest, resource: DataResource) {
+  return rateLimitedResponse(request, {
+    scope: "data",
+    bucket: resource,
+    max: rateLimitMax,
+    windowMs: rateLimitWindowMs,
+    message: "Too many data requests. Please try again shortly.",
+  });
 }
 
 function parseSort(value: string | null): DataSort | undefined {
@@ -125,27 +90,6 @@ function parseGetRequest(request: NextRequest): DataApiRequest {
     fields: params.getAll("field"),
     facets: params.getAll("facet"),
   };
-}
-
-function limited(request: NextRequest, resource: string): NextResponse | null {
-  const limit = rateLimit(
-    `data:${clientIp(request)}:${resource}`,
-    rateLimitMax,
-    rateLimitWindowMs,
-  );
-  if (limit.allowed) return null;
-  return NextResponse.json(
-    {
-      error: "Too many data requests. Please try again shortly.",
-      code: "rate_limited",
-    },
-    {
-      status: 429,
-      headers: {
-        "Retry-After": String(Math.ceil((limit.resetAt - Date.now()) / 1000)),
-      },
-    },
-  );
 }
 
 /**
@@ -241,8 +185,8 @@ export async function POST(
   const blocked = limited(request, resource);
   if (blocked) return blocked;
 
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > maxRequestBytes) return oversizedBodyResponse();
+  if (declaresOversizedBody(request, maxRequestBytes))
+    return oversizedBodyResponse();
 
   try {
     const text = await readCappedBody(request, maxRequestBytes);

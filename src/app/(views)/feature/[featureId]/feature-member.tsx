@@ -3,11 +3,14 @@ import type { ReactNode } from "react";
 import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
+  FastaDownloadButtons,
   ProteinStructureResourceCollection,
   ResourceChildCollection,
 } from "@/components/views";
 import {
   buildFeatureTabs,
+  featureDisplayName,
+  featureFastaTypes,
   type FeatureTab,
   type FeatureViewRecord,
 } from "@/lib/feature-view";
@@ -64,7 +67,7 @@ function breadcrumbs(feature: FeatureViewRecord) {
       )}
       <span className="text-muted-foreground/50">»</span>
       <h1 className="m-0 inline text-sm leading-none font-bold text-secondary">
-        {feature.patric_id ?? feature.feature_id}
+        {featureDisplayName(feature)}
       </h1>
     </div>
   );
@@ -109,14 +112,25 @@ export function FeatureMember({ feature, activeTab }: FeatureMemberProps) {
     ...tab,
     icon: featureTabIcons[tab.key],
   }));
+  const displayName = featureDisplayName(feature);
+  const fastaTypes = featureFastaTypes(feature);
   return (
     <EntityViewShell
       viewLabel="Feature View"
-      title={feature.patric_id ?? feature.feature_id}
+      title={displayName}
       breadcrumbs={breadcrumbs(feature)}
       headerContent={
-        feature.product ??
-        `${feature.feature_type ?? "Feature"} ${feature.feature_id}`
+        feature.product ?? `${feature.feature_type ?? "Feature"} ${displayName}`
+      }
+      metadataActions={
+        fastaTypes.length > 0 ? (
+          <FastaDownloadButtons
+            resource="genome_feature"
+            ids={[feature.feature_id]}
+            types={fastaTypes}
+            fileNameBase={displayName}
+          />
+        ) : undefined
       }
       metadataSummary={
         activeTab === "overview" ? (

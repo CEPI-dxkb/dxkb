@@ -42,7 +42,11 @@ test.describe("all organisms landing page", () => {
     await expect(page.getByRole("contentinfo")).toHaveCount(0);
     await expect(landing.getKpi("Genomes")).toContainText("9,800,000");
     await expect(page.getByRole("heading", { name: "Featured Organisms" })).toBeVisible();
-    await expect(page.getByRole("heading", { level: 3, name: "The Three Domains" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Domains and Viruses" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "View Viruses overview" })).toHaveAttribute(
+      "href",
+      "/taxonomy/10239",
+    );
     await landing.expectDonut("Host Group");
     await landing.expectDonut("Isolation Country");
 

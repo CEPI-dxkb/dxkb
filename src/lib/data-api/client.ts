@@ -1,3 +1,9 @@
+import {
+  fastaContentType,
+  maxFastaIds,
+  type FastaRequest,
+  type FastaResource,
+} from "./fasta";
 import { maxExportRows } from "./types";
 import type {
   CollectionRequest,
@@ -59,23 +65,26 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-async function parseResponse<T>(response: Response): Promise<T> {
+/** The gateway's `{error, code}` body as a `DataRepositoryError`. */
+async function responseError(response: Response): Promise<DataRepositoryError> {
   const payload: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const body =
-      payload && typeof payload === "object"
-        ? (payload as { error?: unknown; code?: unknown })
-        : {};
-    throw new DataRepositoryError(
-      typeof body.error === "string"
-        ? body.error
-        : `Data request failed with status ${String(response.status)}.`,
-      response.status,
-      typeof body.code === "string" ? body.code : "request_failed",
-      retryDelay(response),
-    );
-  }
-  return payload as T;
+  const body =
+    payload && typeof payload === "object"
+      ? (payload as { error?: unknown; code?: unknown })
+      : {};
+  return new DataRepositoryError(
+    typeof body.error === "string"
+      ? body.error
+      : `Data request failed with status ${String(response.status)}.`,
+    response.status,
+    typeof body.code === "string" ? body.code : "request_failed",
+    retryDelay(response),
+  );
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) throw await responseError(response);
+  return (await response.json().catch(() => null)) as T;
 }
 
 function collectionParams(request: CollectionRequest): URLSearchParams {
@@ -169,6 +178,39 @@ export class DataRepository {
         await wait(delay, signal);
       }
     }
+  }
+
+  /**
+   * FASTA for any number of ids, as one file. Lists longer than
+   * `maxFastaIds` go out as consecutive requests (sequential, so a large
+   * selection cannot burst through the route's rate limit) and are joined
+   * record-aligned. An empty `Blob` means nothing matched or no record had a
+   * sequence of this type; the caller decides how to say so.
+   */
+  async fasta(
+    resource: FastaResource,
+    request: FastaRequest,
+    signal?: AbortSignal,
+  ): Promise<Blob> {
+    const parts: string[] = [];
+    for (let start = 0; start < request.ids.length; start += maxFastaIds) {
+      const response = await fetch(`${this.basePath}/${resource}/fasta`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: request.type,
+          ids: request.ids.slice(start, start + maxFastaIds),
+        }),
+        signal,
+      });
+      if (!response.ok) throw await responseError(response);
+      const text = await response.text();
+      // A part that does not end in a newline would glue its last sequence
+      // line onto the next part's first `>` header.
+      if (text) parts.push(text.endsWith("\n") ? text : `${text}\n`);
+    }
+    return new Blob(parts, { type: fastaContentType });
   }
 
   private post<T>(

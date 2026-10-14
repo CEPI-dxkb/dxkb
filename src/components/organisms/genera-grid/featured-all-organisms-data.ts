@@ -12,11 +12,23 @@ export interface FeaturedOrganismCategory {
 
 export const featuredAllOrganisms: FeaturedOrganismCategory[] = [
   {
-    title: "The Three Domains",
+    // Viruses sit beside the three domains rather than inside them: they are
+    // not cellular life, but the platform treats them as a top-level group.
+    title: "Domains and Viruses",
     organisms: [
       { name: "Bacteria", href: taxonUrl(2) },
       { name: "Archaea", href: taxonUrl(2157) },
       { name: "Eukaryota", href: taxonUrl(2759) },
+      { name: "Viruses", href: taxonUrl(10239) },
+    ],
+  },
+  {
+    title: "Viruses",
+    organisms: [
+      { name: "Coronaviridae", href: taxonUrl(11118) },
+      { name: "Orthomyxoviridae", href: taxonUrl(11308) },
+      { name: "Flaviviridae", href: taxonUrl(11050) },
+      { name: "Filoviridae", href: taxonUrl(11266) },
     ],
   },
   {

@@ -99,6 +99,7 @@ Find the existing example of the same shape and follow it:
 - **New workspace file or folder field** → `WorkspaceObjectSelector` with a `preset` and a `value` from the form. It brings its own Browse button and picker; don't add another browser.
 - **New auth endpoint** → add a named operation in `src/lib/auth/server/actions.ts`, a concrete browser call in `src/lib/auth/client.ts` when needed, and a thin route under `src/app/api/auth/` using `{error, code}` (see `docs/auth-api.md`). Do not add a factory, port, or browser session endpoint.
 - **New backend call** → via `JsonRpcClient` / `AppService` / workspace repository. Never raw `fetch`.
+- **New sequence (FASTA) download** → `useFastaDownload()` from `src/hooks/views/`, or `<FastaDownloadButtons>` for a fixed record set; a new FASTA-capable resource is one entry in `fastaResources` (`src/lib/data-api/fasta.ts`). Contract in `docs/architecture.md` → "FASTA download contract".
 - **New async client state** → TanStack Query hook, not `useEffect` + `useState`.
 - **New piece of UI state** → pick its home by what it is (full table in `docs/architecture.md` → "UI state"):
   - a small device preference the server renders (panel width, collapsed rail, a toggle) → a key in `src/lib/ui-preferences/definitions.ts`, read with `useUiPreference(key)`; the root layout seeds it from cookies so the first paint is right.

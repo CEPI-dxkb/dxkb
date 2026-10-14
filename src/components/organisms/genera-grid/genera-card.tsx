@@ -1,5 +1,4 @@
 import Avatar from "boring-avatars";
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 import { facetDisplayLabel } from "@/components/organisms/facet-label";
@@ -43,11 +42,6 @@ export function GeneraCard({ name, href, count, viewLabel = "genomes" }: GeneraC
             </p>
           )}
         </div>
-        <ArrowRight
-          size={14}
-          className="shrink-0 text-muted-foreground/50"
-          aria-hidden="true"
-        />
       </Link>
     </Card>
   );

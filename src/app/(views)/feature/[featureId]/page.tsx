@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { DataApiError } from "@/lib/data-api/repository";
-import { canonicalFeatureTab, isFeatureId } from "@/lib/feature-view";
+import {
+  canonicalFeatureTab,
+  featureDisplayName,
+  isFeatureId,
+} from "@/lib/feature-view";
 import { getFeature, type FeatureLookup } from "@/lib/feature-view/server";
 import { featureHref } from "@/lib/views/hrefs";
 import type { SearchParamsRecord } from "@/lib/views/rql";
@@ -48,7 +52,7 @@ export async function generateMetadata({
   const { featureId } = await params;
   const feature = await loadFeature(featureId, "metadata");
   return {
-    title: `${feature.patric_id ?? feature.feature_id} | Feature`,
+    title: `${featureDisplayName(feature)} | Feature`,
     description: feature.product ?? `Feature record ${feature.feature_id}`,
   };
 }

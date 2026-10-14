@@ -1,5 +1,6 @@
 import {
   cn,
+  downloadBlob,
   formatUserFacingErrorMessage,
   getFirstDefined,
   maxUserFacingErrorMessageLength,
@@ -126,5 +127,49 @@ describe("formatUserFacingErrorMessage", () => {
     );
     expect(formatted).toBe(`${long.slice(0, maxUserFacingErrorMessageLength)}…`);
     expect(formatted).toContain("Upstream failure:");
+  });
+});
+
+describe("downloadBlob", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("clicks a detached download anchor for the blob and releases its URL afterwards", () => {
+    vi.useFakeTimers();
+    const createObjectURL = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValue("blob:fasta");
+    const revokeObjectURL = vi
+      .spyOn(URL, "revokeObjectURL")
+      .mockImplementation(() => undefined);
+    const clicked: { href: string; download: string; attached: boolean }[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(
+      function (this: HTMLAnchorElement) {
+        clicked.push({
+          href: this.href,
+          download: this.download,
+          attached: this.isConnected,
+        });
+      },
+    );
+    const blob = new Blob([">a\nACGT\n"]);
+
+    downloadBlob(blob, "fig_1.1.peg.1.dna.fasta");
+
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
+    expect(clicked).toEqual([
+      {
+        href: "blob:fasta",
+        download: "fig_1.1.peg.1.dna.fasta",
+        attached: true,
+      },
+    ]);
+    expect(document.querySelector("a[download]")).toBeNull();
+    // Not synchronously: WebKit may still be reading the URL.
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:fasta");
   });
 });

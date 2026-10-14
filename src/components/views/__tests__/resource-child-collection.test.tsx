@@ -687,6 +687,51 @@ describe("ResourceChildCollection scope changes", () => {
     });
   });
 
+  it.each([
+    ["strain", "strains", "Strains", "id", { id: "s1" }, "/strain/s1"],
+    [
+      "epitope",
+      "epitopes",
+      "Epitopes",
+      "epitope_id",
+      { epitope_id: "123" },
+      "/epitope/123",
+    ],
+    ["surveillance", "surveillance", "Surveillance", "id", undefined, undefined],
+    ["serology", "serology", "Serology", "id", undefined, undefined],
+  ] as const)(
+    "supplies the canonical %s profile, pinned to the Genome list's scope",
+    (resource, urlKey, label, idField, row, href) => {
+      render(
+        <ResourceChildCollection
+          resource={resource}
+          urlKey={urlKey}
+          label={label}
+          idField={idField}
+          rql="keyword(pseudomonas)"
+          defaultSort="unsorted"
+        />,
+      );
+
+      const profile = resourceCollectionProfile.mock.lastCall?.[0] as
+        ResourceCollectionProfile<Record<string, unknown>> | undefined;
+      expect(profile).toEqual(
+        expect.objectContaining({
+          resource,
+          label,
+          idField,
+          basePredicate: "keyword(pseudomonas)",
+          exportFileName: label.toLowerCase(),
+        }),
+      );
+      expect(profile?.facets?.length).toBeGreaterThan(0);
+      expect(
+        profile?.buildStructuralRql?.({ filters: {}, page: 1, sort: "unsorted" }),
+      ).toBe("keyword(pseudomonas)");
+      if (row) expect(profile?.rowHref?.(row)).toBe(href);
+    },
+  );
+
   it("supplies the canonical protein-structure profile to its child tab", () => {
     render(
       <ResourceChildCollection

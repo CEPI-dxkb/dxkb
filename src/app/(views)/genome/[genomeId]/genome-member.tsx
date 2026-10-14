@@ -1,16 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  Activity,
-  Blocks,
-  Dna,
-  FlaskConical,
-  LayoutDashboard,
-  Network,
-  ScanLine,
-  Shapes,
-  Waypoints,
-} from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   ExperimentResourceCollection,
@@ -80,15 +70,15 @@ function lineage(genome: GenomeViewRecord) {
 }
 
 const genomeTabIcons: Record<GenomeTab, ReactNode> = {
-  overview: <LayoutDashboard />,
-  sequences: <Dna />,
-  interactions: <Network />,
-  "genome-browser": <ScanLine />,
-  features: <Blocks />,
-  proteins: <Activity />,
-  domains: <Waypoints />,
-  structures: <Shapes />,
-  experiments: <FlaskConical />,
+  overview: viewIcons.overview,
+  sequences: viewIcons.sequences,
+  interactions: viewIcons.interactions,
+  "genome-browser": viewIcons.genomeBrowser,
+  features: viewIcons.features,
+  proteins: viewIcons.proteins,
+  domains: viewIcons.domainsAndMotifs,
+  structures: viewIcons.proteinStructures,
+  experiments: viewIcons.experiments,
 };
 
 export function GenomeMember({

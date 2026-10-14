@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell, EpitopeResourceCollection } from "@/components/views";
 import type { CollectionState } from "@/lib/views/collection-state";
 
@@ -13,7 +13,7 @@ export function EpitopeCollection({ initialState }: EpitopeCollectionProps) {
     <EntityViewShell
       viewLabel="Epitope View"
       title="Epitopes"
-      tabs={[{ key: "epitopes", label: "Epitopes", icon: <Activity /> }]}
+      tabs={[{ key: "epitopes", label: "Epitopes", icon: viewIcons.epitopes }]}
       activeTab="epitopes"
       defaultTab="epitopes"
       layout="fill"

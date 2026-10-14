@@ -1,7 +1,7 @@
-import { GitBranch, Radar, Shuffle, TestTube } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { makePlaceholderView } from "@/components/organisms/shared/make-placeholder-view";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   defaultViewDescriptors,
   type DefaultViewDescriptor,
@@ -21,10 +21,10 @@ import type { TabContext } from "./tab-context";
 // Four taxon-view-only tabs not present on the shared category-page descriptor
 // list. Kept here so the shared list (and the /organisms/* pages) stay at 16.
 const extraViewDescriptors: readonly DefaultViewDescriptor[] = [
-  { key: "strains", label: "Strains", icon: <GitBranch /> },
-  { key: "surveillance", label: "Surveillance", icon: <Radar /> },
-  { key: "serology", label: "Serology", icon: <TestTube /> },
-  { key: "sfvt", label: "SFVT", icon: <Shuffle /> },
+  { key: "strains", label: "Strains", icon: viewIcons.strains },
+  { key: "surveillance", label: "Surveillance", icon: viewIcons.surveillance },
+  { key: "serology", label: "Serology", icon: viewIcons.serology },
+  { key: "sfvt", label: "SFVT", icon: viewIcons.sfvt },
 ];
 
 const descriptorByKey = new Map<OrganismViewKey, DefaultViewDescriptor>(

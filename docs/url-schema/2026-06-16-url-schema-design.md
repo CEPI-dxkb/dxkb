@@ -472,8 +472,8 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   narrowing it, and so do a `keyword` (legacy GenomeList sends `keyword(...)` alone) and a
   `refine` refinement. The keyword is sent exact, `keyword(coli)`, as legacy sends it
   (134,274 genomes; the token-prefix `keyword(coli*)` found 137,836).
-  The related-resource tabs (Sequences, Features, Proteins, Protein Structures, Domains
-  and Motifs) follow legacy GenomeList, which hands its own query verbatim to each tab's
+  The related-resource tabs (Strains, Sequences, Features, Proteins, Protein Structures,
+  Domains and Motifs) follow legacy GenomeList, which hands its own query verbatim to each tab's
   collection, wherever that works (`genomeRelatedScope`). On an unscoped list each tab
   lists its whole collection, by its own `eq(<id>,*)` because the Data API rejects an
   empty query once a sort or facet is added; on a keyword- or refinement-only list each
@@ -493,6 +493,22 @@ Genome Phase 1 replaces both scaffold handlers with explicit routes:
   removable `annotation=PATRIC` default (`features.annotation=*` once removed), and
   Features and Proteins rows stay in backend order. The unscoped Genomes tab keeps the
   recent scope, where legacy loads no rows.
+  Strains join through their multi-valued `genome_ids`
+  (`and(eq(genome_ids,*),genome(to(genome_ids),<effective predicate>))`; a bare
+  `genome(...)` is an HTTP 400 on `strain`). Epitope, Surveillance and Serology records
+  have no genome ID, so those tabs cannot join (`genome(...)` is an HTTP 400 on all three)
+  and follow only the keyword and taxon parts of the query (`genomeTaxonScope`): an
+  unscoped list lists the whole collection, a scope of keywords, refinements, `taxon_id`
+  and an `rql` naming only `taxon_lineage_ids` runs on the tab's own collection, and any
+  other genome field (a status, `public`, a genome ID list) disables the tab with that
+  reason rather than listing more than the Genomes tab covers.
+  `?tab=overview` renders the Taxonomy page's genome sections (map, reference genomes,
+  metadata distributions, and AMR when the genomes have AMR records) for the Genomes
+  tab's effective query (`genomeOverviewScope`), server-side and only on that tab. The
+  scope keeps keyword clauses, an explicit `rql`'s top-level ones included, apart from
+  genome-field clauses, because AMR joins the latter through `genome(...)` and rejects a
+  `keyword(...)` inside it. Its requests are public reads, so a list with `public=false`,
+  or an `rql` that selects private genomes, disables it.
   `/feature` has no implicit genome scope: its old recent-genome `genome()` join was a
   cross-collection Solr join costing 40–120 s per keyword query. It does select legacy
   FeatureList's removable `annotation=PATRIC` default (§2.8), and while that default is

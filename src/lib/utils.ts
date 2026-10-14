@@ -63,3 +63,16 @@ export function triggerDownload(url: string, filename?: string): void {
   anchor.click();
   anchor.remove();
 }
+
+/**
+ * Save in-memory content as a file. The object URL is released on the next
+ * task rather than synchronously: WebKit can still be resolving it for the
+ * download when `click()` returns.
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  triggerDownload(url, filename);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 0);
+}

@@ -94,10 +94,12 @@ Find the existing example of the same shape and follow it:
 
 - **New service** → copy the closest one under `src/app/services/(<category>)/`: page (TanStack Form + zod, parts from `src/components/services/form-ui/`) + `*-form-utils.ts` (constants/types/schema) + submission via `useServiceRuntime`/`useServiceFormSubmission` + rerun via `useRerunForm<T>()` and the `build{Paired,Single,Sra}Libraries` helpers in `src/lib/rerun-utility.ts`.
 - **New data view** → register in `src/lib/views/view-registry.ts` + thin page under `src/app/(views)/`. Don't bypass the registry.
+- **New view tab** (any rail: `EntityViewShell`, organism/taxon pages, All Data Types) → its icon comes from `viewIcons` in `src/components/views/view-icons.tsx`; add a new kind there, never `icon: <LucideIcon />` at the call site (`view-icons.test.tsx` scans for it).
 - **New workspace data access** → add a method to `workspace-repository.ts`, consume via `useWorkspaceRepository()`. Not `WorkspaceApiClient` directly.
 - **New workspace file or folder field** → `WorkspaceObjectSelector` with a `preset` and a `value` from the form. It brings its own Browse button and picker; don't add another browser.
 - **New auth endpoint** → add a named operation in `src/lib/auth/server/actions.ts`, a concrete browser call in `src/lib/auth/client.ts` when needed, and a thin route under `src/app/api/auth/` using `{error, code}` (see `docs/auth-api.md`). Do not add a factory, port, or browser session endpoint.
 - **New backend call** → via `JsonRpcClient` / `AppService` / workspace repository. Never raw `fetch`.
+- **New sequence (FASTA) download** → `useFastaDownload()` from `src/hooks/views/`, or `<FastaDownloadButtons>` for a fixed record set; a new FASTA-capable resource is one entry in `fastaResources` (`src/lib/data-api/fasta.ts`). Contract in `docs/architecture.md` → "FASTA download contract".
 - **New async client state** → TanStack Query hook, not `useEffect` + `useState`.
 - **New piece of UI state** → pick its home by what it is (full table in `docs/architecture.md` → "UI state"):
   - a small device preference the server renders (panel width, collapsed rail, a toggle) → a key in `src/lib/ui-preferences/definitions.ts`, read with `useUiPreference(key)`; the root layout seeds it from cookies so the first paint is right.

@@ -56,7 +56,8 @@ export function FeatureOverview({ feature }: FeatureOverviewProps) {
       <OverviewSection
         title="Identifiers"
         fields={[
-          { label: "Feature ID", value: feature.feature_id },
+          // No "Feature ID" row: `feature_id` is the internal Solr key, not
+          // an identifier anyone searches by (see `featureDisplayName`).
           { label: "BRC ID", value: feature.patric_id },
           { label: "RefSeq locus tag", value: feature.refseq_locus_tag },
           { label: "Protein ID", value: feature.protein_id },

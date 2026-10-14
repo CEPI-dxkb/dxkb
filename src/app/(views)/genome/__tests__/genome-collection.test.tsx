@@ -10,7 +10,12 @@ interface ShellProps {
   layout: string;
   activeTab: string;
   defaultTab: string;
-  tabs: { key: string; label: string; enabled?: boolean }[];
+  tabs: {
+    key: string;
+    label: string;
+    enabled?: boolean;
+    disabledReason?: string;
+  }[];
   children: React.ReactNode;
 }
 
@@ -102,6 +107,7 @@ describe("GenomeCollection", () => {
   it("shows the legacy Genome List tabs and keeps unsupported tabs disabled", () => {
     render(<GenomeCollection initialState={initialState} />);
 
+    expect(screen.getByRole("button", { name: "Strains" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Genomes" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Sequences" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Features" })).toBeEnabled();
@@ -112,9 +118,11 @@ describe("GenomeCollection", () => {
     expect(
       screen.getByRole("button", { name: "Domains and Motifs" }),
     ).toBeEnabled();
-    expect(screen.getByRole("button", { name: "Overview" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Strains" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Overview" })).toBeEnabled();
+    // A genome ID list has no counterpart on these collections.
     expect(screen.getByRole("button", { name: "Epitopes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Surveillance" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Serology" })).toBeDisabled();
   });
 
   it("hands the view shell the tab set it owns and defaults to Genomes", () => {
@@ -137,8 +145,8 @@ describe("GenomeCollection", () => {
     expect(
       shellProps.current?.tabs.map((tab) => [tab.key, tab.enabled !== false]),
     ).toEqual([
-      ["overview", false],
-      ["strains", false],
+      ["overview", true],
+      ["strains", true],
       ["genomes", true],
       ["sequences", true],
       ["features", true],
@@ -157,6 +165,175 @@ describe("GenomeCollection", () => {
     );
 
     render(<GenomeCollection initialState={initialState} />);
+
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("genomes");
+    expect(childProps.current).toBeNull();
+  });
+
+  it("shows the page's overview in a scrolling region on the Overview tab", () => {
+    searchParams.current = new URLSearchParams("keyword=pseudomonas&tab=overview");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "pseudomonas",
+        }}
+        overview={<div>Genome overview</div>}
+      />,
+    );
+
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("overview");
+    expect(screen.getByText("Genome overview")).toBeInTheDocument();
+    expect(shellProps.current?.layout).toBe("scroll");
+    expect(genomeProps.current).toBeNull();
+  });
+
+  it("keeps the Overview tab off a list of private genomes", () => {
+    searchParams.current = new URLSearchParams("public=false&tab=overview");
+
+    render(
+      <GenomeCollection
+        initialState={{ filters: { public: ["false"] }, page: 1, sort: "unsorted" }}
+        overview={<div>Genome overview</div>}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Overview" })).toBeDisabled();
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("genomes");
+    expect(screen.queryByText("Genome overview")).not.toBeInTheDocument();
+    expect(
+      shellProps.current?.tabs.find((tab) => tab.key === "overview")
+        ?.disabledReason,
+    ).toMatch(/public genomes/);
+  });
+
+  it("explains why a taxon-scoped tab is unavailable for a genome-only query", () => {
+    render(<GenomeCollection initialState={initialState} />);
+
+    const epitopes = shellProps.current?.tabs.find(
+      (tab) => tab.key === "epitopes",
+    );
+    expect(epitopes?.enabled).toBe(false);
+    expect(epitopes?.disabledReason).toMatch(
+      /Epitopes records have no genome ID/,
+    );
+  });
+
+  it("joins the Strains tab to the selected genomes through genome_ids", () => {
+    searchParams.current = new URLSearchParams(
+      "rql=in(genome_id,(1.1,1.2))&tab=strains",
+    );
+
+    render(<GenomeCollection initialState={initialState} />);
+
+    expect(screen.getByTestId("active-tab")).toHaveTextContent("strains");
+    expect(childProps.current).toEqual(
+      expect.objectContaining({
+        resource: "strain",
+        rql: "and(eq(genome_ids,*),genome(to(genome_ids),in(genome_id,(1.1,1.2))))",
+        serverKeywordMode: "exact",
+      }),
+    );
+  });
+
+  it("runs a keyword search's clause on the Strains collection, as legacy does", () => {
+    searchParams.current = new URLSearchParams("keyword=influenza&tab=strains");
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          keyword: "influenza",
+        }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe("keyword(influenza)");
+  });
+
+  it.each([
+    ["epitopes", "epitope", "eq(epitope_id,*)"],
+    ["surveillance", "surveillance", "eq(id,*)"],
+    ["serology", "serology", "eq(id,*)"],
+  ])("lists the whole %s collection on a bare URL", (tab, resource, rql) => {
+    searchParams.current = new URLSearchParams(`tab=${tab}`);
+
+    render(
+      <GenomeCollection
+        initialState={{ filters: {}, page: 1, sort: "unsorted" }}
+      />,
+    );
+
+    expect(screen.getByTestId("active-tab")).toHaveTextContent(tab);
+    expect(childProps.current).toEqual(
+      expect.objectContaining({ resource, rql }),
+    );
+  });
+
+  it.each(["epitopes", "surveillance", "serology"])(
+    "runs the keyword and taxon parts of the query on the %s collection",
+    (tab) => {
+      searchParams.current = new URLSearchParams(
+        `keyword=pseudomonas&taxon_id=286&tab=${tab}`,
+      );
+
+      render(
+        <GenomeCollection
+          initialState={{
+            filters: { taxon_id: ["286"] },
+            page: 1,
+            sort: "unsorted",
+            keyword: "pseudomonas",
+          }}
+        />,
+      );
+
+      expect(screen.getByTestId("active-tab")).toHaveTextContent(tab);
+      expect(childProps.current?.rql).toBe(
+        "and(eq(taxon_lineage_ids,286),keyword(pseudomonas))",
+      );
+    },
+  );
+
+  it("keeps a lineage rql, as the Taxonomy page links send it, on Epitopes", () => {
+    searchParams.current = new URLSearchParams(
+      "rql=in(taxon_lineage_ids,(3044781,186536))&tab=epitopes",
+    );
+
+    render(
+      <GenomeCollection
+        initialState={{
+          ...initialState,
+          rql: "in(taxon_lineage_ids,(3044781,186536))",
+        }}
+      />,
+    );
+
+    expect(childProps.current?.rql).toBe(
+      "in(taxon_lineage_ids,(3044781,186536))",
+    );
+  });
+
+  it("falls back to Genomes when Epitopes cannot follow a genome-only filter", () => {
+    searchParams.current = new URLSearchParams(
+      "keyword=pseudomonas&genome_status=Complete&tab=epitopes",
+    );
+
+    render(
+      <GenomeCollection
+        initialState={{
+          filters: { genome_status: ["Complete"] },
+          page: 1,
+          sort: "unsorted",
+          keyword: "pseudomonas",
+        }}
+      />,
+    );
 
     expect(screen.getByTestId("active-tab")).toHaveTextContent("genomes");
     expect(childProps.current).toBeNull();

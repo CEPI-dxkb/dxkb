@@ -3,6 +3,7 @@ import type {
   OrganismGeoDistribution,
   OrganismGeoLocationMeta,
 } from "./types";
+import type { GenomeScope } from "./genome-scope";
 import {
   buildGenomeGeoFacetUrl,
   buildGenomeGeoPivot3Url,
@@ -18,8 +19,8 @@ const countryLimit = 300;
 const stateLimit = 100;
 const countyLimit = 1000;
 
-async function fetchField(baseUrl: string, taxonId: number, field: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, number>> {
-  const url = buildGenomeGeoFacetUrl(baseUrl, taxonId, field, limit);
+async function fetchField(baseUrl: string, scope: GenomeScope, field: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, number>> {
+  const url = buildGenomeGeoFacetUrl(baseUrl, scope, field, limit);
   const payload = await fetchOrganismSolrJson(url, `genome ${field} facet`, signal);
   const list = parseSolrFacetList(payload, field);
   const map: Record<string, number> = {};
@@ -29,15 +30,15 @@ async function fetchField(baseUrl: string, taxonId: number, field: string, limit
   return map;
 }
 
-async function fetchPivot(baseUrl: string, taxonId: number, primary: string, secondary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, number>>> {
-  const url = buildGenomeGeoPivotUrl(baseUrl, taxonId, primary, secondary, limit);
+async function fetchPivot(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, number>>> {
+  const url = buildGenomeGeoPivotUrl(baseUrl, scope, primary, secondary, limit);
   const payload = await fetchOrganismSolrJson(url, `genome ${primary},${secondary} pivot`, signal);
   return parseSolrFacetPivot(payload, `${primary},${secondary}`);
 }
 
-async function fetchPivotOrEmpty(baseUrl: string, taxonId: number, primary: string, secondary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, number>>> {
+async function fetchPivotOrEmpty(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, number>>> {
   try {
-    return await fetchPivot(baseUrl, taxonId, primary, secondary, limit, signal);
+    return await fetchPivot(baseUrl, scope, primary, secondary, limit, signal);
   } catch (err) {
     // AbortError must propagate so callers can short-circuit on cancellation.
     if (err instanceof DOMException && err.name === "AbortError") throw err;
@@ -51,8 +52,8 @@ async function fetchPivotOrEmpty(baseUrl: string, taxonId: number, primary: stri
   }
 }
 
-async function fetchPivot3OrEmpty(baseUrl: string, taxonId: number, primary: string, secondary: string, tertiary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, Record<string, number>>>> {
-  const url = buildGenomeGeoPivot3Url(baseUrl, taxonId, primary, secondary, tertiary, limit);
+async function fetchPivot3OrEmpty(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, tertiary: string, limit: number | undefined, signal: AbortSignal | undefined): Promise<Record<string, Record<string, Record<string, number>>>> {
+  const url = buildGenomeGeoPivot3Url(baseUrl, scope, primary, secondary, tertiary, limit);
   try {
     const payload = await fetchOrganismSolrJson(url, `genome ${primary},${secondary},${tertiary} pivot`, signal);
     return parseSolrFacetPivot3(payload, `${primary},${secondary},${tertiary}`);
@@ -92,7 +93,7 @@ function deriveMaxCount(...maps: Record<string, number>[]): number {
 }
 
 export async function fetchOrganismGeoDistribution(
-  taxonId: number,
+  scope: GenomeScope,
   options: OrganismFetchOptions = {},
 ): Promise<OrganismGeoDistribution> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
@@ -108,20 +109,20 @@ export async function fetchOrganismGeoDistribution(
     stateHosts,
     countyGenera,
   ] = await Promise.all([
-    fetchField(baseUrl, taxonId, "isolation_country", countryLimit, signal),
-    fetchField(baseUrl, taxonId, "state_province", stateLimit, signal),
+    fetchField(baseUrl, scope, "isolation_country", countryLimit, signal),
+    fetchField(baseUrl, scope, "state_province", stateLimit, signal),
     // Pivot on state_province→county so each county is scoped to its state.
     // A flat `county` facet would merge same-named counties across states
     // (e.g. "Washington County" exists in 31 states) into a single key.
-    fetchPivotOrEmpty(baseUrl, taxonId, "state_province", "county", countyLimit, signal),
-    fetchPivotOrEmpty(baseUrl, taxonId, "isolation_country", "genus", undefined, signal),
-    fetchPivotOrEmpty(baseUrl, taxonId, "isolation_country", "host_common_name", undefined, signal),
-    fetchPivotOrEmpty(baseUrl, taxonId, "state_province", "genus", undefined, signal),
-    fetchPivotOrEmpty(baseUrl, taxonId, "state_province", "host_common_name", undefined, signal),
+    fetchPivotOrEmpty(baseUrl, scope, "state_province", "county", countyLimit, signal),
+    fetchPivotOrEmpty(baseUrl, scope, "isolation_country", "genus", undefined, signal),
+    fetchPivotOrEmpty(baseUrl, scope, "isolation_country", "host_common_name", undefined, signal),
+    fetchPivotOrEmpty(baseUrl, scope, "state_province", "genus", undefined, signal),
+    fetchPivotOrEmpty(baseUrl, scope, "state_province", "host_common_name", undefined, signal),
     // 3-level pivot so each county genus map is scoped to its state. A flat
     // `county,genus` pivot would merge same-named counties (e.g. "Washington
     // County" in 31 states) into one merged genus breakdown.
-    fetchPivot3OrEmpty(baseUrl, taxonId, "state_province", "county", "genus", countyLimit, signal),
+    fetchPivot3OrEmpty(baseUrl, scope, "state_province", "county", "genus", countyLimit, signal),
   ]);
 
   // Build compound-keyed county maps: "StateName|CountyName" → value.

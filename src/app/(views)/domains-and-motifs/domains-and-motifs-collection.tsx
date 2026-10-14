@@ -1,6 +1,6 @@
 "use client";
 
-import { Waypoints } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   ProteinFeatureResourceCollection,
@@ -22,7 +22,7 @@ export function DomainsAndMotifsCollection({
         {
           key: "proteinFeatures",
           label: "Domains and Motifs",
-          icon: <Waypoints />,
+          icon: viewIcons.domainsAndMotifs,
         },
       ]}
       activeTab="proteinFeatures"

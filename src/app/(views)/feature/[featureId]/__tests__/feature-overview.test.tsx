@@ -151,13 +151,33 @@ describe("FeatureOverview", () => {
     );
   });
 
-  it("applies the empty-section policy to every section but the one holding the feature ID", () => {
+  it("applies the empty-section policy to every section of a record with only its key", () => {
     render(<FeatureOverview feature={featureRecord()} />);
     expect(emptyOverviewSectionTitles()).toEqual([
       "Genome and source",
+      "Identifiers",
       "Location and sequence",
       "Annotation and families",
     ]);
-    expect(overviewSectionLabels("Identifiers")).toEqual(["Feature ID"]);
+  });
+
+  it("lists public identifiers only, never the internal feature_id key", () => {
+    render(
+      <FeatureOverview
+        feature={featureRecord({
+          patric_id: "fig|83332.12.peg.1",
+          refseq_locus_tag: "Rv0001",
+          protein_id: "NP_214515.1",
+        })}
+      />,
+    );
+    expect(overviewSectionLabels("Identifiers")).toEqual([
+      "BRC ID",
+      "RefSeq locus tag",
+      "Protein ID",
+    ]);
+    expect(
+      screen.queryByText("PATRIC.83332.12.NC_000962.CDS.1.1524.fwd"),
+    ).not.toBeInTheDocument();
   });
 });

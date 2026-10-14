@@ -761,3 +761,123 @@ describe("ServerDataRepository", () => {
     });
   });
 });
+
+// MSW for the same reason as the selected-row block above: the contract is the
+// request on the wire (method, body, Accept, Range) and a body that is passed
+// through rather than parsed.
+describe("ServerDataRepository.fasta", () => {
+  const record =
+    ">fig|644340.17.peg.16| Flagellar biosynthesis protein FliQ\nMNEADALDIV\n";
+
+  function captureFasta(resource: string, respond: () => Response) {
+    const captured: {
+      body: string;
+      accept: string | null;
+      range: string | null;
+      contentType: string | null;
+      authorization: string | null;
+    }[] = [];
+    server.use(
+      http.post(`https://data.test/${resource}/`, async ({ request }) => {
+        captured.push({
+          body: await request.text(),
+          accept: request.headers.get("Accept"),
+          range: request.headers.get("Range"),
+          contentType: request.headers.get("Content-Type"),
+          authorization: request.headers.get("Authorization"),
+        });
+        return respond();
+      }),
+    );
+    return captured;
+  }
+
+  it("POSTs the escaped id predicate with the sequence type's Accept and a Range sized to the ids", async () => {
+    const captured = captureFasta(
+      "genome_feature",
+      () =>
+        new Response(record, {
+          headers: { "Content-Type": "application/protein+fasta" },
+        }),
+    );
+    const repository = new ServerDataRepository({
+      baseUrl: "https://data.test",
+      token: "secret",
+    });
+
+    const body = await repository.fasta("genome_feature", {
+      type: "protein",
+      ids: ["PATRIC.1.a", "PATRIC.1.b"],
+    });
+
+    expect(await new Response(body).text()).toBe(record);
+    expect(captured).toEqual([
+      {
+        body: "in(feature_id,(PATRIC.1.a,PATRIC.1.b))",
+        accept: "application/protein+fasta",
+        range: "items=0-2",
+        contentType: "application/rqlquery+x-www-form-urlencoded",
+        authorization: "secret",
+      },
+    ]);
+  });
+
+  it("keys a contig request off genome_sequence's own idField and asks for DNA", async () => {
+    const captured = captureFasta(
+      "genome_sequence",
+      () => new Response(">accn|JAEUGC010000001\nACGT\n"),
+    );
+
+    await new ServerDataRepository({ baseUrl: "https://data.test" }).fasta(
+      "genome_sequence",
+      { type: "dna", ids: ["644340.17.con.0001"] },
+    );
+
+    expect(captured).toEqual([
+      expect.objectContaining({
+        body: "in(sequence_id,(644340.17.con.0001))",
+        accept: "application/dna+fasta",
+      }),
+    ]);
+  });
+
+  it("returns an empty stream, not an error, when nothing matched", async () => {
+    captureFasta(
+      "genome_feature",
+      () =>
+        new Response("", { headers: { "Content-Range": "items 0-0/0" } }),
+    );
+
+    const body = await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).fasta("genome_feature", { type: "dna", ids: ["missing"] });
+
+    expect(await new Response(body).text()).toBe("");
+  });
+
+  it("maps an upstream failure the same way as every JSON read", async () => {
+    captureFasta("genome_feature", () =>
+      HttpResponse.json({ error: "Invalid query" }, { status: 400 }),
+    );
+
+    await expect(
+      new ServerDataRepository({ baseUrl: "https://data.test" }).fasta(
+        "genome_feature",
+        { type: "dna", ids: ["PATRIC.1"] },
+      ),
+    ).rejects.toMatchObject({
+      message: "Invalid query",
+      status: 502,
+      code: "upstream_error",
+    });
+  });
+
+  it("keeps the HTTPS-with-token guard", async () => {
+    await expect(
+      new ServerDataRepository({
+        baseUrl: "http://data.test",
+        token: "secret",
+      }).fasta("genome_feature", { type: "dna", ids: ["PATRIC.1"] }),
+    ).rejects.toMatchObject({ status: 500, code: "insecure_upstream" });
+  });
+});

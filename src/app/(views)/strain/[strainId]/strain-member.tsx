@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Dna, LayoutDashboard } from "lucide-react";
+import { Dna } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell } from "@/components/views";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
@@ -66,7 +67,7 @@ export function StrainMember({ strain }: StrainMemberProps) {
           </Link>
         ) : undefined
       }
-      tabs={strainTabs.map((tab) => ({ ...tab, icon: <LayoutDashboard /> }))}
+      tabs={strainTabs.map((tab) => ({ ...tab, icon: viewIcons.overview }))}
       activeTab="overview"
       defaultTab="overview"
       layout="scroll"

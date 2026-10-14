@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   SerologyResourceCollection,
@@ -16,7 +16,7 @@ export function SerologyCollection({ initialState }: SerologyCollectionProps) {
     <EntityViewShell
       viewLabel="Serology View"
       title="Serology"
-      tabs={[{ key: "serology", label: "Serology", icon: <FlaskConical /> }]}
+      tabs={[{ key: "serology", label: "Serology", icon: viewIcons.serology }]}
       activeTab="serology"
       defaultTab="serology"
       layout="fill"

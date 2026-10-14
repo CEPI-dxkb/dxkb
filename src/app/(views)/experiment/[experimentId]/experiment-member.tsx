@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { FlaskConical, LayoutDashboard } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell, ResourceChildCollection } from "@/components/views";
 import {
   experimentBiosetRql,
@@ -11,8 +11,8 @@ import {
 import { ExperimentOverview } from "./experiment-overview";
 
 const icons: Record<ExperimentTab, ReactNode> = {
-  overview: <LayoutDashboard />,
-  biosets: <FlaskConical />,
+  overview: viewIcons.overview,
+  biosets: viewIcons.biosets,
 };
 
 interface ExperimentMemberProps {

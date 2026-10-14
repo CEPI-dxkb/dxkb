@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell } from "@/components/views";
 import { serologyTabs, type SerologyViewRecord } from "@/lib/serology-view";
 import { displaySummary } from "@/lib/views/summary";
@@ -45,7 +45,7 @@ export function SerologyMember({ serology }: SerologyMemberProps) {
       }
       tabs={serologyTabs.map((tab) => ({
         ...tab,
-        icon: <LayoutDashboard />,
+        icon: viewIcons.overview,
       }))}
       activeTab="overview"
       defaultTab="overview"

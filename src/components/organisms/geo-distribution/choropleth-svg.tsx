@@ -58,6 +58,13 @@ interface ChoroplethSvgProps {
   onLeaveMap: () => void;
 }
 
+// Zoom's own wheel handler applies this (and cancels the browser's page zoom).
+// React's `onWheel` cannot: React registers wheel listeners as passive.
+function mapWheelDelta(event: Pick<WheelEvent, "deltaY">) {
+  const next = event.deltaY < 0 ? 1.15 : 1 / 1.15;
+  return { scaleX: next, scaleY: next };
+}
+
 export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
   function ChoroplethSvg(
     {
@@ -121,6 +128,25 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
       };
     }, []);
 
+    // A plain wheel scrolls the page past the map, which can fill the whole
+    // overview; Ctrl/⌘ + wheel, and a trackpad pinch (which browsers send as a
+    // Ctrl wheel), zoom it. Stopping a plain wheel here, in the capture phase,
+    // keeps it from Zoom's non-passive listener on the svg, which would cancel
+    // the scroll.
+    useEffect(() => {
+      const node = containerRef.current;
+      if (!node) return;
+      const passPlainWheelToPage = (event: WheelEvent) => {
+        if (!event.ctrlKey && !event.metaKey) event.stopPropagation();
+      };
+      node.addEventListener("wheel", passPlainWheelToPage, { capture: true });
+      return () => {
+        node.removeEventListener("wheel", passPlainWheelToPage, {
+          capture: true,
+        });
+      };
+    }, []);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -180,6 +206,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
           scaleXMax={10}
           scaleYMin={0.6}
           scaleYMax={10}
+          wheelDelta={mapWheelDelta}
         >
           {(zoom) => {
             // Update ref every frame — no setState so no re-render cascade.
@@ -201,11 +228,6 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                     "shrink-0 touch-none",
                     zoom.isDragging ? "cursor-grabbing" : "cursor-grab",
                   )}
-                  onWheel={(event) => {
-                    event.preventDefault();
-                    const next = event.deltaY < 0 ? 1.15 : 1 / 1.15;
-                    zoom.scale({ scaleX: next, scaleY: next });
-                  }}
                 >
                   <g transform={zoom.toString()}>
                     {mapState.view === "world" &&

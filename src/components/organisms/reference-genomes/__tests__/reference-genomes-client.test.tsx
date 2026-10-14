@@ -95,13 +95,12 @@ describe("ReferenceGenomesClient", () => {
     expect(screen.getByRole("tab", { name: /Representative \(1\)/ })).toBeInTheDocument();
   });
 
-  it("renders genome rows as links to bv-brc.org with rel attributes", () => {
+  it("renders genome rows as same-tab links to the internal genome view", () => {
     render(<ReferenceGenomesClient genomes={genomes} />);
 
     const link = screen.getByRole("link", { name: "Charlie strain" });
-    expect(link).toHaveAttribute("href", "https://www.bv-brc.org/view/Genome/234.1");
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(link).toHaveAttribute("href", "/genome/234.1");
+    expect(link).not.toHaveAttribute("target");
   });
 
   it("sort button is accessible via aria-sort (none → ascending → descending → none)", () => {

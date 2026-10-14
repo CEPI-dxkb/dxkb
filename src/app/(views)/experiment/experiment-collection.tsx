@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical, TestTubes } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   ExperimentResourceCollection,
@@ -23,8 +23,8 @@ export function ExperimentCollection({
       viewLabel="Experiment View"
       title="Experiments"
       tabs={[
-        { key: "experiments", label: "Experiments", icon: <FlaskConical /> },
-        { key: "biosets", label: "Biosets", icon: <TestTubes /> },
+        { key: "experiments", label: "Experiments", icon: viewIcons.experiments },
+        { key: "biosets", label: "Biosets", icon: viewIcons.biosets },
       ]}
       activeTab={activeTab}
       defaultTab="experiments"

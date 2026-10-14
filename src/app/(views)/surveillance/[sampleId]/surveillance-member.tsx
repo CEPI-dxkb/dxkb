@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell } from "@/components/views";
 import {
   surveillanceTabs,
@@ -55,7 +55,7 @@ export function SurveillanceMember({
       }
       tabs={surveillanceTabs.map((tab) => ({
         ...tab,
-        icon: <LayoutDashboard />,
+        icon: viewIcons.overview,
       }))}
       activeTab="overview"
       defaultTab="overview"

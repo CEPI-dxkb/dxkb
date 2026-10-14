@@ -92,6 +92,43 @@ describe("buildGenomeGeoFacetUrl / buildGenomeGeoPivotUrl", () => {
   });
 });
 
+describe("genome-query scopes", () => {
+  const scope = {
+    fieldRql: "eq(genome_status,Complete)",
+    keywordRql: "keyword(pseudomonas)",
+  };
+
+  it("runs a Genome query in place of the taxon lineage", () => {
+    expect(buildGenomeFacetUrl(baseUrl, scope, "genus", 12)).toBe(
+      `${baseUrl}/genome/?and(eq(genome_status,Complete),keyword(pseudomonas))&limit(1)&facet((field,genus),(limit,12),(mincount,1))`,
+    );
+  });
+
+  it("runs a Genome query's geographic facets without the genome self-join", () => {
+    expect(buildGenomeGeoFacetUrl(baseUrl, scope, "isolation_country", 300)).toBe(
+      `${baseUrl}/genome/?and(eq(genome_status,Complete),keyword(pseudomonas))&facet((field,isolation_country),(mincount,1),(limit,300))&limit(0)`,
+    );
+    expect(buildGenomeGeoPivotUrl(baseUrl, scope, "a", "b")).toBe(
+      `${baseUrl}/genome/?and(eq(genome_status,Complete),keyword(pseudomonas))&facet((pivot,(a,b)),(mincount,1))&limit(0)`,
+    );
+    expect(buildGenomeGeoPivot3Url(baseUrl, scope, "a", "b", "c")).toContain(
+      "/genome/?and(eq(genome_status,Complete),keyword(pseudomonas))&facet((pivot,(a,b,c))",
+    );
+  });
+
+  it("runs a taxon's geographic requests on its lineage without the self-join", () => {
+    expect(buildGenomeGeoFacetUrl(baseUrl, 234, "isolation_country")).toBe(
+      `${baseUrl}/genome/?eq(taxon_lineage_ids,234)&facet((field,isolation_country),(mincount,1))&limit(0)`,
+    );
+    expect(buildGenomeGeoPivotUrl(baseUrl, 234, "a", "b", 1000)).toBe(
+      `${baseUrl}/genome/?eq(taxon_lineage_ids,234)&facet((pivot,(a,b)),(mincount,1),(limit,1000))&limit(0)`,
+    );
+    expect(buildGenomeGeoPivot3Url(baseUrl, 234, "a", "b", "c")).toBe(
+      `${baseUrl}/genome/?eq(taxon_lineage_ids,234)&facet((pivot,(a,b,c)),(mincount,1))&limit(0)`,
+    );
+  });
+});
+
 describe("buildGenomeGeoPivot3Url", () => {
   it("emits a 3-field pivot clause", () => {
     const url = buildGenomeGeoPivot3Url(baseUrl, 234, "state_province", "county", "genus");

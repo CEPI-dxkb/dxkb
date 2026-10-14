@@ -3,7 +3,12 @@ import { fetchOrganismMetadataFacets } from "@/lib/services/organisms/metadata-f
 import { fetchTaxonomicDistribution } from "@/lib/services/organisms/taxonomic-distribution";
 import type { AmrDistributionData } from "@/lib/services/organisms/types";
 
+import {
+  genomeScopeFromProps,
+  type GenomeScopeProps,
+} from "@/components/organisms/shared/genome-scope-props";
 import { taxonomicDistributionSentinel } from "@/components/organisms/types";
+import { describeGenomeScope } from "@/lib/services/organisms/genome-scope";
 
 import { AmrBarStackChart } from "./amr-bar-stack-chart";
 import { BarChart } from "./bar-chart";
@@ -22,11 +27,17 @@ const fieldLabels: Record<string, string> = {
   sequencing_centers: "Sequencing Centers",
 };
 
-interface MetadataDistributionsProps {
-  taxonId: number;
+type MetadataDistributionsProps = GenomeScopeProps & {
   fields: string[];
   showAmr?: boolean;
-}
+  /**
+   * Leave the AMR chart out when the scope has no AMR records, as legacy
+   * GenomeListOverview does: a Genome list has no lineage to decide `showAmr`
+   * from, and a virus list would otherwise show an empty AMR card. A failed
+   * request still shows its error.
+   */
+  hideEmptyAmr?: boolean;
+};
 
 const emptyAmrData: AmrDistributionData = { antibiotics: [] };
 
@@ -53,19 +64,21 @@ function settledToChart<T>(
 }
 
 export async function MetadataDistributions({
-  taxonId,
   fields,
   showAmr = false,
+  hideEmptyAmr = false,
+  ...scopeProps
 }: MetadataDistributionsProps) {
+  const scope = genomeScopeFromProps(scopeProps);
   const hasTaxonomicSentinel = fields.includes(taxonomicDistributionSentinel);
   const fetchFields = fields.filter((f) => f !== taxonomicDistributionSentinel);
 
   const [facetsResult, taxonomicResult, amrResult] =
     await Promise.allSettled([
-      fetchOrganismMetadataFacets(taxonId, fetchFields),
-      fetchTaxonomicDistribution(taxonId),
+      fetchOrganismMetadataFacets(scope, fetchFields),
+      fetchTaxonomicDistribution(scope),
       showAmr
-        ? fetchAmrPhenotypeDistribution(taxonId)
+        ? fetchAmrPhenotypeDistribution(scope)
         : Promise.resolve(emptyAmrData),
     ]);
 
@@ -81,16 +94,18 @@ export async function MetadataDistributions({
 
   if (taxonomic.errorMessage) {
     console.warn(
-      `[metadata-distributions] taxonomic distribution fetch failed for taxonId=${String(taxonId)}: ${taxonomic.errorMessage}`,
+      `[metadata-distributions] taxonomic distribution fetch failed for ${describeGenomeScope(scope)}: ${taxonomic.errorMessage}`,
     );
   }
   if (amr.errorMessage && showAmr) {
     console.warn(
-      `[metadata-distributions] amr phenotype distribution fetch failed for taxonId=${String(taxonId)}: ${amr.errorMessage}`,
+      `[metadata-distributions] amr phenotype distribution fetch failed for ${describeGenomeScope(scope)}: ${amr.errorMessage}`,
     );
   }
 
   const amrHasData = amr.data.antibiotics.length > 0;
+  const showAmrChart =
+    showAmr && (!hideEmptyAmr || amrHasData || Boolean(amr.errorMessage));
 
   const taxonomicChart = (
     <DonutChart
@@ -154,7 +169,7 @@ export async function MetadataDistributions({
           ];
         })}
         {!hasTaxonomicSentinel && taxonomicChart}
-        {showAmr && (
+        {showAmrChart && (
           <div className={`flex flex-col${amrHasData ? " @[640px]:col-span-2 @[1080px]:col-span-2" : ""}`}>
             <AmrBarStackChart
               title="Antimicrobial Resistance Profile"

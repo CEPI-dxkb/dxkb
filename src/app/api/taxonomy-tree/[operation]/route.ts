@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { DataApiValidationError } from "@/lib/data-api/resources";
 import {
   dataApiErrorResponse,
   dataApiNotConfiguredMessage,
 } from "@/lib/data-api/route-errors";
+import { rateLimitedResponse } from "@/lib/data-api/route-guards";
 import { resolveServerDataRepository } from "@/lib/data-api/server-policy";
 import {
   readTaxonChildCounts,
@@ -63,24 +63,13 @@ function limited(
   request: NextRequest,
   operation: TaxonomyTreeOperation,
 ): NextResponse | null {
-  const limit = rateLimit(
-    `taxonomy-tree:${clientIp(request)}:${operation}`,
-    rateLimitMax,
-    rateLimitWindowMs,
-  );
-  if (limit.allowed) return null;
-  return NextResponse.json(
-    {
-      error: "Too many taxonomy requests. Please try again shortly.",
-      code: "rate_limited",
-    },
-    {
-      status: 429,
-      headers: {
-        "Retry-After": String(Math.ceil((limit.resetAt - Date.now()) / 1000)),
-      },
-    },
-  );
+  return rateLimitedResponse(request, {
+    scope: "taxonomy-tree",
+    bucket: operation,
+    max: rateLimitMax,
+    windowMs: rateLimitWindowMs,
+    message: "Too many taxonomy requests. Please try again shortly.",
+  });
 }
 
 /**

@@ -1,21 +1,16 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  Blocks,
-  ChartNoAxesCombined,
-  GitCompareArrows,
-  LayoutDashboard,
-  Network,
-  ScanLine,
-  Shapes,
-} from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
+  FastaDownloadButtons,
   ProteinStructureResourceCollection,
   ResourceChildCollection,
 } from "@/components/views";
 import {
   buildFeatureTabs,
+  featureDisplayName,
+  featureFastaTypes,
   type FeatureTab,
   type FeatureViewRecord,
 } from "@/lib/feature-view";
@@ -30,13 +25,13 @@ import { isTaxonId } from "@/lib/taxonomy-view";
 import { FeatureOverview } from "./feature-overview";
 
 const featureTabIcons: Record<FeatureTab, ReactNode> = {
-  overview: <LayoutDashboard />,
-  "genome-browser": <ScanLine />,
-  "compare-region": <GitCompareArrows />,
-  transcriptomics: <ChartNoAxesCombined />,
-  interactions: <Network />,
-  domains: <Blocks />,
-  structures: <Shapes />,
+  overview: viewIcons.overview,
+  "genome-browser": viewIcons.genomeBrowser,
+  "compare-region": viewIcons.compareRegion,
+  transcriptomics: viewIcons.transcriptomics,
+  interactions: viewIcons.interactions,
+  domains: viewIcons.domainsAndMotifs,
+  structures: viewIcons.proteinStructures,
 };
 
 function breadcrumbs(feature: FeatureViewRecord) {
@@ -72,7 +67,7 @@ function breadcrumbs(feature: FeatureViewRecord) {
       )}
       <span className="text-muted-foreground/50">»</span>
       <h1 className="m-0 inline text-sm leading-none font-bold text-secondary">
-        {feature.patric_id ?? feature.feature_id}
+        {featureDisplayName(feature)}
       </h1>
     </div>
   );
@@ -117,14 +112,25 @@ export function FeatureMember({ feature, activeTab }: FeatureMemberProps) {
     ...tab,
     icon: featureTabIcons[tab.key],
   }));
+  const displayName = featureDisplayName(feature);
+  const fastaTypes = featureFastaTypes(feature);
   return (
     <EntityViewShell
       viewLabel="Feature View"
-      title={feature.patric_id ?? feature.feature_id}
+      title={displayName}
       breadcrumbs={breadcrumbs(feature)}
       headerContent={
-        feature.product ??
-        `${feature.feature_type ?? "Feature"} ${feature.feature_id}`
+        feature.product ?? `${feature.feature_type ?? "Feature"} ${displayName}`
+      }
+      metadataActions={
+        fastaTypes.length > 0 ? (
+          <FastaDownloadButtons
+            resource="genome_feature"
+            ids={[feature.feature_id]}
+            types={fastaTypes}
+            fileNameBase={displayName}
+          />
+        ) : undefined
       }
       metadataSummary={
         activeTab === "overview" ? (

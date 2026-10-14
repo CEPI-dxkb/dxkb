@@ -1,3 +1,4 @@
+import type { GenomeScope } from "./genome-scope";
 import type { OrganismFetchOptions, OrganismMetadataFacets } from "./types";
 import {
   buildGenomeFacetUrl,
@@ -8,13 +9,13 @@ import {
 
 async function fetchMetadataFacet(
   baseUrl: string,
-  taxonId: number,
+  scope: GenomeScope,
   field: string,
   limit: number | undefined,
   signal: AbortSignal | undefined,
 ) {
   const payload = await fetchOrganismSolrJson(
-    buildGenomeFacetUrl(baseUrl, taxonId, field, limit),
+    buildGenomeFacetUrl(baseUrl, scope, field, limit),
     `genome ${field} facet`,
     signal,
   );
@@ -22,7 +23,7 @@ async function fetchMetadataFacet(
 }
 
 export async function fetchOrganismMetadataFacets(
-  taxonId: number,
+  scope: GenomeScope,
   fields: string[],
   options: OrganismFetchOptions & { limit?: number } = {},
 ): Promise<OrganismMetadataFacets> {
@@ -32,7 +33,7 @@ export async function fetchOrganismMetadataFacets(
     fields.map((field) =>
       fetchMetadataFacet(
         baseUrl,
-        taxonId,
+        scope,
         field,
         field === "collection_year" ? undefined : defaultLimit,
         options.signal,

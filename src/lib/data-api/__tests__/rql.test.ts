@@ -69,6 +69,28 @@ describe("typed RQL", () => {
     ).toThrow(/genome_id_a/);
   });
 
+  it("validates the Strain Genome relationship target", () => {
+    // A strain lists its genomes in the multi-valued genome_ids; the Data API
+    // answers a bare genome(...) on strain with HTTP 400.
+    expect(
+      validateRql(
+        "strain",
+        "and(eq(genome_ids,*),genome(to(genome_ids),eq(taxon_lineage_ids,561)))",
+      ),
+    ).toBe(
+      "and(eq(genome_ids,%2A),genome(to(genome_ids),eq(taxon_lineage_ids,561)))",
+    );
+    expect(() =>
+      validateRql("strain", "genome(eq(taxon_lineage_ids,561))"),
+    ).toThrow(/strain genome requires to\(genome_ids\)/);
+    expect(() =>
+      serializeRql("strain", {
+        operator: "genome",
+        operand: { operator: "eq", field: "genus", value: "Influenza" },
+      }),
+    ).toThrow(/strain genome requires target genome_ids/);
+  });
+
   it("rejects Genome relationships for unsupported resources and fields", () => {
     expect(() =>
       validateRql("epitope", "genome(eq(genome_status,Complete))"),

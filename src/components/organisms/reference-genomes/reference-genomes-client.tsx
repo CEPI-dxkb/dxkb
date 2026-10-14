@@ -20,6 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { ReferenceGenome } from "@/lib/services/organisms/reference-genomes";
+import { genomeHref } from "@/lib/views/hrefs";
 
 const badgeVariantForType: Record<string, "default" | "secondary" | "outline"> = {
   Reference: "default",
@@ -248,9 +249,7 @@ function GenomeTable({ genomes }: { genomes: ReferenceGenome[] }) {
                     </TableCell>
                     <TableCell className="overflow-hidden px-3 py-1">
                       <Link
-                        href={`https://www.bv-brc.org/view/Genome/${g.genome_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        href={genomeHref(g.genome_id)}
                         className="block truncate text-sm text-primary hover:underline"
                         title={g.genome_name}
                       >

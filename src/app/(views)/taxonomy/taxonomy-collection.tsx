@@ -1,6 +1,6 @@
 "use client";
 
-import { Binary } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell, TaxonomyResourceCollection } from "@/components/views";
 import type { CollectionState } from "@/lib/views/collection-state";
 
@@ -13,7 +13,7 @@ export function TaxonomyCollection({ initialState }: TaxonomyCollectionProps) {
     <EntityViewShell
       viewLabel="Taxonomy View"
       title="Taxa"
-      tabs={[{ key: "taxons", label: "Taxa", icon: <Binary /> }]}
+      tabs={[{ key: "taxons", label: "Taxa", icon: viewIcons.taxonomy }]}
       activeTab="taxons"
       defaultTab="taxons"
       layout="fill"

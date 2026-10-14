@@ -1,5 +1,7 @@
-import { keywordClauses, validateRql } from "@/lib/data-api";
+import { keywordClauses, parseRql, validateRql } from "@/lib/data-api";
 import { keywordQuery } from "@/lib/data-api/keyword-terms";
+import type { RqlExpression } from "@/lib/data-api/rql";
+import type { GenomeQueryScope } from "@/lib/services/organisms/genome-scope";
 import {
   parseCollectionState,
   type CollectionState,
@@ -96,10 +98,10 @@ export function genomeStructuralRql(
 }
 
 /**
- * How the Genome list's related tabs (Sequences, Features, Proteins, Protein
- * Structures, Domains and Motifs) scope their rows. Legacy BV-BRC's GenomeList
- * hands its own query verbatim to each tab's collection, and DXKB does the same
- * wherever that works:
+ * How the Genome list's related tabs (Strains, Sequences, Features, Proteins,
+ * Protein Structures, Domains and Motifs) scope their rows. Legacy BV-BRC's
+ * GenomeList hands its own query verbatim to each tab's collection, and DXKB
+ * does the same wherever that works:
  * - `undefined`: an unscoped list, so each tab lists its whole collection;
  * - `{ rql, join: false }`: keyword and refinement only; `rql` is those
  *   `keyword(...)` clauses, run on the tab's own collection. They are built
@@ -109,7 +111,11 @@ export function genomeStructuralRql(
  * - `{ rql, join: true }`: friendly filters, `public` or explicit `rql`. They
  *   name genome fields, which legacy's pass-through sends to the child
  *   collection and gets HTTP 400 for, so the tabs join to the listed genomes
- *   with `genome(<rql>)`, `rql` being the Genomes tab's effective query.
+ *   with `genome(<rql>)` (Strains: `genome(to(genome_ids),<rql>)`), `rql`
+ *   being the Genomes tab's effective query.
+ *
+ * Epitopes, Surveillance and Serology have no genome ID to join on; they scope
+ * through `genomeTaxonScope` instead.
  */
 export function genomeRelatedScope(
   state: CollectionState,
@@ -132,4 +138,90 @@ export function genomeRelatedScope(
     state.rql,
   ].filter((clause): clause is string => Boolean(clause));
   return { rql: rqlAnd(...clauses), join: true };
+}
+
+export type GenomeTaxonScope =
+  | { supported: true; rql?: string }
+  | { supported: false };
+
+// The one genome field Epitope, Surveillance and Serology records share with it.
+const taxonScopeFields: ReadonlySet<string> = new Set(["taxon_lineage_ids"]);
+
+function namesOnlyTaxonFields(expression: RqlExpression): boolean {
+  switch (expression.operator) {
+    case "keyword":
+      return true;
+    case "and":
+    case "or":
+      return expression.operands.every(namesOnlyTaxonFields);
+    case "not":
+      return namesOnlyTaxonFields(expression.operand);
+    case "genome":
+      return false;
+    default:
+      return taxonScopeFields.has(expression.field);
+  }
+}
+
+/**
+ * How the Genome list's Epitopes, Surveillance and Serology tabs scope their
+ * rows. Those records carry no genome ID, so the Data API cannot join them to
+ * the listed genomes (`genome(...)` is an HTTP 400 on all three); what they share
+ * with a genome is its taxonomy. A scope that names nothing but keywords and
+ * `taxon_lineage_ids` (the Taxon friendly filter, or an `rql` such as the
+ * Taxonomy page's genome links) therefore runs on the tab's own collection, as
+ * legacy GenomeList hands each tab its query. Any other genome field (a status,
+ * a visibility, a genome ID list) has no counterpart there, so the tab is
+ * unsupported rather than silently broader than the Genomes tab. The
+ * recent-genomes default (`genomeBaseRql`) is a Genomes-tab listing default, not
+ * carried, as the related tabs of the bare list do not carry it.
+ * - `{ supported: true }`: unscoped, so the tab lists its whole collection;
+ * - `{ supported: true, rql }`: keyword and taxon clauses, in the order
+ *   `genomeRelatedScope` builds them;
+ * - `{ supported: false }`: the scope names a genome-only field.
+ */
+export function genomeTaxonScope(state: CollectionState): GenomeTaxonScope {
+  const clauses = [
+    genomeStructuralRql(state),
+    ...keywordClauses(state.keyword ?? "", "exact"),
+    ...keywordClauses(state.refine ?? "", "exact"),
+    state.rql,
+  ].filter((clause): clause is string => Boolean(clause));
+  if (clauses.length === 0) return { supported: true };
+  const rql = rqlAnd(...clauses);
+  return namesOnlyTaxonFields(parseRql("genome", rql))
+    ? { supported: true, rql }
+    : { supported: false };
+}
+
+/**
+ * The genomes the Overview tab summarizes: those the Genomes tab lists, so its
+ * keyword and refinement clauses and its genome-field clauses (friendly filters,
+ * `rql`, or the recent-genomes default of the bare list), kept apart for the
+ * collections that join to genomes (`genomeLinkedScopeClauses`). `undefined`
+ * for a list that includes private genomes (My Genomes, `public=false`): the
+ * overview's requests are public reads, so its charts would be empty for
+ * exactly the genomes the list shows.
+ */
+export function genomeOverviewScope(
+  state: CollectionState,
+): GenomeQueryScope | undefined {
+  if (
+    Object.hasOwn(state.filters, "public") &&
+    state.filters.public.includes("false")
+  )
+    return undefined;
+  const keywords = [
+    ...keywordClauses(state.keyword ?? "", "exact"),
+    ...keywordClauses(state.refine ?? "", "exact"),
+  ];
+  const fields = [
+    genomeBaseRql(state),
+    genomeStructuralRql(state),
+    state.rql,
+  ].filter((clause): clause is string => Boolean(clause));
+  return {
+    ...(fields.length > 0 && { fieldRql: rqlAnd(...fields) }),
+    ...(keywords.length > 0 && { keywordRql: rqlAnd(...keywords) }),
+  };
 }

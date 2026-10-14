@@ -21,12 +21,16 @@ export const childCollectionUrlKeys = [
   "assays",
   "biosets",
   "domains",
+  "epitopes",
   "features",
   "interactions",
   "proteins",
   "sequences",
+  "serology",
   "sfvt",
+  "strains",
   "structures",
+  "surveillance",
 ] as const;
 
 export type ChildCollectionUrlKey = (typeof childCollectionUrlKeys)[number];

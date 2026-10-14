@@ -1,23 +1,10 @@
 import Link from "next/link";
 import { useState, type KeyboardEvent, type ReactNode } from "react";
-import {
-  Activity,
-  Binary,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  Dna,
-  FlaskConical,
-  GitBranch,
-  ListTree,
-  Puzzle,
-  Radar,
-  TestTube,
-  Waypoints,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   Table,
   TableBody,
@@ -34,22 +21,22 @@ import {
 } from "@/lib/search/all-types-search";
 import { cn } from "@/lib/utils";
 
-/** The icons the taxon views' rail uses for the same data. */
+/** Each data type's view icon, as every view rail shows it. */
 const typeIcons: Readonly<Record<string, ReactNode>> = {
-  taxonomy: <ListTree />,
-  genome: <Dna />,
-  strain: <GitBranch />,
-  genome_feature: <Binary />,
-  protein_feature: <Puzzle />,
-  epitope: <Activity />,
-  protein_structure: <Waypoints />,
-  surveillance: <Radar />,
-  serology: <TestTube />,
-  experiment: <FlaskConical />,
+  taxonomy: viewIcons.taxonomy,
+  genome: viewIcons.genomes,
+  strain: viewIcons.strains,
+  genome_feature: viewIcons.features,
+  protein_feature: viewIcons.domainsAndMotifs,
+  epitope: viewIcons.epitopes,
+  protein_structure: viewIcons.proteinStructures,
+  surveillance: viewIcons.surveillance,
+  serology: viewIcons.serology,
+  experiment: viewIcons.experiments,
 };
 
 export function searchTypeIcon(id: string): ReactNode {
-  return typeIcons[id] ?? <Binary />;
+  return typeIcons[id] ?? viewIcons.features;
 }
 
 /**

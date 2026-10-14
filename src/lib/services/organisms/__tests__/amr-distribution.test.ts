@@ -56,6 +56,32 @@ describe("fetchAmrPhenotypeDistribution", () => {
     );
   });
 
+  it.each([
+    [
+      "joins genome fields and runs keywords on the AMR records",
+      { fieldRql: "eq(genome_status,Complete)", keywordRql: "keyword(pseudomonas)" },
+      "eq(genome_id,*)&genome(eq(genome_status,Complete))&keyword(pseudomonas)&in(",
+    ],
+    [
+      "runs a keyword-only query on the AMR records, as legacy does",
+      { keywordRql: "keyword(pseudomonas)" },
+      "eq(genome_id,*)&keyword(pseudomonas)&in(",
+    ],
+  ])("%s", async (_label, scope, prefix) => {
+    let capturedBody = "";
+    server.use(
+      http.post(`${baseUrl}/genome_amr/`, async ({ request }) => {
+        capturedBody = await request.text();
+        return HttpResponse.json(pivotResponse([]));
+      }),
+    );
+
+    await fetchAmrPhenotypeDistribution(scope);
+
+    // The website API rejects a keyword inside genome() on genome_amr.
+    expect(capturedBody.startsWith(prefix)).toBe(true);
+  });
+
   it("returns empty antibiotics when pivot is empty", async () => {
     server.use(
       http.post(`${baseUrl}/genome_amr/`, () =>

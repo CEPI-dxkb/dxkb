@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ExternalLink, FlaskConical, LayoutDashboard } from "lucide-react";
+import { ExternalLink } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell, ResourceChildCollection } from "@/components/views";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
@@ -16,8 +17,8 @@ import { isTaxonId } from "@/lib/taxonomy-view";
 import { EpitopeOverview } from "./epitope-overview";
 
 const icons: Record<EpitopeTab, ReactNode> = {
-  overview: <LayoutDashboard />,
-  assays: <FlaskConical />,
+  overview: viewIcons.overview,
+  assays: viewIcons.assays,
 };
 
 interface EpitopeMemberProps {

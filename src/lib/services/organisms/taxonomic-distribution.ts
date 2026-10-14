@@ -1,3 +1,4 @@
+import type { GenomeScope } from "./genome-scope";
 import type { OrganismFetchOptions, OrganismGenusFacet } from "./types";
 import {
   buildGenomeFacetUrl,
@@ -7,7 +8,7 @@ import {
 } from "./utils";
 
 export async function fetchTaxonomicDistribution(
-  taxonId: number,
+  scope: GenomeScope,
   options: OrganismFetchOptions = {},
 ): Promise<{ genus: OrganismGenusFacet[]; species: OrganismGenusFacet[] }> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
@@ -15,12 +16,12 @@ export async function fetchTaxonomicDistribution(
 
   const [genusResult, speciesResult] = await Promise.allSettled([
     fetchOrganismSolrJson(
-      buildGenomeFacetUrl(baseUrl, taxonId, "genus", limit),
+      buildGenomeFacetUrl(baseUrl, scope, "genus", limit),
       "taxonomic distribution genus",
       options.signal,
     ),
     fetchOrganismSolrJson(
-      buildGenomeFacetUrl(baseUrl, taxonId, "species", limit),
+      buildGenomeFacetUrl(baseUrl, scope, "species", limit),
       "taxonomic distribution species",
       options.signal,
     ),

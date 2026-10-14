@@ -188,4 +188,51 @@ describe("MetadataDistributions", () => {
     );
     warnSpy.mockRestore();
   });
+
+  it("summarizes a Genome query and leaves out an empty AMR chart", async () => {
+    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    vi.mocked(fetchAmrPhenotypeDistribution).mockResolvedValueOnce({
+      antibiotics: [],
+    });
+
+    await renderServer(
+      MetadataDistributions({
+        genomeQuery: { keywordRql: "keyword(pseudomonas)" },
+        fields: ["genus"],
+        showAmr: true,
+        hideEmptyAmr: true,
+      }),
+    );
+
+    const scope = { keywordRql: "keyword(pseudomonas)" };
+    expect(fetchOrganismMetadataFacets).toHaveBeenLastCalledWith(scope, [
+      "genus",
+    ]);
+    expect(fetchTaxonomicDistribution).toHaveBeenLastCalledWith(scope);
+    expect(fetchAmrPhenotypeDistribution).toHaveBeenLastCalledWith(scope);
+    expect(screen.queryByTestId("amr-chart")).not.toBeInTheDocument();
+  });
+
+  it("still shows a failed AMR request when empty AMR charts are hidden", async () => {
+    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({});
+    vi.mocked(fetchAmrPhenotypeDistribution).mockRejectedValueOnce(
+      new Error("amr boom"),
+    );
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    await renderServer(
+      MetadataDistributions({
+        genomeQuery: { keywordRql: "keyword(pseudomonas)" },
+        fields: [],
+        showAmr: true,
+        hideEmptyAmr: true,
+      }),
+    );
+
+    expect(screen.getByTestId("amr-chart")).toBeInTheDocument();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("genome query keyword(pseudomonas): amr boom"),
+    );
+    warnSpy.mockRestore();
+  });
 });

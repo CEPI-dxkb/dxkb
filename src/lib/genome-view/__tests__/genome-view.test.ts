@@ -13,9 +13,11 @@ import {
   genomeCollectionOptions,
   genomeCollectionProfile,
   genomeInteractionsRql,
+  genomeOverviewScope,
   genomeRelatedScope,
   genomeSequenceRql,
   genomeStructuralRql,
+  genomeTaxonScope,
   genomeViewRecordSchema,
   isGenomeId,
   parseGenomeCollectionState,
@@ -392,5 +394,102 @@ describe("genomeRelatedScope", () => {
       rql: "and(eq(taxon_lineage_ids,1763),keyword(coli))",
       join: true,
     });
+  });
+});
+
+describe("genomeTaxonScope", () => {
+  const bare: CollectionState = { filters: {}, page: 1, sort: "unsorted" };
+
+  it("leaves the taxon-scoped tabs unscoped for the bare list", () => {
+    // The recent-genomes default is the Genomes tab's own, not a scope.
+    expect(genomeTaxonScope(bare)).toEqual({ supported: true });
+  });
+
+  it("runs keyword, refinement and taxon clauses on the tab's collection", () => {
+    expect(genomeTaxonScope({ ...bare, keyword: "pseudomonas" })).toEqual({
+      supported: true,
+      rql: "keyword(pseudomonas)",
+    });
+    expect(
+      genomeTaxonScope({
+        ...bare,
+        keyword: "coli OR Salmonella",
+        refine: "kinase",
+        filters: { taxon_id: ["561", "590"] },
+      }),
+    ).toEqual({
+      supported: true,
+      rql: "and(or(eq(taxon_lineage_ids,561),eq(taxon_lineage_ids,590)),or(keyword(coli),keyword(Salmonella)),keyword(kinase))",
+    });
+  });
+
+  it("keeps an rql that names only the taxon lineage", () => {
+    expect(
+      genomeTaxonScope({
+        ...bare,
+        rql: "and(in(taxon_lineage_ids,(3044781,186536)),not(eq(taxon_lineage_ids,10239)))",
+      }),
+    ).toEqual({
+      supported: true,
+      rql: "and(in(taxon_lineage_ids,(3044781,186536)),not(eq(taxon_lineage_ids,10239)))",
+    });
+  });
+
+  it.each<[string, Partial<CollectionState>]>([
+    ["a genome status filter", { filters: { genome_status: ["Complete"] } }],
+    ["the My Genomes visibility", { filters: { public: ["false"] } }],
+    ["a genome ID list", { rql: "in(genome_id,(1.1,1.2))" }],
+    [
+      "a lineage beside another genome field",
+      { rql: "and(eq(taxon_lineage_ids,561),eq(genome_status,Complete))" },
+    ],
+  ])("is unsupported for %s", (_label, scope) => {
+    expect(genomeTaxonScope({ ...bare, keyword: "coli", ...scope })).toEqual({
+      supported: false,
+    });
+  });
+});
+
+describe("genomeOverviewScope", () => {
+  const bare: CollectionState = { filters: {}, page: 1, sort: "unsorted" };
+
+  it("summarizes the genomes the Genomes tab lists", () => {
+    expect(genomeOverviewScope(bare)).toEqual({ fieldRql: recentGenomeRql });
+    expect(genomeOverviewScope({ ...bare, keyword: "pseudomonas" })).toEqual({
+      keywordRql: "keyword(pseudomonas)",
+    });
+    expect(
+      genomeOverviewScope({ ...bare, filters: { public: ["true"] } }),
+    ).toEqual({ fieldRql: "eq(public,true)" });
+  });
+
+  it("keeps keyword clauses apart from genome-field clauses", () => {
+    expect(
+      genomeOverviewScope({
+        ...bare,
+        keyword: "pseudomonas",
+        refine: "coli",
+        filters: { genome_status: ["Complete"] },
+      }),
+    ).toEqual({
+      fieldRql: "eq(genome_status,Complete)",
+      keywordRql: "and(keyword(pseudomonas),keyword(coli))",
+    });
+    expect(
+      genomeOverviewScope({
+        ...bare,
+        keyword: "coli",
+        rql: "in(genome_id,(1.1,1.2))",
+      }),
+    ).toEqual({
+      fieldRql: "in(genome_id,(1.1,1.2))",
+      keywordRql: "keyword(coli)",
+    });
+  });
+
+  it("is unavailable for a list that includes private genomes", () => {
+    expect(
+      genomeOverviewScope({ ...bare, filters: { public: ["false"] } }),
+    ).toBeUndefined();
   });
 });

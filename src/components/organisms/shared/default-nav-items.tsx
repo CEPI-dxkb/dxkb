@@ -1,19 +1,7 @@
-import {
-  Activity,
-  Binary,
-  Blocks,
-  Database,
-  Dna,
-  FlaskConical,
-  Handshake,
-  ListTree,
-  Network,
-  Puzzle,
-  Waypoints,
-} from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
 import { makePlaceholderView as placeholderView } from "@/components/organisms/shared/make-placeholder-view";
+import { viewIcons } from "@/components/views/view-icons";
 import type {
   OrganismLandingView,
   OrganismViewKey,
@@ -27,39 +15,51 @@ export interface DefaultViewDescriptor {
 }
 
 export const defaultViewDescriptors: readonly DefaultViewDescriptor[] = [
-  { key: "overview", label: "Overview", icon: <Blocks /> },
+  { key: "overview", label: "Overview", icon: viewIcons.overview },
   {
     key: "phylogeny",
     label: "Phylogeny",
-    icon: <Network />,
+    icon: viewIcons.phylogeny,
     description:
       "Phylogeny data and visualization are planned for a follow-up view.",
   },
   {
     key: "taxa-tree",
     label: "Taxa Tree",
-    icon: <ListTree />,
+    icon: viewIcons.taxonomy,
     description:
       "Taxa Tree browsing is stubbed while the overview data panels are brought online.",
   },
   {
     key: "genomes",
     label: "Genomes",
-    icon: <Dna />,
+    icon: viewIcons.genomes,
     description:
       "Genome table filtering and pagination are planned for a dedicated follow-up view.",
   },
-  { key: "sequences", label: "Sequences", icon: <Database /> },
-  { key: "features", label: "Features", icon: <Binary /> },
+  { key: "sequences", label: "Sequences", icon: viewIcons.sequences },
+  { key: "features", label: "Features", icon: viewIcons.features },
   {
     key: "protein-structures",
     label: "Protein Structures",
-    icon: <Waypoints />,
+    icon: viewIcons.proteinStructures,
   },
-  { key: "domains-and-motifs", label: "Domains and Motifs", icon: <Puzzle /> },
-  { key: "epitopes", label: "Epitopes", icon: <Activity /> },
-  { key: "experiments", label: "Experiments", icon: <FlaskConical /> },
-  { key: "interactions", label: "Interactions", icon: <Handshake /> },
+  {
+    key: "domains-and-motifs",
+    label: "Domains and Motifs",
+    icon: viewIcons.domainsAndMotifs,
+  },
+  { key: "epitopes", label: "Epitopes", icon: viewIcons.epitopes },
+  {
+    key: "experiments",
+    label: "Experiments",
+    icon: viewIcons.experiments,
+  },
+  {
+    key: "interactions",
+    label: "Interactions",
+    icon: viewIcons.interactions,
+  },
 ];
 
 export type NavItemOverride =

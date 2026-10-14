@@ -1,5 +1,7 @@
 import { getRequiredEnv } from "@/lib/env";
 
+import { genomeScopeRql, type GenomeScope } from "./genome-scope";
+
 export const numberFormatter = new Intl.NumberFormat("en-US");
 
 export const organismBvBrcRevalidateSeconds = 86400;
@@ -195,24 +197,24 @@ export function parseSolrFacetList(payload: Record<string, unknown>, field: stri
   return values;
 }
 
-export function buildGenomeFacetUrl(baseUrl: string, taxonId: number, field: string, limit?: number): string {
+export function buildGenomeFacetUrl(baseUrl: string, scope: GenomeScope, field: string, limit?: number): string {
   const limitClause = typeof limit === "number" && limit > 0 ? `,(limit,${String(limit)})` : "";
-  return `${baseUrl}/genome/?eq(taxon_lineage_ids,${String(taxonId)})&limit(1)&facet((field,${field})${limitClause},(mincount,1))`;
+  return `${baseUrl}/genome/?${genomeScopeRql(scope)}&limit(1)&facet((field,${field})${limitClause},(mincount,1))`;
 }
 
-export function buildGenomeGeoFacetUrl(baseUrl: string, taxonId: number, field: string, limit?: number): string {
+export function buildGenomeGeoFacetUrl(baseUrl: string, scope: GenomeScope, field: string, limit?: number): string {
   const limitClause = typeof limit === "number" && limit > 0 ? `,(limit,${String(limit)})` : "";
-  return `${baseUrl}/genome/?eq(genome_id,*)&genome(eq(taxon_lineage_ids,${String(taxonId)}))&facet((field,${field}),(mincount,1)${limitClause})&limit(0)`;
+  return `${baseUrl}/genome/?${genomeScopeRql(scope)}&facet((field,${field}),(mincount,1)${limitClause})&limit(0)`;
 }
 
-export function buildGenomeGeoPivotUrl(baseUrl: string, taxonId: number, primary: string, secondary: string, limit?: number): string {
+export function buildGenomeGeoPivotUrl(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, limit?: number): string {
   const limitClause = typeof limit === "number" && limit > 0 ? `,(limit,${String(limit)})` : "";
-  return `${baseUrl}/genome/?eq(genome_id,*)&genome(eq(taxon_lineage_ids,${String(taxonId)}))&facet((pivot,(${primary},${secondary})),(mincount,1)${limitClause})&limit(0)`;
+  return `${baseUrl}/genome/?${genomeScopeRql(scope)}&facet((pivot,(${primary},${secondary})),(mincount,1)${limitClause})&limit(0)`;
 }
 
-export function buildGenomeGeoPivot3Url(baseUrl: string, taxonId: number, primary: string, secondary: string, tertiary: string, limit?: number): string {
+export function buildGenomeGeoPivot3Url(baseUrl: string, scope: GenomeScope, primary: string, secondary: string, tertiary: string, limit?: number): string {
   const limitClause = typeof limit === "number" && limit > 0 ? `,(limit,${String(limit)})` : "";
-  return `${baseUrl}/genome/?eq(genome_id,*)&genome(eq(taxon_lineage_ids,${String(taxonId)}))&facet((pivot,(${primary},${secondary},${tertiary})),(mincount,1)${limitClause})&limit(0)`;
+  return `${baseUrl}/genome/?${genomeScopeRql(scope)}&facet((pivot,(${primary},${secondary},${tertiary})),(mincount,1)${limitClause})&limit(0)`;
 }
 
 interface PivotEntry {

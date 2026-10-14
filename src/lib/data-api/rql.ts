@@ -26,13 +26,19 @@ const operators = new Set([
 const transportOperators = new Set(["select", "sort", "limit", "facet"]);
 const fieldOperators = new Set(["eq", "ne", "lt", "le", "gt", "ge", "in"]);
 // These resources join through their genome ID when filtering by genome metadata.
-const genomeRelationshipResources = new Set<DataResource>([
-  "genome_feature",
-  "genome_sequence",
-  "protein_feature",
-  "protein_structure",
-  "bioset",
-  "ppi",
+// A resource whose genome ID field is not `genome_id` names it with `to(...)`:
+// a PPI row's A-side genome, and a strain's multi-valued `genome_ids`.
+const genomeRelationshipTargets = new Map<
+  DataResource,
+  RqlGenomeRelationship["target"]
+>([
+  ["genome_feature", undefined],
+  ["genome_sequence", undefined],
+  ["protein_feature", undefined],
+  ["protein_structure", undefined],
+  ["bioset", undefined],
+  ["ppi", "genome_id_a"],
+  ["strain", "genome_ids"],
 ]);
 
 function assertFieldOperator(
@@ -77,7 +83,7 @@ export interface RqlNot {
 }
 export interface RqlGenomeRelationship {
   operator: "genome";
-  target?: "genome_id_a";
+  target?: "genome_id_a" | "genome_ids";
   operand: RqlExpression;
 }
 export type RqlExpression =
@@ -171,17 +177,18 @@ function parseExpression(
   }
   const args = splitArguments(match[2]);
   if (operator === "genome") {
-    if (!genomeRelationshipResources.has(resource))
+    if (!genomeRelationshipTargets.has(resource))
       throw new DataApiValidationError(`Unsupported RQL operator: ${operator}`);
-    if (resource === "ppi") {
-      if (args.length !== 2 || args[0] !== "to(genome_id_a)") {
+    const target = genomeRelationshipTargets.get(resource);
+    if (target) {
+      if (args.length !== 2 || args[0] !== `to(${target})`) {
         throw new DataApiValidationError(
-          "ppi genome requires to(genome_id_a) and one operand.",
+          `${resource} genome requires to(${target}) and one operand.`,
         );
       }
       return {
         operator,
-        target: "genome_id_a",
+        target,
         operand: parseExpression("genome", args[1], depth + 1),
       };
     }
@@ -330,15 +337,16 @@ export function serializeRql(
   if (expression.operator === "not")
     return `not(${serializeRql(resource, expression.operand)})`;
   if (expression.operator === "genome") {
-    if (!genomeRelationshipResources.has(resource))
+    if (!genomeRelationshipTargets.has(resource))
       throw new DataApiValidationError("Unsupported RQL operator: genome");
-    if (resource === "ppi") {
-      if (expression.target !== "genome_id_a") {
+    const target = genomeRelationshipTargets.get(resource);
+    if (target) {
+      if (expression.target !== target) {
         throw new DataApiValidationError(
-          "ppi genome requires target genome_id_a.",
+          `${resource} genome requires target ${target}.`,
         );
       }
-      return `genome(to(${expression.target}),${serializeRql("genome", expression.operand)})`;
+      return `genome(to(${target}),${serializeRql("genome", expression.operand)})`;
     }
     if (expression.target !== undefined) {
       throw new DataApiValidationError(

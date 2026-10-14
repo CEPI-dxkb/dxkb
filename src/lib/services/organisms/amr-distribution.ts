@@ -1,3 +1,4 @@
+import { genomeLinkedScopeClauses, type GenomeScope } from "./genome-scope";
 import type {
   AmrAntibioticRow,
   AmrDistributionData,
@@ -11,10 +12,12 @@ import {
 
 const pivotKey = "antibiotic,resistant_phenotype";
 
-function buildBody(taxonId: number): string {
+function buildBody(scope: GenomeScope): string {
   return (
     "eq(genome_id,*)" +
-    `&genome(eq(taxon_lineage_ids,${String(taxonId)}))` +
+    genomeLinkedScopeClauses(scope)
+      .map((clause) => `&${clause}`)
+      .join("") +
     "&in(resistant_phenotype,(Resistant,Susceptible,Intermediate))" +
     "&limit(1)" +
     "&facet((pivot,(antibiotic,resistant_phenotype)),(mincount,1),(limit,-1))" +
@@ -42,14 +45,14 @@ function toRow(
 }
 
 export async function fetchAmrPhenotypeDistribution(
-  taxonId: number,
+  scope: GenomeScope,
   options: OrganismFetchOptions = {},
 ): Promise<AmrDistributionData> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
   const url = `${baseUrl}/genome_amr/`;
   const payload = await fetchOrganismSolrJsonPost(
     url,
-    buildBody(taxonId),
+    buildBody(scope),
     "amr phenotype distribution",
     options.signal,
   );

@@ -1,14 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import {
-  Blocks,
-  ChartNoAxesCombined,
-  GitCompareArrows,
-  LayoutDashboard,
-  Network,
-  ScanLine,
-  Shapes,
-} from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   ProteinStructureResourceCollection,
@@ -30,13 +22,13 @@ import { isTaxonId } from "@/lib/taxonomy-view";
 import { FeatureOverview } from "./feature-overview";
 
 const featureTabIcons: Record<FeatureTab, ReactNode> = {
-  overview: <LayoutDashboard />,
-  "genome-browser": <ScanLine />,
-  "compare-region": <GitCompareArrows />,
-  transcriptomics: <ChartNoAxesCombined />,
-  interactions: <Network />,
-  domains: <Blocks />,
-  structures: <Shapes />,
+  overview: viewIcons.overview,
+  "genome-browser": viewIcons.genomeBrowser,
+  "compare-region": viewIcons.compareRegion,
+  transcriptomics: viewIcons.transcriptomics,
+  interactions: viewIcons.interactions,
+  domains: viewIcons.domainsAndMotifs,
+  structures: viewIcons.proteinStructures,
 };
 
 function breadcrumbs(feature: FeatureViewRecord) {

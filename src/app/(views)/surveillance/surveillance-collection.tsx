@@ -1,6 +1,6 @@
 "use client";
 
-import { Microscope } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   SurveillanceResourceCollection,
@@ -19,7 +19,7 @@ export function SurveillanceCollection({
       viewLabel="Surveillance View"
       title="Surveillance"
       tabs={[
-        { key: "surveillance", label: "Surveillance", icon: <Microscope /> },
+        { key: "surveillance", label: "Surveillance", icon: viewIcons.surveillance },
       ]}
       activeTab="surveillance"
       defaultTab="surveillance"

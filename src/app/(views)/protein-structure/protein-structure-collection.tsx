@@ -1,6 +1,6 @@
 "use client";
 
-import { Shapes } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import {
   EntityViewShell,
   ProteinStructureResourceCollection,
@@ -19,7 +19,7 @@ export function ProteinStructureCollection({
       viewLabel="Protein Structure View"
       title="Protein Structures"
       tabs={[
-        { key: "structures", label: "Protein Structures", icon: <Shapes /> },
+        { key: "structures", label: "Protein Structures", icon: viewIcons.proteinStructures },
       ]}
       activeTab="structures"
       defaultTab="structures"

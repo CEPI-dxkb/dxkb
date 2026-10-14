@@ -2,20 +2,16 @@
 
 import { useState } from "react";
 import { useChildCollectionUrlState } from "@/hooks/views/use-child-collection-url-state";
+import type { DataTableRow } from "@/components/shared/data-table";
 import { DataRepository, type DataResource } from "@/lib/data-api";
-import {
-  featureCollectionProfile,
-  type FeatureViewRecord,
-} from "@/lib/feature-view";
+import { epitopeCollectionProfile } from "@/lib/epitope-view";
+import { featureCollectionProfile } from "@/lib/feature-view";
 import { biosetCollectionProfile } from "@/lib/experiment-view/profile";
-import {
-  proteinFeatureCollectionProfile,
-  type ProteinFeatureViewRecord,
-} from "@/lib/protein-feature-view";
-import {
-  proteinStructureCollectionProfile,
-  type ProteinStructureViewRecord,
-} from "@/lib/protein-structure-view";
+import { proteinFeatureCollectionProfile } from "@/lib/protein-feature-view";
+import { proteinStructureCollectionProfile } from "@/lib/protein-structure-view";
+import { serologyCollectionProfile } from "@/lib/serology-view";
+import { strainCollectionProfile } from "@/lib/strain-view";
+import { surveillanceCollectionProfile } from "@/lib/surveillance-view";
 import {
   childCollectionOptions,
   type ChildCollectionUrlKey,
@@ -50,6 +46,51 @@ function scopedStructuralRql(
   };
 }
 
+/**
+ * A resource's own collection profile (columns, detail fields, facets and row
+ * links) pinned to the parent scope. Only `rowHref` is typed by the row, so it is
+ * the one field re-wrapped for the untyped child row.
+ */
+function scopedProfile<Row extends DataTableRow>(
+  { rowHref, ...canonical }: ResourceCollectionProfile<Row>,
+  label: string,
+  rql: string,
+): ResourceCollectionProfile<ChildRow> {
+  return {
+    ...canonical,
+    label,
+    basePredicate: rql,
+    buildStructuralRql: scopedStructuralRql(rql, canonical.buildStructuralRql),
+    rowHref: rowHref && ((row) => rowHref(row as Row)),
+    exportFileName: label.toLowerCase(),
+  };
+}
+
+/**
+ * The resources whose child tables use their canonical collection profile and
+ * ignore any `columns` prop. Any other resource needs `columns` or `profile`.
+ */
+const canonicalProfiles: Partial<
+  Record<
+    DataResource,
+    (label: string, rql: string) => ResourceCollectionProfile<ChildRow>
+  >
+> = {
+  bioset: (label, rql) => scopedProfile(biosetCollectionProfile, label, rql),
+  epitope: (label, rql) => scopedProfile(epitopeCollectionProfile, label, rql),
+  genome_feature: (label, rql) =>
+    scopedProfile(featureCollectionProfile, label, rql),
+  protein_feature: (label, rql) =>
+    scopedProfile(proteinFeatureCollectionProfile, label, rql),
+  protein_structure: (label, rql) =>
+    scopedProfile(proteinStructureCollectionProfile, label, rql),
+  serology: (label, rql) =>
+    scopedProfile(serologyCollectionProfile, label, rql),
+  strain: (label, rql) => scopedProfile(strainCollectionProfile, label, rql),
+  surveillance: (label, rql) =>
+    scopedProfile(surveillanceCollectionProfile, label, rql),
+};
+
 interface ResourceChildCollectionProps {
   /**
    * Prefix for this table's URL params, e.g. "features" → `features.page`. Unique
@@ -72,15 +113,14 @@ interface ResourceChildCollectionProps {
   /**
    * Explicit collection profile, overriding the per-`resource` dispatch below.
    *
-   * No production caller sets this today — every real child tab lands on one of
-   * the four `resource === …` branches or on the raw-`columns` fallback. It is
-   * retained deliberately, for two reasons:
+   * No production caller sets this today — every real child tab lands on a
+   * `canonicalProfiles` entry or on the raw-`columns` fallback. It is retained
+   * deliberately, for two reasons:
    *
-   * 1. It is the *general* form those four branches specialize. Each of them
+   * 1. It is the *general* form `canonicalProfiles` specializes: each entry
    *    spreads a canonical profile and overrides `label`, `basePredicate`,
    *    `buildStructuralRql` and `exportFileName` — exactly what this branch
-   *    does. The `rowHref` casts those branches need currently prevent them
-   *    from sharing this branch without weakening their row types.
+   *    does.
    * 2. It is the seam the export-contract tests need. The byte-identical
    *    CSV/TSV assertions in `__tests__/resource-child-collection.test.tsx` pin
    *    exact bytes against a two-column profile; routed through
@@ -138,6 +178,7 @@ function ScopedResourceChildCollection({
   keywordPlaceholder,
 }: ResourceChildCollectionProps) {
   const exportFileName = label.toLowerCase();
+  const canonicalProfile = canonicalProfiles[resource];
   let profile: ResourceCollectionProfile<ChildRow>;
   if (suppliedProfile) {
     profile = {
@@ -150,60 +191,8 @@ function ScopedResourceChildCollection({
       ),
       exportFileName,
     };
-  } else if (resource === "bioset") {
-    profile = {
-      ...biosetCollectionProfile,
-      label,
-      basePredicate: rql,
-      buildStructuralRql: scopedStructuralRql(
-        rql,
-        biosetCollectionProfile.buildStructuralRql,
-      ),
-      exportFileName,
-    };
-  } else if (resource === "genome_feature") {
-    profile = {
-      ...featureCollectionProfile,
-      label,
-      basePredicate: rql,
-      buildStructuralRql: scopedStructuralRql(
-        rql,
-        featureCollectionProfile.buildStructuralRql,
-      ),
-      rowHref: (row) =>
-        featureCollectionProfile.rowHref?.(row as FeatureViewRecord),
-      exportFileName,
-    };
-  } else if (resource === "protein_feature") {
-    profile = {
-      ...proteinFeatureCollectionProfile,
-      label,
-      basePredicate: rql,
-      buildStructuralRql: scopedStructuralRql(
-        rql,
-        proteinFeatureCollectionProfile.buildStructuralRql,
-      ),
-      rowHref: (row) =>
-        proteinFeatureCollectionProfile.rowHref?.(
-          row as ProteinFeatureViewRecord,
-        ),
-      exportFileName,
-    };
-  } else if (resource === "protein_structure") {
-    profile = {
-      ...proteinStructureCollectionProfile,
-      label,
-      basePredicate: rql,
-      buildStructuralRql: scopedStructuralRql(
-        rql,
-        proteinStructureCollectionProfile.buildStructuralRql,
-      ),
-      rowHref: (row) =>
-        proteinStructureCollectionProfile.rowHref?.(
-          row as ProteinStructureViewRecord,
-        ),
-      exportFileName,
-    };
+  } else if (canonicalProfile) {
+    profile = canonicalProfile(label, rql);
   } else {
     if (!columns) {
       throw new Error(

@@ -90,6 +90,15 @@ export function genomesChildRql(genomeRql: string, extra?: string): string {
 }
 
 /**
+ * The strains of the genomes `genomeRql` lists. A strain names its genomes in the
+ * multi-valued `genome_ids`, so the join targets that field; like the other
+ * joins, a bare `genome(...)` with no match-all beside it is an HTTP 400.
+ */
+export function genomeStrainsRql(genomeRql: string): string {
+  return `and(eq(genome_ids,*),genome(to(genome_ids),${genomeRql}))`;
+}
+
+/**
  * A PPI row does not say which endpoint carries the scoped organism. The A and B
  * sides have identical field shapes, `toGraph` classifies each independently as
  * host or microbial, and `featureInteractionsRql` above already matches a scoped

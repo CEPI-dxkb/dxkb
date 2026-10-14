@@ -1,6 +1,6 @@
 "use client";
 
-import { Blocks } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell, FeatureResourceCollection } from "@/components/views";
 import { featureListOptionsFor } from "@/lib/feature-view";
 import type { CollectionState } from "@/lib/views/collection-state";
@@ -19,7 +19,7 @@ export function FeatureCollection({
     <EntityViewShell
       viewLabel="Feature View"
       title="Features"
-      tabs={[{ key: "features", label: "Features", icon: <Blocks /> }]}
+      tabs={[{ key: "features", label: "Features", icon: viewIcons.features }]}
       activeTab="features"
       defaultTab="features"
       layout="fill"

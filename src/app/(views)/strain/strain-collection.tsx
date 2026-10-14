@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch } from "lucide-react";
+import { viewIcons } from "@/components/views/view-icons";
 import { EntityViewShell, StrainResourceCollection } from "@/components/views";
 import type { CollectionState } from "@/lib/views/collection-state";
 
@@ -13,7 +13,7 @@ export function StrainCollection({ initialState }: StrainCollectionProps) {
     <EntityViewShell
       viewLabel="Strain View"
       title="Strains"
-      tabs={[{ key: "strain", label: "Strains", icon: <GitBranch /> }]}
+      tabs={[{ key: "strain", label: "Strains", icon: viewIcons.strains }]}
       activeTab="strain"
       defaultTab="strain"
       layout="fill"

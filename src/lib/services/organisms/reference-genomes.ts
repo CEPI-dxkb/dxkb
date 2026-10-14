@@ -1,3 +1,4 @@
+import { genomeScopeRql, type GenomeScope } from "./genome-scope";
 import type { OrganismFetchOptions } from "./types";
 import {
   fetchOrganism,
@@ -13,12 +14,12 @@ export interface ReferenceGenome {
 }
 
 export async function fetchReferenceGenomes(
-  taxonId: number,
+  scope: GenomeScope,
   options: OrganismFetchOptions = {},
 ): Promise<ReferenceGenome[]> {
   const baseUrl = getBvBrcWebsiteApiBaseUrl();
   const query = [
-    `eq(taxon_lineage_ids,${String(taxonId)})`,
+    genomeScopeRql(scope),
     `eq(reference_genome,*)`,
     `select(reference_genome,genome_name,genome_id)`,
     `limit(25000)`,

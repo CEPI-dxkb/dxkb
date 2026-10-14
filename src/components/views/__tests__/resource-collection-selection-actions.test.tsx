@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { CancelledError } from "@tanstack/react-query";
 import {
   parseRql,
   type DataRepository,
@@ -435,12 +436,55 @@ describe("ResourceCollection selection actions", () => {
     });
   });
 
-  it("does not resolve every matching Genome from a previous query's total", async () => {
+  it("waits for the current query's total, then resolves every matching Genome", async () => {
     const user = userEvent.setup();
     const data = repository(
-      Promise.resolve({ rows: [{ genome_id: "83332.12" }] }),
+      Promise.resolve({
+        rows: [{ genome_id: "83332.12" }, { genome_id: "83332.13" }],
+      }),
     );
     const exportAll = vi.spyOn(data, "exportAll");
+    const currentTotal = Promise.withResolvers<number>();
+    // A previous query's 50,000 rows are on screen, over the SERVICES limit;
+    // this query matches 2.
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        selection: {},
+        selectedIds: [],
+        isAllPagesSelected: true,
+        isPlaceholderData: true,
+        total: 50_000,
+        currentTotal: () => currentTotal.promise,
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={{ filters: {}, page: 1, sort: "genome_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "services" }));
+    expect(exportAll).not.toHaveBeenCalled();
+
+    currentTotal.resolve(2);
+
+    expect(await screen.findByTestId("selection-service-ids")).toHaveTextContent(
+      "83332.12,83332.13",
+    );
+    expect(exportAll).toHaveBeenCalledOnce();
+    expect(
+      screen.queryByText("Could not complete action"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("applies the SERVICES limit to the current query's total, not a previous query's", async () => {
+    const user = userEvent.setup();
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    // A previous query's 2 rows are on screen; this query matches 50,000.
     useResourceCollection.mockReturnValue(
       collectionResult({
         selection: {},
@@ -448,6 +492,7 @@ describe("ResourceCollection selection actions", () => {
         isAllPagesSelected: true,
         isPlaceholderData: true,
         total: 2,
+        currentTotal: () => Promise.resolve(50_000),
       }),
     );
 
@@ -463,10 +508,80 @@ describe("ResourceCollection selection actions", () => {
 
     expect(
       await screen.findByText(
-        "Wait for the current results to finish loading and try again.",
+        "Services supports at most 100 Genomes. Narrow the selection and try again.",
       ),
     ).toBeVisible();
     expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("drops SERVICES quietly when the query it waits for is replaced", async () => {
+    const user = userEvent.setup();
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        selection: {},
+        selectedIds: [],
+        isAllPagesSelected: true,
+        isPlaceholderData: true,
+        total: 2,
+        currentTotal: () => Promise.reject(new CancelledError()),
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={{ filters: {}, page: 1, sort: "genome_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+    const services = screen.getByRole("button", { name: "services" });
+    await user.click(services);
+
+    await waitFor(() => {
+      expect(services).toBeEnabled();
+    });
+    expect(
+      screen.queryByText("Could not complete action"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("selection-services")).not.toBeInTheDocument();
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("reports the current query's failed read with its own message", async () => {
+    const user = userEvent.setup();
+    const data = repository();
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        selection: {},
+        selectedIds: [],
+        isAllPagesSelected: true,
+        isPlaceholderData: true,
+        total: 2,
+        currentTotal: () =>
+          Promise.reject(
+            new Error("Too many data requests. Please try again shortly."),
+          ),
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={genomeCollectionProfile}
+        repository={data}
+        state={{ filters: {}, page: 1, sort: "genome_id:asc" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "services" }));
+
+    expect(
+      await screen.findByText(
+        "Too many data requests. Please try again shortly.",
+      ),
+    ).toBeVisible();
   });
 
   it("resolves every matching Genome during a background refresh of the same query", async () => {
@@ -502,7 +617,9 @@ describe("ResourceCollection selection actions", () => {
       "83332.12,83332.13",
     );
     expect(exportAll).toHaveBeenCalledOnce();
-    expect(screen.queryByText(/finish loading/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Could not complete action"),
+    ).not.toBeInTheDocument();
   });
 
   it("enables COPY ROWS, DWNLD and an empty SERVICES chooser for Sequence Features", async () => {

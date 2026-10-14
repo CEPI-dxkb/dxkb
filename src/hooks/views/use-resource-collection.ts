@@ -169,6 +169,19 @@ export function useResourceCollection<Row extends ResourceRow>({
 
   return {
     activeId,
+    /**
+     * This query's total: the cached one, or, while the rows on screen are a
+     * previous query's placeholder, its own read's once that lands. It joins
+     * the read in flight rather than sending another, and rejects with
+     * `CancelledError` when the query is replaced before the read lands.
+     */
+    currentTotal: async () =>
+      (
+        await queryClient.query({
+          ...collectionQueryOptions<Row>(repository, resource, request),
+          staleTime: "static",
+        })
+      ).total,
     detail:
       detailQuery.data?.row ??
       visibleRows.find((row) => String(row[idField]) === activeId) ??

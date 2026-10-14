@@ -274,6 +274,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     isAllPagesSelected: collection.isAllPagesSelected,
     hasLoadedKeyword,
     isPlaceholderData: collection.isPlaceholderData,
+    currentTotal: collection.currentTotal,
     rql: effectiveRql,
     keyword: requestState.keyword,
     keywordMode: profile.serverKeywordMode,
@@ -287,6 +288,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     exportFileName: profile.exportFileName,
     total: collection.total,
     isPlaceholderData: collection.isPlaceholderData,
+    currentTotal: collection.currentTotal,
     hasLoadedKeyword,
     loadedKeyword: normalizedLoadedKeyword,
     rql: effectiveRql,
@@ -312,6 +314,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       isAllPagesSelected: collection.isAllPagesSelected,
       total: collection.total,
       isPlaceholderData: collection.isPlaceholderData,
+      currentTotal: collection.currentTotal,
       rowById: selectedRowById,
     },
     detail: displayedDetail,
@@ -528,6 +531,7 @@ export function ResourceCollection<Row extends DataTableRow>({
             }
             scrollRegionLabel={`${profile.label} results table`}
             isLoading={collection.isInitialLoading || collection.isPageLoading}
+            isRefreshing={collection.isPlaceholderData}
           />
         </ResourceWorkspace>
       )}

@@ -31,20 +31,19 @@ interface UseResourceCollectionRowResolutionOptions<
   hasLoadedKeyword: boolean;
   /**
    * The rows and total on screen belong to a previous query while this one
-   * loads, so an all-matching read would be sized by the wrong total. A
-   * background refresh of the same query is not this; its total is this
-   * query's latest count, and `exceedsReadLimit` checks the read itself.
+   * loads, so an all-matching action waits for this query's own total
+   * (`currentTotal`) rather than being sized by the wrong one. A background
+   * refresh of the same query is not this; its total is this query's latest
+   * count, and `exceedsReadLimit` checks the read itself.
    */
   isPlaceholderData: boolean;
+  /**
+   * This query's total once its read lands (`useResourceCollection`). Rejects
+   * with `CancelledError` when the query is replaced first, which the actions
+   * drop: the user has moved on from the results they acted on.
+   */
+  currentTotal: () => Promise<number>;
 }
-
-/**
- * Why an all-matching read is refused while the rows and total on screen belong to
- * a previous query. The Taxonomy and Bioset actions show it too, before their own
- * size limits (sized by that same total) and before they reserve a tab.
- */
-export const staleResultsMessage =
-  "Wait for the current results to finish loading and try again.";
 
 /** The rows an all-matching read returned, and how many rows match its query. */
 export interface MatchingRowsRead {
@@ -133,6 +132,7 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
   isAllPagesSelected,
   hasLoadedKeyword,
   isPlaceholderData,
+  currentTotal,
   rql,
   keyword,
   keywordMode,
@@ -159,18 +159,17 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     });
   };
 
-  const resolveAllMatchingRows = async (fields: readonly string[]) => {
-    // An all-matching read is scoped and sized by the query on screen, so none
-    // runs while that is a previous query's.
-    if (isPlaceholderData) throw new Error(staleResultsMessage);
-    return readAllMatchingRows(repository, resource, idField, {
+  // Scoped by the current query, whichever query's rows are on screen; each
+  // caller applies its own size limit to `currentTotal` first while they are a
+  // previous query's.
+  const resolveAllMatchingRows = (fields: readonly string[]) =>
+    readAllMatchingRows(repository, resource, idField, {
       rql,
       keyword,
       keywordMode,
       fields: [...fields],
       sort,
     });
-  };
 
   const resolveActionRows = async (
     fields: readonly string[],
@@ -178,16 +177,17 @@ export function useResourceCollectionRowResolution<Row extends DataTableRow>({
     actionLabel: string,
   ): Promise<Record<string, unknown>[]> => {
     const isAllMatching = isAllPagesSelected && !hasLoadedKeyword;
-    // For every matching row the count below is a previous query's total, so wait
-    // for this query's rather than report a limit it may not exceed.
-    if (isAllMatching && isPlaceholderData) {
-      throw new Error(staleResultsMessage);
-    }
     const limitError = () =>
       new Error(
         `${actionLabel} supports at most ${maxRows.toLocaleString()} ${label}. Narrow the selection and try again.`,
       );
-    if (selectedActionCount > maxRows) throw limitError();
+    // For every matching row the count is the total on screen, which is a
+    // previous query's while this one loads, so the limit waits for this query's.
+    const count =
+      isAllMatching && isPlaceholderData
+        ? await currentTotal()
+        : selectedActionCount;
+    if (count > maxRows) throw limitError();
     if (!isAllMatching) {
       return fetchSelectedRows(
         repository,

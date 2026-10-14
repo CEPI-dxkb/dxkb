@@ -13,6 +13,8 @@ export function createResourceCollectionResult(
 ): ReturnType<typeof useResourceCollectionHook> {
   return {
     activeId: null,
+    // The total on screen is the current query's unless a test overrides it.
+    currentTotal: () => Promise.resolve(overrides.total ?? 0),
     detail: null,
     detailError: null,
     facets: {},

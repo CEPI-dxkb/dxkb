@@ -1,0 +1,68 @@
+src/lib/search/__tests__/all-types-search.test.ts
+  s_31f07d441faf80::t_59a7665fef3d6f 75,79-80
+  s_31f07d441faf80::t_b3b8b1ce362bec 95,103-112
+  s_f40c84620ffb97::t_84d4ad45f13f9f 113,183,206-226
+  s_f40c84620ffb97::t_b11d79c13518c5 151,153-162,165-166,176-182
+  s_f40c84620ffb97::t_ad75d40fe7f84e 114
+src/app/services/(genomics)/genome-assembly/assembly-sections.tsx
+  s_31f07d441faf80::t_292a5aa9a34034 525-528
+src/components/search/all-types/__tests__/use-section-nav.test.tsx
+  s_f40c84620ffb97::t_2138138b53e231 75,80-87,94
+  s_f40c84620ffb97::t_b54808896c225c 135-145
+  s_f40c84620ffb97::t_209c70c32ea3cc 174-195
+src/app/__tests__/all-term-search-results.test.tsx
+  s_f40c84620ffb97::t_4f12e4065b9de5 132-136,143
+  s_f40c84620ffb97::t_2a2341df975faa 420-428
+  s_31f07d441faf80::t_446bef5af01e00 429-442
+src/lib/search/all-types-search.ts
+  s_f40c84620ffb97::t_2fe4ae05ea0b44 486
+  s_f40c84620ffb97::t_f703e0644457e7 411-412
+  s_f40c84620ffb97::t_bc55a3b7ca1932 499-501
+  s_f40c84620ffb97::t_7ed75dc210c840 43-46,48
+  s_f40c84620ffb97::t_9d2394e1db6bf2 458-462
+  s_31f07d441faf80::t_b491efa778dc8a 312-314
+  s_31f07d441faf80::t_e5724767d5da33 329,331
+src/app/services/(genomics)/genome-assembly/__tests__/page-rerun.test.tsx
+  s_31f07d441faf80::t_f71c2c4bd70e92 182-226
+src/lib/forms/(genomics)/genome-assembly/__tests__/genome-assembly-form-utils.test.ts
+  s_f40c84620ffb97::t_4627fb0f84bfa9 265-266
+  s_31f07d441faf80::t_5d95292cf22e7d 249,253
+src/lib/forms/(genomics)/genome-assembly/genome-assembly-form-utils.ts
+  s_f40c84620ffb97::t_3e70d75c9a6479 143-146
+  s_31f07d441faf80::t_86a7549c2e870b 156-157
+  s_31f07d441faf80::t_d2149500c8b384 175-176
+src/components/search/all-types/use-section-nav.ts
+  s_f40c84620ffb97::t_bafdf2cdecda38 83-90,94-95
+  s_f40c84620ffb97::t_0e4bf11b2a2d58 133-138
+  s_f40c84620ffb97::t_e2458afc54d781 124,126
+  s_f40c84620ffb97::t_4924b5988ada7c 46-49
+  s_f40c84620ffb97::t_5615e73dbbd607 118-123,125,127-130
+  s_f40c84620ffb97::t_11751f5e161e79 26-27
+  s_f40c84620ffb97::t_fa81d5a8d152c5 60
+src/components/search/all-types/type-results-card.tsx
+  s_f40c84620ffb97::t_5838645e74173d 57-59,63-64,68-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82fd647dd9502cdffdd81200f4356008f43271dc",
+  "prompts": {},
+  "sessions": {
+    "s_31f07d441faf80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76cf4ff9-b49e-44e6-a50a-831db4d54727",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_f40c84620ffb97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "382ed20f-9c1c-4ac8-943c-7d111d8f5b2f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

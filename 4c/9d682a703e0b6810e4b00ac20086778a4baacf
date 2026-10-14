@@ -1,0 +1,60 @@
+src/lib/data-api/client.ts
+  s_820f22c6fa327f::t_181b6acf620bc2 237-239,251
+  s_820f22c6fa327f::t_63fadbf933ed02 31,105-132,221-223,231-233,240-243,252-262
+  s_820f22c6fa327f::t_4ea197ba6cc83c 34-43,47-52,54-70
+  s_820f22c6fa327f::t_76ab591957866f 44-46,53
+  s_820f22c6fa327f::t_4ff9dcadcfad5e 7
+src/lib/genome-view/__tests__/genome-view.test.ts
+  s_820f22c6fa327f::t_b27ab659688f4a 557-565
+  s_820f22c6fa327f::t_70840201ccfccc 451-461
+  s_820f22c6fa327f::t_1025c1d6578459 501-529
+  s_820f22c6fa327f::t_9f0e0b9066f928 535-556
+src/lib/feature-view/__tests__/display.test.ts
+  s_820f22c6fa327f::t_fa16741ad66a47 32-49
+src/lib/feature-view/display.ts
+  s_820f22c6fa327f::t_d6a40c3136e0dc 8-9,13-15
+src/lib/data-api/validation.ts
+  s_820f22c6fa327f::t_99d04d3922b955 15
+src/components/views/__tests__/fasta-download-buttons.test.tsx
+  s_820f22c6fa327f::t_6c3b50d1a31943 84-88
+src/lib/data-api/__tests__/client-fasta.test.ts
+  s_820f22c6fa327f::t_6b04d4f79fb514 58-71
+  s_820f22c6fa327f::t_290e64c4c37b8d 72-100
+  s_820f22c6fa327f::t_a9988467fe568b 5
+  s_820f22c6fa327f::t_2ac816bc90b0b8 101-129
+docs/url-schema/2026-06-16-url-schema-design.md
+  s_820f22c6fa327f::t_ae75af43e0a347 507-511
+src/lib/data-api/types.ts
+  s_820f22c6fa327f::t_99d04d3922b955 4-9
+src/lib/genome-view/query.ts
+  s_820f22c6fa327f::t_06ba8f1d3bfcf7 202-203,214-215
+  s_820f22c6fa327f::t_a2e369c003c78a 320,324
+  s_820f22c6fa327f::t_e563d932b60465 156-170
+  s_820f22c6fa327f::t_9e5c14f569916e 247,251,254-255,322-323
+  s_820f22c6fa327f::t_e8ef85122ea28d 8
+  s_820f22c6fa327f::t_0ae62aedaa1a78 220-246,248-250,253,256-264,303-306
+  s_820f22c6fa327f::t_419e0ee3e9800c 252
+  s_820f22c6fa327f::t_e3bd3b440eaa0a 309-310
+  s_820f22c6fa327f::t_03e00c7db7fa18 307-308,321
+  s_820f22c6fa327f::t_702a4114426872 265-300
+  s_820f22c6fa327f::t_db91753596896d 328,333
+  s_820f22c6fa327f::t_48c6f5b2a6cd07 1-6
+docs/architecture.md
+  s_820f22c6fa327f::t_5496d578d750e7 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c9d682a703e0b6810e4b00ac20086778a4baacf",
+  "prompts": {},
+  "sessions": {
+    "s_820f22c6fa327f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "22ab9378-3654-4325-9370-21261f44f78f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

@@ -246,11 +246,11 @@ describe("rerunGenomeAssemblyAdvancedOptions", () => {
     });
   });
 
-  it("stores the genome size the field shows, in bases", () => {
+  it("keeps the job's genome size and rounds only what the field shows", () => {
     expect(
       rerunGenomeAssemblyAdvancedOptions({ genome_size: "4641652" }),
     ).toEqual({
-      values: { genome_size: 4642000 },
+      values: { genome_size: 4641652 },
       genomeSize: { count: 4642, unit: "K" },
     });
   });
@@ -262,6 +262,8 @@ describe("rerunGenomeAssemblyAdvancedOptions", () => {
         genome_size: 0,
         target_depth: "lots",
         min_contig_len: null,
+        racon_iter: "",
+        pilon_iter: "  ",
       }),
     ).toEqual({ values: {} });
   });

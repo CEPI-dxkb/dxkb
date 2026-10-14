@@ -72,16 +72,26 @@ describe("useSectionNav", () => {
     "scrollTo",
   );
   const scrollTo = vi.fn();
+  let reducedMotion = false;
 
   beforeEach(() => {
     scrollTo.mockClear();
     Element.prototype.scrollTo = scrollTo;
+    reducedMotion = false;
+    // jsdom has no matchMedia.
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)" && reducedMotion,
+      }),
+    });
   });
 
   afterEach(() => {
     if (ownScrollTo)
       Object.defineProperty(Element.prototype, "scrollTo", ownScrollTo);
     else Reflect.deleteProperty(Element.prototype, "scrollTo");
+    Reflect.deleteProperty(window, "matchMedia");
     vi.useRealTimers();
   });
 
@@ -122,6 +132,17 @@ describe("useSectionNav", () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 584, behavior: "smooth" });
   });
 
+  it("jumps without the smooth scroll for a user who asks for reduced motion", () => {
+    reducedMotion = true;
+    render(<Harness />);
+    layOut({ tops: { a: 400, b: 0, c: 600 }, scrollTop: 300 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Jump to a" }));
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 684, behavior: "auto" });
+    expect(screen.getByRole("status")).toHaveTextContent("a");
+  });
+
   it("holds a jumped-to section until the user scrolls by hand", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout"] });
     render(<Harness />);
@@ -146,6 +167,28 @@ describe("useSectionNav", () => {
 
     // …a hand scroll hands it back to the scroll position.
     fireEvent.wheel(column);
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("b");
+    });
+  });
+
+  it("hands a jump back on a scroll away from it, as a scrollbar drag makes", async () => {
+    render(<Harness />);
+    const column = layOut({ tops: { a: 400, b: 0, c: 600 }, scrollTop: 300 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Jump to a" }));
+
+    // The smooth scroll closing in on its target keeps the jump highlighted…
+    for (const scrollTop of [500, 684]) {
+      column.scrollTop = scrollTop;
+      fireEvent.scroll(column);
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      expect(screen.getByRole("status")).toHaveTextContent("a");
+    }
+
+    // …and a scroll back from it, with no wheel, touch or key, releases it.
+    column.scrollTop = 600;
+    fireEvent.scroll(column);
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent("b");
     });

@@ -140,7 +140,10 @@ const rerunAdvancedNumberFields = [
 const rerunAdvancedBooleanFields = ["trim", "normalize", "filtlong"] as const;
 
 function rerunNumber(value: unknown): number | undefined {
-  if (value == null || value === "") return undefined;
+  // Number("") and Number("  ") are 0, not unset.
+  if (value == null || (typeof value === "string" && value.trim() === "")) {
+    return undefined;
+  }
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
 }
@@ -150,7 +153,8 @@ function rerunNumber(value: unknown): number | undefined {
  * hold numbers as strings and flags as "true"/1, so both are read; an option
  * the job did not set (or set to something unreadable) is left out, keeping
  * the form's default. `genomeSize` is what the Estimated Genome Size field
- * shows, and `values.genome_size` the bases that display stands for.
+ * shows; `values.genome_size` keeps the job's exact bases, so a size that is
+ * not a whole kilobase resubmits unchanged rather than as the rounded display.
  */
 export function rerunGenomeAssemblyAdvancedOptions(
   data: Record<string, unknown>,
@@ -168,7 +172,6 @@ export function rerunGenomeAssemblyAdvancedOptions(
   }
   const bases = rerunNumber(data.genome_size);
   if (bases === undefined || bases <= 0) return { values };
-  const genomeSize = genomeSizeDisplay(bases);
-  values.genome_size = calculateGenomeSize(genomeSize.count, genomeSize.unit);
-  return { values, genomeSize };
+  values.genome_size = bases;
+  return { values, genomeSize: genomeSizeDisplay(bases) };
 }

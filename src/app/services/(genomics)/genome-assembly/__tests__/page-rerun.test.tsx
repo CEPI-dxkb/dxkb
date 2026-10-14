@@ -179,4 +179,49 @@ describe("GenomeAssembly page — rerun + submit flow", () => {
       min_contig_cov: 10,
     });
   });
+
+  it("resubmits a genome size that is not whole kilobases unchanged", async () => {
+    sessionStorage.setItem(
+      "size123",
+      JSON.stringify({
+        output_path: "/ws/testuser/out",
+        output_file: "my-assembly",
+        recipe: "canu",
+        single_end_libs: [{ read: "/ws/testuser/long.fq", platform: "nanopore" }],
+        genome_size: 4641652,
+      }),
+    );
+    window.history.replaceState({}, "", "/?rerun_key=size123");
+
+    let submittedBody: unknown = null;
+    server.use(
+      http.post("*/api/services/app-service/submit", async ({ request }) => {
+        submittedBody = await request.json();
+        return HttpResponse.json({ job: [{ id: "job-xyz" }] });
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<GenomeAssemblyPage />, { wrapper: Providers });
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("my-assembly")).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /Advanced Options/ }));
+
+    // The field shows the nearest whole kilobase; the job's exact size is
+    // what gets submitted until the user edits the field.
+    expect(
+      screen.getByRole("textbox", { name: "Estimated Genome Size" }),
+    ).toHaveValue("4642");
+
+    const assembleButton = screen.getByRole("button", { name: /assemble/i });
+    await waitFor(() => expect(assembleButton).toBeEnabled());
+    await user.click(assembleButton);
+    await waitFor(() => {
+      expect(submittedBody).not.toBeNull();
+    });
+    expect(
+      (submittedBody as { app_params: Record<string, unknown> }).app_params,
+    ).toMatchObject({ genome_size: 4641652 });
+  });
 });

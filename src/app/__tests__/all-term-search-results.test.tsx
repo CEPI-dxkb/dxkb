@@ -129,12 +129,18 @@ describe("SearchResults", () => {
   beforeEach(() => {
     scrollTo.mockClear();
     Element.prototype.scrollTo = scrollTo;
+    // jsdom has no matchMedia; a rail jump reads the motion preference.
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: false }),
+    });
   });
 
   afterEach(() => {
     if (ownScrollTo)
       Object.defineProperty(Element.prototype, "scrollTo", ownScrollTo);
     else Reflect.deleteProperty(Element.prototype, "scrollTo");
+    Reflect.deleteProperty(window, "matchMedia");
   });
 
   it("searches only the DXKB data types, ten rows each, Taxa by genome count", async () => {
@@ -411,6 +417,29 @@ describe("SearchResults", () => {
     expect(screen.getByText("RNA response")).toHaveFocus();
     await user.keyboard("{ArrowUp}");
     expect(screen.getByText("Genome 5")).toHaveFocus();
+
+    // From a type's heading link or fold button, to the nearest result.
+    const heading = screen.getByRole("heading", { name: "Experiments" });
+    within(heading).getByRole("link").focus();
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByText("Genome 5")).toHaveFocus();
+    screen.getByRole("button", { name: "Collapse Experiments" }).focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByText("RNA response")).toHaveFocus();
+
+    // From "Show more", not back to the top of its type.
+    const showMore = screen.getByRole("button", { name: "Show 1 more genomes" });
+    showMore.focus();
+    await user.keyboard("{ArrowUp}");
+    expect(screen.getByText("Genome 5")).toHaveFocus();
+    showMore.focus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByText("RNA response")).toHaveFocus();
+
+    // With no result that way, the key is left to scroll the page.
+    expect(
+      fireEvent.keyDown(screen.getByText("RNA response"), { key: "ArrowDown" }),
+    ).toBe(true);
   });
 
   it("folds a type to its header, and all of them at once", async () => {

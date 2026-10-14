@@ -23,7 +23,8 @@ function scrollTopOf(element: HTMLElement, container: HTMLElement): number {
  *
  * The last sections can be too near the end to ever reach the top, so a jump
  * highlights its section at once and holds it until the user scrolls by hand
- * (wheel, touch, keys), and a column scrolled to the bottom highlights the
+ * (wheel, touch, keys, or a scroll away from where the jump was headed, as a
+ * scrollbar drag makes), and a column scrolled to the bottom highlights the
  * last section.
  */
 export function useSectionNav({
@@ -42,8 +43,10 @@ export function useSectionNav({
   offset?: number;
 }) {
   const [active, setActive] = useState<string | undefined>(undefined);
-  // The section jumped to; the spy leaves it highlighted until a hand scroll.
-  const lockRef = useRef<string | null>(null);
+  // The jump being held: where its smooth scroll is headed, and how far off it
+  // was at the last scroll event. The spy leaves the section jumped to
+  // highlighted until a hand scroll.
+  const jumpRef = useRef<{ top: number; distance: number } | null>(null);
   const key = ids.join(",");
 
   useEffect(() => {
@@ -54,7 +57,7 @@ export function useSectionNav({
     let frame = 0;
     const spy = () => {
       frame = 0;
-      if (lockRef.current) return;
+      if (jumpRef.current) return;
       if (
         container.scrollTop > 0 &&
         container.scrollTop + container.clientHeight >=
@@ -77,11 +80,19 @@ export function useSectionNav({
       setActive(current);
     };
     const onScroll = () => {
+      const jump = jumpRef.current;
+      if (jump) {
+        // The smooth scroll only ever closes in on its target, so moving away
+        // from it is the user, on the scrollbar or anything else.
+        const distance = Math.abs(container.scrollTop - jump.top);
+        if (distance > jump.distance + 1) jumpRef.current = null;
+        else jump.distance = distance;
+      }
       if (!frame) frame = requestAnimationFrame(spy);
     };
     const unlock = () => {
-      if (!lockRef.current) return;
-      lockRef.current = null;
+      if (!jumpRef.current) return;
+      jumpRef.current = null;
       onScroll();
     };
 
@@ -104,14 +115,27 @@ export function useSectionNav({
     const container = ref.current;
     const element = document.getElementById(sectionAnchorId(id));
     if (!container || !element) return;
-    lockRef.current = id;
+    const top =
+      scrollTopOf(element, container) -
+      (topInset?.current?.offsetHeight ?? 0) -
+      offset;
+    // Where the scroll will stop: the browser clamps a section near the end.
+    const stop = Math.max(
+      0,
+      Math.min(top, container.scrollHeight - container.clientHeight),
+    );
+    jumpRef.current = {
+      top: stop,
+      distance: Math.abs(container.scrollTop - stop),
+    };
     setActive(id);
     container.scrollTo({
-      top:
-        scrollTopOf(element, container) -
-        (topInset?.current?.offsetHeight ?? 0) -
-        offset,
-      behavior: "smooth",
+      top,
+      // An explicit "smooth" overrides the reduced-motion `scroll-behavior`
+      // in globals.css, so the preference is honored here.
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
     });
     element.dataset.flash = "";
     window.setTimeout(() => {

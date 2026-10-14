@@ -40,8 +40,12 @@ export const expandedRowCount = 10;
 
 export type SearchDoc = Record<string, unknown>;
 
+/**
+ * Unvalidated JSON, so every level can be missing: one malformed type must
+ * not take the other types' results down with it.
+ */
 interface SolrResponse {
-  result: { response: { docs: SearchDoc[]; numFound: number } };
+  result?: { response?: { docs?: SearchDoc[]; numFound: number } };
 }
 
 /** The Data API's answer, keyed by type. A type it could not search is absent. */
@@ -305,7 +309,9 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
         href: featureId ? featureHref(featureId) : null,
       };
     }
-    case "protein_feature":
+    case "protein_feature": {
+      // The feature the domain sits on, as the Domains and Motifs list links.
+      const featureId = featureIdFromRow(doc);
       return {
         ...base,
         key: text(doc.id) || base.key,
@@ -320,8 +326,9 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
           ["E-value", text(doc.e_value)],
         ]),
         id: text(doc.interpro_id) || text(doc.source_id),
-        href: null,
+        href: featureId ? featureHref(featureId) : null,
       };
+    }
     case "epitope": {
       const epitopeId = epitopeIdFromRow(doc);
       return {
@@ -401,7 +408,8 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
       return {
         ...base,
         key: text(doc.id) || base.key,
-        title: text(doc.strain) || text(doc.test_pathogen),
+        // Serology records name no strain or pathogen; the sample is the name.
+        title: sampleId ?? "",
         context: join([
           text(doc.host_common_name),
           text(doc.collection_country),
@@ -447,7 +455,11 @@ function describe(id: string, doc: SearchDoc, index: number): ResultRow {
 }
 
 export function describeRows(id: string, docs: SearchDoc[]): ResultRow[] {
-  return docs.map((doc, index) => describe(id, doc, index));
+  return docs.map((doc, index) => {
+    const row = describe(id, doc, index);
+    // A row missing its type's title fields still needs a name to click.
+    return row.title ? row : { ...row, title: row.id || "Untitled" };
+  });
 }
 
 function taxonMatchOf(doc: SearchDoc | undefined): TaxonMatch | null {
@@ -471,7 +483,7 @@ export function toAllTypesResults(
   keyword: string,
 ): AllTypesResults {
   const types = allTermSearchTypes.map((type): TypeResults => {
-    const response = matches?.[type.id]?.result.response;
+    const response = matches?.[type.id]?.result?.response;
     return {
       id: type.id,
       label: type.typeTitle,
@@ -484,7 +496,9 @@ export function toAllTypesResults(
   return {
     types,
     total: types.reduce((sum, type) => sum + type.count, 0),
-    bestMatch: taxonMatchOf(matches?.taxonomy?.result.response.docs.at(0)),
+    bestMatch: taxonMatchOf(
+      matches?.taxonomy?.result?.response?.docs?.at(0),
+    ),
   };
 }
 

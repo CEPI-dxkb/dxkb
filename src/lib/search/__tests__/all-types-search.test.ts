@@ -72,10 +72,12 @@ describe("describeRows", () => {
     expect(row).toMatchObject({ key: "strain-0", href: null });
   });
 
-  it("describes a Domain or Motif by its InterPro entry", () => {
+  it("describes a Domain or Motif by its InterPro entry, linking its feature", () => {
     const [row] = describeRows("protein_feature", [
       {
         id: "pf1",
+        feature_id: "PATRIC.11320.1.CDS.1.566.fwd",
+        patric_id: "fig|11320.1.peg.1",
         interpro_description: "Hemagglutinin",
         interpro_id: "IPR001364",
         product: "HA",
@@ -90,11 +92,24 @@ describe("describeRows", () => {
       title: "Hemagglutinin",
       context: "HA · Influenza A virus",
       id: "IPR001364",
+      href: "/feature/PATRIC.11320.1.CDS.1.566.fwd",
       facts: [
         { label: "Source", value: "PFAM PF00509" },
         { label: "Position", value: "1–566" },
       ],
     });
+  });
+
+  it("links a Domain or Motif by its PATRIC ID when it has no feature ID", () => {
+    const [row] = describeRows("protein_feature", [
+      { id: "pf1", patric_id: "fig|11320.1.peg.1" },
+    ]);
+    expect(row.href).toBe("/feature/fig%7C11320.1.peg.1");
+  });
+
+  it("leaves a Domain or Motif without a feature unlinked", () => {
+    const [row] = describeRows("protein_feature", [{ id: "pf1" }]);
+    expect(row).toMatchObject({ key: "pf1", href: null });
   });
 
   it("shows an Epitope's sequence in mono and links it", () => {
@@ -133,12 +148,22 @@ describe("describeRows", () => {
     },
   );
 
-  it("links a Serology sample with its test type", () => {
+  it("names a Serology sample by its ID and links it with its test type", () => {
     const [row] = describeRows("serology", [
-      { id: "row-1", sample_identifier: "SR-1", test_type: "HI", strain: "H5N1" },
+      {
+        id: "row-1",
+        sample_identifier: "SR-1",
+        host_common_name: "Human",
+        collection_country: "Australia",
+        collection_date: "2024-07",
+        test_type: "HI",
+        test_result: "Detected",
+        serotype: "H1N1",
+      },
     ]);
     expect(row).toMatchObject({
-      title: "H5N1",
+      title: "SR-1",
+      context: "Human · Australia · 2024",
       href: "/serology/SR-1?test_type=HI",
     });
   });
@@ -147,6 +172,14 @@ describe("describeRows", () => {
     expect(describeRows("genome", [{ genome_name: "Unnamed" }])).toEqual([
       expect.objectContaining({ key: "genome-0", id: "", href: null }),
     ]);
+  });
+
+  it("names a row missing its title fields by its ID, or as Untitled", () => {
+    expect(
+      describeRows("genome", [{ genome_id: "11320.1" }, {}]).map(
+        (row) => row.title,
+      ),
+    ).toEqual(["11320.1", "Untitled"]);
   });
 });
 
@@ -167,6 +200,27 @@ describe("toAllTypesResults", () => {
       contextLabel: "Species · Host",
     });
     expect(total).toBe(15);
+    expect(bestMatch).toBeNull();
+  });
+
+  it("counts a type with a partial answer as zero, not as an error", () => {
+    const { types, total, bestMatch } = toAllTypesResults(
+      {
+        genome: {},
+        taxonomy: { result: {} },
+        strain: { result: { response: { numFound: 2 } } },
+      },
+      "influenza",
+    );
+    expect(types.find((type) => type.id === "genome")).toMatchObject({
+      count: 0,
+      rows: [],
+    });
+    expect(types.find((type) => type.id === "strain")).toMatchObject({
+      count: 2,
+      rows: [],
+    });
+    expect(total).toBe(2);
     expect(bestMatch).toBeNull();
   });
 

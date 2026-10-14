@@ -261,41 +261,87 @@ function splitRqlKeywords(expression: RqlExpression): {
   };
 }
 
+// Kleene's three-valued logic, `undefined` being unknown.
+type Truth = boolean | undefined;
+const kleeneNot = (value: Truth): Truth =>
+  value === undefined ? undefined : !value;
+const kleeneAnd = (left: Truth, right: Truth): Truth =>
+  left === false || right === false ? false : left && right;
+const kleeneOr = (left: Truth, right: Truth): Truth =>
+  kleeneNot(kleeneAnd(kleeneNot(left), kleeneNot(right)));
+
 /**
- * Whether an explicit `rql` asks for private genomes (`public=false`), as the
- * My Genomes filter does: some clause on `public` matches them, read through
- * the `not`s around it. `eq(public,*)` and `in(public,(true,false))` count, as
- * the filter's `public=true&public=false` does.
+ * How an expression can turn out for a private genome, over the values its
+ * other clauses can take: whether it matches, and what it would be with its
+ * `public` clauses unknown. An outcome still unknown without them is one they
+ * decide. Clauses on other fields are taken as independent of each other, so a
+ * contradiction between two of them can add an outcome no genome has, which
+ * errs toward a private reading. At most four outcomes are distinct.
  */
-function selectsPrivateGenomes(
+type PrivateOutcome = readonly [matches: boolean, withoutPublic: Truth];
+
+// A clause on any field but `public`, which may or may not match either way.
+const otherFieldOutcomes: readonly PrivateOutcome[] = [
+  [true, true],
+  [false, false],
+];
+
+function privateOutcomes(
   expression: RqlExpression,
-  negated = false,
-): boolean {
+): readonly PrivateOutcome[] {
   switch (expression.operator) {
     case "keyword":
     case "genome":
-      return false;
-    case "and":
-    case "or":
-      return expression.operands.some((operand) =>
-        selectsPrivateGenomes(operand, negated),
-      );
+      return otherFieldOutcomes;
     case "not":
-      return selectsPrivateGenomes(expression.operand, !negated);
-    case "in":
-      return (
-        expression.field === "public" &&
-        expression.values.includes(false) !== negated
+      return privateOutcomes(expression.operand).map(
+        ([matches, withoutPublic]) => [!matches, kleeneNot(withoutPublic)],
       );
+    case "and":
+    case "or": {
+      const both = expression.operator === "and";
+      return expression.operands.map(privateOutcomes).reduce((left, right) => {
+        const outcomes = new Map<string, PrivateOutcome>();
+        for (const [leftMatches, leftWithout] of left) {
+          for (const [rightMatches, rightWithout] of right) {
+            const outcome: PrivateOutcome = both
+              ? [leftMatches && rightMatches, kleeneAnd(leftWithout, rightWithout)]
+              : [leftMatches || rightMatches, kleeneOr(leftWithout, rightWithout)];
+            outcomes.set(String(outcome), outcome);
+          }
+        }
+        return [...outcomes.values()];
+      });
+    }
+    case "in":
+      return expression.field === "public"
+        ? [[expression.values.includes(false), undefined]]
+        : otherFieldOutcomes;
     default: {
-      if (expression.field !== "public") return false;
-      const matchesPrivate =
+      if (expression.field !== "public") return otherFieldOutcomes;
+      const matches =
         expression.operator === "eq"
           ? expression.value === false || expression.value === "*"
           : expression.operator === "ne" && expression.value === true;
-      return matchesPrivate !== negated;
+      return [[matches, undefined]];
     }
   }
+}
+
+/**
+ * Whether an explicit `rql` asks for private genomes (`public=false`), as the
+ * My Genomes filter does: whether the whole expression can match one because
+ * of what it says about `public`. `eq(public,*)` and `in(public,(true,false))`
+ * count, as the filter's `public=true&public=false` does;
+ * `and(eq(public,true),in(public,(true,false)))` does not, and neither does
+ * `or(eq(public,true),eq(genome_status,Complete))`, which reaches private
+ * genomes only through `genome_status`, as a list with no visibility clause
+ * reaches them.
+ */
+function selectsPrivateGenomes(expression: RqlExpression): boolean {
+  return privateOutcomes(expression).some(
+    ([matches, withoutPublic]) => matches && withoutPublic === undefined,
+  );
 }
 
 /**

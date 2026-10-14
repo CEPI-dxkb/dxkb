@@ -541,6 +541,7 @@ describe("genomeOverviewScope", () => {
     "not(eq(public,true))",
     "not(ne(public,*))",
     "and(eq(genome_status,Complete),or(keyword(coli),eq(public,false)))",
+    "or(eq(genome_status,Complete),eq(public,false))",
   ])("is unavailable for an rql that selects private genomes: %s", (rql) => {
     expect(genomeOverviewScope({ ...bare, rql })).toBeUndefined();
   });
@@ -551,6 +552,13 @@ describe("genomeOverviewScope", () => {
     "in(public,(true))",
     "not(eq(public,false))",
     "not(in(public,(true,false)))",
+    // A clause that admits private genomes, overruled by the rest.
+    "and(eq(public,true),in(public,(true,false)))",
+    "and(eq(public,true),or(eq(public,false),eq(genome_status,Complete)))",
+    "or(eq(genome_status,Complete),and(eq(public,false),eq(public,true)))",
+    // Private genomes reach this one only through genome_status, as they reach
+    // a list with no visibility clause at all.
+    "or(eq(public,true),eq(genome_status,Complete))",
   ])("stays available for an rql of public genomes: %s", (rql) => {
     expect(genomeOverviewScope({ ...bare, rql })).toEqual({ fieldRql: rql });
   });

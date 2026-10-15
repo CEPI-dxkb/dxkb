@@ -1,0 +1,21 @@
+src/components/views/collection-selection-actions.tsx
+  s_880ed77e9fe388::t_e893c9cb3962c1 309
+e2e/tests/organisms/taxon-list-data.spec.ts
+  s_880ed77e9fe388::t_93a3c50537d9e8 169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d21e4d63cddcec35a9dac3c213a26ed2dbe9fd7",
+  "prompts": {},
+  "sessions": {
+    "s_880ed77e9fe388": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "727a7edf-f672-4317-a9bd-b8271b6fbf4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

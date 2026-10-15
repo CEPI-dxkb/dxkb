@@ -306,7 +306,7 @@ export function CollectionSelectionActions({
       serializeResourceRows(rows, columns, fields, "txt", includeHeaders, ";"),
     );
     toast.success(
-      `Copied ${rows.length.toLocaleString()} selected ${(rows.length === 1 ? singularLabel : label).toLowerCase()}`,
+      `Copied ${rows.length.toLocaleString()} selected ${(rows.length === 1 ? singularLabel : label).toLowerCase()} to your clipboard`,
     );
   };
 

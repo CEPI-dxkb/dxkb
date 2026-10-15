@@ -1,0 +1,198 @@
+e2e/tests/a11y/deep-tier.spec.ts
+  s_79174a6add2ee5::t_802e32dd6043ba 502-520
+e2e/README.md
+  s_79174a6add2ee5::t_873618e50b5c8b 94,96
+src/lib/data-api/downloads.ts
+  s_79174a6add2ee5::t_5a838e5536817a 1-344
+src/components/views/__tests__/resource-collection-bioset-actions.test.tsx
+  s_79174a6add2ee5::t_15fc59a9bea8c5 27-31
+  s_79174a6add2ee5::t_48ffbe9ef5e9d7 196-197,199
+src/lib/views/child-resources.ts
+  s_79174a6add2ee5::t_9035ad67f9c596 5,66-73
+  s_79174a6add2ee5::t_0e1cd4d9af4d64 74
+src/lib/e2e-fixtures/downloads.ts
+  s_79174a6add2ee5::t_757d68c7604de5 1-53,57,61-86,88-97,99-107
+  s_79174a6add2ee5::t_42b026d6e938ff 54-56,58-60,87,98
+src/components/search/__tests__/search-action-policy.test.tsx
+  s_79174a6add2ee5::t_5e92620ced9457 94,102-106,174
+src/components/views/__tests__/fixtures/resource-collection-mocks.tsx
+  s_79174a6add2ee5::t_15fc59a9bea8c5 123-134
+src/lib/data-api/__tests__/downloads.test.ts
+  s_79174a6add2ee5::t_21d3d3910d0c1a 1-253
+src/lib/data-api/__tests__/client-download.test.ts
+  s_79174a6add2ee5::t_15649d131a87eb 1-34,36-101
+  s_79174a6add2ee5::t_5609e2031475f2 35
+src/lib/data-api/download-transport.ts
+  s_79174a6add2ee5::t_a489944a60e09c 57
+  s_79174a6add2ee5::t_f904bf15920fd2 111-117
+  s_79174a6add2ee5::t_d58f2da4cb3845 1-56,58-110,118-149
+e2e/tests/collection-download.spec.ts
+  s_79174a6add2ee5::t_42b026d6e938ff 6-7,9-10,12-13,37-38,81,85,94-95,101,117,127,137,162,189
+  s_79174a6add2ee5::t_ed68d7f34b00d7 1-5,8,11,14-36,39-80,82-84,86-93,96-100,102-116,118-126,128-136,138-161,163-188,190-218
+AGENTS.md
+  s_79174a6add2ee5::t_17d767e4bdb470 103
+src/app/api/data/[resource]/download/__tests__/route.test.ts
+  s_79174a6add2ee5::t_b932106bdaad47 1-194,201-281,284,286-299,303-396
+  s_79174a6add2ee5::t_22f0f9a3260458 195-200
+  s_79174a6add2ee5::t_b3f5227840c871 282-283,285,300-302
+src/lib/data-api/file-name.ts
+  s_79174a6add2ee5::t_378066d4e352c3 1-17
+src/components/views/resource-collection-actions.tsx
+  s_79174a6add2ee5::t_8c8fcc970fb30e 17-22,56,429-439,462-466,507,747-749,751,753-758,760-769
+  s_79174a6add2ee5::t_f54ee4a4da804b 111,122-123,152,162,172,183-184,195,207-208,218-219,750,772,775
+  s_48252289213d21::t_6db0a9b46106d1 752,759,770-771,773,776-777
+  s_79174a6add2ee5::t_9859642c6d69da 778-819
+  s_79174a6add2ee5::t_620640b6eb1775 478-482
+src/lib/data-api/rql.ts
+  s_79174a6add2ee5::t_b3f5227840c871 323-349,385-386
+src/components/views/__tests__/resource-export.test.ts
+  s_b5abba273633ac::t_132cd675d4bccb 119
+src/components/views/__tests__/resource-collection-navigation-actions.test.tsx
+  s_79174a6add2ee5::t_15fc59a9bea8c5 33-37
+src/components/views/__tests__/resource-collection.test.tsx
+  s_79174a6add2ee5::t_4cb0e79662daca 6,1000-1002
+  s_79174a6add2ee5::t_551411c23a75b4 244-245,250
+  s_79174a6add2ee5::t_c1d55aa19105da 7,674,871-890,895-896,901-902,904-919,922-929,932-944,949-964,968-976,979-981,986-988,990-999,1005-1007,1010-1012,1017-1026,1028-1032,1036-1044,1047-1049,1054-1057,1059-1061,1064-1066,1069,1074-1078,1080-1083,1085-1090,1092-1094,1098-1103,1105,1107-1109,1113-1114,1117,1121,1127-1129
+  s_79174a6add2ee5::t_5db601657567bf 19-20,26-27,31-32,47,234-243,246-249,251,586,660-665,667-672,675-677
+  s_79174a6add2ee5::t_15fc59a9bea8c5 44-46,48
+  s_79174a6add2ee5::t_6cdf1d7840b5cd 864-870
+src/components/views/__tests__/resource-collection-selection-actions.test.tsx
+  s_79174a6add2ee5::t_c042ab8ce38df7 33,196-222,224,266-269,539,586-587,590,644-645,730-731,783,810-814,898,932-933,936,974-975,978,1016-1017
+  s_79174a6add2ee5::t_db1cec5fa0b0a1 1029-1030
+  s_79174a6add2ee5::t_4cb0e79662daca 17,1256-1267
+  s_79174a6add2ee5::t_d77353c2778e47 39-40,44-45,56-59
+  s_79174a6add2ee5::t_0fcc2e6264b802 1210,1252-1255,1269
+  s_79174a6add2ee5::t_a385a7e12343d4 60
+src/components/ui/button-variants.ts
+  s_79174a6add2ee5::t_3049add553e02a 136-137
+  s_48252289213d21::t_097312e6cd8898 138
+src/components/views/resource-export.ts
+  s_b5abba273633ac::t_45c1883eeb8d4f 52-57,74-75
+src/lib/data-api/repository.ts
+  s_79174a6add2ee5::t_81565fabbdc039 3-5,7-10,59,68-74,105,109-113,493-541,545-560,562-568,575-602
+  s_79174a6add2ee5::t_b3f5227840c871 2,6,17-22,561,569-574
+  s_79174a6add2ee5::t_d86c427357a85a 542-544
+  s_79174a6add2ee5::t_fd58c9af043f08 603
+src/components/views/collection-download/file-type-tag.tsx
+  s_79174a6add2ee5::t_56ac8cecf14e9a 1-26
+e2e/pages/resource-collection-page.ts
+  s_79174a6add2ee5::t_4ead84cbcd048d 171-204
+src/components/taxonomy/tax-id-selector.tsx
+  s_b5abba273633ac::t_3066051ab75088 79-87,192-193
+src/lib/data-api/fasta.ts
+  s_79174a6add2ee5::t_d9ed25ed9bc9f8 74,77
+  s_79174a6add2ee5::t_e1d06331e9c973 1
+src/lib/data-api/client.ts
+  s_79174a6add2ee5::t_ebfb03dce0280b 1-2,272-302
+  s_79174a6add2ee5::t_f46ae0ffed7f50 303-304
+src/components/views/__tests__/resource-collection-actions.test.tsx
+  s_79174a6add2ee5::t_15fc59a9bea8c5 107-111
+src/components/views/resource-child-collection.tsx
+  s_79174a6add2ee5::t_9035ad67f9c596 7,132-138,181,222
+src/hooks/views/use-collection-download.ts
+  s_79174a6add2ee5::t_1fb9549cdc9301 1-69
+src/components/views/collection-download/collection-download-action.tsx
+  s_79174a6add2ee5::t_f904bf15920fd2 181,255
+  s_79174a6add2ee5::t_7d6a3be3a30acb 1-96,98-180,182-211,220-254,256-289
+  s_79174a6add2ee5::t_4037f0a3920465 97,212-219
+src/app/api/e2e-mock/[...path]/__tests__/route.test.ts
+  s_79174a6add2ee5::t_a8b60581974e22 1280,1282
+  s_79174a6add2ee5::t_efe6f1974c831c 7,969-1027,1281,1299
+  s_79174a6add2ee5::t_499e6acb01705a 1240
+src/lib/data-api/__tests__/validation.test.ts
+  s_79174a6add2ee5::t_48183668bff266 377,379
+  s_79174a6add2ee5::t_b06e137daf9dde 19,22,358-376,378,380-479
+  s_79174a6add2ee5::t_7e6f18605cb560 480
+src/app/(views)/genome/child-tabs.ts
+  s_79174a6add2ee5::t_9035ad67f9c596 3,5-8,17,53
+src/lib/data-api/__tests__/download-transport.test.ts
+  s_79174a6add2ee5::t_03d70591ea9909 65-67
+  s_79174a6add2ee5::t_03f6558044d83a 1-64,68-172
+e2e/mocks/backends.ts
+  s_79174a6add2ee5::t_a8b60581974e22 48-59,210-213,230
+e2e/fixtures/overrides/index.ts
+  s_79174a6add2ee5::t_4ead84cbcd048d 50,53,55,59
+  s_79174a6add2ee5::t_42b026d6e938ff 51-52,54,56-58
+  s_79174a6add2ee5::t_7bc5b5bc4d02ae 49
+src/app/api/e2e-mock/[...path]/route.ts
+  s_79174a6add2ee5::t_b38659c7710b71 22-24,1079-1115,1148-1149
+  s_79174a6add2ee5::t_249ee5f5bc1408 21,1150
+e2e/tests/a11y/keyboard.spec.ts
+  s_79174a6add2ee5::t_802e32dd6043ba 324-374
+src/lib/data-api/validation.ts
+  s_79174a6add2ee5::t_feba35c5f83dae 10-20,170-250
+  s_79174a6add2ee5::t_b8b38c4e89917b 251
+docs/architecture.md
+  s_79174a6add2ee5::t_873618e50b5c8b 46,90,108-117,170-171
+  s_b5abba273633ac::t_c1549af4efafd7 118,174
+src/components/views/__tests__/collection-download-action.test.tsx
+  s_79174a6add2ee5::t_be732262eaae61 25,68,80,174,316-318
+  s_79174a6add2ee5::t_03d70591ea9909 82
+  s_79174a6add2ee5::t_dd97c2a525e2b9 56-58
+  s_79174a6add2ee5::t_7c65eee3792831 1-24,26-55,59-67,69-79,81,83-173,175-315,319-375
+src/components/search/__tests__/search-action-bar.test.tsx
+  s_79174a6add2ee5::t_f6552fc884711c 286
+src/components/views/__tests__/resource-collection-taxonomy-actions.test.tsx
+  s_79174a6add2ee5::t_15fc59a9bea8c5 31-35
+e2e/fixtures/overrides/downloads.ts
+  s_79174a6add2ee5::t_42b026d6e938ff 2-5,7-11,41-59,62-79
+  s_79174a6add2ee5::t_4ead84cbcd048d 1,6,12-40,60-61
+e2e/tests/organisms/taxon-list-data.spec.ts
+  s_79174a6add2ee5::t_f3b9a9eb2c375c 377-391,393-411,413-415,417-421,423-430,432
+  s_79174a6add2ee5::t_dcdc179e406bb2 1
+src/components/views/__tests__/resource-child-collection.test.tsx
+  s_79174a6add2ee5::t_4cb0e79662daca 4-5,186,746-750,799-801,915-919,1022-1025,1045-1049
+  s_79174a6add2ee5::t_f56f6228d59f13 26,34,48,109,173-185,187-188,719,744-745,751-752,755-763,779-783,785,788,793,798,802-813,815-820,822-826,830,837-840,843-844,858-860,871-873,877-878,893-895,900,914,1009,1019,1021,1036,1044
+  s_79174a6add2ee5::t_15fc59a9bea8c5 45-47,49
+src/components/taxonomy/__tests__/tax-id-selector.test.tsx
+  s_b5abba273633ac::t_3066051ab75088 1-7,72-124
+  s_b5abba273633ac::t_3e04786b24eddc 125-126
+src/hooks/views/__tests__/use-collection-download.test.tsx
+  s_79174a6add2ee5::t_796065824e2acd 171,177
+  s_79174a6add2ee5::t_493c1e7efd9ba9 1-170,172-176,178-182
+src/components/views/resource-collection.tsx
+  s_b5abba273633ac::t_4a742064f779b5 83-93,98
+  s_79174a6add2ee5::t_353a9d98b3bd4a 30-34,62-71,304-323,329-335,361-369,556-557
+  s_79174a6add2ee5::t_488eed77f6d9b9 324-328
+src/app/api/data/[resource]/download/route.ts
+  s_79174a6add2ee5::t_16571d7fbf1c15 1-160
+src/lib/feature-view/profile.ts
+  s_79174a6add2ee5::t_9035ad67f9c596 4,23
+src/lib/feature-view/query.ts
+  s_79174a6add2ee5::t_9035ad67f9c596 7-11,73-80
+  s_79174a6add2ee5::t_23cf88a2565d74 81-82
+src/lib/data-api/__tests__/repository-download.test.ts
+  s_79174a6add2ee5::t_00f4ff8eed63be 1-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db065737d86a2507d6ca63524a096ae3d5442332",
+  "prompts": {},
+  "sessions": {
+    "s_48252289213d21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7996f081-f540-466c-80d1-ec83f40cce9d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_79174a6add2ee5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2adb8c55-01eb-4bc7-baa7-c1c3f76818f7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    },
+    "s_b5abba273633ac": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15eeada7-6912-4a22-a62a-a4f4fc6692f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

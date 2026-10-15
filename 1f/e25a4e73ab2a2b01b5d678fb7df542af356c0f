@@ -1,0 +1,120 @@
+src/hooks/views/__tests__/use-collection-download.test.tsx
+  s_2b8ba4267532f7::t_b9950a68abb801 120,140
+  s_2b8ba4267532f7::t_414aeee5b80475 118-119,123
+  s_2b8ba4267532f7::t_d65abe3888671c 23-24,122,131-134,187,191
+  s_2b8ba4267532f7::t_44d5c3fad2930a 100-116
+docs/architecture.md
+  s_2b8ba4267532f7::t_98fe853891ef2d 117
+  s_2b8ba4267532f7::t_81011059470bed 116
+  s_2b8ba4267532f7::t_79754f024932b6 112
+src/components/ui/badge.tsx
+  s_2b8ba4267532f7::t_c0c482c4227947 14,26
+src/lib/data-api/__tests__/downloads.test.ts
+  s_2b8ba4267532f7::t_963c83e5b068e2 196,245-252,305
+  s_2b8ba4267532f7::t_46d1c1a80ee59b 21-22,177-195
+  s_2b8ba4267532f7::t_335cba44bd6d28 16,201-216
+  s_2b8ba4267532f7::t_44d5c3fad2930a 259,261,267,269-274,276-279,283,285-304
+  s_2b8ba4267532f7::t_bcd70a3c6a90c6 284
+  s_2b8ba4267532f7::t_44d6acc992e172 197-200
+  s_2b8ba4267532f7::t_14e54b23b75b43 217
+  s_2b8ba4267532f7::t_cfeba58f257945 306
+src/lib/data-api/file-name.ts
+  s_2b8ba4267532f7::t_e0728a6632f0b5 6-7,9-11,18
+src/lib/data-api/__tests__/repository-download.test.ts
+  s_2b8ba4267532f7::t_85b30003d4418c 5,45-54,104-105,117,119-144,147-231,235,252,257,267,319-322,335-336,379-387
+  s_2b8ba4267532f7::t_5f46241f5a29ff 339-340,346-360,363-366,373,375
+  s_2b8ba4267532f7::t_24b15f34fafd86 145
+  s_2b8ba4267532f7::t_44d5c3fad2930a 146,376,404-442
+  s_2b8ba4267532f7::t_f506a2021bec8f 361-362,367-372,374
+  s_2b8ba4267532f7::t_322e44cfb83c69 377
+src/lib/data-api/__tests__/download-transport.test.ts
+  s_2b8ba4267532f7::t_4ba7abe0eab393 53-65,67-69,84-88,154-195
+  s_2b8ba4267532f7::t_20e451daae8235 196
+src/app/api/data/[resource]/download/__tests__/route.test.ts
+  s_2b8ba4267532f7::t_61a62fb331312c 237-257
+  s_2b8ba4267532f7::t_b1d3c404147731 410-435
+  s_2b8ba4267532f7::t_85ae5973f0d23f 284-305
+  s_2b8ba4267532f7::t_3186743eae45be 181-186,213
+src/styles/themes/bvbrc-theme.css
+  s_2b8ba4267532f7::t_3c6aa9dfa3675c 11-13,47,63-64,101
+src/components/navbars/mobile-workspace-section.tsx
+  s_2b8ba4267532f7::t_c0c482c4227947 101,103
+src/lib/data-api/repository.ts
+  s_2b8ba4267532f7::t_2f22ce314b4540 551-553,571-577
+  s_2b8ba4267532f7::t_750a41fab1d675 650-653,673-715
+  s_2b8ba4267532f7::t_8a4e872c705c2e 4,8,11
+  s_2b8ba4267532f7::t_4a0517ac2f8b38 582,595,601-613
+  s_2b8ba4267532f7::t_18f4e39c25a362 5,109-138,554-556,564,665-672
+  s_2b8ba4267532f7::t_d26b625badb1c5 10,89,541-543,639
+  s_2b8ba4267532f7::t_b7ee8492d9180d 548-550
+src/lib/data-api/downloads.ts
+  s_2b8ba4267532f7::t_abb85734c4d6eb 222-225
+  s_2b8ba4267532f7::t_ad3eaa1b3b6f76 244-254,260-263,265-273
+  s_2b8ba4267532f7::t_c6ca18b0076004 369-379
+  s_2b8ba4267532f7::t_111c83d10fd6fc 131-136,154,157,274-288,368
+  s_2b8ba4267532f7::t_42af579cc479b7 255-259,264
+src/hooks/views/use-collection-download.ts
+  s_2b8ba4267532f7::t_111c83d10fd6fc 30-34,43
+src/lib/data-api/download-transport.ts
+  s_2b8ba4267532f7::t_111c83d10fd6fc 11-12
+  s_2b8ba4267532f7::t_b72ac252d12266 110
+  s_2b8ba4267532f7::t_ba87bd7c319096 2,21-23,64-68,70-71,74,76-78,91,94-102
+src/lib/data-api/__tests__/fasta.test.ts
+  s_2b8ba4267532f7::t_30d9ecbde7ef9b 49-52
+AGENTS.md
+  s_2b8ba4267532f7::t_c8a0653d2fefea 61
+src/app/api/data/[resource]/download/route.ts
+  s_2b8ba4267532f7::t_2d98c3b2c03506 65-89,93
+src/styles/themes/violet-theme.css
+  s_2b8ba4267532f7::t_3c6aa9dfa3675c 45,95
+src/app/globals.css
+  s_2b8ba4267532f7::t_b9a4a15547b7ea 139-146
+  s_2b8ba4267532f7::t_3c6aa9dfa3675c 247,301
+e2e/tests/collection-download.spec.ts
+  s_2b8ba4267532f7::t_50c319c5a06bfa 199-241
+src/components/ui/button-variants.ts
+  s_2b8ba4267532f7::t_c0c482c4227947 21,36,92
+src/components/views/__tests__/collection-download-action.test.tsx
+  s_2b8ba4267532f7::t_46d1c1a80ee59b 300-313,316-344
+  s_2b8ba4267532f7::t_f75215b6de8785 1
+  s_2b8ba4267532f7::t_50ca55cbef0bc6 446-449
+  s_2b8ba4267532f7::t_f78efbcfd49c11 402-445,450-456
+  s_2b8ba4267532f7::t_5e75edc613345c 345-366
+  s_2b8ba4267532f7::t_1f41456f3b8075 314-315
+src/__tests__/theme-contrast.test.ts
+  s_2b8ba4267532f7::t_03fab63befc9bd 1-129
+src/lib/data-api/validation.ts
+  s_2b8ba4267532f7::t_d26b625badb1c5 237-241
+  s_2b8ba4267532f7::t_b165d139ab10fc 193-194
+  s_2b8ba4267532f7::t_602a33315cd8cf 18
+src/components/views/collection-download/collection-download-action.tsx
+  s_2b8ba4267532f7::t_4ebcbb593ff613 155-158
+  s_2b8ba4267532f7::t_203afd5067b6b1 19,99,123-125,146,279-301,303-309
+  s_2b8ba4267532f7::t_1c5e1c80590f73 103-109
+  s_2b8ba4267532f7::t_eeddcdcdb7c5c6 75-78
+  s_2b8ba4267532f7::t_27bb4274f467e8 3
+e2e/tests/a11y/keyboard.spec.ts
+  s_2b8ba4267532f7::t_d36ca018d09a42 351
+src/lib/data-api/__tests__/validation.test.ts
+  s_2b8ba4267532f7::t_46d1c1a80ee59b 436-449
+  s_2b8ba4267532f7::t_a65521fa396873 450-462
+src/lib/data-api/client.ts
+  s_2b8ba4267532f7::t_111c83d10fd6fc 276-278
+  s_2b8ba4267532f7::t_6f1780bf4e1b8d 110-111,113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fe25a4e73ab2a2b01b5d678fb7df542af356c0f",
+  "prompts": {},
+  "sessions": {
+    "s_2b8ba4267532f7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78fd9e86-dc89-42d2-a5a1-48c70ca95a17",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

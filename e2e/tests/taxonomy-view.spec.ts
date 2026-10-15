@@ -60,6 +60,7 @@ test.describe("Taxonomy collection", () => {
     // The action waits for the narrowed query's own total rather than refusing,
     // and opens nothing while the previous query's rows are still on screen.
     await taxonomyPage.expectRefreshing(true);
+    await taxonomyPage.expectStaleRows(true);
     await expect(
       page.getByRole("heading", { name: "Use selected Taxa in a service" }),
     ).toHaveCount(0);
@@ -76,6 +77,7 @@ test.describe("Taxonomy collection", () => {
     releaseNarrowed();
     await narrowedResponse;
     await taxonomyPage.expectRefreshing(false);
+    await taxonomyPage.expectStaleRows(false);
     await taxonomyPage.expectServiceOptions();
     await expect(page.getByText("Could not complete action")).toHaveCount(0);
   });

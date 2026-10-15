@@ -235,22 +235,33 @@ test.describe("Genome view", () => {
     // The overview is the entry that a second Back must reach. Features is then opened
     // by URL: its rows load client-side, which proves hydration before any tab click.
     await genome.goto("1282460.2049");
-    await genome.goto("1282460.2049", "features");
-    await genome.expectRow(/replicase polyprotein/);
-    await genome.expectUrlParams({ tab: "features", "features.sort": null });
     // The fixture has one page of features, so this exercises the sort. The table
     // starts in legacy FeatureGrid's order (genome name, accession, start), which
     // marks no column as sorted.
+    expect(
+      await genome.rowsReadSort("genome_feature", () =>
+        genome.goto("1282460.2049", "features"),
+      ),
+    ).toBe("genome_name:asc,accession:asc,start:asc");
+    await genome.expectRow(/replicase polyprotein/);
+    await genome.expectUrlParams({ tab: "features", "features.sort": null });
     await genome.expectSort("BRC ID", "none");
+    await genome.expectSortHighlight(null, "BRC ID");
 
     const entriesBeforeSort = await genome.historyLength();
-    await genome.sortBy("Product");
+    // A picked column's sort is sent alone, and its header shows it at once.
+    expect(
+      await genome.rowsReadSort("genome_feature", () =>
+        genome.sortBy("Product"),
+      ),
+    ).toBe("product:asc");
     await genome.expectUrlParams({
       tab: "features",
       "features.sort": "product:asc",
     });
     await genome.expectSort("Product", "ascending");
     await genome.expectSort("BRC ID", "none");
+    await genome.expectSortHighlight("Product", "BRC ID");
     // A sort click also resets the page, which used to add a second entry.
     await expect
       .poll(() => genome.historyLength())

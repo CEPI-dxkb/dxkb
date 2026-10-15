@@ -548,6 +548,28 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
   });
 
+  it("reads an unsorted collection in the profile's unsorted order, with current rows", () => {
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, unsortedOrder }}
+        repository={repository()}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
+      unsortedOrder,
+    });
+    // The rows on screen are this query's, so the table shows no refresh.
+    expect(dataTableProps.isRefreshing).toBe(false);
+  });
+
   it("exports an unsorted collection in the profile's unsorted order", async () => {
     const data = repository();
     const exportAll = vi.spyOn(data, "exportAll");

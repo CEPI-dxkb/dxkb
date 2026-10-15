@@ -117,6 +117,60 @@ export class GenomeMemberPage {
     await expect(this.columnHeader(label)).toHaveAttribute("aria-sort", state);
   }
 
+  /**
+   * The `sort` param of the open table's next rows read (not its facet counts' read), which
+   * `action` starts: the order the rows are asked for, or `null` to leave it to the backend.
+   */
+  async rowsReadSort(
+    resource: string,
+    action: () => Promise<void>,
+  ): Promise<string | null> {
+    const read = this.page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return (
+        url.pathname === `/api/data/${resource}` &&
+        url.searchParams.get("operation") === "collection" &&
+        url.searchParams.has("field") &&
+        !url.searchParams.has("facet")
+      );
+    });
+    await action();
+    return new URL((await read).url()).searchParams.get("sort");
+  }
+
+  /**
+   * How the header of `sorted` shows its sort, against the unsorted `other`: a sorted column's
+   * header takes an `info` tint and an `info` rule along its bottom edge (an inset shadow), and
+   * its chevron is drawn in that same color. `sorted` null checks that `other` shows none of it.
+   * jsdom computes no Tailwind styles, so only a browser can check them.
+   */
+  async expectSortHighlight(
+    sorted: string | null,
+    other: string,
+  ): Promise<void> {
+    const look = (label: string) =>
+      this.columnHeader(label).evaluate((header) => {
+        const style = getComputedStyle(header);
+        const chevron = header.querySelector(
+          "svg.lucide-chevron-up, svg.lucide-chevron-down",
+        );
+        return {
+          tint: style.backgroundColor,
+          rule: style.boxShadow,
+          chevron: chevron ? getComputedStyle(chevron).color : null,
+        };
+      });
+    const plain = await look(other);
+    expect(plain.rule).toBe("none");
+    expect(plain.chevron).toBeNull();
+    if (!sorted) return;
+    await expect.poll(async () => (await look(sorted)).rule).toContain("inset");
+    const highlighted = await look(sorted);
+    expect(highlighted.tint).not.toBe(plain.tint);
+    expect(highlighted.chevron).not.toBeNull();
+    expect(highlighted.rule).toContain(highlighted.chevron ?? "a chevron");
+  }
+
   /** Polls the address for the given query params (`null` = absent). */
   async expectUrlParams(
     expected: Record<string, string | null>,

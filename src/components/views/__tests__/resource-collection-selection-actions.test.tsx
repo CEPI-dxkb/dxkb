@@ -480,6 +480,41 @@ describe("ResourceCollection selection actions", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("resolves every matching row of an unsorted collection in the profile's unsorted order", async () => {
+    const user = userEvent.setup();
+    const data = repository(Promise.resolve({ rows: [{ genome_id: "83332.12" }] }));
+    const exportAll = vi.spyOn(data, "exportAll");
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+    useResourceCollection.mockReturnValue(
+      collectionResult({
+        selection: {},
+        selectedIds: [],
+        isAllPagesSelected: true,
+      }),
+    );
+
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, unsortedOrder }}
+        repository={data}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "services" }));
+
+    await waitFor(() => {
+      expect(exportAll).toHaveBeenCalledWith(
+        "genome",
+        expect.objectContaining({ sort: unsortedOrder }),
+      );
+    });
+  });
+
   it("applies the SERVICES limit to the current query's total, not a previous query's", async () => {
     const user = userEvent.setup();
     const data = repository();

@@ -77,6 +77,41 @@ describe("ServerDataRepository", () => {
     );
   });
 
+  it.each([
+    ["its first key", { field: "feature_id", direction: "desc" }, "-feature_id"],
+    [
+      "a tie-breaking key",
+      {
+        field: "genome_name",
+        direction: "asc",
+        then: [{ field: "feature_id", direction: "desc" }],
+      },
+      "+genome_name,-feature_id",
+    ],
+  ] as const)(
+    "does not repeat the id when %s is the id",
+    async (_key, sort, clauses) => {
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          jsonResponse({ response: { numFound: 0, docs: [] } }),
+        );
+      const repository = new ServerDataRepository({
+        baseUrl: "https://data.test",
+        fetch: fetcher,
+      });
+
+      await repository.collection("genome_feature", {
+        operation: "collection",
+        sort,
+      });
+
+      expect(decodeURIComponent((fetcher.mock.calls[0][0] as URL).href)).toContain(
+        `sort(${clauses})`,
+      );
+    },
+  );
+
   it("omits projection when a field starts with a digit", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({

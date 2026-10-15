@@ -253,7 +253,9 @@
   --primary: oklch(45.57% 0.137 266.75);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(71.57% 0.182 37.18);
-  --secondary-foreground: oklch(0.985 0 0);
+  /* Dark text: the dark theme keeps the light-theme orange fill, where white
+     text is 2.6:1 and dark text 6.6:1. */
+  --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(84.57% 0.167 84.87);

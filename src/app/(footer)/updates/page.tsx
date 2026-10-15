@@ -261,7 +261,7 @@ const Updates = () => {
                       className={cn(
                         "flex flex-col items-center rounded-lg px-2 py-1",
                         isSelectedDateEvent(event.date)
-                          ? "bg-secondary"
+                          ? "bg-secondary text-secondary-foreground"
                           : "bg-secondary/40",
                       )}
                     >

@@ -89,7 +89,7 @@ export const buttonVariants = cva(
           "border-input bg-background text-muted-foreground hover:bg-primary/15 hover:text-primary active:bg-primary/25 enabled:cursor-pointer dark:bg-input/30 dark:hover:bg-primary/40 dark:hover:text-foreground dark:active:bg-primary/55",
         // A row in a dropdown menu (sign out in the user menu).
         "menu-item":
-          "rounded-md border-none hover:bg-secondary/80 hover:text-foreground focus:bg-secondary/80 aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "rounded-md border-none hover:bg-secondary/80 hover:text-secondary-foreground focus:bg-secondary/80 focus:text-secondary-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         // Action inside a notice banner on a primary bar (the truncated
         // preview banner). The hover text follows the hover fill: accent in
         // light themes, a muted wash over the primary bar in dark ones.

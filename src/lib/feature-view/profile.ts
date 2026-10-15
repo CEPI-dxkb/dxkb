@@ -1,7 +1,7 @@
 import type { ResourceCollectionProfile } from "@/components/views";
 import { featureHref } from "@/lib/views/hrefs";
 import { featureMetadata } from "./fields";
-import { featureStructuralRql } from "./query";
+import { featureDownloadSpec, featureStructuralRql } from "./query";
 import type { FeatureViewRecord } from "./schema";
 
 const featureColumns = featureMetadata.columns;
@@ -20,4 +20,5 @@ export const featureCollectionProfile: ResourceCollectionProfile<FeatureViewReco
   facets: featureFacets,
   rowHref: (row) => row.feature_id ? featureHref(row.feature_id) : undefined,
   rowLinkField: "patric_id",
+  download: featureDownloadSpec,
 };

@@ -45,6 +45,18 @@ export interface JsonOverride {
    * If parsing fails, the predicate receives `null`.
    */
   matchBody?: (body: unknown) => boolean;
+  /**
+   * Response content type, for a body that is not JSON (a TSV or FASTA file). Defaults to
+   * `application/json`.
+   */
+  contentType?: string;
+  /**
+   * Let the matched request through to the app's own route handler instead of fulfilling
+   * it, so the server-side path — and the loopback mock it calls — is what answers. For a
+   * same-origin route whose real work happens on the server, such as the download gateway
+   * (`e2e/fixtures/overrides/downloads.ts`). `body`, `status` and `contentType` are ignored.
+   */
+  passthrough?: boolean;
 }
 
 export interface BackendMockOptions {
@@ -195,6 +207,10 @@ export async function applyBackendMocks(
         await route.fallback();
         return;
       }
+      if (override.passthrough) {
+        await route.continue();
+        return;
+      }
       const counter = counterFor(override);
       const bodyFn =
         typeof override.body === "function"
@@ -211,7 +227,7 @@ export async function applyBackendMocks(
       counter.value += 1;
       await route.fulfill({
         status: override.status ?? 200,
-        contentType: "application/json",
+        contentType: override.contentType ?? "application/json",
         headers: override.headers ?? {},
         body:
           typeof resolvedBody === "string"

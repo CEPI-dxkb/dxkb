@@ -19,6 +19,10 @@ import {
   virusesSummaryRecord,
 } from "@/lib/e2e-fixtures/records";
 import {
+  e2eDownloadFixture,
+  isE2eDownloadAccept,
+} from "@/lib/e2e-fixtures/downloads";
+import {
   buildLoopbackRpcError,
   buildLoopbackRpcSuccess,
   buildLoopbackSolrEnvelope,
@@ -1072,6 +1076,43 @@ function findRpcResult(
   return { result: methods[method] };
 }
 
+/**
+ * The download gateway's upstream request (`ServerDataRepository.download`):
+ * `POST /data/<core>/` whose body is an RQL query and whose `Accept` names a
+ * table or FASTA format. Answered from `src/lib/e2e-fixtures/downloads.ts`;
+ * a core or format with no registered file is rejected with a diagnostic, not
+ * answered with an empty file a spec could mistake for a real download.
+ * `null` for any other request, so the rest of the dispatch runs.
+ */
+async function maybeDataDownloadPost(
+  path: string,
+  request: NextRequest,
+): Promise<NextResponse | null> {
+  const segments = path.split("/").filter(Boolean);
+  const accept = request.headers.get("accept") ?? "";
+  if (
+    segments[0] !== "data" ||
+    segments.length !== 2 ||
+    !isE2eDownloadAccept(accept)
+  )
+    return null;
+  const fixture = e2eDownloadFixture(
+    segments[1],
+    accept,
+    await request.clone().text(),
+  );
+  if (!fixture) {
+    return unhandledResponse(
+      "unhandled data download",
+      `no ${accept} download fixture for data core '${segments[1]}' — add it to src/lib/e2e-fixtures/downloads.ts`,
+      { path },
+    );
+  }
+  return new NextResponse(fixture.body, {
+    headers: { "Content-Type": fixture.contentType },
+  });
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> },
@@ -1103,6 +1144,9 @@ export async function POST(
 
   const identityResponse = await handleIdentityPost(path, request, rpcMethod);
   if (identityResponse) return identityResponse;
+
+  const downloadResponse = await maybeDataDownloadPost(path, request);
+  if (downloadResponse) return downloadResponse;
 
   const endpoint = path.split("/").filter(Boolean).join("/");
   if (rpcMethod === undefined) {

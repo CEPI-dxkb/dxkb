@@ -168,6 +168,40 @@ export class ResourceCollectionPage {
     await this.page.getByRole("button", { name: "Retry", exact: true }).click();
   }
 
+  /** The action rail's Download tile; its name ends in the selection badge. */
+  downloadTile() {
+    return this.page.getByRole("button", { name: /^DOWNLOAD/ });
+  }
+
+  /** The Download tile's popover. */
+  downloadPanel() {
+    return this.page
+      .getByRole("dialog")
+      .filter({ has: this.page.getByRole("radiogroup", { name: "Rows to download" }) });
+  }
+
+  async openDownload() {
+    await this.downloadTile().click();
+    await expect(this.downloadPanel()).toBeVisible();
+  }
+
+  /** A scope radio, "Selected" or "All", named with its count. */
+  downloadScope(scope: "Selected" | "All") {
+    return this.downloadPanel().getByRole("radio", {
+      name: new RegExp(`^${scope}`),
+    });
+  }
+
+  /**
+   * A format row ("Text", "CSV", "Excel", "DNA FASTA", "Protein FASTA"). A
+   * disabled row's name goes on with its reason, so the match is on the start.
+   */
+  downloadFormat(label: string) {
+    return this.downloadPanel().getByRole("button", {
+      name: new RegExp(`^${label}`),
+    });
+  }
+
   async expectSelectedRowChecked() {
     await expect(
       this.page.getByRole("checkbox", { name: `Select row ${this.selectedId}` }),

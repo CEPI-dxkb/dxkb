@@ -16,8 +16,10 @@ import {
 } from "../schemas";
 import {
   maxExportRows,
+  maxIdentifierLength,
   maxSelectedRows,
   validateDataApiRequest,
+  validateDownloadRequest,
 } from "../validation";
 
 describe("data API contracts", () => {
@@ -351,5 +353,128 @@ describe("data API contracts", () => {
     });
 
     expect(options.staleTime).toBe(0);
+  });
+});
+
+describe("validateDownloadRequest", () => {
+  const base = {
+    format: "csv",
+    scope: { kind: "query", rql: "eq(genome_id,1.1)" },
+    fileNameBase: "genome",
+    total: 3,
+  };
+  const validate = (resource: (typeof dataResources)[number], value: object) =>
+    () => validateDownloadRequest(resource, { ...base, ...value });
+
+  it("accepts a query download and returns it validated", () => {
+    expect(
+      validateDownloadRequest("genome", {
+        ...base,
+        sort: { field: "genome_name", direction: "desc" },
+        fields: ["genome_name"],
+        nonce: "abcdef0123456789",
+      }),
+    ).toEqual({
+      format: "csv",
+      scope: { kind: "query", rql: "eq(genome_id,1.1)" },
+      sort: { field: "genome_name", direction: "desc" },
+      fields: ["genome_name"],
+      fileNameBase: "genome",
+      total: 3,
+      nonce: "abcdef0123456789",
+    });
+  });
+
+  it("rejects an unknown format and one the resource does not offer", () => {
+    expect(validate("genome", { format: "pdf" })).toThrow();
+    expect(validate("genome", { format: "protein-fasta" })).toThrow(
+      "Protein FASTA downloads are not available for genome.",
+    );
+    expect(validate("epitope", { format: "dna-fasta" })).toThrow(
+      "DNA FASTA downloads are not available for epitope.",
+    );
+    expect(validate("genome", { format: "dna-fasta" })).not.toThrow();
+  });
+
+  it("bounds a selection at 1 to 10,000 ids and drops repeats", () => {
+    expect(
+      validate("genome", { scope: { kind: "selected", ids: [] } }),
+    ).toThrow("Choose at least one row to download.");
+    expect(
+      validate("genome", {
+        scope: {
+          kind: "selected",
+          ids: Array.from({ length: 10_001 }, (_, index) => String(index)),
+        },
+      }),
+    ).toThrow("Selection downloads are limited to 10,000 rows.");
+    expect(
+      validate("genome", {
+        scope: { kind: "selected", ids: ["x".repeat(maxIdentifierLength + 1)] },
+      }),
+    ).toThrow();
+    expect(
+      validateDownloadRequest("genome", {
+        ...base,
+        scope: { kind: "selected", ids: ["1.1", "1.2", "1.1"] },
+      }).scope,
+    ).toStrictEqual({ kind: "selected", ids: ["1.1", "1.2"] });
+  });
+
+  it("validates the rql, fields and sort against the resource", () => {
+    expect(
+      validate("genome", { scope: { kind: "query", rql: "eq(nope,1)" } }),
+    ).toThrow();
+    expect(validate("genome", { fields: ["not_a_field"] })).toThrow(
+      "Field not_a_field cannot be used for select on genome.",
+    );
+    expect(
+      validate("genome", { sort: { field: "not_a_field", direction: "asc" } }),
+    ).toThrow("Field not_a_field cannot sort genome.");
+  });
+
+  it("drops fields from a sequence download, which has no columns", () => {
+    expect(
+      validateDownloadRequest("genome_feature", {
+        ...base,
+        format: "protein-fasta",
+        fields: ["feature_id"],
+      }).fields,
+    ).toBeUndefined();
+  });
+
+  it("enforces the row limits the tile shows", () => {
+    expect(validate("genome", { total: 0 })).toThrow("No matching rows.");
+    expect(validate("genome", { format: "xlsx", total: 1_048_576 })).toThrow(
+      "Over Excel's 1,048,576-row limit.",
+    );
+    expect(
+      validate("genome_feature", { format: "dna-fasta", total: 10_001 }),
+    ).toThrow("Sequences: 10,000 rows at most.");
+    expect(validate("genome", { total: 2_500_001 })).toThrow(
+      "Over 2,500,000 rows: narrow the filters.",
+    );
+    // A selection is counted by its ids, not by the total it claims.
+    expect(
+      validate("genome", {
+        scope: { kind: "selected", ids: ["1.1"] },
+        total: 0,
+      }),
+    ).not.toThrow();
+  });
+
+  it("makes the file name base safe and bounds it", () => {
+    expect(
+      validateDownloadRequest("genome", {
+        ...base,
+        fileNameBase: '../fig|1.1"x',
+      }).fileNameBase,
+    ).toBe("_fig_1.1_x");
+    expect(validate("genome", { fileNameBase: "x".repeat(201) })).toThrow();
+  });
+
+  it("accepts only a token-shaped nonce", () => {
+    expect(validate("genome", { nonce: "short" })).toThrow();
+    expect(validate("genome", { nonce: "a; Path=/evil" })).toThrow();
   });
 });

@@ -1,11 +1,25 @@
 import { z } from "zod";
 import {
+  downloadFormats,
+  downloadRowCount,
+  maxQueryDownloadRows,
+  maxSelectionDownloadRows,
+  sequenceDownloadFor,
+  type DownloadQuery,
+  type DownloadRequest,
+} from "./downloads";
+import {
   fastaAcceptTypes,
   type FastaRequest,
   type FastaResource,
 } from "./fasta";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
-import { eq, keywordClauses, serializeRql } from "./rql";
+import {
+  eq,
+  keywordClauses,
+  serializeInClause,
+  serializeRql,
+} from "./rql";
 import type {
   CollectionRequest,
   CollectionResult,
@@ -42,14 +56,7 @@ function appendQuery(url: URL, clause: string): void {
   url.search = url.search ? `${url.search.slice(1)}&${clause}` : clause;
 }
 
-function addPredicate(
-  url: URL,
-  request: {
-    rql?: string;
-    keyword?: string;
-    keywordMode?: "exact" | "prefix";
-  },
-): void {
+function predicateClause(request: DownloadQuery): string | undefined {
   const clauses: string[] = [];
   if (request.rql) clauses.push(request.rql);
   if (request.keyword) {
@@ -58,8 +65,13 @@ function addPredicate(
     else if (expressions.length > 1)
       clauses.push(`and(${expressions.join(",")})`);
   }
-  if (clauses.length === 1) appendQuery(url, clauses[0]);
-  else if (clauses.length > 1) appendQuery(url, `and(${clauses.join(",")})`);
+  if (clauses.length === 0) return undefined;
+  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+}
+
+function addPredicate(url: URL, request: DownloadQuery): void {
+  const clause = predicateClause(request);
+  if (clause) appendQuery(url, clause);
 }
 
 function addFields(
@@ -90,12 +102,15 @@ function projectRows(
   );
 }
 
-function addSort(url: URL, sort: DataSort | undefined, idField: string): void {
-  if (!sort) return;
+function sortClause(sort: DataSort, idField: string): string {
   const sign = sort.direction === "desc" ? "-" : "+";
   const clauses = [`${sign}${sort.field}`];
   if (sort.field !== idField) clauses.push(`+${idField}`);
-  appendQuery(url, `sort(${clauses.join(",")})`);
+  return `sort(${clauses.join(",")})`;
+}
+
+function addSort(url: URL, sort: DataSort | undefined, idField: string): void {
+  if (sort) appendQuery(url, sortClause(sort, idField));
 }
 
 function parseFacets(value: unknown): Record<string, FacetBucket[]> {
@@ -474,6 +489,117 @@ export class ServerDataRepository {
       fastaAcceptTypes[request.type],
       "POST",
       predicate,
+    );
+    return response.body;
+  }
+
+  /**
+   * A table or FASTA download, as the upstream's own response stream so a
+   * multi-gigabyte file is never buffered on this server. Legacy BV-BRC's
+   * request, without the token in the body: one POST whose body is the whole
+   * query (`<predicate>&select(…)&sort(…)&limit(N)`) and whose `Accept` names
+   * the format.
+   *
+   * - The predicate is `in(<idField>,(…))` for a selection, else the query's
+   *   rql and keyword (`eq(<idField>,*)` when it has neither, since the
+   *   upstream rejects a bare `sort()`).
+   * - No `select()` without `fields`, so the upstream returns every stored
+   *   field, as legacy does. A field whose name starts with a digit cannot go
+   *   in a `select()` (see `addFields`), and a stream cannot be projected
+   *   here, so such a list downloads every field instead.
+   * - The table's sort, then the primary key; the primary key alone when the
+   *   table is unsorted.
+   * - A resource whose sequences live elsewhere (`sequenceDownloads[…].via`:
+   *   a genome's contigs) reads that resource with `in(<key>,(<ids>))` sorted
+   *   by its own key. A query scope there first reads the matching ids, which
+   *   `maxSequenceQueryRows` bounds.
+   *
+   * `request` must already have passed `validateDownloadRequest`.
+   */
+  async download(
+    resource: DataResource,
+    request: DownloadRequest,
+    signal?: AbortSignal,
+  ): Promise<ReadableStream<Uint8Array> | null> {
+    const format = downloadFormats[request.format];
+    const definition = getResourceDefinition(resource);
+    const via =
+      format.kind === "sequence"
+        ? sequenceDownloadFor(resource)?.via
+        : undefined;
+    const clauses: string[] = [];
+    let target = resource;
+    let limit: number;
+    if (via) {
+      const ids =
+        request.scope.kind === "selected"
+          ? request.scope.ids
+          : (
+              await this.export(
+                resource,
+                {
+                  operation: "export",
+                  rql: request.scope.rql,
+                  keyword: request.scope.keyword,
+                  keywordMode: request.scope.keywordMode,
+                  fields: [definition.idField],
+                  limit: request.total,
+                  sort: request.sort,
+                },
+                signal,
+              )
+            ).rows.map((row) => String(row[definition.idField]));
+      if (ids.length === 0) {
+        throw new DataApiError(
+          "No records matched the download.",
+          404,
+          "not_found",
+        );
+      }
+      target = via.resource;
+      clauses.push(
+        serializeInClause(via.resource, via.key, ids, maxSelectionDownloadRows),
+        `sort(+${via.sort})`,
+      );
+      // A genome has any number of contigs, so the cap is legacy's own.
+      limit = maxQueryDownloadRows;
+    } else {
+      clauses.push(
+        request.scope.kind === "selected"
+          ? serializeInClause(
+              resource,
+              definition.idField,
+              request.scope.ids,
+              maxSelectionDownloadRows,
+            )
+          : (predicateClause(request.scope) ?? `eq(${definition.idField},*)`),
+      );
+      if (
+        format.kind === "table" &&
+        request.fields?.length &&
+        !request.fields.some((field) => /^\d/.test(field))
+      ) {
+        clauses.push(
+          `select(${[...new Set([...request.fields, definition.idField])].join(",")})`,
+        );
+      }
+      clauses.push(
+        sortClause(
+          request.sort ?? { field: definition.idField, direction: "asc" },
+          definition.idField,
+        ),
+      );
+      limit = downloadRowCount(request);
+    }
+    clauses.push(`limit(${String(limit)})`);
+    const response = await this.send(
+      this.url(target),
+      0,
+      limit,
+      signal,
+      format.accept,
+      "POST",
+      clauses.join("&"),
     );
     return response.body;
   }

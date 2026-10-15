@@ -7,10 +7,6 @@ import { InfoPanel } from "@/components/detail-panel/info-panel";
 import { ResourceFilterBar } from "./resource-filter-bar";
 import { ResourceWorkspace } from "./resource-workspace";
 import { useResourceCollectionActions } from "./resource-collection-actions";
-import {
-  matchesLoadedKeyword,
-  useResourceCollectionExport,
-} from "./use-resource-collection-export";
 import { useResourceCollectionRowResolution } from "./use-resource-collection-row-resolution";
 import {
   DataTable,
@@ -31,6 +27,11 @@ import {
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
 import type { DataRepository, DataResource } from "@/lib/data-api";
+import {
+  resolveCollectionDownloadSpec,
+  type CollectionDownloadSpec,
+  type DownloadScope,
+} from "@/lib/data-api/downloads";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -58,6 +59,16 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
    * export stays named after the tab instead of the shared resource id.
    */
   exportFileName?: string;
+  /**
+   * How this view narrows its resource's download formats
+   * (`src/lib/data-api/downloads.ts`). Most profiles declare nothing and get
+   * the resource default. A function of the collection state is for a view
+   * whose formats follow URL state, such as the Feature list's
+   * `filter=protein`.
+   */
+  download?:
+    | CollectionDownloadSpec
+    | ((state: CollectionState) => CollectionDownloadSpec);
 }
 
 function combinePredicates(...predicates: (string | undefined)[]) {
@@ -69,11 +80,22 @@ function combinePredicates(...predicates: (string | undefined)[]) {
   return `and(${active.join(",")})`;
 }
 
+function matchesLoadedKeyword(row: DataTableRow, keyword: string) {
+  return Object.values(row).some((value) => {
+    const values = Array.isArray(value) ? value : [value];
+    return values.some((item) =>
+      String(item ?? "")
+        .toLowerCase()
+        .includes(keyword),
+    );
+  });
+}
+
 /**
  * Per-sink fallback for `formatUserFacingErrorMessage`, used for a non-`Error`
  * rejection and for an `Error` whose message is empty or whitespace-only. The
  * shared helper owns the emptiness, non-`Error` and length decisions; only the
- * wording that names what failed is decided here. Export and action hooks own
+ * wording that names what failed is decided here. Download and action hooks own
  * the matching fallbacks for their sinks.
  */
 const genericCollectionErrorMessage =
@@ -279,21 +301,38 @@ export function ResourceCollection<Row extends DataTableRow>({
     keywordMode: profile.serverKeywordMode,
     sort,
   });
-  const { exportError, exportRows } = useResourceCollectionExport({
-    repository,
-    resource: profile.resource,
-    idField: profile.idField,
-    columns: profile.columns,
-    exportFileName: profile.exportFileName,
-    total: collection.total,
-    isPlaceholderData: collection.isPlaceholderData,
-    hasLoadedKeyword,
-    loadedKeyword: normalizedLoadedKeyword,
-    rql: effectiveRql,
-    keyword: requestState.keyword,
-    keywordMode: profile.serverKeywordMode,
-    sort,
-  });
+  // What the Download tile's *All results* covers. A client-side keyword
+  // filters the loaded page only, so the rows it leaves are downloaded by id;
+  // otherwise it is the query the table sends.
+  const allResultsScope: DownloadScope = hasLoadedKeyword
+    ? {
+        kind: "selected",
+        ids: displayedRows.map((row) => String(row[profile.idField])),
+      }
+    : {
+        kind: "query",
+        rql: effectiveRql,
+        keyword: requestState.keyword,
+        keywordMode: profile.serverKeywordMode,
+      };
+  const downloadSpec = resolveCollectionDownloadSpec(
+    profile.resource,
+    typeof profile.download === "function"
+      ? profile.download(state)
+      : profile.download,
+  );
+  const shownKeyword = state.keyword
+    ? state.keyword
+    : keywordMode === "refine"
+      ? state.refine
+      : undefined;
+  const downloadQueryLabel = hasLoadedKeyword
+    ? `keyword: ${loadedKeyword.trim()}`
+    : shownKeyword
+      ? `keyword: ${shownKeyword}`
+      : state.rql
+        ? "custom query"
+        : undefined;
 
   /**
    * Everything resource-specific about the action bar. A hook rather than a
@@ -319,13 +358,15 @@ export function ResourceCollection<Row extends DataTableRow>({
     columnVisibility,
     resolveActionRows,
     resolveAllMatchingRows,
-    onExportSelection: () => {
-      void exportRows(
-        "csv",
-        displayedSelectedIds,
-        null,
-        collection.isAllPagesSelected,
-      );
+    download: {
+      spec: downloadSpec,
+      allResults: { scope: allResultsScope, total: displayedTotal },
+      sort,
+      visibleColumnIds: profile.columns
+        .filter((column) => columnVisibility[column.id])
+        .map((column) => column.id),
+      fileNameBase: profile.exportFileName ?? profile.resource,
+      queryLabel: downloadQueryLabel,
     },
     onError: setActionError,
   });
@@ -433,14 +474,6 @@ export function ResourceCollection<Row extends DataTableRow>({
           : `${String(displayedTotal)} results`}
       </span>
 
-      {exportError && (
-        <Alert variant="destructive">
-          <AlertTitle>
-            Could not export {profile.label.toLowerCase()}
-          </AlertTitle>
-          <AlertDescription>{exportError}</AlertDescription>
-        </Alert>
-      )}
       {actionError && (
         <Alert variant="destructive">
           <AlertTitle>Could not complete action</AlertTitle>
@@ -520,12 +553,8 @@ export function ResourceCollection<Row extends DataTableRow>({
               collection.setSelection(selection);
               rememberSelectedRows(selection);
             }}
-            onDownloadAll={(format, fields) =>
-              exportRows(format, undefined, fields)
-            }
-            onDownloadSelected={(format, ids, fields) =>
-              exportRows(format, ids, fields)
-            }
+            // Downloads live in the action rail's Download tile.
+            showExportControls={false}
             scrollRegionLabel={`${profile.label} results table`}
             isLoading={collection.isInitialLoading || collection.isPageLoading}
           />

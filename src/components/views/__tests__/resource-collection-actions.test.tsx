@@ -104,6 +104,11 @@ vi.mock("../taxonomy-service-chooser", async () =>
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
 );
+vi.mock("@/hooks/views/use-collection-download", async () =>
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionDownloadMock(),
+);
 vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock({
     username: "alice",

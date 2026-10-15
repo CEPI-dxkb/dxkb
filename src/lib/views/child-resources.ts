@@ -2,6 +2,7 @@ import { genomeSequenceFields } from "@/constants/datafields/genome_sequence";
 import { ppiFields } from "@/constants/datafields/ppi";
 import { sequenceFeatureFields } from "@/constants/datafields/sequence_feature";
 import { eq } from "@/lib/data-api";
+import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import { deriveFieldMetadata } from "./field-metadata";
 
 /**
@@ -61,6 +62,15 @@ const proteinFeatureClauses = [
 
 /** `proteinFeatureClauses` as one `and(...)` clause. */
 export const proteinFeatureRql = `and(${proteinFeatureClauses.join(",")})`;
+
+/**
+ * The download formats of a Proteins list: legacy's ProteinList DWNLD offers
+ * Protein FASTA and no DNA FASTA, so every Proteins view narrows the Feature
+ * resource's default to it.
+ */
+export const proteinDownloadSpec = {
+  sequenceFormats: ["protein-fasta"],
+} as const satisfies CollectionDownloadSpec;
 
 export function genomeProteinRql(genomeId: string): string {
   return `and(${eq("genome_feature", "genome_id", genomeId)},${proteinFeatureClauses.join(",")})`;

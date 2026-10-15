@@ -49,23 +49,19 @@ export function serializeResourceRows(
   ].join("\n");
 }
 
+/**
+ * Saves rows the browser already holds as a CSV or TXT file named after
+ * `resource`. It serves tables outside `ResourceCollection` (the Meta-CATS
+ * groups grid); collection views download through the gateway's shared
+ * Download tile instead (`src/lib/data-api/downloads.ts`).
+ */
 export function downloadResourceExport(
   resource: string,
   rows: readonly Record<string, unknown>[],
   columns: readonly DataTableColumn[],
   fields: readonly string[],
   format: "csv" | "txt",
-  // Defaults to "all" so every existing caller (e.g. resource-collection.tsx,
-  // for both its all-rows and selected-rows exports) keeps today's filename.
-  // Plan item 14 owns unifying parent/child collection export filenames —
-  // this default must not pre-empt that decision.
   variant: "all" | "selected" = "all",
-  // Overrides the filename's base segment, which otherwise defaults to
-  // `resource`. `ResourceChildCollection` (plan item 14) passes its tab label
-  // here so a child export keeps naming its download after the tab (e.g.
-  // "Domains and Motifs" -> "domains and motifs.csv") instead of switching to
-  // the shared resource id, which would silently rename every child export.
-  fileNameBase: string = resource,
 ) {
   const content = serializeResourceRows(rows, columns, fields, format);
   const url = URL.createObjectURL(
@@ -75,8 +71,8 @@ export function downloadResourceExport(
   anchor.href = url;
   anchor.download =
     variant === "selected"
-      ? `${fileNameBase}-selected.${format}`
-      : `${fileNameBase}.${format}`;
+      ? `${resource}-selected.${format}`
+      : `${resource}.${format}`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

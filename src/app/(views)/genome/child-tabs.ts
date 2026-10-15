@@ -1,7 +1,11 @@
 import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
 import type { DataResource } from "@/lib/data-api";
+import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import type { ChildCollectionUrlKey } from "@/lib/views/child-collection-state";
-import { genomeSequenceColumns } from "@/lib/views/child-resources";
+import {
+  genomeSequenceColumns,
+  proteinDownloadSpec,
+} from "@/lib/views/child-resources";
 
 interface GenomeChildCollection {
   urlKey: ChildCollectionUrlKey;
@@ -10,6 +14,7 @@ interface GenomeChildCollection {
   idField: string;
   defaultSort: string;
   columns?: ResourceCollectionProfile<Record<string, unknown>>["columns"];
+  download?: CollectionDownloadSpec;
 }
 
 /**
@@ -45,6 +50,7 @@ export const genomeChildCollections = {
     label: "Proteins",
     idField: "feature_id",
     defaultSort: "patric_id:asc",
+    download: proteinDownloadSpec,
   },
   domains: {
     urlKey: "domains",

@@ -4,7 +4,11 @@ import {
   type CollectionState,
   type CollectionStateOptions,
 } from "@/lib/views/collection-state";
-import { proteinFeatureRql } from "@/lib/views/child-resources";
+import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
+import {
+  proteinDownloadSpec,
+  proteinFeatureRql,
+} from "@/lib/views/child-resources";
 import type { SearchParamsRecord } from "@/lib/views/rql";
 import { featureMetadata } from "./fields";
 
@@ -64,6 +68,16 @@ function isProteinSearch(state: CollectionState): boolean {
     Object.hasOwn(state.filters, "filter") &&
     state.filters.filter[0] === "protein"
   );
+}
+
+/**
+ * The Feature list's download formats: Protein FASTA only while it is the
+ * Proteins search (`filter=protein`), else the resource default.
+ */
+export function featureDownloadSpec(
+  state: CollectionState,
+): CollectionDownloadSpec {
+  return isProteinSearch(state) ? proteinDownloadSpec : {};
 }
 
 /**

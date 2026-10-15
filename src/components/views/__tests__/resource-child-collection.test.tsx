@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { DataRepository } from "@/lib/data-api";
+import type { DataRepository, DataResource } from "@/lib/data-api";
+import type { DownloadRequest } from "@/lib/data-api/downloads";
 import type { FeatureViewRecord } from "@/lib/feature-view";
 import type { GenomeViewRecord } from "@/lib/genome-view";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
@@ -22,6 +23,7 @@ const {
   resourceCollectionProps,
   useRealResourceCollection,
   useResourceCollection,
+  collectionDownload,
 } = vi.hoisted(() => ({
   exportAll: vi.fn().mockResolvedValue({ rows: [] }),
   selected: vi.fn().mockResolvedValue({ rows: [] }),
@@ -29,6 +31,7 @@ const {
   resourceCollectionProps: vi.fn(),
   useRealResourceCollection: { current: false },
   useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
+  collectionDownload: vi.fn(),
 }));
 
 vi.mock("next/navigation", async () =>
@@ -38,6 +41,11 @@ vi.mock("next/navigation", async () =>
 );
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
+);
+vi.mock("@/hooks/views/use-collection-download", async () =>
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionDownloadMock(collectionDownload),
 );
 vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
@@ -98,49 +106,7 @@ vi.mock("../resource-workspace", () => ({
   ),
 }));
 vi.mock("@/components/shared/data-table", () => ({
-  DataTable: (props: Record<string, unknown>) => {
-    return (
-      <div data-testid="data-table">
-        <button
-          onClick={() =>
-            void (
-              props.onDownloadAll as (
-                format: "csv",
-                fields: string[] | null,
-              ) => Promise<void>
-            )("csv", null)
-          }
-        >
-          Real export all
-        </button>
-        <button
-          onClick={() =>
-            void (
-              props.onDownloadAll as (
-                format: "txt",
-                fields: string[] | null,
-              ) => Promise<void>
-            )("txt", null)
-          }
-        >
-          Real export all TSV
-        </button>
-        <button
-          onClick={() =>
-            void (
-              props.onDownloadSelected as (
-                format: "csv",
-                ids: string[],
-                fields: string[] | null,
-              ) => Promise<void>
-            )("csv", ["1ABC"], ["pdb_id"])
-          }
-        >
-          Real export selected
-        </button>
-      </div>
-    );
-  },
+  DataTable: () => <div data-testid="data-table" />,
 }));
 
 vi.mock("../resource-collection", async (importOriginal) => {
@@ -204,37 +170,22 @@ afterEach(() => vi.unstubAllGlobals());
 /** Minimal, valid `useResourceCollection` return value for a real-render export test. */
 const realCollectionResult = createResourceCollectionResult;
 
-/**
- * Captures the Blob and filename `downloadResourceExport` hands to the DOM, the
- * same way `list-data-download-selected.test.tsx` does — this file does not mock
- * `../resource-export`, so a real render exercises the real serializer.
- */
-function spyOnDownload() {
-  let exportedBlob: Blob | undefined;
-  let downloadedFilename: string | undefined;
-  vi.spyOn(URL, "createObjectURL").mockImplementation((blob) => {
-    exportedBlob = blob as Blob;
-    return "blob:test";
-  });
-  vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
-    this: HTMLAnchorElement,
-  ) {
-    downloadedFilename = this.download;
-  });
-  return {
-    text: async () => {
-      await waitFor(() => {
-        expect(exportedBlob).toBeDefined();
-      });
-      return exportedBlob?.text();
-    },
-    filename: async () => {
-      await waitFor(() => {
-        expect(downloadedFilename).toBeDefined();
-      });
-      return downloadedFilename;
-    },
-  };
+/** Open the rail's Download tile and pick `format`, as a user does. */
+async function downloadFromTile(format = "CSV", scope?: "Selected" | "All") {
+  await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
+  if (scope)
+    await userEvent.click(
+      screen.getByRole("radio", { name: new RegExp(`^${scope}`) }),
+    );
+  await userEvent.click(await screen.findByRole("button", { name: format }));
+}
+
+/** The request the last tile click handed the shell's download mutation. */
+function lastDownload() {
+  const call = collectionDownload.mock.lastCall as
+    | [DataResource, DownloadRequest, unknown]
+    | undefined;
+  return { resource: call?.[0], request: call?.[1] };
 }
 
 /** The state the mocked collection is currently showing, as it received it. */
@@ -765,7 +716,7 @@ describe("ResourceChildCollection scope changes", () => {
     ).toContain("eq(genome_id,83332.12)");
   });
 
-  it("exports loaded-keyword matches from every page", async () => {
+  it("downloads the rows a loaded keyword leaves when All is chosen", async () => {
     useResourceCollection.mockReturnValue(
       realCollectionResult({
         rows: [
@@ -775,43 +726,6 @@ describe("ResourceChildCollection scope changes", () => {
         total: 2,
       }),
     );
-    exportAll.mockResolvedValueOnce({
-      rows: [
-        { pdb_id: "1ABC", title: "Influenza A polymerase" },
-        { pdb_id: "2DEF", title: "Unrelated structure" },
-        { pdb_id: "3GHI", title: "Later influenza structure" },
-      ],
-    });
-    useRealResourceCollection.current = true;
-    const download = spyOnDownload();
-
-    render(
-      <ResourceChildCollection
-        resource="protein_structure"
-        urlKey="structures"
-        label="Protein Structures"
-        idField="pdb_id"
-        rql="eq(genome_id,83332.12)"
-        defaultSort="unsorted"
-        keywordMode="loaded"
-        keywordValue="influenza"
-      />,
-    );
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
-    );
-
-    const content = await download.text();
-    expect(content).toContain("Influenza A polymerase");
-    expect(content).toContain("Later influenza structure");
-    expect(content).not.toContain("Unrelated structure");
-    expect(exportAll).toHaveBeenCalled();
-  });
-
-  it("leaves a selected-ID export unfiltered", async () => {
-    selected.mockResolvedValueOnce({ rows: [{ pdb_id: "1ABC" }] });
-    useResourceCollection.mockReturnValue(realCollectionResult());
     useRealResourceCollection.current = true;
 
     render(
@@ -827,98 +741,109 @@ describe("ResourceChildCollection scope changes", () => {
       />,
     );
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export selected" }),
-    );
-
-    // Selected IDs are already exact, so the keyword must not narrow them further
-    // and only the requested fields are fetched.
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith("protein_structure", {
-        ids: ["1ABC"],
-        fields: ["pdb_id"],
-      });
+    await downloadFromTile("CSV");
+    // The keyword filters the loaded page, so the file is the rows it leaves.
+    expect(lastDownload().resource).toBe("protein_structure");
+    expect(lastDownload().request).toMatchObject({
+      scope: { kind: "selected", ids: ["1ABC"] },
+      fileNameBase: "protein structures",
+      total: 1,
     });
     expect(exportAll).not.toHaveBeenCalled();
   });
 
-  it("omits sorting when exporting an unsorted child collection", async () => {
+  it("downloads a selection by id, whatever the loaded keyword", async () => {
+    useResourceCollection.mockReturnValue(
+      realCollectionResult({
+        rows: [{ pdb_id: "1ABC", title: "Influenza A polymerase" }],
+        selection: { "1ABC": true },
+        selectedIds: ["1ABC"],
+        total: 1,
+      }),
+    );
+    useRealResourceCollection.current = true;
+
+    render(
+      <ResourceChildCollection
+        resource="protein_structure"
+        urlKey="structures"
+        label="Protein Structures"
+        idField="pdb_id"
+        rql="eq(genome_id,83332.12)"
+        defaultSort="unsorted"
+        keywordMode="loaded"
+        keywordValue="influenza"
+      />,
+    );
+
+    await downloadFromTile("Text");
+    expect(lastDownload().request).toMatchObject({
+      format: "tsv",
+      scope: { kind: "selected", ids: ["1ABC"] },
+      fileNameBase: "protein structures-selected",
+    });
+    expect(selected).not.toHaveBeenCalled();
+  });
+
+  it("sends no sort for an unsorted child collection", async () => {
     const genome = {
       genome_id: "genome-1",
       genome_name: "Genome 1",
     } as GenomeViewRecord;
-    useResourceCollection.mockReturnValue(realCollectionResult());
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 4 }));
     useRealResourceCollection.current = true;
 
     render(<GenomeMember genome={genome} activeTab="domains" />);
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
-    );
+    await downloadFromTile("CSV");
+    expect(lastDownload().resource).toBe("protein_feature");
+    expect(lastDownload().request?.scope.kind).toBe("query");
+    expect(lastDownload().request?.sort).toBeUndefined();
+  });
 
-    await waitFor(() => {
-      expect(exportAll).toHaveBeenCalledWith(
-        "protein_feature",
-        expect.objectContaining({ sort: undefined }),
-      );
-    });
+  it("offers Protein FASTA alone on a Proteins tab", async () => {
+    const genome = {
+      genome_id: "genome-1",
+      genome_name: "Genome 1",
+    } as GenomeViewRecord;
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 4 }));
+    useRealResourceCollection.current = true;
+
+    const { unmount } = render(
+      <GenomeMember genome={genome} activeTab="proteins" />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
+    expect(screen.getByRole("button", { name: "Protein FASTA" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "DNA FASTA" }),
+    ).not.toBeInTheDocument();
+    unmount();
+
+    // The Features tab keeps both.
+    render(<GenomeMember genome={genome} activeTab="features" />);
+    await userEvent.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
+    expect(screen.getByRole("button", { name: "Protein FASTA" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "DNA FASTA" })).toBeVisible();
   });
 });
 
-describe("ResourceChildCollection export unification (plan item 14)", () => {
-  // Deliberately distinct `id`/`label` pairs, so a header assertion actually
-  // proves labels are used rather than coincidentally matching the id.
-  const structureColumns = [
-    { id: "pdb_id", label: "PDB Accession" },
-    { id: "title", label: "Structure Title" },
-  ];
+describe("ResourceChildCollection download naming and keyword mode (plan item 14)", () => {
   const suppliedStructureProfile: ResourceCollectionProfile<
     Record<string, unknown>
   > = {
     resource: "protein_structure",
     label: "Structures",
     idField: "pdb_id",
-    columns: structureColumns,
+    columns: [
+      { id: "pdb_id", label: "PDB Accession" },
+      { id: "title", label: "Structure Title" },
+    ],
   };
-  // A formula-injection payload in a value column, to prove the shared guard
-  // still applies once the child no longer runs its own copy of it.
-  const rowsWithFormulaValue = [
-    { pdb_id: "1ABC", title: "=cmd|' /C calc'!A1" },
-  ];
 
-  it("names the export after the tab label, not the resource id", async () => {
-    exportAll.mockResolvedValueOnce({ rows: rowsWithFormulaValue });
-    useResourceCollection.mockReturnValue(realCollectionResult());
-    useRealResourceCollection.current = true;
-    const download = spyOnDownload();
-
-    render(
-      <ResourceChildCollection
-        resource="protein_structure"
-        urlKey="structures"
-        label="Structures"
-        idField="pdb_id"
-        rql="eq(genome_id,83332.12)"
-        defaultSort="unsorted"
-        profile={suppliedStructureProfile}
-      />,
-    );
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
-    );
-
-    // Old behavior (`saveRows(..., label.toLowerCase())`): a child export keeps
-    // the tab label, never the resource id, as its filename base.
-    expect(await download.filename()).toBe("structures.csv");
-  });
-
-  it("produces a byte-identical CSV to the parent's own export, with display-label headers and formula-injection guarding", async () => {
-    exportAll.mockResolvedValue({ rows: rowsWithFormulaValue });
-    useResourceCollection.mockReturnValue(realCollectionResult());
+  it("names the download after the tab label, where the parent uses the resource id", async () => {
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 1 }));
     useRealResourceCollection.current = true;
 
-    const childDownload = spyOnDownload();
     const { unmount } = render(
       <ResourceChildCollection
         resource="protein_structure"
@@ -930,14 +855,11 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
         profile={suppliedStructureProfile}
       />,
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
-    );
-    const childCsv = await childDownload.text();
-    const childFilename = await childDownload.filename();
+    await downloadFromTile("CSV");
+    // A child download keeps the tab label as its file name base.
+    expect(lastDownload().request).toMatchObject({ fileNameBase: "structures" });
     unmount();
 
-    const parentDownload = spyOnDownload();
     render(
       <ResourceCollection
         profile={suppliedStructureProfile}
@@ -946,82 +868,14 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
         onStateChange={vi.fn()}
       />,
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
-    );
-    const parentCsv = await parentDownload.text();
-    const parentFilename = await parentDownload.filename();
-
-    const expectedCsv = [
-      "PDB Accession,Structure Title",
-      `"1ABC","'=cmd|' /C calc'!A1"`,
-    ].join("\n");
-    // Same columns, same rows, same serializer (`serializeResourceRows`): parent
-    // and child produce byte-identical CSV bodies. Only the filename — the one
-    // sanctioned override — is allowed to diverge.
-    expect(childCsv).toBe(expectedCsv);
-    expect(parentCsv).toBe(expectedCsv);
-    expect(childFilename).toBe("structures.csv");
-    expect(parentFilename).toBe("protein_structure.csv");
-  });
-
-  it("produces a byte-identical TSV to the parent's own export", async () => {
-    exportAll.mockResolvedValue({
-      rows: [{ pdb_id: "1ABC", title: "multi\nline" }],
+    await downloadFromTile("CSV");
+    expect(lastDownload().request).toMatchObject({
+      fileNameBase: "protein_structure",
     });
-    useResourceCollection.mockReturnValue(realCollectionResult());
-    useRealResourceCollection.current = true;
-
-    const childDownload = spyOnDownload();
-    const { unmount } = render(
-      <ResourceChildCollection
-        resource="protein_structure"
-        urlKey="structures"
-        label="Structures"
-        idField="pdb_id"
-        rql="eq(genome_id,83332.12)"
-        defaultSort="unsorted"
-        profile={suppliedStructureProfile}
-      />,
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all TSV" }),
-    );
-    const childTsv = await childDownload.text();
-    const childFilename = await childDownload.filename();
-    unmount();
-
-    const parentDownload = spyOnDownload();
-    render(
-      <ResourceCollection
-        profile={suppliedStructureProfile}
-        repository={{ exportAll, selected } as unknown as DataRepository}
-        state={{ filters: {}, page: 1, sort: "unsorted" }}
-        onStateChange={vi.fn()}
-      />,
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all TSV" }),
-    );
-    const parentTsv = await parentDownload.text();
-    const parentFilename = await parentDownload.filename();
-
-    // Tabs and newlines inside a value are normalized to a single space, per
-    // `exportValue` in resource-export.ts — proven here through the real
-    // component tree rather than by calling the serializer directly.
-    const expectedTsv = "PDB Accession\tStructure Title\n1ABC\tmulti line";
-    expect(childTsv).toBe(expectedTsv);
-    expect(parentTsv).toBe(expectedTsv);
-    expect(childFilename).toBe("structures.txt");
-    expect(parentFilename).toBe("protein_structure.txt");
   });
 
-  it("propagates a supplied profile's non-default server keyword mode to exportAll", async () => {
-    // Before plan item 14, the child's own onExport handler never passed
-    // keywordMode at all, so an "exact" mode on a supplied profile was silently
-    // dropped. Routing through ResourceCollection's exportRows fixes that.
-    exportAll.mockResolvedValueOnce({ rows: [] });
-    useResourceCollection.mockReturnValue(realCollectionResult());
+  it("propagates a supplied profile's non-default server keyword mode", async () => {
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 1 }));
     useRealResourceCollection.current = true;
 
     render(
@@ -1036,21 +890,14 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
       />,
     );
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
-    );
-
-    await waitFor(() => {
-      expect(exportAll).toHaveBeenCalledWith(
-        "protein_structure",
-        expect.objectContaining({ keywordMode: "exact" }),
-      );
+    await downloadFromTile("CSV");
+    expect(lastDownload().request).toMatchObject({
+      scope: { kind: "query", keywordMode: "exact" },
     });
   });
 
   it("defaults to the prefix keyword contract for a canonical child branch that leaves serverKeywordMode unset", async () => {
-    exportAll.mockResolvedValueOnce({ rows: [] });
-    useResourceCollection.mockReturnValue(realCollectionResult());
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 1 }));
     useRealResourceCollection.current = true;
 
     render(
@@ -1064,16 +911,13 @@ describe("ResourceChildCollection export unification (plan item 14)", () => {
       />,
     );
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
+    await downloadFromTile("CSV");
+    expect(lastDownload().resource).toBe("bioset");
+    expect(lastDownload().request?.scope).toMatchObject({ kind: "query" });
+    expect(lastDownload().request?.scope).not.toHaveProperty(
+      "keywordMode",
+      expect.anything(),
     );
-
-    await waitFor(() => {
-      expect(exportAll).toHaveBeenCalledWith(
-        "bioset",
-        expect.objectContaining({ keywordMode: undefined }),
-      );
-    });
   });
 });
 
@@ -1162,8 +1006,7 @@ describe("ResourceChildCollection server keyword mode", () => {
         "",
         `/genome/1.1?tab=${urlKey}&${urlKey}.keyword=gyrA`,
       );
-      exportAll.mockResolvedValueOnce({ rows: [] });
-      useResourceCollection.mockReturnValue(realCollectionResult());
+      useResourceCollection.mockReturnValue(realCollectionResult({ total: 1 }));
       useRealResourceCollection.current = true;
 
       render(
@@ -1173,16 +1016,13 @@ describe("ResourceChildCollection server keyword mode", () => {
       const request = useResourceCollection.mock.lastCall?.[0];
       expect(request?.serverKeywordMode).toBe("exact");
       expect(request?.state.keyword).toBe("gyrA");
-      // Export reads the same profile field (as does select-all's row
+      // The download reads the same profile field (as does select-all's row
       // resolution, in ResourceCollection).
-      await userEvent.click(
-        screen.getByRole("button", { name: "Real export all" }),
-      );
-      await waitFor(() => {
-        expect(exportAll).toHaveBeenCalledWith(
-          childProps.resource,
-          expect.objectContaining({ keyword: "gyrA", keywordMode: "exact" }),
-        );
+      await downloadFromTile("CSV");
+      expect(lastDownload().resource).toBe(childProps.resource);
+      expect(lastDownload().request?.scope).toMatchObject({
+        keyword: "gyrA",
+        keywordMode: "exact",
       });
     },
   );
@@ -1193,8 +1033,7 @@ describe("ResourceChildCollection server keyword mode", () => {
       "",
       "/genome/1.1?tab=features&features.keyword=gyrA",
     );
-    exportAll.mockResolvedValueOnce({ rows: [] });
-    useResourceCollection.mockReturnValue(realCollectionResult());
+    useResourceCollection.mockReturnValue(realCollectionResult({ total: 1 }));
     useRealResourceCollection.current = true;
 
     render(<ResourceChildCollection {...featuresChildProps} />);
@@ -1202,14 +1041,12 @@ describe("ResourceChildCollection server keyword mode", () => {
     const request = useResourceCollection.mock.lastCall?.[0];
     expect(request?.serverKeywordMode).toBeUndefined();
     expect(request?.state.keyword).toBe("gyrA");
-    await userEvent.click(
-      screen.getByRole("button", { name: "Real export all" }),
+    await downloadFromTile("CSV");
+    expect(lastDownload().resource).toBe("genome_feature");
+    expect(lastDownload().request?.scope).toMatchObject({ keyword: "gyrA" });
+    expect(lastDownload().request?.scope).not.toHaveProperty(
+      "keywordMode",
+      expect.anything(),
     );
-    await waitFor(() => {
-      expect(exportAll).toHaveBeenCalledWith(
-        "genome_feature",
-        expect.objectContaining({ keyword: "gyrA", keywordMode: undefined }),
-      );
-    });
   });
 });

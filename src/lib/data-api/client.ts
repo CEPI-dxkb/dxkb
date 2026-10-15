@@ -1,3 +1,5 @@
+import { encodePathSegment } from "@/lib/url";
+import { downloadFormats, type DownloadRequest } from "./downloads";
 import {
   fastaContentType,
   maxFastaIds,
@@ -265,6 +267,39 @@ export class DataRepository {
       if (text) parts.push(text.endsWith("\n") ? text : `${text}\n`);
     }
     return new Blob(parts, { type: fastaContentType });
+  }
+
+  /**
+   * A table or FASTA file through `POST /api/data/<resource>/download`, held in
+   * memory as a `Blob` for the caller to save. For selections and queries of
+   * at most `maxBufferedDownloadRows`; a larger query streams to disk through
+   * `startNativeDownload` instead. A 429 is retried after its `Retry-After`,
+   * as in {@link exportAll}; any other failure throws the gateway's own
+   * `{error}` message. An empty `Blob` means nothing matched; the caller
+   * decides how to say so.
+   */
+  download(
+    resource: DataResource,
+    request: DownloadRequest,
+    signal?: AbortSignal,
+  ): Promise<Blob> {
+    return retryRateLimited(async () => {
+      const response = await fetch(
+        `${this.basePath}/${encodePathSegment(resource)}/download`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+          signal,
+        },
+      );
+      if (!response.ok) throw await responseError(response);
+      const blob = await response.blob();
+      return blob.type
+        ? blob
+        : new Blob([blob], { type: downloadFormats[request.format].contentType });
+    }, signal);
   }
 
   private post<T>(

@@ -120,6 +120,18 @@ export function selectionToGroupDialogMock() {
   };
 }
 
+/**
+ * The shell's download mutation, so the real Download tile renders without a
+ * `QueryClientProvider` (these suites keep TanStack Query real but provide no
+ * client). Pass a spy to assert the request a tile click builds; the hook's own
+ * behaviour is `use-collection-download.test.tsx`'s.
+ */
+export function collectionDownloadMock(download = vi.fn()) {
+  return {
+    useCollectionDownload: () => ({ download, pending: null }),
+  };
+}
+
 export function resourceExportMock(downloadResourceExport = vi.fn()) {
   return { downloadResourceExport, serializeResourceRows: vi.fn() };
 }

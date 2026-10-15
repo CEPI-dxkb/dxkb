@@ -116,7 +116,7 @@ describe("downloadResourceExport", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("names the file after the resource id by default (existing callers keep today's filename)", () => {
+  it("names the file after the resource id", () => {
     const download = spyOnDownload();
     downloadResourceExport(
       "genome",
@@ -139,21 +139,5 @@ describe("downloadResourceExport", () => {
       "selected",
     );
     expect(download.filename()).toBe("genome-selected.csv");
-  });
-
-  it("uses fileNameBase instead of the resource id when a caller overrides it", () => {
-    // This is the one sanctioned override ResourceChildCollection uses (plan
-    // item 14) to keep a child export named after its tab label.
-    const download = spyOnDownload();
-    downloadResourceExport(
-      "protein_structure",
-      [{ strain: "A" }],
-      columns,
-      ["strain"],
-      "csv",
-      "all",
-      "domains and motifs",
-    );
-    expect(download.filename()).toBe("domains and motifs.csv");
   });
 });

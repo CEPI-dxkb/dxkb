@@ -76,6 +76,15 @@ export function TaxIDSelector({
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
   const [touched, setTouched] = useState(false);
   const inputRef = useRef<HTMLDivElement>(null);
+  // The blur close waits so a click on a suggestion lands before the list
+  // goes; unmount cancels it so it cannot fire into a torn-down component.
+  const blurCloseTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(blurCloseTimeoutRef.current);
+    };
+  }, []);
 
   // Debounce the search query
   useEffect(() => {
@@ -180,7 +189,8 @@ export function TaxIDSelector({
           onBlur={() => {
             setTouched(true);
             if (!disabled) {
-              setTimeout(() => {
+              clearTimeout(blurCloseTimeoutRef.current);
+              blurCloseTimeoutRef.current = setTimeout(() => {
                 setShowDropdown(false);
               }, 200);
             }

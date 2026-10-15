@@ -320,6 +320,33 @@ function serializeKeyword(value: string): string {
   return `keyword(${value === "" ? '""' : percentEncode(value)})`;
 }
 
+/**
+ * `in(<field>,(…))`, each value escaped for the field. `maxValues` is the
+ * {@link maxRqlInValues} cap every parsed or client-built clause gets; the
+ * download path passes its own (`maxSelectionDownloadRows`), because one
+ * upstream POST body carries a 10,001-value list and a selection download
+ * must not be split into batches the file would have to be stitched from.
+ */
+export function serializeInClause(
+  resource: DataResource,
+  fieldName: string,
+  values: readonly RqlValue[],
+  maxValues = maxRqlInValues,
+): string {
+  const fields = getResourceDefinition(resource).fields;
+  if (!Object.hasOwn(fields, fieldName))
+    throw new DataApiValidationError(
+      `Field ${fieldName} is not allowed for ${resource}.`,
+    );
+  const field = fields[fieldName];
+  assertFieldOperator(resource, fieldName, field, "in");
+  if (values.length === 0 || values.length > maxValues)
+    throw new DataApiValidationError(
+      `in requires 1 to ${maxValues.toLocaleString()} values.`,
+    );
+  return `in(${fieldName},(${values.map((value) => serializeValue(value, field)).join(",")}))`;
+}
+
 export function serializeRql(
   resource: DataResource,
   expression: RqlExpression,
@@ -355,22 +382,8 @@ export function serializeRql(
     }
     return `genome(${serializeRql("genome", expression.operand)})`;
   }
-  if (expression.operator === "in") {
-    if (!Object.hasOwn(fields, expression.field))
-      throw new DataApiValidationError(
-        `Field ${expression.field} is not allowed for ${resource}.`,
-      );
-    const field = fields[expression.field];
-    assertFieldOperator(resource, expression.field, field, expression.operator);
-    if (
-      expression.values.length === 0 ||
-      expression.values.length > maxRqlInValues
-    )
-      throw new DataApiValidationError(
-        `in requires 1 to ${maxRqlInValues.toLocaleString()} values.`,
-      );
-    return `in(${expression.field},(${expression.values.map((value) => serializeValue(value, field)).join(",")}))`;
-  }
+  if (expression.operator === "in")
+    return serializeInClause(resource, expression.field, expression.values);
   const comparison = expression as RqlComparison;
   if (!Object.hasOwn(fields, comparison.field))
     throw new DataApiValidationError(

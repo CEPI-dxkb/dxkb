@@ -77,7 +77,6 @@ describe("visibleSearchActions", () => {
     });
 
     expect(visible.map((action) => action.id)).toStrictEqual(["guide"]);
-    expect(visible.filter(byId("download"))).toHaveLength(0);
   });
 
   it("drops single-select-only actions once the selection grows", () => {
@@ -92,29 +91,19 @@ describe("visibleSearchActions", () => {
       hasGuideUrl: false,
     });
 
-    // FEATURE and GENOME are maxSelection:1; DWNLD and GROUP have no upper bound.
+    // FEATURE and GENOME are maxSelection:1; GROUP has no upper bound.
     expect(single.filter(byId("feature"))).toHaveLength(1);
     expect(single.filter(byId("genome"))).toHaveLength(1);
     expect(multiple.filter(byId("feature"))).toHaveLength(0);
     expect(multiple.filter(byId("genome"))).toHaveLength(0);
-    expect(multiple.filter(byId("download"))).toHaveLength(1);
     expect(multiple.filter(byId("group"))).toHaveLength(1);
   });
 
-  it("never offers DWNLD to the resources that download from the table instead", () => {
-    // Taxa, Strains and Genomes are absent from `download`'s validSearchTypes, so
-    // their action bar has no DWNLD entry at any selection size.
-    for (const searchType of ["taxonomy", "strain", "genome"]) {
-      for (const selectedCount of [0, 1, 2, 7]) {
-        expect(
-          visibleSearchActions({
-            searchType,
-            selectedCount,
-            hasGuideUrl: true,
-          }).filter(byId("download")),
-        ).toHaveLength(0);
-      }
-    }
+  it("has no DWNLD entry: every collection downloads from its own Download tile", () => {
+    // The tile (`CollectionDownloadAction`) heads the rail outside this config.
+    expect(
+      searchActionConfig.filter((action) => action.label === "DWNLD"),
+    ).toHaveLength(0);
   });
 });
 
@@ -182,7 +171,7 @@ describe("SearchActionBar / test-fake parity", () => {
             loadingActionIds: [
               "services",
               "genome",
-              "download",
+              "group",
             ] satisfies SearchActionId[],
           },
         },

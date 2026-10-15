@@ -658,14 +658,21 @@ describe("GenomeCollection", () => {
     expect(childProps.current?.unsortedOrder).toBeUndefined();
   });
 
-  it.each(["features", "proteins"])(
-    "orders the %s tab as legacy's grid does when no keyword search drives the list",
-    (tab) => {
+  it.each([
+    ["features", undefined],
+    ["proteins", undefined],
+    // Text without terms searches for nothing (`genomeBaseRql`), so these are
+    // bare lists too.
+    ["features", "   "],
+    ["proteins", '""'],
+  ])(
+    "orders the %s tab as legacy's grid does when no keyword search drives the list (keyword %j)",
+    (tab, keyword) => {
       searchParams.current = new URLSearchParams(`tab=${tab}`);
 
       render(
         <GenomeCollection
-          initialState={{ filters: {}, page: 1, sort: "unsorted" }}
+          initialState={{ filters: {}, page: 1, sort: "unsorted", keyword }}
         />,
       );
 

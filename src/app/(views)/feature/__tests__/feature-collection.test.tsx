@@ -65,6 +65,9 @@ describe("FeatureCollection", () => {
     ["a link's rql", { ...bareState, rql: "eq(genome_id,83332.12)" }],
     ["a refinement", { ...bareState, refine: "gyrase" }],
     ["a Proteins list", { ...bareState, filters: { filter: ["protein"] } }],
+    // Text without terms searches for nothing, so these are bare lists too.
+    ["a blank keyword", { ...bareState, keyword: "   " }],
+    ["a keyword of only syntax", { ...bareState, keyword: '""' }],
   ])("orders %s as legacy's grid does", (_name, state) => {
     render(<FeatureCollection initialState={state} />);
 

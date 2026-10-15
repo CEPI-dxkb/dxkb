@@ -10,6 +10,7 @@ import {
 } from "@/components/views";
 import { viewIcons } from "@/components/views/view-icons";
 import type { DataResource, DataSort } from "@/lib/data-api";
+import { keywordQuery } from "@/lib/data-api/keyword-terms";
 import { featureListDefaultFilters } from "@/lib/feature-view";
 import {
   genomeBaseRql,
@@ -148,9 +149,10 @@ export function GenomeCollection({
   };
   // Legacy's global search opens GenomeList with #defaultSort=-score, which
   // every tab's grid inherits, so a keyword search's tabs keep the backend's
-  // relevance order; any other list's tabs take their grid's own order.
+  // relevance order; any other list's tabs take their grid's own order. Text
+  // without terms searches for nothing (`genomeBaseRql`), so it is not one.
   const gridOrder = (order: DataSort) =>
-    initialState.keyword ? undefined : order;
+    keywordQuery(initialState.keyword ?? "").length > 0 ? undefined : order;
   // Legacy GenomeList sends the keyword exactly as typed: keyword(coli) finds
   // 134,274 genomes, the token-prefix keyword(coli*) 137,836. The related tabs'
   // own keyword boxes are exact too (`serverKeywordMode="exact"`), so no

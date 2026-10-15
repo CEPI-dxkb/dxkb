@@ -1,0 +1,37 @@
+e2e/pages/taxonomy-collection-page.ts
+  s_0389b46fb10c73::t_ee5f571207ba4d 84-90,94-103
+  s_0389b46fb10c73::t_71100679a3769d 91-93
+src/lib/data-api/__tests__/validation.test.ts
+  s_0389b46fb10c73::t_2fde0cfc63d73d 138-161
+  s_0389b46fb10c73::t_ca3c6f863ceeb4 2
+src/lib/data-api/__tests__/repository.test.ts
+  s_0389b46fb10c73::t_7a04b755643c11 80-114
+e2e/tests/taxonomy-view.spec.ts
+  s_0389b46fb10c73::t_b47f533dd8b988 80
+  s_0389b46fb10c73::t_5f04c216e2d69e 63
+src/components/views/__tests__/resource-collection.test.tsx
+  s_0389b46fb10c73::t_4ee69ce3353a6a 551-572
+src/components/views/__tests__/resource-collection-selection-actions.test.tsx
+  s_0389b46fb10c73::t_ebf36b49196860 483-517
+e2e/tests/genome-view.spec.ts
+  s_0389b46fb10c73::t_aae8be31aaee4b 241-247,249,252-257,264
+e2e/pages/genome-member-page.ts
+  s_0389b46fb10c73::t_aae8be31aaee4b 171
+  s_0389b46fb10c73::t_28a60ab1257a2f 120-170,172-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0749acf1f47abe27c0b43bdea3aa629586d27cf0",
+  "prompts": {},
+  "sessions": {
+    "s_0389b46fb10c73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2927e686-686e-4353-81ad-97b1c92ef60f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

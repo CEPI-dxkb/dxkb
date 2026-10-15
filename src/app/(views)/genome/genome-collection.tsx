@@ -9,7 +9,7 @@ import {
   type EntityViewTab,
 } from "@/components/views";
 import { viewIcons } from "@/components/views/view-icons";
-import type { DataResource } from "@/lib/data-api";
+import type { DataResource, DataSort } from "@/lib/data-api";
 import { featureListDefaultFilters } from "@/lib/feature-view";
 import {
   genomeBaseRql,
@@ -146,6 +146,11 @@ export function GenomeCollection({
     if (scope.join) return genomesChildRql(scope.rql, extra);
     return extra ? rqlAnd(scope.rql, extra) : scope.rql;
   };
+  // Legacy's global search opens GenomeList with #defaultSort=-score, which
+  // every tab's grid inherits, so a keyword search's tabs keep the backend's
+  // relevance order; any other list's tabs take their grid's own order.
+  const gridOrder = (order: DataSort) =>
+    initialState.keyword ? undefined : order;
   // Legacy GenomeList sends the keyword exactly as typed: keyword(coli) finds
   // 134,274 genomes, the token-prefix keyword(coli*) 137,836. The related tabs'
   // own keyword boxes are exact too (`serverKeywordMode="exact"`), so no
@@ -171,13 +176,13 @@ export function GenomeCollection({
     );
   } else if (activeTab === "features") {
     // Legacy's Features tab: the Feature list's removable annotation=PATRIC
-    // default, and rows in backend order (the Feature list's sort decision).
+    // default, and FeatureGrid's order unless a keyword search opened the list.
     content = (
       <ResourceChildCollection
         {...genomeChildCollections.features}
         rql={relatedRql(genomeChildCollections.features.idField)}
         defaultFilters={featureListDefaultFilters}
-        defaultSort="unsorted"
+        unsortedOrder={gridOrder(genomeChildCollections.features.unsortedOrder)}
         keywordMode="server"
         serverKeywordMode="exact"
       />
@@ -192,7 +197,7 @@ export function GenomeCollection({
           genomeChildCollections.proteins.idField,
           proteinFeatureRql,
         )}
-        defaultSort="unsorted"
+        unsortedOrder={gridOrder(genomeChildCollections.proteins.unsortedOrder)}
         keywordMode="server"
         serverKeywordMode="exact"
       />

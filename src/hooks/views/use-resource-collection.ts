@@ -8,6 +8,7 @@ import {
   collectionQueryOptions,
   type DataRepository,
   type DataResource,
+  type DataSort,
   type FacetBucket,
   memberQueryOptions,
 } from "@/lib/data-api";
@@ -40,6 +41,12 @@ export interface UseResourceCollectionOptions {
    */
   facetScope?: { structuralRql: string | undefined };
   serverKeywordMode?: "exact" | "prefix";
+  /**
+   * The order rows are read in while no column is sorted (`"unsorted"`), such
+   * as a legacy grid's default order. No column shows it as its sort, as
+   * legacy's do not. Unset leaves the order to the backend.
+   */
+  unsortedOrder?: DataSort;
   state: CollectionState;
   onStateChange: (state: CollectionState) => void;
 }
@@ -64,6 +71,7 @@ export function useResourceCollection<Row extends ResourceRow>({
   structuralRql,
   facetScope,
   serverKeywordMode,
+  unsortedOrder,
   state,
   onStateChange,
 }: UseResourceCollectionOptions) {
@@ -96,10 +104,18 @@ export function useResourceCollection<Row extends ResourceRow>({
       keywordMode: serverKeywordMode,
       page: state.page,
       pageSize: resourceCollectionPageSize,
-      sort: dataSort(state.sort),
+      sort: dataSort(state.sort) ?? unsortedOrder,
       fields: [...fields],
     }),
-    [fields, rql, serverKeywordMode, state.keyword, state.page, state.sort],
+    [
+      fields,
+      rql,
+      serverKeywordMode,
+      state.keyword,
+      state.page,
+      state.sort,
+      unsortedOrder,
+    ],
   );
   // Facet counts depend on the scope, not on the page or sort, and they are the
   // expensive part of a collection read (Genome's 38 facets are ~10 s of an

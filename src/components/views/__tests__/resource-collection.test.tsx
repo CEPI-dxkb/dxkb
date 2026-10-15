@@ -548,6 +548,38 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
   });
 
+  it("exports an unsorted collection in the profile's unsorted order", async () => {
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, unsortedOrder }}
+        repository={data}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    expect(exportAll).toHaveBeenCalledWith(
+      "genome",
+      expect.objectContaining({ sort: unsortedOrder }),
+    );
+  });
+
   it("batches selected exports, restores ID order, and waits for every batch", async () => {
     const ids = Array.from(
       { length: maxSelectedRows + 1 },

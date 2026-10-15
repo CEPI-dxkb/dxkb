@@ -17,6 +17,7 @@ import type {
   MemberResult,
   RowsResult,
 } from "./types";
+import { sortKeys } from "./types";
 import { pageSize as defaultPageSize } from "./validation";
 
 interface RepositoryOptions {
@@ -92,9 +93,11 @@ function projectRows(
 
 function addSort(url: URL, sort: DataSort | undefined, idField: string): void {
   if (!sort) return;
-  const sign = sort.direction === "desc" ? "-" : "+";
-  const clauses = [`${sign}${sort.field}`];
-  if (sort.field !== idField) clauses.push(`+${idField}`);
+  const keys = sortKeys(sort);
+  const clauses = keys.map(
+    (key) => `${key.direction === "desc" ? "-" : "+"}${key.field}`,
+  );
+  if (!keys.some((key) => key.field === idField)) clauses.push(`+${idField}`);
   appendQuery(url, `sort(${clauses.join(",")})`);
 }
 

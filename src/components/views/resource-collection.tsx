@@ -30,7 +30,7 @@ import {
 } from "@/lib/table-layout";
 import { formatUserFacingErrorMessage } from "@/lib/utils";
 import { resourceCollectionPageSize } from "@/hooks/views/collection-state";
-import type { DataRepository, DataResource } from "@/lib/data-api";
+import type { DataRepository, DataResource, DataSort } from "@/lib/data-api";
 
 export interface ResourceCollectionFacet {
   field: string;
@@ -52,6 +52,11 @@ export interface ResourceCollectionProfile<Row extends DataTableRow> {
   rowLinkField?: string;
   rowLinkFields?: readonly string[];
   serverKeywordMode?: "exact" | "prefix";
+  /**
+   * The order rows are read and exported in while no column is sorted: a
+   * legacy grid's default order (`useResourceCollection`'s `unsortedOrder`).
+   */
+  unsortedOrder?: DataSort;
   /**
    * Overrides the export filename's base segment (otherwise `resource`).
    * `ResourceChildCollection` sets this to the tab's label so a child tab's
@@ -207,6 +212,7 @@ export function ResourceCollection<Row extends DataTableRow>({
     structuralRql,
     facetScope,
     serverKeywordMode: profile.serverKeywordMode,
+    unsortedOrder: profile.unsortedOrder,
     state: requestState,
     onStateChange:
       keywordMode === "loaded"
@@ -257,7 +263,7 @@ export function ResourceCollection<Row extends DataTableRow>({
       ? collection.total
       : collection.selectedIds.length;
 
-  const sort = dataSort(state.sort);
+  const sort = dataSort(state.sort) ?? profile.unsortedOrder;
   const {
     rowById: selectedRowById,
     rememberSelectedRows,

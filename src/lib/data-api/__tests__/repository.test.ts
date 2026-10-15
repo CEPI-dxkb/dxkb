@@ -51,6 +51,32 @@ describe("ServerDataRepository", () => {
     });
   });
 
+  it("breaks a sort's ties with its next keys, in order, before the id", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
+    const repository = new ServerDataRepository({
+      baseUrl: "https://data.test",
+      fetch: fetcher,
+    });
+
+    await repository.collection("genome_feature", {
+      operation: "collection",
+      sort: {
+        field: "genome_name",
+        direction: "asc",
+        then: [
+          { field: "accession", direction: "asc" },
+          { field: "start", direction: "desc" },
+        ],
+      },
+    });
+
+    expect((fetcher.mock.calls[0][0] as URL).href).toContain(
+      "sort(+genome_name,+accession,-start,+feature_id)",
+    );
+  });
+
   it("omits projection when a field starts with a digit", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({

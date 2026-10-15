@@ -40,6 +40,30 @@ describe("DataRepository", () => {
     );
   });
 
+  it("sends a sort's tie-breaking keys after its first", async () => {
+    global.fetch = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({ rows: [], total: 0, facets: {}, page: 1, pageSize: 200 }),
+      ),
+    );
+
+    await new DataRepository().collection("genome_feature", {
+      sort: {
+        field: "genome_name",
+        direction: "asc",
+        then: [
+          { field: "accession", direction: "asc" },
+          { field: "start", direction: "desc" },
+        ],
+      },
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/data/genome_feature?operation=collection&sort=genome_name%3Aasc%2Caccession%3Aasc%2Cstart%3Adesc",
+      expect.anything(),
+    );
+  });
+
   it("uses POST for selected rows", async () => {
     global.fetch = vi
       .fn<typeof fetch>()

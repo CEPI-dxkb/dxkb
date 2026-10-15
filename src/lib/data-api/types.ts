@@ -50,9 +50,26 @@ export interface ResourceDefinition<
   schema: z.ZodType<T>;
 }
 
-export interface DataSort {
+export interface SortKey {
   field: string;
   direction: SortDirection;
+}
+
+export interface DataSort extends SortKey {
+  /**
+   * Keys that order the rows this sort ties, in turn: a legacy grid's default
+   * order (FeatureGrid's `+genome_name,+accession,+start`). The resource's id
+   * still breaks any tie they leave.
+   */
+  then?: readonly SortKey[];
+}
+
+/** A sort's keys in the order they apply. */
+export function sortKeys(sort: DataSort): readonly SortKey[] {
+  return [
+    { field: sort.field, direction: sort.direction },
+    ...(sort.then ?? []),
+  ];
 }
 
 export interface CollectionRequest {

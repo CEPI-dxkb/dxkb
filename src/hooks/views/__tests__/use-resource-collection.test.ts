@@ -82,6 +82,64 @@ describe("useResourceCollection", () => {
     expect(result.current.sorting).toEqual([]);
   });
 
+  const legacyOrder = {
+    field: "genome_name",
+    direction: "asc",
+    then: [{ field: "accession", direction: "asc" }],
+  } as const;
+
+  it("reads an unsorted collection in its unsorted order without marking a column", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          prefetchNextPage: false,
+          fields: ["feature_id", "genome_name"],
+          unsortedOrder: legacyOrder,
+          state: { filters: {}, page: 1, sort: "unsorted" },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+    expect(collection.mock.calls[0]?.[1].sort).toEqual(legacyOrder);
+    expect(result.current.sorting).toEqual([]);
+  });
+
+  it("reads a picked column's sort alone, not the unsorted order", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          prefetchNextPage: false,
+          fields: ["feature_id", "start"],
+          unsortedOrder: legacyOrder,
+          state: { filters: {}, page: 1, sort: "start:desc" },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(collection).toHaveBeenCalled();
+    });
+    expect(collection.mock.calls[0]?.[1].sort).toEqual({
+      field: "start",
+      direction: "desc",
+    });
+  });
+
   it("preserves selection across paging and sorting, then resets it for a new query", async () => {
     const data = repository();
     const onStateChange = vi.fn();

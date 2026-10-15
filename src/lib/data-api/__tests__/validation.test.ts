@@ -121,6 +121,16 @@ describe("data API contracts", () => {
           sort: { field, direction: "asc" },
         }),
       ).toThrow(new RegExp(`${field} cannot sort genome_amr`));
+      expect(() =>
+        validateDataApiRequest("genome_amr", {
+          operation: "collection",
+          sort: {
+            field: "antibiotic",
+            direction: "asc",
+            then: [{ field, direction: "asc" }],
+          },
+        }),
+      ).toThrow(new RegExp(`${field} cannot sort genome_amr`));
     }
   });
 

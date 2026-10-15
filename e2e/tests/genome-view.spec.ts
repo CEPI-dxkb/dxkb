@@ -239,8 +239,9 @@ test.describe("Genome view", () => {
     await genome.expectRow(/replicase polyprotein/);
     await genome.expectUrlParams({ tab: "features", "features.sort": null });
     // The fixture has one page of features, so this exercises the sort. The table
-    // starts sorted by BRC ID (patric_id), ascending.
-    await genome.expectSort("BRC ID", "ascending");
+    // starts in legacy FeatureGrid's order (genome name, accession, start), which
+    // marks no column as sorted.
+    await genome.expectSort("BRC ID", "none");
 
     const entriesBeforeSort = await genome.historyLength();
     await genome.sortBy("Product");
@@ -267,7 +268,7 @@ test.describe("Genome view", () => {
     await page.goBack();
     await genome.expectUrlParams({ tab: "features", "features.sort": null });
     await expect(page).toHaveURL(/\/genome\/1282460\.2049\?tab=features$/);
-    await genome.expectSort("BRC ID", "ascending");
+    await genome.expectSort("Product", "none");
     // The reload orphaned the older entries, so each step below loads a fresh document.
     await genome.expectRow(/replicase polyprotein/);
     await genome.settle();

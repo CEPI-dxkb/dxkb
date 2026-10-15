@@ -32,12 +32,16 @@ vi.mock("@/components/views", async (importOriginal) => {
       label,
       rql,
       defaultFilters,
+      defaultSort,
+      unsortedOrder,
     }: {
       resource: string;
       idField: string;
       label: string;
       rql: string;
       defaultFilters?: unknown;
+      defaultSort: string;
+      unsortedOrder?: unknown;
     }) => (
       <div
         data-testid="resource-collection"
@@ -46,6 +50,10 @@ vi.mock("@/components/views", async (importOriginal) => {
         data-rql={rql}
         data-default-filters={
           defaultFilters ? JSON.stringify(defaultFilters) : undefined
+        }
+        data-default-sort={defaultSort}
+        data-unsorted-order={
+          unsortedOrder ? JSON.stringify(unsortedOrder) : undefined
         }
         data-show-header="false"
       >
@@ -161,6 +169,33 @@ describe("Genome member route", () => {
       JSON.stringify({ annotation: ["PATRIC"] }),
     );
   });
+
+  it.each(["features", "proteins"])(
+    "orders the %s tab as legacy's grid does, with no column sorted",
+    async (tab) => {
+      // Legacy FeatureGrid and ProteinGrid: sort(+genome_name,+accession,+start),
+      // so a genome's features run along each sequence from position 1.
+      render(
+        await GenomePage({
+          params: Promise.resolve({ genomeId: "83332.12" }),
+          searchParams: Promise.resolve({ tab }),
+        }),
+      );
+      const collection = screen.getByTestId("resource-collection");
+      expect(collection).toHaveAttribute("data-default-sort", "unsorted");
+      expect(collection).toHaveAttribute(
+        "data-unsorted-order",
+        JSON.stringify({
+          field: "genome_name",
+          direction: "asc",
+          then: [
+            { field: "accession", direction: "asc" },
+            { field: "start", direction: "asc" },
+          ],
+        }),
+      );
+    },
+  );
 
   it("leaves the Proteins tab without a default, as its RQL pins PATRIC", async () => {
     render(

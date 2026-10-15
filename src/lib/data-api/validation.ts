@@ -9,7 +9,7 @@ import {
 } from "./fasta";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
 import { validateRql } from "./rql";
-import { maxExportRows } from "./types";
+import { maxExportRows, sortKeys } from "./types";
 import type { DataApiRequest, DataResource, DataSort } from "./types";
 
 export { maxExportRows, maxRequestBytes } from "./types";
@@ -20,9 +20,13 @@ export const maxFields = 200;
 export const maxIdentifierLength = 1_000;
 
 const fieldListSchema = z.array(z.string().min(1).max(128)).max(maxFields);
-const sortSchema = z.object({
+const sortKeySchema = z.object({
   field: z.string().min(1).max(128),
   direction: z.enum(["asc", "desc"]),
+});
+// Legacy's longest default order (FeatureGrid's) has two keys after its first.
+const sortSchema = sortKeySchema.extend({
+  then: z.array(sortKeySchema).max(3).optional(),
 });
 const requestSchema = z.discriminatedUnion("operation", [
   z.object({
@@ -89,10 +93,12 @@ function validateSort(
 ): void {
   if (!sort) return;
   const fields = getResourceDefinition(resource).fields;
-  if (!Object.hasOwn(fields, sort.field) || !fields[sort.field].sortable)
-    throw new DataApiValidationError(
-      `Field ${sort.field} cannot sort ${resource}.`,
-    );
+  for (const { field } of sortKeys(sort)) {
+    if (!Object.hasOwn(fields, field) || !fields[field].sortable)
+      throw new DataApiValidationError(
+        `Field ${field} cannot sort ${resource}.`,
+      );
+  }
 }
 
 export function validateDataApiRequest(

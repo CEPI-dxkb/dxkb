@@ -230,6 +230,7 @@ The link boundary itself is **not** in that file. It lives in two siblings, so t
 
 - TanStack Query for all async state (client-side)
 - View collections and member detail panels use `src/hooks/views/` over the `DataRepository` boundary in `src/lib/data-api/`; components do not parse upstream wire formats.
+- A collection's detail panel never waits on its member read when the selected row is on the loaded page: `useResourceCollection` returns that row as `detail` at once and reports `isDetailLoading` only when no loaded row stands in (a selection kept from another page). The member read (`detailFields`, which add the profile's `show_in_table: false` fields to its columns) still runs and replaces the row when it returns.
 - Custom hooks in `src/hooks/services/workspace/` wrap workspace API calls
 - `src/lib/api/client.ts` uses credentialed fetch; only the app-specific `session_expired` code triggers one hard reload, while ordinary upstream 401 responses remain API errors
 

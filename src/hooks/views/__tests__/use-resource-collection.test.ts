@@ -392,6 +392,91 @@ describe("useResourceCollection", () => {
     );
   });
 
+  it("shows the loaded page row without waiting while the detail projection is pending", async () => {
+    const data = repository();
+    let resolveMember: (value: { row: Record<string, unknown> }) => void =
+      () => undefined;
+    const member = vi.spyOn(data, "member").mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveMember = resolve;
+        }),
+    );
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          prefetchNextPage: false,
+          fields: ["genome_id", "genome_name"],
+          detailFields: ["genome_id", "genome_name", "host_name"],
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.setSelection({ "100.1": true });
+    });
+    await waitFor(() => {
+      expect(member).toHaveBeenCalled();
+    });
+    expect(result.current.detail).toMatchObject({ genome_name: "Page value" });
+    expect(result.current.isDetailLoading).toBe(false);
+
+    act(() => {
+      resolveMember({
+        row: {
+          genome_id: "100.1",
+          genome_name: "Projected detail",
+          host_name: "Human",
+        },
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.detail).toMatchObject({ host_name: "Human" });
+    });
+    expect(result.current.isDetailLoading).toBe(false);
+  });
+
+  it("reports the detail as loading when the selected row is not on the loaded page", async () => {
+    const data = repository();
+    const member = vi
+      .spyOn(data, "member")
+      .mockImplementation(() => new Promise(() => undefined));
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          prefetchNextPage: false,
+          fields: ["genome_id", "genome_name"],
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    // Selected on another page, so no loaded row can stand in for it.
+    act(() => {
+      result.current.setSelection({ "200.1": true });
+    });
+    await waitFor(() => {
+      expect(member).toHaveBeenCalled();
+    });
+    expect(result.current.detail).toBeNull();
+    expect(result.current.isDetailLoading).toBe(true);
+  });
+
   it("issues a fresh request when the detail projection changes for the same selected ID", async () => {
     const data = repository();
     const member = vi.spyOn(data, "member").mockImplementation(

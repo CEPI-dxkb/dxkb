@@ -1,0 +1,84 @@
+e2e/tests/genome-view.spec.ts
+  s_0389b46fb10c73::t_fe12fe70dffa0a 242-244,271
+src/components/views/__tests__/resource-child-collection.test.tsx
+  s_0389b46fb10c73::t_758f93678e30fa 705
+  s_0389b46fb10c73::t_6bbaf9503ee488 544-562
+src/app/(views)/genome/child-tabs.ts
+  s_0389b46fb10c73::t_5e0b7fc237300b 2-3,13,37-38,44-45,52-53
+src/components/views/resource-collection.tsx
+  s_0389b46fb10c73::t_f1a2b099e53015 33,55-59,215,266
+src/hooks/views/__tests__/use-resource-collection.test.ts
+  s_0389b46fb10c73::t_710c61b5502f20 85-142
+src/lib/feature-view/query.ts
+  s_0389b46fb10c73::t_cd326c1daf40d0 1,20,23,27-34
+  s_0389b46fb10c73::t_5e0b7fc237300b 21-22,24-26
+  s_0389b46fb10c73::t_8d780a6cca2df9 35-36
+src/components/views/__tests__/feature-resource-collection.test.tsx
+  s_0389b46fb10c73::t_4f2c2f9eec1cc5 58,64-68
+  s_0389b46fb10c73::t_676fdeff17b601 10
+  s_0389b46fb10c73::t_5f9944533e5ec7 69-70
+src/app/(views)/feature/feature-collection.tsx
+  s_0389b46fb10c73::t_5e0b7fc237300b 5-8,20-22,37-39
+src/lib/data-api/validation.ts
+  s_0389b46fb10c73::t_63d1d17f72dd79 12,23,27-30,96-101
+src/components/views/__tests__/resource-collection.test.tsx
+  s_0389b46fb10c73::t_8305a257515987 551-582
+src/lib/data-api/repository.ts
+  s_0389b46fb10c73::t_55f07388e36d52 20
+  s_0389b46fb10c73::t_7c1a2d1e040ccf 96-100
+src/app/(views)/genome/__tests__/genome-collection.test.tsx
+  s_0389b46fb10c73::t_da570b1c4d1875 28,96-105,634-636,658,661-682,686,691
+src/lib/data-api/types.ts
+  s_0389b46fb10c73::t_5576e5cfb7b567 53,58-73
+  s_0389b46fb10c73::t_c99823edc173eb 74
+src/app/(views)/feature/__tests__/feature-collection.test.tsx
+  s_0389b46fb10c73::t_da570b1c4d1875 14,63-94
+  s_0389b46fb10c73::t_6c74c82e0a90bd 95
+src/components/views/resource-child-collection.tsx
+  s_0389b46fb10c73::t_5e0b7fc237300b 6-10,110-115,181,224
+docs/architecture.md
+  s_0389b46fb10c73::t_4071d3484ea563 137
+src/app/(views)/genome/genome-collection.tsx
+  s_0389b46fb10c73::t_5e0b7fc237300b 12,149-153,179,185,200
+src/app/api/data/[resource]/__tests__/route.test.ts
+  s_0389b46fb10c73::t_4f2c97aae81345 243-277
+src/lib/data-api/__tests__/client.test.ts
+  s_0389b46fb10c73::t_fc8487f98f4dac 43-66
+src/lib/data-api/__tests__/validation.test.ts
+  s_0389b46fb10c73::t_3fe0648a101328 124-133
+src/hooks/views/use-resource-collection.ts
+  s_0389b46fb10c73::t_f1a2b099e53015 11,44-49,74,107,110-118
+src/app/api/data/[resource]/route.ts
+  s_0389b46fb10c73::t_63d1d17f72dd79 21-26,45,48-56
+src/lib/data-api/__tests__/repository.test.ts
+  s_0389b46fb10c73::t_7a331acb476801 54-79
+src/components/organisms/taxon-views/features.tsx
+  s_0389b46fb10c73::t_cd326c1daf40d0 2-5,11-12,19
+src/components/views/feature-resource-collection.tsx
+  s_0389b46fb10c73::t_f1a2b099e53015 3,41,52,56-61,64
+  s_0389b46fb10c73::t_7991b6e9876107 40
+src/lib/data-api/client.ts
+  s_0389b46fb10c73::t_55f07388e36d52 7,163-168
+src/components/organisms/taxon-views/__tests__/features.test.tsx
+  s_0389b46fb10c73::t_bc101d03098ca7 19-29
+  s_0389b46fb10c73::t_5ad1f78472cb08 1-18,30-48
+src/app/(views)/genome/[genomeId]/__tests__/page.test.tsx
+  s_0389b46fb10c73::t_da570b1c4d1875 35-36,43-44,54-57,173-198
+  s_0389b46fb10c73::t_4f52ab1d996b29 199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "345e7b9d9851962e63c9db8f8536c39a3e78c090",
+  "prompts": {},
+  "sessions": {
+    "s_0389b46fb10c73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2927e686-686e-4353-81ad-97b1c92ef60f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

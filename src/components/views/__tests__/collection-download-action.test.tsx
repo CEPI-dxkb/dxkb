@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   resolveCollectionDownloadSpec,
@@ -297,6 +297,73 @@ describe("CollectionDownloadAction", () => {
     expect(lastRequest(onDownload).fields).toBeUndefined();
   });
 
+  it("disables Visible columns, with its reason, when a column cannot be selected", async () => {
+    const user = userEvent.setup();
+    const onDownload = vi.fn();
+    render(
+      <CollectionDownloadAction
+        {...props({
+          onDownload,
+          visibleColumnIds: ["strain", "1_pb2", "2_pb1", "4_ha"],
+        })}
+      />,
+    );
+    await open(user);
+
+    const columns = screen.getByRole("switch", { name: "Visible columns" });
+    // Base UI draws the switch as a span, which reports aria-disabled.
+    expect(columns).toHaveAttribute("aria-disabled", "true");
+    expect(columns).not.toBeChecked();
+    expect(columns).toHaveAccessibleDescription(
+      "The data service cannot select 1_pb2, 2_pb1 and 1 more, so table files hold every field.",
+    );
+    await user.click(screen.getByRole("button", { name: "CSV" }));
+    expect(lastRequest(onDownload).fields).toBeUndefined();
+  });
+
+  it("stops sending visible columns once one of them cannot be selected", async () => {
+    const user = userEvent.setup();
+    const onDownload = vi.fn();
+    const { rerender } = render(
+      <CollectionDownloadAction {...props({ onDownload })} />,
+    );
+    await open(user);
+    await user.click(screen.getByRole("switch", { name: "Visible columns" }));
+
+    rerender(
+      <CollectionDownloadAction
+        {...props({ onDownload, visibleColumnIds: ["patric_id", "1_pb2"] })}
+      />,
+    );
+    expect(
+      screen.getByRole("switch", { name: "Visible columns" }),
+    ).not.toBeChecked();
+    await user.click(screen.getByRole("button", { name: "CSV" }));
+    expect(lastRequest(onDownload).fields).toBeUndefined();
+  });
+
+  it("turns Visible columns off, with its reason, once every column is hidden", async () => {
+    const user = userEvent.setup();
+    const onDownload = vi.fn();
+    const { rerender } = render(
+      <CollectionDownloadAction {...props({ onDownload })} />,
+    );
+    await open(user);
+    await user.click(screen.getByRole("switch", { name: "Visible columns" }));
+
+    rerender(
+      <CollectionDownloadAction {...props({ onDownload, visibleColumnIds: [] })} />,
+    );
+    const columns = screen.getByRole("switch", { name: "Visible columns" });
+    expect(columns).toHaveAttribute("aria-disabled", "true");
+    expect(columns).not.toBeChecked();
+    expect(columns).toHaveAccessibleDescription(
+      "No columns are visible, so table files hold every field.",
+    );
+    await user.click(screen.getByRole("button", { name: "CSV" }));
+    expect(lastRequest(onDownload).fields).toBeUndefined();
+  });
+
   it("disables every row while a download runs, and marks it done after", async () => {
     const user = userEvent.setup();
     const onDownload = vi.fn<CollectionDownloadProps["onDownload"]>();
@@ -330,6 +397,61 @@ describe("CollectionDownloadAction", () => {
           .querySelector("svg.text-success"),
       ).not.toBeNull();
     });
+  });
+
+  it("keeps the latest check mark for its full time, and clears its timer on unmount", async () => {
+    const user = userEvent.setup();
+    const onDownload = vi.fn<CollectionDownloadProps["onDownload"]>();
+    const selection = { count: 1, ids: ["F.1"], isAllPagesSelected: false };
+    const { unmount } = render(
+      <CollectionDownloadAction {...props({ onDownload, selection })} />,
+    );
+    await open(user);
+    await user.click(screen.getByRole("button", { name: "CSV" }));
+    await user.click(screen.getByRole("button", { name: "CSV" }));
+    const [first, second] = onDownload.mock.calls.map(
+      ([, options]) => options.onSuccess,
+    );
+    const checkMark = () =>
+      screen
+        .getByRole("button", { name: "CSV" })
+        .querySelector("svg.text-success");
+
+    vi.useFakeTimers();
+    try {
+      const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+      const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+      act(() => {
+        first();
+      });
+      act(() => {
+        vi.advanceTimersByTime(1_000);
+      });
+      act(() => {
+        second();
+      });
+      // Past the first download's 1.8 s, which no longer clears the mark.
+      act(() => {
+        vi.advanceTimersByTime(1_000);
+      });
+      expect(checkMark()).not.toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(checkMark()).toBeNull();
+
+      act(() => {
+        second();
+      });
+      const doneTimer = setTimeoutSpy.mock.results[
+        setTimeoutSpy.mock.calls.findLastIndex(([, ms]) => ms === 1_800)
+      ]?.value as unknown;
+      expect(doneTimer).toBeDefined();
+      unmount();
+      expect(clearTimeoutSpy).toHaveBeenCalledWith(doneTimer);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("works from the keyboard and hands focus back on Escape", async () => {

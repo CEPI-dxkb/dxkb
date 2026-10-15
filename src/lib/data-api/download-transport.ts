@@ -1,5 +1,5 @@
 import { encodePathSegment } from "@/lib/url";
-import { DataRepositoryError } from "./client";
+import { DataRepositoryError, retryRateLimited } from "./client";
 import { downloadNonceCookie, type DownloadRequest } from "./downloads";
 import type { DataResource } from "./types";
 
@@ -8,8 +8,8 @@ import type { DataResource } from "./types";
  * gateway into a hidden iframe, so the browser's download manager streams the
  * attachment straight to disk, as legacy BV-BRC does, and no `Blob` holds a
  * multi-gigabyte file in the tab. `DataRepository.download()` is the buffered
- * path for everything up to `maxBufferedDownloadRows`; `useCollectionDownload`
- * picks between the two (`usesNativeDownload`).
+ * path for everything up to `maxBufferedDownloadRows` that is not whole
+ * contigs; `useCollectionDownload` picks between the two (`usesNativeDownload`).
  *
  * A form cannot read its response, so two side channels report back:
  *
@@ -18,7 +18,9 @@ import type { DataResource } from "./types";
  *   the browser has the file; it is polled every 500 ms.
  * - **Failed.** An error is answered as text into the same-origin iframe,
  *   where its `{error}` message is read back and thrown, so the caller can
- *   show the server's own words.
+ *   show the server's own words. A `rate_limited` answer is submitted again,
+ *   with a fresh nonce, after the `retryAfterMs` the gateway copies into the
+ *   body from its `Retry-After` (`retryRateLimited`, as the buffered path).
  *
  * Neither arriving within 30 s is not an error: a slow upstream may still
  * start the file, so the promise resolves quietly and the iframe stays.
@@ -59,12 +61,21 @@ function iframeError(iframe: HTMLIFrameElement): Error | null {
   try {
     const payload: unknown = JSON.parse(text);
     if (payload && typeof payload === "object") {
-      const { error, code } = payload as { error?: unknown; code?: unknown };
+      const { error, code, retryAfterMs } = payload as {
+        error?: unknown;
+        code?: unknown;
+        retryAfterMs?: unknown;
+      };
       if (typeof error === "string") {
+        // The frame hides the status, but the code names a 429.
+        const rateLimited = code === "rate_limited";
         return new DataRepositoryError(
           error,
-          0,
+          rateLimited ? 429 : 0,
           typeof code === "string" ? code : "request_failed",
+          rateLimited && typeof retryAfterMs === "number" && retryAfterMs >= 0
+            ? retryAfterMs
+            : undefined,
         );
       }
     }
@@ -77,9 +88,18 @@ function iframeError(iframe: HTMLIFrameElement): Error | null {
 /**
  * Submit `request` as a native form POST. Resolves once the browser has taken
  * the file (or after the quiet timeout), and rejects with the gateway's
- * message when it answers an error.
+ * message when it answers an error; a throttled request is retried first.
  */
 export function startNativeDownload(
+  resource: DataResource,
+  request: DownloadRequest,
+  options: NativeDownloadOptions = {},
+): Promise<void> {
+  return retryRateLimited(() => submitOnce(resource, request, options));
+}
+
+/** One attempt: its own nonce, form and iframe. */
+function submitOnce(
   resource: DataResource,
   request: DownloadRequest,
   {
@@ -87,7 +107,7 @@ export function startNativeDownload(
     pollIntervalMs = 500,
     timeoutMs = 30_000,
     cleanupDelayMs = 60_000,
-  }: NativeDownloadOptions = {},
+  }: NativeDownloadOptions,
 ): Promise<void> {
   const nonce = createNonce();
   const iframe = document.createElement("iframe");

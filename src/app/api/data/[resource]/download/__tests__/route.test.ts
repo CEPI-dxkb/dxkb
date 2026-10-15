@@ -178,6 +178,12 @@ describe("POST /api/data/[resource]/download", () => {
 
   it("accepts the native transport's form and echoes its nonce in a cookie", async () => {
     setTestSession({ token: "secret", userId: "alice" });
+    // The repository counts a query again before downloading it.
+    server.use(
+      http.get(`${dataApiOrigin}/genome/`, () =>
+        HttpResponse.json({ response: { numFound: 20_000, docs: [] } }),
+      ),
+    );
     const seen = captureUpstream("genome", () => new Response(tsv));
 
     const response = await post({
@@ -204,7 +210,7 @@ describe("POST /api/data/[resource]/download", () => {
         // The form reaches the route with the session cookie, so the token
         // goes upstream from the server, never through the page.
         authorization: "secret",
-        body: "eq(genome_status,Complete)&sort(+genome_id)&limit(20000)",
+        body: "eq(genome_status,Complete)&sort(+genome_id)&limit(2500000)",
       },
     ]);
   });
@@ -226,6 +232,27 @@ describe("POST /api/data/[resource]/download", () => {
       code: "invalid_request",
     });
     expect(hit).not.toHaveBeenCalled();
+  });
+
+  it("answers a genome selection with no contigs as an error, not an empty file", async () => {
+    // Whole contigs stream through the form, which saves whatever it is sent.
+    captureUpstream("genome_sequence", () => new Response(""));
+
+    const response = await post({
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      rawBody: formBody({
+        ...selection,
+        format: "dna-fasta",
+        nonce: "abcdef0123456789",
+      }),
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(JSON.parse(await response.text())).toEqual({
+      error: "No DNA sequence is available for the requested records.",
+      code: "not_found",
+    });
   });
 
   it("rejects a form without its request field", async () => {
@@ -250,6 +277,28 @@ describe("POST /api/data/[resource]/download", () => {
     await expect(json(response)).resolves.toEqual({
       error: "Unsupported data resource: nope",
       code: "not_found",
+    });
+    expect(hit).not.toHaveBeenCalled();
+  });
+
+  it("refuses visible columns the data service cannot select, rather than widening the file", async () => {
+    const hit = forbidUpstream();
+
+    const response = await post({
+      resource: "strain",
+      body: {
+        ...selection,
+        scope: { kind: "query" },
+        fields: ["strain", "1_pb2"],
+        fileNameBase: "strain",
+      },
+    });
+
+    expect(response.status).toBe(400);
+    await expect(json(response)).resolves.toEqual({
+      error:
+        "The data service cannot select 1_pb2; download every field instead.",
+      code: "invalid_request",
     });
     expect(hit).not.toHaveBeenCalled();
   });
@@ -356,6 +405,32 @@ describe("POST /api/data/[resource]/download", () => {
       code: "rate_limited",
     });
     expect(hit).not.toHaveBeenCalled();
+  });
+
+  it("puts a form's Retry-After in its text body, where the iframe can read it", async () => {
+    const ip = freshIp();
+    for (let i = 0; i < 20; i++) rateLimit(`data-download:${ip}:genome`, 20, 60_000);
+    forbidUpstream();
+
+    const response = await post({
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "x-forwarded-for": ip,
+      },
+      rawBody: formBody(selection),
+    });
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Content-Type")).toBe(
+      "text/plain; charset=utf-8",
+    );
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    expect(retryAfter).toBeGreaterThan(0);
+    expect(JSON.parse(await response.text())).toEqual({
+      error: "Too many downloads. Please try again shortly.",
+      code: "rate_limited",
+      retryAfterMs: retryAfter * 1_000,
+    });
   });
 
   it("keeps the upstream's own error message", async () => {

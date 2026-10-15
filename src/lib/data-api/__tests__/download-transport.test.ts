@@ -50,9 +50,23 @@ function currentSubmission(): Submitted {
   return submitted;
 }
 
+/** The gateway answering `body` into a submission's iframe. */
+function answer(iframe: HTMLIFrameElement, body: unknown): void {
+  const frameDocument = iframe.contentDocument;
+  if (!frameDocument) throw new Error("the iframe must have a document");
+  frameDocument.body.textContent = JSON.stringify(body);
+  iframe.dispatchEvent(new Event("load"));
+}
+
+const throttled = {
+  error: "Too many downloads. Please try again shortly.",
+  code: "rate_limited",
+};
+
 describe("startNativeDownload", () => {
-  it("posts the request with a nonce from a hidden form into a hidden iframe", () => {
-    void startNativeDownload("genome_feature", request);
+  it("posts the request with a nonce from a hidden form into a hidden iframe", async () => {
+    vi.useFakeTimers();
+    const done = startNativeDownload("genome_feature", request);
 
     const { form, iframe, sent } = currentSubmission();
     expect(form.method).toBe("post");
@@ -67,6 +81,11 @@ describe("startNativeDownload", () => {
     expect(nonce).toMatch(/^[0-9a-f]{32}$/);
     // The token is never in the page: the session cookie carries it server-side.
     expect(JSON.stringify(sent)).not.toMatch(/token|authorization/i);
+
+    // Settled, so neither its poll nor its timeout outlives the test.
+    document.cookie = `dxkb-download=${nonce}; Path=/`;
+    await vi.advanceTimersByTimeAsync(500);
+    await expect(done).resolves.toBeUndefined();
   });
 
   it("resolves once the gateway's nonce cookie appears, and cleans up", async () => {
@@ -130,6 +149,49 @@ describe("startNativeDownload", () => {
       code: "invalid_request",
     });
     expect(iframe.isConnected).toBe(false);
+  });
+
+  it("submits a throttled download again after the gateway's retryAfterMs, with a fresh nonce", async () => {
+    vi.useFakeTimers();
+    const done = startNativeDownload("genome", request, { pollIntervalMs: 100 });
+    const first = currentSubmission();
+
+    answer(first.iframe, { ...throttled, retryAfterMs: 5_000 });
+    expect(first.iframe.isConnected).toBe(false);
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(currentSubmission()).toBe(first);
+
+    await vi.advanceTimersByTimeAsync(1);
+    const second = currentSubmission();
+    expect(second).not.toBe(first);
+    expect(second.sent.nonce).not.toBe(first.sent.nonce);
+    document.cookie = `dxkb-download=${second.sent.nonce}; Path=/`;
+    await vi.advanceTimersByTimeAsync(100);
+    await expect(done).resolves.toBeUndefined();
+  });
+
+  it("backs off without a retryAfterMs, and gives up after three retries", async () => {
+    vi.useFakeTimers();
+    const done = startNativeDownload("genome", request);
+    const caught = done.catch((error: unknown) => error);
+
+    for (const backoffMs of [1_000, 2_000, 4_000]) {
+      const attempt = currentSubmission();
+      answer(attempt.iframe, throttled);
+      await vi.advanceTimersByTimeAsync(backoffMs - 1);
+      expect(currentSubmission()).toBe(attempt);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(currentSubmission()).not.toBe(attempt);
+    }
+    answer(currentSubmission().iframe, throttled);
+
+    const error = await caught;
+    expect(error).toBeInstanceOf(DataRepositoryError);
+    expect(error).toMatchObject({
+      message: throttled.error,
+      status: 429,
+      code: "rate_limited",
+    });
   });
 
   it("shows a non-JSON error body as it came", async () => {

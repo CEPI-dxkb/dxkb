@@ -15,6 +15,7 @@ import {
   downloadRowCount,
   downloadUnavailableReason,
   maxSelectionDownloadRows,
+  unselectableColumnsReason,
   type DownloadRequest,
 } from "./downloads";
 import { safeFileNameBase } from "./file-name";
@@ -189,7 +190,8 @@ const downloadRequestSchema = z.object({
     }),
   ]),
   sort: sortSchema.optional(),
-  fields: fieldListSchema.min(1).optional(),
+  // An empty list is refused below, with the reason the tile shows.
+  fields: fieldListSchema.optional(),
   fileNameBase: z.string().max(200),
   total: z.number().int().min(0),
   nonce: z.string().regex(downloadNoncePattern).optional(),
@@ -232,6 +234,11 @@ export function validateDownloadRequest(
       ? request.fields
       : undefined;
   validateFields(resource, fields, "select");
+  const columnsReason = fields ? unselectableColumnsReason(fields) : null;
+  if (columnsReason)
+    throw new DataApiValidationError(
+      `${columnsReason}; download every field instead.`,
+    );
   validateSort(resource, request.sort);
   const reason = downloadUnavailableReason({
     format: request.format,

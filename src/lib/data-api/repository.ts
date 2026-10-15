@@ -1,10 +1,14 @@
 import { z } from "zod";
 import {
   downloadFormats,
-  downloadRowCount,
+  downloadUnavailableReason,
+  emptyDownloadMessage,
   maxQueryDownloadRows,
   maxSelectionDownloadRows,
+  queryDownloadRowLimit,
   sequenceDownloadFor,
+  unselectableFields,
+  type DownloadFormatId,
   type DownloadQuery,
   type DownloadRequest,
 } from "./downloads";
@@ -82,7 +86,7 @@ function addFields(
   if (!fields?.length) return false;
   // The upstream RQL parser misreads identifiers such as `1_pb2` in select().
   // Omit its projection, then project the full response locally.
-  if (fields.some((field) => /^\d/.test(field))) return true;
+  if (unselectableFields(fields).length > 0) return true;
   appendQuery(url, `select(${[...new Set([...fields, idField])].join(",")})`);
   return false;
 }
@@ -100,6 +104,36 @@ function projectRows(
       Object.entries(row).filter(([field]) => selected.has(field)),
     ),
   );
+}
+
+/**
+ * `body` once its first bytes have arrived, or `null` when it ends without
+ * any. The bytes read to find out are sent first, so the stream is otherwise
+ * untouched.
+ */
+async function nonEmptyBody(
+  body: ReadableStream<Uint8Array> | null,
+): Promise<ReadableStream<Uint8Array> | null> {
+  if (!body) return null;
+  const reader = body.getReader();
+  let first = await reader.read();
+  while (!first.done && first.value.byteLength === 0)
+    first = await reader.read();
+  if (first.done) return null;
+  const head = first.value;
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(head);
+    },
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
 }
 
 function sortClause(sort: DataSort, idField: string): string {
@@ -504,15 +538,22 @@ export class ServerDataRepository {
    *   rql and keyword (`eq(<idField>,*)` when it has neither, since the
    *   upstream rejects a bare `sort()`).
    * - No `select()` without `fields`, so the upstream returns every stored
-   *   field, as legacy does. A field whose name starts with a digit cannot go
-   *   in a `select()` (see `addFields`), and a stream cannot be projected
-   *   here, so such a list downloads every field instead.
+   *   field, as legacy does. `validateDownloadRequest` refuses `fields` the
+   *   upstream cannot select (`unselectableFields`), since a stream cannot be
+   *   projected here.
    * - The table's sort, then the primary key; the primary key alone when the
    *   table is unsorted.
    * - A resource whose sequences live elsewhere (`sequenceDownloads[…].via`:
    *   a genome's contigs) reads that resource with `in(<key>,(<ids>))` sorted
-   *   by its own key. A query scope there first reads the matching ids, which
-   *   `maxSequenceQueryRows` bounds.
+   *   by its own key. A query scope there first reads the matching ids, one
+   *   past `maxSequenceQueryRows`, and is refused when that extra id arrives:
+   *   the query grew past the cap after its recount.
+   * - A query is counted again first (`recountQueryDownload`), and its
+   *   `limit()` is the format's cap, not `request.total`: that is the count
+   *   the table last loaded, and records added since would fall past it.
+   * - An upstream body with no bytes (ids that match nothing, features with
+   *   no translation) is a 404 with `emptyDownloadMessage`, not an empty
+   *   file: the native transport saves whatever it is sent, and cannot check.
    *
    * `request` must already have passed `validateDownloadRequest`.
    */
@@ -520,17 +561,25 @@ export class ServerDataRepository {
     resource: DataResource,
     request: DownloadRequest,
     signal?: AbortSignal,
-  ): Promise<ReadableStream<Uint8Array> | null> {
+  ): Promise<ReadableStream<Uint8Array>> {
     const format = downloadFormats[request.format];
     const definition = getResourceDefinition(resource);
     const via =
       format.kind === "sequence"
         ? sequenceDownloadFor(resource)?.via
         : undefined;
+    if (request.scope.kind === "query")
+      await this.recountQueryDownload(
+        resource,
+        request.format,
+        request.scope,
+        signal,
+      );
     const clauses: string[] = [];
     let target = resource;
     let limit: number;
     if (via) {
+      const idLimit = queryDownloadRowLimit(request.format);
       const ids =
         request.scope.kind === "selected"
           ? request.scope.ids
@@ -543,12 +592,25 @@ export class ServerDataRepository {
                   keyword: request.scope.keyword,
                   keywordMode: request.scope.keywordMode,
                   fields: [definition.idField],
-                  limit: request.total,
+                  limit: idLimit + 1,
                   sort: request.sort,
                 },
                 signal,
               )
             ).rows.map((row) => String(row[definition.idField]));
+      // The one id past the cap is a query that grew after its recount.
+      const overflowReason =
+        request.scope.kind === "query" && ids.length > idLimit
+          ? downloadUnavailableReason({
+              format: request.format,
+              scope: "all",
+              rows: ids.length,
+            })
+          : null;
+      if (overflowReason)
+        throw new DataApiValidationError(
+          `${overflowReason} (the query now matches more than ${idLimit.toLocaleString("en-US")} rows).`,
+        );
       if (ids.length === 0) {
         throw new DataApiError(
           "No records matched the download.",
@@ -574,11 +636,7 @@ export class ServerDataRepository {
             )
           : (predicateClause(request.scope) ?? `eq(${definition.idField},*)`),
       );
-      if (
-        format.kind === "table" &&
-        request.fields?.length &&
-        !request.fields.some((field) => /^\d/.test(field))
-      ) {
+      if (format.kind === "table" && request.fields?.length) {
         clauses.push(
           `select(${[...new Set([...request.fields, definition.idField])].join(",")})`,
         );
@@ -589,7 +647,10 @@ export class ServerDataRepository {
           definition.idField,
         ),
       );
-      limit = downloadRowCount(request);
+      limit =
+        request.scope.kind === "selected"
+          ? request.scope.ids.length
+          : queryDownloadRowLimit(request.format);
     }
     clauses.push(`limit(${String(limit)})`);
     const response = await this.send(
@@ -601,7 +662,57 @@ export class ServerDataRepository {
       "POST",
       clauses.join("&"),
     );
-    return response.body;
+    const body = await nonEmptyBody(response.body);
+    if (!body)
+      throw new DataApiError(
+        emptyDownloadMessage(request.format),
+        404,
+        "not_found",
+      );
+    return body;
+  }
+
+  /**
+   * Counts a query download's rows now and checks the caps on that count.
+   * `validateDownloadRequest` checked them on `request.total`, the count the
+   * table last loaded, so a query that has grown past a cap since is refused
+   * here instead of downloading short. The read that follows asks for the
+   * format's whole cap rather than this count, so a record added in between
+   * is not cut either.
+   */
+  private async recountQueryDownload(
+    resource: DataResource,
+    format: DownloadFormatId,
+    query: DownloadQuery,
+    signal: AbortSignal | undefined,
+  ): Promise<void> {
+    const { total } = await this.collection(
+      resource,
+      {
+        operation: "collection",
+        rql: query.rql,
+        keyword: query.keyword,
+        keywordMode: query.keywordMode,
+        fields: [getResourceDefinition(resource).idField],
+        pageSize: 1,
+      },
+      signal,
+    );
+    if (total === 0)
+      throw new DataApiError(
+        "No records matched the download.",
+        404,
+        "not_found",
+      );
+    const reason = downloadUnavailableReason({
+      format,
+      scope: "all",
+      rows: total,
+    });
+    if (reason)
+      throw new DataApiValidationError(
+        `${reason} (the query now matches ${total.toLocaleString("en-US")} rows).`,
+      );
   }
 
   private url(resource: DataResource): URL {

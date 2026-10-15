@@ -196,6 +196,49 @@ test("streams an all-results download above 10,000 rows straight to disk", async
   await expect(collection.downloadFormat("Text")).toBeEnabled();
 });
 
+test("streams a selected Genome's contigs straight to disk, however few rows", async ({
+  page,
+}) => {
+  await applyBackendMocks(page, {
+    overrides: [
+      ...downloadGatewayOverrides,
+      ...genomeScenarioOverrides,
+      ...emptyBackendFallbackOverrides,
+    ],
+  });
+  const collection = genomeCollection(page);
+  await collection.goto("influenza");
+
+  await collection.selectRow();
+  await collection.openDownload();
+  await expect(collection.downloadScope("Selected")).toBeChecked();
+  const sent = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      new URL(request.url()).pathname === "/api/data/genome/download",
+  );
+  const saved = page.waitForEvent("download");
+  await collection.downloadFormat("DNA FASTA").click();
+
+  // One genome, yet a native form POST: its contigs have no size bound.
+  const request = await sent;
+  expect(request.headers()["content-type"]).toContain(
+    "application/x-www-form-urlencoded",
+  );
+  const field = new URLSearchParams(request.postData() ?? "").get("request");
+  expect(JSON.parse(field ?? "null")).toMatchObject({
+    format: "dna-fasta",
+    scope: { kind: "selected", ids: [downloadGenomeRow.genome_id] },
+    nonce: expect.stringMatching(/^[0-9a-f]{32}$/),
+  });
+  const download = await saved;
+  expect(download.suggestedFilename()).toBe("genome-selected.dna.fasta");
+  expect(await savedText(download)).toBe(
+    `>${downloadGenomeRow.genome_id}\nACGTACGTACGT\n`,
+  );
+  await expect(collection.downloadFormat("DNA FASTA")).toBeEnabled();
+});
+
 test("shows the gateway's own message when a download is refused", async ({
   page,
 }) => {

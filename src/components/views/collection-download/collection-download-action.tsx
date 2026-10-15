@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
   downloadFileNameBase,
   downloadFormats,
   downloadUnavailableReason,
+  unselectableColumnsReason,
   type DownloadFormatId,
   type DownloadRequest,
   type DownloadScope,
@@ -71,10 +72,10 @@ const doneMs = 1_800;
 const countingReason = "Counting matching rows…";
 
 /**
- * The action rail's Download tile (design A.3.2, "Inline scope"): a popover
- * with the scope on one line, one list of format rows where a click is the
- * download, and a footer with the columns switch and the query. Every format
- * the resource offers stays listed; one that cannot run says why in place.
+ * The action rail's Download tile: a popover with the scope on one line, one
+ * list of format rows where a click is the download, and a footer with the
+ * columns switch and the query. Every format the resource offers stays
+ * listed; one that cannot run says why in place.
  *
  * Shown on every collection with or without a selection, as legacy's top
  * DOWNLOAD is. The popover's state lives here, and the running download in the
@@ -95,9 +96,17 @@ export function CollectionDownloadAction({
 }: CollectionDownloadProps) {
   const switchId = useId();
   const headingId = useId();
+  const columnsReasonId = useId();
   const [scopeChoice, setScopeChoice] = useState<ScopeChoice | null>(null);
   const [visibleColumnsOnly, setVisibleColumnsOnly] = useState(false);
   const [done, setDone] = useState<DownloadFormatId | null>(null);
+  const doneTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(doneTimeoutRef.current);
+    };
+  }, []);
 
   const hasSelection = selection.count > 0;
   const scope: ScopeChoice =
@@ -111,6 +120,9 @@ export function CollectionDownloadAction({
     : { kind: "selected", ids: [...selection.ids] };
   const rows = isQueryBacked ? allResults.total : selection.ids.length;
   const scopeReason = isQueryBacked && isPlaceholderData ? countingReason : null;
+  // The upstream cannot select every column, so the switch cannot be honored.
+  const columnsReason = unselectableColumnsReason(visibleColumnIds);
+  const sendVisibleColumns = visibleColumnsOnly && columnsReason === null;
 
   const reasonFor = (format: DownloadFormatId): string | null => {
     if (scopeReason) return scopeReason;
@@ -131,7 +143,7 @@ export function CollectionDownloadAction({
         scope: requestScope,
         sort,
         fields:
-          downloadFormats[format].kind === "table" && visibleColumnsOnly
+          downloadFormats[format].kind === "table" && sendVisibleColumns
             ? [...visibleColumnIds]
             : undefined,
         fileNameBase: downloadFileNameBase(fileNameBase, scope),
@@ -140,8 +152,10 @@ export function CollectionDownloadAction({
       {
         onSuccess: () => {
           setDone(format);
-          setTimeout(() => {
-            setDone((current) => (current === format ? null : current));
+          // Only the latest download's check mark has a timer to clear it.
+          clearTimeout(doneTimeoutRef.current);
+          doneTimeoutRef.current = setTimeout(() => {
+            setDone(null);
           }, doneMs);
         },
       },
@@ -262,25 +276,37 @@ export function CollectionDownloadAction({
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between gap-3 rounded-b-lg border-t bg-muted/50 px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Switch
-              id={switchId}
-              size="sm"
-              checked={visibleColumnsOnly}
-              onCheckedChange={setVisibleColumnsOnly}
-            />
-            <Label
-              htmlFor={switchId}
-              title="Table formats only: sequence files have no columns"
-            >
-              Visible columns
-            </Label>
+        <div className="rounded-b-lg border-t bg-muted/50 px-3 py-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Switch
+                id={switchId}
+                size="sm"
+                checked={sendVisibleColumns}
+                disabled={columnsReason !== null}
+                aria-describedby={columnsReason ? columnsReasonId : undefined}
+                onCheckedChange={setVisibleColumnsOnly}
+              />
+              <Label
+                htmlFor={switchId}
+                title="Table formats only: sequence files have no columns"
+              >
+                Visible columns
+              </Label>
+            </div>
+            {queryLabel ? (
+              <span className="truncate font-mono text-3xs text-muted-foreground">
+                {queryLabel}
+              </span>
+            ) : null}
           </div>
-          {queryLabel ? (
-            <span className="truncate font-mono text-3xs text-muted-foreground">
-              {queryLabel}
-            </span>
+          {columnsReason ? (
+            <p
+              id={columnsReasonId}
+              className="mt-1.5 text-3xs text-muted-foreground"
+            >
+              {columnsReason}, so table files hold every field.
+            </p>
           ) : null}
         </div>
       </PopoverContent>

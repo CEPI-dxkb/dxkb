@@ -46,6 +46,10 @@ describe("fastaFileName", () => {
     );
   });
 
+  it("prefixes a Windows device name", () => {
+    expect(fastaFileName("AUX", "dna")).toBe("_AUX.dna.fasta");
+  });
+
   it("falls back to a generic base when nothing usable is left", () => {
     expect(fastaFileName("  ", "dna")).toBe("sequences.dna.fasta");
     expect(fastaFileName("...", "protein")).toBe("sequences.protein.fasta");

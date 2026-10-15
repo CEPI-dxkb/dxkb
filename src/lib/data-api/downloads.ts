@@ -128,6 +128,12 @@ export interface SequenceDownload {
     sort: string;
     note: string;
   };
+  /**
+   * The file holds whole contigs, whose size no row count bounds (one
+   * genome's run to megabytes, and a selection may name 10,000 genomes), so
+   * it always streams to disk (`usesNativeDownload`).
+   */
+  unboundedSize?: boolean;
 }
 
 /**
@@ -145,9 +151,10 @@ export const sequenceDownloads = {
       sort: "sequence_id",
       note: "Contigs of each genome",
     },
+    unboundedSize: true,
   },
   genome_feature: { formats: ["dna-fasta", "protein-fasta"] },
-  genome_sequence: { formats: ["dna-fasta"] },
+  genome_sequence: { formats: ["dna-fasta"], unboundedSize: true },
 } as const satisfies Partial<Record<DataResource, SequenceDownload>>;
 
 export function sequenceDownloadFor(
@@ -212,7 +219,10 @@ export interface DownloadRequest {
   fields?: string[];
   /** The file name without its extension (`downloadFileNameBase`). */
   fileNameBase: string;
-  /** The matching-row count the client saw, which the caps are checked on. */
+  /**
+   * The matching-row count the client saw, which the caps are checked on. A
+   * query's rows are counted again before the read and never limited to this.
+   */
   total: number;
   /**
    * Echoed back in the `dxkb-download` cookie, so the native transport can
@@ -231,8 +241,51 @@ export function downloadRowCount(request: {
     : request.total;
 }
 
-/** Whether a request streams to disk through a form POST (`startNativeDownload`). */
-export function usesNativeDownload(request: DownloadRequest): boolean {
+/**
+ * The fields the data service cannot `select()`: it reads a name that starts
+ * with a digit (a Strain's `1_pb2`) as a number, in RQL and in Solr's own
+ * field list alike. A JSON read projects those rows locally instead; a table
+ * file is the upstream's stream, and its formats leave such a column empty.
+ */
+export function unselectableFields(fields: readonly string[]): string[] {
+  return fields.filter((field) => /^\d/.test(field));
+}
+
+/**
+ * Why a table file cannot hold only `fields`, or `null` when it can: no
+ * columns at all (every one hidden in the table), or one the data service
+ * cannot select. The tile disables its *Visible columns* switch with this
+ * reason and the gateway refuses such a request with it, so a file never
+ * holds columns the switch left out.
+ */
+export function unselectableColumnsReason(
+  fields: readonly string[],
+): string | null {
+  if (fields.length === 0) return "No columns are visible";
+  const unselectable = unselectableFields(fields);
+  if (unselectable.length === 0) return null;
+  const named =
+    unselectable.length > 2
+      ? `${unselectable.slice(0, 2).join(", ")} and ${String(unselectable.length - 2)} more`
+      : unselectable.join(" and ");
+  return `The data service cannot select ${named}`;
+}
+
+/**
+ * Whether a request streams to disk through a form POST (`startNativeDownload`)
+ * rather than being held in the tab as a `Blob`: a query of more than
+ * `maxBufferedDownloadRows` rows, or a sequence file of whole contigs at any
+ * row count (`SequenceDownload.unboundedSize`).
+ */
+export function usesNativeDownload(
+  resource: DataResource,
+  request: DownloadRequest,
+): boolean {
+  if (
+    isSequenceDownloadFormat(request.format) &&
+    sequenceDownloadFor(resource)?.unboundedSize
+  )
+    return true;
   return (
     request.scope.kind === "query" && request.total > maxBufferedDownloadRows
   );
@@ -310,6 +363,18 @@ export function downloadUnavailableReason({
   )
     return `Sequences: ${count(maxSequenceQueryRows)} rows at most`;
   return null;
+}
+
+/**
+ * The most rows an all-results download in `format` sends: the sequence cap,
+ * Excel's sheet, else legacy's `limit()` — the lowest cap
+ * `downloadUnavailableReason` applies to it. The gateway asks the upstream for
+ * this many after counting the query again, so a file is never cut at the
+ * count the table loaded earlier.
+ */
+export function queryDownloadRowLimit(format: DownloadFormatId): number {
+  if (isSequenceDownloadFormat(format)) return maxSequenceQueryRows;
+  return format === "xlsx" ? maxExcelRows : maxQueryDownloadRows;
 }
 
 /**

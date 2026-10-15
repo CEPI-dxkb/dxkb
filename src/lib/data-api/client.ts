@@ -107,9 +107,10 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
 /**
  * `attempt`, retried when the gateway answers 429: after its `Retry-After`, or
  * an exponential backoff without one, up to `maxRateLimitRetries` times. Any
- * other error, and the last 429, is thrown as it came.
+ * other error, and the last 429, is thrown as it came. `startNativeDownload`
+ * shares it, so both download paths wait out a throttled request alike.
  */
-async function retryRateLimited<T>(
+export async function retryRateLimited<T>(
   attempt: () => Promise<T>,
   signal?: AbortSignal,
 ): Promise<T> {
@@ -272,8 +273,9 @@ export class DataRepository {
   /**
    * A table or FASTA file through `POST /api/data/<resource>/download`, held in
    * memory as a `Blob` for the caller to save. For selections and queries of
-   * at most `maxBufferedDownloadRows`; a larger query streams to disk through
-   * `startNativeDownload` instead. A 429 is retried after its `Retry-After`,
+   * at most `maxBufferedDownloadRows`; a larger query, and any file of whole
+   * contigs, streams to disk through `startNativeDownload` instead
+   * (`usesNativeDownload`). A 429 is retried after its `Retry-After`,
    * as in {@link exportAll}; any other failure throws the gateway's own
    * `{error}` message. An empty `Blob` means nothing matched; the caller
    * decides how to say so.

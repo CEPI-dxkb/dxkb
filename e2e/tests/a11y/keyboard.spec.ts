@@ -348,15 +348,7 @@ test.describe("keyboard: collection Download tile (WCAG 2.1.1, 2.1.2)", () => {
     for (let i = 0; i < 10; i++) {
       await page.keyboard.press("Tab");
       await expect
-        .poll(() =>
-          page.evaluate(() =>
-            Boolean(
-              document
-                .querySelector("[role='dialog']")
-                ?.contains(document.activeElement),
-            ),
-          ),
-        )
+        .poll(() => panel.evaluate((el) => el.contains(document.activeElement)))
         .toBe(true);
       if (await formatRow.evaluate((el) => el === document.activeElement))
         reachedFormat = true;

@@ -98,9 +98,9 @@ export function MobileWorkspaceSection({
           <Link
             href="/sign-in?redirect=/workspace"
             className={buttonVariants({
-              variant: "default",
+              variant: "cta",
               size: "sm",
-              className: "bg-secondary hover:bg-secondary/90 w-fit",
+              className: "w-fit",
             })}
           >
             Sign In

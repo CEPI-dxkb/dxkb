@@ -433,6 +433,33 @@ describe("validateDownloadRequest", () => {
     ).toThrow("Field not_a_field cannot sort genome.");
   });
 
+  it("refuses visible columns the data service cannot select", () => {
+    expect(
+      validate("strain", {
+        scope: { kind: "query" },
+        fields: ["strain", "1_pb2", "4_ha"],
+      }),
+    ).toThrow(
+      "The data service cannot select 1_pb2 and 4_ha; download every field instead.",
+    );
+    expect(
+      validate("strain", { scope: { kind: "query" }, fields: ["strain"] }),
+    ).not.toThrow();
+  });
+
+  it("refuses an empty column list with the tile's reason", () => {
+    expect(validate("genome", { fields: [] })).toThrow(
+      "No columns are visible; download every field instead.",
+    );
+    expect(
+      validateDownloadRequest("genome_feature", {
+        ...base,
+        format: "dna-fasta",
+        fields: [],
+      }).fields,
+    ).toBeUndefined();
+  });
+
   it("drops fields from a sequence download, which has no columns", () => {
     expect(
       validateDownloadRequest("genome_feature", {

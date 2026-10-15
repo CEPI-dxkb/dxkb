@@ -62,10 +62,35 @@ function contentDisposition(fileName: string): string {
   return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
 }
 
+/**
+ * A 429's `Retry-After` copied into its `{error, code}` body as
+ * `retryAfterMs`, since the iframe that reads a form's error cannot see
+ * headers. Any other body is returned as it came.
+ */
+function withRetryAfter(text: string, response: NextResponse): string {
+  const header = response.headers.get("Retry-After");
+  const seconds = Number(header);
+  if (
+    response.status !== 429 ||
+    header === null ||
+    !Number.isFinite(seconds) ||
+    seconds < 0
+  )
+    return text;
+  try {
+    const payload: unknown = JSON.parse(text);
+    if (payload && typeof payload === "object")
+      return JSON.stringify({ ...payload, retryAfterMs: seconds * 1_000 });
+  } catch {
+    // Not the `{error, code}` JSON: leave it for the transport to show.
+  }
+  return text;
+}
+
 async function asPlainText(response: NextResponse): Promise<NextResponse> {
   const headers = new Headers(response.headers);
   headers.set("Content-Type", "text/plain; charset=utf-8");
-  return new NextResponse(await response.text(), {
+  return new NextResponse(withRetryAfter(await response.text(), response), {
     status: response.status,
     headers,
   });

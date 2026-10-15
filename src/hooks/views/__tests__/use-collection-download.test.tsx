@@ -20,6 +20,8 @@ vi.mock("@/lib/data-api/download-transport", () => ({
 }));
 
 const downloadRoute = "*/api/data/genome/download";
+// A feature's own sequences are small, so they stay on the buffered path.
+const featureDownloadRoute = "*/api/data/genome_feature/download";
 
 const selection: DownloadRequest = {
   format: "csv",
@@ -95,13 +97,30 @@ describe("useCollectionDownload", () => {
     expect(downloadBlob).toHaveBeenCalledTimes(1);
   });
 
+  it("streams a genome selection's contigs to disk, however few rows it names", async () => {
+    const contigs: DownloadRequest = {
+      ...selection,
+      format: "dna-fasta",
+    };
+    const { result } = renderDownload();
+
+    act(() => {
+      result.current.download("genome", contigs);
+    });
+
+    await waitFor(() => {
+      expect(startNativeDownload).toHaveBeenCalledWith("genome", contigs);
+    });
+    expect(downloadBlob).not.toHaveBeenCalled();
+  });
+
   it("reports which format is in flight, and clears it when done", async () => {
-    let release: () => void = () => undefined;
+    // Made before the request, so releasing it never depends on the handler
+    // having started.
+    const gate = Promise.withResolvers<undefined>();
     server.use(
-      http.post(downloadRoute, async () => {
-        await new Promise<void>((resolve) => {
-          release = resolve;
-        });
+      http.post(featureDownloadRoute, async () => {
+        await gate.promise;
         return new Response(">a\nACGT\n");
       }),
     );
@@ -109,13 +128,16 @@ describe("useCollectionDownload", () => {
     expect(result.current.pending).toBeNull();
 
     act(() => {
-      result.current.download("genome", { ...selection, format: "dna-fasta" });
+      result.current.download("genome_feature", {
+        ...selection,
+        format: "dna-fasta",
+      });
     });
 
     await waitFor(() => {
       expect(result.current.pending).toBe("dna-fasta");
     });
-    release();
+    gate.resolve(undefined);
     await waitFor(() => {
       expect(result.current.pending).toBeNull();
     });
@@ -162,11 +184,11 @@ describe("useCollectionDownload", () => {
   });
 
   it("treats an empty file as a failure instead of saving it", async () => {
-    server.use(http.post(downloadRoute, () => new Response("")));
+    server.use(http.post(featureDownloadRoute, () => new Response("")));
     const { result } = renderDownload();
 
     act(() => {
-      result.current.download("genome", {
+      result.current.download("genome_feature", {
         ...selection,
         format: "dna-fasta",
       });

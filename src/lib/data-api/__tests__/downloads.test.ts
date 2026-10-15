@@ -13,10 +13,13 @@ import {
   maxQueryDownloadRows,
   maxSelectionDownloadRows,
   maxSequenceQueryRows,
+  queryDownloadRowLimit,
   resolveCollectionDownloadSpec,
   sequenceDownloadFor,
   sequenceDownloads,
   sequenceTypeOfFormat,
+  unselectableColumnsReason,
+  unselectableFields,
   usesNativeDownload,
   type DownloadFormatId,
   type DownloadRequest,
@@ -171,6 +174,47 @@ describe("downloadUnavailableReason", () => {
   });
 });
 
+describe("unselectable columns", () => {
+  it("are the fields whose name starts with a digit", () => {
+    expect(unselectableFields(["strain", "1_pb2", "h_type", "8_ns"])).toEqual([
+      "1_pb2",
+      "8_ns",
+    ]);
+  });
+
+  it("name up to two of them in the reason", () => {
+    expect(unselectableColumnsReason(["strain", "h_type"])).toBeNull();
+    expect(unselectableColumnsReason(["strain", "1_pb2"])).toBe(
+      "The data service cannot select 1_pb2",
+    );
+    expect(unselectableColumnsReason(["1_pb2", "4_ha"])).toBe(
+      "The data service cannot select 1_pb2 and 4_ha",
+    );
+    expect(unselectableColumnsReason(["1_pb2", "2_pb1", "4_ha", "8_ns"])).toBe(
+      "The data service cannot select 1_pb2, 2_pb1 and 2 more",
+    );
+  });
+
+  it("refuse an empty list, which would download every field", () => {
+    expect(unselectableColumnsReason([])).toBe("No columns are visible");
+  });
+});
+
+describe("queryDownloadRowLimit", () => {
+  it.each(downloadFormatIds)(
+    "is the most rows an all-results %s download may hold",
+    (format) => {
+      const limit = queryDownloadRowLimit(format);
+      expect(
+        downloadUnavailableReason({ format, scope: "all", rows: limit }),
+      ).toBeNull();
+      expect(
+        downloadUnavailableReason({ format, scope: "all", rows: limit + 1 }),
+      ).not.toBeNull();
+    },
+  );
+});
+
 describe("download file names", () => {
   it.each(downloadFormatIds.flatMap((format) =>
     (["all", "selected"] as const).map((scope) => ({ format, scope })),
@@ -198,26 +242,66 @@ describe("download file names", () => {
       "domains and motifs.xlsx",
     );
   });
+
+  it("prefixes a Windows device name, which no file may take", () => {
+    expect(downloadFileName("CON", "csv")).toBe("_CON.csv");
+    expect(downloadFileName("nul.x", "tsv")).toBe("_nul.x.txt");
+    expect(downloadFileName("lpt1", "xlsx")).toBe("_lpt1.xlsx");
+    expect(downloadFileName("console", "csv")).toBe("console.csv");
+    expect(downloadFileName("com10", "csv")).toBe("com10.csv");
+  });
 });
 
 describe("download transport choice", () => {
   const request = (
     scope: DownloadRequest["scope"],
     total: number,
+    format: DownloadFormatId = "tsv",
   ): DownloadRequest => ({
-    format: "tsv",
+    format,
     scope,
     fileNameBase: "genome",
     total,
   });
 
-  it("streams a query over the buffered limit to disk, and nothing else", () => {
+  it("streams a query over the buffered limit to disk", () => {
     expect(maxBufferedDownloadRows).toBe(10_000);
-    expect(usesNativeDownload(request({ kind: "query" }, 10_000))).toBe(false);
-    expect(usesNativeDownload(request({ kind: "query" }, 10_001))).toBe(true);
+    expect(usesNativeDownload("genome", request({ kind: "query" }, 10_000))).toBe(
+      false,
+    );
+    expect(usesNativeDownload("genome", request({ kind: "query" }, 10_001))).toBe(
+      true,
+    );
     expect(
-      usesNativeDownload(request({ kind: "selected", ids: ["1"] }, 20_000)),
+      usesNativeDownload(
+        "genome",
+        request({ kind: "selected", ids: ["1"] }, 20_000),
+      ),
     ).toBe(false);
+  });
+
+  it("streams whole contigs to disk at any row count, since rows do not bound their size", () => {
+    const one: DownloadRequest["scope"] = { kind: "selected", ids: ["1.1"] };
+    expect(usesNativeDownload("genome", request(one, 1, "dna-fasta"))).toBe(true);
+    expect(
+      usesNativeDownload("genome", request({ kind: "query" }, 2, "dna-fasta")),
+    ).toBe(true);
+    expect(
+      usesNativeDownload("genome_sequence", request(one, 1, "dna-fasta")),
+    ).toBe(true);
+    // A genome's table, and a feature's own sequence, stay small.
+    expect(usesNativeDownload("genome", request(one, 1, "csv"))).toBe(false);
+    expect(
+      usesNativeDownload(
+        "genome_feature",
+        request({ kind: "query" }, 10_000, "protein-fasta"),
+      ),
+    ).toBe(false);
+    expect(
+      Object.entries(sequenceDownloads)
+        .filter(([, download]) => "unboundedSize" in download)
+        .map(([resource]) => resource),
+    ).toEqual(["genome", "genome_sequence"]);
   });
 
   it("counts a selection by its ids and a query by its total", () => {

@@ -64,6 +64,7 @@ export function OrganismLandingShell({
       navItems={navItems}
       headerContent={headerContent}
       layout={activeView.layout ?? "scroll"}
+      tabParam={activeViewKey ?? null}
     >
       <ActiveViewComponent />
     </LandingShellClient>

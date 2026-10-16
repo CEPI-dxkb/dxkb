@@ -42,6 +42,7 @@ export function EpitopeMember({ epitope, activeTab }: EpitopeMemberProps) {
       tabs={tabs}
       activeTab={activeTab}
       defaultTab="overview"
+      serverTab
       layout={activeTab === "overview" ? "scroll" : "fill"}
     >
       {content}

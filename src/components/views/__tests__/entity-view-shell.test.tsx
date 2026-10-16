@@ -2,17 +2,19 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const pushSpy = vi.fn();
+const searchParamsRef = vi.hoisted(() => ({ current: new URLSearchParams() }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushSpy }),
   usePathname: () => "/organisms/bacteria",
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => searchParamsRef.current,
 }));
 
 import { LandingShellClient } from "@/components/organisms/landing-shell/landing-shell-client";
 import { defaultUiPreferences } from "@/lib/ui-preferences/definitions";
 import { UiPreferencesProvider } from "@/lib/ui-preferences/provider";
 import { EntityViewShell, type EntityViewTab } from "../entity-view-shell";
+import { useTabContentSearchParams } from "../tab-content-search-params";
 
 type TabKey = "summary" | "records" | "history";
 
@@ -236,4 +238,49 @@ it("keeps the rail collapsed when moving from an organism page to an entity view
   expect(
     screen.getByRole("button", { name: "Expand view navigation" }),
   ).toBeInTheDocument();
+});
+
+describe("serverTab", () => {
+  function SearchProbe() {
+    return <output>{useTabContentSearchParams().toString()}</output>;
+  }
+
+  function shell(serverTab: boolean) {
+    return (
+      <EntityViewShell
+        viewLabel="Record View"
+        title="Alpha record"
+        tabs={tabs}
+        activeTab="records"
+        defaultTab="summary"
+        layout="fill"
+        serverTab={serverTab}
+      >
+        <SearchProbe />
+      </EntityViewShell>
+    );
+  }
+
+  afterEach(() => {
+    searchParamsRef.current = new URLSearchParams();
+  });
+
+  it("keeps the leaving tab on its own URL while Back replaces it", () => {
+    searchParamsRef.current = new URLSearchParams("tab=records&records.page=2");
+    const { rerender } = render(shell(true));
+    // Next's stale popstate frame: the default tab's URL, the Records RSC.
+    searchParamsRef.current = new URLSearchParams();
+    rerender(shell(true));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "tab=records&records.page=2",
+    );
+  });
+
+  it("leaves the tab on the live URL without it", () => {
+    searchParamsRef.current = new URLSearchParams("tab=records&records.page=2");
+    const { rerender } = render(shell(false));
+    searchParamsRef.current = new URLSearchParams();
+    rerender(shell(false));
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
 });

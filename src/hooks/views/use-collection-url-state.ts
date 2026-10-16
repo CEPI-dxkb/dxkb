@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useTabContentSearchParams } from "@/components/views/tab-content-search-params";
 import type {
   CollectionState,
   CollectionStateOptions,
@@ -20,7 +21,7 @@ export function useCollectionUrlState<Sort extends string>(
 ): [CollectionState<Sort>, (state: CollectionState<Sort>) => void] {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useTabContentSearchParams();
   const current = toSearchParamsRecord(
     new URLSearchParams(searchParams.toString()),
   );

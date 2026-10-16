@@ -83,6 +83,7 @@ export function ExperimentMember({
       tabs={experimentTabs.map((tab) => ({ ...tab, icon: icons[tab.key] }))}
       activeTab={activeTab}
       defaultTab="overview"
+      serverTab
       layout={activeTab === "overview" ? "scroll" : "fill"}
     >
       {content}

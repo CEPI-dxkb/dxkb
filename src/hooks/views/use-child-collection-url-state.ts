@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useTabContentSearchParams } from "@/components/views/tab-content-search-params";
 import {
   parseChildCollectionState,
   replaceChildCollectionSearchParams,
@@ -44,7 +44,7 @@ export function useChildCollectionUrlState(
   CollectionState,
   (next: CollectionState, history?: "push" | "replace") => void,
 ] {
-  const searchParams = useSearchParams();
+  const searchParams = useTabContentSearchParams();
   const state = parseChildCollectionState(
     toSearchParamsRecord(new URLSearchParams(searchParams.toString())),
     urlKey,

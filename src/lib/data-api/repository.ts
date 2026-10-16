@@ -639,10 +639,10 @@ export class ServerDataRepository {
             )
           : (predicateClause(request.scope) ?? `eq(${definition.idField},*)`),
       );
+      // Exactly the visible columns: the file streams through unread, so the
+      // primary key that JSON reads add for row lookups would be an extra column.
       if (format.kind === "table" && request.fields?.length) {
-        clauses.push(
-          `select(${[...new Set([...request.fields, definition.idField])].join(",")})`,
-        );
+        clauses.push(`select(${[...new Set(request.fields)].join(",")})`);
       }
       clauses.push(
         sortClause(

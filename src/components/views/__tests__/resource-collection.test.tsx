@@ -886,11 +886,6 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
   });
 });
 
-// The export sink above already had these two cases; the collection-load and
-// action sinks did not, and each rendered its own thing for them — an empty
-// `<p>` inside a visible destructive alert, or `String(error)`'s
-// "[object Object]". All three now route through one shared formatter, so these
-// assert the shared contract at each sink that shows it.
 describe("ResourceCollection Download tile", () => {
   const plainProfile = {
     resource: "genome" as const,

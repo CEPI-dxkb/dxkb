@@ -291,7 +291,7 @@ describe("ServerDataRepository.download", () => {
     expect(seen[0].body).toBe("eq(genome_id,*)&sort(+genome_id)&limit(2500000)");
   });
 
-  it("selects the visible columns plus the id, and every field without them", async () => {
+  it("selects only the visible columns, and every field without them", async () => {
     const seen = captureUpstream("genome_feature");
 
     await repository().download(
@@ -301,7 +301,7 @@ describe("ServerDataRepository.download", () => {
     await repository().download("genome_feature", request());
 
     expect(seen[0].body).toBe(
-      "in(feature_id,(PATRIC.1,PATRIC.2))&select(patric_id,product,feature_id)&sort(+feature_id)&limit(2)",
+      "in(feature_id,(PATRIC.1,PATRIC.2))&select(patric_id,product)&sort(+feature_id)&limit(2)",
     );
     expect(seen[1].body).not.toContain("select(");
   });

@@ -312,10 +312,7 @@ export function ResourceCollection<Row extends DataTableRow>({
   // filters the loaded page only, so the rows it leaves are downloaded by id;
   // otherwise it is the query the table sends.
   const allResultsScope: DownloadScope = hasLoadedKeyword
-    ? {
-        kind: "selected",
-        ids: displayedRows.map((row) => String(row[profile.idField])),
-      }
+    ? { kind: "selected", ids: displayedIds ?? [] }
     : {
         kind: "query",
         rql: effectiveRql,

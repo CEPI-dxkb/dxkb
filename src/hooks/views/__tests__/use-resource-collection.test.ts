@@ -1,8 +1,13 @@
 import { createElement, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  CancelledError,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { DataRepository } from "@/lib/data-api";
 import type { CollectionState } from "@/lib/views/collection-state";
+import { noop } from "@/lib/utils";
 import { resourceCollectionPageSize } from "../collection-state";
 import { useResourceCollection } from "../use-resource-collection";
 
@@ -75,6 +80,64 @@ describe("useResourceCollection", () => {
     });
     expect(collection.mock.calls[0]?.[1].sort).toBeUndefined();
     expect(result.current.sorting).toEqual([]);
+  });
+
+  const legacyOrder = {
+    field: "genome_name",
+    direction: "asc",
+    then: [{ field: "accession", direction: "asc" }],
+  } as const;
+
+  it("reads an unsorted collection in its unsorted order without marking a column", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          prefetchNextPage: false,
+          fields: ["feature_id", "genome_name"],
+          unsortedOrder: legacyOrder,
+          state: { filters: {}, page: 1, sort: "unsorted" },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+    expect(collection.mock.calls[0]?.[1].sort).toEqual(legacyOrder);
+    expect(result.current.sorting).toEqual([]);
+  });
+
+  it("reads a picked column's sort alone, not the unsorted order", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome_feature",
+          idField: "feature_id",
+          prefetchNextPage: false,
+          fields: ["feature_id", "start"],
+          unsortedOrder: legacyOrder,
+          state: { filters: {}, page: 1, sort: "start:desc" },
+          onStateChange: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(collection).toHaveBeenCalled();
+    });
+    expect(collection.mock.calls[0]?.[1].sort).toEqual({
+      field: "start",
+      direction: "desc",
+    });
   });
 
   it("preserves selection across paging and sorting, then resets it for a new query", async () => {
@@ -990,6 +1053,131 @@ describe("useResourceCollection", () => {
       expect(result.current.isPlaceholderData).toBe(false);
     });
     expect(result.current.isPageLoading).toBe(false);
+  });
+  it("resolves the current total from the rows on screen without another read", async () => {
+    const data = repository();
+    const collection = vi.spyOn(data, "collection");
+    const { result } = renderHook(
+      () =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          prefetchNextPage: false,
+          state: initialState,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper() },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+
+    await expect(result.current.currentTotal()).resolves.toBe(2);
+    expect(collection).toHaveBeenCalledTimes(1);
+  });
+  it("resolves the current total from a placeholder query's own read once it lands", async () => {
+    const data = repository();
+    const sorted = Promise.withResolvers<
+      Awaited<ReturnType<DataRepository["collection"]>>
+    >();
+    const collection = vi
+      .spyOn(data, "collection")
+      .mockImplementation((_resource, request) =>
+        request.sort?.direction === "desc"
+          ? sorted.promise
+          : Promise.resolve({
+              rows: [{ genome_id: "100.1", genome_name: "Page 1" }],
+              total: 401,
+              facets: {},
+              page: 1,
+              pageSize: 200,
+            }),
+      );
+    const { result, rerender } = renderHook(
+      ({ state }: { state: CollectionState }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper(), initialProps: { state: initialState } },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+    rerender({ state: { ...initialState, sort: "genome_name:desc" } });
+    await waitFor(() => {
+      expect(result.current.isPlaceholderData).toBe(true);
+    });
+
+    // The previous query's 401 is on screen; the total waits for this query's.
+    let resolved: number | undefined;
+    const total = result.current.currentTotal().then((value) => {
+      resolved = value;
+      return value;
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(resolved).toBeUndefined();
+
+    act(() => {
+      sorted.resolve({
+        rows: [{ genome_id: "100.9", genome_name: "Sorted" }],
+        total: 37,
+        facets: {},
+        page: 1,
+        pageSize: 200,
+      });
+    });
+    await expect(total).resolves.toBe(37);
+    // It joined the in-flight read rather than sending its own.
+    expect(collection).toHaveBeenCalledTimes(2);
+  });
+  it("cancels a pending current total when the query it waits for is replaced", async () => {
+    const data = repository();
+    vi.spyOn(data, "collection").mockImplementation((_resource, request) =>
+      request.sort?.direction === "desc"
+        ? new Promise(noop)
+        : Promise.resolve({
+            rows: [{ genome_id: "100.1", genome_name: "Page 1" }],
+            total: 401,
+            facets: {},
+            page: 1,
+            pageSize: 200,
+          }),
+    );
+    const { result, rerender } = renderHook(
+      ({ state }: { state: CollectionState }) =>
+        useResourceCollection({
+          repository: data,
+          resource: "genome",
+          idField: "genome_id",
+          fields: ["genome_id", "genome_name"],
+          prefetchNextPage: false,
+          state,
+          onStateChange: vi.fn(),
+        }),
+      { wrapper: sharedClientWrapper(), initialProps: { state: initialState } },
+    );
+    await waitFor(() => {
+      expect(result.current.rows).toHaveLength(1);
+    });
+    rerender({ state: { ...initialState, sort: "genome_name:desc" } });
+    await waitFor(() => {
+      expect(result.current.isPlaceholderData).toBe(true);
+    });
+    const total = result.current.currentTotal();
+
+    rerender({ state: initialState });
+
+    await expect(total).rejects.toBeInstanceOf(CancelledError);
   });
   it("sends no facet read and reports no facet loading without facet fields", async () => {
     const data = repository();

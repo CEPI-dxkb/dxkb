@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { CancelledError, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -286,7 +286,10 @@ export function CollectionSelectionActions({
         setIsGroupOpen(true);
       }
     } catch (error) {
-      onError(error instanceof Error ? error.message : String(error));
+      // The query the rows were waiting for was replaced: the user has moved on.
+      if (!(error instanceof CancelledError)) {
+        onError(error instanceof Error ? error.message : String(error));
+      }
     }
     if (pendingActionRef.current === actionId) {
       pendingActionRef.current = null;
@@ -301,7 +304,17 @@ export function CollectionSelectionActions({
     const fields = columns
       .filter((column) => columnMode === "all" || columnVisibility[column.id])
       .map((column) => column.id);
-    const rows = await resolveActionRows(fields, selectionCopyMaxRows, "Copy");
+    const rows = await resolveActionRows(
+      fields,
+      selectionCopyMaxRows,
+      "Copy",
+    ).catch((error: unknown) => {
+      // The query the rows were waiting for was replaced, so the dialog closes
+      // without copying rather than reporting an error.
+      if (error instanceof CancelledError) return null;
+      throw error;
+    });
+    if (!rows) return;
     await navigator.clipboard.writeText(
       serializeResourceRows(rows, columns, fields, "txt", includeHeaders, ";"),
     );

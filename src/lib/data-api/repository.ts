@@ -35,6 +35,7 @@ import type {
   MemberResult,
   RowsResult,
 } from "./types";
+import { sortKeys } from "./types";
 import { pageSize as defaultPageSize } from "./validation";
 
 interface RepositoryOptions {
@@ -137,9 +138,11 @@ async function nonEmptyBody(
 }
 
 function sortClause(sort: DataSort, idField: string): string {
-  const sign = sort.direction === "desc" ? "-" : "+";
-  const clauses = [`${sign}${sort.field}`];
-  if (sort.field !== idField) clauses.push(`+${idField}`);
+  const keys = sortKeys(sort);
+  const clauses = keys.map(
+    (key) => `${key.direction === "desc" ? "-" : "+"}${key.field}`,
+  );
+  if (!keys.some((key) => key.field === idField)) clauses.push(`+${idField}`);
   return `sort(${clauses.join(",")})`;
 }
 

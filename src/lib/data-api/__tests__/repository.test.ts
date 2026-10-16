@@ -1,32 +1,43 @@
-import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { http, HttpResponse, type JsonBodyType } from "msw";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { server } from "@/test-helpers/msw-server";
 import { ServerDataRepository } from "../repository";
 
-function jsonResponse(value: unknown, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(value), {
-    headers: { "Content-Type": "application/json" },
-    ...init,
-  });
+const emptyPage = { response: { numFound: 0, docs: [] } };
+
+/**
+ * Answer every upstream GET for `resource` with `body` as JSON (an empty Solr
+ * page by default), recording each request so a test can read it off the
+ * wire.
+ */
+function captureGets(
+  resource: string,
+  body: JsonBodyType = emptyPage,
+  init?: ResponseInit,
+): Request[] {
+  const requested: Request[] = [];
+  server.use(
+    http.get(`https://data.test/${resource}/`, ({ request }) => {
+      requested.push(request);
+      return HttpResponse.json(body, init);
+    }),
+  );
+  return requested;
 }
 
 describe("ServerDataRepository", () => {
   it("combines rows, count, and facets with exclusive-end range and stable sorting", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse({
-        response: {
-          numFound: 251,
-          docs: [{ genome_id: "1.1", genome_name: "One" }],
-        },
-        facet_counts: { facet_fields: { genus: ["Escherichia", 20] } },
-      }),
-    );
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: fetcher,
+    const requested = captureGets("genome", {
+      response: {
+        numFound: 251,
+        docs: [{ genome_id: "1.1", genome_name: "One" }],
+      },
+      facet_counts: { facet_fields: { genus: ["Escherichia", 20] } },
     });
 
-    const result = await repository.collection("genome", {
+    const result = await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("genome", {
       operation: "collection",
       page: 1,
       pageSize: 200,
@@ -36,12 +47,10 @@ describe("ServerDataRepository", () => {
       sort: { field: "genome_name", direction: "asc" },
     });
 
-    const [url, init] = fetcher.mock.calls[0];
-    expect(url).toBeInstanceOf(URL);
-    const requestedUrl = (url as URL).href;
-    expect(requestedUrl).toContain("eq(genome_id,1.1)");
-    expect(requestedUrl).toContain("sort(+genome_name,+genome_id)");
-    expect(new Headers(init?.headers).get("Range")).toBe("items=0-200");
+    expect(requested).toHaveLength(1);
+    expect(requested[0].url).toContain("eq(genome_id,1.1)");
+    expect(requested[0].url).toContain("sort(+genome_name,+genome_id)");
+    expect(requested[0].headers.get("Range")).toBe("items=0-200");
     expect(result).toEqual({
       rows: [{ genome_id: "1.1", genome_name: "One" }],
       total: 251,
@@ -51,33 +60,83 @@ describe("ServerDataRepository", () => {
     });
   });
 
-  it("omits projection when a field starts with a digit", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-      jsonResponse({
-        response: {
-          numFound: 1,
-          docs: [
-            {
-              id: "strain-1",
-              strain: "A/test/1/2024",
-              "1_pb2": ["CY000001"],
-              unrequested_field: "must not escape",
-            },
-          ],
-        },
-      }),
-    );
-    const repository = new ServerDataRepository({
+  it("breaks a sort's ties with its next keys, in order, before the id", async () => {
+    const requested = captureGets("genome_feature");
+
+    await new ServerDataRepository({
       baseUrl: "https://data.test",
-      fetch: fetcher,
+    }).collection("genome_feature", {
+      operation: "collection",
+      sort: {
+        field: "genome_name",
+        direction: "asc",
+        then: [
+          { field: "accession", direction: "asc" },
+          { field: "start", direction: "desc" },
+        ],
+      },
     });
 
-    const result = await repository.collection("strain", {
+    expect(requested).toHaveLength(1);
+    expect(decodeURIComponent(requested[0].url)).toContain(
+      "sort(+genome_name,+accession,-start,+feature_id)",
+    );
+  });
+
+  it.each([
+    ["its first key", { field: "feature_id", direction: "desc" }, "-feature_id"],
+    [
+      "a tie-breaking key",
+      {
+        field: "genome_name",
+        direction: "asc",
+        then: [{ field: "feature_id", direction: "desc" }],
+      },
+      "+genome_name,-feature_id",
+    ],
+  ] as const)(
+    "does not repeat the id when %s is the id",
+    async (_key, sort, clauses) => {
+      const requested = captureGets("genome_feature");
+
+      await new ServerDataRepository({
+        baseUrl: "https://data.test",
+      }).collection("genome_feature", {
+        operation: "collection",
+        sort,
+      });
+
+      expect(requested).toHaveLength(1);
+      expect(decodeURIComponent(requested[0].url)).toContain(
+        `sort(${clauses})`,
+      );
+    },
+  );
+
+  it("omits projection when a field starts with a digit", async () => {
+    const requested = captureGets("strain", {
+      response: {
+        numFound: 1,
+        docs: [
+          {
+            id: "strain-1",
+            strain: "A/test/1/2024",
+            "1_pb2": ["CY000001"],
+            unrequested_field: "must not escape",
+          },
+        ],
+      },
+    });
+
+    const result = await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("strain", {
       operation: "collection",
       fields: ["strain", "1_pb2"],
     });
 
-    expect((fetcher.mock.calls[0][0] as URL).href).not.toContain("select(");
+    expect(requested).toHaveLength(1);
+    expect(requested[0].url).not.toContain("select(");
     expect(result.rows).toEqual([
       {
         id: "strain-1",
@@ -88,68 +147,56 @@ describe("ServerDataRepository", () => {
   });
 
   it("includes the required resource ID in narrow export projections", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(
-        jsonResponse([{ genome_id: "1.1", genome_name: "One" }]),
-      );
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: fetcher,
-    });
+    const requested = captureGets("genome", [
+      { genome_id: "1.1", genome_name: "One" },
+    ]);
 
     await expect(
-      repository.export("genome", {
-        operation: "export",
-        fields: ["genome_name"],
-        limit: 10,
-      }),
+      new ServerDataRepository({ baseUrl: "https://data.test" }).export(
+        "genome",
+        {
+          operation: "export",
+          fields: ["genome_name"],
+          limit: 10,
+        },
+      ),
     ).resolves.toEqual({
       rows: [{ genome_id: "1.1", genome_name: "One" }],
     });
 
-    expect((fetcher.mock.calls[0][0] as URL).href).toContain(
-      "select(genome_name,genome_id)",
-    );
+    expect(requested).toHaveLength(1);
+    expect(requested[0].url).toContain("select(genome_name,genome_id)");
   });
 
   it("applies the requested offset to export ranges", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse([{ genome_id: "10000" }]));
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: fetcher,
-    });
+    const requested = captureGets("genome", [{ genome_id: "10000" }]);
 
-    await repository.export("genome", {
-      operation: "export",
-      fields: ["genome_id"],
-      limit: 10_000,
-      offset: 10_000,
-    });
-
-    expect(new Headers(fetcher.mock.calls[0][1]?.headers).get("Range")).toBe(
-      "items=10000-20000",
+    await new ServerDataRepository({ baseUrl: "https://data.test" }).export(
+      "genome",
+      {
+        operation: "export",
+        fields: ["genome_id"],
+        limit: 10_000,
+        offset: 10_000,
+      },
     );
+
+    expect(requested).toHaveLength(1);
+    expect(requested[0].headers.get("Range")).toBe("items=10000-20000");
   });
 
   it("uses tokenized prefix matching for keywords", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: fetcher,
-    });
+    const requested = captureGets("genome");
 
-    await repository.collection("genome", {
+    await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("genome", {
       operation: "collection",
       keyword: "influenza virus",
     });
 
-    const [url] = fetcher.mock.calls[0];
-    expect((url as URL).href).toContain(
+    expect(requested).toHaveLength(1);
+    expect(requested[0].url).toContain(
       "and(keyword(influenza%2A),keyword(virus%2A))",
     );
   });
@@ -158,74 +205,62 @@ describe("ServerDataRepository", () => {
     // The Data API brackets the keyword clauses, and a bracketed group with no
     // positive clause matches nothing: genome 83332.12's features without
     // hypothetical and putative are 8,141, and(not(...),not(...)) nested 0.
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: fetcher,
-    });
+    const requested = captureGets("genome_feature");
 
-    await repository.collection("genome_feature", {
+    await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("genome_feature", {
       operation: "collection",
       rql: "eq(genome_id,83332.12)",
       keyword: "NOT hypothetical NOT putative",
       keywordMode: "exact",
     });
 
-    const [url] = fetcher.mock.calls[0];
-    expect(decodeURIComponent((url as URL).search)).toContain(
+    expect(requested).toHaveLength(1);
+    expect(decodeURIComponent(new URL(requested[0].url).search)).toContain(
       "and(eq(genome_id,83332.12),and(keyword(*),not(keyword(hypothetical)),not(keyword(putative))))",
     );
   });
 
   it("supports exact keyword matching for resources with that legacy contract", async () => {
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse({ response: { numFound: 0, docs: [] } }));
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: fetcher,
-    });
+    const requested = captureGets("taxonomy");
 
-    await repository.collection("taxonomy", {
+    await new ServerDataRepository({
+      baseUrl: "https://data.test",
+    }).collection("taxonomy", {
       operation: "collection",
       keyword: "influenza virus",
       keywordMode: "exact",
     });
 
-    const [url] = fetcher.mock.calls[0];
-    expect((url as URL).href).toContain(
-      "and(keyword(influenza),keyword(virus))",
-    );
-    expect((url as URL).href).not.toContain("%2A");
+    expect(requested).toHaveLength(1);
+    expect(requested[0].url).toContain("and(keyword(influenza),keyword(virus))");
+    expect(requested[0].url).not.toContain("%2A");
   });
 
   it("forwards auth and returns null for a missing member", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse([]));
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test/",
-      token: "raw-token",
-      fetch: fetcher,
-    });
+    const requested = captureGets("epitope", []);
+
     await expect(
-      repository.member("epitope", { operation: "member", id: "12" }),
+      new ServerDataRepository({
+        baseUrl: "https://data.test/",
+        token: "raw-token",
+      }).member("epitope", { operation: "member", id: "12" }),
     ).resolves.toEqual({ row: null });
-    expect(
-      new Headers(fetcher.mock.calls[0][1]?.headers).get("Authorization"),
-    ).toBe("raw-token");
+    expect(requested).toHaveLength(1);
+    expect(requested[0].headers.get("Authorization")).toBe("raw-token");
   });
 
   it.each([{ response: { unsupported: [] } }, { items: null }, { rows: {} }])(
     "rejects unsupported row envelopes",
     async (payload) => {
-      const repository = new ServerDataRepository({
-        baseUrl: "https://data.test",
-        fetch: vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(payload)),
-      });
+      captureGets("genome", payload);
 
       await expect(
-        repository.member("genome", { operation: "member", id: "1" }),
+        new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+          "genome",
+          { operation: "member", id: "1" },
+        ),
       ).rejects.toMatchObject({ code: "malformed_response" });
     },
   );
@@ -233,96 +268,81 @@ describe("ServerDataRepository", () => {
   it.each([null, true, "", -1, Number.POSITIVE_INFINITY])(
     "rejects invalid facet count %j",
     async (count) => {
-      const repository = new ServerDataRepository({
-        baseUrl: "https://data.test",
-        fetch: vi.fn<typeof fetch>().mockResolvedValue(
-          jsonResponse({
-            response: { numFound: 0, docs: [] },
-            facet_counts: { facet_fields: { genus: ["Escherichia", count] } },
-          }),
-        ),
+      captureGets("genome", {
+        response: { numFound: 0, docs: [] },
+        facet_counts: { facet_fields: { genus: ["Escherichia", count] } },
       });
 
       await expect(
-        repository.collection("genome", {
-          operation: "collection",
-          facets: ["genus"],
-        }),
+        new ServerDataRepository({ baseUrl: "https://data.test" }).collection(
+          "genome",
+          { operation: "collection", facets: ["genus"] },
+        ),
       ).rejects.toMatchObject({ code: "malformed_response" });
     },
   );
 
   it("requires HTTPS and disables redirects for authenticated requests", async () => {
-    const insecureFetcher = vi.fn<typeof fetch>();
-    const insecureRepository = new ServerDataRepository({
-      baseUrl: "http://data.test",
-      token: "raw-token",
-      fetch: insecureFetcher,
-    });
+    let insecureRequests = 0;
+    server.use(
+      http.all("http://data.test/*", () => {
+        insecureRequests += 1;
+        return HttpResponse.json([]);
+      }),
+    );
 
     await expect(
-      insecureRepository.member("epitope", {
-        operation: "member",
-        id: "12",
-      }),
+      new ServerDataRepository({
+        baseUrl: "http://data.test",
+        token: "raw-token",
+      }).member("epitope", { operation: "member", id: "12" }),
     ).rejects.toThrow(/HTTPS/);
-    expect(insecureFetcher).not.toHaveBeenCalled();
+    expect(insecureRequests).toBe(0);
 
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(jsonResponse([]));
-    const repository = new ServerDataRepository({
+    const requested = captureGets("epitope", []);
+    await new ServerDataRepository({
       baseUrl: "https://data.test",
       token: "raw-token",
-      fetch: fetcher,
-    });
-    await repository.member("epitope", { operation: "member", id: "12" });
+    }).member("epitope", { operation: "member", id: "12" });
 
-    expect(fetcher).toHaveBeenCalledWith(
-      expect.any(URL),
-      expect.objectContaining({ redirect: "error" }),
-    );
+    expect(requested).toHaveLength(1);
+    expect(requested[0].redirect).toBe("error");
   });
 
   it("validates genome fields used by consumers", async () => {
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(jsonResponse([{ genome_name: "missing id" }])),
-    });
+    captureGets("genome", [{ genome_name: "missing id" }]);
+
     await expect(
-      repository.member("genome", { operation: "member", id: "1" }),
+      new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+        "genome",
+        { operation: "member", id: "1" },
+      ),
     ).rejects.toThrow(/Malformed genome response/);
   });
 
   it.each([401, 403])("preserves inaccessible status %s", async (status) => {
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(
-          jsonResponse({ message: "Inaccessible" }, { status }),
-        ),
-    });
+    captureGets("genome", { message: "Inaccessible" }, { status });
 
     await expect(
-      repository.member("genome", { operation: "member", id: "1.1" }),
+      new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+        "genome",
+        { operation: "member", id: "1.1" },
+      ),
     ).rejects.toMatchObject({ status });
   });
 
   it("retains a concise meaningful upstream error", async () => {
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(
-          jsonResponse(
-            { error: { msg: "Invalid query near genome_id\nstack details" } },
-            { status: 400 },
-          ),
-        ),
-    });
+    captureGets(
+      "genome",
+      { error: { msg: "Invalid query near genome_id\nstack details" } },
+      { status: 400 },
+    );
+
     await expect(
-      repository.member("genome", { operation: "member", id: "1" }),
+      new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+        "genome",
+        { operation: "member", id: "1" },
+      ),
     ).rejects.toMatchObject({
       message: "Invalid query near genome_id stack details",
       status: 502,
@@ -331,25 +351,21 @@ describe("ServerDataRepository", () => {
   });
 
   it("recognizes a nested upstream service outage", async () => {
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: vi.fn<typeof fetch>().mockResolvedValue(
-        jsonResponse(
-          {
-            status: 500,
-            message:
-              "Unable to parse the query response. <html><body><h1>503 Service Unavailable</h1> No server is available to handle this request. </body></html>",
-          },
-          { status: 500 },
-        ),
-      ),
-    });
+    captureGets(
+      "protein_structure",
+      {
+        status: 500,
+        message:
+          "Unable to parse the query response. <html><body><h1>503 Service Unavailable</h1> No server is available to handle this request. </body></html>",
+      },
+      { status: 500 },
+    );
 
     await expect(
-      repository.collection("protein_structure", {
-        operation: "collection",
-        rql: "eq(pdb_id,*)",
-      }),
+      new ServerDataRepository({ baseUrl: "https://data.test" }).collection(
+        "protein_structure",
+        { operation: "collection", rql: "eq(pdb_id,*)" },
+      ),
     ).rejects.toMatchObject({
       message: "The data service is temporarily unavailable. Please try again.",
       status: 503,
@@ -363,17 +379,13 @@ describe("ServerDataRepository", () => {
     [404, "not_found"],
     [429, "rate_limited"],
   ] as const)("preserves safe upstream status %i", async (status, code) => {
-    const repository = new ServerDataRepository({
-      baseUrl: "https://data.test",
-      fetch: vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(
-          jsonResponse({ message: "Upstream denied request" }, { status }),
-        ),
-    });
+    captureGets("genome", { message: "Upstream denied request" }, { status });
 
     await expect(
-      repository.member("genome", { operation: "member", id: "1" }),
+      new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+        "genome",
+        { operation: "member", id: "1" },
+      ),
     ).rejects.toMatchObject({
       status,
       code,
@@ -390,44 +402,43 @@ describe("ServerDataRepository", () => {
     "does not classify safe upstream status %i as a service outage from its message",
     async (status, code) => {
       const message = "No server is available to handle this request";
-      const repository = new ServerDataRepository({
-        baseUrl: "https://data.test",
-        fetch: vi
-          .fn<typeof fetch>()
-          .mockResolvedValue(jsonResponse({ message }, { status })),
-      });
+      captureGets("genome", { message }, { status });
 
       await expect(
-        repository.member("genome", { operation: "member", id: "1" }),
+        new ServerDataRepository({ baseUrl: "https://data.test" }).member(
+          "genome",
+          { operation: "member", id: "1" },
+        ),
       ).rejects.toMatchObject({ status, code, message });
     },
   );
 
   it("forwards abort signals and cache options to the upstream request", async () => {
-    const signal = new AbortController().signal;
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(jsonResponse([{ genome_id: "1.1" }]));
-    const repository = new ServerDataRepository({
+    const requested = captureGets("genome", [{ genome_id: "1.1" }]);
+    // `next` is Next.js's extension to fetch's init: it never reaches the
+    // Request MSW sees, so only the call shows it. The spy passes through to
+    // MSW, so the request still goes over the intercepted wire.
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    onTestFinished(() => {
+      fetchSpy.mockRestore();
+    });
+    const controller = new AbortController();
+
+    await new ServerDataRepository({
       baseUrl: "https://data.test",
-      fetch: fetcher,
       cache: "force-cache",
       revalidate: 300,
-    });
+    }).member("genome", { operation: "member", id: "1.1" }, controller.signal);
+    // The Request's signal follows the caller's, so aborting it now shows the
+    // two are linked.
+    controller.abort();
 
-    await repository.member(
-      "genome",
-      { operation: "member", id: "1.1" },
-      signal,
-    );
-
-    expect(fetcher).toHaveBeenCalledWith(
+    expect(requested).toHaveLength(1);
+    expect(requested[0].cache).toBe("force-cache");
+    expect(requested[0].signal.aborted).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledWith(
       expect.any(URL),
-      expect.objectContaining({
-        signal,
-        cache: "force-cache",
-        next: { revalidate: 300 },
-      }),
+      expect.objectContaining({ next: { revalidate: 300 } }),
     );
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { DataRepository } from "@/lib/data-api";
+import { DataRepository, type DataSort } from "@/lib/data-api";
 import {
   featureCollectionOptions,
   featureCollectionProfile,
@@ -37,6 +37,8 @@ interface FeatureResourceCollectionProps {
    * unset keeps the token-prefix default.
    */
   serverKeywordMode?: "exact" | "prefix";
+  /** The order rows come in while no column is sorted (`featureGridDefaultOrder`). */
+  unsortedOrder?: DataSort;
 }
 
 export function FeatureResourceCollection({
@@ -47,15 +49,19 @@ export function FeatureResourceCollection({
   initialState,
   keywordMode = "server",
   serverKeywordMode,
+  unsortedOrder,
 }: FeatureResourceCollectionProps) {
   const [urlState, setState] = useCollectionUrlState(collectionOptions);
   const state = initialState ?? urlState;
-  const profile = enableFacets
-    ? featureCollectionProfile
-    : { ...featureCollectionProfile, facets: undefined };
+  const profile = {
+    ...featureCollectionProfile,
+    ...(!enableFacets && { facets: undefined }),
+    ...(serverKeywordMode && { serverKeywordMode }),
+    ...(unsortedOrder && { unsortedOrder }),
+  };
   return (
     <ResourceCollection<FeatureViewRecord>
-      profile={serverKeywordMode ? { ...profile, serverKeywordMode } : profile}
+      profile={profile}
       repository={repository}
       state={state}
       facetState={facetCountState(state, collectionOptions)}

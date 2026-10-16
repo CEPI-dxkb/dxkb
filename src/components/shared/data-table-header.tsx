@@ -183,10 +183,10 @@ export function DataTableHeader({
                       >
                         <table.FlexRender header={header} />
                         {column.getIsSorted() === "asc" && (
-                          <ChevronUp className="ml-0.5 inline-block size-3 align-text-bottom" />
+                          <ChevronUp className="ml-0.5 inline-block size-3.5 shrink-0 stroke-3 align-text-bottom text-info" />
                         )}
                         {column.getIsSorted() === "desc" && (
-                          <ChevronDown className="ml-0.5 inline-block size-3 align-text-bottom" />
+                          <ChevronDown className="ml-0.5 inline-block size-3.5 shrink-0 stroke-3 align-text-bottom text-info" />
                         )}
                       </button>
                     </div>

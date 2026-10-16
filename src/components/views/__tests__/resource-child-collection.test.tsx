@@ -492,6 +492,25 @@ describe("ResourceChildCollection scope changes", () => {
     );
   });
 
+  it("hands its unsorted order to the collection profile", () => {
+    const order = { field: "genome_name", direction: "asc" } as const;
+    render(
+      <ResourceChildCollection
+        resource="genome_feature"
+        urlKey="features"
+        label="Features"
+        idField="feature_id"
+        rql="eq(genome_id,1.1)"
+        defaultSort="unsorted"
+        unsortedOrder={order}
+      />,
+    );
+
+    const profile = resourceCollectionProfile.mock.lastCall?.[0] as
+      ResourceCollectionProfile<Record<string, unknown>> | undefined;
+    expect(profile?.unsortedOrder).toBe(order);
+  });
+
   it("keeps a supplied profile scoped to its parent predicate", () => {
     const suppliedProfile: ResourceCollectionProfile<Record<string, unknown>> =
       {
@@ -634,7 +653,7 @@ describe("ResourceChildCollection scope changes", () => {
     expect(shownCollectionState()).toStrictEqual({
       filters: {},
       page: 1,
-      sort: "patric_id:asc",
+      sort: "unsorted",
     });
   });
 

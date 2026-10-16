@@ -1,4 +1,4 @@
-import { eq, validateRql } from "@/lib/data-api";
+import { eq, validateRql, type DataSort } from "@/lib/data-api";
 import {
   parseCollectionState,
   type CollectionState,
@@ -19,6 +19,23 @@ export const featureCollectionOptions: CollectionStateOptions = {
   sortAllowlist: ["unsorted", ...featureSorts],
   friendlyFilters: ["genome_id", "annotation", "feature_type", "filter"],
   independentFilters: ["filter"],
+};
+
+/**
+ * Legacy BV-BRC FeatureGrid's and ProteinGrid's row order while no column is
+ * sorted (`p3/widget/FeatureGrid.js` `queryOptions`:
+ * `sort(+genome_name,+accession,+start)`), which marks no column as sorted.
+ * Every Features and Proteins table reads its rows in it, except where a
+ * keyword search opened the list: legacy's global search adds
+ * `#defaultSort=-score`, so those keep the backend's relevance order.
+ */
+export const featureGridDefaultOrder: DataSort = {
+  field: "genome_name",
+  direction: "asc",
+  then: [
+    { field: "accession", direction: "asc" },
+    { field: "start", direction: "asc" },
+  ],
 };
 
 /**

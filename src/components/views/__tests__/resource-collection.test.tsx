@@ -355,6 +355,29 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(refetch).toHaveBeenCalledOnce();
   });
+
+  it("reads an unsorted collection in the profile's unsorted order, with current rows", () => {
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, unsortedOrder }}
+        repository={repository()}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
+      unsortedOrder,
+    });
+    // The rows on screen are this query's, so the table shows no refresh.
+    expect(dataTableProps.isRefreshing).toBe(false);
+  });
+
   it("shows full-detail errors instead of a partial row", () => {
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
@@ -965,6 +988,36 @@ describe("ResourceCollection Download tile", () => {
     );
   });
 
+  it("downloads an unsorted collection in the profile's unsorted order", async () => {
+    const user = userEvent.setup();
+    useResourceCollection.mockReturnValue({
+      ...collectionResult(),
+      ...unselected,
+      total: 3,
+    });
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+
+    render(
+      <ResourceCollection
+        profile={{ ...plainProfile, unsortedOrder }}
+        repository={repository()}
+        state={{ filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await downloadFromTile(user, "CSV");
+    expect(collectionDownload).toHaveBeenCalledWith(
+      "genome",
+      expect.objectContaining({ sort: unsortedOrder }),
+      expect.anything(),
+    );
+  });
+
   it("downloads an all-pages selection as the query, named as a selection", async () => {
     const user = userEvent.setup();
     useResourceCollection.mockReturnValue({
@@ -1051,6 +1104,8 @@ describe("ResourceCollection Download tile", () => {
       />,
     );
 
+    // The previous query's rows stay on screen, marked as refreshing.
+    expect(dataTableProps.isRefreshing).toBe(true);
     await downloadFromTile(user);
     expect(screen.getByRole("radio", { name: /^All/ })).toHaveAttribute(
       "aria-disabled",

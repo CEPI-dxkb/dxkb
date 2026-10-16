@@ -25,6 +25,7 @@ interface ChildProps {
   idField: string;
   rql: string;
   defaultSort: string;
+  unsortedOrder?: unknown;
   defaultFilters?: unknown;
   serverKeywordMode?: string;
   columns?: unknown;
@@ -90,6 +91,16 @@ const initialState: CollectionState = {
   filters: {},
   page: 1,
   sort: "unsorted",
+};
+
+/** Legacy FeatureGrid's and ProteinGrid's `queryOptions` sort. */
+const legacyGridOrder = {
+  field: "genome_name",
+  direction: "asc",
+  then: [
+    { field: "accession", direction: "asc" },
+    { field: "start", direction: "asc" },
+  ],
 };
 
 /** What `/genome` means with no query of its own. */
@@ -620,7 +631,9 @@ describe("GenomeCollection", () => {
     );
   });
 
-  it("gives the Features tab legacy's removable PATRIC default and backend order", () => {
+  it("gives a keyword search's Features tab legacy's removable PATRIC default and relevance order", () => {
+    // Legacy's global search opens GenomeList with #defaultSort=-score, which
+    // its Features tab inherits.
     searchParams.current = new URLSearchParams("keyword=Dnak&tab=features");
 
     render(
@@ -642,18 +655,47 @@ describe("GenomeCollection", () => {
         defaultSort: "unsorted",
       }),
     );
+    expect(childProps.current?.unsortedOrder).toBeUndefined();
   });
 
-  it("leaves the Proteins tab in backend order with no default filter", () => {
-    searchParams.current = new URLSearchParams("tab=proteins");
+  it.each([
+    ["features", undefined],
+    ["proteins", undefined],
+    // Text without terms searches for nothing (`genomeBaseRql`), so these are
+    // bare lists too.
+    ["features", "   "],
+    ["proteins", '""'],
+  ])(
+    "orders the %s tab as legacy's grid does when no keyword search drives the list (keyword %j)",
+    (tab, keyword) => {
+      searchParams.current = new URLSearchParams(`tab=${tab}`);
+
+      render(
+        <GenomeCollection
+          initialState={{ filters: {}, page: 1, sort: "unsorted", keyword }}
+        />,
+      );
+
+      expect(childProps.current).toEqual(
+        expect.objectContaining({
+          defaultSort: "unsorted",
+          unsortedOrder: legacyGridOrder,
+        }),
+      );
+    },
+  );
+
+  it("keeps a keyword search's Proteins tab in relevance order with no default filter", () => {
+    searchParams.current = new URLSearchParams("keyword=Dnak&tab=proteins");
 
     render(
       <GenomeCollection
-        initialState={{ filters: {}, page: 1, sort: "unsorted" }}
+        initialState={{ filters: {}, page: 1, sort: "unsorted", keyword: "Dnak" }}
       />,
     );
 
     expect(childProps.current?.defaultSort).toBe("unsorted");
+    expect(childProps.current?.unsortedOrder).toBeUndefined();
     expect(childProps.current?.defaultFilters).toBeUndefined();
   });
 

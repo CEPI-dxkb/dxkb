@@ -119,6 +119,30 @@ describe("ServerDataRepository.download", () => {
     expect(seen[0].range).toBe("items=0-2500000");
   });
 
+  it("sends every key of a multi-key sort before the primary key", async () => {
+    countUpstream("genome_feature", 3);
+    const seen = captureUpstream("genome_feature");
+
+    await repository().download("genome_feature", {
+      format: "csv",
+      scope: { kind: "query", rql: "eq(genome_id,83332.12)" },
+      sort: {
+        field: "genome_name",
+        direction: "asc",
+        then: [
+          { field: "accession", direction: "asc" },
+          { field: "start", direction: "asc" },
+        ],
+      },
+      fileNameBase: "genome_feature",
+      total: 3,
+    });
+
+    expect(seen[0].body).toBe(
+      "eq(genome_id,83332.12)&sort(+genome_name,+accession,+start,+feature_id)&limit(2500000)",
+    );
+  });
+
   it("counts a query again before downloading it", async () => {
     const counts = countUpstream("genome", 401);
     captureUpstream("genome");

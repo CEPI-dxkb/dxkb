@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { CancelledError } from "@tanstack/react-query";
 import type { DataRepository } from "@/lib/data-api";
 import {
   maxTaxonomyActionIds,
@@ -475,8 +476,6 @@ describe("ResourceCollection Taxonomy actions", () => {
   });
   describe("while the rows and total belong to a previous query", () => {
     const taxonomyRow = { taxon_id: "234", taxon_name: "Brucella" };
-    const staleWait =
-      "Wait for the current results to finish loading and try again.";
 
     function renderAllPagesTaxa(
       overrides: Partial<ReturnType<typeof useResourceCollectionHook>>,
@@ -505,45 +504,129 @@ describe("ResourceCollection Taxonomy actions", () => {
       return data;
     }
 
-    it("does not resolve all matching Taxa for SERVICES", async () => {
+    it("waits for the current query's total, then resolves all matching Taxa for SERVICES", async () => {
       const user = userEvent.setup();
-      const data = renderAllPagesTaxa({ isPlaceholderData: true });
+      const currentTotal = Promise.withResolvers<number>();
+      // The previous query's total is over the ID limit; this query's is not.
+      const data = renderAllPagesTaxa({
+        isPlaceholderData: true,
+        total: maxTaxonomyActionIds + 1,
+        currentTotal: () => currentTotal.promise,
+      });
       const exportAll = vi.spyOn(data, "exportAll");
 
       await user.click(screen.getByRole("button", { name: "services" }));
-
-      expect(await screen.findByText(staleWait)).toBeVisible();
       expect(exportAll).not.toHaveBeenCalled();
-      expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
-    });
 
-    it("says to wait, not that the selection is too large, when the previous total is over the limit", async () => {
-      const user = userEvent.setup();
-      renderAllPagesTaxa({
-        isPlaceholderData: true,
-        total: maxTaxonomyActionIds + 1,
-      });
+      currentTotal.resolve(2);
 
-      await user.click(screen.getByRole("button", { name: "services" }));
-
-      expect(await screen.findByText(staleWait)).toBeVisible();
+      expect(await screen.findByTestId("taxonomy-services")).toHaveTextContent(
+        "234,235",
+      );
+      expect(exportAll).toHaveBeenCalledOnce();
       expect(
         screen.queryByText(taxonomyActionLimitMessage()),
       ).not.toBeInTheDocument();
     });
 
-    it("does not reserve a tab for a Taxonomy navigation", async () => {
+    it("applies the ID limit to the current query's total, not a previous query's", async () => {
       const user = userEvent.setup();
-      const open = vi.fn();
+      const data = renderAllPagesTaxa({
+        isPlaceholderData: true,
+        total: 2,
+        currentTotal: () => Promise.resolve(maxTaxonomyActionIds + 1),
+      });
+      const exportAll = vi.spyOn(data, "exportAll");
+
+      await user.click(screen.getByRole("button", { name: "services" }));
+
+      expect(
+        await screen.findByText(taxonomyActionLimitMessage()),
+      ).toBeVisible();
+      expect(exportAll).not.toHaveBeenCalled();
+      expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
+    });
+
+    it("drops SERVICES quietly when the query it waits for is replaced", async () => {
+      const user = userEvent.setup();
+      const data = renderAllPagesTaxa({
+        isPlaceholderData: true,
+        currentTotal: () => Promise.reject(new CancelledError()),
+      });
+      const exportAll = vi.spyOn(data, "exportAll");
+
+      const services = screen.getByRole("button", { name: "services" });
+      await user.click(services);
+
+      await waitFor(() => {
+        expect(services).toBeEnabled();
+      });
+      expect(
+        screen.queryByText("Could not complete action"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId("taxonomy-services")).not.toBeInTheDocument();
+      expect(exportAll).not.toHaveBeenCalled();
+    });
+
+    it("reserves the tab inside the click, then navigates it once the current query's total lands", async () => {
+      const user = userEvent.setup();
+      const close = vi.fn();
+      const links: { href: string; click: ReturnType<typeof vi.fn> }[] = [];
+      const createElement = vi.fn(() => {
+        const link = { href: "", target: "", rel: "", click: vi.fn() };
+        links.push(link);
+        return link;
+      });
+      const open = vi.fn(() => ({
+        opener: window,
+        document: { createElement },
+        close,
+      }));
       vi.stubGlobal("open", open);
-      const data = renderAllPagesTaxa({ isPlaceholderData: true });
+      const currentTotal = Promise.withResolvers<number>();
+      renderAllPagesTaxa({
+        isPlaceholderData: true,
+        currentTotal: () => currentTotal.promise,
+      });
+
+      await user.click(screen.getByRole("button", { name: "Genomes action" }));
+      // Reserved before the wait: once it is over, the browser would no longer
+      // treat the open as user-initiated and would block it.
+      expect(open).toHaveBeenCalledWith("about:blank", "_blank");
+      expect(links).toHaveLength(0);
+
+      currentTotal.resolve(2);
+
+      await waitFor(() => {
+        expect(links).toHaveLength(1);
+      });
+      expect(links[0]?.href).toBe(
+        "/genome?rql=and(in(taxon_lineage_ids,(234,235)),ne(genome_status,Deprecated))",
+      );
+      expect(close).not.toHaveBeenCalled();
+    });
+
+    it("closes the reserved tab quietly when the query it waits for is replaced", async () => {
+      const user = userEvent.setup();
+      const close = vi.fn();
+      vi.stubGlobal(
+        "open",
+        vi.fn(() => ({ opener: window, close })),
+      );
+      const data = renderAllPagesTaxa({
+        isPlaceholderData: true,
+        currentTotal: () => Promise.reject(new CancelledError()),
+      });
       const exportAll = vi.spyOn(data, "exportAll");
 
       await user.click(screen.getByRole("button", { name: "Genomes action" }));
 
-      expect(await screen.findByText(staleWait)).toBeVisible();
-      // No blank tab is opened only to be closed again.
-      expect(open).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(close).toHaveBeenCalledOnce();
+      });
+      expect(
+        screen.queryByText("Could not complete action"),
+      ).not.toBeInTheDocument();
       expect(exportAll).not.toHaveBeenCalled();
     });
 
@@ -561,7 +644,9 @@ describe("ResourceCollection Taxonomy actions", () => {
         "234,235",
       );
       expect(exportAll).toHaveBeenCalledOnce();
-      expect(screen.queryByText(staleWait)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Could not complete action"),
+      ).not.toBeInTheDocument();
     });
 
     it("refuses SERVICES when the read returns more Taxa than the count on screen allowed", async () => {

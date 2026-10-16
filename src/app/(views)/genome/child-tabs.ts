@@ -1,6 +1,7 @@
 import type { ResourceCollectionProfile } from "@/components/views/resource-collection";
-import type { DataResource } from "@/lib/data-api";
+import type { DataResource, DataSort } from "@/lib/data-api";
 import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
+import { featureGridDefaultOrder } from "@/lib/feature-view";
 import type { ChildCollectionUrlKey } from "@/lib/views/child-collection-state";
 import {
   genomeSequenceColumns,
@@ -13,6 +14,7 @@ interface GenomeChildCollection {
   label: string;
   idField: string;
   defaultSort: string;
+  unsortedOrder?: DataSort;
   columns?: ResourceCollectionProfile<Record<string, unknown>>["columns"];
   download?: CollectionDownloadSpec;
 }
@@ -37,19 +39,23 @@ export const genomeChildCollections = {
     defaultSort: "sequence_id:asc",
     columns: genomeSequenceColumns,
   },
+  // Legacy FeatureGrid's and ProteinGrid's order, which marks no column as
+  // sorted: a genome's features run along each sequence from position 1.
   features: {
     urlKey: "features",
     resource: "genome_feature",
     label: "Features",
     idField: "feature_id",
-    defaultSort: "patric_id:asc",
+    defaultSort: "unsorted",
+    unsortedOrder: featureGridDefaultOrder,
   },
   proteins: {
     urlKey: "proteins",
     resource: "genome_feature",
     label: "Proteins",
     idField: "feature_id",
-    defaultSort: "patric_id:asc",
+    defaultSort: "unsorted",
+    unsortedOrder: featureGridDefaultOrder,
     download: proteinDownloadSpec,
   },
   domains: {

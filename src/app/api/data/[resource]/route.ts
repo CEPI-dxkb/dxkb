@@ -18,7 +18,12 @@ import {
   readScopeForOperation,
   resolveServerDataRepository,
 } from "@/lib/data-api/server-policy";
-import type { DataApiRequest, DataResource, DataSort } from "@/lib/data-api/types";
+import type {
+  DataApiRequest,
+  DataResource,
+  DataSort,
+  SortKey,
+} from "@/lib/data-api/types";
 import {
   maxRequestBytes,
   validateDataApiRequest,
@@ -37,12 +42,18 @@ function limited(request: NextRequest, resource: DataResource) {
   });
 }
 
+/** `field:asc` or `field:desc`, then any tie-breaking keys, comma-separated. */
 function parseSort(value: string | null): DataSort | undefined {
   if (!value) return undefined;
-  const match = /^([^:]+):(asc|desc)$/.exec(value);
-  if (!match)
-    throw new DataApiValidationError("Sort must use field:asc or field:desc.");
-  return { field: match[1], direction: match[2] as "asc" | "desc" };
+  const [first, ...then] = value.split(",").map((key): SortKey => {
+    const match = /^([^:,]+):(asc|desc)$/.exec(key);
+    if (!match)
+      throw new DataApiValidationError(
+        "Sort must use field:asc or field:desc.",
+      );
+    return { field: match[1], direction: match[2] as "asc" | "desc" };
+  });
+  return then.length > 0 ? { ...first, then } : first;
 }
 
 function parseKeywordMode(value: string | null): "exact" | "prefix" | undefined {

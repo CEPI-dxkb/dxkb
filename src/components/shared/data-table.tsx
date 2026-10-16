@@ -36,6 +36,7 @@ import {
 } from "./data-table-utils";
 
 import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
+import { Loader2 } from "lucide-react";
 
 import { Table, TableRow, TableBody, TableCell } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -458,6 +459,12 @@ export interface DataTableProps {
   scrollRegionLabel?: string;
   // Loading indicator: parent can set this while data is being fetched
   isLoading?: boolean;
+  /**
+   * The rows handed in belong to a previous query (another sort, filter or
+   * keyword on the same page) while the current one loads. They stay on screen,
+   * dimmed and marked busy, under a visible loading notice. `isLoading` wins.
+   */
+  isRefreshing?: boolean;
 
   onActiveRowChange?: (id: string | null) => void;
 }
@@ -497,6 +504,7 @@ function useDataTableContent(
     showExportControls = true,
     scrollRegionLabel,
     isLoading = false,
+    isRefreshing = false,
     onActiveRowChange,
   }: DataTableProps,
   sizingByKey: Record<string, Record<string, number>>,
@@ -916,6 +924,14 @@ function useDataTableContent(
         showExportControls={showExportControls}
       />
       <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded border border-border">
+        {isRefreshing && !isLoading && (
+          // Not a live region: the owner announces the refresh (see
+          // ResourceCollection), and a second status would repeat it.
+          <div className="pointer-events-none absolute top-12 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg">
+            <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+            Loading results...
+          </div>
+        )}
         <div
           className={clsx(
             "relative max-h-full flex-1",
@@ -956,6 +972,7 @@ function useDataTableContent(
                 errorMessage={errorMessage}
                 emptyMessage={emptyMessage}
                 isLoading={isLoading}
+                isRefreshing={isRefreshing}
                 skeletonRowCount={skeletonRowCount}
               />
             </Table>
@@ -991,6 +1008,7 @@ interface DataTableBodyProps {
   errorMessage?: string;
   emptyMessage?: string;
   isLoading?: boolean;
+  isRefreshing?: boolean;
   skeletonRowCount?: number;
 }
 
@@ -1009,11 +1027,14 @@ function DataTableBody({
   errorMessage,
   emptyMessage = "No results",
   isLoading = false,
+  isRefreshing = false,
   skeletonRowCount = 20,
 }: DataTableBodyProps) {
   "use no memo";
   return (
     <TableBody
+      // TableBody dims itself while busy.
+      aria-busy={isRefreshing && !isLoading ? true : undefined}
       style={{ "--body-height": `${String(totalSize)}px` } as CSSProperties}
       className={clsx(
         "relative z-10 border-collapse",

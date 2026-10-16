@@ -1,0 +1,25 @@
+src/lib/data-api/__tests__/repository-download.test.ts
+  s_4c2570cac8bb66::t_557acabddffc00 294,304
+docs/architecture.md
+  s_4c2570cac8bb66::t_557acabddffc00 116
+src/lib/data-api/repository.ts
+  s_4c2570cac8bb66::t_557acabddffc00 642-643,645
+src/components/views/resource-collection.tsx
+  s_4c2570cac8bb66::t_aee81a6c5e5845 315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9eb70720c6049ea5df7f3f48a55ade25ad990b06",
+  "prompts": {},
+  "sessions": {
+    "s_4c2570cac8bb66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04865ef7-1613-4404-9cfe-9ee1b85b183d",
+        "model": "unknown"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

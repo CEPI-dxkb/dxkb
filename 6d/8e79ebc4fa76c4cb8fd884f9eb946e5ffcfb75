@@ -1,0 +1,100 @@
+src/app/organisms/all/page.tsx
+  s_39694617e36d3d::t_951bfc9e2a377b 43
+src/components/organisms/geo-distribution/__tests__/color-scale.test.ts
+  s_39694617e36d3d::t_0df2532f26db4b 72-101
+  s_39694617e36d3d::t_5a33f8ad62bf28 102-152
+  s_39694617e36d3d::t_bf1dcfd0130e15 5
+src/lib/taxon-view/landing-request.ts
+  s_39694617e36d3d::t_065e1e3014df62 5-19,23,26,28,32
+src/lib/genome-view/__tests__/value-links.test.ts
+  s_39694617e36d3d::t_7c21a8c101d104 137-151
+e2e/README.md
+  s_39694617e36d3d::t_1b8df1de5db9cd 36
+  s_39694617e36d3d::t_47fee614bffb4c 121
+e2e/support/tab-history.ts
+  s_39694617e36d3d::t_bb5079548ff226 1-103
+e2e/pages/view-nav-rail.ts
+  s_39694617e36d3d::t_ba6d5f623981ec 29
+src/components/organisms/landing-shell/landing-shell.tsx
+  s_39694617e36d3d::t_07d46972f1b55c 15-20,35,74
+src/lib/taxon-view/__tests__/landing-request.test.ts
+  s_39694617e36d3d::t_42637dd62929a4 20-22
+  s_39694617e36d3d::t_b3fc9bffa4264d 26,28-31,58-67,72,80
+  s_39694617e36d3d::t_be541d39878ec9 8,48,50-54
+  s_39694617e36d3d::t_efeef6c8ee7653 9-19
+e2e/tests/genome-tab-back-forward.spec.ts
+  s_39694617e36d3d::t_760df43e22ad59 1-109
+src/app/organisms/bacteria/page.tsx
+  s_39694617e36d3d::t_951bfc9e2a377b 40
+src/components/organisms/metadata-distributions/__tests__/donut-chart.test.tsx
+  s_39694617e36d3d::t_d8707ab5c39b20 649-650
+  s_39694617e36d3d::t_7a3ce6ff6e3328 22-23
+  s_39694617e36d3d::t_fea8dabd03fd29 614-648,651-653,664-676
+  s_39694617e36d3d::t_c2d7b109f624ea 30
+  s_39694617e36d3d::t_98b6d64e3d64f7 506-519
+  s_39694617e36d3d::t_60539887cfeb8f 654-663
+  s_39694617e36d3d::t_016725ca2da17d 563-613
+src/components/organisms/metadata-distributions/donut-chart.tsx
+  s_39694617e36d3d::t_d8707ab5c39b20 273-281,584-591,598-599,608,612,625,773,775,798-800,802-803
+  s_39694617e36d3d::t_bd5b0ea90ad2f4 743-745
+  s_39694617e36d3d::t_81aa34ae4bcb52 952-953,957
+  s_39694617e36d3d::t_1f23b98385b81f 769-771,774,776-780,782-797,801
+  s_39694617e36d3d::t_254ce39a56381b 772
+src/app/(views)/taxonomy/[taxonId]/page.tsx
+  s_39694617e36d3d::t_951bfc9e2a377b 31-33,66-67
+src/app/organisms/viruses/page.tsx
+  s_39694617e36d3d::t_951bfc9e2a377b 40
+src/components/organisms/landing-shell/__tests__/landing-shell.test.tsx
+  s_39694617e36d3d::t_2d6cb75536aacc 1,4-10,39-43,62,75,90,103-105,119,127-129,149,166,187,219,228,238,254
+  s_39694617e36d3d::t_727de4c8d9d9f5 194-218,220-227,229-237,239-253,255-256
+src/lib/__tests__/history-scroll-restoration.test.ts
+  s_39694617e36d3d::t_24317363f5037b 34,36
+  s_39694617e36d3d::t_2484f1c0c194e0 154-252
+  s_39694617e36d3d::t_04b8cfc6006567 308-377,379-380,385-386,388-405
+  s_39694617e36d3d::t_a8f3b80a671391 383-384,387
+  s_39694617e36d3d::t_c3f8c6c1e0ce2a 378,381-382
+e2e/pages/organism-landing-page.ts
+  s_39694617e36d3d::t_7a77da1f4e4855 38-40,42-47
+src/components/views/__tests__/tab-content-search-params.test.tsx
+  s_39694617e36d3d::t_9125f1e4401c70 90-112
+src/lib/genome-view/value-links.ts
+  s_39694617e36d3d::t_e730ce803d0b81 42-44
+e2e/tests/taxonomy-tab-back-forward.spec.ts
+  s_39694617e36d3d::t_94a2e54a5b6711 1-88
+e2e/pages/genome-member-page.ts
+  s_39694617e36d3d::t_d3e01a44fcf464 39,42
+  s_39694617e36d3d::t_138736dddf35c5 4,14,19
+docs/architecture.md
+  s_39694617e36d3d::t_c4f5db6d85f8cb 185
+  s_39694617e36d3d::t_6a6ec9ce83fe43 186
+  s_39694617e36d3d::t_0d908ef24297dd 272
+src/components/organisms/geo-distribution/color-scale.ts
+  s_39694617e36d3d::t_69d2d4947ed611 76-82,85
+  s_39694617e36d3d::t_975846bd3db59b 88,90
+  s_39694617e36d3d::t_e09b3905fb7cd3 53-57
+  s_39694617e36d3d::t_087b6fb62fc592 73-75
+src/lib/history-scroll-restoration.ts
+  s_39694617e36d3d::t_28423730a533c0 5,8-9,15,17-22,54,57-64,66-75,77-78,91-92,94,98,109-113
+  s_39694617e36d3d::t_980b32797ae3b9 6-7
+  s_39694617e36d3d::t_38a7e7d208647e 23-31,55-56,65,76,125,142-172,176
+  s_39694617e36d3d::t_9811fa4bc96015 86-87
+  s_39694617e36d3d::t_42871184a7e851 105,108
+  s_39694617e36d3d::t_ec758d764870e3 119,126,130,132-133,135-136
+  s_39694617e36d3d::t_889c4f6eea5799 99-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d8e79ebc4fa76c4cb8fd884f9eb946e5ffcfb75",
+  "prompts": {},
+  "sessions": {
+    "s_39694617e36d3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e4c994d8-4734-4320-b701-0e8b4aa51a58",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

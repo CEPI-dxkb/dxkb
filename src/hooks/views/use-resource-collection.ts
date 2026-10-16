@@ -178,6 +178,13 @@ export function useResourceCollection<Row extends ResourceRow>({
     }),
     enabled: activeId !== null,
   });
+  // The loaded page already holds the selected row's columns, so the panel
+  // shows it at once and the member read fills in the detail-only fields when
+  // it returns. A row selected on another page has no stand-in and waits.
+  const pageRow =
+    activeId === null
+      ? undefined
+      : visibleRows.find((row) => String(row[idField]) === activeId);
   const activeSort = dataSort(state.sort);
   const sorting: SortingState = activeSort
     ? [{ id: activeSort.field, desc: activeSort.direction === "desc" }]
@@ -198,15 +205,13 @@ export function useResourceCollection<Row extends ResourceRow>({
           staleTime: "static",
         })
       ).total,
-    detail:
-      detailQuery.data?.row ??
-      visibleRows.find((row) => String(row[idField]) === activeId) ??
-      null,
+    detail: detailQuery.data?.row ?? pageRow ?? null,
     detailError: detailQuery.error,
     facets: facetQuery.data?.facets ?? emptyFacets,
     facetsError: facetQuery.error,
     isAllPagesSelected,
-    isDetailLoading: detailQuery.isLoading,
+    // Nothing to show yet: the member read is pending and no loaded row stands in.
+    isDetailLoading: detailQuery.isLoading && pageRow === undefined,
     // No counts to show yet, not even a previous scope's.
     isFacetsLoading: facetQuery.isLoading,
     // The counts on screen belong to the previous scope or facet set.

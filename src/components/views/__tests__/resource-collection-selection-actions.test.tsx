@@ -15,7 +15,7 @@ import { strainCollectionProfile } from "@/lib/strain-view/profile";
 import { serologyCollectionProfile } from "@/lib/serology-view/profile";
 import { surveillanceCollectionProfile } from "@/lib/surveillance-view/profile";
 import type { useResourceCollection as useResourceCollectionHook } from "@/hooks/views/use-resource-collection";
-import { visibleSearchActions } from "@/components/search/search-action-policy";
+import type { DownloadRequest } from "@/lib/data-api/downloads";
 import { maxSelectedRows } from "@/lib/data-api/validation";
 import {
   copyAndServicesSelectionActionIds,
@@ -31,19 +31,19 @@ import { createResourceCollectionResult } from "./fixtures/resource-collection-r
 
 // The action surface every non-Taxonomy, non-Bioset resource exposes through
 // `CollectionSelectionActions`: which of COPY ROWS / SERVICES / GROUP / GENOMES /
-// FEATURES / DWNLD a resource owns, what its row selection resolves to, and why an
+// FEATURES a resource owns, what its row selection resolves to, and why an
 // entry is disabled when the selection cannot reach it. Taxonomy and Bioset get their
 // own files because both need a network round-trip before they can navigate; every
 // other resource's action surface is exercised here, one resource at a time and then
 // again as a single cross-resource matrix.
 
-const { push, downloadResourceExport, useResourceCollection } = vi.hoisted(
-  () => ({
+const { push, downloadResourceExport, useResourceCollection, collectionDownload } =
+  vi.hoisted(() => ({
     push: vi.fn(),
     downloadResourceExport: vi.fn(),
     useResourceCollection: vi.fn<typeof useResourceCollectionHook>(),
-  }),
-);
+    collectionDownload: vi.fn(),
+  }));
 let actionBarProps: Record<string, unknown>;
 
 vi.mock("next/navigation", async () =>
@@ -53,6 +53,11 @@ vi.mock("next/navigation", async () =>
 );
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
+);
+vi.mock("@/hooks/views/use-collection-download", async () =>
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionDownloadMock(collectionDownload),
 );
 vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
@@ -189,8 +194,35 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Open the rail's Download tile and pick `format`, as a user does. */
+async function downloadFromTile(
+  user: ReturnType<typeof userEvent.setup>,
+  format = "CSV",
+) {
+  await user.click(screen.getByRole("button", { name: /^DOWNLOAD/ }));
+  await user.click(await screen.findByRole("button", { name: format }));
+}
+
+/** The request the tile handed the shell's download mutation for a selection. */
+function expectSelectionDownload(
+  resource: DataResource,
+  ids: string[],
+  fileNameBase: string = resource,
+) {
+  expect(collectionDownload).toHaveBeenCalledWith(
+    resource,
+    expect.objectContaining({
+      format: "csv",
+      scope: { kind: "selected", ids },
+      fileNameBase: `${fileNameBase}-selected`,
+      total: ids.length,
+    }),
+    expect.anything(),
+  );
+}
+
 describe("ResourceCollection sequence actions", () => {
-  it("enables selected-row download and the associated Genome destination", async () => {
+  it("downloads the selected rows and opens the associated Genome destination", async () => {
     const user = userEvent.setup();
     const sequenceRow = {
       sequence_id: "83332.12.con.0001",
@@ -232,11 +264,10 @@ describe("ResourceCollection sequence actions", () => {
       enabledActions: ["copyRows", "services", "group", "features"],
       disabledActions: undefined,
     });
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    expect(selected).toHaveBeenCalledWith("genome_sequence", {
-      ids: [sequenceRow.sequence_id],
-      fields: ["sequence_id", "genome_id"],
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("genome_sequence", [sequenceRow.sequence_id]);
+    expect(selected).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
     await user.click(screen.getByRole("button", { name: "Genome action" }));
     await user.click(screen.getByRole("button", { name: "Features action" }));
     expect(open).toHaveBeenNthCalledWith(
@@ -657,7 +688,7 @@ describe("ResourceCollection selection actions", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("enables COPY ROWS, DWNLD and an empty SERVICES chooser for Sequence Features", async () => {
+  it("enables COPY ROWS, Download and an empty SERVICES chooser for Sequence Features", async () => {
     const user = userEvent.setup();
     const sequenceFeatureRow = {
       id: "sfvt-row-1",
@@ -704,16 +735,11 @@ describe("ResourceCollection selection actions", () => {
     expect(await screen.findByText("No selectable services")).toBeVisible();
     expect(selected).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith("sequence_feature", {
-        ids: [sequenceFeatureRow.id],
-        fields: ["sf_name", "sf_id", "id"],
-      });
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("sequence_feature", [sequenceFeatureRow.id]);
   });
 
-  it("enables COPY, DWNLD and an empty SERVICES chooser for Epitopes", async () => {
+  it("enables COPY, Download and an empty SERVICES chooser for Epitopes", async () => {
     const user = userEvent.setup();
     const open = vi.fn(() => ({ opener: window }));
     vi.stubGlobal("open", open);
@@ -767,13 +793,8 @@ describe("ResourceCollection selection actions", () => {
       "_blank",
     );
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith("epitope", {
-        ids: [epitopeRow.epitope_id],
-        fields: ["epitope_sequence", "host_name", "epitope_id"],
-      });
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("epitope", [epitopeRow.epitope_id]);
   });
 
   it("resolves Feature IDs for the SERVICES chooser and the Feature Group", async () => {
@@ -858,15 +879,8 @@ describe("ResourceCollection selection actions", () => {
     expect(await screen.findByText("No selectable services")).toBeVisible();
     expect(selected).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith("protein_feature", {
-        ids: ["97bffc25"],
-        fields: proteinFeatureCollectionProfile.columns.map(
-          (column) => column.id,
-        ),
-      });
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("protein_feature", ["97bffc25"]);
   });
 
   it("enables COPY ROWS and an empty SERVICES chooser for Protein Structures", async () => {
@@ -918,7 +932,7 @@ describe("ResourceCollection selection actions", () => {
     );
   });
 
-  it("exports the selected Protein Structures from the Download action", async () => {
+  it("downloads the selected Protein Structures from the Download tile", async () => {
     const user = userEvent.setup();
     // Plan item 21: this used to export through `repository()`, whose default
     // resolves the module's Genome fixture (`row`, with `genome_name`/`genome_length`)
@@ -945,18 +959,11 @@ describe("ResourceCollection selection actions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(downloadResourceExport).toHaveBeenCalledWith(
-        "protein_structure",
-        [structureRow],
-        proteinStructureCollectionProfile.columns,
-        proteinStructureCollectionProfile.columns.map((column) => column.id),
-        "csv",
-        "all",
-        "protein_structure",
-      );
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("protein_structure", ["1ABC"]);
+    // The gateway builds the file; nothing is read or serialized in the page.
+    expect(selected).not.toHaveBeenCalled();
+    expect(downloadResourceExport).not.toHaveBeenCalled();
   });
 
   it("keeps the Protein Structure member actions disabled without their identifiers", () => {
@@ -1040,7 +1047,7 @@ describe("ResourceCollection selection actions", () => {
     expect(screen.getByRole("button", { name: "services" })).toBeDisabled();
   });
 
-  it("enables DWNLD and an empty SERVICES chooser for Experiments", async () => {
+  it("enables Download and an empty SERVICES chooser for Experiments", async () => {
     const user = userEvent.setup();
     const experimentRow = { exp_id: "00042", exp_title: "Fixture experiment" };
     const selected = vi.fn(() => Promise.resolve({ rows: [experimentRow] }));
@@ -1074,16 +1081,11 @@ describe("ResourceCollection selection actions", () => {
     expect(await screen.findByText("No selectable services")).toBeVisible();
     expect(selected).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith(
-        "experiment",
-        expect.objectContaining({ ids: [experimentRow.exp_id] }),
-      );
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("experiment", [experimentRow.exp_id]);
   });
 
-  it("enables COPY, DWNLD and an empty SERVICES chooser for Surveillance", async () => {
+  it("enables COPY, Download and an empty SERVICES chooser for Surveillance", async () => {
     const user = userEvent.setup();
     const surveillanceRow = {
       id: "surveillance-backend-901",
@@ -1121,16 +1123,11 @@ describe("ResourceCollection selection actions", () => {
     expect(await screen.findByText("No selectable services")).toBeVisible();
     expect(selected).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith(
-        "surveillance",
-        expect.objectContaining({ ids: [surveillanceRow.id] }),
-      );
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("surveillance", [surveillanceRow.id]);
   });
 
-  it("enables COPY, DWNLD and an empty SERVICES chooser for Serology", async () => {
+  it("enables COPY, Download and an empty SERVICES chooser for Serology", async () => {
     const user = userEvent.setup();
     const serologyRow = {
       id: "serology-backend-77",
@@ -1168,13 +1165,8 @@ describe("ResourceCollection selection actions", () => {
     expect(await screen.findByText("No selectable services")).toBeVisible();
     expect(selected).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    await waitFor(() => {
-      expect(selected).toHaveBeenCalledWith(
-        "serology",
-        expect.objectContaining({ ids: [serologyRow.id] }),
-      );
-    });
+    await downloadFromTile(user);
+    expectSelectionDownload("serology", [serologyRow.id]);
   });
 });
 
@@ -1186,10 +1178,8 @@ describe("ResourceCollection selection actions", () => {
  *
  * Which entries a resource *owns* is a property of the resource, and `enabledActions`
  * / `disabledActions` are asserted for all four states of every resource so a config
- * entry cannot silently stop reaching the bar. Which of them the bar actually renders
- * is the shared policy's call and varies with the selection, so the download route is
- * exercised only where `visibleSearchActions` says DWNLD is on screen, and asserted
- * absent everywhere else.
+ * entry cannot silently stop reaching the bar. The Download tile heads every one of
+ * these rails at every selection size, so its request is asserted in all four states.
  */
 const actionMatrixFixtures: {
   resource: DataResource;
@@ -1198,18 +1188,9 @@ const actionMatrixFixtures: {
   rows: Record<string, unknown>[];
   enabledActions: string[];
   disabledActions?: Record<string, string | undefined>;
-  /**
-   * Whether the bar has a DWNLD entry for this resource at all — written out rather
-   * than asked of `visibleSearchActions`, so a regression that hid DWNLD everywhere
-   * fails here instead of quietly agreeing with itself. Taxa, Strains and Genomes are
-   * absent from `download`'s `validSearchTypes` and download from the table instead.
-   * The test cross-checks this column against the policy, so it cannot drift either.
-   */
-  offersDownload: boolean;
 }[] = [
   {
     resource: "taxonomy",
-    offersDownload: false,
     label: "Taxa",
     idField: "taxon_id",
     rows: [
@@ -1220,7 +1201,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "strain",
-    offersDownload: false,
     label: "Strains",
     idField: "id",
     rows: [
@@ -1231,7 +1211,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "genome",
-    offersDownload: false,
     label: "Genomes",
     idField: "genome_id",
     rows: [{ genome_id: "83332.12" }, { genome_id: "83332.13" }],
@@ -1239,7 +1218,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "genome_feature",
-    offersDownload: true,
     label: "Features",
     idField: "feature_id",
     rows: [{ feature_id: "PATRIC.1" }, { feature_id: "PATRIC.2" }],
@@ -1247,7 +1225,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "genome_sequence",
-    offersDownload: true,
     label: "Sequences",
     idField: "sequence_id",
     rows: [
@@ -1258,7 +1235,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "protein_feature",
-    offersDownload: true,
     label: "Domains and Motifs",
     idField: "id",
     rows: [
@@ -1269,7 +1245,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "protein_structure",
-    offersDownload: true,
     label: "Protein Structures",
     idField: "pdb_id",
     rows: [
@@ -1287,7 +1262,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "sequence_feature",
-    offersDownload: true,
     label: "Sequence Features",
     idField: "id",
     rows: [{ id: "sfvt-1" }, { id: "sfvt-2" }],
@@ -1295,7 +1269,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "epitope",
-    offersDownload: true,
     label: "Epitopes",
     idField: "epitope_id",
     rows: [{ epitope_id: "EPI-1" }, { epitope_id: "EPI-2" }],
@@ -1303,7 +1276,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "serology",
-    offersDownload: true,
     label: "Serology",
     idField: "id",
     rows: [{ id: "sero-1" }, { id: "sero-2" }],
@@ -1311,7 +1283,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "surveillance",
-    offersDownload: true,
     label: "Surveillance",
     idField: "id",
     rows: [{ id: "surv-1" }, { id: "surv-2" }],
@@ -1319,7 +1290,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "ppi",
-    offersDownload: true,
     label: "Interactions",
     idField: "id",
     rows: [
@@ -1330,7 +1300,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "experiment",
-    offersDownload: true,
     label: "Experiments",
     idField: "exp_id",
     rows: [{ exp_id: "00042" }, { exp_id: "00051" }],
@@ -1338,7 +1307,6 @@ const actionMatrixFixtures: {
   },
   {
     resource: "bioset",
-    offersDownload: true,
     label: "Biosets",
     idField: "bioset_id",
     rows: [
@@ -1361,7 +1329,6 @@ describe.each(actionMatrixFixtures)(
     rows,
     enabledActions,
     disabledActions,
-    offersDownload,
   }) => {
     const ids = rows.map((row) => String(row[idField]));
     const selectionStates = [
@@ -1392,7 +1359,7 @@ describe.each(actionMatrixFixtures)(
     ];
 
     it.each(selectionStates)(
-      "reports the $name action surface and download route",
+      "reports the $name action surface and download request",
       async ({ selectedIds, isAllPagesSelected, count }) => {
         const user = userEvent.setup();
         const exportAll = vi.fn(() => Promise.resolve({ rows }));
@@ -1434,52 +1401,24 @@ describe.each(actionMatrixFixtures)(
         // `toEqual` would treat that object as equal to `undefined`.
         expect(actionBarProps.disabledActions).toStrictEqual(disabledActions);
 
-        // The resource's own column, plus the one selection rule that applies to
-        // DWNLD (`requiresSelection`, and no `maxSelection`), spelled out rather than
-        // asked of the function under test.
-        const expectsDownload = offersDownload && count > 0;
-        // Then cross-check the column against the policy, so the table cannot drift
-        // from `searchActionConfig` without this failing.
-        expect(
-          visibleSearchActions({
-            searchType: resource,
-            selectedCount: count,
-            hasGuideUrl: false,
-          }).some((action) => action.id === "download"),
-        ).toBe(expectsDownload);
-        if (!expectsDownload) {
-          expect(
-            screen.queryByRole("button", {
-              hidden: true,
-              name: "Download action",
-            }),
-          ).not.toBeInTheDocument();
-          expect(selected).not.toHaveBeenCalled();
-          expect(exportAll).not.toHaveBeenCalled();
-          return;
-        }
-
-        await user.click(
-          screen.getByRole("button", { name: "Download action" }),
-        );
-        if (isAllPagesSelected) {
-          await waitFor(() => {
-            expect(exportAll).toHaveBeenCalledWith(
-              resource,
-              expect.objectContaining({
-                sort: { field: idField, direction: "asc" },
-              }),
-            );
-          });
-          expect(selected).not.toHaveBeenCalled();
-          return;
-        }
-        await waitFor(() => {
-          expect(selected).toHaveBeenCalledWith(
-            resource,
-            expect.objectContaining({ ids: selectedIds }),
-          );
+        // Every resource heads its rail with the Download tile, at every selection
+        // size, and it hands the shell's mutation a request instead of reading
+        // rows itself. An all-pages selection downloads the query.
+        await downloadFromTile(user);
+        const [downloadResource, request] = collectionDownload.mock
+          .lastCall as [DataResource, DownloadRequest];
+        expect(downloadResource).toBe(resource);
+        expect(request).toMatchObject({
+          format: "csv",
+          scope:
+            count === 0 || isAllPagesSelected
+              ? { kind: "query" }
+              : { kind: "selected", ids: selectedIds },
+          sort: { field: idField, direction: "asc" },
+          fileNameBase: count === 0 ? resource : `${resource}-selected`,
+          total: isAllPagesSelected || count === 0 ? actionMatrixTotal : count,
         });
+        expect(selected).not.toHaveBeenCalled();
         expect(exportAll).not.toHaveBeenCalled();
       },
     );

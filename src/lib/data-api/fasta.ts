@@ -1,3 +1,4 @@
+import { safeFileNameBase } from "./file-name";
 import type { DataResource } from "./types";
 
 /**
@@ -69,18 +70,9 @@ export interface FastaRequest {
   ids: string[];
 }
 
-const maxFileNameBaseLength = 200;
-
 /**
- * `<base>.<type>.fasta`, with every character that Windows or macOS refuses in
- * a file name replaced by `_`. BRC IDs carry a pipe (`fig|644340.17.peg.16`),
- * so the replacement matters for the commonest base.
+ * `<base>.<type>.fasta`, with the base made safe by `safeFileNameBase`.
  */
 export function fastaFileName(base: string, type: FastaSequenceType): string {
-  const safe = base
-    .trim()
-    .replace(/[\\/:*?"<>|\p{Cc}]+/gu, "_")
-    .replace(/^\.+/, "")
-    .slice(0, maxFileNameBaseLength);
-  return `${safe || "sequences"}.${type}.fasta`;
+  return `${safeFileNameBase(base) || "sequences"}.${type}.fasta`;
 }

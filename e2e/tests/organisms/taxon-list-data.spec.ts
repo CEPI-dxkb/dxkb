@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import {
   test,
   expect,
@@ -165,7 +166,7 @@ test.describe("taxon strains actions", () => {
     await page
       .getByRole("button", { name: "Selected Columns (with headers)" })
       .click();
-    await expect(page.getByText("Copied 2 selected strains")).toBeVisible();
+    await expect(page.getByText("Copied 2 selected strains to your clipboard")).toBeVisible();
     const clipboard = await page.evaluate(() => navigator.clipboard.readText());
     expect(clipboard).toContain("Species\tStrain\tSegment Count");
     expect(clipboard).toContain("A/California/04/2009");
@@ -373,95 +374,62 @@ test.describe("taxon data table: checkbox-column selection", () => {
   });
 });
 
-test.describe("taxon domains-and-motifs: Download Selected sends POST not GET", () => {
-  test("sends selected IDs in a JSON body, not GET params in the URL", async ({
-    page,
-  }) => {
-    const rows = buildProteinFeatureRows(3);
+// The Download tile sends a selection's ids in its POST body, never in a URL:
+// as GET params, 200 ids made the request fail (net::ERR_FAILED). The file
+// itself is the gateway's (`collection-download.spec.ts`), so here it is a stub.
+const pfDownload = /\/api\/data\/protein_feature\/download(?:\?|$)/;
 
-    await applyBackendMocks(page, {
-      overrides: [
-        { url: pfGateway, method: "GET", body: proteinFeatureCollection(rows) },
-        { url: pfGateway, method: "POST", body: { rows } },
-        ...taxonListDataOverrides,
-      ],
+async function downloadSelectedCsv(page: Page) {
+  await page
+    .getByRole("checkbox", { name: /select all rows on this page/i })
+    .click();
+  await page.getByRole("button", { name: /^DOWNLOAD/ }).click();
+  await expect(
+    page.getByRole("radio", { name: /^Selected/ }),
+  ).toBeChecked();
+  await page.getByRole("button", { name: "CSV", exact: true }).click();
+}
+
+test.describe("taxon domains-and-motifs: Download sends the selection by POST", () => {
+  for (const count of [3, 200]) {
+    test(`sends ${String(count)} selected IDs in a JSON body, not in the URL`, async ({
+      page,
+    }) => {
+      const rows = buildProteinFeatureRows(count);
+
+      await applyBackendMocks(page, {
+        overrides: [
+          { url: pfGateway, method: "GET", body: proteinFeatureCollection(rows) },
+          {
+            url: pfDownload,
+            method: "POST",
+            contentType: "text/csv",
+            body: "id\n",
+          },
+          ...taxonListDataOverrides,
+        ],
+      });
+
+      const postReqPromise = page.waitForRequest(
+        (req) => pfDownload.test(req.url()) && req.method() === "POST",
+      );
+
+      await page.goto(`/taxonomy/${domainsTaxonId}?tab=domains-and-motifs`);
+      await expect(page.getByText("mock-product-0")).toBeVisible({
+        timeout: 10_000,
+      });
+      await downloadSelectedCsv(page);
+
+      const postReq = await postReqPromise;
+      const body = postReq.postDataJSON() as {
+        format: string;
+        scope: { kind: string; ids: string[] };
+      };
+      expect(body).toMatchObject({ format: "csv", scope: { kind: "selected" } });
+      expect(body.scope.ids).toEqual(rows.map((row) => row.id));
+      expect(postReq.url()).not.toContain("mock-pf-");
     });
-
-    const postReqPromise = page.waitForRequest(
-      (req) => pfGateway.test(req.url()) && req.method() === "POST",
-    );
-
-    await page.goto(`/taxonomy/${domainsTaxonId}?tab=domains-and-motifs`);
-    await expect(page.getByText("mock-product-0")).toBeVisible({
-      timeout: 10_000,
-    });
-
-    await page
-      .getByRole("checkbox", { name: /select all rows on this page/i })
-      .click();
-    await expect(
-      page.getByRole("button", { name: /Download Selected \(CSV\)/i }),
-    ).toBeVisible();
-
-    await page
-      .getByRole("button", { name: /Download Selected \(CSV\)/i })
-      .click();
-
-    const postReq = await postReqPromise;
-    expect(postReq.method()).toBe("POST");
-
-    const body = postReq.postDataJSON() as {
-      operation: string;
-      ids: string[];
-    };
-    expect(body).toMatchObject({ operation: "selected" });
-    expect(body.ids).toEqual(rows.map((row) => row.id));
-    expect(postReq.url()).not.toContain("mock-pf-");
-  });
-
-  test("200-row selection succeeds via POST (regression: GET caused net::ERR_FAILED)", async ({
-    page,
-  }) => {
-    const rows = buildProteinFeatureRows(200);
-
-    await applyBackendMocks(page, {
-      overrides: [
-        { url: pfGateway, method: "GET", body: proteinFeatureCollection(rows) },
-        { url: pfGateway, method: "POST", body: { rows } },
-        ...taxonListDataOverrides,
-      ],
-    });
-
-    const postReqPromise = page.waitForRequest(
-      (req) => pfGateway.test(req.url()) && req.method() === "POST",
-    );
-
-    await page.goto(`/taxonomy/${domainsTaxonId}?tab=domains-and-motifs`);
-    await expect(page.getByText("mock-product-0")).toBeVisible({
-      timeout: 10_000,
-    });
-
-    await page
-      .getByRole("checkbox", { name: /select all rows on this page/i })
-      .click();
-    await page
-      .getByRole("button", { name: /Download Selected \(CSV\)/i })
-      .click();
-
-    // This request would have been net::ERR_FAILED as a GET (URL too long for 200 IDs)
-    const postReq = await postReqPromise;
-    expect(postReq.method()).toBe("POST");
-
-    const body = postReq.postDataJSON() as {
-      operation: string;
-      ids: string[];
-    };
-    expect(body.operation).toBe("selected");
-    expect(body.ids).toHaveLength(200);
-    expect(body.ids[0]).toBe("mock-pf-0000");
-    expect(body.ids[199]).toBe("mock-pf-0199");
-    expect(postReq.url()).not.toContain("mock-pf-");
-  });
+  }
 });
 
 // ─── Facet click regression: multi-word eq() values must be quoted ───────────

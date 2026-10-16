@@ -321,3 +321,46 @@ test.describe("keyboard: command palette (WCAG 2.1.1)", () => {
     await expect(dialog).not.toBeVisible();
   });
 });
+
+// ── Collection Download tile — popover keyboard path ─────────────────────────────
+
+test.describe("keyboard: collection Download tile (WCAG 2.1.1, 2.1.2)", () => {
+  test("opens from the keyboard, reaches every control, and Escape returns focus", async ({
+    page,
+  }) => {
+    await applyBackendMocks(page, { overrides: [...a11yBackendOverrides] });
+    await page.goto("/genome?keyword=influenza");
+    const tile = page.getByRole("button", { name: /^DOWNLOAD/ });
+    await expect(tile).toBeVisible();
+
+    await tile.focus();
+    await page.keyboard.press("Enter");
+    const panel = page.getByRole("dialog").filter({
+      has: page.getByRole("radiogroup", { name: "Rows to download" }),
+    });
+    await expect(panel).toBeVisible();
+
+    // The scope radios, every format row and the columns switch take focus in
+    // turn, and focus stays inside the popover while it is open.
+    const formatRow = panel.getByRole("button", { name: "Text" });
+    const columnsSwitch = panel.getByRole("switch", { name: "Visible columns" });
+    let reachedFormat = false;
+    for (let i = 0; i < 10; i++) {
+      await page.keyboard.press("Tab");
+      await expect
+        .poll(() => panel.evaluate((el) => el.contains(document.activeElement)))
+        .toBe(true);
+      if (await formatRow.evaluate((el) => el === document.activeElement))
+        reachedFormat = true;
+      if (await columnsSwitch.evaluate((el) => el === document.activeElement))
+        break;
+    }
+    expect(reachedFormat, "Tab never reached a format row").toBe(true);
+    await expect(columnsSwitch).toBeFocused();
+    await assertFocusVisible(page);
+
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(tile).toBeFocused();
+  });
+});

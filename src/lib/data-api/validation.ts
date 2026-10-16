@@ -7,6 +7,18 @@ import {
   type FastaRequest,
   type FastaResource,
 } from "./fasta";
+import {
+  downloadFormatIds,
+  downloadFormats,
+  downloadFormatsFor,
+  downloadNoncePattern,
+  downloadRowCount,
+  downloadUnavailableReason,
+  maxSelectionDownloadRows,
+  unselectableColumnsReason,
+  type DownloadRequest,
+} from "./downloads";
+import { safeFileNameBase } from "./file-name";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
 import { validateRql } from "./rql";
 import { maxExportRows, sortKeys } from "./types";
@@ -161,4 +173,92 @@ export function validateFastaRequest(
     );
   }
   return { type, ids: [...new Set(ids)] };
+}
+
+const downloadRequestSchema = z.object({
+  format: z.enum(downloadFormatIds),
+  scope: z.discriminatedUnion("kind", [
+    z.object({
+      kind: z.literal("selected"),
+      ids: z
+        .array(z.string().min(1).max(maxIdentifierLength))
+        .min(1, "Choose at least one row to download.")
+        .max(
+          maxSelectionDownloadRows,
+          `Selection downloads are limited to ${maxSelectionDownloadRows.toLocaleString("en-US")} rows.`,
+        ),
+    }),
+    z.object({
+      kind: z.literal("query"),
+      rql: z.string().max(8_000).optional(),
+      keyword: z.string().max(500).optional(),
+      keywordMode: z.enum(["exact", "prefix"]).optional(),
+    }),
+  ]),
+  sort: sortSchema.optional(),
+  // An empty list is refused below, with the reason the tile shows.
+  fields: fieldListSchema.optional(),
+  fileNameBase: z.string().max(200),
+  total: z.number().int().min(0),
+  nonce: z.string().regex(downloadNoncePattern).optional(),
+});
+
+/**
+ * Body of `POST /api/data/[resource]/download`, whether it arrived as JSON or
+ * as the native transport's form field. Duplicate ids are dropped, so the
+ * upstream `in(...)` clause (and the file) names each record once; `fields`
+ * are dropped from a sequence format, which has no columns; and the file name
+ * base comes back safe for a `Content-Disposition` header.
+ */
+export function validateDownloadRequest(
+  resource: DataResource,
+  value: unknown,
+): DownloadRequest {
+  const parsed = downloadRequestSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new DataApiValidationError(
+      parsed.error.issues[0]?.message ?? "Invalid download request.",
+    );
+  }
+  const request = parsed.data;
+  if (!downloadFormatsFor(resource).includes(request.format)) {
+    throw new DataApiValidationError(
+      `${downloadFormats[request.format].label} downloads are not available for ${resource}.`,
+    );
+  }
+  const scope =
+    request.scope.kind === "selected"
+      ? { kind: "selected" as const, ids: [...new Set(request.scope.ids)] }
+      : {
+          ...request.scope,
+          rql: request.scope.rql
+            ? validateRql(resource, request.scope.rql)
+            : undefined,
+        };
+  const fields =
+    downloadFormats[request.format].kind === "table"
+      ? request.fields
+      : undefined;
+  validateFields(resource, fields, "select");
+  const columnsReason = fields ? unselectableColumnsReason(fields) : null;
+  if (columnsReason)
+    throw new DataApiValidationError(
+      `${columnsReason}; download every field instead.`,
+    );
+  validateSort(resource, request.sort);
+  const reason = downloadUnavailableReason({
+    format: request.format,
+    scope: scope.kind === "selected" ? "selected" : "all",
+    rows: downloadRowCount({ scope, total: request.total }),
+  });
+  if (reason) throw new DataApiValidationError(`${reason}.`);
+  return {
+    format: request.format,
+    scope,
+    sort: request.sort,
+    fields,
+    fileNameBase: safeFileNameBase(request.fileNameBase),
+    total: request.total,
+    nonce: request.nonce,
+  };
 }

@@ -32,7 +32,6 @@ import {
  * to that key, which is a fine accessible name for an action no suite clicks.
  */
 const fakeLabelByConfigKey: Record<string, string> = {
-  download: "Download action",
   epitope: "Epitope action",
   experiment: "Experiment action",
   biosets: "Biosets action",

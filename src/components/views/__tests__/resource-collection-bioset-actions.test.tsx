@@ -25,6 +25,11 @@ vi.mock("next/navigation", async () =>
 vi.mock("@tanstack/react-query", async () =>
   (await import("./fixtures/resource-collection-mocks")).reactQueryMock(),
 );
+vi.mock("@/hooks/views/use-collection-download", async () =>
+  (
+    await import("./fixtures/resource-collection-mocks")
+  ).collectionDownloadMock(),
+);
 vi.mock("@/lib/auth/provider", async () =>
   (await import("./fixtures/resource-collection-mocks")).authProviderMock(),
 );
@@ -189,13 +194,10 @@ describe("ResourceCollection Bioset actions", () => {
       enabledActions: ["services", "biosets"],
       guideUrl: "https://example.test/guide",
     });
-    await user.click(screen.getByRole("button", { name: "Download action" }));
-    expect(selected).toHaveBeenCalledWith("bioset", {
-      ids: ["bioset-1"],
-      fields: ["bioset_id"],
-    });
+    // The Download tile heads the rail beside the Bioset actions.
+    expect(screen.getByRole("button", { name: /^DOWNLOAD/ })).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Biosets action" }));
-    expect(selected).toHaveBeenCalledOnce();
+    expect(selected).not.toHaveBeenCalled();
     // A reserved `about:blank`, not the final href with `noopener,noreferrer`: the
     // spec makes `window.open` return null whenever `noopener` is set, so the handle
     // could not tell a blocked pop-up from an allowed one. Reserving keeps the

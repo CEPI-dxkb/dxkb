@@ -1,4 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  act,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
@@ -60,6 +66,61 @@ describe("TaxIDSelector search", () => {
     expect(
       await screen.findByText("No taxonomy found for ID: 999999999"),
     ).toBeVisible();
+  });
+});
+
+describe("TaxIDSelector blur", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("closes the suggestions shortly after the input loses focus", async () => {
+    server.use(
+      http.get("*/api/services/taxonomy", () => HttpResponse.json([])),
+    );
+    const user = userEvent.setup();
+    render(<TaxIDSelector />, { wrapper: createQueryClientWrapper() });
+
+    await user.type(screen.getByRole("textbox"), "562");
+    const emptyMessage = await screen.findByText(
+      "No taxonomy found for ID: 562",
+    );
+    await user.tab();
+
+    await waitForElementToBeRemoved(emptyMessage);
+  });
+
+  it("leaves no timer behind when it unmounts with the close pending", () => {
+    // Only timeouts are faked (React's scheduler queues immediates of its
+    // own), and an infinite gcTime keeps TanStack Query from scheduling a
+    // cache timeout on unmount, so the count below is the selector's alone.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const consoleError = vi.spyOn(console, "error");
+    const consoleWarn = vi.spyOn(console, "warn");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { gcTime: Infinity, retry: false } },
+    });
+    const { unmount } = render(
+      <QueryClientProvider client={queryClient}>
+        <TaxIDSelector />
+      </QueryClientProvider>,
+    );
+    const input = screen.getByRole("textbox");
+
+    act(() => {
+      input.focus();
+    });
+    act(() => {
+      input.blur();
+    });
+    unmount();
+
+    // A close timer that outlives the component fires after the test's jsdom
+    // window is torn down and throws "ReferenceError: window is not defined".
+    expect(vi.getTimerCount()).toBe(0);
+    vi.runAllTimers();
+    expect(consoleError).not.toHaveBeenCalled();
+    expect(consoleWarn).not.toHaveBeenCalled();
   });
 });
 

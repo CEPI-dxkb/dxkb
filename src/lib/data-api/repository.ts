@@ -1,11 +1,29 @@
 import { z } from "zod";
 import {
+  downloadFormats,
+  downloadUnavailableReason,
+  emptyDownloadMessage,
+  maxQueryDownloadRows,
+  maxSelectionDownloadRows,
+  queryDownloadRowLimit,
+  sequenceDownloadFor,
+  unselectableFields,
+  type DownloadFormatId,
+  type DownloadQuery,
+  type DownloadRequest,
+} from "./downloads";
+import {
   fastaAcceptTypes,
   type FastaRequest,
   type FastaResource,
 } from "./fasta";
 import { DataApiValidationError, getResourceDefinition } from "./resources";
-import { eq, keywordClauses, serializeRql } from "./rql";
+import {
+  eq,
+  keywordClauses,
+  serializeInClause,
+  serializeRql,
+} from "./rql";
 import type {
   CollectionRequest,
   CollectionResult,
@@ -43,14 +61,7 @@ function appendQuery(url: URL, clause: string): void {
   url.search = url.search ? `${url.search.slice(1)}&${clause}` : clause;
 }
 
-function addPredicate(
-  url: URL,
-  request: {
-    rql?: string;
-    keyword?: string;
-    keywordMode?: "exact" | "prefix";
-  },
-): void {
+function predicateClause(request: DownloadQuery): string | undefined {
   const clauses: string[] = [];
   if (request.rql) clauses.push(request.rql);
   if (request.keyword) {
@@ -59,8 +70,13 @@ function addPredicate(
     else if (expressions.length > 1)
       clauses.push(`and(${expressions.join(",")})`);
   }
-  if (clauses.length === 1) appendQuery(url, clauses[0]);
-  else if (clauses.length > 1) appendQuery(url, `and(${clauses.join(",")})`);
+  if (clauses.length === 0) return undefined;
+  return clauses.length === 1 ? clauses[0] : `and(${clauses.join(",")})`;
+}
+
+function addPredicate(url: URL, request: DownloadQuery): void {
+  const clause = predicateClause(request);
+  if (clause) appendQuery(url, clause);
 }
 
 function addFields(
@@ -71,7 +87,7 @@ function addFields(
   if (!fields?.length) return false;
   // The upstream RQL parser misreads identifiers such as `1_pb2` in select().
   // Omit its projection, then project the full response locally.
-  if (fields.some((field) => /^\d/.test(field))) return true;
+  if (unselectableFields(fields).length > 0) return true;
   appendQuery(url, `select(${[...new Set([...fields, idField])].join(",")})`);
   return false;
 }
@@ -91,14 +107,47 @@ function projectRows(
   );
 }
 
-function addSort(url: URL, sort: DataSort | undefined, idField: string): void {
-  if (!sort) return;
+/**
+ * `body` once its first bytes have arrived, or `null` when it ends without
+ * any. The bytes read to find out are sent first, so the stream is otherwise
+ * untouched.
+ */
+async function nonEmptyBody(
+  body: ReadableStream<Uint8Array> | null,
+): Promise<ReadableStream<Uint8Array> | null> {
+  if (!body) return null;
+  const reader = body.getReader();
+  let first = await reader.read();
+  while (!first.done && first.value.byteLength === 0)
+    first = await reader.read();
+  if (first.done) return null;
+  const head = first.value;
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(head);
+    },
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    },
+  });
+}
+
+function sortClause(sort: DataSort, idField: string): string {
   const keys = sortKeys(sort);
   const clauses = keys.map(
     (key) => `${key.direction === "desc" ? "-" : "+"}${key.field}`,
   );
   if (!keys.some((key) => key.field === idField)) clauses.push(`+${idField}`);
-  appendQuery(url, `sort(${clauses.join(",")})`);
+  return `sort(${clauses.join(",")})`;
+}
+
+function addSort(url: URL, sort: DataSort | undefined, idField: string): void {
+  if (sort) appendQuery(url, sortClause(sort, idField));
 }
 
 function parseFacets(value: unknown): Record<string, FacetBucket[]> {
@@ -479,6 +528,194 @@ export class ServerDataRepository {
       predicate,
     );
     return response.body;
+  }
+
+  /**
+   * A table or FASTA download, as the upstream's own response stream so a
+   * multi-gigabyte file is never buffered on this server. Legacy BV-BRC's
+   * request, without the token in the body: one POST whose body is the whole
+   * query (`<predicate>&select(…)&sort(…)&limit(N)`) and whose `Accept` names
+   * the format.
+   *
+   * - The predicate is `in(<idField>,(…))` for a selection, else the query's
+   *   rql and keyword (`eq(<idField>,*)` when it has neither, since the
+   *   upstream rejects a bare `sort()`).
+   * - No `select()` without `fields`, so the upstream returns every stored
+   *   field, as legacy does. `validateDownloadRequest` refuses `fields` the
+   *   upstream cannot select (`unselectableFields`), since a stream cannot be
+   *   projected here.
+   * - The table's sort, then the primary key; the primary key alone when the
+   *   table is unsorted.
+   * - A resource whose sequences live elsewhere (`sequenceDownloads[…].via`:
+   *   a genome's contigs) reads that resource with `in(<key>,(<ids>))` sorted
+   *   by its own key. A query scope there first reads the matching ids, one
+   *   past `maxSequenceQueryRows`, and is refused when that extra id arrives:
+   *   the query grew past the cap after its recount.
+   * - A query is counted again first (`recountQueryDownload`), and its
+   *   `limit()` is the format's cap, not `request.total`: that is the count
+   *   the table last loaded, and records added since would fall past it.
+   * - An upstream body with no bytes (ids that match nothing, features with
+   *   no translation) is a 404 with `emptyDownloadMessage`, not an empty
+   *   file: the native transport saves whatever it is sent, and cannot check.
+   *
+   * `request` must already have passed `validateDownloadRequest`.
+   */
+  async download(
+    resource: DataResource,
+    request: DownloadRequest,
+    signal?: AbortSignal,
+  ): Promise<ReadableStream<Uint8Array>> {
+    const format = downloadFormats[request.format];
+    const definition = getResourceDefinition(resource);
+    const via =
+      format.kind === "sequence"
+        ? sequenceDownloadFor(resource)?.via
+        : undefined;
+    if (request.scope.kind === "query")
+      await this.recountQueryDownload(
+        resource,
+        request.format,
+        request.scope,
+        signal,
+      );
+    const clauses: string[] = [];
+    let target = resource;
+    let limit: number;
+    if (via) {
+      const idLimit = queryDownloadRowLimit(request.format);
+      const ids =
+        request.scope.kind === "selected"
+          ? request.scope.ids
+          : (
+              await this.export(
+                resource,
+                {
+                  operation: "export",
+                  rql: request.scope.rql,
+                  keyword: request.scope.keyword,
+                  keywordMode: request.scope.keywordMode,
+                  fields: [definition.idField],
+                  limit: idLimit + 1,
+                  sort: request.sort,
+                },
+                signal,
+              )
+            ).rows.map((row) => String(row[definition.idField]));
+      // The one id past the cap is a query that grew after its recount.
+      const overflowReason =
+        request.scope.kind === "query" && ids.length > idLimit
+          ? downloadUnavailableReason({
+              format: request.format,
+              scope: "all",
+              rows: ids.length,
+            })
+          : null;
+      if (overflowReason)
+        throw new DataApiValidationError(
+          `${overflowReason} (the query now matches more than ${idLimit.toLocaleString("en-US")} rows).`,
+        );
+      if (ids.length === 0) {
+        throw new DataApiError(
+          "No records matched the download.",
+          404,
+          "not_found",
+        );
+      }
+      target = via.resource;
+      clauses.push(
+        serializeInClause(via.resource, via.key, ids, maxSelectionDownloadRows),
+        `sort(+${via.sort})`,
+      );
+      // A genome has any number of contigs, so the cap is legacy's own.
+      limit = maxQueryDownloadRows;
+    } else {
+      clauses.push(
+        request.scope.kind === "selected"
+          ? serializeInClause(
+              resource,
+              definition.idField,
+              request.scope.ids,
+              maxSelectionDownloadRows,
+            )
+          : (predicateClause(request.scope) ?? `eq(${definition.idField},*)`),
+      );
+      // Exactly the visible columns: the file streams through unread, so the
+      // primary key that JSON reads add for row lookups would be an extra column.
+      if (format.kind === "table" && request.fields?.length) {
+        clauses.push(`select(${[...new Set(request.fields)].join(",")})`);
+      }
+      clauses.push(
+        sortClause(
+          request.sort ?? { field: definition.idField, direction: "asc" },
+          definition.idField,
+        ),
+      );
+      limit =
+        request.scope.kind === "selected"
+          ? request.scope.ids.length
+          : queryDownloadRowLimit(request.format);
+    }
+    clauses.push(`limit(${String(limit)})`);
+    const response = await this.send(
+      this.url(target),
+      0,
+      limit,
+      signal,
+      format.accept,
+      "POST",
+      clauses.join("&"),
+    );
+    const body = await nonEmptyBody(response.body);
+    if (!body)
+      throw new DataApiError(
+        emptyDownloadMessage(request.format),
+        404,
+        "not_found",
+      );
+    return body;
+  }
+
+  /**
+   * Counts a query download's rows now and checks the caps on that count.
+   * `validateDownloadRequest` checked them on `request.total`, the count the
+   * table last loaded, so a query that has grown past a cap since is refused
+   * here instead of downloading short. The read that follows asks for the
+   * format's whole cap rather than this count, so a record added in between
+   * is not cut either.
+   */
+  private async recountQueryDownload(
+    resource: DataResource,
+    format: DownloadFormatId,
+    query: DownloadQuery,
+    signal: AbortSignal | undefined,
+  ): Promise<void> {
+    const { total } = await this.collection(
+      resource,
+      {
+        operation: "collection",
+        rql: query.rql,
+        keyword: query.keyword,
+        keywordMode: query.keywordMode,
+        fields: [getResourceDefinition(resource).idField],
+        pageSize: 1,
+      },
+      signal,
+    );
+    if (total === 0)
+      throw new DataApiError(
+        "No records matched the download.",
+        404,
+        "not_found",
+      );
+    const reason = downloadUnavailableReason({
+      format,
+      scope: "all",
+      rows: total,
+    });
+    if (reason)
+      throw new DataApiValidationError(
+        `${reason} (the query now matches ${total.toLocaleString("en-US")} rows).`,
+      );
   }
 
   private url(resource: DataResource): URL {

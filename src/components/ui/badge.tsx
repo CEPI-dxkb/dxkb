@@ -11,7 +11,7 @@ const badgeVariants = cva(
       variant: {
         default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
         secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary-hover",
         destructive:
           "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
         outline:
@@ -23,7 +23,7 @@ const badgeVariants = cva(
         accent: "bg-accent text-accent-foreground [a]:hover:bg-accent/80",
         // Local edit: a result count on the brand secondary fill.
         count:
-          "bg-secondary font-semibold text-secondary-foreground [a]:hover:bg-secondary/80",
+          "bg-secondary font-semibold text-secondary-foreground [a]:hover:bg-secondary-hover",
       },
       // Local edit: smaller badges. xs is the taxonomy rank chip; sm keeps
       // the default box with 11px text.

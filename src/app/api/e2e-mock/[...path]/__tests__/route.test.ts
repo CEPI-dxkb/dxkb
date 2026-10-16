@@ -4,6 +4,7 @@ import {
   makeRouteContext,
   mockNextRequest,
 } from "@/test-helpers/api-route-helpers";
+import { genomeDownloadTsv } from "@/lib/e2e-fixtures/downloads";
 import { brucellaPpiTotal } from "@/lib/e2e-fixtures/records";
 import { DELETE, GET, POST, PUT } from "../route";
 
@@ -965,6 +966,65 @@ describe("api/e2e-mock catch-all — enabled", () => {
  * that only ever sees the happy path is not a guard, so each retained empty
  * operation is paired with a rejection case in the same namespace.
  */
+/** The download gateway's upstream request: an RQL body, the format in `Accept`. */
+function downloadPost(path: string[], accept: string, body: string) {
+  return POST(
+    mockNextRequest({
+      method: "POST",
+      url: `http://localhost:3020/api/e2e-mock/${path.join("/")}/`,
+      headers: {
+        Accept: accept,
+        "Content-Type": "application/rqlquery+x-www-form-urlencoded",
+      },
+      rawBody: body,
+    }),
+    ctx(path),
+  );
+}
+
+describe("api/e2e-mock catch-all — data downloads", () => {
+  beforeEach(() => {
+    process.env.E2E_MOCK_ENABLED = "1";
+  });
+
+  it("answers a Genome Text download with the fixture, as the upstream labels it", async () => {
+    const resp = await downloadPost(
+      ["data", "genome"],
+      "text/tsv",
+      "keyword(influenza*)&sort(+genome_id)&limit(1)",
+    );
+
+    expect(resp.status).toBe(200);
+    expect(resp.headers.get("Content-Type")).toBe("text/plain");
+    expect(await resp.text()).toBe(genomeDownloadTsv);
+  });
+
+  it("answers a Feature FASTA with one record per requested id, in order", async () => {
+    const resp = await downloadPost(
+      ["data", "genome_feature"],
+      "application/protein+fasta",
+      "in(feature_id,(PATRIC.2,fig%7C1.1.peg.1))&sort(+feature_id)&limit(2)",
+    );
+
+    expect(resp.status).toBe(200);
+    expect(await resp.text()).toBe(
+      ">PATRIC.2\nMNEADALDIV\n>fig|1.1.peg.1\nMNEADALDIV\n",
+    );
+  });
+
+  it("rejects a download it has no file for, naming the core", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const resp = await downloadPost(["data", "epitope"], "text/tsv", "");
+    spy.mockRestore();
+
+    expect(resp.status).toBe(400);
+    expect((await resp.json()) as unknown).toMatchObject({
+      error: "e2e-mock: unhandled data download",
+      reason: expect.stringContaining("data core 'epitope'") as unknown,
+    });
+  });
+});
+
 describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
   beforeEach(() => {
     process.env.E2E_MOCK_ENABLED = "1";
@@ -1177,7 +1237,7 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
   it("logs every rejection branch under the prefix e2e/README.md documents", async () => {
     // The README tells a reader to grep the webServer log for
     // "[api/e2e-mock] e2e-mock: ". That grep is only trustworthy if EVERY
-    // rejection is in it, so this drives all eight — including the
+    // rejection is in it, so this drives all nine — including the
     // `genome_amr` body-validation branch, which is the one that sat outside
     // the prefix while a comment claimed none did.
     const logged: string[] = [];
@@ -1217,7 +1277,9 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
       }),
       ctx(["bvbrc-website", "genome_amr"]),
     );
-    // 7 + 8. PUT and DELETE
+    // 7. a download for a data core with no registered file
+    await downloadPost(["data", "epitope"], "text/tsv", "eq(epitope_id,*)");
+    // 8 + 9. PUT and DELETE
     await PUT(
       mockNextRequest({
         method: "PUT",
@@ -1234,7 +1296,7 @@ describe("api/e2e-mock catch-all — fail-closed dispatch", () => {
     );
     spy.mockRestore();
 
-    expect(logged).toHaveLength(8);
+    expect(logged).toHaveLength(9);
     for (const line of logged) {
       expect(line).toMatch(/^\[api\/e2e-mock\] e2e-mock: /);
     }

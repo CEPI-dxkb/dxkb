@@ -499,6 +499,25 @@ test.describe("a11y deep tier: search", () => {
   });
 });
 
+// ── Collection Download tile (interaction state) ─────────────────────────────────
+
+test.describe("a11y deep tier: collection download", () => {
+  test("collection download: popover open", async ({ page }) => {
+    await applyBackendMocks(page, {
+      overrides: [...authSessionOverrides, ...a11yBackendOverrides],
+    });
+    await page.goto("/genome?keyword=influenza");
+    await page.getByRole("button", { name: /^DOWNLOAD/ }).click();
+    await expect(
+      page.getByRole("radiogroup", { name: "Rows to download" }),
+    ).toBeVisible();
+
+    await forEachTheme(page, async (theme) => {
+      await assertNoBlocking(page, "collection-download/open", theme);
+    });
+  });
+});
+
 // ── Command palette (interaction state) ──────────────────────────────────────────
 // Migrated from routes-sweep.spec.ts Phase 1 to its natural home here.
 

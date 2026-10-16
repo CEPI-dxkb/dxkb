@@ -47,6 +47,17 @@ export {
 } from "./catchall";
 export { journeyOverrides } from "./journey";
 export {
+  downloadErrorOverride,
+  downloadFeatureCollectionOverride,
+  downloadFeatureRows,
+  downloadGatewayOverrides,
+  downloadGenomeRow,
+  downloadRoutePattern,
+  e2eProteinResidues,
+  genomeDownloadTotalOverride,
+  genomeDownloadTsv,
+} from "./downloads";
+export {
   buildPpiRows,
   buildPpiOverrides,
   selectPpiRows,

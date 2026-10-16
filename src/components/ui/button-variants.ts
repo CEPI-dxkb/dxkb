@@ -18,7 +18,7 @@ export const buttonVariants = cva(
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-secondary text-secondary-foreground hover:bg-secondary-hover aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
         destructive:
@@ -33,7 +33,7 @@ export const buttonVariants = cva(
         // Call-to-action on marketing and help surfaces: brand secondary
         // fill with the theme's paired foreground (the violet light theme
         // has a near-white secondary).
-        cta: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+        cta: "bg-secondary text-secondary-foreground hover:bg-secondary-hover",
         // Outlined control on a dark or brand surface (the navbar job pill).
         // Open matches hover rather than flipping to a light fill, so the pill
         // keeps its white text and brand-bar icon tints. Any lighter than
@@ -89,7 +89,7 @@ export const buttonVariants = cva(
           "border-input bg-background text-muted-foreground hover:bg-primary/15 hover:text-primary active:bg-primary/25 enabled:cursor-pointer dark:bg-input/30 dark:hover:bg-primary/40 dark:hover:text-foreground dark:active:bg-primary/55",
         // A row in a dropdown menu (sign out in the user menu).
         "menu-item":
-          "rounded-md border-none hover:bg-secondary/80 hover:text-foreground focus:bg-secondary/80 aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "rounded-md border-none hover:bg-secondary-hover hover:text-secondary-foreground focus:bg-secondary-hover focus:text-secondary-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 dark:hover:text-foreground",
         // Action inside a notice banner on a primary bar (the truncated
         // preview banner). The hover text follows the hover fill: accent in
         // light themes, a muted wash over the primary bar in dark ones.
@@ -133,6 +133,9 @@ export const buttonVariants = cva(
           "h-auto gap-2 px-1.5 py-1 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         banner:
           "h-auto gap-1 rounded-[min(var(--radius-md),12px)] px-2 py-0.5 text-xs font-bold in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        // A one-line, full-width choice in a popover list, on the `ghost`
+        // variant: the Download tile's format rows (tag, name, status).
+        "option-sm": "h-8 w-full gap-2 rounded-md px-2 text-left font-normal",
       },
     },
     defaultVariants: {

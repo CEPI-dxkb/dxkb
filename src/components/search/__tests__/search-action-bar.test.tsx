@@ -116,7 +116,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /copy/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ggenome$/i, enabled: true },
@@ -198,7 +197,6 @@ describe("SearchActionBar (taxonomy)", () => {
       // Legacy order, minus SUBSYSTEMS and PATHWAYS which DXKB does not carry.
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ffeature$/i, enabled: true },
@@ -226,7 +224,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /copy rows/i, enabled: true },
         { name: /services/i, enabled: true },
         // VARIANT TYPES waits on a later PR.
@@ -266,7 +263,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^eepitope$/i, enabled: true },
@@ -287,7 +283,7 @@ describe("SearchActionBar (taxonomy)", () => {
       expect(
         screen.queryByRole("button", { name: /^eepitope$/i }),
       ).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /dwnld/i })).toBeEnabled();
+      expect(screen.getByRole("button", { name: /services/i })).toBeEnabled();
     });
   });
 
@@ -304,7 +300,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ffeatures$/i, enabled: true },
@@ -345,7 +340,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^sserology$/i, enabled: true },
@@ -368,7 +362,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ssrvlnce$/i, enabled: true },
@@ -409,7 +402,6 @@ describe("SearchActionBar (taxonomy)", () => {
       // Legacy leaves COPY ROWS out of the experiment container.
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^eexprmnt$/i, enabled: true },
         // BIOSETS waits on a later PR.
@@ -431,7 +423,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /biosets/i, enabled: true },
       ];
@@ -468,7 +459,6 @@ describe("SearchActionBar (taxonomy)", () => {
 
       const expectedActions = [
         { name: /guide/i, enabled: true },
-        { name: /dwnld/i, enabled: true },
         { name: /^copy$/i, enabled: true },
         { name: /services/i, enabled: true },
         { name: /^ggenome$/i, enabled: true },

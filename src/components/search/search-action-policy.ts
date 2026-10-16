@@ -2,7 +2,6 @@ import {
   AlignJustify,
   BookOpen,
   Copy,
-  Download,
   Settings,
   Group,
   Binary,
@@ -29,7 +28,6 @@ import {
 
 export type SearchActionId =
   | "guide"
-  | "download"
   | "copyRows"
   | "services"
   | "genome"
@@ -93,25 +91,6 @@ export const searchActionConfig: SearchActionConfig[] = [
     maxSelection: 1,
     // Enabled/disabled per consumer via disabledActions (live in taxon-view,
     // disabled on /search until that page wires a handler).
-  },
-  {
-    id: "download",
-    label: "DWNLD",
-    icon: Download,
-    validSearchTypes: [
-      "bioset",
-      "epitope",
-      "experiment",
-      "genome_feature",
-      "genome_sequence",
-      "protein_feature",
-      "protein_structure",
-      "ppi",
-      "sequence_feature",
-      "serology",
-      "surveillance",
-    ],
-    requiresSelection: true,
   },
   {
     id: "copyRows",

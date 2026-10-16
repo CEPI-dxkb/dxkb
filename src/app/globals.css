@@ -136,6 +136,14 @@
   --color-primary-hover: var(--primary-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  /* The hover fill of a secondary surface (secondary and cta buttons,
+     secondary and count badges, the menu-item hover). Each theme moves
+     --secondary away from its secondary-foreground, so the text keeps at
+     least 4.5:1, where secondary/80 blends toward the page and lightened it
+     under near-white text (3.03:1 in bvbrc-light). A literal per theme, not
+     a color-mix(): see --color-primary-hover. src/__tests__/theme-contrast
+     .test.ts checks both fills in all six blocks. */
+  --color-secondary-hover: var(--secondary-hover);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
@@ -236,6 +244,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --secondary-hover: oklch(0.758 0.155 37.18);
   /* Keep last: see --color-primary-hover in globals.css;
      src/__tests__/theme-token-order.test.ts fails if anything follows it. */
   --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--foreground));
@@ -253,7 +262,9 @@
   --primary: oklch(45.57% 0.137 266.75);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(71.57% 0.182 37.18);
-  --secondary-foreground: oklch(0.985 0 0);
+  /* Dark text: the dark theme keeps the light-theme orange fill, where white
+     text is 2.6:1 and dark text 6.6:1. */
+  --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(84.57% 0.167 84.87);
@@ -287,6 +298,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --secondary-hover: oklch(0.758 0.155 37.18);
   /* Keep last: see --color-primary-hover in globals.css;
      src/__tests__/theme-token-order.test.ts fails if anything follows it. */
   --primary-hover: color-mix(in oklab, var(--primary) 85%, var(--background));

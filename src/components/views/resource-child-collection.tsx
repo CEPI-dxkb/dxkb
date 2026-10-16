@@ -8,6 +8,7 @@ import {
   type DataResource,
   type DataSort,
 } from "@/lib/data-api";
+import type { CollectionDownloadSpec } from "@/lib/data-api/downloads";
 import { epitopeCollectionProfile } from "@/lib/epitope-view";
 import { featureCollectionProfile } from "@/lib/feature-view";
 import { biosetCollectionProfile } from "@/lib/experiment-view/profile";
@@ -138,6 +139,13 @@ interface ResourceChildCollectionProps {
    *    metadata-derived column set and break on any unrelated field change.
    */
   profile?: ResourceCollectionProfile<ChildRow>;
+  /**
+   * The tab's download formats, replacing the profile's (`ResourceCollectionProfile.download`).
+   * The Proteins tabs pass `proteinDownloadSpec`; the canonical Feature
+   * profile's own spec follows the Feature list's URL, which a child tab does
+   * not have.
+   */
+  download?: CollectionDownloadSpec;
   guideUrl?: string;
   // Matches ResourceCollection's own default. Pass "loaded" only where the caller
   // owns the keyword box and wants it to filter the current page client-side.
@@ -181,6 +189,7 @@ function ScopedResourceChildCollection({
   unsortedOrder,
   defaultFilters,
   profile: suppliedProfile,
+  download,
   guideUrl,
   keywordMode = "server",
   serverKeywordMode,
@@ -222,6 +231,7 @@ function ScopedResourceChildCollection({
   }
   if (serverKeywordMode) profile = { ...profile, serverKeywordMode };
   if (unsortedOrder) profile = { ...profile, unsortedOrder };
+  if (download) profile = { ...profile, download };
 
   const collectionOptions = childCollectionOptions(
     profile.columns,

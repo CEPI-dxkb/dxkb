@@ -91,7 +91,12 @@ const tableHeadVariants = cva(
       variant: {
         default: "",
         ...tableDividerVariants,
-        "divider-strong-muted": "border-r border-foreground/20 bg-muted",
+        // A sorted column's head (`aria-sort` ascending or descending) takes an
+        // `info` tint and an `info` rule along its bottom edge, drawn as an
+        // inset shadow so the cell keeps its height. `info`, not `primary`:
+        // the dark themes keep a dark primary, which the tint would swallow.
+        "divider-strong-muted":
+          "border-r border-foreground/20 bg-muted aria-[sort=ascending]:bg-info/15 aria-[sort=ascending]:shadow-[inset_0_-2px_0_var(--color-info)] aria-[sort=descending]:bg-info/15 aria-[sort=descending]:shadow-[inset_0_-2px_0_var(--color-info)]",
         // An opaque head cell (sticky or dragged headers).
         surface: "bg-background",
       },
@@ -184,7 +189,10 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
+      className={cn(
+        "transition-opacity aria-busy:opacity-50 [&_tr:last-child]:border-0",
+        className,
+      )}
       {...props}
     />
   )

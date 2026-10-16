@@ -1540,3 +1540,94 @@ describe("DataTable remembered widths", () => {
     expect(publicIdHandle).toHaveAttribute("aria-valuenow", "222");
   });
 });
+
+// Regression: after a same-page change (sort, filter, keyword) the previous
+// query's rows stay on screen while the new ones load, and nothing showed it, so
+// the table looked loaded and an export of it was refused.
+describe("DataTable refreshing state", () => {
+  const previousRows = [{ strain_name: "Previous Strain" }];
+
+  it("marks the rows on screen as stale while the new results load", () => {
+    const { container } = render(
+      <DataTable
+        id="refreshing"
+        data={previousRows}
+        columns={columns}
+        totalItems={1}
+        resource="strain"
+        isRefreshing={true}
+      />,
+    );
+
+    expect(screen.getByText("Loading results...")).toBeVisible();
+    expect(screen.getByText("Previous Strain")).toBeInTheDocument();
+    expect(container.querySelector("tbody")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
+  });
+
+  it("shows nothing extra once the results are current", () => {
+    const { container } = render(
+      <DataTable
+        id="current"
+        data={previousRows}
+        columns={columns}
+        totalItems={1}
+        resource="strain"
+      />,
+    );
+
+    expect(screen.queryByText("Loading results...")).not.toBeInTheDocument();
+    expect(container.querySelector("tbody")).not.toHaveAttribute("aria-busy");
+  });
+
+  it("leaves a loading page to its skeleton", () => {
+    const { container } = render(
+      <DataTable
+        id="page-loading"
+        data={previousRows}
+        columns={columns}
+        totalItems={1}
+        resource="strain"
+        isLoading={true}
+        isRefreshing={true}
+      />,
+    );
+
+    expect(screen.queryByText("Loading results...")).not.toBeInTheDocument();
+    expect(container.querySelector("tbody")).not.toHaveAttribute("aria-busy");
+  });
+});
+
+// The sorted column's highlight keys off `aria-sort` (ui/table.tsx), so the
+// attribute must name the sort the table was given, on that column only.
+describe("DataTable sorted column", () => {
+  const sortColumns = [
+    { id: "strain_name", label: "Strain Name", visible: true },
+    { id: "genome_id", label: "Genome ID", visible: true },
+  ];
+
+  it.each([
+    [false, "ascending"],
+    [true, "descending"],
+  ])("marks only the sorted column's header (desc: %s)", (desc, ariaSort) => {
+    render(
+      <DataTable
+        id="sorted"
+        data={[{ genome_id: "1", strain_name: "First" }]}
+        columns={sortColumns}
+        totalItems={1}
+        resource="genome"
+        sorting={[{ id: "genome_id", desc }]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: /Genome ID/ }),
+    ).toHaveAttribute("aria-sort", ariaSort);
+    expect(
+      screen.getByRole("columnheader", { name: /Strain Name/ }),
+    ).toHaveAttribute("aria-sort", "none");
+  });
+});

@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
+import { CancelledError } from "@tanstack/react-query";
 import { maxExportRows, type DataRepository } from "@/lib/data-api";
 import { useResourceCollectionExport } from "../use-resource-collection-export";
 
@@ -36,6 +37,7 @@ function options(
     columns,
     total: 2,
     isPlaceholderData: false,
+    currentTotal: () => Promise.resolve(2),
     hasLoadedKeyword: false,
     loadedKeyword: "",
     rql: "eq(owner,public)",
@@ -141,20 +143,143 @@ describe("useResourceCollectionExport", () => {
     expect(downloadResourceExport).not.toHaveBeenCalled();
   });
 
-  it("reports refresh and size guards without requesting rows", async () => {
+  it("refuses an export over the limit without requesting rows", async () => {
     const { data, exportAll } = repository();
-    const refreshing = renderHook(() =>
-      useResourceCollectionExport(options(data, { isPlaceholderData: true })),
-    );
-    await act(() => refreshing.result.current.exportRows("csv"));
-    expect(refreshing.result.current.exportError).toMatch(/finish loading/);
-
-    const oversized = renderHook(() =>
+    const { result } = renderHook(() =>
       useResourceCollectionExport(options(data, { total: 10_001 })),
     );
-    await act(() => oversized.result.current.exportRows("csv"));
-    expect(oversized.result.current.exportError).toContain("10,001");
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toContain("10,001");
     expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("waits for the current query's total before reading the rows", async () => {
+    // While the rows on screen are a previous query's placeholder, the total
+    // comes from this query's own read, so the export starts once it lands.
+    const { data, exportAll } = repository();
+    exportAll.mockResolvedValue({ rows: [{ genome_id: "1" }] });
+    const total = Promise.withResolvers<number>();
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(
+        options(data, {
+          total: 1,
+          isPlaceholderData: true,
+          currentTotal: () => total.promise,
+        }),
+      ),
+    );
+
+    let exported: Promise<void> | undefined;
+    act(() => {
+      exported = result.current.exportRows("csv");
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(exportAll).not.toHaveBeenCalled();
+    expect(result.current.exportError).toBeNull();
+
+    await act(async () => {
+      total.resolve(1);
+      await exported;
+    });
+
+    expect(exportAll).toHaveBeenCalledTimes(1);
+    expect(downloadResourceExport).toHaveBeenCalledWith(
+      "genome",
+      [{ genome_id: "1" }],
+      columns,
+      ["genome_id", "genome_name"],
+      "csv",
+      "all",
+      "genome",
+    );
+  });
+
+  it("refuses after waiting when the current query matches more than the limit", async () => {
+    // The previous query's 2 rows are on screen; this query matches 10,001.
+    const { data, exportAll } = repository();
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(
+        options(data, {
+          total: 2,
+          isPlaceholderData: true,
+          currentTotal: () => Promise.resolve(10_001),
+        }),
+      ),
+    );
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toContain("10,001");
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("drops the export quietly when the query it waits for is replaced", async () => {
+    const { data, exportAll } = repository();
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(
+        options(data, {
+          isPlaceholderData: true,
+          currentTotal: () => Promise.reject(new CancelledError()),
+        }),
+      ),
+    );
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toBeNull();
+    expect(exportAll).not.toHaveBeenCalled();
+    expect(downloadResourceExport).not.toHaveBeenCalled();
+  });
+
+  it("reports the current query's failed read as the export error", async () => {
+    const { data, exportAll } = repository();
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(
+        options(data, {
+          isPlaceholderData: true,
+          currentTotal: () =>
+            Promise.reject(
+              new Error("Too many data requests. Please try again shortly."),
+            ),
+        }),
+      ),
+    );
+
+    await act(() => result.current.exportRows("csv"));
+
+    expect(result.current.exportError).toBe(
+      "Too many data requests. Please try again shortly.",
+    );
+    expect(exportAll).not.toHaveBeenCalled();
+  });
+
+  it("exports selected rows without waiting for the current total", async () => {
+    const { data, selected } = repository();
+    selected.mockResolvedValue({ rows: [{ genome_id: "7" }] });
+    const currentTotal = vi.fn(() => new Promise<number>(() => undefined));
+    const { result } = renderHook(() =>
+      useResourceCollectionExport(
+        options(data, { isPlaceholderData: true, currentTotal }),
+      ),
+    );
+
+    await act(() => result.current.exportRows("csv", ["7"]));
+
+    expect(currentTotal).not.toHaveBeenCalled();
+    expect(downloadResourceExport).toHaveBeenCalledWith(
+      "genome",
+      [{ genome_id: "7" }],
+      columns,
+      ["genome_id", "genome_name"],
+      "csv",
+      "all",
+      "genome",
+    );
   });
 
   it("refuses a read that stops at the export cap when more rows match than it read", async () => {

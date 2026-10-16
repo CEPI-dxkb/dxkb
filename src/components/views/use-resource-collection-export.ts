@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CancelledError } from "@tanstack/react-query";
 import type {
   DataTableColumn,
   DataTableRow,
@@ -44,11 +45,18 @@ interface UseResourceCollectionExportOptions {
   total: number;
   /**
    * The rows and total on screen belong to a previous query while this one
-   * loads, so an all-matching read would be sized by the wrong total. A
-   * background refresh of the same query is not this; its total is this
-   * query's latest count, and `exceedsReadLimit` checks the read itself.
+   * loads, so an all-matching export waits for this query's own total
+   * (`currentTotal`) rather than being sized by the wrong one. A background
+   * refresh of the same query is not this; its total is this query's latest
+   * count, and `exceedsReadLimit` checks the read itself.
    */
   isPlaceholderData: boolean;
+  /**
+   * This query's total once its read lands (`useResourceCollection`). Rejects
+   * with `CancelledError` when the query is replaced first, which drops the
+   * export: the user has moved on from the results they asked for.
+   */
+  currentTotal: () => Promise<number>;
   hasLoadedKeyword: boolean;
   loadedKeyword: string;
   rql?: string;
@@ -65,6 +73,7 @@ export function useResourceCollectionExport({
   exportFileName,
   total,
   isPlaceholderData,
+  currentTotal,
   hasLoadedKeyword,
   loadedKeyword,
   rql,
@@ -83,22 +92,19 @@ export function useResourceCollectionExport({
     setExportError(null);
     const ids = isAllPagesSelected ? undefined : selectedIds;
     if (ids && ids.length === 0) return;
-    if (!ids && isPlaceholderData) {
-      setExportError(
-        "Wait for the current results to finish loading before exporting.",
-      );
-      return;
-    }
     const limitMessage = (rowCount: string) =>
       hasLoadedKeyword
         ? `This export must search ${rowCount} rows. Narrow the source results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`
         : `This export matches ${rowCount} rows. Narrow the results to ${maxExportRows.toLocaleString()} rows or fewer and try again.`;
-    if (!ids?.length && total > maxExportRows) {
-      setExportError(limitMessage(total.toLocaleString()));
-      return;
-    }
 
     try {
+      if (!ids) {
+        const matchingTotal = isPlaceholderData ? await currentTotal() : total;
+        if (matchingTotal > maxExportRows) {
+          setExportError(limitMessage(matchingTotal.toLocaleString()));
+          return;
+        }
+      }
       const selectedFields = fields
         ? [...fields]
         : columns.map((column) => column.id);
@@ -144,6 +150,7 @@ export function useResourceCollectionExport({
         exportFileName ?? resource,
       );
     } catch (error) {
+      if (error instanceof CancelledError) return;
       console.error("Resource export failed:", error);
       setExportError(
         formatUserFacingErrorMessage(error, genericExportErrorMessage),

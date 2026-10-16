@@ -7,7 +7,7 @@ import type { CollectionState } from "@/lib/views/collection-state";
 import { FeatureResourceCollection } from "../feature-resource-collection";
 
 interface CapturedCollectionProps {
-  profile: { serverKeywordMode?: string };
+  profile: { serverKeywordMode?: string; unsortedOrder?: unknown };
   state: CollectionState;
   facetState?: CollectionState;
   filtersBesideRql?: readonly string[];
@@ -55,9 +55,17 @@ describe("FeatureResourceCollection", () => {
 
     expect(urlStateOptions.current).toBe(featureCollectionOptions);
     expect(collectionProps.current?.profile.serverKeywordMode).toBeUndefined();
+    expect(collectionProps.current?.profile.unsortedOrder).toBeUndefined();
     expect(collectionProps.current?.facetState).toBe(
       collectionProps.current?.state,
     );
+  });
+
+  it("hands its unsorted order to the collection profile", () => {
+    const order = { field: "genome_name", direction: "asc" } as const;
+    render(<FeatureResourceCollection unsortedOrder={order} />);
+
+    expect(collectionProps.current?.profile.unsortedOrder).toBe(order);
   });
 
   it("counts facets without the list's untouched PATRIC default", () => {

@@ -81,6 +81,26 @@ export class TaxonomyCollectionPage {
     ).toHaveCount(refreshing ? 1 : 0);
   }
 
+  /**
+   * While the rows on screen belong to an earlier query, the table dims them and floats a filled
+   * "Loading results..." notice over them; both clear once the current rows land. jsdom computes no
+   * Tailwind styles, so only a browser can check the dimming and the notice's fill.
+   */
+  async expectStaleRows(stale: boolean): Promise<void> {
+    const notice = this.page.getByText("Loading results...", { exact: true });
+    // By its label, not its role: a dialog the action opens can hide the region from the
+    // accessibility tree.
+    const body = this.page.locator('[aria-label="Taxa results table"] tbody');
+    if (stale) {
+      await expect(notice).toBeInViewport();
+      await expect(notice).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+      await expect(body).toHaveCSS("opacity", "0.5");
+    } else {
+      await expect(notice).toHaveCount(0);
+      await expect(body).toHaveCSS("opacity", "1");
+    }
+  }
+
   async openServices(): Promise<void> {
     const services = this.page.getByRole("button", {
       name: "SERVICES",

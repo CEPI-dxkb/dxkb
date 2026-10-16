@@ -57,19 +57,18 @@ test.describe("Taxonomy collection", () => {
     await taxonomyPage.selectAllResults();
     await page.getByRole("button", { name: "SERVICES", exact: true }).click();
 
-    await expect(
-      page.getByText(
-        "Wait for the current results to finish loading and try again.",
-      ),
-    ).toBeVisible();
+    // The action waits for the narrowed query's own total rather than refusing,
+    // and opens nothing while the previous query's rows are still on screen.
+    await taxonomyPage.expectRefreshing(true);
+    await taxonomyPage.expectStaleRows(true);
     await expect(
       page.getByRole("heading", { name: "Use selected Taxa in a service" }),
     ).toHaveCount(0);
+    await expect(page.getByText("Could not complete action")).toHaveCount(0);
 
-    await taxonomyPage.expectRefreshing(true);
-
-    // Once the narrowed rows land, the same selection resolves. The fixture serves
-    // the same row to both queries, so only the refresh status tells them apart.
+    // Once the narrowed rows land, the same click resolves every matching Taxon.
+    // The fixture serves the same row to both queries, so only the refresh status
+    // tells them apart.
     const narrowedResponse = page.waitForResponse(
       (response) =>
         response.request().method() === "GET" &&
@@ -78,14 +77,9 @@ test.describe("Taxonomy collection", () => {
     releaseNarrowed();
     await narrowedResponse;
     await taxonomyPage.expectRefreshing(false);
-    await taxonomyPage.expectTaxonVisible("11520");
-    await taxonomyPage.openServices();
+    await taxonomyPage.expectStaleRows(false);
     await taxonomyPage.expectServiceOptions();
-    await expect(
-      page.getByText(
-        "Wait for the current results to finish loading and try again.",
-      ),
-    ).toHaveCount(0);
+    await expect(page.getByText("Could not complete action")).toHaveCount(0);
   });
 
   test("redirects legacy Taxa search URLs", async ({ page }) => {

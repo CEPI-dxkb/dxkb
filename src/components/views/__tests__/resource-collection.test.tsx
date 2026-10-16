@@ -548,6 +548,60 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
   });
 
+  it("reads an unsorted collection in the profile's unsorted order, with current rows", () => {
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, unsortedOrder }}
+        repository={repository()}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    expect(useResourceCollection.mock.calls.at(-1)?.[0]).toMatchObject({
+      unsortedOrder,
+    });
+    // The rows on screen are this query's, so the table shows no refresh.
+    expect(dataTableProps.isRefreshing).toBe(false);
+  });
+
+  it("exports an unsorted collection in the profile's unsorted order", async () => {
+    const data = repository();
+    const exportAll = vi.spyOn(data, "exportAll");
+    const unsortedOrder = {
+      field: "genome_name",
+      direction: "asc",
+      then: [{ field: "genome_id", direction: "asc" }],
+    } as const;
+    render(
+      <ResourceCollection
+        profile={{ ...genomeCollectionProfile, unsortedOrder }}
+        repository={data}
+        state={{ keyword: "", filters: {}, page: 1, sort: "unsorted" }}
+        onStateChange={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      await (
+        dataTableProps.onDownloadAll as (
+          format: "csv",
+          fields: null,
+        ) => Promise<void>
+      )("csv", null);
+    });
+
+    expect(exportAll).toHaveBeenCalledWith(
+      "genome",
+      expect.objectContaining({ sort: unsortedOrder }),
+    );
+  });
+
   it("batches selected exports, restores ID order, and waits for every batch", async () => {
     const ids = Array.from(
       { length: maxSelectedRows + 1 },
@@ -647,12 +701,15 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     );
   });
 
-  it("does not export all using a previous query's total", async () => {
+  it("exports all with the current query's total once its read lands, not a previous query's", async () => {
     const data = repository();
     const exportAll = vi.spyOn(data, "exportAll");
+    const currentTotal = Promise.withResolvers<number>();
     useResourceCollection.mockReturnValueOnce({
       ...collectionResult(),
+      total: 10_001,
       isPlaceholderData: true,
+      currentTotal: () => currentTotal.promise,
     });
     render(
       <ResourceCollection
@@ -663,17 +720,27 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
       />,
     );
 
-    await act(async () => {
-      await (
+    // The previous query's rows stay on screen, marked as refreshing.
+    expect(dataTableProps.isRefreshing).toBe(true);
+    let exported: Promise<void> | undefined;
+    act(() => {
+      exported = (
         dataTableProps.onDownloadAll as (
           format: "csv",
           fields: null,
         ) => Promise<void>
       )("csv", null);
     });
-
     expect(exportAll).not.toHaveBeenCalled();
-    expect(screen.getByText(/finish loading before exporting/)).toBeVisible();
+
+    await act(async () => {
+      currentTotal.resolve(1);
+      await exported;
+    });
+
+    expect(exportAll).toHaveBeenCalled();
+    expect(screen.queryByText(/Could not export/)).not.toBeInTheDocument();
+    expect(downloadResourceExport).toHaveBeenCalled();
   });
 
   it("exports all during a background refresh of the same query", async () => {
@@ -703,7 +770,7 @@ describe("ResourceCollection generic collection, export and filter behaviour", (
     });
 
     expect(exportAll).toHaveBeenCalled();
-    expect(screen.queryByText(/finish loading/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Could not export/)).not.toBeInTheDocument();
   });
 
   it("rejects all-matching exports over 10,000 rows before requesting data", async () => {

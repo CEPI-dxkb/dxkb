@@ -11,6 +11,7 @@ interface CollectionProps {
   collectionOptions?: unknown;
   keywordMode?: string;
   serverKeywordMode?: string;
+  unsortedOrder?: unknown;
 }
 
 const { collectionProps } = vi.hoisted(() => ({
@@ -57,6 +58,42 @@ describe("FeatureCollection", () => {
         serverKeywordMode: "exact",
       }),
     );
+  });
+
+  it.each([
+    ["the bare list", bareState],
+    ["a link's rql", { ...bareState, rql: "eq(genome_id,83332.12)" }],
+    ["a refinement", { ...bareState, refine: "gyrase" }],
+    ["a Proteins list", { ...bareState, filters: { filter: ["protein"] } }],
+    // Text without terms searches for nothing, so these are bare lists too.
+    ["a blank keyword", { ...bareState, keyword: "   " }],
+    ["a keyword of only syntax", { ...bareState, keyword: '""' }],
+  ])("orders %s as legacy's grid does", (_name, state) => {
+    render(<FeatureCollection initialState={state} />);
+
+    expect(collectionProps.current?.unsortedOrder).toEqual({
+        field: "genome_name",
+        direction: "asc",
+        then: [
+          { field: "accession", direction: "asc" },
+          { field: "start", direction: "asc" },
+        ],
+      });
+  });
+
+  it.each([
+    ["a Features search", { ...bareState, keyword: "Dnak" }],
+    [
+      "a Proteins search",
+      { ...bareState, keyword: "Dnak", filters: { filter: ["protein"] } },
+    ],
+  ])("keeps %s in relevance order", (_name, state) => {
+    // Legacy's global search opens FeatureList and ProteinList with
+    // #defaultSort=-score.
+    render(<FeatureCollection initialState={state} />);
+
+    expect(collectionProps.current).not.toBeNull();
+    expect(collectionProps.current?.unsortedOrder).toBeUndefined();
   });
 
   it("writes no removed-default marker on a Proteins search's URL", () => {

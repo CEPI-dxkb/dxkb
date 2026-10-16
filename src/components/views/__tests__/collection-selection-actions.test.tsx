@@ -1,12 +1,21 @@
 import type { ComponentProps } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { CancelledError } from "@tanstack/react-query";
 import {
   selectionServicesMaxIds,
   selectionServicesMaxRows,
 } from "@/lib/views/collection-selection";
 
-const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+const { push, copyDialog } = vi.hoisted(() => ({
+  push: vi.fn(),
+  /** The copy dialog's latest props, so a test can run its copy directly. */
+  copyDialog: {
+    onCopy: undefined as
+      | ((columnMode: "all" | "selected", includeHeaders: boolean) => Promise<void>)
+      | undefined,
+  },
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
@@ -31,7 +40,14 @@ vi.mock("@/contexts/workspace-repository-context", () => ({
   }),
 }));
 vi.mock("../collection-copy-dialog", () => ({
-  CollectionCopyDialog: () => null,
+  CollectionCopyDialog: ({
+    onCopy,
+  }: {
+    onCopy: typeof copyDialog.onCopy;
+  }) => {
+    copyDialog.onCopy = onCopy;
+    return null;
+  },
 }));
 vi.mock("../selection-service-chooser", () => ({
   SelectionServiceChooser: ({
@@ -230,5 +246,43 @@ describe("CollectionSelectionActions", () => {
     });
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /^services$/i })).toBeEnabled();
+  });
+
+  it.each(["services", "group"])(
+    "drops %s quietly when the query it waits for is replaced",
+    async (actionId) => {
+      const user = userEvent.setup();
+      const onError = vi.fn();
+      renderStrainActions({
+        resolveActionRows: vi.fn(() => Promise.reject(new CancelledError())),
+        onError,
+      });
+
+      const button = screen.getByRole("button", {
+        name: new RegExp(`^${actionId}$`, "i"),
+      });
+      await user.click(button);
+
+      await waitFor(() => {
+        expect(button).toBeEnabled();
+      });
+      expect(onError).not.toHaveBeenCalledWith(expect.any(String));
+      expect(screen.queryByTestId("selection-services")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("selection-group")).not.toBeInTheDocument();
+    },
+  );
+
+  it("drops COPY quietly when the query it waits for is replaced", async () => {
+    // user-event installs a clipboard stub for this test.
+    userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText");
+    renderStrainActions({
+      resolveActionRows: vi.fn(() => Promise.reject(new CancelledError())),
+    });
+
+    // Resolving rather than rejecting is what keeps the dialog from showing an
+    // error: the user has moved on from the results they asked to copy.
+    await expect(copyDialog.onCopy?.("all", true)).resolves.toBeUndefined();
+    expect(writeText).not.toHaveBeenCalled();
   });
 });

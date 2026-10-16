@@ -4,7 +4,7 @@ import {
   type FastaRequest,
   type FastaResource,
 } from "./fasta";
-import { maxExportRows, maxRequestBytes } from "./types";
+import { maxExportRows, maxRequestBytes, sortKeys } from "./types";
 import type {
   CollectionRequest,
   CollectionResult,
@@ -160,7 +160,12 @@ function collectionParams(request: CollectionRequest): URLSearchParams {
   if (request.page) params.set("page", String(request.page));
   if (request.pageSize) params.set("pageSize", String(request.pageSize));
   if (request.sort)
-    params.set("sort", `${request.sort.field}:${request.sort.direction}`);
+    params.set(
+      "sort",
+      sortKeys(request.sort)
+        .map((key) => `${key.field}:${key.direction}`)
+        .join(","),
+    );
   for (const field of request.fields ?? []) params.append("field", field);
   for (const facet of request.facets ?? []) params.append("facet", facet);
   return params;

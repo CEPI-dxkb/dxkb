@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { featureGridDefaultOrder } from "@/lib/feature-view/query";
 import { dataResources } from "../types";
 import { collectionQueryOptions, dataQueryKeys } from "../query-options";
 import { DataRepository } from "../client";
@@ -121,7 +122,41 @@ describe("data API contracts", () => {
           sort: { field, direction: "asc" },
         }),
       ).toThrow(new RegExp(`${field} cannot sort genome_amr`));
+      expect(() =>
+        validateDataApiRequest("genome_amr", {
+          operation: "collection",
+          sort: {
+            field: "antibiotic",
+            direction: "asc",
+            then: [{ field, direction: "asc" }],
+          },
+        }),
+      ).toThrow(new RegExp(`${field} cannot sort genome_amr`));
     }
+  });
+
+  it("admits legacy FeatureGrid's order on Features and caps the keys that break its ties", () => {
+    // Every Features and Proteins table reads its unsorted rows in this order,
+    // so a field in it losing `sortable` would fail each of those reads.
+    expect(() =>
+      validateDataApiRequest("genome_feature", {
+        operation: "collection",
+        sort: featureGridDefaultOrder,
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateDataApiRequest("genome_feature", {
+        operation: "collection",
+        sort: {
+          field: "genome_name",
+          direction: "asc",
+          then: ["accession", "start", "end", "patric_id"].map((field) => ({
+            field,
+            direction: "asc" as const,
+          })),
+        },
+      }),
+    ).toThrow();
   });
 
   it("registers Strain backend identity and multivalue accession fields", () => {

@@ -240,6 +240,41 @@ describe("data gateway admission and errors", () => {
     await expect(json(response)).resolves.toMatchObject({ code: "not_found" });
   });
 
+  it("forwards a multi-key sort's keys in order, then the id", async () => {
+    let upstreamUrl = "";
+    server.use(
+      http.all(`${dataApiOrigin}/genome_feature/`, ({ request }) => {
+        upstreamUrl = decodeURIComponent(request.url);
+        return HttpResponse.json({ response: { numFound: 0, docs: [] } });
+      }),
+    );
+
+    const response = await get("genome_feature", {
+      operation: "collection",
+      sort: "genome_name:asc,accession:asc,start:desc",
+    });
+
+    expect(response.status).toBe(200);
+    expect(upstreamUrl).toContain(
+      "sort(+genome_name,+accession,-start,+feature_id)",
+    );
+  });
+
+  it.each(["genome_name:asc,", "genome_name:asc,accession"])(
+    "rejects a malformed sort key list (%s)",
+    async (sort) => {
+      const response = await get("genome_feature", {
+        operation: "collection",
+        sort,
+      });
+
+      expect(response.status).toBe(400);
+      await expect(json(response)).resolves.toMatchObject({
+        code: "invalid_request",
+      });
+    },
+  );
+
   it("rejects transport RQL that exceeds the validated bounds", async () => {
     const response = await get("genome", {
       operation: "collection",

@@ -1,5 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 import { BarChart } from "../bar-chart";
 
 describe("BarChart", () => {
@@ -69,5 +72,64 @@ describe("BarChart", () => {
     expect(
       screen.getByRole("img", { name: "Collection Year distribution" }),
     ).toBeInTheDocument();
+  });
+
+  describe("linked bars", () => {
+    beforeEach(() => {
+      push.mockClear();
+    });
+
+    it("follows the year under the pointer and shows the pointer cursor", () => {
+      render(
+        <BarChart
+          title="Collection Year"
+          data={[{ label: "2014", value: 1458, href: "/genomes?year=2014" }]}
+        />,
+      );
+      const overlay = screen.getByTestId("chart-overlay");
+
+      expect(overlay).not.toHaveClass("cursor-pointer");
+      fireEvent.mouseMove(overlay, { clientX: 10, clientY: 10 });
+      expect(overlay).toHaveClass("cursor-pointer");
+
+      fireEvent.click(overlay, { clientX: 10, clientY: 10 });
+      expect(push).toHaveBeenCalledWith("/genomes?year=2014");
+    });
+
+    it("exposes each linked bar as a link followed with Enter", () => {
+      render(
+        <BarChart
+          title="Collection Year"
+          data={[
+            { label: "2014", value: 1458, href: "/genomes?year=2014" },
+            { label: "2015", value: 0 },
+          ]}
+        />,
+      );
+
+      fireEvent.keyDown(screen.getByRole("link", { name: "2014: 1,458" }), {
+        key: "Enter",
+      });
+      expect(push).toHaveBeenCalledWith("/genomes?year=2014");
+      expect(
+        screen.getByRole("graphics-symbol", { name: "2015: 0" }),
+      ).toBeInTheDocument();
+    });
+
+    it("follows nothing for an unlinked year", () => {
+      render(
+        <BarChart
+          title="Collection Year"
+          data={[{ label: "2021", value: 42 }]}
+        />,
+      );
+      const overlay = screen.getByTestId("chart-overlay");
+
+      fireEvent.mouseMove(overlay, { clientX: 10, clientY: 10 });
+      fireEvent.click(overlay, { clientX: 10, clientY: 10 });
+
+      expect(overlay).not.toHaveClass("cursor-pointer");
+      expect(push).not.toHaveBeenCalled();
+    });
   });
 });

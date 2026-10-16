@@ -18,15 +18,14 @@ async function renderServer(node: Promise<React.ReactElement>) {
   render(<Suspense fallback={null}>{await node}</Suspense>);
 }
 
-function distribution(maxCount: number): OrganismGeoDistribution {
+function distribution(count: number): OrganismGeoDistribution {
   return {
-    countryData: maxCount > 0 ? { "South Korea": maxCount } : {},
+    countryData: count > 0 ? { "South Korea": count } : {},
     countryMeta: {},
     stateData: {},
     stateMeta: {},
     countyData: {},
     countyMeta: {},
-    maxCount,
   };
 }
 

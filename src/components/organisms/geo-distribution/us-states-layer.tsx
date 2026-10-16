@@ -11,13 +11,13 @@ import {
   type HoverLeave,
 } from "./choropleth-path";
 import type { ColorScale } from "./color-scale";
-import { mapHeight } from "./map-constants";
 import { featureName, type StateFeature } from "./topology-utils";
 
 interface UsStatesLayerProps {
   stateFeatures: StateFeature[];
   scale: number;
   width: number;
+  height: number;
   data: OrganismGeoDistribution;
   colorScale: ColorScale;
   isDraggingRef: RefObject<boolean>;
@@ -30,6 +30,7 @@ export function UsStatesLayer({
   stateFeatures,
   scale,
   width,
+  height,
   data,
   colorScale,
   isDraggingRef,
@@ -41,7 +42,7 @@ export function UsStatesLayer({
     <AlbersUsa<StateFeature>
       data={stateFeatures}
       scale={scale}
-      translate={[width / 2, mapHeight / 2]}
+      translate={[width / 2, height / 2]}
     >
       {({ features }) =>
         features.map(({ feature, path }) => {

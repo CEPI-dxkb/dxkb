@@ -37,6 +37,7 @@ export default async function VirusesPage({ searchParams }: VirusesPageProps) {
       config={virusesLandingConfig}
       views={views}
       activeViewKey={request.activeViewKey}
+      tabParam={request.tabParam}
     />
   );
 }

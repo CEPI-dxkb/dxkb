@@ -179,6 +179,7 @@ export function GenomeMember({
       tabs={tabs}
       activeTab={activeTab}
       defaultTab="overview"
+      serverTab
       layout={activeTab === "overview" ? "scroll" : "fill"}
     >
       {content}

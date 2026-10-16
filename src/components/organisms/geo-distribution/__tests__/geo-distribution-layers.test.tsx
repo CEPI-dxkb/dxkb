@@ -56,7 +56,6 @@ const emptyGeoData: OrganismGeoDistribution = {
   stateMeta: {},
   countyData: {},
   countyMeta: {},
-  maxCount: 0,
 };
 
 const colorScale = () => "#000";
@@ -76,6 +75,7 @@ describe("UsStatesLayer", () => {
           stateFeatures={[makeFeature("Texas")]}
           scale={800}
           width={960}
+          height={560}
           data={emptyGeoData}
           colorScale={colorScale}
           isDraggingRef={makeRef(false)}
@@ -93,6 +93,7 @@ describe("UsStatesLayer", () => {
         stateFeatures={[makeFeature("Texas")]}
         scale={800}
         width={960}
+        height={560}
         data={emptyGeoData}
         colorScale={colorScale}
         isDraggingRef={makeRef(false)}
@@ -160,6 +161,7 @@ describe("WorldCountriesLayer", () => {
           countryFeatures={[makeFeature("France")]}
           scale={800}
           width={960}
+          height={560}
           data={emptyGeoData}
           colorScale={colorScale}
           isDraggingRef={makeRef(false)}
@@ -177,6 +179,7 @@ describe("WorldCountriesLayer", () => {
         countryFeatures={[makeFeature("France")]}
         scale={800}
         width={960}
+        height={560}
         data={emptyGeoData}
         colorScale={colorScale}
         isDraggingRef={makeRef(false)}

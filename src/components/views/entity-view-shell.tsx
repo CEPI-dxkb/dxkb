@@ -5,8 +5,10 @@ import type { ReactNode } from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
 import { LandingMobileNav } from "@/components/organisms/landing-shell/landing-mobile-nav";
 import { LandingNav } from "@/components/organisms/landing-shell/landing-nav";
+import { restoreHistoryScroll } from "@/lib/history-scroll-restoration";
 import { toQueryString } from "@/lib/url";
 import { deleteChildCollectionParams } from "@/lib/views/child-collection-state";
+import { TabContentSearchParams } from "@/components/views/tab-content-search-params";
 
 export interface EntityViewTab<Key extends string = string> {
   key: Key;
@@ -27,6 +29,12 @@ export interface EntityViewShellProps<Key extends string = string> {
   activeTab: Key;
   defaultTab: Key;
   layout?: "scroll" | "fill";
+  /**
+   * Set when `activeTab` is the server page's canonical `tab` param (member
+   * pages redirect to it). Keeps the tab's content on its own URL while Back or
+   * Forward replaces it.
+   */
+  serverTab?: boolean;
   children: ReactNode;
 }
 
@@ -41,6 +49,7 @@ export function EntityViewShell<Key extends string>({
   activeTab,
   defaultTab,
   layout = "scroll",
+  serverTab = false,
   children,
 }: EntityViewShellProps<Key>) {
   const router = useRouter();
@@ -59,6 +68,14 @@ export function EntityViewShell<Key extends string>({
     const query = toQueryString(params);
     router.push(`${url.pathname}${query ? `?${query}` : ""}${url.hash}`);
   };
+
+  const content = serverTab ? (
+    <TabContentSearchParams tab={activeTab === defaultTab ? null : activeTab}>
+      {children}
+    </TabContentSearchParams>
+  ) : (
+    children
+  );
 
   const header = (
     <div className="min-w-0">
@@ -110,17 +127,18 @@ export function EntityViewShell<Key extends string>({
               className="-mr-2 flex min-h-0 flex-1 overflow-hidden sm:-mr-3 lg:-mr-4"
             >
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                {children}
+                {content}
               </div>
             </section>
           ) : (
             <section
+              ref={restoreHistoryScroll}
               data-testid="entity-view-scroll-region"
               aria-label={`${viewLabel} content`}
               tabIndex={0}
               className="scrollbar-themed -mr-2 min-h-0 flex-1 overflow-y-auto py-4 pr-2 pl-1 sm:-mr-3 sm:pr-3 lg:-mr-4 lg:pr-4"
             >
-              {children}
+              {content}
             </section>
           )}
         </article>

@@ -12,6 +12,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@tanstack/react-hotkeys", () => ({ useHotkey: vi.fn() }));
 
+import { useTabContentSearchParams } from "@/components/views/tab-content-search-params";
 import { LandingShellClient } from "../landing-shell-client";
 import { organismTabCollectionOptionsByView } from "../organism-tab-collection-options";
 
@@ -218,4 +219,48 @@ it("uses the parent flex boundary for both fill and scroll views", () => {
   expect(scrollWrapper).toHaveClass("min-h-0", "flex-1");
   expect(scrollWrapper?.className).not.toContain("100dvh");
   expect(container.querySelector(".overflow-y-auto")).not.toBeNull();
+});
+
+describe("tabParam", () => {
+  function SearchProbe() {
+    return <output>{useTabContentSearchParams().toString()}</output>;
+  }
+
+  function shell(tabParam?: string | null) {
+    return (
+      <LandingShellClient
+        displayName="Brucella"
+        activeView="genomes"
+        defaultView="overview"
+        navItems={navItems}
+        layout="fill"
+        tabParam={tabParam}
+      >
+        <SearchProbe />
+      </LandingShellClient>
+    );
+  }
+
+  it("keeps the leaving view on its own URL while Back replaces it", () => {
+    searchParamsRef.current = new URLSearchParams(
+      "tab=genomes&collection_year=2025",
+    );
+    const { rerender } = render(shell("genomes"));
+    // Next's stale popstate frame: the Overview's URL, the Genomes RSC.
+    searchParamsRef.current = new URLSearchParams();
+    rerender(shell("genomes"));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "tab=genomes&collection_year=2025",
+    );
+  });
+
+  it("leaves the view on the live URL without it", () => {
+    searchParamsRef.current = new URLSearchParams(
+      "tab=genomes&collection_year=2025",
+    );
+    const { rerender } = render(shell());
+    searchParamsRef.current = new URLSearchParams();
+    rerender(shell());
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
+  });
 });

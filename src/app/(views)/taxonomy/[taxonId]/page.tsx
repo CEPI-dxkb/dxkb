@@ -28,7 +28,9 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
     notFound();
   }
 
-  const activeViewKey = firstSearchParam(await searchParams, "tab");
+  // No legacy `view` param here: the raw `tab` both picks the view and is what
+  // the shell's tab content matches against the URL.
+  const tab = firstSearchParam(await searchParams, "tab");
 
   // Kick off the manifest fetch in parallel with the taxonomy fetch — they are
   // independent. Started before the try so taxonomy's notFound/re-throw control
@@ -61,7 +63,8 @@ export default async function TaxonomyPage({ params, searchParams }: TaxonomyPag
     <OrganismLandingShell
       config={config}
       views={navItems}
-      activeViewKey={activeViewKey}
+      activeViewKey={tab}
+      tabParam={tab ?? null}
       headerContent={
         <TaxonBreadcrumb
           taxon={taxon}

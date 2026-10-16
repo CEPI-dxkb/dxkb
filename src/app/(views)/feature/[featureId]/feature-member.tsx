@@ -151,6 +151,7 @@ export function FeatureMember({ feature, activeTab }: FeatureMemberProps) {
       tabs={tabs}
       activeTab={activeTab}
       defaultTab="overview"
+      serverTab
       layout={activeTab === "overview" ? "scroll" : "fill"}
     >
       {content}

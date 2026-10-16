@@ -15,7 +15,7 @@ import {
   type HoverPayload,
 } from "./choropleth-svg";
 import { ColorLegend } from "./color-legend";
-import { makeColorScale } from "./color-scale";
+import { makeGeoColorScale } from "./color-scale";
 import { MapControls } from "./map-controls";
 import { MapTooltip } from "./map-tooltip";
 import type { GeoDistributionAccent, GeoMapState, GeoMapView } from "./types";
@@ -32,6 +32,34 @@ interface TopologyLike {
 }
 
 const tooltipOffset = 14;
+
+const legendUnits: Record<GeoMapView, string> = {
+  world: "Genomes per country",
+  us: "Genomes per state",
+  state: "Genomes per county",
+};
+
+/**
+ * The counts of the regions a view draws, which its color steps divide: the
+ * countries, the US states (the state facet also counts other countries'
+ * provinces, which the US map never draws), or the selected state's counties.
+ */
+function visibleCounts(
+  data: OrganismGeoDistribution,
+  mapState: GeoMapState,
+  usStateNames: readonly string[],
+): number[] {
+  if (mapState.view === "world") return Object.values(data.countryData);
+  if (mapState.view === "us") {
+    return usStateNames.length > 0
+      ? usStateNames.map((name) => data.stateData[name] ?? 0)
+      : Object.values(data.stateData);
+  }
+  const prefix = `${mapState.selectedStateName ?? ""}|`;
+  return Object.entries(data.countyData)
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([, count]) => count);
+}
 
 async function fetchTopoJson(url: string): Promise<TopologyLike> {
   const response = await fetch(url);
@@ -120,7 +148,15 @@ export function GeoDistributionClient({
     stateOptions.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  const colorScale = makeColorScale(data.maxCount, accent);
+  // Each view divides its own regions' counts, so a state's counties are not
+  // all pale beside the USA's national total.
+  const colorScale = makeGeoColorScale(
+    visibleCounts(
+      data,
+      mapState,
+      stateOptions.map((option) => option.name),
+    ),
+  );
 
   const {
     tooltipOpen,
@@ -210,12 +246,15 @@ export function GeoDistributionClient({
           onSelectState={handleSelectState}
         />
       </CardHeader>
-      <CardContent className="relative">
-        <div ref={containerRef} className="relative">
+      <CardContent
+        className="relative flex min-h-0 flex-1 flex-col"
+        data-geo-accent={accent}
+      >
+        <div ref={containerRef} className="relative flex min-h-0 flex-1 flex-col">
           <ChoroplethSvg
             ref={choroplethRef}
             data={data}
-            colorScale={colorScale}
+            colorScale={colorScale.fill}
             mapState={mapState}
             onSelectState={handleSelectState}
             onSwitchToUs={() => {
@@ -243,9 +282,10 @@ export function GeoDistributionClient({
             </TooltipWithBounds>
           )}
         </div>
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        {/* 12px above the legend, as the card's py-3 leaves below it. */}
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
           <span className="text-xs text-muted-foreground">{helperMessage}</span>
-          <ColorLegend maxCount={data.maxCount} accent={accent} />
+          <ColorLegend scale={colorScale} unit={legendUnits[mapState.view]} />
         </div>
       </CardContent>
     </Card>

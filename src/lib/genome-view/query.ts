@@ -56,6 +56,15 @@ export const genomeCollectionOptions: CollectionStateOptions = {
     "collection_year",
     "isolation_country",
     "host_common_name",
+    // The other fields the overview charts break genomes down by, so a chart
+    // bucket links to its genomes as a removable filter (`genomeListValueHref`).
+    "host_name",
+    "host_group",
+    "isolation_source",
+    "sequencing_centers",
+    "family",
+    "genus",
+    "species",
     // Visibility scope behind the "My Genomes" link. A friendly filter rather
     // than `rql` so selecting a facet adds to it instead of replacing it.
     "public",

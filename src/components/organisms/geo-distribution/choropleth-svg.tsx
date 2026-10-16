@@ -93,6 +93,9 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
       onLeaveMap();
     };
     const [width, setWidth] = useState(800);
+    // The map fills the height its card leaves (at least `mapHeight`), so the
+    // legend below it keeps even spacing however tall the card is.
+    const [height, setHeight] = useState(mapHeight);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const isDraggingRef = useRef(false);
     const zoomImperativeRef = useRef<{
@@ -106,20 +109,24 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
       let isFirstObservation = true;
       let resizeTimer: ReturnType<typeof setTimeout> | null = null;
       const ro = new ResizeObserver((entries) => {
-        const next = entries[0]?.contentRect?.width;
+        const rect = entries.at(0)?.contentRect;
+        const next = rect?.width;
+        const nextHeight = rect?.height;
         if (!next || next <= 0) return;
+        const applySize = () => {
+          setWidth(next);
+          if (nextHeight && nextHeight > 0) setHeight(nextHeight);
+        };
         // Fire immediately on first observation so initial render has correct width.
         // Debounce all subsequent events so the SVG doesn't re-render on every frame
         // of a CSS width transition (e.g. collapsing the nav sidebar).
         if (isFirstObservation) {
           isFirstObservation = false;
-          setWidth(next);
+          applySize();
           return;
         }
         if (resizeTimer) clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-          setWidth(next);
-        }, 20);
+        resizeTimer = setTimeout(applySize, 20);
       });
       ro.observe(node);
       return () => {
@@ -183,25 +190,26 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
             [countyPadding, countyPadding],
             [
               Math.max(width - countyPadding, countyPadding + 1),
-              mapHeight - countyPadding,
+              height - countyPadding,
             ],
           ];
 
     // AlbersUsa standard: scale=1070 at translate [487,305] fits US in ~960×600.
-    // Tie to mapHeight so the full US (including Alaska/Hawaii insets) fits vertically.
-    const albersScale = mapHeight * 1.55;
-    const worldScale = Math.min(width / 6.3, mapHeight * 0.29);
+    // Tie to the height so the full US (including Alaska/Hawaii insets) fits vertically.
+    const albersScale = height * 1.55;
+    const worldScale = Math.min(width / 6.3, height * 0.29);
 
     return (
       <div
         ref={containerRef}
-        className="relative flex w-full items-center justify-center overflow-hidden rounded-md bg-muted/30"
-        style={{ height: mapHeight }}
+        // min-h-131 is `mapHeight` (524px): the map's height wherever the card
+        // does not set one, and its floor where it does.
+        className="relative flex min-h-131 w-full flex-1 items-center justify-center overflow-hidden rounded-md bg-muted/30"
         onPointerLeave={onLeaveMap}
       >
         <Zoom<SVGSVGElement>
           width={width}
-          height={mapHeight}
+          height={height}
           scaleXMin={0.6}
           scaleXMax={10}
           scaleYMin={0.6}
@@ -220,7 +228,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
               <>
                 <svg
                   width={width}
-                  height={mapHeight}
+                  height={height}
                   ref={zoom.containerRef}
                   role="img"
                   aria-label="Genome distribution map"
@@ -237,6 +245,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                           countryFeatures={countryFeatures}
                           scale={worldScale}
                           width={width}
+                          height={height}
                           data={data}
                           colorScale={colorScale}
                           isDraggingRef={isDraggingRef}
@@ -253,6 +262,7 @@ export const ChoroplethSvg = forwardRef<ChoroplethHandle, ChoroplethSvgProps>(
                           stateFeatures={stateFeatures}
                           scale={albersScale}
                           width={width}
+                          height={height}
                           data={data}
                           colorScale={colorScale}
                           isDraggingRef={isDraggingRef}

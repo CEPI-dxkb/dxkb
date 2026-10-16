@@ -3,12 +3,14 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useViewNavCollapsed } from "@/hooks/use-view-nav-collapsed";
+import { restoreHistoryScroll } from "@/lib/history-scroll-restoration";
 import { deleteChildCollectionParams } from "@/lib/views/child-collection-state";
 import {
   toSearchParamsRecord,
   unionCollectionManagedParamNames,
 } from "@/lib/views/collection-state";
 import { toQueryString } from "@/lib/url";
+import { TabContentSearchParams } from "@/components/views/tab-content-search-params";
 
 import { LandingNav } from "./landing-nav";
 import { LandingMobileNav } from "./landing-mobile-nav";
@@ -30,6 +32,11 @@ interface LandingShellClientProps {
    * (table views own their own scroll).
    */
   layout?: "scroll" | "fill";
+  /**
+   * The `tab` search param the server rendered this page for (null: none).
+   * Keeps the active view on its own URL while Back or Forward replaces it.
+   */
+  tabParam?: string | null;
   children: ReactNode;
 }
 
@@ -40,6 +47,7 @@ export function LandingShellClient({
   navItems,
   headerContent,
   layout = "scroll",
+  tabParam,
   children,
 }: LandingShellClientProps) {
   const router = useRouter();
@@ -72,6 +80,13 @@ export function LandingShellClient({
     const queryString = toQueryString(params);
     router.push(queryString ? `${pathname}?${queryString}` : pathname);
   }
+
+  const content =
+    tabParam === undefined ? (
+      children
+    ) : (
+      <TabContentSearchParams tab={tabParam}>{children}</TabContentSearchParams>
+    );
 
   return (
     <>
@@ -115,7 +130,7 @@ export function LandingShellClient({
             // right-flush action strip) reach the viewport edge — no right gutter.
             <div className="-mr-2 flex min-h-0 flex-1 overflow-hidden sm:-mr-3 lg:-mr-4">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                {children}
+                {content}
               </div>
             </div>
           ) : (
@@ -128,10 +143,11 @@ export function LandingShellClient({
             // pl-1/py-4 keep the left/top/bottom borders + shadows off the clip box
             // edge (overflow-y:auto forces overflow-x:auto).
             <div
+              ref={restoreHistoryScroll}
               data-testid="landing-scroll-region"
               className="scrollbar-themed -mr-2 min-h-0 flex-1 overflow-y-auto py-4 pr-2 pl-1 sm:-mr-3 sm:pr-3 lg:-mr-4 lg:pr-4"
             >
-              {children}
+              {content}
             </div>
           )}
         </section>

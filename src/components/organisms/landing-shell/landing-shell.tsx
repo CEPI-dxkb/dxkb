@@ -12,6 +12,12 @@ interface OrganismLandingShellProps {
   config: OrganismLandingConfig;
   views: readonly OrganismLandingView[];
   activeViewKey?: string;
+  /**
+   * The raw `tab` search param the page was rendered for (null: none), which
+   * the active view's content matches against the URL. Kept apart from
+   * `activeViewKey` because a legacy `?view=` link opens a view without a `tab`.
+   */
+  tabParam: string | null;
   headerContent?: ReactNode;
 }
 
@@ -26,6 +32,7 @@ export function OrganismLandingShell({
   config,
   views,
   activeViewKey,
+  tabParam,
   headerContent,
 }: OrganismLandingShellProps) {
   const defaultView = config.defaultView ?? "overview";
@@ -64,6 +71,7 @@ export function OrganismLandingShell({
       navItems={navItems}
       headerContent={headerContent}
       layout={activeView.layout ?? "scroll"}
+      tabParam={tabParam}
     >
       <ActiveViewComponent />
     </LandingShellClient>

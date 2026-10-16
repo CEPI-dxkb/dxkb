@@ -20,6 +20,10 @@ async function MetadataDistributionsBoundary() {
     MetadataDistributions({
       taxonId: config.taxonId,
       fields: config.metadataFields,
+      genomeList: {
+        pathname: "/organisms/viruses",
+        params: { tab: "genomes" },
+      },
     }),
   );
 }

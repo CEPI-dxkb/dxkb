@@ -7,6 +7,7 @@ import { scaleBand, scaleLinear } from "@visx/scale";
 import { useTooltip } from "@visx/tooltip";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { chartTooltipStyle } from "@/lib/services/organisms/chart-utils";
 import { numberFormatter } from "@/lib/services/organisms/utils";
 
@@ -19,13 +20,15 @@ import {
   yearInnerWidth,
 } from "./_shared/chart-dimensions";
 import { ChartStatusMessage, EmptyChart } from "./_shared/chart-status-message";
+import { useChartLink } from "./_shared/use-chart-link";
 import { nearestBandIndex } from "./_shared/use-svg-band-pointer";
 import { YAxisTicks } from "./_shared/y-axis-ticks";
 import { labelStep, parseYearData, type YearDatum } from "./_shared/year-data";
 
 interface BarChartProps {
   title: string;
-  data: { label: string; value: number }[];
+  /** A bucket with an `href` links its bar to the bucket's records. */
+  data: { label: string; value: number; href?: string }[];
   errorMessage?: string;
 }
 
@@ -38,6 +41,7 @@ export function BarChart({
   const yearData = parseYearData(data);
   const { showTooltip, hideTooltip, tooltipData, tooltipLeft, tooltipTop } =
     useTooltip<YearDatum>();
+  const { follow, linkKeyDown } = useChartLink();
 
   const xScale = scaleBand<number>({
     domain: yearData.map((d) => d.year),
@@ -104,8 +108,10 @@ export function BarChart({
                       tabIndex={0}
                       // SVG <rect> has no implicit ARIA role; graphics-symbol permits
                       // aria-label without tripping axe aria-prohibited-attr on WebKit/Firefox.
-                      role="graphics-symbol"
+                      // A linked bar is a link, followed with Enter.
+                      role={d.href ? "link" : "graphics-symbol"}
                       aria-label={label}
+                      onKeyDown={linkKeyDown(d.href)}
                       onFocus={(event) => {
                         const rect =
                           event.currentTarget.getBoundingClientRect();
@@ -169,6 +175,12 @@ export function BarChart({
                   width={yearInnerWidth}
                   height={yearInnerHeight}
                   fill="transparent"
+                  className={cn(tooltipData?.href && "cursor-pointer")}
+                  onClick={(event) => {
+                    const idx = nearestBandIndex(event, svgRef, xScale, yearData.map((d) => d.year));
+                    const href = idx !== null ? yearData[idx].href : undefined;
+                    if (href) follow(href, event);
+                  }}
                   onMouseMove={(event) => {
                     const idx = nearestBandIndex(event, svgRef, xScale, yearData.map((d) => d.year));
                     const d = idx !== null ? yearData[idx] : undefined;

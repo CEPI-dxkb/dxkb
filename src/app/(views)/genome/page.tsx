@@ -24,7 +24,7 @@ export default async function GenomeCollectionPage({
   const overviewScope = genomeOverviewScope(state);
   const overview =
     firstSearchParam(params, "tab") === "overview" && overviewScope ? (
-      <GenomeListOverview genomeQuery={overviewScope} />
+      <GenomeListOverview genomeQuery={overviewScope} state={state} />
     ) : undefined;
   return (
     <Suspense fallback={<GenomeLoading />}>

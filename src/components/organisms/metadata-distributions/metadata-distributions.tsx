@@ -8,6 +8,10 @@ import {
   type GenomeScopeProps,
 } from "@/components/organisms/shared/genome-scope-props";
 import { taxonomicDistributionSentinel } from "@/components/organisms/types";
+import {
+  genomeListValueHref,
+  type GenomeListLink,
+} from "@/lib/genome-view";
 import { describeGenomeScope } from "@/lib/services/organisms/genome-scope";
 
 import { AmrBarStackChart } from "./amr-bar-stack-chart";
@@ -37,6 +41,11 @@ type MetadataDistributionsProps = GenomeScopeProps & {
    * request still shows its error.
    */
   hideEmptyAmr?: boolean;
+  /**
+   * The Genomes tab listing the scope's genomes. Given one, each chart bucket
+   * links to its genomes there (`genomeListValueHref`).
+   */
+  genomeList?: GenomeListLink;
 };
 
 const emptyAmrData: AmrDistributionData = { antibiotics: [] };
@@ -67,6 +76,7 @@ export async function MetadataDistributions({
   fields,
   showAmr = false,
   hideEmptyAmr = false,
+  genomeList,
   ...scopeProps
 }: MetadataDistributionsProps) {
   const scope = genomeScopeFromProps(scopeProps);
@@ -103,6 +113,16 @@ export async function MetadataDistributions({
     );
   }
 
+  // A bucket links to its genomes; an empty one has none to list.
+  const chartDatum = (field: string, facet: { name: string; count: number }) => ({
+    label: facet.name,
+    value: facet.count,
+    href:
+      genomeList && facet.count > 0
+        ? genomeListValueHref(genomeList, field, facet.name)
+        : undefined,
+  });
+
   const amrHasData = amr.data.antibiotics.length > 0;
   const showAmrChart =
     showAmr && (!hideEmptyAmr || amrHasData || Boolean(amr.errorMessage));
@@ -114,17 +134,11 @@ export async function MetadataDistributions({
       tabs={[
         {
           label: "Genus",
-          data: taxonomic.data.genus.map((f) => ({
-            label: f.name,
-            value: f.count,
-          })),
+          data: taxonomic.data.genus.map((f) => chartDatum("genus", f)),
         },
         {
           label: "Species",
-          data: taxonomic.data.species.map((f) => ({
-            label: f.name,
-            value: f.count,
-          })),
+          data: taxonomic.data.species.map((f) => chartDatum("species", f)),
         },
       ]}
       layout="side"
@@ -149,10 +163,9 @@ export async function MetadataDistributions({
           }
 
           const title = fieldLabels[field] ?? field;
-          const data = (facets[field] ?? []).map((facet) => ({
-            label: facet.name,
-            value: facet.count,
-          }));
+          const data = (facets[field] ?? []).map((facet) =>
+            chartDatum(field, facet),
+          );
 
           if (field === "collection_year") {
             return [

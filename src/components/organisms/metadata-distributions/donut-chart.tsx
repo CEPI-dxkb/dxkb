@@ -22,10 +22,13 @@ import { numberFormatter } from "@/lib/services/organisms/utils";
 
 import { ChartLegendPill } from "./_shared/chart-legend-pill";
 import { ChartStatusMessage } from "./_shared/chart-status-message";
+import { useChartLink } from "./_shared/use-chart-link";
 
 export interface DonutDatum {
   label: string;
   value: number;
+  /** Where the slice links: the bucket's records. "Others" never links. */
+  href?: string;
 }
 
 interface DonutChartDatum extends DonutDatum {
@@ -628,6 +631,9 @@ function useDonutChart({
   const activeId = hoveredId;
   const { showTooltip, hideTooltip, tooltipData, tooltipLeft, tooltipTop } =
     useTooltip<DonutDatum & { pct: number }>();
+  const { follow, linkKeyDown } = useChartLink();
+  const hasLinks = arcData.some((arc) => arc.slice.href);
+  const hoveredHref = slices.find((slice) => slice.id === activeId)?.href;
 
   const handleTabChange = (index: number) => {
     setActiveTabIndex(index);
@@ -714,14 +720,16 @@ function useDonutChart({
     if (arc) showTooltipForArcAnchoredToSvg(arc);
   };
 
-  const handleOverlayMouseMove = (
+  // Where a pointer event falls on the donut: outside the ring (`null`), or in
+  // it, on an arc or in the gap between two (`arc` undefined).
+  const pointerTarget = (
     event: React.MouseEvent<SVGCircleElement>,
-  ) => {
+  ): { arc?: ArcDatum } | null => {
     const svgEl = svgRef.current;
-    if (!svgEl) return;
+    if (!svgEl) return null;
 
     const rect = svgEl.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
+    if (!rect.width || !rect.height) return null;
     // xMidYMid meet applies a single uniform scale; compute it from whichever
     // axis is the bottleneck and subtract the resulting letterbox offset before
     // mapping to SVG space.
@@ -737,22 +745,32 @@ function useDonutChart({
       (event.clientY - rect.top - letterboxY) / uniformScale - chartCenter;
     const dist = Math.sqrt(svgX * svgX + svgY * svgY);
 
-    // Only activate within the ring — inner hole and outside edge are dead zones
-    if (dist < innerRadius || dist > outerRadius) {
+    // Only the ring is live — inner hole and outside edge are dead zones
+    if (dist < innerRadius || dist > outerRadius) return null;
+
+    const angle = Math.atan2(svgX, -svgY); // angle from 12 o'clock, clockwise
+    return {
+      arc: arcData.find((arc) => {
+        const a = angle < arc.startAngle ? angle + Math.PI * 2 : angle;
+        return a >= arc.startAngle && a <= arc.endAngle;
+      }),
+    };
+  };
+
+  const handleOverlayMouseMove = (
+    event: React.MouseEvent<SVGCircleElement>,
+  ) => {
+    const target = pointerTarget(event);
+    if (!target) {
       deactivate();
       return;
     }
-
-    const angle = Math.atan2(svgX, -svgY); // angle from 12 o'clock, clockwise
-    for (const arc of arcData) {
-      let a = angle;
-      if (a < arc.startAngle) a += Math.PI * 2;
-      if (a >= arc.startAngle && a <= arc.endAngle) {
-        setActivationSource("cursor");
-        showTooltipForArc(arc, event.clientX, event.clientY);
-        activateHover(arc.slice.id);
-        return;
-      }
+    const { arc } = target;
+    if (arc) {
+      setActivationSource("cursor");
+      showTooltipForArc(arc, event.clientX, event.clientY);
+      activateHover(arc.slice.id);
+      return;
     }
     // Cursor is in a gap — keep current active slice without flickering
     if (tooltipData) {
@@ -815,10 +833,12 @@ function useDonutChart({
              * the donut as large as possible within that rectangle — no wrapper
              * div needed, no fixed cap that prevents growth on wide monitors.
              */}
+            {/* Linked slices are focusable links, which an img's presentational
+                children could not hold, so a linked donut is a group. */}
             <svg
               ref={svgRef}
               viewBox={`0 0 ${String(chartSize)} ${String(chartSize)}`}
-              role="img"
+              role={hasLinks ? "group" : "img"}
               aria-label={`${title} distribution`}
               className={cn(
                 "shrink-0 overflow-visible",
@@ -833,6 +853,7 @@ function useDonutChart({
                   const accessibleLabel = hasData
                     ? `${arc.slice.label}: ${numberFormatter.format(arc.slice.value)}`
                     : arc.slice.label;
+                  const { href } = arc.slice;
                   return (
                     <g
                       key={arc.slice.id}
@@ -854,8 +875,19 @@ function useDonutChart({
                         // WebKit/Firefox which expose no computed role). role="img"
                         // would collide with the parent svg's role="img"; the WAI-ARIA
                         // graphics-symbol role permits a name and keeps the svg as the
-                        // sole img-role node.
-                        role="graphics-symbol"
+                        // sole img-role node. A linked slice is a link, focused
+                        // like a legend entry and followed with Enter.
+                        role={href ? "link" : "graphics-symbol"}
+                        tabIndex={href ? 0 : undefined}
+                        onFocus={
+                          href
+                            ? () => {
+                                activateFromLegend(arc.slice.id);
+                              }
+                            : undefined
+                        }
+                        onBlur={href ? deactivate : undefined}
+                        onKeyDown={linkKeyDown(href)}
                         d={arc.pathD}
                         fill={arc.color}
                         stroke={arc.color}
@@ -876,6 +908,11 @@ function useDonutChart({
                   data-testid="chart-overlay"
                   r={outerRadius}
                   fill="transparent"
+                  className={cn(hoveredHref && "cursor-pointer")}
+                  onClick={(event) => {
+                    const href = pointerTarget(event)?.arc?.slice.href;
+                    if (href) follow(href, event);
+                  }}
                   onMouseMove={hasData ? handleOverlayMouseMove : undefined}
                   onMouseLeave={hasData ? deactivate : undefined}
                 />

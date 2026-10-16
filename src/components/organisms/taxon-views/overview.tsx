@@ -12,6 +12,7 @@ import { withSectionError } from "@/components/organisms/shared/with-section-err
 import { TaxonomySummary } from "@/components/organisms/taxonomy-summary/taxonomy-summary";
 import { TaxonomySummarySkeleton } from "@/components/organisms/taxonomy-summary/taxonomy-summary-skeleton";
 import type { OrganismLandingConfig } from "@/components/organisms/types";
+import type { GenomeListLink } from "@/lib/genome-view";
 import type { OrganismTaxonomy } from "@/lib/services/organisms/types";
 
 interface OverviewViewProps {
@@ -26,6 +27,8 @@ interface GenomeOverviewSectionsProps {
   metadataFields: string[];
   showAmr?: boolean;
   hideEmptyAmr?: boolean;
+  /** The Genomes tab the metadata charts link into. */
+  genomeList: GenomeListLink;
   /** Rendered above the map, e.g. the Taxonomy page's taxon summary. */
   summary?: ReactNode;
 }
@@ -35,9 +38,10 @@ async function MetadataDistributionsBoundary({
   metadataFields,
   showAmr,
   hideEmptyAmr,
+  genomeList,
 }: Pick<
   GenomeOverviewSectionsProps,
-  "scope" | "metadataFields" | "showAmr" | "hideEmptyAmr"
+  "scope" | "metadataFields" | "showAmr" | "hideEmptyAmr" | "genomeList"
 >) {
   return withSectionError(() =>
     MetadataDistributions({
@@ -45,6 +49,7 @@ async function MetadataDistributionsBoundary({
       fields: metadataFields,
       showAmr,
       hideEmptyAmr,
+      genomeList,
     }),
   );
 }
@@ -74,6 +79,7 @@ export function GenomeOverviewSections({
   metadataFields,
   showAmr,
   hideEmptyAmr,
+  genomeList,
   summary,
 }: GenomeOverviewSectionsProps) {
   return (
@@ -100,6 +106,7 @@ export function GenomeOverviewSections({
           metadataFields={metadataFields}
           showAmr={showAmr}
           hideEmptyAmr={hideEmptyAmr}
+          genomeList={genomeList}
         />
       </Suspense>
     </div>
@@ -118,6 +125,10 @@ export function makeOverviewView({ config, taxon, showAmr }: OverviewViewProps) 
         accent={config.accent}
         metadataFields={config.metadataFields}
         showAmr={showAmr}
+        genomeList={{
+          pathname: `/taxonomy/${String(config.taxonId)}`,
+          params: { tab: "genomes" },
+        }}
         summary={
           <Suspense fallback={<TaxonomySummarySkeleton />}>
             <TaxonomySummaryBoundary />

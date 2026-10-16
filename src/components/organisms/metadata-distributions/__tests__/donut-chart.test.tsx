@@ -16,6 +16,9 @@ vi.mock("framer-motion", () => ({
   ),
 }));
 
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+
 import { DonutChart } from "../donut-chart";
 
 // Constants mirrored from the component for hit-test coordinate calculations
@@ -469,5 +472,120 @@ describe("DonutChart", () => {
     expect(tooltip).toHaveTextContent("Beta");
     expect(tooltip).toHaveTextContent("40");
     expect(tooltip).toHaveTextContent("40%");
+  });
+
+  describe("linked slices", () => {
+    const linked = [
+      { label: "Human", value: 30, href: "/genomes?host=Human" },
+      { label: "Bat", value: 10, href: "/genomes?host=Bat" },
+    ];
+
+    function mockSvgRect() {
+      const svg = document.querySelector("svg");
+      if (!svg) throw new Error("svg not found");
+      vi.spyOn(svg, "getBoundingClientRect").mockReturnValue({
+        left: 0,
+        top: 0,
+        width: chartSize,
+        height: chartSize,
+        right: chartSize,
+        bottom: chartSize,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      });
+    }
+
+    // 12 o'clock, inside the ring: Human's slice, which starts at 9 o'clock
+    // and sweeps three quarters of the ring.
+    const onHuman = { clientX: chartCenter, clientY: chartCenter - outerRadius + 17 };
+
+    beforeEach(() => {
+      push.mockClear();
+    });
+
+    it("follows the slice under the pointer and shows the pointer cursor", () => {
+      render(<DonutChart title="Host" data={linked} />);
+      mockSvgRect();
+      const overlay = screen.getByTestId("chart-overlay");
+
+      expect(overlay).not.toHaveClass("cursor-pointer");
+      fireEvent.mouseMove(overlay, onHuman);
+      expect(overlay).toHaveClass("cursor-pointer");
+
+      fireEvent.click(overlay, onHuman);
+      expect(push).toHaveBeenCalledWith("/genomes?host=Human");
+    });
+
+    it("opens a modified click in a new tab", () => {
+      const open = vi.spyOn(window, "open").mockReturnValue(null);
+      render(<DonutChart title="Host" data={linked} />);
+      mockSvgRect();
+
+      fireEvent.click(screen.getByTestId("chart-overlay"), {
+        ...onHuman,
+        metaKey: true,
+      });
+
+      expect(open).toHaveBeenCalledWith("/genomes?host=Human", "_blank", "noopener");
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("follows nothing from the donut's hole", () => {
+      render(<DonutChart title="Host" data={linked} />);
+      mockSvgRect();
+
+      fireEvent.click(screen.getByTestId("chart-overlay"), {
+        clientX: chartCenter,
+        clientY: chartCenter,
+      });
+
+      expect(push).not.toHaveBeenCalled();
+    });
+
+    it("exposes each slice as a link followed with Enter", () => {
+      render(<DonutChart title="Host" data={linked} />);
+
+      const group = screen.getByRole("group", { name: "Host distribution" });
+      const bat = within(group).getByRole("link", { name: "Bat: 10" });
+      expect(bat).toHaveAttribute("tabindex", "0");
+
+      fireEvent.focus(bat);
+      expect(screen.getByRole("status")).toHaveTextContent("Bat: 10");
+
+      fireEvent.keyDown(bat, { key: "Enter" });
+      expect(push).toHaveBeenCalledWith("/genomes?host=Bat");
+    });
+
+    it("never links the Others bucket", () => {
+      render(
+        <DonutChart
+          title="Host"
+          data={Array.from({ length: 11 }, (_, index) => ({
+            label: `Host ${String(index)}`,
+            value: 20 - index,
+            href: `/genomes?host=${String(index)}`,
+          }))}
+        />,
+      );
+
+      expect(screen.getAllByRole("link")).toHaveLength(9);
+      const others = screen.getByRole("graphics-symbol", { name: "Others: 21" });
+      expect(others).not.toHaveAttribute("tabindex");
+    });
+
+    it("stays an image without links", () => {
+      render(<DonutChart title="Host" data={[{ label: "Human", value: 30 }]} />);
+      mockSvgRect();
+      const overlay = screen.getByTestId("chart-overlay");
+
+      fireEvent.mouseMove(overlay, onHuman);
+      fireEvent.click(overlay, onHuman);
+
+      expect(screen.getByRole("img", { name: "Host distribution" })).toBeInTheDocument();
+      expect(screen.queryByRole("link")).not.toBeInTheDocument();
+      expect(overlay).not.toHaveClass("cursor-pointer");
+      expect(push).not.toHaveBeenCalled();
+    });
   });
 });

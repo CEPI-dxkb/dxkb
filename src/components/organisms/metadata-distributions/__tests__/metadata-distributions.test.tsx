@@ -1,6 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Suspense } from "react";
 import { vi } from "vitest";
+
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
 vi.mock("@/lib/services/organisms/metadata-facets", () => ({
   fetchOrganismMetadataFacets: vi.fn(),
@@ -234,5 +237,55 @@ describe("MetadataDistributions", () => {
       expect.stringContaining("genome query keyword(pseudomonas): amr boom"),
     );
     warnSpy.mockRestore();
+  });
+
+  it("links each bucket to its genomes in the given Genomes tab", async () => {
+    push.mockClear();
+    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+      host_common_name: [
+        { name: "Human", count: 30 },
+        { name: "", count: 5 },
+      ],
+      collection_year: [
+        { name: "2014", count: 7 },
+        { name: "2015", count: 0 },
+      ],
+    });
+    vi.mocked(fetchTaxonomicDistribution).mockResolvedValueOnce({
+      genus: [{ name: "Brucella", count: 100 }],
+      species: [],
+    });
+
+    await renderServer(
+      MetadataDistributions({
+        taxonId: 11266,
+        fields: ["host_common_name", "collection_year"],
+        genomeList: { pathname: "/taxonomy/11266", params: { tab: "genomes" } },
+      }),
+    );
+
+    for (const [name, href] of [
+      ["Human: 30", "/taxonomy/11266?tab=genomes&host_common_name=Human"],
+      ["2014: 7", "/taxonomy/11266?tab=genomes&collection_year=2014"],
+      ["Brucella: 100", "/taxonomy/11266?tab=genomes&genus=Brucella"],
+    ]) {
+      fireEvent.keyDown(screen.getByRole("link", { name }), { key: "Enter" });
+      expect(push).toHaveBeenLastCalledWith(href);
+    }
+    // Neither a blank bucket nor an empty year has genomes to list.
+    expect(screen.queryByRole("link", { name: "Unspecified: 5" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "2015: 0" })).toBeNull();
+  });
+
+  it("links nothing without a Genomes tab", async () => {
+    vi.mocked(fetchOrganismMetadataFacets).mockResolvedValueOnce({
+      host_common_name: [{ name: "Human", count: 30 }],
+    });
+
+    await renderServer(
+      MetadataDistributions({ taxonId: 11266, fields: ["host_common_name"] }),
+    );
+
+    expect(screen.queryByRole("link")).toBeNull();
   });
 });

@@ -1,0 +1,59 @@
+src/components/organisms/geo-distribution/__tests__/geo-distribution-layers.test.tsx
+  s_b9b709c9e0a868::t_9c22ac2c4e9224 78,96,164,182
+src/components/organisms/geo-distribution/__tests__/color-scale.test.ts
+  s_b9b709c9e0a868::t_f2b40fa92ccd96 35,39,56-58,63,68,97-98
+  s_b9b709c9e0a868::t_e0d980551519a4 1-3,5-6,9,13-25,28-32,36-37,43,46-51,54-55,61-62,64,66-67,69,71-96,99-101,103-109
+  s_b9b709c9e0a868::t_ec86362db76163 38,40-42
+  s_b9b709c9e0a868::t_ef907480c9a81e 65
+  s_b9b709c9e0a868::t_c99df4d665276e 33-34
+docs/architecture.md
+  s_b9b709c9e0a868::t_77ecc3e0103aa5 185
+src/lib/services/organisms/__tests__/geo-distribution.test.ts
+  s_b9b709c9e0a868::t_a5e27539660360 282
+src/components/organisms/geo-distribution/__tests__/geo-distribution.test.tsx
+  s_b9b709c9e0a868::t_8c22bc14092c9b 21,23
+src/components/organisms/geo-distribution/world-countries-layer.tsx
+  s_b9b709c9e0a868::t_f04aa8337dc4ef 25,38,50
+src/components/organisms/geo-distribution/choropleth-svg.tsx
+  s_b9b709c9e0a868::t_f04aa8337dc4ef 96-98,112-114,116-119,125,129,193,198-200,205-207,212,231,248,265
+src/app/globals.css
+  s_b9b709c9e0a868::t_fd3d24cfc576c7 316-317,319-322,324,328,333-338,343-348,353-358,363-368,372-378,382-388,392-398,402-408
+  s_b9b709c9e0a868::t_2dd383413c44cc 314-315,323,325-327,329-331,339-341,349-351,359-361,369-371,379-381,389-391,399-401,409-410
+  s_b9b709c9e0a868::t_09ec087e13b10c 318,332,342,352,362
+src/components/organisms/geo-distribution/us-states-layer.tsx
+  s_b9b709c9e0a868::t_f04aa8337dc4ef 20,33,45
+src/components/organisms/geo-distribution/geo-distribution-client.tsx
+  s_b9b709c9e0a868::t_5eabd7d19f3856 18,36-63,151-159,257,288
+  s_b9b709c9e0a868::t_f04aa8337dc4ef 249-253,285-286
+src/components/organisms/geo-distribution/map-constants.ts
+  s_b9b709c9e0a868::t_f04aa8337dc4ef 1-4
+  s_b9b709c9e0a868::t_1f532e853cc9d4 5
+src/components/organisms/geo-distribution/color-scale.ts
+  s_b9b709c9e0a868::t_09ec087e13b10c 16
+  s_b9b709c9e0a868::t_b22d2f0340ed89 1,3,5-15,17-18,20-24,26-31,34-39,41-80,82-92
+  s_b9b709c9e0a868::t_fd3d24cfc576c7 4
+src/components/organisms/geo-distribution/color-legend.tsx
+  s_b9b709c9e0a868::t_fe948d3009f3e2 42-43,50,52,54
+  s_b9b709c9e0a868::t_05dd54bda65f27 5-10,13-28,31-33,38-41,44,47-49,53,62
+  s_b9b709c9e0a868::t_d47c676e1e55b8 34-37,51,55-61,63-88
+src/components/organisms/geo-distribution/__tests__/geo-distribution-client.test.tsx
+  s_b9b709c9e0a868::t_8e529947b55577 151-164,167-172,174-176,196-209
+  s_b9b709c9e0a868::t_f8e6595396904a 165-166,173,192-193
+  s_b9b709c9e0a868::t_ae969745a0c34e 177-191,194-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5099a871df37252565cf1ec0181a0d01caec808e",
+  "prompts": {},
+  "sessions": {
+    "s_b9b709c9e0a868": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95a3d9f5-f76d-429b-b9b7-5b1580cbcd76",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

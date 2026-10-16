@@ -1,0 +1,118 @@
+src/components/views/__tests__/resource-child-collection.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 495-513,656
+src/lib/data-api/__tests__/repository.test.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 1-2,6-25,30-35,38-40,50-53,63-66,68-77,80-133,138-139,150-152,155-162,167-168,172,174-181,183-185,189,191-193,198-199,208,210-212,219-220,226,228-230,236-238,242-243,245-248,250-251,257,260-263,271-273,277-280,286-292,295-298,300,302-303,306,308-309,313-314,316-319,324,327-330,335-340,342-345,354-362,365-368,382,385-388,405,408-411,417-427,431-439,441
+src/components/views/__tests__/resource-collection-bioset-actions.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 3,406-463,466-472,474-503
+src/lib/data-api/types.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 53,58-73
+  s_4c2570cac8bb66::t_7fb2e66b26e653 74
+src/components/views/__tests__/use-resource-collection-row-resolution.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 2,27,117,119,125,127-129,131-138,140-145,148-150,152-158,161-162,166-171,176-177,181,188,195,199-214,218,221,229,299,302,317-318
+src/components/views/use-resource-collection-row-resolution.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 34-37,40-45,135,162-166,184-190
+src/app/(views)/genome/child-tabs.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 2,4,17,42-43,49-50,57-58
+src/app/(views)/genome/[genomeId]/__tests__/page.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 35-36,43-44,54-57,173-198
+  s_4c2570cac8bb66::t_2cffbb33f37789 199
+src/components/organisms/taxon-views/features.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 2-5,11-12,19
+src/components/shared/data-table-header.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 186,189
+e2e/pages/genome-member-page.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 120-173
+src/components/views/__tests__/feature-resource-collection.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 10,58,64-68
+  s_4c2570cac8bb66::t_ed1358ede20711 69-70
+src/components/views/resource-child-collection.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 6-10,111-116,189,233
+src/components/views/__tests__/fixtures/resource-collection-result.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 16-17
+src/components/views/collection-selection-actions.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 6,289-292,307-317
+src/components/ui/table.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 94-99,192-195
+src/lib/data-api/__tests__/client.test.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 1,3,10-39,42-49,51,53,60,62-64,66-70,73-105,109-112,114-117,125-127,132-138,145-152,160,165,179,183-184
+src/lib/data-api/__tests__/validation.test.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 2,127-136,140-161
+  s_4c2570cac8bb66::t_d48d018d6f66d6 162-163
+src/app/(views)/feature/__tests__/feature-collection.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 14,63-97
+  s_4c2570cac8bb66::t_20643864233604 98
+e2e/tests/taxonomy-view.spec.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 60-63,67,69-71,80,82
+e2e/tests/genome-view.spec.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 238-245,248-249,252-257,264,282
+src/components/views/__tests__/resource-collection.test.tsx
+  s_4c2570cac8bb66::t_059c82873ea990 991-1020,1107-1108
+  s_4c2570cac8bb66::t_52c38b87d01452 358-379
+  s_4c2570cac8bb66::t_9d02f7e804d2c3 380
+src/components/views/resource-collection-actions.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 4,309,313,316-320,546-549,557,575-579,585-588,614-616,647-653,665-666,669,691-698
+src/lib/data-api/__tests__/repository-download.test.ts
+  s_4c2570cac8bb66::t_23ae1bfc4039a2 122-145
+docs/architecture.md
+  s_4c2570cac8bb66::t_52c38b87d01452 148,164
+src/app/api/data/[resource]/route.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 21-26,45,48-56
+src/hooks/views/__tests__/use-resource-collection.test.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 2-6,10,85-142,1057-1181
+src/lib/data-api/client.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 9,166-171
+src/app/(views)/feature/feature-collection.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 5-9,21-26,41
+src/lib/data-api/repository.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 38,141-145
+src/components/views/__tests__/resource-collection-selection-actions.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 3,470,473-528,530-551,553,561,577,583-652,686-688
+src/components/views/resource-collection.tsx
+  s_4c2570cac8bb66::t_ca4ce09c27aabd 29
+  s_4c2570cac8bb66::t_52c38b87d01452 57-60,237,288,305,361,568
+  s_4c2570cac8bb66::t_0f3561ef414b9c 56
+e2e/pages/taxonomy-collection-page.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 84-103
+src/app/api/data/[resource]/__tests__/route.test.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 243-277
+src/components/views/__tests__/collection-selection-actions.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 4,10-18,43-50,250-286
+  s_4c2570cac8bb66::t_d7b6d6a7b83327 287
+src/app/(views)/genome/__tests__/genome-collection.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 28,96-105,634-636,658,661-689,693,698
+src/components/views/__tests__/resource-collection-taxonomy-actions.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 3,507,509-515,519-530,532-545,550,552,554,556,558-559,561-563,565,567-568,571,573-584,586-619,624-629,647-649
+src/app/(views)/genome/genome-collection.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 12-13,150-155,181,187,202
+src/components/shared/data-table.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 39,462-467,507,927-934,975,1011,1030,1036-1037
+src/components/views/feature-resource-collection.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 3,40-41,52,56-61,64
+src/hooks/views/use-resource-collection.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 11,44-49,74,107,110-118,195-207
+src/components/shared/__tests__/data-table-rendering.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 1543-1633
+src/lib/feature-view/query.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 1,24-38
+  s_4c2570cac8bb66::t_b9268b835dd23c 39-40
+src/lib/data-api/validation.ts
+  s_4c2570cac8bb66::t_52c38b87d01452 24,35,39-42,108-113
+src/components/organisms/taxon-views/__tests__/features.test.tsx
+  s_4c2570cac8bb66::t_52c38b87d01452 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21ee9802ec8da0c0e4d2678f4ede414e9716a100",
+  "prompts": {},
+  "sessions": {
+    "s_4c2570cac8bb66": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04865ef7-1613-4404-9cfe-9ee1b85b183d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

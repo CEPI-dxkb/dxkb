@@ -1,0 +1,60 @@
+src/components/organisms/landing-shell/__tests__/landing-shell-client.test.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 15,223-265
+  s_b9b709c9e0a868::t_cbf456c9598454 266
+src/app/(views)/feature/[featureId]/feature-member.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 154
+src/app/(views)/experiment/[experimentId]/experiment-member.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 86
+src/lib/__tests__/history-scroll-restoration.test.ts
+  s_b9b709c9e0a868::t_4ca1211da194a4 1-212
+e2e/tests/tab-back-forward.spec.ts
+  s_b9b709c9e0a868::t_ac097d3c577d58 1-273
+src/components/views/entity-view-shell.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 11,32-37,52,72-79,130,141
+  s_b9b709c9e0a868::t_6fabf5da0665d3 135
+  s_b9b709c9e0a868::t_0608c7454fa30a 8
+docs/architecture.md
+  s_b9b709c9e0a868::t_ac097d3c577d58 272-273
+  s_b9b709c9e0a868::t_5611b2537fab6f 186
+src/app/(views)/genome/[genomeId]/genome-member.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 182
+src/lib/history-scroll-restoration.ts
+  s_b9b709c9e0a868::t_53829cc327acaf 1-109
+e2e/pages/view-nav-rail.ts
+  s_b9b709c9e0a868::t_ac097d3c577d58 1,10,19-49
+src/components/organisms/landing-shell/landing-shell.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 67
+src/hooks/views/use-child-collection-url-state.ts
+  s_b9b709c9e0a868::t_ac097d3c577d58 3,47
+src/app/(views)/epitope/[epitopeId]/epitope-member.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 45
+src/hooks/views/use-collection-url-state.ts
+  s_b9b709c9e0a868::t_ac097d3c577d58 3,5,24
+src/components/views/__tests__/tab-content-search-params.test.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 1-98
+src/components/views/__tests__/entity-view-shell.test.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 5,10,17,242-285
+  s_b9b709c9e0a868::t_fe023306f316f6 286
+src/components/organisms/landing-shell/landing-shell-client.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 13,35-39,50,84-90,133,150
+  s_b9b709c9e0a868::t_244abc1f2c2741 146
+  s_b9b709c9e0a868::t_5fed83c8f10681 6
+src/components/views/tab-content-search-params.tsx
+  s_b9b709c9e0a868::t_ac097d3c577d58 1-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d7935cefb1d6731049ee0102fde90f1401c04c7",
+  "prompts": {},
+  "sessions": {
+    "s_b9b709c9e0a868": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "95a3d9f5-f76d-429b-b9b7-5b1580cbcd76",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

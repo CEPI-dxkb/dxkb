@@ -1,0 +1,45 @@
+src/components/views/collection-selection-actions.tsx
+  s_1e4b526a7641ce::t_107c5d56f07c71 18-22,429-431,440-446
+src/components/workspace/selection-to-group-dialog.tsx
+  s_1e4b526a7641ce::t_7d10744a7845fb 294
+  s_1e4b526a7641ce::t_f4b64dc94e5d95 22,162-166,168,170-175,222
+src/hooks/services/workspace/use-workspace-dialog-handlers.ts
+  s_1e4b526a7641ce::t_72171b80c15ee4 13
+  s_1e4b526a7641ce::t_107c5d56f07c71 157,176-178
+src/components/views/__tests__/collection-selection-actions.test.tsx
+  s_1e4b526a7641ce::t_bfba2c22eb2002 10,12-18,79-80,84-92,94,96,200-241
+  s_1e4b526a7641ce::t_5f892bb84ada2e 242
+src/lib/services/workspace/__tests__/helpers.test.ts
+  s_1e4b526a7641ce::t_bfba2c22eb2002 20,720-728
+  s_1e4b526a7641ce::t_66e33f98917c69 729-730
+src/components/workspace/__tests__/selection-to-group-dialog.test.tsx
+  s_1e4b526a7641ce::t_9629d334aedf2a 11,16,18-61,92-95,107-133
+  s_1e4b526a7641ce::t_45652d80a54acb 134
+src/components/workspace/__tests__/selection-to-group-dialog-browse.test.tsx
+  s_1e4b526a7641ce::t_a1dd3aeedd832c 31-78
+  s_1e4b526a7641ce::t_9629d334aedf2a 1,6-7,10,23-29,79-118
+src/hooks/services/workspace/__tests__/use-workspace-dialog-handlers.test.tsx
+  s_1e4b526a7641ce::t_bfba2c22eb2002 276-278,311-313
+src/components/workspace/workspace-object-selector-view.tsx
+  s_1e4b526a7641ce::t_9ec4b155a025bc 209-210,217
+src/components/workspace/__tests__/workspace-object-selector-view.test.tsx
+  s_1e4b526a7641ce::t_ebbc77ae07121a 70
+src/lib/services/workspace/helpers.ts
+  s_1e4b526a7641ce::t_107c5d56f07c71 391-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c051f194c4ccb07b410d399b12f2526542592fa5",
+  "prompts": {},
+  "sessions": {
+    "s_1e4b526a7641ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6247037-dcbd-4ee5-b40b-bb14d0125b00",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Chris Escobar <chrescobar@uchicago.edu>"
+    }
+  }
+}

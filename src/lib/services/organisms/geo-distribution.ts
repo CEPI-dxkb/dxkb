@@ -82,16 +82,6 @@ function buildMeta(
   return meta;
 }
 
-function deriveMaxCount(...maps: Record<string, number>[]): number {
-  let max = 0;
-  for (const map of maps) {
-    for (const value of Object.values(map)) {
-      if (value > max) max = value;
-    }
-  }
-  return max;
-}
-
 export async function fetchOrganismGeoDistribution(
   scope: GenomeScope,
   options: OrganismFetchOptions = {},
@@ -152,6 +142,5 @@ export async function fetchOrganismGeoDistribution(
     stateMeta: buildMeta(stateData, stateGenera, stateHosts),
     countyData,
     countyMeta,
-    maxCount: deriveMaxCount(countryData, stateData, countyData),
   };
 }

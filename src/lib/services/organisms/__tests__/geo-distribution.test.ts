@@ -172,7 +172,6 @@ describe("fetchOrganismGeoDistribution", () => {
     expect(result.countryData).toEqual({ USA: 260, China: 260, Italy: 188 });
     expect(result.stateData).toEqual({ Wyoming: 48, Idaho: 35, Texas: 24 });
     expect(result.countyData).toEqual({ "Wyoming|Park": 30, "Wyoming|Teton": 18, "Idaho|Park": 35 });
-    expect(result.maxCount).toBe(260);
     expect(result.countryMeta.USA).toEqual({
       count: 260,
       genera: { Brucella: 260 },
@@ -256,32 +255,6 @@ describe("fetchOrganismGeoDistribution", () => {
     expect(result.stateMeta.Wyoming).toEqual({ count: 48, genera: {}, hosts: {} });
   });
 
-  it("derives maxCount across country, state, and county maps", async () => {
-    server.use(
-      http.get(`${baseUrl}/genome/`, ({ request }) => {
-        const query = new URL(request.url).search;
-        if (query.includes("(field,isolation_country)")) {
-          return HttpResponse.json(fieldFacet("isolation_country", ["USA", 5]));
-        }
-        if (query.includes("(field,state_province)")) {
-          return HttpResponse.json(fieldFacet("state_province", ["Texas", 999]));
-        }
-        if (query.includes("(pivot,(state_province,county))")) {
-          return HttpResponse.json(pivotFacet("state_province,county", [
-            { value: "Texas", count: 7, pivot: [{ value: "Harris", count: 7 }] },
-          ]));
-        }
-        if (query.includes("(pivot,")) {
-          return HttpResponse.json({ response: { numFound: 0 }, facet_counts: { facet_pivot: {} } });
-        }
-        return HttpResponse.text("unknown", { status: 400 });
-      }),
-    );
-
-    const result = await fetchOrganismGeoDistribution(234);
-    expect(result.maxCount).toBe(999);
-  });
-
   it("re-throws AbortError from a pivot fetch instead of swallowing it", async () => {
     server.use(
       http.get(`${baseUrl}/genome/`, ({ request }) => {
@@ -306,7 +279,7 @@ describe("fetchOrganismGeoDistribution", () => {
     await expect(promise).rejects.toThrow();
   });
 
-  it("returns maxCount=0 when the taxon has no geographic data", async () => {
+  it("returns empty maps when the taxon has no geographic data", async () => {
     server.use(
       http.get(`${baseUrl}/genome/`, () =>
         HttpResponse.json({
@@ -320,6 +293,5 @@ describe("fetchOrganismGeoDistribution", () => {
     expect(result.countryData).toEqual({});
     expect(result.stateData).toEqual({});
     expect(result.countyData).toEqual({});
-    expect(result.maxCount).toBe(0);
   });
 });

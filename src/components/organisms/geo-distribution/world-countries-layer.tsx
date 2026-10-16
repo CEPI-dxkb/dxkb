@@ -16,13 +16,13 @@ import {
   resolveCountryDataKey,
   type ColorScale,
 } from "./color-scale";
-import { mapHeight } from "./map-constants";
 import { featureName, type CountryFeature } from "./topology-utils";
 
 interface WorldCountriesLayerProps {
   countryFeatures: CountryFeature[];
   scale: number;
   width: number;
+  height: number;
   data: OrganismGeoDistribution;
   colorScale: ColorScale;
   isDraggingRef: RefObject<boolean>;
@@ -35,6 +35,7 @@ export function WorldCountriesLayer({
   countryFeatures,
   scale,
   width,
+  height,
   data,
   colorScale,
   isDraggingRef,
@@ -46,7 +47,7 @@ export function WorldCountriesLayer({
     <NaturalEarth<CountryFeature>
       data={countryFeatures}
       scale={scale}
-      translate={[width / 2, mapHeight / 2]}
+      translate={[width / 2, height / 2]}
     >
       {({ features }) =>
         features.map(({ feature, path }) => {

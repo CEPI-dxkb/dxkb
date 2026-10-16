@@ -50,12 +50,6 @@ function distribution({
     stateMeta: {},
     countyData,
     countyMeta: {},
-    maxCount: Math.max(
-      0,
-      ...Object.values(countryData),
-      ...Object.values(stateData),
-      ...Object.values(countyData),
-    ),
   };
 }
 
@@ -153,5 +147,64 @@ describe("GeoDistributionClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "World" }));
 
     expect(screen.getByTestId("map-view")).toHaveTextContent("world");
+  });
+
+  it("scales each view to its own regions and says what a count is", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({
+          countryData: { USA: 1_000_000, China: 50_000 },
+          stateData: { Wyoming: 3, Idaho: 300 },
+        })}
+        accent="viruses"
+      />,
+    );
+
+    // The US view's steps end at the top state, not the USA's national total.
+    const usLegend = screen.getByRole("img", { name: /^Genomes per state:/ });
+    expect(usLegend).toHaveAccessibleName(/to 300/);
+    expect(usLegend).not.toHaveAccessibleName(/1,000,000/);
+    expect(screen.getByText("300")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "World" }));
+
+    expect(
+      screen.getByRole("img", { name: /^Genomes per country:/ }),
+    ).toHaveAccessibleName(/to 1,000,000/);
+    expect(screen.getByText("1M")).toBeInTheDocument();
+  });
+
+  it("scales the State view to the selected state's counties", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({
+          stateData: { Illinois: 60 },
+          countyData: { "Illinois|Cook": 50, "Illinois|Lake": 5, "Texas|Harris": 9999 },
+        })}
+        accent="bacteria"
+      />,
+    );
+
+    // The State view opens on Illinois.
+    fireEvent.click(screen.getByRole("button", { name: "State" }));
+
+    const legend = screen.getByRole("img", { name: /^Genomes per county:/ });
+    expect(legend).toHaveAccessibleName(/to 50/);
+    expect(legend).not.toHaveAccessibleName(/9,999/);
+  });
+
+  it("shows the No data swatch even when a view has no counts", () => {
+    render(
+      <GeoDistributionClient
+        data={distribution({ countryData: {} })}
+        accent="bacteria"
+      />,
+    );
+
+    expect(
+      screen.getByRole("img", {
+        name: "Genomes per country: No data: no genomes.",
+      }),
+    ).toHaveTextContent("No data");
   });
 });

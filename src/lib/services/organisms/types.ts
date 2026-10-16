@@ -41,7 +41,6 @@ export interface OrganismGeoDistribution {
   stateMeta: Record<string, OrganismGeoLocationMeta>;
   countyData: Record<string, number>;
   countyMeta: Record<string, OrganismGeoLocationMeta>;
-  maxCount: number;
 }
 
 export interface SerotypeYear {

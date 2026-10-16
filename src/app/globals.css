@@ -311,6 +311,103 @@
   --graph-surface: color-mix(in oklab, var(--input) 30%, var(--card));
 }
 
+/* The geographic distribution map's color steps (geo-distribution/
+   color-scale.ts), one OKLCH ramp per accent at the accent's hue, with
+   lightness 0.09 apart so neighboring steps stay distinct (OKLab distance at
+   least 0.09). Light to dark on a light theme; a dark theme flips it, so few
+   genomes sit near the surface and the most stand out. "No data" is a neutral
+   gray midway between the second and third steps' lightness, set apart from
+   them by its lack of hue and from the map's surface by its lightness (at
+   least 0.08 from each). `color-scale.test.ts` checks every ramp's lightness
+   steps. */
+[data-geo-accent] {
+  --geo-no-data: oklch(0.785 0 0);
+}
+
+[data-theme$="-dark"] [data-geo-accent] {
+  --geo-no-data: oklch(0.515 0 0);
+}
+
+[data-geo-accent="bacteria"] {
+  --geo-step-1: oklch(0.92 0.035 264);
+  --geo-step-2: oklch(0.83 0.077 264);
+  --geo-step-3: oklch(0.74 0.11 264);
+  --geo-step-4: oklch(0.65 0.14 264);
+  --geo-step-5: oklch(0.56 0.16 264);
+  --geo-step-6: oklch(0.47 0.16 264);
+  --geo-step-7: oklch(0.38 0.14 264);
+}
+
+[data-geo-accent="viruses"] {
+  --geo-step-1: oklch(0.92 0.039 4);
+  --geo-step-2: oklch(0.83 0.08 4);
+  --geo-step-3: oklch(0.74 0.11 4);
+  --geo-step-4: oklch(0.65 0.14 4);
+  --geo-step-5: oklch(0.56 0.16 4);
+  --geo-step-6: oklch(0.47 0.16 4);
+  --geo-step-7: oklch(0.38 0.14 4);
+}
+
+[data-geo-accent="fungi"] {
+  --geo-step-1: oklch(0.92 0.041 49);
+  --geo-step-2: oklch(0.83 0.08 49);
+  --geo-step-3: oklch(0.74 0.11 49);
+  --geo-step-4: oklch(0.65 0.14 49);
+  --geo-step-5: oklch(0.56 0.138 49);
+  --geo-step-6: oklch(0.47 0.115 49);
+  --geo-step-7: oklch(0.38 0.093 49);
+}
+
+[data-geo-accent="all"] {
+  --geo-step-1: oklch(0.92 0.045 150);
+  --geo-step-2: oklch(0.83 0.08 150);
+  --geo-step-3: oklch(0.74 0.11 150);
+  --geo-step-4: oklch(0.65 0.14 150);
+  --geo-step-5: oklch(0.56 0.141 150);
+  --geo-step-6: oklch(0.47 0.119 150);
+  --geo-step-7: oklch(0.38 0.096 150);
+}
+
+[data-theme$="-dark"] [data-geo-accent="bacteria"] {
+  --geo-step-1: oklch(0.38 0.08 264);
+  --geo-step-2: oklch(0.47 0.105 264);
+  --geo-step-3: oklch(0.56 0.13 264);
+  --geo-step-4: oklch(0.65 0.145 264);
+  --geo-step-5: oklch(0.74 0.122 264);
+  --geo-step-6: oklch(0.83 0.077 264);
+  --geo-step-7: oklch(0.92 0.035 264);
+}
+
+[data-theme$="-dark"] [data-geo-accent="viruses"] {
+  --geo-step-1: oklch(0.38 0.08 4);
+  --geo-step-2: oklch(0.47 0.105 4);
+  --geo-step-3: oklch(0.56 0.13 4);
+  --geo-step-4: oklch(0.65 0.145 4);
+  --geo-step-5: oklch(0.74 0.13 4);
+  --geo-step-6: oklch(0.83 0.091 4);
+  --geo-step-7: oklch(0.92 0.039 4);
+}
+
+[data-theme$="-dark"] [data-geo-accent="fungi"] {
+  --geo-step-1: oklch(0.38 0.08 49);
+  --geo-step-2: oklch(0.47 0.105 49);
+  --geo-step-3: oklch(0.56 0.13 49);
+  --geo-step-4: oklch(0.65 0.145 49);
+  --geo-step-5: oklch(0.74 0.13 49);
+  --geo-step-6: oklch(0.83 0.095 49);
+  --geo-step-7: oklch(0.92 0.041 49);
+}
+
+[data-theme$="-dark"] [data-geo-accent="all"] {
+  --geo-step-1: oklch(0.38 0.08 150);
+  --geo-step-2: oklch(0.47 0.105 150);
+  --geo-step-3: oklch(0.56 0.13 150);
+  --geo-step-4: oklch(0.65 0.145 150);
+  --geo-step-5: oklch(0.74 0.13 150);
+  --geo-step-6: oklch(0.83 0.1 150);
+  --geo-step-7: oklch(0.92 0.065 150);
+}
+
 @layer base {
   :root {
     font-family: var(--font-sans);

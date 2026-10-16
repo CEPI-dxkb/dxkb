@@ -40,6 +40,7 @@ export default async function AllOrganismsPage({ searchParams }: AllOrganismsPag
       config={allOrganismsLandingConfig}
       views={views}
       activeViewKey={request.activeViewKey}
+      tabParam={request.tabParam}
     />
   );
 }

@@ -270,6 +270,15 @@ interface ArcInterp {
   toOpacity: number;
 }
 
+// An arc's angles at animation progress `t`, shared by the frames that draw it
+// and the pointer hit-test.
+function interpAngles(arc: ArcInterp, t: number) {
+  return {
+    startAngle: arc.fromStart + (arc.toStart - arc.fromStart) * t,
+    endAngle: arc.fromEnd + (arc.toEnd - arc.fromEnd) * t,
+  };
+}
+
 function buildInterpData(
   prev: AnimatedArcDatum[],
   target: ArcDatum[],
@@ -572,12 +581,22 @@ function useDonutChart({
   const prevArcsRef = useRef<AnimatedArcDatum[]>([]);
   const pathRefs = useRef(new Map<string, SVGPathElement>());
   const animRef = useRef<ReturnType<typeof animate> | null>(null);
+  // The arcs as the paths show them right now. The animation writes its frames
+  // straight to the path elements, so `displayedArcs` holds frame 0 until it
+  // completes and `arcData` is where the slices settle; pointer hit-testing
+  // reads this instead.
+  const drawnArcsRef = useRef<{ interp: ArcInterp[]; progress: number }>({
+    interp: [],
+    progress: 1,
+  });
 
   const animateToCurrentArcs = useEffectEvent(() => {
     animRef.current?.stop();
     const prev = prevArcsRef.current;
     const target = arcData;
     const interp = buildInterpData(prev, target);
+    const drawn = { interp, progress: 0 };
+    drawnArcsRef.current = drawn;
     setDisplayedArcs(interpolateArcData(prev, target, 0));
     let raf2: number;
     const raf1 = requestAnimationFrame(() => {
@@ -586,11 +605,11 @@ function useDonutChart({
           duration: 0.5,
           ease: [0.22, 1, 0.36, 1],
           onUpdate(t) {
+            drawn.progress = t;
             for (const arc of interp) {
               const el = pathRefs.current.get(arc.id);
               if (!el) continue;
-              const s = arc.fromStart + (arc.toStart - arc.fromStart) * t;
-              const e = arc.fromEnd + (arc.toEnd - arc.fromEnd) * t;
+              const { startAngle: s, endAngle: e } = interpAngles(arc, t);
               el.setAttribute(
                 "d",
                 e - s > 0.001
@@ -603,6 +622,7 @@ function useDonutChart({
             }
           },
           onComplete() {
+            drawn.progress = 1;
             const final = target.map((a) => ({ ...a, opacity: 1 }));
             setDisplayedArcs(final);
             prevArcsRef.current = final;
@@ -720,8 +740,9 @@ function useDonutChart({
     if (arc) showTooltipForArcAnchoredToSvg(arc);
   };
 
-  // Where a pointer event falls on the donut: outside the ring (`null`), or in
-  // it, on an arc or in the gap between two (`arc` undefined).
+  // Where a pointer event falls on the donut: off it (`null`), or in the ring
+  // (or on the popped-out slice's rim past it), on an arc or in the gap between
+  // two (`arc` undefined).
   const pointerTarget = (
     event: React.MouseEvent<SVGCircleElement>,
   ): { arc?: ArcDatum } | null => {
@@ -745,16 +766,41 @@ function useDonutChart({
       (event.clientY - rect.top - letterboxY) / uniformScale - chartCenter;
     const dist = Math.sqrt(svgX * svgX + svgY * svgY);
 
-    // Only the ring is live — inner hole and outside edge are dead zones
-    if (dist < innerRadius || dist > outerRadius) return null;
+    // Only the ring is live — the inner hole is a dead zone, and so is the
+    // outside, but for the popped-out slice's rim
+    if (dist < innerRadius) return null;
 
-    const angle = Math.atan2(svgX, -svgY); // angle from 12 o'clock, clockwise
-    return {
-      arc: arcData.find((arc) => {
-        const a = angle < arc.startAngle ? angle + Math.PI * 2 : angle;
-        return a >= arc.startAngle && a <= arc.endAngle;
-      }),
+    // Test the angles the slices are drawn at, which trail `arcData` while they
+    // animate, so hover and click resolve to the slice under the pointer.
+    const { interp, progress } = drawnArcsRef.current;
+    const inSweep = (drawn: ArcInterp, x: number, y: number) => {
+      const { startAngle, endAngle } = interpAngles(drawn, progress);
+      const angle = Math.atan2(x, -y); // angle from 12 o'clock, clockwise
+      const a = angle < startAngle ? angle + Math.PI * 2 : angle;
+      return a >= startAngle && a <= endAngle;
     };
+
+    if (dist > outerRadius) {
+      // The active slice pops out by popDistance, so its rim crosses the outer
+      // edge. Undo its offset and test the point against the slice itself.
+      const arc = arcData.find((a) => a.slice.id === activeId);
+      const drawn = interp.find((d) => d.id === activeId);
+      if (!arc || !drawn) return null;
+      const x = svgX - arc.popX;
+      const y = svgY - arc.popY;
+      return Math.sqrt(x * x + y * y) <= outerRadius && inSweep(drawn, x, y)
+        ? { arc }
+        : null;
+    }
+
+    // Later paths paint on top, so the last match wins. A slice missing from
+    // `arcData` is leaving (just hidden from the legend) and never matches.
+    let hit: ArcDatum | undefined;
+    for (const drawn of interp) {
+      const arc = arcData.find((a) => a.slice.id === drawn.id);
+      if (arc && inSweep(drawn, svgX, svgY)) hit = arc;
+    }
+    return { arc: hit };
   };
 
   const handleOverlayMouseMove = (
@@ -903,10 +949,12 @@ function useDonutChart({
                 {/*
                  * Single transparent overlay intercepts all mouse events.
                  * Angle + distance math in onMouseMove eliminates gap/hole flicker.
+                 * It reaches the popped-out slice's rim, so the pointer stays on
+                 * it (and the slice stays out) over that edge too.
                  */}
                 <circle
                   data-testid="chart-overlay"
-                  r={outerRadius}
+                  r={outerRadius + popDistance}
                   fill="transparent"
                   className={cn(hoveredHref && "cursor-pointer")}
                   onClick={(event) => {

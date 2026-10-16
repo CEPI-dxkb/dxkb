@@ -39,15 +39,15 @@ export function genomeStateWithValue(
   field: string,
   value: string,
 ): CollectionState | undefined {
+  if (!genomeCollectionOptions.friendlyFilters?.includes(field)) {
+    return undefined;
+  }
   if (state.rql) {
     return {
       ...state,
       rql: rqlAnd(state.rql, eq("genome", field, value)),
       page: 1,
     };
-  }
-  if (!genomeCollectionOptions.friendlyFilters?.includes(field)) {
-    return undefined;
   }
   return { ...state, filters: { ...state.filters, [field]: [value] }, page: 1 };
 }

@@ -26,7 +26,7 @@ export class ViewNavRail {
    * The rail has hydrated, so the page's router is live and a click on a tab will be handled.
    * For a server-rendered view (the overview) with no client-loaded content to wait on. React
    * attaches a hydrated element's props as `__reactProps$<id>`, so this waits for every rail
-   * button's `onClick` to be there, as `GenomeMemberPage.waitForHydration` does.
+   * button's `onClick` to be there.
    */
   async waitForHydration(): Promise<void> {
     await expect

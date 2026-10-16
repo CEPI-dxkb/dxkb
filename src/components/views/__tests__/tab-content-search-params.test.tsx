@@ -87,6 +87,29 @@ it("matches a URL without a tab param to null", () => {
   expect(screen.getByRole("status")).toHaveTextContent("collection_year=2025");
 });
 
+it("follows a legacy ?view= URL once its content is rendered for no tab", () => {
+  setUrl("tab=genomes&collection_year=2025");
+  const { rerender } = render(tabContent("genomes"));
+
+  // Back to a legacy link to the same view: the stale frame holds the leaving
+  // search...
+  setUrl("view=genomes");
+  rerender(tabContent("genomes"));
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "tab=genomes&collection_year=2025",
+  );
+
+  // ...and the legacy page's content, rendered for its raw (absent) `tab`,
+  // reads the URL from then on, including a nested table's History API write.
+  rerender(tabContent(null));
+  expect(screen.getByRole("status")).toHaveTextContent("view=genomes");
+  setUrl("view=genomes&collection_year=2024");
+  rerender(tabContent(null));
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "view=genomes&collection_year=2024",
+  );
+});
+
 it("falls back to the URL when the content never matched it", () => {
   setUrl("tab=bogus");
   const { rerender } = render(tabContent("genomes"));

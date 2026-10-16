@@ -37,6 +37,7 @@ export default async function BacteriaPage({ searchParams }: BacteriaPageProps) 
       config={bacteriaLandingConfig}
       views={views}
       activeViewKey={request.activeViewKey}
+      tabParam={request.tabParam}
     />
   );
 }

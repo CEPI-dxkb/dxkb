@@ -35,7 +35,15 @@ export class OrganismLandingPage {
     return this.page.getByRole("link", { name: `View ${name} genomes` });
   }
 
+  // A donut whose slices link to their records is a group (an img's children
+  // are presentational, so it could not hold the links); one without links is
+  // an img.
   expectDonut(title: string): Promise<void> {
-    return expect(this.page.getByRole("img", { name: `${title} distribution` })).toBeVisible();
+    const name = `${title} distribution`;
+    return expect(
+      this.page
+        .getByRole("group", { name })
+        .or(this.page.getByRole("img", { name })),
+    ).toBeVisible();
   }
 }

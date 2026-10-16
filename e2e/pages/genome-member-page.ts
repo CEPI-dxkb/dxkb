@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import { expectUrlParams } from "../support/url-params";
+import { ViewNavRail } from "./view-nav-rail";
 
 /**
  * A genome member page (`/genome/<id>`): the view rail's tabs and the nested table a data tab
@@ -10,10 +11,12 @@ import { expectUrlParams } from "../support/url-params";
 export class GenomeMemberPage {
   readonly page: Page;
   readonly heading: Locator;
+  readonly viewNav: ViewNavRail;
 
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole("heading", { level: 1 });
+    this.viewNav = new ViewNavRail(page);
   }
 
   /**
@@ -33,32 +36,10 @@ export class GenomeMemberPage {
    * client-loaded table to wait on (the overview is server-rendered throughout). Before this, the
    * rail's buttons have no handlers and a click is lost. The navbar is no proxy: it sits outside
    * the page's Suspense boundary (`genome/loading.tsx`), and React commits that shell before it
-   * hydrates the streamed page, so the navbar can be live while the rail is not. React attaches a
-   * hydrated element's props as `__reactProps$<id>`, so this waits for every rail button's
-   * `onClick` to be there.
+   * hydrates the streamed page, so the navbar can be live while the rail is not.
    */
   async waitForHydration(): Promise<void> {
-    const railButtons = this.page
-      .getByRole("navigation", { name: "Entity views" })
-      .getByRole("button");
-    await expect
-      .poll(
-        () =>
-          railButtons.evaluateAll(
-            (buttons) =>
-              buttons.length > 0 &&
-              buttons.every((button) =>
-                Object.entries(button).some(
-                  ([key, props]) =>
-                    key.startsWith("__reactProps$") &&
-                    typeof (props as { onClick?: unknown }).onClick ===
-                      "function",
-                ),
-              ),
-          ),
-        { message: "the view rail's buttons did not hydrate" },
-      )
-      .toBe(true);
+    await this.viewNav.waitForHydration();
   }
 
   /** Switch tab from the view rail (a router navigation, so one history entry). */

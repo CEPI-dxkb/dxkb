@@ -1,6 +1,13 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { vi } from "vitest";
 
+vi.mock("next/navigation", async () =>
+  (await import("@/test-helpers/history-navigation")).historyNavigationMock({
+    pathname: "/organisms/bacteria",
+  }),
+);
+
+import { useTabContentSearchParams } from "@/components/views/tab-content-search-params";
 import { OrganismLandingShell } from "../landing-shell";
 import type {
   OrganismLandingConfig,
@@ -29,6 +36,11 @@ const views: OrganismLandingView[] = [
   { key: "genomes", label: "Genomes", icon: <span />, Component: Genomes },
 ];
 
+beforeEach(() => {
+  // The URL outlives a test.
+  history.replaceState(null, "", "/organisms/bacteria");
+});
+
 function view(key: OrganismViewKey, enabled = true): OrganismLandingView {
   return {
     key,
@@ -47,6 +59,7 @@ describe("OrganismLandingShell — gate-aware tab resolution", () => {
         config={{ displayName: "T", taxonId: 1, accent: "all", metadataFields: [], defaultView: "overview" }}
         views={[view("overview"), view("phylogeny", false)]}
         activeViewKey="phylogeny"
+        tabParam="phylogeny"
       />,
     );
     // The disabled tab must NOT become the active rendered view.
@@ -59,6 +72,7 @@ describe("OrganismLandingShell — gate-aware tab resolution", () => {
       <OrganismLandingShell
         config={{ displayName: "T", taxonId: 1, accent: "all", metadataFields: [], defaultView: "phylogeny" }}
         views={[view("phylogeny", false), view("genomes", true)]}
+        tabParam={null}
       />,
     );
     // disabled defaultView must NOT be rendered
@@ -73,6 +87,7 @@ describe("OrganismLandingShell — gate-aware tab resolution", () => {
         config={{ displayName: "T", taxonId: 1, accent: "all", metadataFields: [], defaultView: "overview" }}
         views={[view("overview"), view("genomes", true)]}
         activeViewKey="genomes"
+        tabParam="genomes"
       />,
     );
     expect(screen.getByTestId("view-genomes")).toBeInTheDocument();
@@ -85,7 +100,9 @@ describe("OrganismLandingShell", () => {
   });
 
   it("renders the configured default view", () => {
-    render(<OrganismLandingShell config={config} views={views} />);
+    render(
+      <OrganismLandingShell config={config} views={views} tabParam={null} />,
+    );
 
     expect(
       screen.getByRole("heading", { level: 1, name: "Bacteria" }),
@@ -99,6 +116,7 @@ describe("OrganismLandingShell", () => {
         config={config}
         views={views}
         activeViewKey="genomes"
+        tabParam="genomes"
       />,
     );
 
@@ -106,7 +124,9 @@ describe("OrganismLandingShell", () => {
   });
 
   it("defaults to expanded navigation", () => {
-    render(<OrganismLandingShell config={config} views={views} />);
+    render(
+      <OrganismLandingShell config={config} views={views} tabParam={null} />,
+    );
 
     const desktopNav = screen.getByRole("navigation", { name: "Organism views" });
     expect(within(desktopNav).getByText("Views")).toBeInTheDocument();
@@ -126,6 +146,7 @@ describe("OrganismLandingShell — hideDisabledTabs", () => {
           hideDisabledTabs: true,
         }}
         views={[view("overview"), view("phylogeny", false)]}
+        tabParam={null}
       />,
     );
     expect(screen.queryByRole("button", { name: /phylogeny/i })).not.toBeInTheDocument();
@@ -142,6 +163,7 @@ describe("OrganismLandingShell — hideDisabledTabs", () => {
           defaultView: "overview",
         }}
         views={[view("overview"), view("phylogeny", false)]}
+        tabParam={null}
       />,
     );
     const desktopNav = screen.getByRole("navigation", { name: "Organism views" });
@@ -162,9 +184,73 @@ describe("OrganismLandingShell — hideDisabledTabs", () => {
           hideDisabledTabs: true,
         }}
         views={[view("phylogeny", false), view("genomes", true)]}
+        tabParam={null}
       />,
     );
     expect(screen.getByTestId("view-genomes")).toBeInTheDocument();
     expect(screen.queryByTestId("view-phylogeny")).not.toBeInTheDocument();
+  });
+});
+
+describe("OrganismLandingShell — tabParam", () => {
+  function SearchProbe() {
+    return <output>{useTabContentSearchParams().toString()}</output>;
+  }
+
+  const probeViews: OrganismLandingView[] = [
+    { key: "overview", label: "Overview", icon: null, Component: Overview },
+    {
+      key: "genomes",
+      label: "Genomes",
+      icon: null,
+      Component: SearchProbe,
+      layout: "fill",
+    },
+  ];
+
+  function shell(tabParam: string | null) {
+    return (
+      <OrganismLandingShell
+        config={config}
+        views={probeViews}
+        activeViewKey="genomes"
+        tabParam={tabParam}
+      />
+    );
+  }
+
+  it("matches the raw tab, so a legacy ?view= page follows its own URL", () => {
+    // A canonical Genomes visit records its search...
+    history.replaceState(
+      null,
+      "",
+      "/organisms/bacteria?tab=genomes&collection_year=2025",
+    );
+    const { rerender } = render(shell("genomes"));
+
+    // ...then Back to a legacy link to the same view: Next keeps the subtree,
+    // and the stale frame still holds the leaving search.
+    act(() => {
+      history.replaceState(null, "", "/organisms/bacteria?view=genomes");
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "tab=genomes&collection_year=2025",
+    );
+
+    // The legacy page opens Genomes without a `tab`, and its content follows
+    // the URL, including a nested table's History API write. Forwarding the
+    // resolved view ("genomes") instead would hold the old search for good.
+    rerender(shell(null));
+    expect(screen.getByRole("status")).toHaveTextContent("view=genomes");
+    act(() => {
+      history.replaceState(
+        null,
+        "",
+        "/organisms/bacteria?view=genomes&collection_year=2024",
+      );
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "view=genomes&collection_year=2024",
+    );
   });
 });

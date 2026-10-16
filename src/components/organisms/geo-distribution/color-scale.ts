@@ -50,9 +50,11 @@ function quantile(sorted: readonly number[], p: number): number {
  * Color steps for the regions a view shows. Each step's lower bound is a
  * quantile of their counts, so the steps hold about as many regions each and
  * the whole ramp is in use however skewed the counts are (one state with 8
- * genomes beside fifty with 5K–115K). A view with fewer distinct bounds than
- * steps spreads its steps across the ramp, so the darkest still marks the
- * most genomes.
+ * genomes beside fifty with 5K–115K). Every step holds a region: a view with
+ * fewer distinct bounds than steps, or a bound no region reaches, uses fewer
+ * steps and spreads them across the ramp, so the darkest still marks the most
+ * genomes. One whose quantiles all tie at the fewest (seven regions with 1
+ * beside one with 100) gives the most a step of their own.
  */
 export function makeGeoColorScale(counts: Iterable<number>): GeoColorScale {
   const sorted = [...counts]
@@ -68,14 +70,24 @@ export function makeGeoColorScale(counts: Iterable<number>): GeoColorScale {
     const bound = roundBound(quantile(sorted, index / geoStepFills.length));
     if (bound > bounds[bounds.length - 1] && bound <= max) bounds.push(bound);
   }
+  // The bound is `max` itself: rounding can carry it past every region
+  // (105 to 110), and the legend already ends the bar at `max`.
+  if (bounds.length === 1 && max > bounds[0]) bounds.push(max);
+  // Rounding can also start a step no region reaches ([1, 3] puts bounds at
+  // 1, 2 and 3), so such a step joins the one below. The first holds the
+  // fewest and the last the most, so both stay.
+  const inUse = bounds.filter((from, index) => {
+    const to = bounds.at(index + 1) ?? Infinity;
+    return sorted.some((count) => count >= from && count < to);
+  });
 
   const last = geoStepFills.length - 1;
-  const steps = bounds.map((from, index) => ({
+  const steps = inUse.map((from, index) => ({
     from,
     fill: geoStepFills[
-      bounds.length === 1
+      inUse.length === 1
         ? last
-        : Math.round((index * last) / (bounds.length - 1))
+        : Math.round((index * last) / (inUse.length - 1))
     ],
   }));
 

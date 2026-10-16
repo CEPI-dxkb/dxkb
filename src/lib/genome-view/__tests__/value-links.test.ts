@@ -134,4 +134,19 @@ describe("genomeStateWithValue", () => {
       ),
     ).toBeUndefined();
   });
+
+  it("has none beside an explicit rql either", () => {
+    expect(
+      genomeStateWithValue(
+        {
+          filters: {},
+          page: 1,
+          sort: "unsorted",
+          rql: "eq(genus,Escherichia)",
+        },
+        "genome_length",
+        "5000",
+      ),
+    ).toBeUndefined();
+  });
 });

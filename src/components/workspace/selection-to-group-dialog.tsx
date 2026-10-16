@@ -143,98 +143,104 @@ function SelectionToGroupForm({
         </DialogDescription>
       </DialogHeader>
 
-      <Tabs
-        value={mode}
-        onValueChange={(value) => {
-          setMode(value as GroupMode);
-          setError(null);
-        }}
-      >
-        <TabsList className="w-full">
-          <TabsTrigger value="new" disabled={isSubmitting}>
-            New Group
-          </TabsTrigger>
-          <TabsTrigger value="existing" disabled={isSubmitting}>
-            Existing Group
-          </TabsTrigger>
-        </TabsList>
+      {/* Header and footer stay put; on a short screen only this body scrolls,
+          so the actions are always reachable. The 1-unit inset keeps the
+          fields' focus rings inside the scroll area's clip. */}
+      <div className="-mx-1 grid min-h-0 gap-4 overflow-y-auto px-1 pb-1">
+        <Tabs
+          value={mode}
+          onValueChange={(value) => {
+            setMode(value as GroupMode);
+            setError(null);
+          }}
+        >
+          <TabsList className="w-full">
+            <TabsTrigger value="new" disabled={isSubmitting}>
+              New Group
+            </TabsTrigger>
+            <TabsTrigger value="existing" disabled={isSubmitting}>
+              Existing Group
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="new">
-          <div className="grid gap-4 pt-2">
-            <div className="grid gap-2">
-              <Label htmlFor="selection-group-folder">Folder</Label>
+          <TabsContent value="new">
+            <div className="grid gap-4 pt-2">
+              <div className="grid gap-2">
+                <Label htmlFor="selection-group-folder">Folder</Label>
+                <WorkspaceObjectSelector
+                  id="selection-group-folder"
+                  preset="folder"
+                  value={folderPath}
+                  placeholder="Search for folders..."
+                  filter={isSelectableOutputFolder}
+                  browseTitle="Select an Output Folder for This New Group"
+                  disabled={isSubmitting}
+                  searchOnInteraction
+                  onSelectedObjectChange={(object) => {
+                    setFolderPath(object?.path ?? "");
+                    setError(null);
+                  }}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="selection-group-name">Group name</Label>
+                <Input
+                  id="selection-group-name"
+                  value={groupName}
+                  onChange={(event) => {
+                    setGroupName(event.target.value);
+                    setError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSubmit();
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  aria-invalid={groupName.length > 0 && groupNameError !== null}
+                  aria-describedby={
+                    groupNameError ? "selection-group-name-error" : undefined
+                  }
+                  placeholder={copy.namePlaceholder}
+                />
+                {groupName.length > 0 && groupNameError ? (
+                  <p
+                    id="selection-group-name-error"
+                    className="text-xs text-destructive"
+                  >
+                    {groupNameError}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="existing">
+            <div className="grid gap-2 pt-2">
+              <Label htmlFor="selection-existing-group">{copy.groupLabel}</Label>
               <WorkspaceObjectSelector
-                id="selection-group-folder"
-                preset="folder"
-                value={folderPath}
-                placeholder="Search for folders..."
-                filter={isSelectableOutputFolder}
-                browseTitle="Select an Output Folder for This New Group"
+                id="selection-existing-group"
+                preset={copy.preset}
+                value={existingGroupPath}
+                placeholder={copy.searchPlaceholder}
                 disabled={isSubmitting}
                 onSelectedObjectChange={(object) => {
-                  setFolderPath(object?.path ?? "");
+                  setExistingGroupPath(object?.path ?? "");
                   setError(null);
                 }}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="selection-group-name">Group name</Label>
-              <Input
-                id="selection-group-name"
-                value={groupName}
-                onChange={(event) => {
-                  setGroupName(event.target.value);
-                  setError(null);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void handleSubmit();
-                  }
-                }}
-                disabled={isSubmitting}
-                aria-invalid={groupName.length > 0 && groupNameError !== null}
-                aria-describedby={
-                  groupNameError ? "selection-group-name-error" : undefined
-                }
-                placeholder={copy.namePlaceholder}
-              />
-              {groupName.length > 0 && groupNameError ? (
-                <p
-                  id="selection-group-name-error"
-                  className="text-xs text-destructive"
-                >
-                  {groupNameError}
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        </Tabs>
 
-        <TabsContent value="existing">
-          <div className="grid gap-2 pt-2">
-            <Label htmlFor="selection-existing-group">{copy.groupLabel}</Label>
-            <WorkspaceObjectSelector
-              id="selection-existing-group"
-              preset={copy.preset}
-              value={existingGroupPath}
-              placeholder={copy.searchPlaceholder}
-              disabled={isSubmitting}
-              onSelectedObjectChange={(object) => {
-                setExistingGroupPath(object?.path ?? "");
-                setError(null);
-              }}
-            />
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {error ? (
-        <Alert variant="destructive">
-          <AlertCircle />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+      </div>
 
       <DialogFooter>
         <Button
@@ -291,7 +297,7 @@ export function SelectionToGroupDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-lg">
         <SelectionToGroupForm
           ids={ids}
           groupKind={groupKind}

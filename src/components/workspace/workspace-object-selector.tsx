@@ -37,6 +37,13 @@ interface WorkspaceObjectSelectorProps {
   /** Title of the picker that Browse opens. */
   browseTitle?: string;
   disabled?: boolean;
+  /**
+   * Waits to run the workspace search (a recursive listing of the whole
+   * `path` tree) until the user focuses, types in, or opens the field, rather
+   * than on mount. For a field that usually keeps its default value or is
+   * filled through Browse, where the eager listing would be wasted.
+   */
+  searchOnInteraction?: boolean;
 }
 
 function useWorkspaceObjectSelector({
@@ -55,6 +62,7 @@ function useWorkspaceObjectSelector({
   browse = true,
   browseTitle,
   disabled = false,
+  searchOnInteraction = false,
 }: WorkspaceObjectSelectorProps) {
   const { user } = useAuth();
   const [showDropdown, setShowDropdown] = React.useState(false);
@@ -103,6 +111,8 @@ function useWorkspaceObjectSelector({
   const resolvedTypes = validatedTypes?.valid;
   const username = workspaceUsername(user);
   const [isPickerOpen, setIsPickerOpen] = React.useState(false);
+  const [hasInteracted, setHasInteracted] = React.useState(false);
+  const searchEnabled = !searchOnInteraction || hasInteracted;
   const pickerTarget =
     browse && resolvedTypes && resolvedTypes.length > 0
       ? pickerTargetFor(resolvedTypes)
@@ -121,9 +131,11 @@ function useWorkspaceObjectSelector({
     username,
     path,
     types: resolvedTypes,
+    autoLoad: searchEnabled,
   });
 
   const handleSearchChange = (value: string) => {
+    setHasInteracted(true);
     search(value);
     setShowDropdown(value.length > 0);
     setIsManualTrigger(false);
@@ -181,6 +193,7 @@ function useWorkspaceObjectSelector({
     : undefined;
 
   const handleManualDropdownToggle = () => {
+    setHasInteracted(true);
     setShowDropdown(!showDropdown);
     setIsManualTrigger(!showDropdown);
     setHighlightedIndex(-1);
@@ -306,7 +319,9 @@ function useWorkspaceObjectSelector({
     const valueChanged = previousValueRef.current !== value;
     if (valueChanged) previousValueRef.current = value;
 
-    if (value && objects.length > 0) {
+    // A search not yet run (`searchOnInteraction`) has no list to look the
+    // value up in, so its name comes from the path straight away.
+    if (value && (objects.length > 0 || !searchEnabled)) {
       // Only update if value changed or this value hasn't been resolved yet
       // (handles the case where objects load after the initial render)
       if (valueChanged || resolvedValueRef.current !== value) {
@@ -340,7 +355,7 @@ function useWorkspaceObjectSelector({
         if (!clearedByTyping) setSearchQuery("");
       });
     }
-  }, [value, objects, setSearchQuery]);
+  }, [value, objects, searchEnabled, setSearchQuery]);
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown || displayObjects.length === 0) {
@@ -425,6 +440,7 @@ function useWorkspaceObjectSelector({
           setHighlightedIndex(-1);
         }}
         onInputFocus={() => {
+          setHasInteracted(true);
           if (searchQuery.length > 0 || isManualTrigger) setShowDropdown(true);
         }}
         onInputKeyDown={handleInputKeyDown}

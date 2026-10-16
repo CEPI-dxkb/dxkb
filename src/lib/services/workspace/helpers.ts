@@ -388,3 +388,15 @@ export function getDotPathRelative(path: string, jobName: string): string {
   const safeJobName = sanitizePathSegment(jobName);
   return base ? `${base}/.${safeJobName}` : `.${safeJobName}`;
 }
+
+/**
+ * Success-toast text for an action on a named workspace object, in the one
+ * format every such confirmation uses: `Created Genome Group: "My Group"`.
+ */
+export function namedObjectConfirmation(
+  action: "Created" | "Updated",
+  objectKind: string,
+  name: string,
+): string {
+  return `${action} ${objectKind}: "${name}"`;
+}

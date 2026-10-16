@@ -17,6 +17,7 @@ import {
   getFolderPathsFromItems,
   getNonEmptyFolderPaths,
   ensureDestinationWriteAccess,
+  namedObjectConfirmation,
 } from "@/lib/services/workspace/helpers";
 import type { WorkspaceItem } from "@/lib/services/workspace/domain";
 
@@ -714,5 +715,16 @@ describe("ensureDestinationWriteAccess", () => {
     const result = await ensureDestinationWriteAccess("/user/home/target", listFolder);
     expect(result.ok).toBe(false);
     expect(result.errorMessage).toContain("Access denied");
+  });
+});
+
+describe("namedObjectConfirmation", () => {
+  it("names the object kind and quotes its name", () => {
+    expect(namedObjectConfirmation("Created", "Genome Group", "test group 3")).toBe(
+      'Created Genome Group: "test group 3"',
+    );
+    expect(namedObjectConfirmation("Updated", "Feature Group", "Mine")).toBe(
+      'Updated Feature Group: "Mine"',
+    );
   });
 });

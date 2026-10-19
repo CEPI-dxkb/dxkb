@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
+import {
+  describeUpstreamResponse,
+  fetchUpstream,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
 
 const minhashServiceUrl = process.env.MINHASH_SERVICE_URL;
 
@@ -25,18 +31,36 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     );
   }
 
-  const response = await fetch(minhashServiceUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: token },
-    body: JSON.stringify(body),
-  });
+  const response = await fetchUpstream(
+    minhashServiceUrl,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: token },
+      body: JSON.stringify(body),
+    },
+    { service: upstreamServices.minhash, timeoutMs: upstreamTimeoutMs.minhash },
+  );
 
   if (!response.ok) {
-    const data = (await response.json().catch(() => ({}))) as {
-      error?: string;
-    } & Record<string, unknown>;
+    const text = await response.text().catch(() => "");
+    let parsed: unknown = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch {
+      // An HTML error page: described from its status and title below.
+    }
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const data = parsed as { error?: string } & Record<string, unknown>;
+      return NextResponse.json(
+        { error: data.error ?? "Minhash service error", ...data },
+        { status: response.status },
+      );
+    }
     return NextResponse.json(
-      { error: data.error ?? "Minhash service error", ...data },
+      {
+        error: describeUpstreamResponse(response, text, upstreamServices.minhash)
+          .message,
+      },
       { status: response.status },
     );
   }

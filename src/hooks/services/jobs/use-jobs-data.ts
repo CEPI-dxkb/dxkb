@@ -2,6 +2,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { z } from "zod";
 import { useApiQuery } from "@/lib/api/hooks";
 import { apiCall } from "@/lib/api/client";
+import { errorBackoffPollInterval } from "@/lib/api/poll-backoff";
 import type { JobListItem } from "@/types/workspace";
 
 const jobIdSchema = z.union([
@@ -121,7 +122,8 @@ export function useJobsData(params: UseJobsDataParams) {
     ],
     enabled,
     placeholderData: keepPreviousData,
-    refetchInterval,
+    refetchInterval: (query) =>
+      errorBackoffPollInterval(query) ?? refetchInterval,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const data = await apiCall<unknown>(

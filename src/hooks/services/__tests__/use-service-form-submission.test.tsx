@@ -103,6 +103,41 @@ describe("useServiceFormSubmission", () => {
     });
   });
 
+  it("keeps a submit timeout on screen with a way to check Jobs", async () => {
+    const { toast } = await import("sonner");
+    const message =
+      "The BV-BRC job service did not respond within 30 s. Your job may still have been queued: check Jobs before you submit it again.";
+    server.use(
+      http.post("*/api/services/app-service/submit", () =>
+        HttpResponse.json({ error: message, code: "upstream" }, { status: 504 }),
+      ),
+    );
+
+    const { result } = renderHook(
+      () =>
+        useServiceFormSubmission({
+          serviceName: "GenomeAssembly2",
+          displayName: "Genome Assembly",
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.submit({});
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "The job service did not respond",
+        expect.objectContaining({
+          description: message,
+          duration: Infinity,
+          action: expect.objectContaining({ label: "View Jobs" }) as unknown,
+        }),
+      );
+    });
+  });
+
   it("tracks isSubmitting during pending submission", async () => {
     let resolve!: () => void;
     const blocker = new Promise<void>((r) => {

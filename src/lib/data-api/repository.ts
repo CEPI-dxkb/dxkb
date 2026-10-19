@@ -1,5 +1,13 @@
 import { z } from "zod";
 import {
+  describeUpstreamFailure,
+  fetchUpstream,
+  isHtmlBody,
+  summarizeUpstreamBody,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import {
   downloadFormats,
   downloadUnavailableReason,
   emptyDownloadMessage,
@@ -51,10 +59,31 @@ export class DataApiError extends Error {
     message: string,
     readonly status = 502,
     readonly code = "upstream_error",
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "DataApiError";
   }
+}
+
+const dataService = upstreamServices.dataApi;
+
+/**
+ * A network failure or spent budget as the `DataApiError` the routes answer
+ * with: 504 `upstream_timeout` or 502 `service_unavailable`, naming the
+ * cause. Anything else (a caller's `AbortError` included) is returned as is.
+ */
+function dataApiFailure(error: unknown): unknown {
+  const failure = describeUpstreamFailure(error, dataService, {
+    timeoutMs: upstreamTimeoutMs.dataApi,
+  });
+  if (!failure) return error;
+  return new DataApiError(
+    `${failure.message} Please try again.`,
+    failure.status,
+    failure.code,
+    { cause: error },
+  );
 }
 
 function appendQuery(url: URL, clause: string): void {
@@ -526,6 +555,7 @@ export class ServerDataRepository {
       fastaAcceptTypes[request.type],
       "POST",
       predicate,
+      true,
     );
     return response.body;
   }
@@ -664,6 +694,7 @@ export class ServerDataRepository {
       format.accept,
       "POST",
       clauses.join("&"),
+      true,
     );
     const body = await nonEmptyBody(response.body);
     if (!body)
@@ -762,7 +793,13 @@ export class ServerDataRepository {
       method,
       body,
     );
-    const payload: unknown = await response.json().catch(() => null);
+    // A body that stalls past the budget is a timeout, not malformed JSON.
+    const payload: unknown = await response.json().catch((error: unknown) => {
+      const failure = dataApiFailure(error);
+      if (failure instanceof DataApiError) throw failure;
+      if (error instanceof Error && error.name === "AbortError") throw error;
+      return null;
+    });
     return { payload, headers: response.headers };
   }
 
@@ -780,6 +817,7 @@ export class ServerDataRepository {
     accept: string,
     method = "GET",
     body?: string,
+    streamBody = false,
   ): Promise<Response> {
     if (this.options.token && url.protocol !== "https:") {
       throw new DataApiError(
@@ -796,20 +834,52 @@ export class ServerDataRepository {
     if (this.options.token) headers.set("Authorization", this.options.token);
     if (body)
       headers.set("Content-Type", "application/rqlquery+x-www-form-urlencoded");
-    const response = await this.fetcher(url, {
-      method,
-      headers,
-      body,
-      signal,
-      ...(this.options.token ? { redirect: "error" as const } : {}),
-      cache: this.options.cache,
-      next: this.options.revalidate
-        ? { revalidate: this.options.revalidate }
-        : undefined,
-    });
+    let response: Response;
+    try {
+      response = await fetchUpstream(
+        url,
+        {
+          method,
+          headers,
+          body,
+          signal,
+          ...(this.options.token ? { redirect: "error" as const } : {}),
+          cache: this.options.cache,
+          next: this.options.revalidate
+            ? { revalidate: this.options.revalidate }
+            : undefined,
+        },
+        {
+          service: dataService,
+          timeoutMs: upstreamTimeoutMs.dataApi,
+          // FASTA and table downloads stream through unread and may run far
+          // past any budget; JSON reads are bounded through the body.
+          streamBody,
+          fetcher: this.fetcher,
+        },
+      );
+    } catch (error) {
+      throw dataApiFailure(error);
+    }
     if (!response.ok) {
-      const payload: unknown = await response.json().catch(() => null);
-      const message = upstreamMessage(payload, response.status);
+      const text = await response.text().catch(() => "");
+      let payload: unknown = null;
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch {
+        // An HTML error page; summarized below, never forwarded.
+      }
+      // Only an HTML page's title and heading; a plain-text body stays
+      // unread as before, since it can carry upstream internals.
+      const contentType = response.headers.get("content-type");
+      const detail =
+        payload === null && isHtmlBody(text, contentType)
+          ? summarizeUpstreamBody(text, contentType)
+          : "";
+      const message =
+        payload === null && detail
+          ? `Data service request failed with status ${String(response.status)}: ${detail}.`
+          : upstreamMessage(payload, response.status);
       const serviceUnavailable =
         response.status === 503 ||
         (response.status >= 500 &&
@@ -835,7 +905,7 @@ export class ServerDataRepository {
                   : "upstream_error";
       throw new DataApiError(
         serviceUnavailable
-          ? "The data service is temporarily unavailable. Please try again."
+          ? `The data service is temporarily unavailable${detail ? ` (${detail})` : ""}. Please try again.`
           : message,
         safeStatus,
         code,

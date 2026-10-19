@@ -1,5 +1,6 @@
 import { useApiQuery } from "@/lib/api/hooks";
 import { apiCall } from "@/lib/api/client";
+import { errorBackoffPollInterval } from "@/lib/api/poll-backoff";
 
 interface JobsSummaryData {
   taskSummary: Record<string, number>;
@@ -12,6 +13,8 @@ export function useJobsSummary(includeArchived: boolean) {
   return useApiQuery<JobsSummaryData>({
     queryKey: ["jobs-summary", includeArchived],
     refetchInterval: (query) => {
+      const backoff = errorBackoffPollInterval(query);
+      if (backoff !== undefined) return backoff;
       const data = query.state.data;
       if (!data) return 5_000;
       const { taskSummary } = data;

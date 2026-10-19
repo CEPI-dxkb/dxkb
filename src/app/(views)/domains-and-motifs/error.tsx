@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 
 export default function DomainsAndMotifsError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
+  // Refreshes the route and then resets. reset() alone re-renders the same
+  // failed server payload, so the button could never recover.
+  retry: () => void;
 }) {
   useEffect(() => {
     console.error(error);
@@ -26,7 +29,7 @@ export default function DomainsAndMotifsError({
       <p className="my-2 text-sm text-muted-foreground">
         An unexpected error occurred while loading this view.
       </p>
-      <Button variant="outline" onClick={reset}>
+      <Button variant="outline" onClick={retry}>
         Try again
       </Button>
     </div>

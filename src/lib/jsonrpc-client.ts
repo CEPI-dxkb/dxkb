@@ -1,13 +1,61 @@
 import { JsonRpcRequest, JsonRpcResponse } from "@/types/workspace";
+import {
+  describeUpstreamFailure,
+  fetchUpstream,
+  upstreamResponseError,
+  UpstreamError,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "./env";
+
+export interface JsonRpcClientOptions {
+  /** Lower-case service phrase for failure messages: "the BV-BRC job service". */
+  service?: string;
+  /** Budget for one round trip, body included. */
+  timeoutMs?: number;
+}
+
+function rpcErrorOf(
+  envelope: unknown,
+): { message: string; code: number; data?: unknown } | null {
+  const entries = Array.isArray(envelope) ? envelope : [envelope];
+  for (const entry of entries) {
+    const error: unknown =
+      entry && typeof entry === "object"
+        ? (entry as { error?: unknown }).error
+        : undefined;
+    if (!error || typeof error !== "object") continue;
+    const { message, code, data } = error as {
+      message?: unknown;
+      code?: unknown;
+      data?: unknown;
+    };
+    if (typeof message !== "string" || !message.trim()) continue;
+    return {
+      message,
+      code: typeof code === "number" ? code : jsonRpcErrorCodes.INTERNAL_ERROR,
+      data,
+    };
+  }
+  return null;
+}
 
 export class JsonRpcClient {
   private static requestId = 1;
   private baseUrl: string;
   private headers: HeadersInit;
+  private readonly service: string;
+  private readonly timeoutMs: number;
 
-  constructor(baseUrl: string, authToken?: string) {
+  constructor(
+    baseUrl: string,
+    authToken?: string,
+    options: JsonRpcClientOptions = {},
+  ) {
     this.baseUrl = baseUrl;
+    this.service = options.service ?? "the JSON-RPC service";
+    this.timeoutMs = options.timeoutMs ?? upstreamTimeoutMs.jobService;
     this.headers = {
       "Content-Type": "application/json",
       ...(authToken && {
@@ -30,28 +78,54 @@ export class JsonRpcClient {
     };
   }
 
+  /**
+   * One POST to the service, returning its parsed body. A BV-BRC JSON-RPC
+   * server reports an application error as an HTTP 500 carrying a JSON-RPC
+   * `error`, so a non-2xx body is read for one before the status is: the
+   * server's own message is a `JsonRpcError`, anything else (an HTML error
+   * page) an `UpstreamError` describing the status and page title. Network
+   * failures and a spent budget are `UpstreamError`s from `fetchUpstream`.
+   */
+  private async post(body: unknown): Promise<unknown> {
+    const response = await fetchUpstream(
+      this.baseUrl,
+      { method: "POST", headers: this.headers, body: JSON.stringify(body) },
+      { service: this.service, timeoutMs: this.timeoutMs },
+    );
+
+    if (!response.ok) {
+      const text = await response
+        .clone()
+        .text()
+        .catch(() => "");
+      let envelope: unknown = null;
+      try {
+        envelope = text ? JSON.parse(text) : null;
+      } catch {
+        // Not JSON: described from the status and page below.
+      }
+      const rpcError = rpcErrorOf(envelope);
+      if (rpcError) {
+        throw new JsonRpcError(rpcError.message, rpcError.code, rpcError.data);
+      }
+      throw await upstreamResponseError(response, this.service);
+    }
+
+    return response.json().catch((error: unknown) => {
+      const failure = describeUpstreamFailure(error, this.service, {
+        timeoutMs: this.timeoutMs,
+      });
+      throw failure ? new UpstreamError(failure, { cause: error }) : error;
+    });
+  }
+
   async call<T = unknown>(method: string, params: unknown[] = []): Promise<T> {
     const request = this.createRequest(method, params);
 
     try {
-      console.log("Making JSON-RPC call:", {
-        url: this.baseUrl,
-        method,
-        headers: this.headers,
-        body: request,
-      });
-
-      const response = await fetch(this.baseUrl, {
-        method: "POST",
-        headers: this.headers,
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${String(response.status)}`);
-      }
-
-      const jsonResponse = (await response.json()) as JsonRpcResponse<T>;
+      // Never log the request here: the headers carry the user's
+      // Authorization token and the params can hold job inputs.
+      const jsonResponse = (await this.post(request)) as JsonRpcResponse<T>;
 
       if (jsonResponse.error) {
         throw new JsonRpcError(
@@ -67,11 +141,12 @@ export class JsonRpcClient {
 
       return jsonResponse.result;
     } catch (error) {
-      if (error instanceof JsonRpcError) {
+      if (error instanceof JsonRpcError || error instanceof UpstreamError) {
         throw error;
       }
       throw new Error(
         `JSON-RPC call failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -85,17 +160,9 @@ export class JsonRpcClient {
     );
 
     try {
-      const response = await fetch(this.baseUrl, {
-        method: "POST",
-        headers: this.headers,
-        body: JSON.stringify(jsonRequests),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${String(response.status)}`);
-      }
-
-      const jsonResponses = (await response.json()) as JsonRpcResponse<T>[];
+      const jsonResponses = (await this.post(
+        jsonRequests,
+      )) as JsonRpcResponse<T>[];
 
       return jsonResponses.map((jsonResponse) => {
         if (jsonResponse.error) {
@@ -113,11 +180,12 @@ export class JsonRpcClient {
         return jsonResponse.result;
       });
     } catch (error) {
-      if (error instanceof JsonRpcError) {
+      if (error instanceof JsonRpcError || error instanceof UpstreamError) {
         throw error;
       }
       throw new Error(
         `JSON-RPC batch call failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -156,10 +224,10 @@ export class JsonRpcError extends Error {
 
 // Factory function for creating BV-BRC API client
 export function createBvBrcClient(authToken?: string): JsonRpcClient {
-  return new JsonRpcClient(
-    getRequiredEnv("APP_SERVICE_URL"),
-    authToken,
-  );
+  return new JsonRpcClient(getRequiredEnv("APP_SERVICE_URL"), authToken, {
+    service: upstreamServices.jobService,
+    timeoutMs: upstreamTimeoutMs.jobService,
+  });
 }
 
 // Common error codes for better error handling

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
+import {
+  fetchUpstream,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import { getRequiredEnv } from "@/lib/env";
 
 const allowedMethods = new Set(["Workspace.ls", "Workspace.get"]);
@@ -38,16 +44,23 @@ export async function POST(request: NextRequest) {
       headers["Authorization"] = authToken;
     }
 
-    const response = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        id: 1,
-        method,
-        params,
-        jsonrpc: "2.0",
-      }),
-    });
+    const response = await fetchUpstream(
+      getRequiredEnv("WORKSPACE_API_URL"),
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          id: 1,
+          method,
+          params,
+          jsonrpc: "2.0",
+        }),
+      },
+      {
+        service: upstreamServices.workspace,
+        timeoutMs: upstreamTimeoutMs.workspace,
+      },
+    );
 
     if (!response.ok) {
       const responseText = await response.text();
@@ -68,9 +81,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error) {
     console.error("Public workspace API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return upstreamFailureResponse(error, upstreamServices.workspace);
   }
 }

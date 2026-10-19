@@ -26,6 +26,7 @@ import { loadFavorites } from "@/lib/services/workspace/favorites";
 import { workspaceQueryKeys } from "@/lib/services/workspace/workspace-query-keys";
 import { useRecentWorkspaceFolders } from "@/hooks/use-recent-workspace-folders";
 import { SuBanner } from "@/components/auth/su-banner";
+import { SessionUnverifiedBanner } from "@/components/auth/session-unverified-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
 import { MobileSheetNavigation } from "@/components/navbars/mobile-sheet-navigation";
 
@@ -188,6 +189,7 @@ const useMobileNavbar = () => {
         </div>
       )}
       <SuBanner />
+      <SessionUnverifiedBanner />
     </header>
   );
 };

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/server/route";
+import {
+  fetchUpstream,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
+import { upstreamFailureResponse } from "@/lib/api/upstream-route";
 import { getRequiredEnv } from "@/lib/env";
 
 /** Safe shape we forward to the client; avoids leaking stack traces, paths, or config. */
@@ -45,19 +51,26 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
       );
     }
 
-    const response = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/jsonrpc+json",
-        Authorization: token,
+    const response = await fetchUpstream(
+      getRequiredEnv("WORKSPACE_API_URL"),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/jsonrpc+json",
+          Authorization: token,
+        },
+        body: JSON.stringify({
+          id: 1,
+          method,
+          params,
+          jsonrpc: "2.0",
+        }),
       },
-      body: JSON.stringify({
-        id: 1,
-        method,
-        params,
-        jsonrpc: "2.0",
-      }),
-    });
+      {
+        service: upstreamServices.workspace,
+        timeoutMs: upstreamTimeoutMs.workspace,
+      },
+    );
 
     if (!response.ok) {
       const firstParam: unknown = Array.isArray(params) ? params[0] : undefined;
@@ -102,9 +115,6 @@ export const POST = withAuth(async (request: NextRequest, { token }) => {
     return NextResponse.json(data);
   } catch (error) {
     console.error("Workspace API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return upstreamFailureResponse(error, upstreamServices.workspace);
   }
 });

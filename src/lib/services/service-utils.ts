@@ -16,7 +16,14 @@ export interface SubmitJobEntry {
 export async function submitServiceJob(
   appName: string,
   appParams: Record<string, unknown>,
-): Promise<{ success: boolean; job?: [SubmitJobEntry]; error?: string; details?: unknown }> {
+): Promise<{
+  success: boolean;
+  job?: [SubmitJobEntry];
+  error?: string;
+  details?: unknown;
+  /** HTTP status of a failed submit; 504 means the job service never answered. */
+  status?: number;
+}> {
   try {
     const result = await apiCall<{ job?: [SubmitJobEntry] }>(
       "/api/services/app-service/submit",
@@ -25,7 +32,12 @@ export async function submitServiceJob(
     return { success: true, job: result.job };
   } catch (error) {
     if (error instanceof ApiCallError) {
-      return { success: false, error: error.message, details: error.details };
+      return {
+        success: false,
+        error: error.message,
+        details: error.details,
+        status: error.status,
+      };
     }
     const errorMessage = error instanceof Error ? error.message : "Failed to submit service job";
     return { success: false, error: errorMessage };

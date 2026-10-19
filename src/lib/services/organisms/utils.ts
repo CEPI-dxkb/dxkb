@@ -1,3 +1,4 @@
+import { isHtmlBody, summarizeUpstreamBody } from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 
 import { genomeScopeRql, type GenomeScope } from "./genome-scope";
@@ -27,9 +28,22 @@ export function getBvBrcWebsiteApiBaseUrl(): string {
   return getRequiredEnv("BVBRC_WEBSITE_API_URL").replace(/\/+$/, "");
 }
 
+/**
+ * The message for a non-OK organism response: the body's text, or, for an
+ * HTML error page (BV-BRC's maintenance page), only the status and the page's
+ * title and heading ("503 Service Unavailable: Site Maintenance — We’ll be back
+ * soon!"). `SectionError` prints this message, so page source must never
+ * reach it.
+ */
 export async function responseErrorMessage(response: Response): Promise<string> {
   const body = await response.text().catch(() => "");
-  return body.trim() || `${String(response.status)} ${response.statusText}`.trim();
+  const status = `${String(response.status)} ${response.statusText}`.trim();
+  const contentType = response.headers.get("content-type");
+  if (isHtmlBody(body, contentType)) {
+    const summary = summarizeUpstreamBody(body, contentType);
+    return summary ? `${status}: ${summary}` : status;
+  }
+  return body.trim() || status;
 }
 
 // Matched by name rather than instanceof: the DOMException an abort produces

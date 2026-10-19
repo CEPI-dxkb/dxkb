@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 interface SerologyErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
+  // Refreshes the route and then resets. reset() alone re-renders the same
+  // failed server payload, so the button could never recover.
+  retry: () => void;
 }
 
-export default function SerologyError({ error, reset }: SerologyErrorProps) {
+export default function SerologyError({ error, retry }: SerologyErrorProps) {
   return (
     <div
       className="m-4 rounded-lg border border-destructive/40 bg-destructive/5 p-6"
@@ -17,7 +20,7 @@ export default function SerologyError({ error, reset }: SerologyErrorProps) {
         Serology view could not be loaded
       </h1>
       <p className="my-2 text-sm text-muted-foreground">{error.message}</p>
-      <Button variant="outline" onClick={reset}>
+      <Button variant="outline" onClick={retry}>
         Try again
       </Button>
     </div>

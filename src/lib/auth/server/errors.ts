@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { JsonRpcError, jsonRpcErrorCodes } from "@/lib/jsonrpc-client";
 import type { AuthErrorCode } from "@/lib/auth/types";
 import { statusToErrorCode } from "@/lib/api/types";
+import {
+  describeUpstreamFailure,
+  UpstreamError,
+} from "@/lib/api/upstream-failure";
 
 const authErrorCodes: readonly AuthErrorCode[] = [
   "invalid_credentials",
@@ -112,7 +116,23 @@ export function errorResponse(
     );
   }
 
+  if (error instanceof UpstreamError) {
+    return NextResponse.json(
+      { error: error.message, code: statusToErrorCode(error.status) },
+      { status: error.status },
+    );
+  }
+
   if (error instanceof Error) {
+    // A raw network failure from a route's own fetch: its message is only
+    // "fetch failed", so describe the cause it carries instead.
+    const failure = describeUpstreamFailure(error, "an upstream service");
+    if (failure) {
+      return NextResponse.json(
+        { error: failure.message, code: statusToErrorCode(failure.status) },
+        { status: failure.status },
+      );
+    }
     return NextResponse.json(
       { error: error.message, code: "upstream" },
       { status: fallbackStatus },

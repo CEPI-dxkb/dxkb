@@ -33,6 +33,12 @@ const e2eTargetProfile = {
   roles: [],
 };
 
+// A session whose profile lookup always hits a maintenance outage, for the spec
+// that checks an outage keeps a signed-in user signed in (auth-outage.spec.ts).
+const e2eOutageUserId = "e2e-outage-user@patricbrc.org";
+const maintenancePage =
+  "<!DOCTYPE html><html><head><title>503 Service Unavailable</title></head><body><h1>BV-BRC is undergoing scheduled maintenance</h1></body></html>";
+
 const e2eAdminToken = "un=e2e-test-user@patricbrc.org|e2e-admin-token";
 const e2eTargetToken = "un=e2e-target-user@patricbrc.org|e2e-target-token";
 
@@ -62,6 +68,12 @@ export function handleIdentityGet(path: string): NextResponse | null {
   }
   if (userId === e2eTargetProfile.id || userId === e2eTargetProfile.l_id) {
     return NextResponse.json(e2eTargetProfile);
+  }
+  if (userId === e2eOutageUserId) {
+    return new NextResponse(maintenancePage, {
+      status: 503,
+      headers: { "Content-Type": "text/html" },
+    });
   }
   return NextResponse.json({ error: "User not found" }, { status: 404 });
 }

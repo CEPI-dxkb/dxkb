@@ -8,6 +8,11 @@
  * so error messages and headers stay consistent with the client transport.
  */
 
+import {
+  fetchUpstream,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 import type { WorkspaceRpcPort } from "./setup";
 
@@ -19,14 +24,21 @@ interface JsonRpcEnvelope {
 export function createServerWorkspaceRpc(token: string): WorkspaceRpcPort {
   return {
     async call<T>(method: string, params: unknown[]): Promise<T> {
-      const response = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/jsonrpc+json",
-          Authorization: token,
+      const response = await fetchUpstream(
+        getRequiredEnv("WORKSPACE_API_URL"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/jsonrpc+json",
+            Authorization: token,
+          },
+          body: JSON.stringify({ id: 1, method, params, jsonrpc: "2.0" }),
         },
-        body: JSON.stringify({ id: 1, method, params, jsonrpc: "2.0" }),
-      });
+        {
+          service: upstreamServices.workspace,
+          timeoutMs: upstreamTimeoutMs.workspace,
+        },
+      );
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");

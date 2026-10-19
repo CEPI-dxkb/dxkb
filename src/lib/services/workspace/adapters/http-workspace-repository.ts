@@ -331,6 +331,7 @@ export class HttpWorkspaceRepository implements WorkspaceRepository {
           : `HTTP error! status: ${String(response.status)}`,
         "readTextStart",
         body,
+        response.status,
       );
     }
     return {

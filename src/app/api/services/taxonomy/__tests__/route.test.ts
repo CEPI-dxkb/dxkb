@@ -90,7 +90,7 @@ describe("GET /api/services/taxonomy", () => {
     );
   });
 
-  it("returns 500 on unexpected exception", async () => {
+  it("returns 502 when the upstream cannot be reached", async () => {
     server.use(
       http.get("http://mock-api/taxonomy", () => {
         return HttpResponse.error();
@@ -103,7 +103,8 @@ describe("GET /api/services/taxonomy", () => {
     });
     const res = await GET(req, {});
 
-    expect(res.status).toBe(500);
+    // A network failure is an unreachable upstream, not a server bug.
+    expect(res.status).toBe(502);
     expect(await json(res)).toEqual(
       expect.objectContaining({ error: expect.any(String) as unknown }),
     );

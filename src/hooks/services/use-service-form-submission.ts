@@ -25,7 +25,11 @@ export function useServiceFormSubmission(
   const submitMutation = useMutation({
     mutationFn: async (params: Record<string, unknown>) => {
       const result = await submitServiceJob(serviceName, params);
-      if (!result.success) throw new Error(result.error || "Failed to submit job");
+      if (!result.success) {
+        throw Object.assign(new Error(result.error || "Failed to submit job"), {
+          status: result.status,
+        });
+      }
       return result;
     },
     onSuccess: (result) => {
@@ -44,6 +48,18 @@ export function useServiceFormSubmission(
     onError: (error) => {
       console.error(`Failed to submit ${displayName} job:`, error);
       const errorMessage = error instanceof Error ? error.message : "Failed to submit job";
+      // 504: the job service never answered, so the job may still have been
+      // queued (the server's message says which). Keep it on screen with a
+      // way to check before the user submits again.
+      if ((error as { status?: unknown }).status === 504) {
+        toast.error("The job service did not respond", {
+          description: errorMessage,
+          closeButton: true,
+          duration: Infinity,
+          action: { label: "View Jobs", onClick: () => { router.push("/jobs"); } },
+        });
+        return;
+      }
       toast.error("Submission failed", { description: errorMessage, closeButton: true });
     },
   });

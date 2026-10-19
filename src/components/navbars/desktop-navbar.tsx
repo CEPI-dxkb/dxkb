@@ -26,6 +26,7 @@ import { UserAvatarDropdown } from "@/components/navbars/user-avatar-dropdown";
 import { WorkspaceDropdownContent } from "@/components/navbars/workspace-dropdown-content";
 import { workspaceUsername } from "@/lib/services/workspace/path-utils";
 import { SuBanner } from "@/components/auth/su-banner";
+import { SessionUnverifiedBanner } from "@/components/auth/session-unverified-banner";
 import { JobStatusPill } from "@/components/jobs/job-status-pill";
 import { NavbarThemeSwitcher } from "@/components/navbars/theme-switcher-navbar";
 
@@ -210,6 +211,7 @@ const DesktopNavbar = () => {
         </div>
       </div>
       <SuBanner />
+      <SessionUnverifiedBanner />
     </header>
   );
 };

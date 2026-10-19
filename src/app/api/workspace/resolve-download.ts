@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { readAuthSession } from "@/lib/auth/server/route";
+import {
+  fetchUpstream,
+  upstreamServices,
+  upstreamTimeoutMs,
+} from "@/lib/api/upstream-failure";
 import { getRequiredEnv } from "@/lib/env";
 import { getMimeType } from "@/components/workspace/file-viewer/file-viewer-registry";
 
@@ -65,19 +70,26 @@ export async function resolveWorkspaceDownload(
 
   const workspacePath = buildWorkspacePath(segments);
 
-  const wsResponse = await fetch(getRequiredEnv("WORKSPACE_API_URL"), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/jsonrpc+json",
-      Authorization: session.token,
+  const wsResponse = await fetchUpstream(
+    getRequiredEnv("WORKSPACE_API_URL"),
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/jsonrpc+json",
+        Authorization: session.token,
+      },
+      body: JSON.stringify({
+        id: 1,
+        method: "Workspace.get_download_url",
+        params: [{ objects: [workspacePath] }],
+        jsonrpc: "2.0",
+      }),
     },
-    body: JSON.stringify({
-      id: 1,
-      method: "Workspace.get_download_url",
-      params: [{ objects: [workspacePath] }],
-      jsonrpc: "2.0",
-    }),
-  });
+    {
+      service: upstreamServices.workspace,
+      timeoutMs: upstreamTimeoutMs.workspace,
+    },
+  );
 
   if (!wsResponse.ok) {
     const responseText = await wsResponse.text();
@@ -105,7 +117,17 @@ export async function resolveWorkspaceDownload(
     );
   }
 
-  const shockResponse = await fetch(downloadUrl);
+  // Only the wait for Shock to start answering is bounded: the file itself
+  // streams through to the browser and may take as long as it takes.
+  const shockResponse = await fetchUpstream(
+    downloadUrl,
+    {},
+    {
+      service: upstreamServices.fileStorage,
+      timeoutMs: upstreamTimeoutMs.fileStorage,
+      streamBody: true,
+    },
+  );
 
   if (!shockResponse.ok) {
     console.error(

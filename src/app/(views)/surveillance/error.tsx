@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 interface SurveillanceErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
+  // Refreshes the route and then resets. reset() alone re-renders the same
+  // failed server payload, so the button could never recover.
+  retry: () => void;
 }
 
 export default function SurveillanceError({
   error,
-  reset,
+  retry,
 }: SurveillanceErrorProps) {
   return (
     <div
@@ -20,7 +23,7 @@ export default function SurveillanceError({
         Surveillance view could not be loaded
       </h1>
       <p className="my-2 text-sm text-muted-foreground">{error.message}</p>
-      <Button variant="outline" onClick={reset}>
+      <Button variant="outline" onClick={retry}>
         Try again
       </Button>
     </div>

@@ -10,6 +10,7 @@ import {
   getFolderPathsFromItems,
   getNonEmptyFolderPaths,
   ensureDestinationWriteAccess,
+  namedObjectConfirmation,
 } from "@/lib/services/workspace/helpers";
 import {
   findProtectedFolders,
@@ -153,7 +154,7 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       dispatch({ type: "CLOSE" });
       clearSelection();
       invalidateWorkspaceQueries(queryClient);
-      toast.success("Folder created", { description: safeName });
+      toast.success(namedObjectConfirmation("Created", "Folder", safeName));
     },
     onError: (err) => {
       const message =
@@ -172,7 +173,9 @@ export function useWorkspaceDialogHandlers(options: UseWorkspaceDialogHandlersOp
       dispatch({ type: "CLOSE" });
       clearSelection();
       invalidateWorkspaceQueries(queryClient);
-      toast.success("Workspace created", { description: safeName });
+      toast.success(
+        namedObjectConfirmation("Created", "Workspace", safeName),
+      );
     },
     onError: (err) => {
       const message =

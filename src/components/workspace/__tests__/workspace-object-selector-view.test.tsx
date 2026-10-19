@@ -67,7 +67,7 @@ describe("WorkspaceObjectSelectorView", () => {
     ] satisfies WorkspaceObject[];
     const { consoleError, onObjectClick } = renderView(objects);
 
-    expect(screen.getByRole("listbox")).toHaveClass("z-40");
+    expect(screen.getByRole("listbox")).toHaveClass("z-50");
     expect(screen.getByRole("option", { name: /first\.fq/i })).toBeVisible();
     expect(screen.getByRole("option", { name: /second\.fq/i })).toBeVisible();
     fireEvent.click(screen.getByRole("option", { name: /second\.fq/i }));

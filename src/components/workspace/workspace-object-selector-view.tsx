@@ -206,13 +206,15 @@ function WorkspaceObjectDropdown({
   const { rect, openUpward, maxHeight } = dropdownLayout;
   if (!rect || typeof document === "undefined") return null;
 
+  // z-50 is the dialog tier: the list mounts after any open dialog, so it
+  // stacks above the dialog's backdrop and popup instead of behind them.
   return createPortal(
     <div
       id={listboxId}
       ref={dropdownRef}
       role="listbox"
       className={cn(
-        "fixed left-(--dropdown-left) z-40 max-h-(--dropdown-max-height) w-(--dropdown-width) scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50",
+        "fixed left-(--dropdown-left) z-50 max-h-(--dropdown-max-height) w-(--dropdown-width) scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent overflow-y-auto rounded-md border bg-popover shadow-md hover:scrollbar-thumb-muted-foreground/40 dark:scrollbar-thumb-muted-foreground/30 dark:hover:scrollbar-thumb-muted-foreground/50",
         openUpward ? "top-auto bottom-(--dropdown-bottom)" : "top-(--dropdown-top)",
       )}
       style={

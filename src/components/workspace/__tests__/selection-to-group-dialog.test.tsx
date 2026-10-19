@@ -4,52 +4,61 @@ import userEvent from "@testing-library/user-event";
 import type { WorkspaceObject } from "@/lib/services/workspace/types";
 import { SelectionToGroupDialog } from "../selection-to-group-dialog";
 
-vi.mock("../workspace-mini-browser", () => ({
-  WorkspaceMiniBrowser: ({
-    initialPath,
-    onSelectPath,
-  }: {
-    initialPath: string;
-    onSelectPath: (path: string) => void;
-  }) => (
-    <button
-      type="button"
-      onClick={() => {
-        onSelectPath(`${initialPath}/nested`);
-      }}
-    >
-      Select Folder
-    </button>
-  ),
-}));
-
 vi.mock("../workspace-object-selector", () => ({
   WorkspaceObjectSelector: ({
     id,
     preset,
+    value,
     onSelectedObjectChange,
   }: {
     id?: string;
     preset?: string;
+    value?: string;
     onSelectedObjectChange?: (object: WorkspaceObject | null) => void;
-  }) => (
-    <button
-      id={id}
-      type="button"
-      data-preset={preset}
-      onClick={() =>
-        onSelectedObjectChange?.({
-          id: "group-1",
-          name: "Existing Group",
-          path: "/user/home/existing",
-          type: "genome_group",
-          isDirectory: false,
-        })
-      }
-    >
-      Select Existing Group
-    </button>
-  ),
+  }) =>
+    preset === "folder" ? (
+      <>
+        <button
+          id={id}
+          type="button"
+          data-value={value}
+          onClick={() =>
+            onSelectedObjectChange?.({
+              id: "folder-1",
+              name: "shared-ws",
+              path: "/other/shared-ws",
+              type: "folder",
+              isDirectory: true,
+            })
+          }
+        >
+          Select Folder
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectedObjectChange?.(null)}
+        >
+          Clear Folder
+        </button>
+      </>
+    ) : (
+      <button
+        id={id}
+        type="button"
+        data-preset={preset}
+        onClick={() =>
+          onSelectedObjectChange?.({
+            id: "group-1",
+            name: "Existing Group",
+            path: "/user/home/existing",
+            type: "genome_group",
+            isDirectory: false,
+          })
+        }
+      >
+        Select Existing Group
+      </button>
+    ),
 }));
 
 function renderDialog(
@@ -80,7 +89,10 @@ describe("SelectionToGroupDialog", () => {
     const props = renderDialog();
 
     expect(screen.getByText("2 selected genomes")).toBeInTheDocument();
-    expect(screen.getByLabelText("Folder path")).toHaveValue("/user/home");
+    expect(screen.getByLabelText("Folder")).toHaveAttribute(
+      "data-value",
+      "/user/home",
+    );
     expect(screen.getByRole("button", { name: "Create Group" })).toBeDisabled();
 
     fireEvent.change(screen.getByLabelText("Group name"), {
@@ -90,6 +102,34 @@ describe("SelectionToGroupDialog", () => {
 
     expect(props.onCreate).toHaveBeenCalledWith("/user/home", "Test Group");
     expect(props.onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("creates the group in a folder chosen through the folder selector", async () => {
+    const props = renderDialog();
+
+    await userEvent.click(screen.getByLabelText("Folder"));
+    expect(screen.getByLabelText("Folder")).toHaveAttribute(
+      "data-value",
+      "/other/shared-ws",
+    );
+    await userEvent.type(screen.getByLabelText("Group name"), "Shared Group");
+    await userEvent.click(screen.getByRole("button", { name: "Create Group" }));
+
+    expect(props.onCreate).toHaveBeenCalledWith(
+      "/other/shared-ws",
+      "Shared Group",
+    );
+  });
+
+  it("disables Create Group while no folder is selected", async () => {
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Group name"), "Test Group");
+    expect(screen.getByRole("button", { name: "Create Group" })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear Folder" }));
+
+    expect(screen.getByRole("button", { name: "Create Group" })).toBeDisabled();
   });
 
   it("rejects names that would escape the selected folder", async () => {

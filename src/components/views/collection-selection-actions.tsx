@@ -15,7 +15,11 @@ import type { DataTableColumn } from "@/components/shared/data-table";
 import { useAuth } from "@/lib/auth/provider";
 import { useWorkspaceRepository } from "@/contexts/workspace-repository-context";
 import { invalidateWorkspace } from "@/lib/services/workspace/workspace-query-keys";
-import { workspaceUsername } from "@/lib/services/workspace/path-utils";
+import { namedObjectConfirmation } from "@/lib/services/workspace/helpers";
+import {
+  parsePathSegments,
+  workspaceUsername,
+} from "@/lib/services/workspace/path-utils";
 import { encodeQueryComponent, toQueryString } from "@/lib/url";
 import { featuresHrefFromIds, genomesHrefFromIds } from "@/lib/views/hrefs";
 import {
@@ -422,7 +426,9 @@ export function CollectionSelectionActions({
               ids: selectionIds,
             });
             invalidateWorkspace(queryClient);
-            toast.success(`Created ${groupCopy.title} ${name}`);
+            toast.success(
+              namedObjectConfirmation("Created", groupCopy.title, name),
+            );
           }}
           onAppend={async (path) => {
             await workspaceRepository.appendToIdGroup({
@@ -431,7 +437,13 @@ export function CollectionSelectionActions({
               ids: selectionIds,
             });
             invalidateWorkspace(queryClient);
-            toast.success(`Updated ${groupCopy.title}`);
+            toast.success(
+              namedObjectConfirmation(
+                "Updated",
+                groupCopy.title,
+                parsePathSegments(path).at(-1) ?? path,
+              ),
+            );
           }}
         />
       )}

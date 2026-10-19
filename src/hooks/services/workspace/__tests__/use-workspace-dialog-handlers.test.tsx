@@ -273,6 +273,9 @@ describe("useWorkspaceDialogHandlers", () => {
         path: "/testuser/home/projects/New Folder",
       });
     });
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Created Folder: "New Folder"');
+    });
   });
 
   it("handleCreateFolder skips empty/whitespace names", async () => {
@@ -304,6 +307,9 @@ describe("useWorkspaceDialogHandlers", () => {
     await waitFor(() => {
       const call = repo.calls.find((c) => c.method === "createFolder");
       expect(call).toEqual({ method: "createFolder", path: "/myuser/my-ws/" });
+    });
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith('Created Workspace: "my-ws"');
     });
   });
 

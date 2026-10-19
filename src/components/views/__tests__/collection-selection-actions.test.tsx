@@ -7,8 +7,15 @@ import {
   selectionServicesMaxRows,
 } from "@/lib/views/collection-selection";
 
-const { push, copyDialog } = vi.hoisted(() => ({
+const { push, copyDialog, groupDialog } = vi.hoisted(() => ({
   push: vi.fn(),
+  /** The group dialog's latest callbacks, so a test can finish a create or append. */
+  groupDialog: {
+    onCreate: undefined as
+      | ((folderPath: string, name: string) => Promise<void>)
+      | undefined,
+    onAppend: undefined as ((path: string) => Promise<void>) | undefined,
+  },
   /** The copy dialog's latest props, so a test can run its copy directly. */
   copyDialog: {
     onCopy: undefined as
@@ -69,13 +76,24 @@ vi.mock("@/components/workspace/selection-to-group-dialog", () => ({
   SelectionToGroupDialog: ({
     open,
     ids,
+    onCreate,
+    onAppend,
   }: {
     open: boolean;
     ids: readonly string[];
-  }) =>
-    open ? <div data-testid="selection-group">{ids.join(",")}</div> : null,
+    onCreate: typeof groupDialog.onCreate;
+    onAppend: typeof groupDialog.onAppend;
+  }) => {
+    groupDialog.onCreate = onCreate;
+    groupDialog.onAppend = onAppend;
+    return open ? (
+      <div data-testid="selection-group">{ids.join(",")}</div>
+    ) : null;
+  },
 }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from "sonner";
 import { CollectionSelectionActions } from "../collection-selection-actions";
 import { strainSelectionActionIds } from "../collection-selection-action-ids";
 
@@ -178,6 +196,49 @@ describe("CollectionSelectionActions", () => {
     );
     expect(onError).not.toHaveBeenCalledWith(expect.any(String));
   });
+
+  it.each([
+    {
+      idKind: "genome" as const,
+      idField: "genome_ids",
+      row: { genome_ids: ["11320.1"] },
+      title: "Genome Group",
+    },
+    {
+      idKind: "feature" as const,
+      idField: "feature_id",
+      row: { feature_id: "fig|11320.1.peg.1" },
+      title: "Feature Group",
+    },
+  ])(
+    "confirms $title creates and appends with the group's quoted name",
+    async ({ idKind, idField, row, title }) => {
+      const user = userEvent.setup();
+      vi.mocked(toast.success).mockClear();
+      renderStrainActions({
+        idKind,
+        idField,
+        resolveActionRows: vi.fn(() => Promise.resolve([row])),
+      });
+
+      await user.click(screen.getByRole("button", { name: /^group$/i }));
+      await screen.findByTestId("selection-group");
+
+      await act(async () => {
+        await groupDialog.onCreate?.(`/alice/home/${title}s`, "test group 3");
+      });
+      expect(toast.success).toHaveBeenLastCalledWith(
+        `Created ${title}: "test group 3"`,
+      );
+
+      await act(async () => {
+        await groupDialog.onAppend?.(`/alice/home/${title}s/older group`);
+      });
+      expect(toast.success).toHaveBeenLastCalledWith(
+        `Updated ${title}: "older group"`,
+      );
+    },
+  );
 
   it("rejects a selection whose rows flatten past the services ID ceiling", async () => {
     const user = userEvent.setup();
